@@ -10,6 +10,11 @@ files:
   - out/**
   - package.json
 
+# better-sqlite3 wird bereits per postinstall (scripts/rebuild-native.mjs) gegen die
+# Electron-ABI vorgebaut -> electron-builder muss/soll nicht selbst rebuilden
+# (haelt die node-gyp/tar-Kette auch aus dem Packaging-Schritt heraus).
+npmRebuild: false
+
 asar: true
 # native Module + ESM-only Pakete duerfen nicht ins asar-Archiv (sonst Laufzeitfehler)
 asarUnpack:

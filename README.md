@@ -15,12 +15,15 @@ Tech-Stack: **Electron + React + TypeScript** (electron-vite), Tailwind CSS,
 
 ## Voraussetzungen
 
-- **Node.js ≥ 20** und npm
-- **Build-Werkzeuge** für das native Modul `better-sqlite3` (wird beim `npm install` gegen die
-  Electron-ABI neu gebaut):
-  - **Windows:** „Desktop development with C++" (Visual Studio Build Tools) + Python 3
-  - **macOS:** Xcode Command Line Tools (`xcode-select --install`)
-  - **Linux:** `build-essential` und `python3` (z.B. `sudo apt install build-essential python3`)
+- **Node.js `^20.19` oder `≥ 22.12`** und npm (von vite 7 vorgegeben; `engine-strict=true` in
+  `.npmrc` erzwingt es – ein zu altes Node bricht den Install mit klarer Meldung ab statt
+  später kryptisch).
+- **Kein C++-Compiler nötig.** Das einzige native Modul (`better-sqlite3`) wird beim `npm install`
+  **nicht kompiliert**, sondern als geprüftes **Prebuild** für die Electron-ABI geladen
+  (`postinstall` → `scripts/rebuild-native.mjs`).
+  - _Fallback_ (nur falls für eine exotische Plattform/Arch kein Prebuild existiert): lokale
+    Build-Werkzeuge – Windows „Desktop development with C++" (VS Build Tools) + Python 3,
+    macOS `xcode-select --install`, Linux `build-essential python3`. Dann `npm run rebuild:native`.
 
 ---
 
@@ -30,7 +33,8 @@ Tech-Stack: **Electron + React + TypeScript** (electron-vite), Tailwind CSS,
 git clone <repo-url>
 cd project_mega
 
-# Abhängigkeiten installieren (postinstall baut better-sqlite3 für Electron)
+# Abhängigkeiten installieren
+# (postinstall lädt das better-sqlite3-Prebuild für die Electron-ABI – kein Compiler nötig)
 npm install
 
 # Einmalig: HAP-fähiges ffmpeg für die aktuelle Plattform holen
@@ -57,7 +61,11 @@ bösartige Lifecycle-Scripts, Typosquatting) ist dieses Projekt bewusst defensiv
 - **`better-sqlite3` ist exakt gepinnt** (`12.8.0`) und bewusst **nicht** die brandneueste Version
   („Cooldown" – kompromittierte Releases fallen meist in den ersten Tagen auf).
 - **`.npmrc`**: `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
-- Schlanker Dependency-Baum; die App läuft offline.
+- **Schlanker Install-Baum:** `electron-builder` ist **keine** Standard-Abhängigkeit, sondern wird
+  beim Paketieren on-demand via `npx` geladen. Dadurch bleibt die gesamte
+  `node-gyp` / `tar` / `app-builder`-Kette aus `npm ci` heraus. Der native Rebuild läuft über
+  `prebuild-install` (Prebuild-Download) statt über node-gyp.
+- Die App läuft offline.
 
 **Empfohlene Installation:**
 
@@ -67,16 +75,21 @@ npm ci
 npm audit signatures   # optional: Registry-Signaturen prüfen
 ```
 
-> Die von `npm audit` gemeldeten Findings betreffen nur **Build-Werkzeuge**
-> (`electron-builder`, `node-gyp`, …). Diese landen **nicht** in der ausgelieferten App.
+> `npm audit` meldet aktuell **0 Findings**. Erreicht durch: `electron-builder` aus den
+> Standard-Deps entfernt (eliminiert die `node-gyp`/`tar`-Kette), Electron auf eine **unterstützte**
+> Version (40.x statt EOL-33), und das Dev-Tooling (`vite`/`electron-vite`) auf aktuelle Stände.
 
 **Maximal vorsichtig** (blockiert den häufigsten Vektor – Install-Scripts beliebiger Transitive-Deps):
 
 ```bash
-npm ci --ignore-scripts                 # kein Paket-Script läuft automatisch
-npm rebuild better-sqlite3              # lädt nur das geprüfte Prebuild
-npx electron-builder install-app-deps   # Electron-Prebuild für better-sqlite3
+npm ci --ignore-scripts                # kein Paket-Script läuft automatisch
+node node_modules/electron/install.js  # lädt die Electron-Binary (sonst Fehler "Electron uninstall")
+npm run rebuild:native                 # lädt das better-sqlite3-Prebuild für die Electron-ABI
 ```
+
+> Bei `--ignore-scripts` läuft auch Electrons eigener postinstall **nicht** – ohne den manuellen
+> `electron/install.js`-Schritt fehlt die Electron-Binary und `npm run dev` bricht mit
+> **„Electron uninstall"** ab. Die beiden Folge-Befehle laden nur geprüfte Prebuilds (kein Compiler).
 
 > Tipp: `npm install <pkg> --before 2026-05-01` installiert nur Versionen vor einem Datum –
 > praktisch, um brandneue (potenziell kompromittierte) Releases zu meiden.
@@ -90,7 +103,8 @@ npx electron-builder install-app-deps   # Electron-Prebuild für better-sqlite3
 npm run build
 
 # Installer für das aktuelle Betriebssystem erzeugen
-#   - holt zuerst das passende ffmpeg (ff:fetch), dann build + electron-builder
+#   - holt ffmpeg (ff:fetch), baut, und ruft electron-builder on-demand via npx
+#   - der erste Lauf lädt electron-builder einmalig in den npx-Cache (nicht in node_modules)
 npm run package
 ```
 
@@ -149,10 +163,11 @@ src/
 | ------------------- | ------------------------------------------------------------ |
 | `npm run dev`       | Entwicklungsmodus (electron-vite, Hot Reload)                |
 | `npm run build`     | Typecheck + Produktions-Bundles (`out/`)                     |
-| `npm run typecheck` | TypeScript-Prüfung (main/preload/shared **und** renderer)    |
-| `npm run ff:fetch`  | HAP-fähiges ffmpeg holen (`--all` / `--platform <os>` mögl.) |
-| `npm run package`   | Installer fürs aktuelle OS (inkl. ff:fetch)                  |
-| `npm run start`     | Produktions-Build lokal previewen                            |
+| `npm run typecheck`     | TypeScript-Prüfung (main/preload/shared **und** renderer)    |
+| `npm run ff:fetch`      | HAP-fähiges ffmpeg holen (`--all` / `--platform <os>` mögl.) |
+| `npm run rebuild:native`| better-sqlite3-Prebuild für die Electron-ABI laden (kein Compiler) |
+| `npm run package`       | Installer fürs aktuelle OS (inkl. ff:fetch, electron-builder via npx) |
+| `npm run start`         | Produktions-Build lokal previewen                            |
 
 ---
 

@@ -7,7 +7,7 @@
   "license": "MIT",
   "main": "./out/main/index.js",
   "engines": {
-    "node": ">=20"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
     "dev": "electron-vite dev",
@@ -17,9 +17,10 @@
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "ff:fetch": "node scripts/download-ffmpeg.mjs",
-    "postinstall": "electron-builder install-app-deps",
-    "package": "npm run ff:fetch && npm run build && electron-builder",
-    "package:dir": "npm run build && electron-builder --dir"
+    "rebuild:native": "node scripts/rebuild-native.mjs",
+    "postinstall": "node scripts/rebuild-native.mjs",
+    "package": "npm run ff:fetch && npm run build && npx --yes electron-builder@26",
+    "package:dir": "npm run build && npx --yes electron-builder@26 --dir"
   },
   "dependencies": {
     "better-sqlite3": "12.8.0",
@@ -30,13 +31,12 @@
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "electron": "^33.3.1",
-    "electron-builder": "^25.1.8",
-    "electron-vite": "^2.3.0",
+    "electron": "^40.10.2",
+    "electron-vite": "^5.0.0",
     "lucide-react": "^0.469.0",
     "postcss": "^8.4.49",
     "react": "^18.3.1",
@@ -45,7 +45,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
-    "vite": "^5.4.11",
+    "vite": "^7.3.3",
     "zustand": "^5.0.2"
   }
 }
