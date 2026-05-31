@@ -1,0 +1,13 @@
+node_modules/
+out/
+dist/
+.vite/
+
+# Gebuendelte ffmpeg-Binaries werden per scripts/download-ffmpeg.mjs zur Packaging-Zeit geholt
+resources/ffmpeg/
+
+# Logs / OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
