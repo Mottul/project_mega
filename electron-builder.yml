@@ -1,0 +1,47 @@
+appId: com.matthias.avtoolbox
+productName: AV Toolbox
+copyright: Copyright (c) 2026
+
+directories:
+  buildResources: build
+  output: dist
+
+files:
+  - out/**
+  - package.json
+
+asar: true
+# native Module + ESM-only Pakete duerfen nicht ins asar-Archiv (sonst Laufzeitfehler)
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+  - "**/node_modules/pdfjs-dist/**"
+
+# Pro Zielplattform wird nur das passende ffmpeg-Verzeichnis als Ressource mitgenommen.
+# ${os} -> "mac" | "win" | "linux" (siehe scripts/download-ffmpeg.mjs fuer die Ablage).
+extraResources:
+  - from: resources/ffmpeg/${os}
+    to: ffmpeg
+    filter:
+      - "**/*"
+
+win:
+  target:
+    - nsis
+  artifactName: ${productName}-${version}-setup.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.video
+  artifactName: ${productName}-${version}.${ext}
+
+linux:
+  target:
+    - AppImage
+  category: AudioVideo
+  artifactName: ${productName}-${version}.${ext}
