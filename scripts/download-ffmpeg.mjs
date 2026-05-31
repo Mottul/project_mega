@@ -1,8 +1,8 @@
 // Laedt HAP-faehige ffmpeg/ffprobe-Builds pro Plattform nach resources/ffmpeg/<os>/.
 // HAP braucht --enable-libsnappy zur Compile-Zeit -> diese Quellen liefern das:
-//   win   : gyan.dev "full"   (GPL)
+//   win   : BtbN "win64-gpl"   (GPL, .zip mit libsnappy/HAP)
 //   linux : BtbN "linux64-gpl"
-//   mac   : evermeet.cx       (einzelne Binaries)
+//   mac   : evermeet.cx        (einzelne Binaries)
 // Aufruf: node scripts/download-ffmpeg.mjs [--platform win|mac|linux] [--all]
 // (ohne Argumente: aktuelle Plattform)
 
@@ -25,7 +25,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SOURCES = {
   win: {
     type: 'zip',
-    url: 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.zip',
+    url: 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip',
     bins: ['ffmpeg.exe', 'ffprobe.exe']
   },
   linux: {
