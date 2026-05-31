@@ -5,36 +5,44 @@
 // Wird als postinstall ausgefuehrt. Bewusst KEIN electron-builder/@electron/rebuild,
 // damit die verwundbare node-gyp/tar-Kette nicht im Dependency-Baum landet.
 //
-// Fallback: schlaegt der Prebuild-Download fehl (z.B. exotische Plattform),
-// versucht prebuild-install selbst node-gyp -- dann braucht es lokal Build-Tools.
+// WICHTIG: prebuild-install wird ueber `node <bin.js>` ohne Shell gestartet (nicht
+// ueber den .cmd-Shim mit shell:true). Sonst zerlegt cmd.exe Projektpfade mit
+// Leerzeichen (z.B. "E:\Meine Programme\...") und der Aufruf schlaegt fehl.
+//
+// Fallback bei fehlendem Prebuild: lokale Build-Tools noetig (siehe README).
 
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
+import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 
-function electronVersion() {
+const NATIVE_MODULES = ['better-sqlite3']
+
+function pkgVersion(name) {
   try {
-    // electron exportiert seine Version als String aus package.json
-    return require('electron/package.json').version
+    return require(`${name}/package.json`).version
   } catch {
     return null
   }
 }
 
-const NATIVE_MODULES = ['better-sqlite3']
+// Pfad zur prebuild-install-CLI (bin.js), aufgeloest aus Sicht des nativen Moduls
+// (prebuild-install ist dessen Dependency -- funktioniert gehoistet wie nested).
+function resolvePrebuildBin(fromDir) {
+  const pkgJsonPath = require.resolve('prebuild-install/package.json', { paths: [fromDir] })
+  const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf8'))
+  const rel = typeof pkg.bin === 'string' ? pkg.bin : pkg.bin['prebuild-install']
+  return join(dirname(pkgJsonPath), rel)
+}
 
-const version = electronVersion()
+const version = pkgVersion('electron')
 if (!version) {
   console.log('[rebuild-native] electron nicht gefunden — ueberspringe (vermutlich CI/ohne devDeps).')
   process.exit(0)
 }
-
-const isWin = process.platform === 'win32'
-const binName = isWin ? 'prebuild-install.cmd' : 'prebuild-install'
 
 let failed = false
 for (const mod of NATIVE_MODULES) {
@@ -45,16 +53,26 @@ for (const mod of NATIVE_MODULES) {
     console.log(`[rebuild-native] ${mod} nicht installiert — uebersprungen.`)
     continue
   }
-  const bin = join(ROOT, 'node_modules', '.bin', binName)
-  console.log(`[rebuild-native] ${mod}: hole Electron-Prebuild (target=${version})`)
-  const r = spawnSync(
-    bin,
-    ['--runtime=electron', `--target=${version}`, `--arch=${process.arch}`],
-    { cwd: pkgDir, stdio: 'inherit', shell: isWin }
-  )
-  if (r.status !== 0) {
+
+  let prebuildBin
+  try {
+    prebuildBin = resolvePrebuildBin(pkgDir)
+  } catch {
     failed = true
-    console.error(`[rebuild-native] ${mod}: Prebuild-Download fehlgeschlagen (Code ${r.status}).`)
+    console.error(`[rebuild-native] ${mod}: prebuild-install nicht gefunden.`)
+    continue
+  }
+
+  console.log(`[rebuild-native] ${mod}: hole Electron-Prebuild (target=${version})`)
+  // Kein shell:true und process.execPath als Programm -> Leerzeichen im Pfad sind unkritisch.
+  const r = spawnSync(
+    process.execPath,
+    [prebuildBin, '--runtime=electron', `--target=${version}`, `--arch=${process.arch}`],
+    { cwd: pkgDir, stdio: 'inherit' }
+  )
+  if (r.error || r.status !== 0) {
+    failed = true
+    console.error(`[rebuild-native] ${mod}: Prebuild-Download fehlgeschlagen (Code ${r.status ?? r.error?.code}).`)
   }
 }
 
