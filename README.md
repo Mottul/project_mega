@@ -48,6 +48,41 @@ npm run dev
 
 ---
 
+## Sicherheit (npm / supply-chain)
+
+Angesichts der jüngsten npm-Angriffe (selbstreplizierende Worms über gekaperte Maintainer-Tokens,
+bösartige Lifecycle-Scripts, Typosquatting) ist dieses Projekt bewusst defensiv aufgesetzt:
+
+- **`package-lock.json` ist eingecheckt** – mit sha512-Integrity je Paket.
+- **`better-sqlite3` ist exakt gepinnt** (`12.8.0`) und bewusst **nicht** die brandneueste Version
+  („Cooldown" – kompromittierte Releases fallen meist in den ersten Tagen auf).
+- **`.npmrc`**: `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
+- Schlanker Dependency-Baum; die App läuft offline.
+
+**Empfohlene Installation:**
+
+```bash
+# installiert exakt aus dem Lockfile und verifiziert die Integrity-Hashes
+npm ci
+npm audit signatures   # optional: Registry-Signaturen prüfen
+```
+
+> Die von `npm audit` gemeldeten Findings betreffen nur **Build-Werkzeuge**
+> (`electron-builder`, `node-gyp`, …). Diese landen **nicht** in der ausgelieferten App.
+
+**Maximal vorsichtig** (blockiert den häufigsten Vektor – Install-Scripts beliebiger Transitive-Deps):
+
+```bash
+npm ci --ignore-scripts                 # kein Paket-Script läuft automatisch
+npm rebuild better-sqlite3              # lädt nur das geprüfte Prebuild
+npx electron-builder install-app-deps   # Electron-Prebuild für better-sqlite3
+```
+
+> Tipp: `npm install <pkg> --before 2026-05-01` installiert nur Versionen vor einem Datum –
+> praktisch, um brandneue (potenziell kompromittierte) Releases zu meiden.
+
+---
+
 ## Build & Paketierung
 
 ```bash
