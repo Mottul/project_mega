@@ -126,15 +126,15 @@ Ergebnis-Installer liegen unter `dist/`:
 > `dist/win-unpacked/` (bzw. `*-unpacked/`) und ist von dort direkt startbar – praktisch
 > zum Testen ohne Installation.
 
-**Code-Signierung ist absichtlich deaktiviert** (`scripts/package.mjs` setzt
-`CSC_IDENTITY_AUTO_DISCOVERY=false`). Ohne Zertifikat würde electron-builder sonst das
-`winCodeSign`-Paket laden, dessen Entpacken auf Windows an macOS-Symlinks scheitert
-(„Dem Client fehlt ein erforderliches Recht"). Ein Zertifikat ist für den privaten Gebrauch
-nicht nötig.
+**Code-Signierung ist absichtlich deaktiviert** (`win.signAndEditExecutable: false` in
+`electron-builder.yml`). Sonst würde electron-builder **jede** `.exe` signieren wollen (auch die
+gebündelten `ffmpeg.exe`/`ffprobe.exe`) und dafür das `winCodeSign`-Paket laden, dessen Entpacken
+auf Windows an macOS-Symlinks scheitert („Dem Client fehlt ein erforderliches Recht"). Ein
+Zertifikat ist für den privaten Gebrauch nicht nötig; Kosten sind nur fehlende
+Icon-/Versions-Metadaten in der `.exe` (kosmetisch).
 
-> Sollte ein anderer Pack-Schritt am selben Symlink-Recht scheitern, hilft der
-> **Windows-Entwicklermodus** (Einstellungen → Datenschutz & Sicherheit → Für Entwickler),
-> der das Anlegen von Symlinks ohne Admin erlaubt.
+> `npm run ff:fetch` lädt ffmpeg nur, wenn es noch nicht in `resources/ffmpeg/<os>/` liegt
+> (mit `--force` erzwingbar) – wiederholte `npm run package`-Läufe sind dadurch schnell.
 
 > Plattform-Hinweis: Installer baut man jeweils **auf dem Zielbetriebssystem**, weil `ff:fetch`
 > und der native Rebuild plattformspezifisch sind. Für macOS liefert evermeet getrennte
