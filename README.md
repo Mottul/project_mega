@@ -122,6 +122,20 @@ Ergebnis-Installer liegen unter `dist/`:
 | macOS   | `.dmg`      |
 | Linux   | AppImage    |
 
+> Die fertig gepackte (noch nicht installierte) App liegt zusätzlich unter
+> `dist/win-unpacked/` (bzw. `*-unpacked/`) und ist von dort direkt startbar – praktisch
+> zum Testen ohne Installation.
+
+**Code-Signierung ist absichtlich deaktiviert** (`scripts/package.mjs` setzt
+`CSC_IDENTITY_AUTO_DISCOVERY=false`). Ohne Zertifikat würde electron-builder sonst das
+`winCodeSign`-Paket laden, dessen Entpacken auf Windows an macOS-Symlinks scheitert
+(„Dem Client fehlt ein erforderliches Recht"). Ein Zertifikat ist für den privaten Gebrauch
+nicht nötig.
+
+> Sollte ein anderer Pack-Schritt am selben Symlink-Recht scheitern, hilft der
+> **Windows-Entwicklermodus** (Einstellungen → Datenschutz & Sicherheit → Für Entwickler),
+> der das Anlegen von Symlinks ohne Admin erlaubt.
+
 > Plattform-Hinweis: Installer baut man jeweils **auf dem Zielbetriebssystem**, weil `ff:fetch`
 > und der native Rebuild plattformspezifisch sind. Für macOS liefert evermeet getrennte
 > x64/arm64-Binaries (für Universal-Builds beide nötig).

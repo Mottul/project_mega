@@ -20,8 +20,8 @@
     "rebuild:native": "node scripts/rebuild-native.mjs",
     "electron:bin": "node scripts/fetch-electron-bin.mjs",
     "postinstall": "node scripts/rebuild-native.mjs && node scripts/fetch-electron-bin.mjs",
-    "package": "npm run ff:fetch && npm run build && npx --yes electron-builder@26",
-    "package:dir": "npm run build && npx --yes electron-builder@26 --dir"
+    "package": "npm run ff:fetch && npm run build && node scripts/package.mjs",
+    "package:dir": "npm run build && node scripts/package.mjs --dir"
   },
   "dependencies": {
     "better-sqlite3": "12.8.0",
