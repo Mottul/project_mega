@@ -11,6 +11,7 @@ import {
   chmodSync,
   copyFileSync,
   createWriteStream,
+  existsSync,
   mkdirSync,
   readdirSync,
   rmSync
@@ -110,6 +111,13 @@ async function build(targetOs) {
   const src = SOURCES[targetOs]
   const outDir = join(ROOT, 'resources', 'ffmpeg', targetOs)
   mkdirSync(outDir, { recursive: true })
+
+  // Schon vorhanden? -> nicht erneut laden (spart ~220 MB pro Pack-Lauf).
+  // Mit --force trotzdem neu holen.
+  if (!FORCE && src.bins.every((b) => existsSync(join(outDir, b)))) {
+    console.log(`  ✓ bereits vorhanden in ${outDir} (mit --force neu laden)`)
+    return
+  }
   const tmp = join(tmpdir(), `ff-${targetOs}-${Date.now()}`)
   mkdirSync(tmp, { recursive: true })
 
@@ -154,6 +162,7 @@ async function build(targetOs) {
 }
 
 const argv = process.argv.slice(2)
+const FORCE = argv.includes('--force')
 let targets = [osKey()]
 if (argv.includes('--all')) targets = ['win', 'mac', 'linux']
 else if (argv.includes('--platform')) targets = [osKey(argv[argv.indexOf('--platform') + 1])]
