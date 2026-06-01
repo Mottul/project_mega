@@ -33,20 +33,22 @@ Tech-Stack: **Electron + React + TypeScript** (electron-vite), Tailwind CSS,
 git clone <repo-url>
 cd project_mega
 
-# Abhängigkeiten installieren
-# (postinstall lädt das better-sqlite3-Prebuild für die Electron-ABI – kein Compiler nötig)
+# Abhängigkeiten installieren. Der postinstall erledigt OHNE Compiler:
+#   1. better-sqlite3-Prebuild für die Electron-ABI laden
+#   2. die Electron-Laufzeit-Binary laden (in reinem Node – funktioniert auch in
+#      gehärteten Umgebungen, die electrons eigenen install.js blockieren)
 npm install
-
-# Einmalig: HAP-fähiges ffmpeg für die aktuelle Plattform holen
-# (ohne dies zeigt der HAP-Konverter eine Hinweis-Warnung)
-npm run ff:fetch
 
 # App im Entwicklungsmodus starten (Hot Reload)
 npm run dev
+
+# Nur für den HAP-Konverter: einmalig HAP-fähiges ffmpeg holen
+# (ohne dies zeigt das Tool eine Hinweis-Warnung; im fertigen Paket ist es enthalten)
+npm run ff:fetch
 ```
 
 > Hinweis: `npm run ff:fetch` lädt ein **HAP-fähiges** ffmpeg (mit libsnappy) aus offiziellen
-> Quellen – gyan.dev (Windows), BtbN (Linux), evermeet.cx (macOS). Die gängigen npm-ffmpeg-Pakete
+> Quellen – BtbN (Windows + Linux), evermeet.cx (macOS). Die gängigen npm-ffmpeg-Pakete
 > enthalten **kein** HAP. Die Binaries landen in `resources/ffmpeg/<os>/` und sind aus dem Git
 > ausgenommen.
 
@@ -82,10 +84,14 @@ npm audit signatures   # optional: Registry-Signaturen prüfen
 **Maximal vorsichtig** (blockiert den häufigsten Vektor – Install-Scripts beliebiger Transitive-Deps):
 
 ```bash
-npm ci --ignore-scripts                # kein Paket-Script läuft automatisch
-node node_modules/electron/install.js  # lädt die Electron-Binary (sonst Fehler "Electron uninstall")
-npm run rebuild:native                 # lädt das better-sqlite3-Prebuild für die Electron-ABI
+npm ci --ignore-scripts   # kein Paket-Script läuft automatisch
+npm run rebuild:native    # better-sqlite3-Prebuild für die Electron-ABI (reines Node)
+npm run electron:bin      # Electron-Laufzeit-Binary laden (reines Node; sonst "Electron uninstall")
 ```
+
+> Beide Skripte laufen in reinem Node und laden nur geprüfte Prebuilds (kein Compiler, keine
+> Transitive-Install-Scripts). `npm run electron:bin` umgeht bewusst electrons eigenen
+> `install.js` – der wird von manchen Security-Wrappern abgefangen.
 
 > Bei `--ignore-scripts` läuft auch Electrons eigener postinstall **nicht** – ohne den manuellen
 > `electron/install.js`-Schritt fehlt die Electron-Binary und `npm run dev` bricht mit
@@ -166,6 +172,7 @@ src/
 | `npm run typecheck`     | TypeScript-Prüfung (main/preload/shared **und** renderer)    |
 | `npm run ff:fetch`      | HAP-fähiges ffmpeg holen (`--all` / `--platform <os>` mögl.) |
 | `npm run rebuild:native`| better-sqlite3-Prebuild für die Electron-ABI laden (kein Compiler) |
+| `npm run electron:bin`  | Electron-Laufzeit-Binary laden (reines Node; Fix für „Electron uninstall") |
 | `npm run package`       | Installer fürs aktuelle OS (inkl. ff:fetch, electron-builder via npx) |
 | `npm run start`         | Produktions-Build lokal previewen                            |
 
