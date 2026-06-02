@@ -29,6 +29,10 @@ export function buildHapArgs(
   return [
     '-hide_banner',
     '-i', input,
+    // HAP/DXT komprimiert 4x4-Bloecke -> Breite/Hoehe muessen Vielfache von 4 sein.
+    // Quellen mit ungeraden Massen (z.B. 736x382 Screen-Recordings) wuerden sonst mit
+    // Fehler abbrechen. Auf das naechste Vielfache von 4 auffuellen (no-op, wenn schon passend).
+    '-vf', 'pad=ceil(iw/4)*4:ceil(ih/4)*4:0:0',
     '-c:v', 'hap',
     '-format', format,
     '-compressor', compressor,

@@ -5,15 +5,16 @@ import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker'
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
+import { api } from '@renderer/lib/api'
 
 pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker()
 
 interface PdfViewerProps {
-  fileUrl: string
+  manualId: number
   initialPage?: number
 }
 
-export function PdfViewer({ fileUrl, initialPage = 1 }: PdfViewerProps): JSX.Element {
+export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.Element {
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const renderTaskRef = useRef<RenderTask | null>(null)
@@ -23,15 +24,19 @@ export function PdfViewer({ fileUrl, initialPage = 1 }: PdfViewerProps): JSX.Ele
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Dokument laden
+  // Dokument laden -- PDF-Bytes per IPC holen und direkt an pdfjs geben
+  // (umgeht das manual://-Protokoll, das im gepackten App "Unexpected server
+  // response (0)" lieferte).
   useEffect(() => {
     let cancelled = false
     let localDoc: PDFDocumentProxy | null = null
     setLoading(true)
     setError(null)
-    const task = pdfjsLib.getDocument({ url: fileUrl })
-    task.promise
-      .then((d) => {
+    void (async () => {
+      try {
+        const bytes = await api.manuals.bytes(manualId)
+        if (cancelled) return
+        const d = await pdfjsLib.getDocument({ data: bytes }).promise
         if (cancelled) {
           void d.destroy()
           return
@@ -40,15 +45,15 @@ export function PdfViewer({ fileUrl, initialPage = 1 }: PdfViewerProps): JSX.Ele
         setDoc(d)
         setNumPages(d.numPages)
         setPage(Math.min(Math.max(1, initialPage), d.numPages))
-      })
-      .catch((e: unknown) => {
+      } catch (e: unknown) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e))
-      })
+      }
+    })()
     return () => {
       cancelled = true
       if (localDoc) void localDoc.destroy()
     }
-  }, [fileUrl, initialPage])
+  }, [manualId, initialPage])
 
   // Aktuelle Seite rendern
   useEffect(() => {

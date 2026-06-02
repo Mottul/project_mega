@@ -88,6 +88,9 @@ export function HapConverter(): JSX.Element {
     [jobs]
   )
   const doneCount = jobList.filter((j) => j.status === 'done').length
+  const settledCount = jobList.filter(
+    (j) => j.status === 'done' || j.status === 'error' || j.status === 'canceled'
+  ).length
   const activeCount = jobList.filter((j) => j.status === 'running' || j.status === 'queued' || j.status === 'probing').length
   const hasFinished = jobList.some((j) => j.status === 'done' || j.status === 'error' || j.status === 'canceled')
 
@@ -116,6 +119,13 @@ export function HapConverter(): JSX.Element {
   function onFormatChange(value: HapFormat): void {
     setFormat(value)
     void api.setSettings({ lastHapFormat: value })
+  }
+
+  // Nach clearFinished neu syncen: der main-Prozess loescht Jobs aus seiner Map,
+  // sendet dafuer aber kein Update -> sonst blieben sie im Renderer haengen.
+  async function refreshJobs(): Promise<void> {
+    const list = await api.hap.list()
+    setJobs(Object.fromEntries(list.map((j) => [j.id, j])))
   }
 
   async function start(): Promise<void> {
@@ -295,7 +305,11 @@ export function HapConverter(): JSX.Element {
           </div>
           <div className="flex gap-2">
             {hasFinished && (
-              <Button variant="ghost" size="sm" onClick={() => void api.hap.clearFinished()}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void api.hap.clearFinished().then(refreshJobs)}
+              >
                 <Trash2 className="size-4" /> Erledigte entfernen
               </Button>
             )}
@@ -308,7 +322,7 @@ export function HapConverter(): JSX.Element {
         </div>
 
         {jobList.length > 0 && (
-          <Progress value={jobList.length ? doneCount / jobList.length : 0} className="mb-4" />
+          <Progress value={jobList.length ? settledCount / jobList.length : 0} className="mb-4" />
         )}
 
         {jobList.length === 0 ? (

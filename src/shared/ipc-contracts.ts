@@ -40,6 +40,7 @@ export const Channels = {
   manualsList: 'manuals:list',
   manualsSearch: 'manuals:search',
   manualsGet: 'manuals:get',
+  manualsBytes: 'manuals:bytes',
   manualsUpdate: 'manuals:update',
   manualsDelete: 'manuals:delete',
   manualsImportProgress: 'manuals:importProgress' // Event: ImportProgress
@@ -80,6 +81,8 @@ export interface ToolboxApi {
     list(query?: string): Promise<ManualMeta[]>
     search(query: string): Promise<ManualSearchHit[]>
     get(id: number): Promise<ManualDetail>
+    /** Roh-Bytes des gespeicherten PDFs (fuer den In-App-Viewer). */
+    bytes(id: number): Promise<Uint8Array>
     update(id: number, patch: ManualPatch): Promise<ManualMeta>
     delete(id: number): Promise<void>
     /** Fortschritt waehrend des Imports. Liefert eine Cleanup-Funktion. */

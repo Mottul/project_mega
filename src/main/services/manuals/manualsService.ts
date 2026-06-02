@@ -255,6 +255,19 @@ export function getManual(id: number): ManualDetail {
   }
 }
 
+/** Roh-Bytes des gespeicherten PDFs als echtes Uint8Array (fuer den In-App-Viewer). */
+export function readManualBytes(id: number): Uint8Array {
+  const db = getDb()
+  const row = db.prepare('SELECT stored_path FROM manuals WHERE id = ?').get(id) as
+    | { stored_path: string }
+    | undefined
+  if (!row) throw new Error(`Manual ${id} nicht gefunden`)
+  const abs = join(manualsDir(), row.stored_path)
+  const buf = readFileSync(abs)
+  // als plain Uint8Array (kein Node-Buffer) -- sauber serialisierbar + pdfjs-tauglich
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
+}
+
 export function updateManual(id: number, patch: ManualPatch): ManualMeta {
   const db = getDb()
   const row = db.prepare('SELECT * FROM manuals WHERE id = ?').get(id) as ManualRow | undefined
