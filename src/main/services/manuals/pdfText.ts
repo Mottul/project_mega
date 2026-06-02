@@ -85,8 +85,11 @@ export async function extractPdfText(
   onPage?: (page: number, total: number) => void
 ): Promise<ExtractResult> {
   const pdfjs = await loadPdfjs()
+  // pdfjs v4 lehnt einen Node-Buffer ab ("Please provide binary data as Uint8Array,
+  // rather than Buffer"). In ein echtes Uint8Array umwandeln (View, kein Copy).
+  const bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
   const doc = await pdfjs.getDocument({
-    data,
+    data: bytes,
     useSystemFonts: true,
     isEvalSupported: false,
     // im Node-Kontext laeuft pdfjs ohne separaten Worker (Fake-Worker)

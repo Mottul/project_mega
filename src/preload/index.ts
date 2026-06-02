@@ -35,6 +35,7 @@ const api: ToolboxApi = {
     list: (query) => ipcRenderer.invoke(Channels.manualsList, query),
     search: (query) => ipcRenderer.invoke(Channels.manualsSearch, query),
     get: (id) => ipcRenderer.invoke(Channels.manualsGet, id),
+    bytes: (id) => ipcRenderer.invoke(Channels.manualsBytes, id),
     update: (id, patch) => ipcRenderer.invoke(Channels.manualsUpdate, id, patch),
     delete: (id) => ipcRenderer.invoke(Channels.manualsDelete, id),
     onImportProgress: (cb) =>

@@ -6,6 +6,7 @@ import { Input } from '@renderer/components/ui/input'
 import { tools } from '@renderer/tools/registry'
 import { CATEGORY_LABELS, type ToolModule } from '@renderer/tools/types'
 import type { ToolCategoryId } from '@shared/types'
+import { useToolActivity } from './useToolActivity'
 
 const CATEGORY_ORDER: ToolCategoryId[] = ['media', 'database', 'calc', 'utility']
 
@@ -21,6 +22,7 @@ function matches(tool: ToolModule, q: string): boolean {
 export function Launcher(): JSX.Element {
   const [q, setQ] = useState('')
   const navigate = useNavigate()
+  const activity = useToolActivity()
 
   const groups = useMemo(() => {
     const filtered = tools.filter((t) => matches(t, q))
@@ -62,6 +64,7 @@ export function Launcher(): JSX.Element {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {g.items.map((tool) => {
                     const Icon = tool.icon
+                    const running = activity[tool.id] ?? 0
                     return (
                       <Card
                         key={tool.id}
@@ -77,8 +80,16 @@ export function Launcher(): JSX.Element {
                           <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
                             <Icon className="size-5" />
                           </div>
-                          <div className="min-w-0">
-                            <h3 className="font-medium">{tool.name}</h3>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-medium">{tool.name}</h3>
+                              {running > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                                  <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
+                                  läuft · {running}
+                                </span>
+                              )}
+                            </div>
                             <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                               {tool.description}
                             </p>

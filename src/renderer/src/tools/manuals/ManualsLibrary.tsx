@@ -26,7 +26,7 @@ import type {
 import { PdfViewer } from './PdfViewer'
 
 interface ViewerState {
-  fileUrl: string
+  id: number
   page: number
   title: string
 }
@@ -135,7 +135,7 @@ export function ManualsLibrary(): JSX.Element {
 
   async function openManual(id: number, page = 1): Promise<void> {
     const detail = await api.manuals.get(id)
-    setViewer({ fileUrl: detail.fileUrl, page, title: detail.title })
+    setViewer({ id, page, title: detail.title })
   }
 
   async function removeManual(m: ManualMeta): Promise<void> {
@@ -232,7 +232,7 @@ export function ManualsLibrary(): JSX.Element {
             </Button>
           </header>
           <div className="min-h-0 flex-1">
-            <PdfViewer fileUrl={viewer.fileUrl} initialPage={viewer.page} />
+            <PdfViewer manualId={viewer.id} initialPage={viewer.page} />
           </div>
         </div>
       )}
