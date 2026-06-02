@@ -21,6 +21,7 @@ import type {
   ManualSearchHit
 } from '@shared/types'
 import { getDb } from '../db'
+import { logLine } from '../log'
 import { extractPdfText } from './pdfText'
 
 interface ManualRow {
@@ -131,6 +132,7 @@ export async function importManuals(paths: string[], onProgress: ProgressCb): Pr
       if (existsStmt.get(hash)) {
         summary.skipped++
         emit({ phase: 'skipped' })
+        logLine('[import] uebersprungen (bereits in der Bibliothek, gleicher SHA-256):', src)
         continue
       }
 
@@ -150,9 +152,11 @@ export async function importManuals(paths: string[], onProgress: ProgressCb): Pr
         )
         pageCount = res.pageCount
         pages = res.pages
+        const withText = pages.filter((p) => p.text).length
+        logLine(`[import] extrahiert: ${src} -> ${pageCount} Seiten, ${withText} mit Text`)
       } catch (exErr) {
         const msg = exErr instanceof Error ? exErr.message : String(exErr)
-        console.error(`[manuals] Textextraktion fehlgeschlagen fuer ${src}: ${msg}`)
+        logLine(`[import] Textextraktion FEHLGESCHLAGEN fuer ${src}: ${msg}`)
       }
 
       emit({ phase: 'indexing' })
@@ -185,8 +189,12 @@ export async function importManuals(paths: string[], onProgress: ProgressCb): Pr
       const message = err instanceof Error ? err.message : String(err)
       summary.failed.push({ path: src, error: message })
       onProgress({ phase: 'error', file: src, fileIndex, fileCount, message })
+      logLine(`[import] FEHLER bei ${src}: ${message}`)
     }
   }
+  logLine(
+    `[import] fertig: ${summary.imported} importiert, ${summary.skipped} uebersprungen, ${summary.failed.length} fehlgeschlagen`
+  )
   return summary
 }
 

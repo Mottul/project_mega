@@ -14,11 +14,25 @@ import { Card } from '@renderer/components/ui/card'
 import { Progress } from '@renderer/components/ui/progress'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
-import type { ChunksMode, HapCheckResult, HapFormat, HapJob, JobStatus } from '@shared/types'
+import type {
+  ChunksMode,
+  HapCheckResult,
+  HapCompressor,
+  HapFormat,
+  HapJob,
+  JobStatus
+} from '@shared/types'
 
 const VIDEO_EXTENSIONS = [
   'mov', 'mp4', 'mxf', 'avi', 'mkv', 'm4v', 'mpg', 'mpeg', 'wmv', 'mts', 'm2ts', 'ts', 'webm'
 ]
+
+// Sinnvolle Parallel-Stufen bis zur Kernzahl (ein einzelner HAP-Encode lastet die
+// CPU nicht voll aus -> mehrere gleichzeitig nutzen die Kerne besser).
+const CORES = Math.max(1, Math.min(8, (globalThis.navigator?.hardwareConcurrency ?? 4)))
+const CONCURRENCY_OPTIONS = [...new Set([1, 2, 4, 6, CORES])]
+  .filter((n) => n >= 1 && n <= 8)
+  .sort((a, b) => a - b)
 
 const FORMAT_OPTIONS: { value: HapFormat; label: string }[] = [
   { value: 'hap_q', label: 'HAP Q (beste Qualität)' },
@@ -50,6 +64,7 @@ export function HapConverter(): JSX.Element {
   const [manualChunks, setManualChunks] = useState(4)
   const [outputDir, setOutputDir] = useState<string | null>(null)
   const [concurrency, setConcurrency] = useState(1)
+  const [compressor, setCompressor] = useState<HapCompressor>('snappy')
   const [jobs, setJobs] = useState<Record<string, HapJob>>({})
 
   // Initialer Zustand: Settings, HAP-Verfügbarkeit, laufende Jobs + Live-Updates
@@ -108,7 +123,7 @@ export function HapConverter(): JSX.Element {
     const chunks: ChunksMode = autoChunks
       ? { kind: 'auto' }
       : { kind: 'manual', value: Math.max(1, Math.min(64, manualChunks)) }
-    await api.hap.enqueue({ inputs, format, chunks, outputDir, concurrency })
+    await api.hap.enqueue({ inputs, format, chunks, outputDir, concurrency, compressor })
     setInputs([])
   }
 
@@ -156,9 +171,30 @@ export function HapConverter(): JSX.Element {
               value={concurrency}
               onChange={(e) => setConcurrency(Number(e.target.value))}
             >
-              <option value={1}>1 (sequentiell)</option>
-              <option value={2}>2 (parallel)</option>
+              {CONCURRENCY_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n === 1 ? '1 (sequentiell)' : `${n} parallel`}
+                </option>
+              ))}
             </select>
+            <span className="text-xs text-muted-foreground">
+              Mehr parallel = mehr CPU-Auslastung (bis {CORES} Kerne sinnvoll).
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Kompressor</span>
+            <select
+              className={selectClass}
+              value={compressor}
+              onChange={(e) => setCompressor(e.target.value as HapCompressor)}
+            >
+              <option value="snappy">Snappy (kleinere Dateien, Standard)</option>
+              <option value="none">Keiner (schneller, größere Dateien)</option>
+            </select>
+            <span className="text-xs text-muted-foreground">
+              HAP-Encoding läuft auf der CPU (keine GPU); die GPU nutzt erst der Player.
+            </span>
           </label>
 
           <div className="flex flex-col gap-1.5">

@@ -7,6 +7,9 @@ export type ToolCategoryId = 'media' | 'calc' | 'database' | 'utility'
 
 export type HapFormat = 'hap' | 'hap_alpha' | 'hap_q'
 
+// snappy = kleinere Dateien (Standard), none = schnelleres Encoding, groessere Dateien
+export type HapCompressor = 'snappy' | 'none'
+
 export interface HapCheckResult {
   available: boolean
   ffmpegFound: boolean
@@ -33,6 +36,7 @@ export interface HapEnqueueRequest {
   chunks: ChunksMode
   outputDir: string | null // null => neben der Quelldatei ablegen
   concurrency: number // 1 = sequentiell (Default)
+  compressor: HapCompressor // snappy (kleiner) | none (schneller)
 }
 
 export type JobStatus = 'queued' | 'probing' | 'running' | 'done' | 'error' | 'canceled'
@@ -42,6 +46,7 @@ export interface HapJob {
   inputPath: string
   outputPath: string
   format: HapFormat
+  compressor: HapCompressor
   status: JobStatus
   progress: number // 0..1
   width: number | null
