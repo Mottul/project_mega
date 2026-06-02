@@ -2,7 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { existsSync, readdirSync, rmSync, statSync, type Dirent } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { extname, join } from 'node:path'
-import type { HapEnqueueRequest, HapJob } from '@shared/types'
+import type { ChunksMode, HapEnqueueRequest, HapJob } from '@shared/types'
 import { ffmpegBinPath } from './ffmpegPath'
 import { buildHapArgs, computeChunks, hapOutputPath } from './hapEncoder'
 import { probe } from './probe'
@@ -46,6 +46,7 @@ function collectVideos(inputs: string[]): string[] {
 class JobManager {
   private jobs = new Map<string, HapJob>()
   private procs = new Map<string, ChildProcessWithoutNullStreams>()
+  private chunkModes = new Map<string, ChunksMode>()
   private sink: Sink = () => {}
   private concurrency = 1
   private active = 0
@@ -90,6 +91,7 @@ class JobManager {
         createdAt: Date.now()
       }
       this.jobs.set(id, job)
+      this.chunkModes.set(id, req.chunks)
       this.sink({ ...job })
       jobIds.push(id)
     }
@@ -117,7 +119,12 @@ class JobManager {
       this.update(job, { status: 'probing' })
       const info = await probe(job.inputPath)
       if (this.isCanceled(job)) return
-      const chunks = computeChunks(info.width, info.height)
+      // Manuelle Chunks respektieren; sonst automatisch aus der Aufloesung ableiten.
+      const mode = this.chunkModes.get(job.id)
+      const chunks =
+        mode?.kind === 'manual'
+          ? Math.max(1, Math.min(64, mode.value))
+          : computeChunks(info.width, info.height)
       this.update(job, {
         status: 'running',
         width: info.width,
@@ -223,6 +230,7 @@ class JobManager {
     for (const [id, job] of this.jobs) {
       if (job.status === 'done' || job.status === 'error' || job.status === 'canceled') {
         this.jobs.delete(id)
+        this.chunkModes.delete(id)
       }
     }
   }
