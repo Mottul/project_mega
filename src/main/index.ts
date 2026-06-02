@@ -2,6 +2,7 @@ import { app, BrowserWindow, protocol, shell } from 'electron'
 import { join } from 'node:path'
 import { MANUAL_PROTOCOL } from '@shared/ipc-contracts'
 import { attachWindow, registerIpcHandlers, registerManualProtocol } from './ipc/registry'
+import { logLine } from './services/log'
 
 const isDev = !app.isPackaged
 
@@ -51,6 +52,10 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
+  logLine('--- Start ---', `packaged=${app.isPackaged}`)
+  logLine('appPath=', app.getAppPath())
+  logLine('resourcesPath=', process.resourcesPath)
+  logLine('userData=', app.getPath('userData'))
   registerManualProtocol()
   registerIpcHandlers()
   attachWindow(createWindow())

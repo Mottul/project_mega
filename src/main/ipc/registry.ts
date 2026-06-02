@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { Channels, MANUAL_PROTOCOL } from '@shared/ipc-contracts'
 import type { AppSettings } from '@shared/types'
 import { jobManager } from '../services/ffmpeg/jobManager'
+import { logFilePath, logLine } from '../services/log'
 import { resolveManualFile } from '../services/manuals/manualsService'
 import { getSettings, setSettings } from '../services/store'
 import { registerDialogHandlers } from './dialog.handlers'
@@ -15,10 +16,22 @@ export function registerManualProtocol(): void {
     try {
       const url = new URL(request.url)
       const abs = resolveManualFile(url.pathname)
-      if (!abs) return new Response('Not found', { status: 404 })
+      if (!abs) {
+        logLine('[manual://] NICHT GEFUNDEN url=', request.url, 'pathname=', url.pathname)
+        return new Response('Not found', { status: 404 })
+      }
       const data = await readFile(abs)
-      return new Response(data, { headers: { 'Content-Type': 'application/pdf' } })
-    } catch {
+      logLine('[manual://] OK', abs, `${data.byteLength} bytes`)
+      return new Response(data, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Length': String(data.byteLength),
+          'Accept-Ranges': 'none'
+        }
+      })
+    } catch (err) {
+      logLine('[manual://] FEHLER url=', request.url, '->', err instanceof Error ? err.message : String(err))
       return new Response('Error', { status: 500 })
     }
   })
@@ -33,6 +46,7 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(Channels.settingsGet, () => getSettings())
   ipcMain.handle(Channels.settingsSet, (_e, patch: Partial<AppSettings>) => setSettings(patch))
+  ipcMain.handle(Channels.appLogPath, () => logFilePath())
 
   registerDialogHandlers()
   registerFfmpegHandlers()

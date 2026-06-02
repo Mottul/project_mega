@@ -14,6 +14,7 @@ const api: ToolboxApi = {
   showItemInFolder: (target) => ipcRenderer.invoke(Channels.shellShowItem, target),
   getSettings: () => ipcRenderer.invoke(Channels.settingsGet),
   setSettings: (patch) => ipcRenderer.invoke(Channels.settingsSet, patch),
+  getLogPath: () => ipcRenderer.invoke(Channels.appLogPath),
 
   ffmpeg: {
     checkHap: () => ipcRenderer.invoke(Channels.ffmpegCheckHap),

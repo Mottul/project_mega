@@ -80,6 +80,7 @@ class JobManager {
         inputPath: input,
         outputPath: hapOutputPath(input, req.outputDir, req.format),
         format: req.format,
+        compressor: req.compressor ?? 'snappy',
         status: 'queued',
         progress: 0,
         width: null,
@@ -137,7 +138,7 @@ class JobManager {
 
   private spawnEncode(job: HapJob, durationSec: number | null): Promise<void> {
     return new Promise((resolve) => {
-      const args = buildHapArgs(job.inputPath, job.outputPath, job.format, job.chunks ?? 1)
+      const args = buildHapArgs(job.inputPath, job.outputPath, job.format, job.chunks ?? 1, job.compressor)
       const proc = spawn(ffmpegBinPath('ffmpeg'), args, { windowsHide: true })
       this.procs.set(job.id, proc)
 

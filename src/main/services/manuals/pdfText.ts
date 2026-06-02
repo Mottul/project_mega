@@ -7,6 +7,7 @@ import { app } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { logLine } from '../log'
 
 export interface ExtractedPage {
   pageNo: number
@@ -18,34 +19,62 @@ export interface ExtractResult {
   pages: ExtractedPage[]
 }
 
-const PDFJS_SUBPATH = 'node_modules/pdfjs-dist/legacy/build/pdf.mjs'
+const PDFJS_REL = 'node_modules/pdfjs-dist/legacy/build/pdf.mjs'
 const PDFJS_SPECIFIER = 'pdfjs-dist/legacy/build/pdf.mjs'
 
-// Absolute file://-URL zur pdf.mjs ermitteln. Wichtig fuer das gepackte App:
-// aus dem app.asar heraus loest der ESM-import() den Paket-Specifier NICHT auf
-// (anders als require, das Electron auf app.asar.unpacked umbiegt). Wir importieren
-// die physische Datei (pdfjs-dist ist via asarUnpack entpackt) direkt per file://-URL.
-function pdfjsFileUrl(): string | null {
+// Mehrere Kandidaten-Pfade zur physischen pdf.mjs. Im gepackten App loest der
+// ESM-import() den Paket-Specifier NICHT aus dem app.asar heraus auf (anders als
+// require) -- wir importieren die entpackte Datei daher per absoluter file://-URL.
+function candidatePaths(): string[] {
+  const out: string[] = []
   try {
-    const appPath = app.getAppPath() // dev: Projektroot; prod: .../resources/app.asar
-    const base = appPath.includes('app.asar')
-      ? appPath.replace('app.asar', 'app.asar.unpacked')
-      : appPath
-    const file = join(base, PDFJS_SUBPATH)
-    return existsSync(file) ? pathToFileURL(file).href : null
+    const appPath = app.getAppPath()
+    out.push(join(appPath, PDFJS_REL))
+    if (appPath.includes('app.asar')) {
+      out.push(join(appPath.replace('app.asar', 'app.asar.unpacked'), PDFJS_REL))
+    }
   } catch {
-    return null
+    /* app evtl. noch nicht bereit */
   }
+  try {
+    if (process.resourcesPath) {
+      out.push(join(process.resourcesPath, 'app.asar.unpacked', PDFJS_REL))
+      out.push(join(process.resourcesPath, 'app', PDFJS_REL))
+    }
+  } catch {
+    /* ignore */
+  }
+  return [...new Set(out)]
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let pdfjsPromise: Promise<any> | null = null
 function loadPdfjs(): Promise<any> {
   if (!pdfjsPromise) {
-    const url = pdfjsFileUrl()
-    // Bevorzugt die absolute file://-URL (funktioniert auch aus dem asar heraus);
-    // Fallback auf den Paket-Specifier (greift in Dev/Node zuverlaessig).
-    pdfjsPromise = import(/* @vite-ignore */ url ?? PDFJS_SPECIFIER)
+    pdfjsPromise = (async () => {
+      for (const file of candidatePaths()) {
+        const exists = existsSync(file)
+        logLine('[pdfjs] Kandidat exists=' + exists, file)
+        if (!exists) continue
+        try {
+          const mod = await import(/* @vite-ignore */ pathToFileURL(file).href)
+          logLine('[pdfjs] geladen via file://', file)
+          return mod
+        } catch (e) {
+          logLine('[pdfjs] file://-import fehlgeschlagen:', e instanceof Error ? e.message : String(e))
+        }
+      }
+      // Fallback: Paket-Specifier (greift in Dev/Node)
+      try {
+        const mod = await import(/* @vite-ignore */ PDFJS_SPECIFIER)
+        logLine('[pdfjs] geladen via Specifier (Fallback)')
+        return mod
+      } catch (e) {
+        logLine('[pdfjs] ALLE Ladewege fehlgeschlagen:', e instanceof Error ? e.message : String(e))
+        pdfjsPromise = null // erneuten Versuch beim naechsten Aufruf erlauben
+        throw e
+      }
+    })()
   }
   return pdfjsPromise
 }

@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import { cpus } from 'node:os'
 import { basename, dirname, extname, join } from 'node:path'
 import { promisify } from 'node:util'
-import type { HapCheckResult, HapFormat } from '@shared/types'
+import type { HapCheckResult, HapCompressor, HapFormat } from '@shared/types'
 import { ffmpegBinPath } from './ffmpegPath'
 
 const pexecFile = promisify(execFile)
@@ -23,14 +23,15 @@ export function buildHapArgs(
   input: string,
   output: string,
   format: HapFormat,
-  chunks: number
+  chunks: number,
+  compressor: HapCompressor = 'snappy'
 ): string[] {
   return [
     '-hide_banner',
     '-i', input,
     '-c:v', 'hap',
     '-format', format,
-    '-compressor', 'snappy',
+    '-compressor', compressor,
     '-chunks', String(Math.max(1, chunks)),
     '-progress', 'pipe:1',
     '-nostats',

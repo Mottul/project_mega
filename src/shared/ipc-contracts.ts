@@ -22,9 +22,10 @@ export const Channels = {
   dialogSelect: 'dialog:select',
   shellOpenPath: 'shell:openPath',
   shellShowItem: 'shell:showItemInFolder',
-  // Settings
+  // Settings / App
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
+  appLogPath: 'app:logPath',
   // ffmpeg / HAP
   ffmpegCheckHap: 'ffmpeg:checkHap',
   ffmpegProbe: 'ffmpeg:probe',
@@ -56,6 +57,8 @@ export interface ToolboxApi {
   showItemInFolder(target: string): Promise<void>
   getSettings(): Promise<AppSettings>
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings>
+  /** Pfad zur Debug-Logdatei (zum Anzeigen/Mitschicken). */
+  getLogPath(): Promise<string>
 
   ffmpeg: {
     checkHap(): Promise<HapCheckResult>

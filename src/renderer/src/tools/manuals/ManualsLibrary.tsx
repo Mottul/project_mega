@@ -167,6 +167,13 @@ export function ManualsLibrary(): JSX.Element {
           <Button variant="secondary" onClick={importFolder} disabled={importing}>
             <FolderUp className="size-4" /> Ordner importieren
           </Button>
+          <Button
+            variant="ghost"
+            onClick={() => void api.getLogPath().then((p) => api.showItemInFolder(p))}
+            title="Öffnet die Debug-Logdatei im Explorer (zum Mitschicken bei Problemen)"
+          >
+            Debug-Log
+          </Button>
         </div>
 
         {(importing || progress) && (
