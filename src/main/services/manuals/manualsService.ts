@@ -139,9 +139,21 @@ export async function importManuals(paths: string[], onProgress: ProgressCb): Pr
       writeFileSync(join(manualsDir(), storedName), buf)
 
       emit({ phase: 'extracting', page: 0 })
-      const { pageCount, pages } = await extractPdfText(buf, (page, total) =>
-        emit({ phase: 'extracting', page, pageCount: total })
-      )
+      // Textextraktion ist best effort: schlaegt sie fehl (z.B. beschaedigtes/
+      // passwortgeschuetztes PDF), wird das Manual trotzdem aufgenommen -- nur ohne
+      // Volltext (Titel/Metadaten bleiben durchsuchbar). So geht keine Datei verloren.
+      let pageCount = 0
+      let pages: { pageNo: number; text: string }[] = []
+      try {
+        const res = await extractPdfText(buf, (page, total) =>
+          emit({ phase: 'extracting', page, pageCount: total })
+        )
+        pageCount = res.pageCount
+        pages = res.pages
+      } catch (exErr) {
+        const msg = exErr instanceof Error ? exErr.message : String(exErr)
+        console.error(`[manuals] Textextraktion fehlgeschlagen fuer ${src}: ${msg}`)
+      }
 
       emit({ phase: 'indexing' })
       const title = basename(src, extname(src))

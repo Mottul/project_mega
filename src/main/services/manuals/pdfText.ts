@@ -3,6 +3,11 @@
 // liesse sich das in einen utilityProcess/worker auslagern (siehe Plan) -- bewusst
 // als spaetere Optimierung offen gelassen.
 
+import { app } from 'electron'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+
 export interface ExtractedPage {
   pageNo: number
   text: string
@@ -13,15 +18,34 @@ export interface ExtractResult {
   pages: ExtractedPage[]
 }
 
-// Variable-Specifier -> TS resolved den ESM-Subpfad nicht zur Compile-Zeit (kein
-// "Cannot find module") und vite analysiert ihn nicht; Node laedt ihn zur Laufzeit.
+const PDFJS_SUBPATH = 'node_modules/pdfjs-dist/legacy/build/pdf.mjs'
 const PDFJS_SPECIFIER = 'pdfjs-dist/legacy/build/pdf.mjs'
+
+// Absolute file://-URL zur pdf.mjs ermitteln. Wichtig fuer das gepackte App:
+// aus dem app.asar heraus loest der ESM-import() den Paket-Specifier NICHT auf
+// (anders als require, das Electron auf app.asar.unpacked umbiegt). Wir importieren
+// die physische Datei (pdfjs-dist ist via asarUnpack entpackt) direkt per file://-URL.
+function pdfjsFileUrl(): string | null {
+  try {
+    const appPath = app.getAppPath() // dev: Projektroot; prod: .../resources/app.asar
+    const base = appPath.includes('app.asar')
+      ? appPath.replace('app.asar', 'app.asar.unpacked')
+      : appPath
+    const file = join(base, PDFJS_SUBPATH)
+    return existsSync(file) ? pathToFileURL(file).href : null
+  } catch {
+    return null
+  }
+}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let pdfjsPromise: Promise<any> | null = null
 function loadPdfjs(): Promise<any> {
   if (!pdfjsPromise) {
-    pdfjsPromise = import(/* @vite-ignore */ PDFJS_SPECIFIER)
+    const url = pdfjsFileUrl()
+    // Bevorzugt die absolute file://-URL (funktioniert auch aus dem asar heraus);
+    // Fallback auf den Paket-Specifier (greift in Dev/Node zuverlaessig).
+    pdfjsPromise = import(/* @vite-ignore */ url ?? PDFJS_SPECIFIER)
   }
   return pdfjsPromise
 }
