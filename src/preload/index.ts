@@ -55,6 +55,7 @@ const api: ToolboxApi = {
     savePng: (bytes, suggestedName) =>
       ipcRenderer.invoke(Channels.patternSavePng, bytes, suggestedName),
     exportVideo: (req) => ipcRenderer.invoke(Channels.patternExportVideo, req),
+    exportColorLoop: (req) => ipcRenderer.invoke(Channels.patternExportColorLoop, req),
     onVideoProgress: (cb) => subscribe(Channels.patternVideoProgress, (p) => cb(p as never))
   }
 }

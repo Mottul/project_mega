@@ -3,6 +3,7 @@
 
 import type {
   AppSettings,
+  ColorLoopRequest,
   DisplayInfo,
   HapCheckResult,
   HapEnqueueRequest,
@@ -57,6 +58,7 @@ export const Channels = {
   patternRender: 'pattern:render', // Event: PatternConfig (main -> Ausgabefenster)
   patternSavePng: 'pattern:savePng',
   patternExportVideo: 'pattern:exportVideo',
+  patternExportColorLoop: 'pattern:exportColorLoop',
   patternVideoProgress: 'pattern:videoProgress' // Event: PatternVideoProgress
 } as const
 
@@ -120,6 +122,8 @@ export interface ToolboxApi {
     savePng(bytes: Uint8Array, suggestedName: string): Promise<string | null>
     /** Standbild als Video-Loop exportieren (ffmpeg). Liefert den Pfad oder null. */
     exportVideo(req: PatternVideoRequest): Promise<string | null>
+    /** Pixelcheck-Loop (zyklische Vollfarben) als Video exportieren. */
+    exportColorLoop(req: ColorLoopRequest): Promise<string | null>
     onVideoProgress(cb: (p: PatternVideoProgress) => void): () => void
   }
 }

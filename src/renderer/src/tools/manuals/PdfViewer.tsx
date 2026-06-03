@@ -5,6 +5,7 @@ import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker'
 import { Loader2, Maximize, MoveHorizontal, ZoomIn, ZoomOut } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
+import { NumberField } from '@renderer/components/ui/number-field'
 import { api } from '@renderer/lib/api'
 
 pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker()
@@ -103,6 +104,24 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
     setFit('custom')
   }
 
+  function scrollToPage(p: number): void {
+    const idx = Math.min(numPages, Math.max(1, p)) - 1
+    pageEls.current[idx]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+
+  // Strg+Mausrad bzw. Trackpad-Pinch (Chromium liefert das als ctrl+wheel) -> zoomen
+  useEffect(() => {
+    if (!rootEl) return
+    const onWheel = (e: WheelEvent): void => {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      zoom(e.deltaY < 0 ? 1.1 : 0.9)
+    }
+    rootEl.addEventListener('wheel', onWheel, { passive: false })
+    return () => rootEl.removeEventListener('wheel', onWheel)
+    // effScale in den Deps, damit der Zoom vom aktuellen Massstab ausgeht
+  }, [rootEl, effScale])
+
   // Aktuelle Seite = oberste Seite, deren Oberkante (knapp) ueber dem Containerrand liegt.
   useEffect(() => {
     if (!rootEl) return
@@ -157,9 +176,18 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
           <Maximize className="size-4" /> Ganze Seite
         </Button>
         <div className="mx-2 h-5 w-px bg-border" />
-        <span className="min-w-24 text-center text-sm tabular-nums text-muted-foreground">
-          Seite {current} / {numPages || '–'}
-        </span>
+        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <span>Seite</span>
+          <NumberField
+            value={current}
+            min={1}
+            max={numPages || 1}
+            className="h-7 w-14 text-center"
+            aria-label="Seite"
+            onCommit={scrollToPage}
+          />
+          <span>/ {numPages || '–'}</span>
+        </div>
       </div>
 
       <div ref={setRootEl} className="relative flex-1 overflow-auto bg-zinc-900/60">

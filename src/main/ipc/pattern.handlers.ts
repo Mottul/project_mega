@@ -1,8 +1,13 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { Channels } from '@shared/ipc-contracts'
-import type { PatternConfig, PatternVideoProgress, PatternVideoRequest } from '@shared/types'
-import { exportPatternVideo } from '../services/patternVideo'
+import type {
+  ColorLoopRequest,
+  PatternConfig,
+  PatternVideoProgress,
+  PatternVideoRequest
+} from '@shared/types'
+import { exportColorLoop, exportPatternVideo } from '../services/patternVideo'
 import {
   closePattern,
   getCurrentConfig,
@@ -47,6 +52,28 @@ export function registerPatternHandlers(): void {
     const emit = (p: PatternVideoProgress): void => e.sender.send(Channels.patternVideoProgress, p)
     try {
       await exportPatternVideo(req, res.filePath, (progress) => emit({ progress, done: false }))
+      emit({ progress: 1, done: true, outputPath: res.filePath })
+      return res.filePath
+    } catch (err) {
+      emit({ progress: 0, done: true, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
+  })
+
+  ipcMain.handle(Channels.patternExportColorLoop, async (e, req: ColorLoopRequest) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const ext = req.format === 'hap_q' ? 'mov' : 'mp4'
+    const opts = {
+      title: 'Pixelcheck-Loop speichern',
+      defaultPath: `pixelcheck-loop.${ext}`,
+      filters: [{ name: ext.toUpperCase(), extensions: [ext] }]
+    }
+    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
+    if (res.canceled || !res.filePath) return null
+
+    const emit = (p: PatternVideoProgress): void => e.sender.send(Channels.patternVideoProgress, p)
+    try {
+      await exportColorLoop(req, res.filePath, (progress) => emit({ progress, done: false }))
       emit({ progress: 1, done: true, outputPath: res.filePath })
       return res.filePath
     } catch (err) {

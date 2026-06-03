@@ -83,41 +83,55 @@ function drawGrayscaleRamp(ctx: Ctx, w: number, h: number): void {
   ctx.fillRect(0, 0, w, h)
 }
 
-function drawGrid(ctx: Ctx, w: number, h: number, spacing: number, lineWidth: number): void {
-  fill(ctx, w, h, '#000000')
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b)
+}
+
+// Kleinste ganzzahlige Modul-Aufteilung aus dem Seitenverhaeltnis (z.B. 1920x1080
+// -> 16x9). Bei "krummen" Auflösungen (grosse teilerfremde Anteile) auf ~16 Spalten
+// ausweichen, Zeilen moeglichst quadratisch.
+export function moduleCells(w: number, h: number): { x: number; y: number } {
+  const g = gcd(Math.round(w), Math.round(h)) || 1
+  let x = Math.round(w) / g
+  let y = Math.round(h) / g
+  if (x > 64 || y > 64) {
+    x = 16
+    y = Math.max(1, Math.round((16 * h) / w))
+  }
+  return { x, y }
+}
+
+// Aeusserste 1px-Pixelreihe als weisser Rahmen.
+function drawEdgeFrame(ctx: Ctx, w: number, h: number): void {
   ctx.strokeStyle = '#ffffff'
-  ctx.lineWidth = Math.max(1, lineWidth)
-  const s = Math.max(4, spacing)
+  ctx.lineWidth = 1
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1)
+}
+
+// Modul-Gitter: Zellanzahl aus dem Seitenverhaeltnis x Skalierungsfaktor; 2px-Linien;
+// 1px-Rahmen aussen. Klare Abgrenzung von LED-Wall-Modulen.
+function drawGridModules(ctx: Ctx, cfg: PatternConfig): void {
+  const { width: w, height: h } = cfg
+  fill(ctx, w, h, '#000000')
+  const base = moduleCells(w, h)
+  const mult = Math.max(1, Math.round(cfg.gridScale))
+  const nx = base.x * mult
+  const ny = base.y * mult
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 2
   ctx.beginPath()
-  // von der Mitte nach aussen, damit das Raster zentriert ist
-  const cx = w / 2
-  const cy = h / 2
-  for (let x = cx; x <= w; x += s) {
-    ctx.moveTo(Math.round(x) + 0.5, 0)
-    ctx.lineTo(Math.round(x) + 0.5, h)
+  for (let i = 1; i < nx; i++) {
+    const x = Math.round((i * w) / nx)
+    ctx.moveTo(x + 0.5, 0)
+    ctx.lineTo(x + 0.5, h)
   }
-  for (let x = cx - s; x >= 0; x -= s) {
-    ctx.moveTo(Math.round(x) + 0.5, 0)
-    ctx.lineTo(Math.round(x) + 0.5, h)
-  }
-  for (let y = cy; y <= h; y += s) {
-    ctx.moveTo(0, Math.round(y) + 0.5)
-    ctx.lineTo(w, Math.round(y) + 0.5)
-  }
-  for (let y = cy - s; y >= 0; y -= s) {
-    ctx.moveTo(0, Math.round(y) + 0.5)
-    ctx.lineTo(w, Math.round(y) + 0.5)
+  for (let j = 1; j < ny; j++) {
+    const y = Math.round((j * h) / ny)
+    ctx.moveTo(0, y + 0.5)
+    ctx.lineTo(w, y + 0.5)
   }
   ctx.stroke()
-  // Mittelkreuz hervorheben
-  ctx.strokeStyle = '#ff3030'
-  ctx.lineWidth = Math.max(1, lineWidth)
-  ctx.beginPath()
-  ctx.moveTo(Math.round(cx) + 0.5, 0)
-  ctx.lineTo(Math.round(cx) + 0.5, h)
-  ctx.moveTo(0, Math.round(cy) + 0.5)
-  ctx.lineTo(w, Math.round(cy) + 0.5)
-  ctx.stroke()
+  drawEdgeFrame(ctx, w, h)
 }
 
 function drawCheckerboard(ctx: Ctx, w: number, h: number, cell: number): void {
@@ -133,8 +147,9 @@ function drawCheckerboard(ctx: Ctx, w: number, h: number, cell: number): void {
 
 function drawGeometry(ctx: Ctx, w: number, h: number): void {
   fill(ctx, w, h, '#000000')
+  const stroke = Math.max(1, Math.round(Math.min(w, h) / 600))
   ctx.strokeStyle = '#ffffff'
-  ctx.lineWidth = Math.max(1, Math.round(Math.min(w, h) / 600))
+  ctx.lineWidth = stroke
   const cx = w / 2
   const cy = h / 2
   // Diagonalen
@@ -156,14 +171,37 @@ function drawGeometry(ctx: Ctx, w: number, h: number): void {
   ctx.beginPath()
   ctx.ellipse(cx, cy, w / 2 - ctx.lineWidth, h / 2 - ctx.lineWidth, 0, 0, Math.PI * 2)
   ctx.stroke()
+  // Eck-Doppelkreise: grosser Kreis fuellt das Modul-Quadrat, kleiner = halber Durchmesser
+  const base = moduleCells(w, h)
+  const cell = Math.min(w / base.x, h / base.y)
+  const c = cell / 2
+  const centers: [number, number][] = [
+    [c, c],
+    [w - c, c],
+    [c, h - c],
+    [w - c, h - c]
+  ]
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = stroke
+  for (const [ecx, ecy] of centers) {
+    ctx.beginPath()
+    ctx.arc(ecx, ecy, cell / 2, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(ecx, ecy, cell / 4, 0, Math.PI * 2)
+    ctx.stroke()
+  }
   // Mittelkreuz
   ctx.strokeStyle = '#ff3030'
+  ctx.lineWidth = stroke
   ctx.beginPath()
   ctx.moveTo(cx, 0)
   ctx.lineTo(cx, h)
   ctx.moveTo(0, cy)
   ctx.lineTo(w, cy)
   ctx.stroke()
+  // aeusserste 1px-Reihe als weisser Rahmen
+  drawEdgeFrame(ctx, w, h)
 }
 
 function drawCornerMarks(ctx: Ctx, w: number, h: number, inset: number, len: number): void {
@@ -254,7 +292,7 @@ export function drawPattern(ctx: Ctx, cfg: PatternConfig): void {
       drawGrayscaleRamp(ctx, w, h)
       break
     case 'grid':
-      drawGrid(ctx, w, h, cfg.gridSpacing, cfg.lineWidth)
+      drawGridModules(ctx, cfg)
       break
     case 'checkerboard':
       drawCheckerboard(ctx, w, h, cfg.gridSpacing)

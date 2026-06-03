@@ -1,20 +1,23 @@
 import { useEffect, useRef } from 'react'
 import type { PatternConfig } from '@shared/types'
-import { drawPattern } from './patterns'
+import { drawPattern, moduleCells } from './patterns'
 
 const MAX_PREVIEW = 1600 // groesse Kante des Vorschau-Canvas begrenzen
 
-// Skalierte, aber massstabsgetreue Vorschau (gridSpacing/lineWidth mitskaliert),
-// damit ein 4K-Testbild nicht ein 33-MP-Canvas pro Tastendruck erzeugt.
+// Massstabsgetreue Vorschau. Die Vorschau-Maße sind ein exaktes Vielfaches des
+// reduzierten Seitenverhaeltnisses -> die Modul-Zellzahl (Gitter/Geometrie) ist
+// identisch zur Ausgabe. gridSpacing (Schachbrett) wird mitskaliert.
 export function PatternPreview({ config }: { config: PatternConfig }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const s = Math.min(1, MAX_PREVIEW / config.width, MAX_PREVIEW / config.height)
-    const pw = Math.max(1, Math.round(config.width * s))
-    const ph = Math.max(1, Math.round(config.height * s))
+    const mc = moduleCells(config.width, config.height)
+    const k = Math.max(1, Math.floor(Math.min(MAX_PREVIEW / mc.x, MAX_PREVIEW / mc.y)))
+    const pw = mc.x * k
+    const ph = mc.y * k
+    const s = pw / config.width
     canvas.width = pw
     canvas.height = ph
     const ctx = canvas.getContext('2d')
@@ -23,8 +26,7 @@ export function PatternPreview({ config }: { config: PatternConfig }): JSX.Eleme
         ...config,
         width: pw,
         height: ph,
-        gridSpacing: Math.max(2, config.gridSpacing * s),
-        lineWidth: Math.max(1, config.lineWidth * s)
+        gridSpacing: Math.max(2, config.gridSpacing * s)
       })
     }
   }, [config])
