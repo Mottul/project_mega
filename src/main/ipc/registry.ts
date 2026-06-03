@@ -9,6 +9,7 @@ import { getSettings, setSettings } from '../services/store'
 import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
 import { registerManualsHandlers } from './manuals.handlers'
+import { registerPatternHandlers } from './pattern.handlers'
 
 /** Bedient das custom `manual://`-Protocol (PDF-Bytes der Bibliothek). */
 export function registerManualProtocol(): void {
@@ -51,6 +52,7 @@ export function registerIpcHandlers(): void {
   registerDialogHandlers()
   registerFfmpegHandlers()
   registerManualsHandlers()
+  registerPatternHandlers()
 }
 
 /** Verbindet die Live-Job-Updates mit dem konkreten Fenster. */
