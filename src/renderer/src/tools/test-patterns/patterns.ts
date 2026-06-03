@@ -15,8 +15,17 @@ export const PATTERN_OPTIONS: { value: PatternId; label: string }[] = [
   { value: 'bars-ebu', label: 'Farbbalken EBU (100%)' },
   { value: 'grayscale-steps', label: 'Graustufen-Treppe' },
   { value: 'grayscale-ramp', label: 'Graustufen-Verlauf' },
-  { value: 'solid', label: 'Vollfarbe (Pixelfehler/Uniformität)' }
+  { value: 'solid', label: 'Vollfarbe (Pixelfehler/Uniformität)' },
+  { value: 'colorcycle', label: 'Pixelcheck-Loop (Vollfarben-Zyklus)' }
 ]
+
+// Muster, die ueber die Zeit animiert werden (Output-Fenster + Vorschau laufen dann
+// in einer Animationsschleife). Basis fuer weitere bewegte Phase-2-Muster.
+const ANIMATED = new Set<PatternId>(['colorcycle'])
+
+export function isAnimated(pattern: PatternId): boolean {
+  return ANIMATED.has(pattern)
+}
 
 export const SOLID_OPTIONS: { value: SolidColor; label: string }[] = [
   { value: 'white', label: 'Weiß' },
@@ -145,7 +154,8 @@ function drawCheckerboard(ctx: Ctx, w: number, h: number, cell: number): void {
   }
 }
 
-function drawGeometry(ctx: Ctx, w: number, h: number): void {
+function drawGeometry(ctx: Ctx, cfg: PatternConfig): void {
+  const { width: w, height: h } = cfg
   fill(ctx, w, h, '#000000')
   const stroke = Math.max(1, Math.round(Math.min(w, h) / 600))
   ctx.strokeStyle = '#ffffff'
@@ -171,9 +181,11 @@ function drawGeometry(ctx: Ctx, w: number, h: number): void {
   ctx.beginPath()
   ctx.ellipse(cx, cy, w / 2 - ctx.lineWidth, h / 2 - ctx.lineWidth, 0, 0, Math.PI * 2)
   ctx.stroke()
-  // Eck-Doppelkreise: grosser Kreis fuellt das Modul-Quadrat, kleiner = halber Durchmesser
+  // Eck-Doppelkreise: grosser Kreis fuellt das (skalierte) Modul-Quadrat,
+  // kleiner = halber Durchmesser. gridScale verfeinert wie beim Gitter.
   const base = moduleCells(w, h)
-  const cell = Math.min(w / base.x, h / base.y)
+  const mult = Math.max(1, Math.round(cfg.gridScale))
+  const cell = Math.min(w / (base.x * mult), h / (base.y * mult))
   const c = cell / 2
   const centers: [number, number][] = [
     [c, c],
@@ -271,14 +283,28 @@ function drawInfoLabel(ctx: Ctx, cfg: PatternConfig): void {
   ctx.fillText(text, x, y)
 }
 
-/** Zeichnet das gewaehlte Testbild in den (auf width x height gesetzten) Kontext. */
-export function drawPattern(ctx: Ctx, cfg: PatternConfig): void {
+// Aktuelle Farbe eines Vollfarben-Zyklus anhand der Zeit (ms).
+function cycleColor(cfg: PatternConfig, timeMs: number): string {
+  const colors = cfg.cycleColors.length ? cfg.cycleColors : ['#ffffff']
+  const sec = Math.max(0.2, cfg.cycleSeconds)
+  const idx = Math.floor(timeMs / 1000 / sec) % colors.length
+  return colors[idx]
+}
+
+/**
+ * Zeichnet das gewaehlte Testbild in den (auf width x height gesetzten) Kontext.
+ * timeMs steuert animierte Muster (z.B. Farbzyklus); statische ignorieren es.
+ */
+export function drawPattern(ctx: Ctx, cfg: PatternConfig, timeMs = 0): void {
   const { width: w, height: h, pattern } = cfg
   ctx.clearRect(0, 0, w, h)
   switch (pattern) {
     case 'solid':
       fill(ctx, w, h, SOLID_HEX[cfg.solid])
       return // bewusst ohne Info-Label (Pixelfehler-Test)
+    case 'colorcycle':
+      fill(ctx, w, h, cycleColor(cfg, timeMs))
+      return // Vollfarbe ohne Label
     case 'bars-smpte':
       drawVerticalBars(ctx, w, h, BARS_75)
       break
@@ -298,7 +324,7 @@ export function drawPattern(ctx: Ctx, cfg: PatternConfig): void {
       drawCheckerboard(ctx, w, h, cfg.gridSpacing)
       break
     case 'geometry':
-      drawGeometry(ctx, w, h)
+      drawGeometry(ctx, cfg)
       break
     case 'frame-info':
       drawFrameInfo(ctx, cfg)

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { PatternConfig } from '@shared/types'
-import { drawPattern, moduleCells } from './patterns'
+import { drawPattern, isAnimated, moduleCells } from './patterns'
 
 const MAX_PREVIEW = 1600 // groesse Kante des Vorschau-Canvas begrenzen
 
@@ -21,14 +21,24 @@ export function PatternPreview({ config }: { config: PatternConfig }): JSX.Eleme
     canvas.width = pw
     canvas.height = ph
     const ctx = canvas.getContext('2d')
-    if (ctx) {
-      drawPattern(ctx, {
-        ...config,
-        width: pw,
-        height: ph,
-        gridSpacing: Math.max(2, config.gridSpacing * s)
-      })
+    if (!ctx) return
+    const previewCfg = {
+      ...config,
+      width: pw,
+      height: ph,
+      gridSpacing: Math.max(2, config.gridSpacing * s)
     }
+    let raf = 0
+    if (isAnimated(config.pattern)) {
+      const loop = (t: number): void => {
+        drawPattern(ctx, previewCfg, t)
+        raf = requestAnimationFrame(loop)
+      }
+      raf = requestAnimationFrame(loop)
+    } else {
+      drawPattern(ctx, previewCfg, 0)
+    }
+    return () => cancelAnimationFrame(raf)
   }, [config])
 
   return (

@@ -128,6 +128,7 @@ export type PatternId =
   | 'checkerboard'
   | 'geometry'
   | 'frame-info'
+  | 'colorcycle'
 
 export type SolidColor =
   | 'white'
@@ -147,7 +148,9 @@ export interface PatternConfig {
   height: number
   solid: SolidColor // fuer 'solid'
   gridSpacing: number // px, fuer checkerboard (Zellgroesse)
-  gridScale: number // Multiplikator der Modul-Zellanzahl beim Gitter (1,2,4,...)
+  gridScale: number // Multiplikator der Modul-Zellanzahl (Gitter + Geometrie-Eckkreise)
+  cycleColors: string[] // fuer 'colorcycle' (Pixelcheck): Hex-Farben in Reihenfolge
+  cycleSeconds: number // fuer 'colorcycle': Dauer je Farbe
   label: string // frei waehlbarer Output-Name (frame-info)
   showInfo: boolean // Auflösung/Label einblenden
 }
@@ -159,6 +162,8 @@ export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   solid: 'white',
   gridSpacing: 64,
   gridScale: 1,
+  cycleColors: ['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#000000'],
+  cycleSeconds: 2,
   label: '',
   showInfo: true
 }
