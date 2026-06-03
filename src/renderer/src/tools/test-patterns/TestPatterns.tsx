@@ -12,7 +12,7 @@ import {
   type PatternConfig,
   type PatternVideoFormat
 } from '@shared/types'
-import { PATTERN_OPTIONS, SOLID_OPTIONS, renderToCanvas } from './patterns'
+import { PATTERN_OPTIONS, SOLID_OPTIONS, moduleCells, renderToCanvas } from './patterns'
 import { PatternPreview } from './PatternPreview'
 
 const selectClass =
@@ -23,6 +23,15 @@ const RES_PRESETS = [
   { label: '1920 × 1080', w: 1920, h: 1080 },
   { label: '2560 × 1440', w: 2560, h: 1440 },
   { label: '3840 × 2160 (4K)', w: 3840, h: 2160 }
+]
+
+const LOOP_COLOR_OPTIONS = [
+  { hex: '#ffffff', label: 'Weiß' },
+  { hex: '#ff0000', label: 'Rot' },
+  { hex: '#00ff00', label: 'Grün' },
+  { hex: '#0000ff', label: 'Blau' },
+  { hex: '#000000', label: 'Schwarz' },
+  { hex: '#808080', label: 'Grau' }
 ]
 
 async function renderPngBytes(cfg: PatternConfig): Promise<Uint8Array> {
@@ -41,6 +50,14 @@ export function TestPatterns(): JSX.Element {
   const [vidFormat, setVidFormat] = useState<PatternVideoFormat>('mp4')
   const [vidSeconds, setVidSeconds] = useState(10)
   const [vidFps, setVidFps] = useState(30)
+  const [loopColors, setLoopColors] = useState<string[]>([
+    '#ffffff',
+    '#ff0000',
+    '#00ff00',
+    '#0000ff',
+    '#000000'
+  ])
+  const [loopSeconds, setLoopSeconds] = useState(2)
   const [busy, setBusy] = useState<null | string>(null)
   const [videoProgress, setVideoProgress] = useState<number | null>(null)
   const [note, setNote] = useState<string | null>(null)
@@ -128,8 +145,38 @@ export function TestPatterns(): JSX.Element {
     }
   }
 
+  function toggleLoopColor(hex: string): void {
+    setLoopColors((prev) =>
+      prev.includes(hex)
+        ? prev.filter((c) => c !== hex)
+        : LOOP_COLOR_OPTIONS.filter((o) => o.hex === hex || prev.includes(o.hex)).map((o) => o.hex)
+    )
+  }
+
+  async function exportColorLoop(): Promise<void> {
+    if (!loopColors.length) return
+    setBusy('loop')
+    setNote(null)
+    setVideoProgress(0)
+    try {
+      await api.patterns.exportColorLoop({
+        width: config.width,
+        height: config.height,
+        colors: loopColors,
+        secondsPerColor: loopSeconds,
+        fps: vidFps,
+        format: vidFormat
+      })
+    } catch (e) {
+      setVideoProgress(null)
+      setBusy(null)
+      setNote(`Loop-Export fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   const isSolid = config.pattern === 'solid'
-  const isGrid = config.pattern === 'grid' || config.pattern === 'checkerboard'
+  const mc = moduleCells(config.width, config.height)
+  const gridCells = { x: mc.x * config.gridScale, y: mc.y * config.gridScale }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -168,26 +215,46 @@ export function TestPatterns(): JSX.Element {
             </label>
           )}
 
-          {isGrid && (
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Abstand (px)</span>
-                <NumberField
-                  value={config.gridSpacing}
-                  min={2}
-                  onCommit={(v) => patch({ gridSpacing: v })}
-                />
-              </label>
-              {config.pattern === 'grid' && (
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium">Linienstärke</span>
-                  <NumberField
-                    value={config.lineWidth}
-                    min={1}
-                    onCommit={(v) => patch({ lineWidth: v })}
-                  />
-                </label>
-              )}
+          {config.pattern === 'checkerboard' && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Zellgröße (px)</span>
+              <NumberField
+                value={config.gridSpacing}
+                min={2}
+                onCommit={(v) => patch({ gridSpacing: v })}
+              />
+            </label>
+          )}
+          {config.pattern === 'grid' && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Modul-Unterteilung</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => patch({ gridScale: Math.max(1, config.gridScale / 2) })}
+                  disabled={config.gridScale <= 1}
+                >
+                  −
+                </Button>
+                <span className="min-w-8 text-center text-sm tabular-nums">×{config.gridScale}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => patch({ gridScale: Math.min(16, config.gridScale * 2) })}
+                  disabled={config.gridScale >= 16}
+                >
+                  +
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {gridCells.x} × {gridCells.y} Module
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Zellanzahl aus dem Seitenverhältnis ({mc.x}:{mc.y}); ×-Faktor verdoppelt.
+              </span>
             </div>
           )}
 
@@ -320,6 +387,54 @@ export function TestPatterns(): JSX.Element {
             <Film className="size-4" /> Video exportieren
           </Button>
         </div>
+
+        <div className="space-y-2 border-t border-border pt-4">
+          <p className="text-sm font-medium">Pixelcheck-Loop (Vollfarben)</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-wrap gap-1.5">
+              {LOOP_COLOR_OPTIONS.map((o) => {
+                const on = loopColors.includes(o.hex)
+                return (
+                  <button
+                    key={o.hex}
+                    type="button"
+                    onClick={() => toggleLoopColor(o.hex)}
+                    className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${
+                      on ? 'border-primary text-foreground' : 'border-border text-muted-foreground'
+                    }`}
+                  >
+                    <span
+                      className="size-3 rounded-sm border border-white/25"
+                      style={{ background: o.hex }}
+                    />
+                    {o.label}
+                  </button>
+                )
+              })}
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Sek./Farbe</span>
+              <NumberField
+                value={loopSeconds}
+                min={1}
+                max={600}
+                className="w-20"
+                onCommit={setLoopSeconds}
+              />
+            </label>
+            <Button
+              onClick={() => void exportColorLoop()}
+              disabled={busy !== null || loopColors.length === 0}
+            >
+              <Film className="size-4" /> Loop exportieren
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Zyklus durch die gewählten Farben (Format/fps wie oben) · Gesamtdauer{' '}
+            {loopColors.length * loopSeconds}s
+          </p>
+        </div>
+
         {videoProgress !== null && (
           <div>
             <Progress value={videoProgress} />

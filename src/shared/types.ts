@@ -146,8 +146,8 @@ export interface PatternConfig {
   width: number
   height: number
   solid: SolidColor // fuer 'solid'
-  gridSpacing: number // px, fuer grid/checkerboard
-  lineWidth: number // px, fuer grid
+  gridSpacing: number // px, fuer checkerboard (Zellgroesse)
+  gridScale: number // Multiplikator der Modul-Zellanzahl beim Gitter (1,2,4,...)
   label: string // frei waehlbarer Output-Name (frame-info)
   showInfo: boolean // Auflösung/Label einblenden
 }
@@ -157,10 +157,19 @@ export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   width: 1920,
   height: 1080,
   solid: 'white',
-  gridSpacing: 100,
-  lineWidth: 2,
+  gridSpacing: 64,
+  gridScale: 1,
   label: '',
   showInfo: true
+}
+
+export interface ColorLoopRequest {
+  width: number
+  height: number
+  colors: string[] // Hex (#rrggbb), Reihenfolge = Abspielreihenfolge
+  secondsPerColor: number
+  fps: number
+  format: PatternVideoFormat
 }
 
 export interface DisplayInfo {
