@@ -11,9 +11,9 @@ import {
 import { Badge, type BadgeTone } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { api } from '@renderer/lib/api'
-import { cn } from '@renderer/lib/utils'
 import type {
   ChunksMode,
   HapCheckResult,
@@ -220,13 +220,12 @@ export function HapConverter(): JSX.Element {
                 Automatisch
               </label>
               {!autoChunks && (
-                <input
-                  type="number"
+                <NumberField
+                  value={manualChunks}
                   min={1}
                   max={64}
-                  value={manualChunks}
-                  onChange={(e) => setManualChunks(Number(e.target.value))}
-                  className={cn(selectClass, 'w-24')}
+                  className="w-24"
+                  onCommit={setManualChunks}
                 />
               )}
             </div>

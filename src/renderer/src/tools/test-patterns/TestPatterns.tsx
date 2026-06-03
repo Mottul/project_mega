@@ -3,6 +3,7 @@ import { Film, Image as ImageIcon, MonitorPlay, MonitorX } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { api } from '@renderer/lib/api'
 import {
@@ -171,21 +172,19 @@ export function TestPatterns(): JSX.Element {
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">Abstand (px)</span>
-                <Input
-                  type="number"
-                  min={2}
+                <NumberField
                   value={config.gridSpacing}
-                  onChange={(e) => patch({ gridSpacing: Math.max(2, Number(e.target.value) || 2) })}
+                  min={2}
+                  onCommit={(v) => patch({ gridSpacing: v })}
                 />
               </label>
               {config.pattern === 'grid' && (
                 <label className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium">Linienstärke</span>
-                  <Input
-                    type="number"
-                    min={1}
+                  <NumberField
                     value={config.lineWidth}
-                    onChange={(e) => patch({ lineWidth: Math.max(1, Number(e.target.value) || 1) })}
+                    min={1}
+                    onCommit={(v) => patch({ lineWidth: v })}
                   />
                 </label>
               )}
@@ -195,18 +194,18 @@ export function TestPatterns(): JSX.Element {
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Auflösung</span>
             <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min={16}
+              <NumberField
                 value={config.width}
-                onChange={(e) => setRes(Number(e.target.value) || 16, config.height)}
+                min={16}
+                max={16384}
+                onCommit={(v) => setRes(v, config.height)}
               />
               <span className="text-muted-foreground">×</span>
-              <Input
-                type="number"
-                min={16}
+              <NumberField
                 value={config.height}
-                onChange={(e) => setRes(config.width, Number(e.target.value) || 16)}
+                min={16}
+                max={16384}
+                onCommit={(v) => setRes(config.width, v)}
               />
             </div>
             <div className="mt-1 flex flex-wrap gap-1.5">
@@ -305,25 +304,17 @@ export function TestPatterns(): JSX.Element {
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Sekunden</span>
-            <Input
-              type="number"
+            <NumberField
+              value={vidSeconds}
               min={1}
               max={3600}
               className="w-24"
-              value={vidSeconds}
-              onChange={(e) => setVidSeconds(Math.max(1, Number(e.target.value) || 1))}
+              onCommit={setVidSeconds}
             />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">fps</span>
-            <Input
-              type="number"
-              min={1}
-              max={60}
-              className="w-20"
-              value={vidFps}
-              onChange={(e) => setVidFps(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
-            />
+            <NumberField value={vidFps} min={1} max={60} className="w-20" onCommit={setVidFps} />
           </label>
           <Button onClick={() => void exportVideo()} disabled={busy !== null}>
             <Film className="size-4" /> Video exportieren
