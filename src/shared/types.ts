@@ -116,6 +116,80 @@ export interface ImportSummary {
   failed: { path: string; error: string }[]
 }
 
+/* --------------------------- Testbildgenerator -------------------------- */
+
+export type PatternId =
+  | 'solid'
+  | 'bars-smpte'
+  | 'bars-ebu'
+  | 'grayscale-steps'
+  | 'grayscale-ramp'
+  | 'grid'
+  | 'checkerboard'
+  | 'geometry'
+  | 'frame-info'
+
+export type SolidColor =
+  | 'white'
+  | 'black'
+  | 'red'
+  | 'green'
+  | 'blue'
+  | 'cyan'
+  | 'magenta'
+  | 'yellow'
+  | 'gray18'
+  | 'gray50'
+
+export interface PatternConfig {
+  pattern: PatternId
+  width: number
+  height: number
+  solid: SolidColor // fuer 'solid'
+  gridSpacing: number // px, fuer grid/checkerboard
+  lineWidth: number // px, fuer grid
+  label: string // frei waehlbarer Output-Name (frame-info)
+  showInfo: boolean // Auflösung/Label einblenden
+}
+
+export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
+  pattern: 'grid',
+  width: 1920,
+  height: 1080,
+  solid: 'white',
+  gridSpacing: 100,
+  lineWidth: 2,
+  label: '',
+  showInfo: true
+}
+
+export interface DisplayInfo {
+  id: number
+  label: string
+  x: number
+  y: number
+  width: number // DIP-Bounds
+  height: number
+  scaleFactor: number
+  primary: boolean
+}
+
+export type PatternVideoFormat = 'mp4' | 'hap_q'
+
+export interface PatternVideoRequest {
+  png: Uint8Array // gerendertes Standbild in Zielauflösung
+  durationSec: number
+  fps: number
+  format: PatternVideoFormat
+}
+
+export interface PatternVideoProgress {
+  progress: number // 0..1
+  done: boolean
+  outputPath?: string
+  error?: string
+}
+
 /* -------------------------------- Dialog -------------------------------- */
 
 export interface SelectPathsOptions {

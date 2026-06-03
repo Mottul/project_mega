@@ -40,6 +40,22 @@ const api: ToolboxApi = {
     delete: (id) => ipcRenderer.invoke(Channels.manualsDelete, id),
     onImportProgress: (cb) =>
       subscribe(Channels.manualsImportProgress, (p) => cb(p as never))
+  },
+
+  screen: {
+    list: () => ipcRenderer.invoke(Channels.screenList)
+  },
+
+  patterns: {
+    open: (config, displayId) => ipcRenderer.invoke(Channels.patternOpen, config, displayId),
+    update: (config) => ipcRenderer.invoke(Channels.patternUpdate, config),
+    close: () => ipcRenderer.invoke(Channels.patternClose),
+    current: () => ipcRenderer.invoke(Channels.patternCurrent),
+    onRender: (cb) => subscribe(Channels.patternRender, (c) => cb(c as never)),
+    savePng: (bytes, suggestedName) =>
+      ipcRenderer.invoke(Channels.patternSavePng, bytes, suggestedName),
+    exportVideo: (req) => ipcRenderer.invoke(Channels.patternExportVideo, req),
+    onVideoProgress: (cb) => subscribe(Channels.patternVideoProgress, (p) => cb(p as never))
   }
 }
 

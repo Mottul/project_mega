@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { MANUAL_PROTOCOL } from '@shared/ipc-contracts'
 import { attachWindow, registerIpcHandlers, registerManualProtocol } from './ipc/registry'
 import { logLine } from './services/log'
+import { closePattern } from './services/patternWindow'
 
 const isDev = !app.isPackaged
 
@@ -35,6 +36,8 @@ function createWindow(): BrowserWindow {
   })
 
   win.once('ready-to-show', () => win.show())
+  // Vollbild-Testbild mitschliessen, wenn das Hauptfenster geht
+  win.on('closed', () => closePattern())
 
   // Externe Links im Standardbrowser oeffnen, keine neuen Fenster zulassen
   win.webContents.setWindowOpenHandler(({ url }) => {

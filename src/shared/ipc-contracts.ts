@@ -3,6 +3,7 @@
 
 import type {
   AppSettings,
+  DisplayInfo,
   HapCheckResult,
   HapEnqueueRequest,
   HapJob,
@@ -12,6 +13,9 @@ import type {
   ManualMeta,
   ManualPatch,
   ManualSearchHit,
+  PatternConfig,
+  PatternVideoProgress,
+  PatternVideoRequest,
   ProbeResult,
   SelectPathsOptions
 } from './types'
@@ -43,7 +47,17 @@ export const Channels = {
   manualsBytes: 'manuals:bytes',
   manualsUpdate: 'manuals:update',
   manualsDelete: 'manuals:delete',
-  manualsImportProgress: 'manuals:importProgress' // Event: ImportProgress
+  manualsImportProgress: 'manuals:importProgress', // Event: ImportProgress
+  // Testbildgenerator
+  screenList: 'screen:list',
+  patternOpen: 'pattern:open',
+  patternUpdate: 'pattern:update',
+  patternClose: 'pattern:close',
+  patternCurrent: 'pattern:current',
+  patternRender: 'pattern:render', // Event: PatternConfig (main -> Ausgabefenster)
+  patternSavePng: 'pattern:savePng',
+  patternExportVideo: 'pattern:exportVideo',
+  patternVideoProgress: 'pattern:videoProgress' // Event: PatternVideoProgress
 } as const
 
 export type ChannelName = (typeof Channels)[keyof typeof Channels]
@@ -87,5 +101,25 @@ export interface ToolboxApi {
     delete(id: number): Promise<void>
     /** Fortschritt waehrend des Imports. Liefert eine Cleanup-Funktion. */
     onImportProgress(cb: (p: ImportProgress) => void): () => void
+  }
+
+  screen: {
+    list(): Promise<DisplayInfo[]>
+  }
+
+  patterns: {
+    /** Vollbild-Ausgabefenster auf dem gewaehlten Monitor oeffnen/aktualisieren. */
+    open(config: PatternConfig, displayId: number): Promise<void>
+    update(config: PatternConfig): Promise<void>
+    close(): Promise<void>
+    /** Aktuelle Config (das Ausgabefenster holt sie beim Start). */
+    current(): Promise<PatternConfig | null>
+    /** Render-Anweisung an das Ausgabefenster. Liefert eine Cleanup-Funktion. */
+    onRender(cb: (config: PatternConfig) => void): () => void
+    /** PNG speichern (Save-Dialog im main). Liefert den Pfad oder null. */
+    savePng(bytes: Uint8Array, suggestedName: string): Promise<string | null>
+    /** Standbild als Video-Loop exportieren (ffmpeg). Liefert den Pfad oder null. */
+    exportVideo(req: PatternVideoRequest): Promise<string | null>
+    onVideoProgress(cb: (p: PatternVideoProgress) => void): () => void
   }
 }
