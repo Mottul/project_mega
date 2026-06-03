@@ -99,9 +99,13 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
         ? Math.max(0.2, Math.min((vw - PAD) / baseSize.current.w, (vh - PAD) / baseSize.current.h))
         : customScale
 
+  // immer aktueller Massstab fuer den (einmal angehaengten) Wheel-Handler
+  const effScaleRef = useRef(effScale)
+  effScaleRef.current = effScale
+
   function zoom(factor: number): void {
-    setCustomScale(Math.min(5, Math.max(0.2, +(effScale * factor).toFixed(3))))
     setFit('custom')
+    setCustomScale(Math.min(5, Math.max(0.2, +(effScaleRef.current * factor).toFixed(3))))
   }
 
   function scrollToPage(p: number): void {
@@ -109,18 +113,24 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
     pageEls.current[idx]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }
 
-  // Strg+Mausrad bzw. Trackpad-Pinch (Chromium liefert das als ctrl+wheel) -> zoomen
+  // Strg+Mausrad bzw. Trackpad-Pinch (Chromium liefert Pinch als ctrl+wheel) -> zoomen.
+  // EINMAL anhaengen (nicht bei jeder Massstabsaenderung neu) und Scroll sicher
+  // unterbinden, sonst scrollt das PDF statt zu zoomen.
   useEffect(() => {
     if (!rootEl) return
     const onWheel = (e: WheelEvent): void => {
       if (!e.ctrlKey) return
       e.preventDefault()
-      zoom(e.deltaY < 0 ? 1.1 : 0.9)
+      e.stopPropagation()
+      const factor = e.deltaY < 0 ? 1.1 : 0.9
+      const next = Math.min(5, Math.max(0.2, +(effScaleRef.current * factor).toFixed(3)))
+      effScaleRef.current = next // sofort aktualisieren -> schnelle Events kompoundieren
+      setFit('custom')
+      setCustomScale(next)
     }
     rootEl.addEventListener('wheel', onWheel, { passive: false })
     return () => rootEl.removeEventListener('wheel', onWheel)
-    // effScale in den Deps, damit der Zoom vom aktuellen Massstab ausgeht
-  }, [rootEl, effScale])
+  }, [rootEl])
 
   // Aktuelle Seite = oberste Seite, deren Oberkante (knapp) ueber dem Containerrand liegt.
   useEffect(() => {
