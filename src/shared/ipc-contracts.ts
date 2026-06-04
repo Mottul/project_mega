@@ -11,6 +11,7 @@ import type {
   ImportProgress,
   ImportSummary,
   ManualDetail,
+  InDocHit,
   ManualMeta,
   ManualPatch,
   ManualSearchHit,
@@ -46,6 +47,7 @@ export const Channels = {
   manualsSearch: 'manuals:search',
   manualsGet: 'manuals:get',
   manualsBytes: 'manuals:bytes',
+  manualsSearchInDoc: 'manuals:searchInDoc',
   manualsUpdate: 'manuals:update',
   manualsDelete: 'manuals:delete',
   manualsImportProgress: 'manuals:importProgress', // Event: ImportProgress
@@ -96,6 +98,8 @@ export interface ToolboxApi {
     import(paths: string[]): Promise<ImportSummary>
     list(query?: string): Promise<ManualMeta[]>
     search(query: string): Promise<ManualSearchHit[]>
+    /** Volltextsuche innerhalb eines geoeffneten PDFs. */
+    searchInDoc(manualId: number, query: string): Promise<InDocHit[]>
     get(id: number): Promise<ManualDetail>
     /** Roh-Bytes des gespeicherten PDFs (fuer den In-App-Viewer). */
     bytes(id: number): Promise<Uint8Array>

@@ -245,6 +245,24 @@ export function searchManuals(query: string): ManualSearchHit[] {
   return rows
 }
 
+/** Volltextsuche INNERHALB eines Manuals (nutzt den vorhandenen FTS-Index). */
+export function searchInManual(manualId: number, query: string): { pageNo: number; snippet: string }[] {
+  const match = toMatchQuery(query)
+  if (!match) return []
+  const db = getDb()
+  return db
+    .prepare(
+      `SELECT mp.page_no AS pageNo,
+              snippet(pages_fts, 0, '<mark>', '</mark>', '…', 14) AS snippet
+       FROM pages_fts
+       JOIN manual_pages mp ON mp.id = pages_fts.rowid
+       WHERE mp.manual_id = ? AND mp.page_no > 0 AND pages_fts MATCH ?
+       ORDER BY mp.page_no
+       LIMIT 500`
+    )
+    .all(manualId, match) as { pageNo: number; snippet: string }[]
+}
+
 export function getManual(id: number): ManualDetail {
   const db = getDb()
   const row = db.prepare('SELECT * FROM manuals WHERE id = ?').get(id) as ManualRow | undefined
