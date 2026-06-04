@@ -48,6 +48,14 @@ function createWindow(): BrowserWindow {
     return { action: 'deny' }
   })
 
+  // F12 / Strg+Shift+I oeffnet die DevTools (auch im gepackten App -> Diagnose)
+  win.webContents.on('before-input-event', (_e, input) => {
+    if (input.type !== 'keyDown') return
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      win.webContents.toggleDevTools()
+    }
+  })
+
   const devUrl = process.env['ELECTRON_RENDERER_URL']
   if (isDev && devUrl) {
     void win.loadURL(devUrl)

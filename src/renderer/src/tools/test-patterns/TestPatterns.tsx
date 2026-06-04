@@ -10,6 +10,7 @@ import {
   DEFAULT_PATTERN_CONFIG,
   type DisplayInfo,
   type PatternConfig,
+  type PatternPreset,
   type PatternVideoFormat
 } from '@shared/types'
 import { PATTERN_OPTIONS, SOLID_OPTIONS, moduleCells, renderToCanvas } from './patterns'
@@ -53,14 +54,18 @@ export function TestPatterns(): JSX.Element {
   const [busy, setBusy] = useState<null | string>(null)
   const [videoProgress, setVideoProgress] = useState<number | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [presets, setPresets] = useState<PatternPreset[]>([])
+  const [presetName, setPresetName] = useState('')
+  const [selectedPreset, setSelectedPreset] = useState('')
 
-  // Monitore laden; bevorzugt einen nicht-primaeren (Beamer/Wand) vorauswaehlen
+  // Monitore + Presets laden; bevorzugt einen nicht-primaeren (Beamer/Wand) vorauswaehlen
   useEffect(() => {
     void api.screen.list().then((list) => {
       setDisplays(list)
       const target = list.find((d) => !d.primary) ?? list[0]
       setDisplayId(target?.id ?? null)
     })
+    void api.getSettings().then((s) => setPresets(s.patternPresets ?? []))
     // nur Fortschritt; Endzustand (Erfolg/Abbruch/Fehler) regelt der Export ueber
     // das Promise-Ergebnis (sonst bleibt der Button nach Dialog-Abbruch haengen).
     return api.patterns.onVideoProgress((p) => {
@@ -75,6 +80,34 @@ export function TestPatterns(): JSX.Element {
 
   function patch(p: Partial<PatternConfig>): void {
     setConfig((prev) => ({ ...prev, ...p }))
+  }
+
+  async function persistPresets(next: PatternPreset[]): Promise<void> {
+    setPresets(next)
+    await api.setSettings({ patternPresets: next })
+  }
+
+  function savePreset(): void {
+    const name = presetName.trim()
+    if (!name) return
+    const next = [...presets.filter((p) => p.name !== name), { name, config }].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    )
+    void persistPresets(next)
+    setSelectedPreset(name)
+    setPresetName('')
+  }
+
+  function applyPreset(name: string): void {
+    setSelectedPreset(name)
+    const p = presets.find((x) => x.name === name)
+    if (p) setConfig(p.config)
+  }
+
+  function deletePreset(): void {
+    if (!selectedPreset) return
+    void persistPresets(presets.filter((p) => p.name !== selectedPreset))
+    setSelectedPreset('')
   }
 
   function setRes(w: number, h: number): void {
@@ -169,6 +202,43 @@ export function TestPatterns(): JSX.Element {
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         {/* Steuerung */}
         <Card className="space-y-5 p-5">
+          <div className="space-y-2 border-b border-border pb-4">
+            <span className="text-sm font-medium">Presets</span>
+            <div className="flex items-center gap-2">
+              <select
+                className={`${selectClass} flex-1`}
+                value={selectedPreset}
+                onChange={(e) => applyPreset(e.target.value)}
+              >
+                <option value="">Preset laden…</option>
+                {presets.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={deletePreset}
+                disabled={!selectedPreset}
+              >
+                Löschen
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                placeholder="Aktuelle Einstellung als Preset…"
+                className="h-8 flex-1"
+              />
+              <Button size="sm" onClick={savePreset} disabled={!presetName.trim()}>
+                Speichern
+              </Button>
+            </div>
+          </div>
+
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Testbild</span>
             <select

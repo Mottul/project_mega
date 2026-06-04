@@ -135,6 +135,10 @@ export type PatternId =
   | 'geometry'
   | 'frame-info'
   | 'colorcycle'
+  | 'siemens'
+  | 'convergence'
+  | 'scroll'
+  | 'timecode'
 
 export type SolidColor =
   | 'white'
@@ -221,14 +225,21 @@ export interface SelectPathsOptions {
 
 /* ------------------------------- Settings ------------------------------- */
 
+export interface PatternPreset {
+  name: string
+  config: PatternConfig
+}
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
   lastImportDir: string | null
+  patternPresets: PatternPreset[]
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   lastHapOutputDir: null,
   lastHapFormat: 'hap_q',
-  lastImportDir: null
+  lastImportDir: null,
+  patternPresets: []
 }

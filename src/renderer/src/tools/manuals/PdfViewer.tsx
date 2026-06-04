@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 // vite ?worker -> Worker-Konstruktor; bundelt den pdfjs-Worker sauber mit
@@ -50,6 +50,8 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
   const [vh, setVh] = useState(600)
   const baseSize = useRef<{ w: number; h: number }>({ w: 800, h: 1100 })
   const pageEls = useRef<(HTMLDivElement | null)[]>([])
+  const prevScaleRef = useRef(0) // vorheriger effektiver Massstab (fuer Zoom-Anker)
+  const anchorYRef = useRef<number | null>(null) // Fokus-Y im Container beim Zoomen
 
   // Dokument laden (Bytes per IPC -> direkt an pdfjs)
   useEffect(() => {
@@ -119,6 +121,19 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
   const effScaleRef = useRef(effScale)
   effScaleRef.current = effScale
 
+  // Zoom um einen Ankerpunkt: bei Massstabsaenderung scrollTop so nachfuehren, dass
+  // der Inhalt unter dem Cursor (bzw. die Mitte) stehen bleibt -> kein Sprung.
+  // Funktioniert, weil die Seiten-Wrapper synchron die geschaetzte Hoehe annehmen.
+  useLayoutEffect(() => {
+    const prev = prevScaleRef.current
+    prevScaleRef.current = effScale
+    if (!rootEl || prev <= 0 || prev === effScale) return
+    const f = effScale / prev
+    const anchor = anchorYRef.current ?? rootEl.clientHeight / 2
+    rootEl.scrollTop = Math.max(0, (rootEl.scrollTop + anchor) * f - anchor)
+    anchorYRef.current = null
+  }, [effScale, rootEl])
+
   function zoom(factor: number): void {
     setFit('custom')
     setCustomScale(Math.min(5, Math.max(0.2, +(effScaleRef.current * factor).toFixed(3))))
@@ -166,9 +181,14 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
       if (!e.ctrlKey || !rootEl.contains(e.target as Node)) return
       e.preventDefault()
       e.stopPropagation()
+      // Fokuspunkt = Mausposition im Container -> dort bleibt der Inhalt stehen
+      anchorYRef.current = e.clientY - rootEl.getBoundingClientRect().top
       const factor = e.deltaY < 0 ? 1.1 : 0.9
       const next = Math.min(5, Math.max(0.2, +(effScaleRef.current * factor).toFixed(3)))
-      effScaleRef.current = next // sofort aktualisieren -> schnelle Events kompoundieren
+      // Diagnose: in den DevTools (F12) sichtbar -> Handler feuert + neuer Massstab
+      // eslint-disable-next-line no-console
+      console.debug('[pdf-zoom]', { from: effScaleRef.current, to: next, anchorY: anchorYRef.current })
+      effScaleRef.current = next
       setFit('custom')
       setCustomScale(next)
     }
@@ -364,7 +384,7 @@ function PdfPage({
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [shouldRender, setShouldRender] = useState(false)
-  const [size, setSize] = useState<{ w: number; h: number } | null>(null)
+  const [rendered, setRendered] = useState(false)
 
   const setRefs = useCallback(
     (el: HTMLDivElement | null) => {
@@ -390,7 +410,9 @@ function PdfPage({
     return () => io.disconnect()
   }, [root, pageNo])
 
-  // Seite rendern (scharf via devicePixelRatio); bei Zoomwechsel neu
+  // Seite rendern (scharf via devicePixelRatio); bei Zoomwechsel neu.
+  // Der Wrapper hat IMMER die geschaetzte Groesse (baseSize x scale) -> die Layout-
+  // hoehe steht synchron mit dem Massstab, damit der Zoom-Anker korrekt rechnet.
   useEffect(() => {
     if (!shouldRender) return
     let cancelled = false
@@ -400,19 +422,15 @@ function PdfPage({
       if (cancelled) return
       const dpr = window.devicePixelRatio || 1
       const vp = page.getViewport({ scale: scale * dpr })
-      const cssW = vp.width / dpr
-      const cssH = vp.height / dpr
-      setSize({ w: cssW, h: cssH })
       const canvas = canvasRef.current
       const ctx = canvas?.getContext('2d')
       if (!canvas || !ctx) return
       canvas.width = vp.width
       canvas.height = vp.height
-      canvas.style.width = `${cssW}px`
-      canvas.style.height = `${cssH}px`
       task = page.render({ canvasContext: ctx, viewport: vp })
       try {
         await task.promise
+        if (!cancelled) setRendered(true)
       } catch {
         // Render abgebrochen (Zoom/Scroll) -> ignorieren
       }
@@ -427,14 +445,14 @@ function PdfPage({
     <div
       ref={setRefs}
       className="relative shrink-0 overflow-hidden rounded bg-white shadow-lg"
-      style={{ width: size?.w ?? estWidth, height: size?.h ?? estHeight }}
+      style={{ width: estWidth, height: estHeight }}
     >
-      {!size && (
+      {!rendered && (
         <div className="absolute inset-0 flex items-center justify-center">
           <Loader2 className="size-5 animate-spin text-zinc-400" />
         </div>
       )}
-      <canvas ref={canvasRef} className="block" />
+      <canvas ref={canvasRef} className="block" style={{ width: '100%', height: '100%' }} />
     </div>
   )
 }
