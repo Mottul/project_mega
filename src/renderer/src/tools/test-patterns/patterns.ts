@@ -16,12 +16,16 @@ export const PATTERN_OPTIONS: { value: PatternId; label: string }[] = [
   { value: 'grayscale-steps', label: 'Graustufen-Treppe' },
   { value: 'grayscale-ramp', label: 'Graustufen-Verlauf' },
   { value: 'solid', label: 'Vollfarbe (Pixelfehler/Uniformität)' },
-  { value: 'colorcycle', label: 'Pixelcheck-Loop (Vollfarben-Zyklus)' }
+  { value: 'siemens', label: 'Siemensstern (Schärfe/Fokus)' },
+  { value: 'convergence', label: 'Konvergenz (Feingitter)' },
+  { value: 'colorcycle', label: 'Pixelcheck-Loop (Vollfarben-Zyklus)' },
+  { value: 'scroll', label: 'Bewegt: Scroll-Balken (Tearing)' },
+  { value: 'timecode', label: 'Bewegt: Timecode (Latenz)' }
 ]
 
 // Muster, die ueber die Zeit animiert werden (Output-Fenster + Vorschau laufen dann
-// in einer Animationsschleife). Basis fuer weitere bewegte Phase-2-Muster.
-const ANIMATED = new Set<PatternId>(['colorcycle'])
+// in einer Animationsschleife).
+const ANIMATED = new Set<PatternId>(['colorcycle', 'scroll', 'timecode'])
 
 export function isAnimated(pattern: PatternId): boolean {
   return ANIMATED.has(pattern)
@@ -283,6 +287,79 @@ function drawInfoLabel(ctx: Ctx, cfg: PatternConfig): void {
   ctx.fillText(text, x, y)
 }
 
+// Siemensstern: radiale Keile -> Schaerfe/Fokus, Moiré-Check.
+function drawSiemensStar(ctx: Ctx, w: number, h: number): void {
+  fill(ctx, w, h, '#000000')
+  const cx = w / 2
+  const cy = h / 2
+  const r = Math.min(w, h) * 0.46
+  const wedges = 72 // 36 weisse Keile
+  ctx.fillStyle = '#ffffff'
+  for (let i = 0; i < wedges; i += 2) {
+    const a0 = (i / wedges) * Math.PI * 2
+    const a1 = ((i + 1) / wedges) * Math.PI * 2
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.arc(cx, cy, r, a0, a1)
+    ctx.closePath()
+    ctx.fill()
+  }
+  // kleiner schwarzer Kern + Umkreis
+  ctx.fillStyle = '#000000'
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 0.04, 0, Math.PI * 2)
+  ctx.fill()
+}
+
+// Konvergenz: feines weisses Gitter (1px) -> Farbsaeume an den Linien zeigen
+// Fehlkonvergenz; zusaetzlich Mittelkreuz.
+function drawConvergence(ctx: Ctx, w: number, h: number): void {
+  fill(ctx, w, h, '#000000')
+  const s = Math.max(24, Math.round(Math.min(w, h) / 24))
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  for (let x = Math.round((w / 2) % s); x <= w; x += s) {
+    ctx.moveTo(x + 0.5, 0)
+    ctx.lineTo(x + 0.5, h)
+  }
+  for (let y = Math.round((h / 2) % s); y <= h; y += s) {
+    ctx.moveTo(0, y + 0.5)
+    ctx.lineTo(w, y + 0.5)
+  }
+  ctx.stroke()
+  drawEdgeFrame(ctx, w, h)
+}
+
+// Bewegt: vertikale Balken, die horizontal scrollen -> Tearing/Judder sichtbar.
+function drawScroll(ctx: Ctx, w: number, h: number, timeMs: number): void {
+  fill(ctx, w, h, '#000000')
+  const barW = Math.max(8, Math.round(w / 40))
+  const period = barW * 2
+  const offset = ((timeMs / 1000) * (w / 3)) % period
+  ctx.fillStyle = '#ffffff'
+  for (let x = -period + offset; x < w; x += period) {
+    ctx.fillRect(Math.round(x), 0, barW, h)
+  }
+}
+
+// Bewegt: grosse Sekundenanzeige + pro Frame wandernder Block -> Latenz/Frame-Check
+// (Schirm abfilmen und vergleichen).
+function drawTimecode(ctx: Ctx, w: number, h: number, timeMs: number): void {
+  fill(ctx, w, h, '#000000')
+  const t = timeMs / 1000
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = `bold ${Math.round(h * 0.22)}px monospace`
+  ctx.fillText(`${t.toFixed(2)} s`, w / 2, h / 2)
+  // Laufbalken (eine Breite pro ~Frame)
+  const blockW = Math.max(6, Math.round(w * 0.015))
+  const x = (timeMs / 16.6667) % w
+  ctx.fillStyle = '#ffce2c'
+  ctx.fillRect(Math.round(x), h - h * 0.12, blockW, h * 0.08)
+}
+
 // Aktuelle Farbe eines Vollfarben-Zyklus anhand der Zeit (ms).
 function cycleColor(cfg: PatternConfig, timeMs: number): string {
   const colors = cfg.cycleColors.length ? cfg.cycleColors : ['#ffffff']
@@ -329,6 +406,18 @@ export function drawPattern(ctx: Ctx, cfg: PatternConfig, timeMs = 0): void {
     case 'frame-info':
       drawFrameInfo(ctx, cfg)
       break
+    case 'siemens':
+      drawSiemensStar(ctx, w, h)
+      break
+    case 'convergence':
+      drawConvergence(ctx, w, h)
+      break
+    case 'scroll':
+      drawScroll(ctx, w, h, timeMs)
+      return // ohne Label (sonst flackert es ueber dem bewegten Muster)
+    case 'timecode':
+      drawTimecode(ctx, w, h, timeMs)
+      return
   }
   if (cfg.showInfo) drawInfoLabel(ctx, cfg)
 }
