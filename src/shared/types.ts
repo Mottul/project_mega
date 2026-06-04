@@ -91,6 +91,12 @@ export interface ManualPatch {
   tags?: string | null
 }
 
+// Treffer der Suche INNERHALB eines geoeffneten PDFs
+export interface InDocHit {
+  pageNo: number
+  snippet: string // HTML mit <mark>
+}
+
 export type ImportPhase =
   | 'hashing'
   | 'copying'

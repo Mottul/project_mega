@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   BookOpen,
+  ChevronDown,
+  ChevronRight,
   Eye,
   FileText,
   FileUp,
@@ -48,6 +50,17 @@ const PROGRESS_LABEL: Record<ImportProgress['phase'], string> = {
   error: 'Fehler'
 }
 
+// Basis-Kategorien (AV); der Nutzer kann beim Bearbeiten beliebige eigene ergaenzen.
+const BASE_CATEGORIES = [
+  'Audio',
+  'Video',
+  'Licht',
+  'Rigging/Bühne',
+  'Netzwerk',
+  'Stromversorgung',
+  'Sonstiges'
+]
+
 function basename(p: string): string {
   return p.split(/[\\/]/).pop() ?? p
 }
@@ -75,6 +88,18 @@ export function ManualsLibrary(): JSX.Element {
   const [summary, setSummary] = useState<ImportSummary | null>(null)
   const [viewer, setViewer] = useState<ViewerState | null>(null)
   const [editing, setEditing] = useState<ManualMeta | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
+
+  const categories = useMemo(() => {
+    const set = new Set<string>(BASE_CATEGORIES)
+    for (const m of manuals) if (m.category) set.add(m.category)
+    return [...set].sort((a, b) => a.localeCompare(b))
+  }, [manuals])
+
+  const visibleManuals = useMemo(
+    () => (categoryFilter ? manuals.filter((m) => m.category === categoryFilter) : manuals),
+    [manuals, categoryFilter]
+  )
 
   async function refreshList(): Promise<void> {
     setManuals(await api.manuals.list())
@@ -213,12 +238,33 @@ export function ManualsLibrary(): JSX.Element {
             onOpen={(manualId, page) => void openManual(manualId, page)}
           />
         ) : (
-          <LibraryList
-            manuals={manuals}
-            onOpen={(id) => void openManual(id, 1)}
-            onEdit={setEditing}
-            onDelete={(m) => void removeManual(m)}
-          />
+          <div className="mx-auto max-w-4xl space-y-3">
+            {manuals.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                <CategoryChip
+                  label={`Alle (${manuals.length})`}
+                  active={categoryFilter === null}
+                  onClick={() => setCategoryFilter(null)}
+                />
+                {categories
+                  .filter((c) => manuals.some((m) => m.category === c))
+                  .map((c) => (
+                    <CategoryChip
+                      key={c}
+                      label={`${c} (${manuals.filter((m) => m.category === c).length})`}
+                      active={categoryFilter === c}
+                      onClick={() => setCategoryFilter(c)}
+                    />
+                  ))}
+              </div>
+            )}
+            <LibraryList
+              manuals={visibleManuals}
+              onOpen={(id) => void openManual(id, 1)}
+              onEdit={setEditing}
+              onDelete={(m) => void removeManual(m)}
+            />
+          </div>
         )}
       </div>
 
@@ -240,6 +286,7 @@ export function ManualsLibrary(): JSX.Element {
       {editing && (
         <EditDialog
           manual={editing}
+          categories={categories}
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null)
@@ -270,38 +317,72 @@ function SearchResults({
   if (groups.length === 0) {
     return <p className="py-10 text-center text-sm text-muted-foreground">Keine Treffer.</p>
   }
+  const totalHits = groups.reduce((n, g) => n + g.hits.length, 0)
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="mx-auto max-w-4xl space-y-2">
+      <p className="px-1 text-xs text-muted-foreground">
+        {totalHits} Treffer in {groups.length} Dokument{groups.length === 1 ? '' : 'en'}
+      </p>
       {groups.map((g) => (
-        <Card key={g.manualId} className="p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <BookOpen className="size-4 text-primary" />
-            <span className="font-medium">{g.title}</span>
-            {g.manufacturer && (
-              <span className="text-sm text-muted-foreground">· {g.manufacturer}</span>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            {g.hits.map((h, i) => (
-              <button
-                key={`${h.manualId}-${h.pageNo}-${i}`}
-                onClick={() => onOpen(h.manualId, h.pageNo > 0 ? h.pageNo : 1)}
-                className="flex w-full items-start gap-3 rounded-md px-2 py-1.5 text-left hover:bg-muted/50"
-              >
-                <Badge tone="info" className="mt-0.5 shrink-0">
-                  {h.pageNo > 0 ? `S. ${h.pageNo}` : 'Titel'}
-                </Badge>
-                <span
-                  className="text-sm text-muted-foreground"
-                  // Snippet stammt aus lokal importierten PDFs; enthaelt <mark>-Tags
-                  dangerouslySetInnerHTML={{ __html: h.snippet }}
-                />
-              </button>
-            ))}
-          </div>
-        </Card>
+        <HitGroupCard key={g.manualId} group={g} defaultOpen={groups.length <= 2} onOpen={onOpen} />
       ))}
     </div>
+  )
+}
+
+function HitGroupCard({
+  group,
+  defaultOpen,
+  onOpen
+}: {
+  group: HitGroup
+  defaultOpen: boolean
+  onOpen: (manualId: number, page: number) => void
+}): JSX.Element {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <Card className="overflow-hidden p-0">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-muted/40"
+      >
+        {open ? (
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        )}
+        <BookOpen className="size-4 shrink-0 text-primary" />
+        <span className="min-w-0 flex-1 truncate font-medium">
+          {group.title}
+          {group.manufacturer && (
+            <span className="font-normal text-muted-foreground"> · {group.manufacturer}</span>
+          )}
+        </span>
+        <Badge tone="neutral" className="shrink-0">
+          {group.hits.length}
+        </Badge>
+      </button>
+      {open && (
+        <div className="space-y-1 border-t border-border p-2">
+          {group.hits.map((h, i) => (
+            <button
+              key={`${h.manualId}-${h.pageNo}-${i}`}
+              onClick={() => onOpen(h.manualId, h.pageNo > 0 ? h.pageNo : 1)}
+              className="flex w-full items-start gap-3 rounded-md px-2 py-1.5 text-left hover:bg-muted/50"
+            >
+              <Badge tone="info" className="mt-0.5 shrink-0">
+                {h.pageNo > 0 ? `S. ${h.pageNo}` : 'Titel'}
+              </Badge>
+              <span
+                className="text-sm text-muted-foreground"
+                // Snippet stammt aus lokal importierten PDFs; enthaelt <mark>-Tags
+                dangerouslySetInnerHTML={{ __html: h.snippet }}
+              />
+            </button>
+          ))}
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -361,10 +442,12 @@ function LibraryList({
 
 function EditDialog({
   manual,
+  categories,
   onClose,
   onSaved
 }: {
   manual: ManualMeta
+  categories: string[]
   onClose: () => void
   onSaved: (m: ManualMeta) => void
 }): JSX.Element {
@@ -404,7 +487,17 @@ function EditDialog({
             <Input value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} />
           </Field>
           <Field label="Kategorie">
-            <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+            <Input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              list="manual-categories"
+              placeholder="wählen oder neu eingeben"
+            />
+            <datalist id="manual-categories">
+              {[...new Set([...BASE_CATEGORIES, ...categories])].map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </Field>
           <Field label="Tags (kommagetrennt)">
             <Input value={tags} onChange={(e) => setTags(e.target.value)} />
@@ -429,5 +522,28 @@ function Field({ label, children }: { label: string; children: ReactNode }): JSX
       <span className="text-sm font-medium">{label}</span>
       {children}
     </label>
+  )
+}
+
+function CategoryChip({
+  label,
+  active,
+  onClick
+}: {
+  label: string
+  active: boolean
+  onClick: () => void
+}): JSX.Element {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+        active
+          ? 'border-primary bg-primary/15 text-foreground'
+          : 'border-border text-muted-foreground hover:bg-muted/50'
+      }`}
+    >
+      {label}
+    </button>
   )
 }

@@ -3,10 +3,21 @@ import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 // vite ?worker -> Worker-Konstruktor; bundelt den pdfjs-Worker sauber mit
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker'
-import { Loader2, Maximize, MoveHorizontal, ZoomIn, ZoomOut } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Maximize,
+  MoveHorizontal,
+  Search,
+  ZoomIn,
+  ZoomOut
+} from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
+import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { api } from '@renderer/lib/api'
+import type { InDocHit } from '@shared/types'
 
 pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker()
 
@@ -28,6 +39,11 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
   const [fit, setFit] = useState<FitMode>('width')
   const [customScale, setCustomScale] = useState(1)
   const [current, setCurrent] = useState(1)
+
+  const [find, setFind] = useState('')
+  const [matches, setMatches] = useState<InDocHit[]>([])
+  const [matchIdx, setMatchIdx] = useState(0)
+  const [showMatches, setShowMatches] = useState(true)
 
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null)
   const [vw, setVw] = useState(800)
@@ -113,13 +129,41 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
     pageEls.current[idx]?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }
 
+  function gotoMatch(idx: number): void {
+    if (!matches.length) return
+    const i = ((idx % matches.length) + matches.length) % matches.length
+    setMatchIdx(i)
+    scrollToPage(matches[i].pageNo)
+  }
+
+  // Suche IM Dokument (nutzt den DB-Index, nach Manual gefiltert), debounced
+  useEffect(() => {
+    const q = find.trim()
+    if (!q) {
+      setMatches([])
+      setMatchIdx(0)
+      return
+    }
+    const t = setTimeout(() => {
+      void api.manuals.searchInDoc(manualId, q).then((m) => {
+        setMatches(m)
+        setMatchIdx(0)
+        if (m.length) scrollToPage(m[0].pageNo)
+      })
+    }, 250)
+    return () => clearTimeout(t)
+    // scrollToPage/manualId stabil genug; nur bei Query-Aenderung neu suchen
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [find, manualId])
+
   // Strg+Mausrad bzw. Trackpad-Pinch (Chromium liefert Pinch als ctrl+wheel) -> zoomen.
-  // EINMAL anhaengen (nicht bei jeder Massstabsaenderung neu) und Scroll sicher
-  // unterbinden, sonst scrollt das PDF statt zu zoomen.
+  // Auf FENSTER-Ebene in der Capture-Phase abfangen: so wird der Default-Scroll des
+  // Containers zuverlaessig unterbunden (am Container selbst wurde er sonst nach dem
+  // Scrollen umgangen). Nur wenn der Zeiger ueber dem Viewer ist.
   useEffect(() => {
     if (!rootEl) return
     const onWheel = (e: WheelEvent): void => {
-      if (!e.ctrlKey) return
+      if (!e.ctrlKey || !rootEl.contains(e.target as Node)) return
       e.preventDefault()
       e.stopPropagation()
       const factor = e.deltaY < 0 ? 1.1 : 0.9
@@ -128,8 +172,8 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
       setFit('custom')
       setCustomScale(next)
     }
-    rootEl.addEventListener('wheel', onWheel, { passive: false })
-    return () => rootEl.removeEventListener('wheel', onWheel)
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true })
+    return () => window.removeEventListener('wheel', onWheel, { capture: true })
   }, [rootEl])
 
   // Aktuelle Seite = oberste Seite, deren Oberkante (knapp) ueber dem Containerrand liegt.
@@ -199,6 +243,73 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
           <span>/ {numPages || '–'}</span>
         </div>
       </div>
+
+      {/* Suche im Dokument */}
+      <div className="flex items-center gap-2 border-b border-border px-4 py-1.5">
+        <Search className="size-4 shrink-0 text-muted-foreground" />
+        <Input
+          value={find}
+          onChange={(e) => setFind(e.target.value)}
+          placeholder="In diesem PDF suchen…"
+          className="h-8 max-w-xs"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') gotoMatch(matchIdx + 1)
+          }}
+        />
+        {find.trim() && (
+          <>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {matches.length ? `${matchIdx + 1} / ${matches.length}` : 'keine Treffer'}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              disabled={!matches.length}
+              onClick={() => gotoMatch(matchIdx - 1)}
+              aria-label="Voriger Treffer"
+            >
+              <ChevronUp className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              disabled={!matches.length}
+              onClick={() => gotoMatch(matchIdx + 1)}
+              aria-label="Nächster Treffer"
+            >
+              <ChevronDown className="size-4" />
+            </Button>
+            {matches.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setShowMatches((s) => !s)}>
+                {showMatches ? 'Liste aus' : 'Liste'}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+      {find.trim() && matches.length > 0 && showMatches && (
+        <div className="max-h-44 overflow-auto border-b border-border bg-card/40">
+          {matches.map((m, i) => (
+            <button
+              key={`${m.pageNo}-${i}`}
+              onClick={() => gotoMatch(i)}
+              className={`flex w-full items-start gap-2 px-4 py-1.5 text-left text-sm hover:bg-muted/50 ${
+                i === matchIdx ? 'bg-primary/10' : ''
+              }`}
+            >
+              <span className="mt-0.5 shrink-0 rounded bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">
+                S. {m.pageNo}
+              </span>
+              <span
+                className="text-muted-foreground"
+                dangerouslySetInnerHTML={{ __html: m.snippet }}
+              />
+            </button>
+          ))}
+        </div>
+      )}
 
       <div ref={setRootEl} className="relative flex-1 overflow-auto bg-zinc-900/60">
         {loading && (

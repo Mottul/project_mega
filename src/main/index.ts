@@ -36,6 +36,9 @@ function createWindow(): BrowserWindow {
   })
 
   win.once('ready-to-show', () => win.show())
+  // Pinch-/Strg-Rad-Seitenzoom des ganzen Fensters abschalten -> der PDF-Viewer
+  // steuert den Zoom selbst (sonst zoomt/scrollt die ganze App ungewollt).
+  win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
   // Vollbild-Testbild mitschliessen, wenn das Hauptfenster geht
   win.on('closed', () => closePattern())
 
