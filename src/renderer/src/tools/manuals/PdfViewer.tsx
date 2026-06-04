@@ -114,12 +114,13 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
   }
 
   // Strg+Mausrad bzw. Trackpad-Pinch (Chromium liefert Pinch als ctrl+wheel) -> zoomen.
-  // EINMAL anhaengen (nicht bei jeder Massstabsaenderung neu) und Scroll sicher
-  // unterbinden, sonst scrollt das PDF statt zu zoomen.
+  // Auf FENSTER-Ebene in der Capture-Phase abfangen: so wird der Default-Scroll des
+  // Containers zuverlaessig unterbunden (am Container selbst wurde er sonst nach dem
+  // Scrollen umgangen). Nur wenn der Zeiger ueber dem Viewer ist.
   useEffect(() => {
     if (!rootEl) return
     const onWheel = (e: WheelEvent): void => {
-      if (!e.ctrlKey) return
+      if (!e.ctrlKey || !rootEl.contains(e.target as Node)) return
       e.preventDefault()
       e.stopPropagation()
       const factor = e.deltaY < 0 ? 1.1 : 0.9
@@ -128,8 +129,8 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
       setFit('custom')
       setCustomScale(next)
     }
-    rootEl.addEventListener('wheel', onWheel, { passive: false })
-    return () => rootEl.removeEventListener('wheel', onWheel)
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true })
+    return () => window.removeEventListener('wheel', onWheel, { capture: true })
   }, [rootEl])
 
   // Aktuelle Seite = oberste Seite, deren Oberkante (knapp) ueber dem Containerrand liegt.

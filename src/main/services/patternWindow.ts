@@ -36,12 +36,9 @@ export function openPattern(config: PatternConfig, displayId: number): void {
     screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay()
   const b = display.bounds
 
-  if (win && !win.isDestroyed()) {
-    win.setBounds(b)
-    win.webContents.send(Channels.patternRender, config)
-    win.focus()
-    return
-  }
+  // Bestehendes Ausgabefenster schliessen -> sauberer (Monitor-)Wechsel, da ein
+  // Vollbildfenster sich nicht zuverlaessig verschieben laesst.
+  closePattern()
 
   win = new BrowserWindow({
     x: b.x,
@@ -49,14 +46,11 @@ export function openPattern(config: PatternConfig, displayId: number): void {
     width: b.width,
     height: b.height,
     frame: false,
-    fullscreen: false,
-    alwaysOnTop: true,
-    resizable: false,
-    movable: false,
-    minimizable: false,
-    maximizable: false,
-    skipTaskbar: true,
+    // echtes Vollbild auf dem Zielmonitor -> keine Win11-Rundung, kein Rand,
+    // randlos pixelgenau ueber den ganzen Schirm.
+    fullscreen: true,
     backgroundColor: '#000000',
+    skipTaskbar: true,
     title: 'Testbild',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -75,7 +69,6 @@ export function openPattern(config: PatternConfig, displayId: number): void {
     if (input.type === 'keyDown' && input.key === 'Escape') closePattern()
   })
   win.webContents.on('did-finish-load', () => {
-    win?.setBounds(b)
     win?.webContents.send(Channels.patternRender, currentConfig)
   })
 
