@@ -194,9 +194,28 @@ src/
 
 ## Status
 
-Runde 1 (Fundament + HAP-Konverter + Manuals-Bibliothek) ist umgesetzt.
-Verifiziert: `typecheck` und `build` grün; HAP-Encode (hap_q → `HapY`, hap_alpha → `Hap5`)
-end-to-end mit gebündeltem ffmpeg getestet.
+**Umgesetzt:**
 
-Roadmap (Runde 2+): LED-Wall-Konfigurator, Testbildgenerator, Videoplayer (Multi-Monitor),
-Projektionsverhältnis-Rechner – jeweils als zusätzliche Module.
+- **Fundament** – electron-vite (main/preload/renderer), sichere Fenster-Defaults, typisierte
+  IPC-Brücke, Tool-Modulsystem, Launcher mit Suche, Gold-Akzent (#ffce2c) auf kühlem Dark-Theme,
+  App-Icon, **0 npm-Vulnerabilities**, schlanker Install ohne Compiler (Prebuilds).
+- **HAP-Konverter** – Batch nach HAP/HAP Q/HAP Alpha, gebündeltes ffmpeg, Parallel + Kompressor,
+  Auto-Padding auf ×4-Maße. End-to-end getestet.
+- **Manuals-Bibliothek** – PDF-Import (SHA-256-Dedup), FTS5-Volltextsuche mit aufklappbaren
+  Trefferboxen, **Kategorien** (Filter), In-App-PDF-Viewer (Scroll, Zoom/Pinch, Seiten-Sprung,
+  **Suche im PDF**).
+- **Testbildgenerator** – Muster (Gitter/Module, Geometrie, Farbbalken, Graustufen, Siemensstern,
+  Konvergenz), **bewegte** Muster (Pixelcheck-Loop, Scroll, Timecode), **Vollbild-Ausgabe** auf
+  gewähltem Monitor (pixelgenau, live), PNG- + Video-Export, **Presets**.
+
+## Roadmap
+
+- **Videoplayer / LED-Wall-Player** (nächstes Tool) – Playlist-Player für LED-Wände: Medien
+  auto-konvertieren (Ziel-Auflösung + Blur-Fill, GPU-Encoder), Vollbild-Ausgabe auf gewähltem
+  Monitor, Play/Pause/Skip/Seek/Loop/Shuffle, gespeicherte Playlists/Tabs, Idle-/Fallback-Bild
+  (Testbild), **Fernsteuerung per Tablet/Handy** (eingebetteter Webserver). Adaptiert den
+  bestehenden „LED Wall Player V4" (Python/mpv) in die Electron/React-Suite – nutzt das
+  vorhandene Multi-Monitor-Ausgabefenster und ffmpeg.
+- **Projektionsverhältnis-Rechner**, **LED-Wall-Konfigurator** – kleinere Rechner-Tools.
+- **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
+  (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).
