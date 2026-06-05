@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { DEFAULT_SETTINGS, type AppSettings } from '@shared/types'
+import { DEFAULT_PLAYER_SETTINGS, DEFAULT_SETTINGS, type AppSettings } from '@shared/types'
 
 // Schlanker Settings-Store: eine JSON-Datei in userData. Bewusst ohne externe
 // Abhaengigkeit (electron-store ist ESM-only und macht im CJS-main Aerger).
@@ -17,7 +17,12 @@ export function getSettings(): AppSettings {
   try {
     if (existsSync(settingsFile())) {
       const raw = JSON.parse(readFileSync(settingsFile(), 'utf-8')) as Partial<AppSettings>
-      cache = { ...DEFAULT_SETTINGS, ...raw }
+      // player verschachtelt -> tief mergen, damit neue Felder nicht wegfallen
+      cache = {
+        ...DEFAULT_SETTINGS,
+        ...raw,
+        player: { ...DEFAULT_PLAYER_SETTINGS, ...(raw.player ?? {}) }
+      }
     } else {
       cache = { ...DEFAULT_SETTINGS }
     }

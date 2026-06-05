@@ -148,11 +148,12 @@ Icon-/Versions-Metadaten in der `.exe` (kosmetisch).
 src/
 ├── main/                     # Electron Main-Prozess
 │   ├── index.ts              # App-Lifecycle, Fenster (sichere Defaults), Protocol
-│   ├── ipc/                  # IPC-Handler (dialog, ffmpeg, manuals) + Registry
+│   ├── ipc/                  # IPC-Handler (dialog, ffmpeg, manuals, player) + Registry
 │   └── services/
-│       ├── db.ts             # SQLite (better-sqlite3) + FTS5-Migrationen
+│       ├── db.ts             # SQLite (better-sqlite3) + FTS5-Migrationen + media_items
 │       ├── ffmpeg/           # ffmpegPath, probe, hapEncoder, jobManager (Queue)
-│       └── manuals/          # manualsService, pdfText (pdfjs)
+│       ├── manuals/          # manualsService, pdfText (pdfjs)
+│       └── player/           # mediaLibrary, encoder (Fit/GPU), convertManager, playerState, playerWindow
 ├── preload/index.ts          # contextBridge -> window.api (typisiert)
 ├── shared/                   # ipc-contracts.ts + types.ts (single source of truth)
 └── renderer/src/
@@ -161,7 +162,9 @@ src/
     └── tools/
         ├── registry.ts       # ◀ EINZIGE Stelle zum Eintragen neuer Tools
         ├── hap-converter/
-        └── manuals/
+        ├── manuals/
+        ├── test-patterns/
+        └── video-player/     # Steuer-UI (VideoPlayer) + Vollbild-Ausgabe (PlayerOutput)
 ```
 
 ### Ein neues Tool hinzufügen
@@ -207,15 +210,21 @@ src/
 - **Testbildgenerator** – Muster (Gitter/Module, Geometrie, Farbbalken, Graustufen, Siemensstern,
   Konvergenz), **bewegte** Muster (Pixelcheck-Loop, Scroll, Timecode), **Vollbild-Ausgabe** auf
   gewähltem Monitor (pixelgenau, live), PNG- + Video-Export, **Presets**.
+- **Video-Player / LED-Wall-Player** – Playlist-Player für LED-Wände/Beamer. Medien werden auf die
+  **Wand-Auflösung eingebacken** (Fit-Modi **Blur-Fill / Schwarze Ränder / Strecken**) und nach
+  **H.264/MP4** konvertiert (Chromium dekodiert das hardwarebeschleunigt; **GPU-Encoder** wie
+  NVENC/QSV/AMF/VideoToolbox werden erkannt **und validiert**, sonst libx264-Fallback). Bilder
+  werden gebacken (freie Standzeit), GIFs zu Loop-Videos. **Vollbild-Ausgabe** auf gewähltem
+  Monitor mit **doppelt gepuffertem** HTML5-Player (nahtlose Übergänge), Transport
+  (Play/Pause/Skip/**Seek**/**Loop**/**Shuffle**/Stumm), **Playlist** mit Drag&Drop, verwaltete
+  Bibliothek (Thumbnails). Adaptiert den bestehenden „LED Wall Player V4" (Python/mpv) in die
+  Electron/React-Suite – nutzt das Multi-Monitor-Ausgabefenster und das gebündelte ffmpeg.
 
 ## Roadmap
 
-- **Videoplayer / LED-Wall-Player** (nächstes Tool) – Playlist-Player für LED-Wände: Medien
-  auto-konvertieren (Ziel-Auflösung + Blur-Fill, GPU-Encoder), Vollbild-Ausgabe auf gewähltem
-  Monitor, Play/Pause/Skip/Seek/Loop/Shuffle, gespeicherte Playlists/Tabs, Idle-/Fallback-Bild
-  (Testbild), **Fernsteuerung per Tablet/Handy** (eingebetteter Webserver). Adaptiert den
-  bestehenden „LED Wall Player V4" (Python/mpv) in die Electron/React-Suite – nutzt das
-  vorhandene Multi-Monitor-Ausgabefenster und ffmpeg.
+- **Video-Player – nächste Ausbaustufe:** **Fernsteuerung per Tablet/Handy** (eingebetteter
+  Webserver), **gespeicherte Playlists/Tabs**, **Idle-/Fallback-Bild** (Testbild über den
+  vorhandenen Generator), **Batch-Reconvert** bei Auflösungswechsel.
 - **Projektionsverhältnis-Rechner**, **LED-Wall-Konfigurator** – kleinere Rechner-Tools.
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).

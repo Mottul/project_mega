@@ -60,5 +60,24 @@ function migrate(d: DB): void {
       INSERT INTO pages_fts(pages_fts, rowid, content) VALUES ('delete', old.id, old.content);
       INSERT INTO pages_fts(rowid, content) VALUES (new.id, new.content);
     END;
+
+    -- Video-Player: abspielbereite, auf Wand-Auflösung konvertierte Medien.
+    CREATE TABLE IF NOT EXISTS media_items (
+      id            TEXT PRIMARY KEY,
+      kind          TEXT NOT NULL,        -- 'video' | 'image' | 'gif'
+      title         TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      stored_name   TEXT NOT NULL,        -- konvertierte Datei in userData/player-media
+      thumb_name    TEXT,                 -- Vorschaubild (jpg) oder NULL
+      width         INTEGER NOT NULL,     -- Ziel-/Wand-Auflösung
+      height        INTEGER NOT NULL,
+      duration_sec  REAL,                 -- NULL = Standbild
+      fit_mode      TEXT NOT NULL,        -- 'blur' | 'bars' | 'stretch'
+      has_audio     INTEGER NOT NULL,     -- 0/1
+      conv_key      TEXT UNIQUE NOT NULL, -- Quelle+Fit+Auflösung -> Dedup
+      size_bytes    INTEGER NOT NULL,
+      added_at      INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_media_added ON media_items(added_at);
   `)
 }

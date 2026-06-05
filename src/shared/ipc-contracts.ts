@@ -4,6 +4,7 @@
 import type {
   AppSettings,
   ColorLoopRequest,
+  ConvertJob,
   DisplayInfo,
   HapCheckResult,
   HapEnqueueRequest,
@@ -15,9 +16,15 @@ import type {
   ManualMeta,
   ManualPatch,
   ManualSearchHit,
+  MediaItem,
   PatternConfig,
   PatternVideoProgress,
   PatternVideoRequest,
+  PlayerCommand,
+  PlayerEncoderStatus,
+  PlayerImportRequest,
+  PlayerState,
+  PlayerTick,
   ProbeResult,
   SelectPathsOptions
 } from './types'
@@ -61,13 +68,35 @@ export const Channels = {
   patternSavePng: 'pattern:savePng',
   patternExportVideo: 'pattern:exportVideo',
   patternExportColorLoop: 'pattern:exportColorLoop',
-  patternVideoProgress: 'pattern:videoProgress' // Event: PatternVideoProgress
+  patternVideoProgress: 'pattern:videoProgress', // Event: PatternVideoProgress
+  // Video-Player – Bibliothek & Konvertierung
+  playerEncoders: 'player:encoders',
+  playerImport: 'player:import',
+  playerConvertList: 'player:convertList',
+  playerConvertCancel: 'player:convertCancel',
+  playerConvertClear: 'player:convertClearFinished',
+  playerConvertUpdate: 'player:convertUpdate', // Event: ConvertJob
+  playerLibraryList: 'player:libraryList',
+  playerLibraryDelete: 'player:libraryDelete',
+  playerLibraryChanged: 'player:libraryChanged', // Event (kein Payload)
+  // Video-Player – Wiedergabe & Ausgabe
+  playerGetState: 'player:getState',
+  playerCommand: 'player:command',
+  playerReport: 'player:report', // Ausgabefenster -> main (Position/Dauer)
+  playerOpenOutput: 'player:openOutput',
+  playerCloseOutput: 'player:closeOutput',
+  playerState: 'player:state', // Event: PlayerState (main -> alle)
+  playerTick: 'player:tick' // Event: PlayerTick (main -> alle, häufig)
 } as const
 
 export type ChannelName = (typeof Channels)[keyof typeof Channels]
 
 /** Custom-Protocol, ueber das der renderer importierte PDFs laden darf. */
 export const MANUAL_PROTOCOL = 'manual'
+
+/** Custom-Protocol fuer konvertierte Player-Medien (Video/Bild + Thumbnails).
+ *  Unterstuetzt Range-Requests -> HTML5-`<video>` kann seeken/streamen. */
+export const MEDIA_PROTOCOL = 'media'
 
 /** Die komplette, getypte Bruecke window.api. */
 export interface ToolboxApi {
@@ -129,5 +158,29 @@ export interface ToolboxApi {
     /** Pixelcheck-Loop (zyklische Vollfarben) als Video exportieren. */
     exportColorLoop(req: ColorLoopRequest): Promise<string | null>
     onVideoProgress(cb: (p: PatternVideoProgress) => void): () => void
+  }
+
+  player: {
+    /** Verfügbare (geprüfte) Encoder + ffmpeg-Status. */
+    encoders(): Promise<PlayerEncoderStatus>
+    /** Medien importieren + auf Wand-Auflösung konvertieren (Queue). */
+    import(req: PlayerImportRequest): Promise<{ jobIds: string[] }>
+    convertList(): Promise<ConvertJob[]>
+    convertCancel(id: string): Promise<void>
+    convertClearFinished(): Promise<void>
+    onConvertUpdate(cb: (job: ConvertJob) => void): () => void
+    /** Bibliothek (alle abspielbereiten Medien). */
+    libraryList(): Promise<MediaItem[]>
+    libraryDelete(id: string): Promise<void>
+    onLibraryChanged(cb: () => void): () => void
+    /** Aktueller Player-Zustand. */
+    getState(): Promise<PlayerState>
+    command(cmd: PlayerCommand): Promise<void>
+    /** Vom Ausgabefenster: aktuelle Position/Dauer melden. */
+    report(positionSec: number, durationSec: number): Promise<void>
+    openOutput(displayId: number): Promise<void>
+    closeOutput(): Promise<void>
+    onState(cb: (state: PlayerState) => void): () => void
+    onTick(cb: (tick: PlayerTick) => void): () => void
   }
 }
