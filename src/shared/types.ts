@@ -214,6 +214,134 @@ export interface PatternVideoProgress {
   error?: string
 }
 
+/* ------------------------------ Video-Player ----------------------------- */
+// LED-Wall-/Playlist-Player. Medien werden auf die Wand-Auflösung "eingebacken"
+// (Fit-Modus) und nach H.264/MP4 konvertiert -> Chromium spielt das
+// hardwarebeschleunigt ab (HAP kann der Browser NICHT dekodieren, das bleibt
+// dem HAP-Konverter/Resolume vorbehalten). Stehende Bilder werden als JPG in
+// Wand-Auflösung gebacken und mit einstellbarer Standzeit gezeigt.
+
+export type MediaKind = 'video' | 'image' | 'gif'
+
+// blur  = unscharfer, formatfüllender Hintergrund + scharfer Inhalt mittig
+// bars  = Letter-/Pillarbox (schwarze Ränder), Originalformat erhalten
+// stretch = auf exakte Wand-Auflösung ziehen (verzerrt; gut bei Mini-Abweichungen)
+export type FitMode = 'blur' | 'bars' | 'stretch'
+
+export type LoopMode = 'none' | 'one' | 'all'
+
+export interface WallResolution {
+  width: number
+  height: number
+}
+
+/** Ein konvertiertes, abspielbereites Medium in der verwalteten Bibliothek. */
+export interface MediaItem {
+  id: string
+  kind: MediaKind
+  title: string
+  originalName: string
+  /** media://library/<stored> – konvertierte Datei (mp4/jpg) in Wand-Auflösung. */
+  url: string
+  /** media://library/<thumb> – Vorschaubild, oder null. */
+  thumbUrl: string | null
+  width: number // Ziel-/Wand-Auflösung, in der eingebacken wurde
+  height: number
+  durationSec: number | null // null = Standbild (freie Standzeit)
+  fitMode: FitMode
+  hasAudio: boolean
+  sizeBytes: number
+  addedAt: number
+}
+
+export type ConvertStatus =
+  | 'queued'
+  | 'probing'
+  | 'converting'
+  | 'thumbnail'
+  | 'done'
+  | 'error'
+  | 'canceled'
+
+export interface ConvertJob {
+  id: string
+  sourcePath: string
+  title: string
+  status: ConvertStatus
+  progress: number // 0..1
+  fitMode: FitMode
+  targetWidth: number
+  targetHeight: number
+  kind: MediaKind | null
+  mediaId: string | null // gesetzt, sobald in der Bibliothek
+  encoder: string | null // tatsächlich genutzter Encoder
+  error?: string
+  createdAt: number
+}
+
+export interface PlayerImportRequest {
+  sources: string[] // Dateien und/oder Ordner (rekursiv)
+  fitMode: FitMode
+  wall: WallResolution
+}
+
+export interface EncoderInfo {
+  id: string // ffmpeg-Encodername, z.B. 'h264_nvenc' | 'libx264'
+  label: string
+  hardware: boolean
+}
+
+export interface PlayerEncoderStatus {
+  ffmpegFound: boolean
+  version: string | null
+  available: EncoderInfo[] // geprüfte, funktionierende Encoder
+  recommended: string // Encoder-id für "Automatisch"
+  error?: string
+}
+
+/** Vollständiger Player-Zustand (main -> alle Fenster + Tablet). */
+export interface PlayerState {
+  playlist: MediaItem[]
+  index: number // -1 = leer
+  playing: boolean
+  loop: LoopMode
+  shuffle: boolean
+  muted: boolean
+  volume: number // 0..1
+  positionSec: number
+  durationSec: number
+  imageDurationSec: number
+  outputOpen: boolean
+  wall: WallResolution
+  seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
+}
+
+/** Leichtgewichtiger Positions-Tick (häufig; ohne Playlist-Payload). */
+export interface PlayerTick {
+  positionSec: number
+  durationSec: number
+}
+
+/** Steuerbefehle von Desktop-UI oder Tablet an den main-Player. */
+export type PlayerCommand =
+  | { type: 'play' }
+  | { type: 'pause' }
+  | { type: 'toggle' }
+  | { type: 'next' }
+  | { type: 'prev' }
+  | { type: 'goto'; index: number }
+  | { type: 'seek'; positionSec: number }
+  | { type: 'add'; mediaIds: string[]; at?: number }
+  | { type: 'remove'; index: number }
+  | { type: 'move'; from: number; to: number }
+  | { type: 'clear' }
+  | { type: 'setLoop'; loop: LoopMode }
+  | { type: 'setShuffle'; shuffle: boolean }
+  | { type: 'setMuted'; muted: boolean }
+  | { type: 'setVolume'; volume: number }
+  | { type: 'setImageDuration'; seconds: number }
+  | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig
+
 /* -------------------------------- Dialog -------------------------------- */
 
 export interface SelectPathsOptions {
@@ -230,16 +358,36 @@ export interface PatternPreset {
   config: PatternConfig
 }
 
+export interface PlayerSettings {
+  wallWidth: number
+  wallHeight: number
+  defaultFit: FitMode
+  outputDisplayId: number | null
+  imageDurationSec: number
+  encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
+}
+
+export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
+  wallWidth: 1920,
+  wallHeight: 1080,
+  defaultFit: 'blur',
+  outputDisplayId: null,
+  imageDurationSec: 10,
+  encoder: 'auto'
+}
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
   lastImportDir: string | null
   patternPresets: PatternPreset[]
+  player: PlayerSettings
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   lastHapOutputDir: null,
   lastHapFormat: 'hap_q',
   lastImportDir: null,
-  patternPresets: []
+  patternPresets: [],
+  player: DEFAULT_PLAYER_SETTINGS
 }

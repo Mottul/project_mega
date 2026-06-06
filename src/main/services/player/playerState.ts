@@ -1,0 +1,186 @@
+// Autoritativer Player-Zustand im main-Prozess. Desktop-UI und (später) Tablet
+// schicken Befehle hierher; das Ausgabefenster meldet Position/Ende zurück. Jede
+// Änderung wird an ALLE Fenster gebroadcastet -> ein einziger, geteilter Zustand.
+
+import { EMPTY_PLAYER_STATE, nextIndex, prevIndex } from '@shared/player'
+import type { MediaItem, PlayerCommand, PlayerState, PlayerTick } from '@shared/types'
+import { getMedia } from './mediaLibrary'
+import { getSettings, setSettings } from '../store'
+
+type StateSink = (state: PlayerState) => void
+type TickSink = (tick: PlayerTick) => void
+
+let state: PlayerState = { ...EMPTY_PLAYER_STATE }
+let stateSink: StateSink = () => {}
+let tickSink: TickSink = () => {}
+let initialized = false
+
+function ensureInit(): void {
+  if (initialized) return
+  initialized = true
+  const p = getSettings().player
+  state = {
+    ...EMPTY_PLAYER_STATE,
+    imageDurationSec: p.imageDurationSec,
+    wall: { width: p.wallWidth, height: p.wallHeight }
+  }
+}
+
+export function setStateSink(sink: StateSink): void {
+  stateSink = sink
+}
+export function setTickSink(sink: TickSink): void {
+  tickSink = sink
+}
+
+export function getPlayerState(): PlayerState {
+  ensureInit()
+  return state
+}
+
+function emitState(): void {
+  stateSink({ ...state, playlist: [...state.playlist] })
+}
+
+function currentId(): string | null {
+  return state.index >= 0 && state.index < state.playlist.length ? state.playlist[state.index].id : null
+}
+
+// Index neu auf das Medium mit gegebener id setzen (nach Reorder/Remove), sonst clampen.
+function reindexTo(id: string | null): void {
+  if (id) {
+    const i = state.playlist.findIndex((m) => m.id === id)
+    state.index = i >= 0 ? i : Math.min(state.index, state.playlist.length - 1)
+  } else {
+    state.index = state.playlist.length ? Math.min(Math.max(0, state.index), state.playlist.length - 1) : -1
+  }
+}
+
+function goToIndex(i: number, play: boolean): void {
+  state.index = i
+  state.positionSec = 0
+  state.durationSec = i >= 0 ? state.playlist[i]?.durationSec ?? 0 : 0
+  state.playing = i >= 0 ? play : false
+  state.seekSeq++ // Ausgabefenster: neu laden + ggf. auf 0 setzen
+}
+
+export function applyCommand(cmd: PlayerCommand): void {
+  ensureInit()
+  switch (cmd.type) {
+    case 'play':
+      if (state.index >= 0) state.playing = true
+      break
+    case 'pause':
+      state.playing = false
+      break
+    case 'toggle':
+      if (state.index >= 0) state.playing = !state.playing
+      break
+    case 'next':
+      goToIndex(nextIndex(state), state.playing)
+      break
+    case 'prev':
+      goToIndex(prevIndex(state), state.playing)
+      break
+    case 'ended': {
+      const ni = nextIndex(state)
+      if (ni < 0) {
+        state.playing = false // Ende ohne Loop -> stehen bleiben
+      } else {
+        goToIndex(ni, true)
+      }
+      break
+    }
+    case 'goto':
+      if (cmd.index >= 0 && cmd.index < state.playlist.length) goToIndex(cmd.index, true)
+      break
+    case 'seek':
+      state.positionSec = Math.max(0, cmd.positionSec)
+      state.seekSeq++
+      break
+    case 'add': {
+      const items = cmd.mediaIds.map(getMedia).filter((m): m is MediaItem => m !== null)
+      if (items.length === 0) break
+      const at = cmd.at == null ? state.playlist.length : Math.max(0, Math.min(cmd.at, state.playlist.length))
+      const keepId = currentId()
+      state.playlist.splice(at, 0, ...items)
+      if (state.index < 0) goToIndex(0, false)
+      else reindexTo(keepId)
+      break
+    }
+    case 'remove': {
+      if (cmd.index < 0 || cmd.index >= state.playlist.length) break
+      const removingCurrent = cmd.index === state.index
+      const keepId = removingCurrent ? null : currentId()
+      state.playlist.splice(cmd.index, 1)
+      if (state.playlist.length === 0) {
+        goToIndex(-1, false)
+      } else if (removingCurrent) {
+        // auf das nun an dieser Stelle stehende Medium springen (oder ans Ende clampen)
+        goToIndex(Math.min(cmd.index, state.playlist.length - 1), state.playing)
+      } else {
+        reindexTo(keepId)
+      }
+      break
+    }
+    case 'move': {
+      const { from, to } = cmd
+      if (from < 0 || from >= state.playlist.length || to < 0 || to >= state.playlist.length) break
+      const keepId = currentId()
+      const [m] = state.playlist.splice(from, 1)
+      state.playlist.splice(to, 0, m)
+      reindexTo(keepId)
+      break
+    }
+    case 'clear':
+      state.playlist = []
+      goToIndex(-1, false)
+      break
+    case 'setLoop':
+      state.loop = cmd.loop
+      break
+    case 'setShuffle':
+      state.shuffle = cmd.shuffle
+      break
+    case 'setMuted':
+      state.muted = cmd.muted
+      break
+    case 'setVolume':
+      state.volume = Math.max(0, Math.min(1, cmd.volume))
+      break
+    case 'setImageDuration':
+      state.imageDurationSec = Math.max(1, Math.min(3600, Math.round(cmd.seconds)))
+      setSettings({ player: { ...getSettings().player, imageDurationSec: state.imageDurationSec } })
+      break
+  }
+  emitState()
+}
+
+/** Vom Ausgabefenster: aktuelle Position/Dauer. Nur leichter Tick (kein State). */
+export function reportPlayback(positionSec: number, durationSec: number): void {
+  ensureInit()
+  state.positionSec = positionSec
+  if (durationSec > 0) state.durationSec = durationSec
+  tickSink({ positionSec, durationSec: state.durationSec })
+}
+
+export function setOutputOpen(open: boolean): void {
+  ensureInit()
+  if (open) {
+    const p = getSettings().player
+    state.wall = { width: p.wallWidth, height: p.wallHeight }
+  }
+  state.outputOpen = open
+  emitState()
+}
+
+/** Aus der Bibliothek gelöschtes Medium aus der Playlist entfernen. */
+export function dropMediaFromPlaylist(mediaId: string): void {
+  ensureInit()
+  if (!state.playlist.some((m) => m.id === mediaId)) return
+  const keepId = currentId() === mediaId ? null : currentId()
+  state.playlist = state.playlist.filter((m) => m.id !== mediaId)
+  if (state.playlist.length === 0) goToIndex(-1, false)
+  else reindexTo(keepId)
+  emitState()
+}

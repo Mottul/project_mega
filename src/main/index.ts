@@ -1,17 +1,27 @@
 import { app, BrowserWindow, protocol, shell } from 'electron'
 import { join } from 'node:path'
-import { MANUAL_PROTOCOL } from '@shared/ipc-contracts'
-import { attachWindow, registerIpcHandlers, registerManualProtocol } from './ipc/registry'
+import { MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
+import {
+  attachWindow,
+  registerIpcHandlers,
+  registerManualProtocol,
+  registerMediaProtocol
+} from './ipc/registry'
 import { logLine } from './services/log'
 import { closePattern } from './services/patternWindow'
+import { closePlayerOutput } from './services/player/playerWindow'
 
 const isDev = !app.isPackaged
 
-// Privilegiertes Schema MUSS vor app.whenReady registriert werden, damit der
-// renderer per fetch (pdfjs) darauf zugreifen darf.
+// Privilegierte Schemata MÜSSEN vor app.whenReady registriert werden, damit der
+// renderer darauf zugreifen darf (pdfjs-fetch bzw. <video src> mit Range/Stream).
 protocol.registerSchemesAsPrivileged([
   {
     scheme: MANUAL_PROTOCOL,
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
+  },
+  {
+    scheme: MEDIA_PROTOCOL,
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
   }
 ])
@@ -39,8 +49,11 @@ function createWindow(): BrowserWindow {
   // Pinch-/Strg-Rad-Seitenzoom des ganzen Fensters abschalten -> der PDF-Viewer
   // steuert den Zoom selbst (sonst zoomt/scrollt die ganze App ungewollt).
   win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
-  // Vollbild-Testbild mitschliessen, wenn das Hauptfenster geht
-  win.on('closed', () => closePattern())
+  // Vollbild-Ausgaben (Testbild + Player) mitschliessen, wenn das Hauptfenster geht
+  win.on('closed', () => {
+    closePattern()
+    closePlayerOutput()
+  })
 
   // Externe Links im Standardbrowser oeffnen, keine neuen Fenster zulassen
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -71,6 +84,7 @@ app.whenReady().then(() => {
   logLine('resourcesPath=', process.resourcesPath)
   logLine('userData=', app.getPath('userData'))
   registerManualProtocol()
+  registerMediaProtocol()
   registerIpcHandlers()
   attachWindow(createWindow())
 

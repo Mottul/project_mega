@@ -59,6 +59,26 @@ const api: ToolboxApi = {
     exportVideo: (req) => ipcRenderer.invoke(Channels.patternExportVideo, req),
     exportColorLoop: (req) => ipcRenderer.invoke(Channels.patternExportColorLoop, req),
     onVideoProgress: (cb) => subscribe(Channels.patternVideoProgress, (p) => cb(p as never))
+  },
+
+  player: {
+    encoders: () => ipcRenderer.invoke(Channels.playerEncoders),
+    import: (req) => ipcRenderer.invoke(Channels.playerImport, req),
+    convertList: () => ipcRenderer.invoke(Channels.playerConvertList),
+    convertCancel: (id) => ipcRenderer.invoke(Channels.playerConvertCancel, id),
+    convertClearFinished: () => ipcRenderer.invoke(Channels.playerConvertClear),
+    onConvertUpdate: (cb) => subscribe(Channels.playerConvertUpdate, (j) => cb(j as never)),
+    libraryList: () => ipcRenderer.invoke(Channels.playerLibraryList),
+    libraryDelete: (id) => ipcRenderer.invoke(Channels.playerLibraryDelete, id),
+    onLibraryChanged: (cb) => subscribe(Channels.playerLibraryChanged, () => cb()),
+    getState: () => ipcRenderer.invoke(Channels.playerGetState),
+    command: (cmd) => ipcRenderer.invoke(Channels.playerCommand, cmd),
+    report: (positionSec, durationSec) =>
+      ipcRenderer.invoke(Channels.playerReport, positionSec, durationSec),
+    openOutput: (displayId) => ipcRenderer.invoke(Channels.playerOpenOutput, displayId),
+    closeOutput: () => ipcRenderer.invoke(Channels.playerCloseOutput),
+    onState: (cb) => subscribe(Channels.playerState, (s) => cb(s as never)),
+    onTick: (cb) => subscribe(Channels.playerTick, (t) => cb(t as never))
   }
 }
 
