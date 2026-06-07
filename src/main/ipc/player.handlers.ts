@@ -4,11 +4,12 @@ import type { PlayerCommand, PlayerImportRequest } from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { convertManager } from '../services/player/convertManager'
 import { detectEncoders } from '../services/player/encoder'
-import { clearLibrary, deleteMedia, listMedia, mediaDir } from '../services/player/mediaLibrary'
+import { clearLibrary, deleteMedia, getMedia, listMedia, mediaDir } from '../services/player/mediaLibrary'
 import {
   applyCommand,
   dropMediaFromPlaylist,
   getPlayerState,
+  refreshPlaylist,
   reportPlayback,
   setStateSink,
   setTickSink
@@ -33,6 +34,7 @@ function wireSinks(): void {
   wired = true
   convertManager.setSink((job) => broadcast(Channels.playerConvertUpdate, job))
   convertManager.setLibrarySink(() => {
+    refreshPlaylist() // Playlist-Snapshots nach Reconvert/Änderung auffrischen
     broadcast(Channels.playerLibraryChanged)
     pushRemoteLibrary()
   })
@@ -67,6 +69,37 @@ export function registerPlayerHandlers(): void {
     broadcast(Channels.playerLibraryChanged)
   })
   ipcMain.handle(Channels.playerMediaDir, () => mediaDir())
+  ipcMain.handle(
+    Channels.playerReconvert,
+    (_e, mediaIds: string[], wall: { width: number; height: number }) => {
+      const items: {
+        sourcePath: string
+        title: string
+        fit: 'blur' | 'bars' | 'stretch'
+        width: number
+        height: number
+        reconvertId: string
+      }[] = []
+      let skipped = 0
+      for (const id of mediaIds) {
+        const m = getMedia(id)
+        if (!m || !m.sourcePath) {
+          skipped++
+          continue
+        }
+        items.push({
+          sourcePath: m.sourcePath,
+          title: m.title,
+          fit: m.fitMode,
+          width: wall.width,
+          height: wall.height,
+          reconvertId: id
+        })
+      }
+      const { jobIds } = items.length ? convertManager.enqueueReconvert(items) : { jobIds: [] }
+      return { jobIds, skipped }
+    }
+  )
 
   // Wiedergabe & Ausgabe
   ipcMain.handle(Channels.playerGetState, () => getPlayerState())

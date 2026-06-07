@@ -3,7 +3,7 @@
 // Bibliothek ab. Aufbau analog zum HAP-jobManager (Map + sequentielle Queue).
 
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { existsSync, readdirSync, rmSync, statSync, type Dirent } from 'node:fs'
+import { existsSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { basename, extname, join } from 'node:path'
 import { promisify } from 'node:util'
@@ -19,12 +19,15 @@ import {
 } from './encoder'
 import {
   convKeyFor,
+  deleteMedia,
   findByConvKey,
+  getMedia,
   insertMedia,
   isGifExt,
   isImageExt,
   mediaFilePath,
-  storedExtFor
+  storedExtFor,
+  updateMediaConversion
 } from './mediaLibrary'
 
 const pexecFile = promisify(execFile)
@@ -113,7 +116,10 @@ async function probeSource(path: string): Promise<ProbeInfo> {
 class ConvertManager {
   private jobs = new Map<string, ConvertJob>()
   private procs = new Map<string, ChildProcessWithoutNullStreams>()
-  private specs = new Map<string, { fit: PlayerImportRequest['fitMode']; width: number; height: number }>()
+  private specs = new Map<
+    string,
+    { fit: PlayerImportRequest['fitMode']; width: number; height: number; reconvertId?: string }
+  >()
   private sink: JobSink = () => {}
   private librarySink: LibrarySink = () => {}
   private active = 0
@@ -169,6 +175,41 @@ class ConvertManager {
     return { jobIds }
   }
 
+  /** Vorhandene Bibliotheks-Medien neu auf die (neue) Wand-Auflösung konvertieren. */
+  enqueueReconvert(
+    items: { sourcePath: string; title: string; fit: PlayerImportRequest['fitMode']; width: number; height: number; reconvertId: string }[]
+  ): { jobIds: string[] } {
+    const jobIds: string[] = []
+    for (const it of items) {
+      const id = randomUUID()
+      const job: ConvertJob = {
+        id,
+        sourcePath: it.sourcePath,
+        title: it.title,
+        status: 'queued',
+        progress: 0,
+        fitMode: it.fit,
+        targetWidth: Math.max(2, Math.round(it.width)),
+        targetHeight: Math.max(2, Math.round(it.height)),
+        kind: kindOf(it.sourcePath),
+        mediaId: it.reconvertId,
+        encoder: null,
+        createdAt: Date.now()
+      }
+      this.jobs.set(id, job)
+      this.specs.set(id, {
+        fit: it.fit,
+        width: job.targetWidth,
+        height: job.targetHeight,
+        reconvertId: it.reconvertId
+      })
+      this.sink({ ...job })
+      jobIds.push(id)
+    }
+    this.schedule()
+    return { jobIds }
+  }
+
   private schedule(): void {
     if (this.active >= this.concurrency) return
     for (const job of this.jobs.values()) {
@@ -186,6 +227,7 @@ class ConvertManager {
   private async run(job: ConvertJob): Promise<void> {
     if (this.isCanceled(job)) return
     const spec = this.specs.get(job.id)!
+    if (spec.reconvertId) return this.runReconvert(job, spec.reconvertId)
     try {
       const kind = job.kind ?? kindOf(job.sourcePath)
       const convKey = convKeyFor(job.sourcePath, spec.fit, spec.width, spec.height)
@@ -263,11 +305,120 @@ class ConvertManager {
         fitMode: spec.fit,
         hasAudio: kind === 'image' ? false : info.hasAudio,
         convKey,
-        sizeBytes
+        sizeBytes,
+        sourcePath: job.sourcePath
       })
       this.update(job, { status: 'done', progress: 1, mediaId: item.id })
       this.librarySink()
     } catch (err) {
+      if (!this.isCanceled(job)) {
+        this.update(job, { status: 'error', error: err instanceof Error ? err.message : String(err) })
+      }
+    }
+  }
+
+  private cleanupReconvertTmp(id: string, ext: string): void {
+    for (const name of [`${id}__re${ext}`, `${id}__re_thumb.jpg`]) {
+      try {
+        const f = mediaFilePath(name)
+        if (existsSync(f)) rmSync(f)
+      } catch {
+        // ignorieren
+      }
+    }
+  }
+
+  // Neu-Konvertierung eines vorhandenen Mediums (gleiche id). In Temp-Dateien
+  // konvertieren, dann die alten ersetzen -> die laufende Wiedergabe bricht nicht ab.
+  private async runReconvert(job: ConvertJob, id: string): Promise<void> {
+    const spec = this.specs.get(job.id)!
+    const ext = storedExtFor(job.kind ?? kindOf(job.sourcePath))
+    try {
+      const kind = job.kind ?? kindOf(job.sourcePath)
+      const convKey = convKeyFor(job.sourcePath, spec.fit, spec.width, spec.height)
+      const collision = findByConvKey(convKey)
+      if (collision && collision.id === id) {
+        this.update(job, { status: 'done', progress: 1, kind, mediaId: id }) // bereits in dieser Auflösung
+        return
+      }
+      if (collision && collision.id !== id) deleteMedia(collision.id) // Duplikat -> UNIQUE frei
+
+      const tmpStored = mediaFilePath(`${id}__re${ext}`)
+      const tmpThumb = mediaFilePath(`${id}__re_thumb.jpg`)
+
+      this.update(job, { status: 'probing', kind })
+      const info = await probeSource(job.sourcePath)
+      if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
+      if (kind !== 'image' && !info.hasVideo) throw new Error('Keine Videospur gefunden')
+
+      if (kind === 'image') {
+        this.update(job, { status: 'converting' })
+        await this.spawnFf(job, buildImageArgs({
+          input: job.sourcePath, output: tmpStored, fit: spec.fit, width: spec.width, height: spec.height
+        }), null)
+      } else {
+        const encoder = await resolveEncoder(getSettings().player.encoder)
+        this.update(job, { status: 'converting', encoder })
+        await this.spawnFf(job, buildVideoArgs({
+          input: job.sourcePath, output: tmpStored, encoder, fit: spec.fit,
+          width: spec.width, height: spec.height, hasAudio: info.hasAudio
+        }), info.durationSec)
+      }
+      if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
+
+      this.update(job, { status: 'thumbnail' })
+      let thumbOk = false
+      try {
+        const seek = Math.min(1, (info.durationSec ?? 1) * 0.1)
+        await this.spawnFf(job, buildThumbArgs({
+          input: kind === 'image' ? tmpStored : job.sourcePath, output: tmpThumb, seekSec: seek, isVideo: kind !== 'image'
+        }), null, true)
+        thumbOk = existsSync(tmpThumb)
+      } catch (thumbErr) {
+        logLine('[player] Thumbnail (reconvert) fehlgeschlagen:', thumbErr instanceof Error ? thumbErr.message : String(thumbErr))
+      }
+      if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
+
+      // Dateien tauschen
+      const finalStored = mediaFilePath(`${id}${ext}`)
+      const finalThumb = mediaFilePath(`${id}_thumb.jpg`)
+      try {
+        if (existsSync(finalStored)) rmSync(finalStored)
+      } catch {
+        // ignorieren
+      }
+      renameSync(tmpStored, finalStored)
+      if (thumbOk) {
+        try {
+          if (existsSync(finalThumb)) rmSync(finalThumb)
+        } catch {
+          // ignorieren
+        }
+        renameSync(tmpThumb, finalThumb)
+      }
+
+      const sizeBytes = (() => {
+        try {
+          return statSync(finalStored).size
+        } catch {
+          return 0
+        }
+      })()
+
+      updateMediaConversion(id, {
+        width: spec.width,
+        height: spec.height,
+        durationSec: kind === 'image' ? null : info.durationSec,
+        fitMode: spec.fit,
+        hasAudio: kind === 'image' ? false : info.hasAudio,
+        convKey,
+        sizeBytes,
+        thumbName: existsSync(finalThumb) ? `${id}_thumb.jpg` : null
+      })
+      this.update(job, { status: 'done', progress: 1, kind, mediaId: id })
+      this.librarySink()
+    } catch (err) {
+      this.cleanupReconvertTmp(id, ext)
       if (!this.isCanceled(job)) {
         this.update(job, { status: 'error', error: err instanceof Error ? err.message : String(err) })
       }

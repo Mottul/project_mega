@@ -17,8 +17,10 @@ import {
   Pause,
   Play,
   Plus,
+  RefreshCw,
   Repeat,
   Repeat1,
+  Save,
   Shuffle,
   SkipBack,
   SkipForward,
@@ -42,12 +44,16 @@ import type {
   FitMode,
   LoopMode,
   MediaItem,
+  PatternId,
   PlayerEncoderStatus,
   PlayerState,
   RemoteStatus,
+  SavedPlaylist,
   TransitionMode
 } from '@shared/types'
+import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
+import { QrCode } from './QrCode'
 
 const selectClass =
   'h-9 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
@@ -109,6 +115,7 @@ export function VideoPlayer(): JSX.Element {
   const [view, setView] = useState<ViewMode>('large')
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8088)
+  const [saved, setSaved] = useState<SavedPlaylist[]>([])
 
   function loadLibrary(): void {
     void api.player.libraryList().then(setLibrary)
@@ -129,6 +136,7 @@ export function VideoPlayer(): JSX.Element {
       setFit(s.player.defaultFit)
       setEncoder(s.player.encoder)
       setRemotePort(s.player.remotePort)
+      setSaved(s.player.savedPlaylists ?? [])
       if (s.player.outputDisplayId != null) setDisplayId(s.player.outputDisplayId)
     })
     void api.player.remoteStatus().then(setRemote)
@@ -248,6 +256,36 @@ export function VideoPlayer(): JSX.Element {
       } catch (e) {
         alert(`Fernsteuerung konnte nicht starten (Port ${remotePort} belegt?).\n${e instanceof Error ? e.message : ''}`)
       }
+  }
+
+  async function persistSaved(next: SavedPlaylist[]): Promise<void> {
+    setSaved(next)
+    const s = await api.getSettings()
+    await api.setSettings({ player: { ...s.player, savedPlaylists: next } })
+  }
+
+  function saveCurrentPlaylist(): void {
+    if (pstate.playlist.length === 0) return
+    const name = prompt('Playlist speichern als:')?.trim()
+    if (!name) return
+    const next = [...saved.filter((p) => p.name !== name), { name, mediaIds: pstate.playlist.map((m) => m.id) }].sort(
+      (a, b) => a.name.localeCompare(b.name)
+    )
+    void persistSaved(next)
+  }
+
+  async function loadSaved(p: SavedPlaylist): Promise<void> {
+    await cmd({ type: 'clear' })
+    await cmd({ type: 'add', mediaIds: p.mediaIds })
+  }
+
+  // Medien, die nicht in der aktuellen Wand-Auflösung vorliegen.
+  const staleItems = library.filter((m) => m.width !== wallW || m.height !== wallH)
+  async function reconvertStale(): Promise<void> {
+    if (staleItems.length === 0) return
+    const res = await api.player.reconvert(staleItems.map((m) => m.id), { width: wallW, height: wallH })
+    if (res.skipped > 0)
+      alert(`${res.skipped} Medium/Medien ohne bekannte Originalquelle übersprungen (vor diesem Update importiert).`)
   }
 
   const ffmpegMissing = enc && !enc.ffmpegFound
@@ -374,6 +412,22 @@ export function VideoPlayer(): JSX.Element {
             </div>
           </div>
         </div>
+        <label className="flex flex-col gap-1.5 border-t border-border pt-4 sm:max-w-sm">
+          <span className="text-sm font-medium">Idle-Bild (wenn nichts läuft)</span>
+          <select
+            className={selectClass}
+            value={pstate.idlePattern}
+            onChange={(e) => void cmd({ type: 'setIdlePattern', pattern: e.target.value as PatternId | 'off' })}
+          >
+            <option value="off">Aus (schwarz)</option>
+            {PATTERN_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-muted-foreground">Testbild als Fallback auf der Ausgabe.</span>
+        </label>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -450,6 +504,18 @@ export function VideoPlayer(): JSX.Element {
                   {j.title}: {j.error}
                 </p>
               ))}
+            </div>
+          )}
+
+          {staleItems.length > 0 && (
+            <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+              <RefreshCw className="size-4 shrink-0 text-amber-400" />
+              <span className="flex-1 text-amber-200">
+                {staleItems.length} Medium/Medien ≠ Wand-Auflösung ({wallW}×{wallH}).
+              </span>
+              <Button size="sm" variant="outline" onClick={() => void reconvertStale()}>
+                Neu konvertieren
+              </Button>
             </div>
           )}
 
@@ -606,6 +672,35 @@ export function VideoPlayer(): JSX.Element {
                 Playlist leeren
               </button>
             )}
+          </div>
+
+          {/* Gespeicherte Playlists (Tabs) */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            {saved.map((p) => (
+              <span
+                key={p.name}
+                className="flex items-center gap-1 rounded-full border border-border bg-muted/40 py-0.5 pl-2.5 pr-1 text-xs"
+              >
+                <button onClick={() => void loadSaved(p)} title={`Laden (${p.mediaIds.length})`}>
+                  {p.name}
+                </button>
+                <button
+                  onClick={() => void persistSaved(saved.filter((x) => x.name !== p.name))}
+                  className="text-muted-foreground hover:text-red-400"
+                  title="Löschen"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={saveCurrentPlaylist}
+              disabled={pstate.playlist.length === 0}
+            >
+              <Save className="size-4" /> Speichern
+            </Button>
           </div>
 
           {/* Vorschau / Monitorhinweis */}
@@ -807,19 +902,24 @@ export function VideoPlayer(): JSX.Element {
           </Button>
         </div>
         {remote?.running && (
-          <div className="rounded-md border border-border bg-muted/30 p-3">
-            <p className="mb-1 text-xs text-muted-foreground">Im Browser des Tablets öffnen:</p>
-            <div className="flex flex-wrap gap-2">
-              {remote.urls.map((u) => (
-                <button
-                  key={u}
-                  onClick={() => void navigator.clipboard?.writeText(u)}
-                  title="Adresse kopieren"
-                  className="rounded bg-background px-2 py-1 font-mono text-sm text-primary hover:bg-muted"
-                >
-                  {u}
-                </button>
-              ))}
+          <div className="flex flex-wrap items-center gap-4 rounded-md border border-border bg-muted/30 p-3">
+            {remote.urls[0] && <QrCode text={remote.urls[0]} />}
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-xs text-muted-foreground">
+                Im Browser des Tablets öffnen (QR scannen oder Adresse eintippen):
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {remote.urls.map((u) => (
+                  <button
+                    key={u}
+                    onClick={() => void navigator.clipboard?.writeText(u)}
+                    title="Adresse kopieren"
+                    className="rounded bg-background px-2 py-1 font-mono text-sm text-primary hover:bg-muted"
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

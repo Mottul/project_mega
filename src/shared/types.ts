@@ -254,6 +254,8 @@ export interface MediaItem {
   fitMode: FitMode
   hasAudio: boolean
   sizeBytes: number
+  /** Originalquelle (für Neu-Konvertierung bei Auflösungswechsel); null = unbekannt. */
+  sourcePath: string | null
   addedAt: number
 }
 
@@ -286,6 +288,12 @@ export interface PlayerImportRequest {
   sources: string[] // Dateien und/oder Ordner (rekursiv)
   fitMode: FitMode
   wall: WallResolution
+}
+
+/** Gespeicherte, benannte Playlist (als Tab umschaltbar). */
+export interface SavedPlaylist {
+  name: string
+  mediaIds: string[]
 }
 
 export interface RemoteStatus {
@@ -322,6 +330,7 @@ export interface PlayerState {
   imageDurationSec: number
   transition: TransitionMode
   transitionMs: number // Dauer der Überblendung (crossfade)
+  idlePattern: PatternId | 'off' // Testbild, wenn nichts läuft
   outputOpen: boolean
   wall: WallResolution
   seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
@@ -352,6 +361,7 @@ export type PlayerCommand =
   | { type: 'setVolume'; volume: number }
   | { type: 'setImageDuration'; seconds: number }
   | { type: 'setTransition'; transition: TransitionMode; transitionMs?: number }
+  | { type: 'setIdlePattern'; pattern: PatternId | 'off' }
   | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig
 
 /* -------------------------------- Dialog -------------------------------- */
@@ -378,9 +388,11 @@ export interface PlayerSettings {
   imageDurationSec: number
   transition: TransitionMode
   transitionMs: number
+  idlePattern: PatternId | 'off'
   encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
   remoteEnabled: boolean
   remotePort: number
+  savedPlaylists: SavedPlaylist[]
 }
 
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
@@ -391,9 +403,11 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   imageDurationSec: 10,
   transition: 'cut',
   transitionMs: 500,
+  idlePattern: 'off',
   encoder: 'auto',
   remoteEnabled: false,
-  remotePort: 8088
+  remotePort: 8088,
+  savedPlaylists: []
 }
 
 export interface AppSettings {

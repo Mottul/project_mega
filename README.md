@@ -221,15 +221,15 @@ src/
   Bibliothek (Thumbnails, Datei-**Drag&Drop**-Import, Listen-/Kachelansichten) und eine **In-App-Vorschau**
   (treibt die Wiedergabe auch ohne geöffnetes Ausgabefenster – praktisch ohne zweiten Bildschirm).
   **Fernsteuerung per Tablet/Handy** über einen eingebetteten, dependency-freien Webserver
-  (mobile Steuerseite + Live-Sync via SSE, LAN, einschaltbar). Adaptiert den bestehenden
+  (mobile Steuerseite + Live-Sync via SSE, LAN, einschaltbar, mit **QR-Code**). Dazu
+  **gespeicherte Playlists** (als Tabs), **Idle-/Fallback-Testbild** auf der Ausgabe (nutzt den
+  vorhandenen Generator) und **Batch-Reconvert** bei Auflösungswechsel. Adaptiert den bestehenden
   „LED Wall Player V4" (Python/mpv) in die Electron/React-Suite – nutzt das
   Multi-Monitor-Ausgabefenster und das gebündelte ffmpeg.
 
 ## Roadmap
 
-- **Video-Player – nächste Ausbaustufe:** **gespeicherte Playlists/Tabs**, **Idle-/Fallback-Bild**
-  (Testbild über den vorhandenen Generator), **Batch-Reconvert** bei Auflösungswechsel, optional
-  QR-Code für die Fernsteuerungs-Adresse.
+- Video-Player-Feinschliff nach Praxistest (z.B. echter Overlap-Crossfade, Shuffle-Gapless).
 - **Projektionsverhältnis-Rechner**, **LED-Wall-Konfigurator** – kleinere Rechner-Tools.
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).

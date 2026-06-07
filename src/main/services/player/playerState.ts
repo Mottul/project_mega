@@ -24,6 +24,7 @@ function ensureInit(): void {
     imageDurationSec: p.imageDurationSec,
     transition: p.transition,
     transitionMs: p.transitionMs,
+    idlePattern: p.idlePattern,
     wall: { width: p.wallWidth, height: p.wallHeight }
   }
 }
@@ -161,6 +162,10 @@ export function applyCommand(cmd: PlayerCommand): void {
         player: { ...getSettings().player, transition: state.transition, transitionMs: state.transitionMs }
       })
       break
+    case 'setIdlePattern':
+      state.idlePattern = cmd.pattern
+      setSettings({ player: { ...getSettings().player, idlePattern: state.idlePattern } })
+      break
   }
   emitState()
 }
@@ -180,6 +185,25 @@ export function setOutputOpen(open: boolean): void {
     state.wall = { width: p.wallWidth, height: p.wallHeight }
   }
   state.outputOpen = open
+  emitState()
+}
+
+/** Playlist-Snapshots aus der Bibliothek auffrischen (nach Reconvert/Änderungen);
+ *  entfernt zwischenzeitlich gelöschte Medien, behält Reihenfolge + aktuelles. */
+export function refreshPlaylist(): void {
+  ensureInit()
+  if (state.playlist.length === 0) return
+  const keepId = currentId()
+  const refreshed = state.playlist
+    .map((m) => getMedia(m.id))
+    .filter((m): m is MediaItem => m !== null)
+  // nur wirklich neu broadcasten, wenn sich etwas geändert hat
+  const changed =
+    refreshed.length !== state.playlist.length ||
+    refreshed.some((m, i) => m !== state.playlist[i] && JSON.stringify(m) !== JSON.stringify(state.playlist[i]))
+  if (!changed) return
+  state.playlist = refreshed
+  reindexTo(keepId)
   emitState()
 }
 

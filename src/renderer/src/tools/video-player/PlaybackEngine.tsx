@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@renderer/lib/api'
 import { currentItem, EMPTY_PLAYER_STATE, nextIndex } from '@shared/player'
-import type { MediaItem, PlayerState } from '@shared/types'
+import type { MediaItem, PatternId, PlayerState } from '@shared/types'
+import { IdlePattern } from './IdlePattern'
 
 interface EngineProps {
   /** 'fill' für die Wand (1:1 eingebacken), 'contain' für die kleine Vorschau. */
@@ -297,7 +298,12 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
         </div>
       ))}
 
-      {!curr && (
+      {!curr && state.idlePattern !== 'off' && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+          <IdlePattern pattern={state.idlePattern as PatternId} />
+        </div>
+      )}
+      {!curr && state.idlePattern === 'off' && (
         <div
           style={{
             position: 'absolute',

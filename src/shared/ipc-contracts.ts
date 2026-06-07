@@ -27,7 +27,8 @@ import type {
   PlayerTick,
   ProbeResult,
   RemoteStatus,
-  SelectPathsOptions
+  SelectPathsOptions,
+  WallResolution
 } from './types'
 
 /** Alle ipcMain.handle / ipcRenderer.invoke Kanaele + Event-Kanaele (main -> renderer). */
@@ -80,6 +81,7 @@ export const Channels = {
   playerLibraryList: 'player:libraryList',
   playerLibraryDelete: 'player:libraryDelete',
   playerLibraryClear: 'player:libraryClear',
+  playerReconvert: 'player:reconvert',
   playerMediaDir: 'player:mediaDir',
   playerLibraryChanged: 'player:libraryChanged', // Event (kein Payload)
   // Video-Player – Wiedergabe & Ausgabe
@@ -183,6 +185,8 @@ export interface ToolboxApi {
     libraryList(): Promise<MediaItem[]>
     libraryDelete(id: string): Promise<void>
     libraryClear(): Promise<void>
+    /** Medien neu auf die angegebene Wand-Auflösung konvertieren (gleiche id). */
+    reconvert(mediaIds: string[], wall: WallResolution): Promise<{ jobIds: string[]; skipped: number }>
     /** Speicherort der konvertierten Medien (userData/player-media). */
     mediaDir(): Promise<string>
     onLibraryChanged(cb: () => void): () => void

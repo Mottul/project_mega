@@ -17,6 +17,7 @@ export const EMPTY_PLAYER_STATE: PlayerState = {
   imageDurationSec: 10,
   transition: 'cut',
   transitionMs: 500,
+  idlePattern: 'off',
   outputOpen: false,
   wall: { width: 1920, height: 1080 },
   seekSeq: 0

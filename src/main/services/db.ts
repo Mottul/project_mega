@@ -76,8 +76,15 @@ function migrate(d: DB): void {
       has_audio     INTEGER NOT NULL,     -- 0/1
       conv_key      TEXT UNIQUE NOT NULL, -- Quelle+Fit+Auflösung -> Dedup
       size_bytes    INTEGER NOT NULL,
+      source_path   TEXT,                 -- Originalquelle (für Neu-Konvertierung)
       added_at      INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_media_added ON media_items(added_at);
   `)
+
+  // Nachträgliche Spalten für bereits bestehende DBs (idempotent).
+  const cols = d.prepare('PRAGMA table_info(media_items)').all() as { name: string }[]
+  if (!cols.some((c) => c.name === 'source_path')) {
+    d.exec('ALTER TABLE media_items ADD COLUMN source_path TEXT')
+  }
 }
