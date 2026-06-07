@@ -23,6 +23,7 @@ interface MediaRow {
   has_audio: number
   conv_key: string
   size_bytes: number
+  source_path: string | null
   added_at: number
 }
 
@@ -53,14 +54,17 @@ function rowToItem(r: MediaRow): MediaItem {
     kind: r.kind,
     title: r.title,
     originalName: r.original_name,
-    url: `${MEDIA_PROTOCOL}://library/${r.stored_name}`,
-    thumbUrl: r.thumb_name ? `${MEDIA_PROTOCOL}://library/${r.thumb_name}` : null,
+    // ?v=<size> = Cache-Buster: nach Neu-Konvertierung ändert sich die Größe -> der
+    // Player/Browser lädt Datei UND Thumbnail neu (Query wird serverseitig ignoriert).
+    url: `${MEDIA_PROTOCOL}://library/${r.stored_name}?v=${r.size_bytes}`,
+    thumbUrl: r.thumb_name ? `${MEDIA_PROTOCOL}://library/${r.thumb_name}?v=${r.size_bytes}` : null,
     width: r.width,
     height: r.height,
     durationSec: r.duration_sec,
     fitMode: r.fit_mode,
     hasAudio: r.has_audio === 1,
     sizeBytes: r.size_bytes,
+    sourcePath: r.source_path,
     addedAt: r.added_at
   }
 }
@@ -107,6 +111,7 @@ export interface NewMediaRecord {
   hasAudio: boolean
   convKey: string
   sizeBytes: number
+  sourcePath: string | null
 }
 
 export function insertMedia(rec: NewMediaRecord): MediaItem {
@@ -114,10 +119,10 @@ export function insertMedia(rec: NewMediaRecord): MediaItem {
     .prepare(
       `INSERT INTO media_items
          (id, kind, title, original_name, stored_name, thumb_name, width, height,
-          duration_sec, fit_mode, has_audio, conv_key, size_bytes, added_at)
+          duration_sec, fit_mode, has_audio, conv_key, size_bytes, source_path, added_at)
        VALUES
          (@id, @kind, @title, @original_name, @stored_name, @thumb_name, @width, @height,
-          @duration_sec, @fit_mode, @has_audio, @conv_key, @size_bytes, @added_at)`
+          @duration_sec, @fit_mode, @has_audio, @conv_key, @size_bytes, @source_path, @added_at)`
     )
     .run({
       id: rec.id,
@@ -133,9 +138,44 @@ export function insertMedia(rec: NewMediaRecord): MediaItem {
       has_audio: rec.hasAudio ? 1 : 0,
       conv_key: rec.convKey,
       size_bytes: rec.sizeBytes,
+      source_path: rec.sourcePath,
       added_at: Date.now()
     })
   return getMedia(rec.id)!
+}
+
+/** Aktualisiert einen Eintrag nach Neu-Konvertierung (gleiche id, neue Auflösung/Fit). */
+export function updateMediaConversion(
+  id: string,
+  patch: {
+    width: number
+    height: number
+    durationSec: number | null
+    fitMode: FitMode
+    hasAudio: boolean
+    convKey: string
+    sizeBytes: number
+    thumbName: string | null
+  }
+): MediaItem | null {
+  getDb()
+    .prepare(
+      `UPDATE media_items SET width=@width, height=@height, duration_sec=@duration_sec,
+         fit_mode=@fit_mode, has_audio=@has_audio, conv_key=@conv_key, size_bytes=@size_bytes,
+         thumb_name=@thumb_name WHERE id=@id`
+    )
+    .run({
+      id,
+      width: patch.width,
+      height: patch.height,
+      duration_sec: patch.durationSec,
+      fit_mode: patch.fitMode,
+      has_audio: patch.hasAudio ? 1 : 0,
+      conv_key: patch.convKey,
+      size_bytes: patch.sizeBytes,
+      thumb_name: patch.thumbName
+    })
+  return getMedia(id)
 }
 
 export function listMedia(): MediaItem[] {
@@ -165,6 +205,25 @@ export function deleteMedia(id: string): void {
       if (existsSync(abs)) rmSync(abs)
     } catch {
       // Datei-Cleanup ist best effort
+    }
+  }
+}
+
+/** Löscht die komplette Bibliothek (DB-Einträge + Dateien). */
+export function clearLibrary(): void {
+  const rows = getDb()
+    .prepare('SELECT stored_name, thumb_name FROM media_items')
+    .all() as { stored_name: string; thumb_name: string | null }[]
+  getDb().prepare('DELETE FROM media_items').run()
+  for (const r of rows) {
+    for (const name of [r.stored_name, r.thumb_name]) {
+      if (!name) continue
+      try {
+        const abs = mediaFilePath(name)
+        if (existsSync(abs)) rmSync(abs)
+      } catch {
+        // best effort
+      }
     }
   }
 }

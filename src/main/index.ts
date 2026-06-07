@@ -10,6 +10,7 @@ import {
 import { logLine } from './services/log'
 import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
+import { stopRemote } from './services/player/remoteServer'
 
 const isDev = !app.isPackaged
 
@@ -41,7 +42,10 @@ function createWindow(): BrowserWindow {
       // sichere Defaults
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // erlaubt der In-App-Vorschau des Players, ohne Nutzergeste (auto-advance,
+      // entstummt) weiterzuspielen
+      autoplayPolicy: 'no-user-gesture-required'
     }
   })
 
@@ -96,3 +100,6 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+
+// Fernsteuerungs-Server beim Beenden sauber schliessen.
+app.on('will-quit', () => stopRemote())

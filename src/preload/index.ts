@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import { Channels, type ToolboxApi } from '@shared/ipc-contracts'
 
 /** Event-Abo mit Cleanup -- verhindert Listener-Leaks bei Renderer-Navigation. */
@@ -15,6 +15,7 @@ const api: ToolboxApi = {
   getSettings: () => ipcRenderer.invoke(Channels.settingsGet),
   setSettings: (patch) => ipcRenderer.invoke(Channels.settingsSet, patch),
   getLogPath: () => ipcRenderer.invoke(Channels.appLogPath),
+  pathForFile: (file) => webUtils.getPathForFile(file),
 
   ffmpeg: {
     checkHap: () => ipcRenderer.invoke(Channels.ffmpegCheckHap),
@@ -70,6 +71,9 @@ const api: ToolboxApi = {
     onConvertUpdate: (cb) => subscribe(Channels.playerConvertUpdate, (j) => cb(j as never)),
     libraryList: () => ipcRenderer.invoke(Channels.playerLibraryList),
     libraryDelete: (id) => ipcRenderer.invoke(Channels.playerLibraryDelete, id),
+    libraryClear: () => ipcRenderer.invoke(Channels.playerLibraryClear),
+    reconvert: (mediaIds, wall) => ipcRenderer.invoke(Channels.playerReconvert, mediaIds, wall),
+    mediaDir: () => ipcRenderer.invoke(Channels.playerMediaDir),
     onLibraryChanged: (cb) => subscribe(Channels.playerLibraryChanged, () => cb()),
     getState: () => ipcRenderer.invoke(Channels.playerGetState),
     command: (cmd) => ipcRenderer.invoke(Channels.playerCommand, cmd),
@@ -78,7 +82,11 @@ const api: ToolboxApi = {
     openOutput: (displayId) => ipcRenderer.invoke(Channels.playerOpenOutput, displayId),
     closeOutput: () => ipcRenderer.invoke(Channels.playerCloseOutput),
     onState: (cb) => subscribe(Channels.playerState, (s) => cb(s as never)),
-    onTick: (cb) => subscribe(Channels.playerTick, (t) => cb(t as never))
+    onTick: (cb) => subscribe(Channels.playerTick, (t) => cb(t as never)),
+    remoteStatus: () => ipcRenderer.invoke(Channels.playerRemoteStatus),
+    remoteStart: (port) => ipcRenderer.invoke(Channels.playerRemoteStart, port),
+    remoteStop: () => ipcRenderer.invoke(Channels.playerRemoteStop),
+    onRemoteChanged: (cb) => subscribe(Channels.playerRemoteChanged, (s) => cb(s as never))
   }
 }
 

@@ -230,6 +230,9 @@ export type FitMode = 'blur' | 'bars' | 'stretch'
 
 export type LoopMode = 'none' | 'one' | 'all'
 
+// cut = harter Schnitt, crossfade = weiche Überblendung (Opazität + Audio-Fade)
+export type TransitionMode = 'cut' | 'crossfade'
+
 export interface WallResolution {
   width: number
   height: number
@@ -251,6 +254,8 @@ export interface MediaItem {
   fitMode: FitMode
   hasAudio: boolean
   sizeBytes: number
+  /** Originalquelle (für Neu-Konvertierung bei Auflösungswechsel); null = unbekannt. */
+  sourcePath: string | null
   addedAt: number
 }
 
@@ -285,6 +290,18 @@ export interface PlayerImportRequest {
   wall: WallResolution
 }
 
+/** Gespeicherte, benannte Playlist (als Tab umschaltbar). */
+export interface SavedPlaylist {
+  name: string
+  mediaIds: string[]
+}
+
+export interface RemoteStatus {
+  running: boolean
+  port: number
+  urls: string[] // erreichbare http://<lan-ip>:<port>-Adressen
+}
+
 export interface EncoderInfo {
   id: string // ffmpeg-Encodername, z.B. 'h264_nvenc' | 'libx264'
   label: string
@@ -311,6 +328,9 @@ export interface PlayerState {
   positionSec: number
   durationSec: number
   imageDurationSec: number
+  transition: TransitionMode
+  transitionMs: number // Dauer der Überblendung (crossfade)
+  idlePattern: PatternId | 'off' // Testbild, wenn nichts läuft
   outputOpen: boolean
   wall: WallResolution
   seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
@@ -340,6 +360,8 @@ export type PlayerCommand =
   | { type: 'setMuted'; muted: boolean }
   | { type: 'setVolume'; volume: number }
   | { type: 'setImageDuration'; seconds: number }
+  | { type: 'setTransition'; transition: TransitionMode; transitionMs?: number }
+  | { type: 'setIdlePattern'; pattern: PatternId | 'off' }
   | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig
 
 /* -------------------------------- Dialog -------------------------------- */
@@ -364,7 +386,13 @@ export interface PlayerSettings {
   defaultFit: FitMode
   outputDisplayId: number | null
   imageDurationSec: number
+  transition: TransitionMode
+  transitionMs: number
+  idlePattern: PatternId | 'off'
   encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
+  remoteEnabled: boolean
+  remotePort: number
+  savedPlaylists: SavedPlaylist[]
 }
 
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
@@ -373,7 +401,13 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   defaultFit: 'blur',
   outputDisplayId: null,
   imageDurationSec: 10,
-  encoder: 'auto'
+  transition: 'cut',
+  transitionMs: 500,
+  idlePattern: 'off',
+  encoder: 'auto',
+  remoteEnabled: false,
+  remotePort: 8088,
+  savedPlaylists: []
 }
 
 export interface AppSettings {

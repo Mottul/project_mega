@@ -26,7 +26,9 @@ import type {
   PlayerState,
   PlayerTick,
   ProbeResult,
-  SelectPathsOptions
+  RemoteStatus,
+  SelectPathsOptions,
+  WallResolution
 } from './types'
 
 /** Alle ipcMain.handle / ipcRenderer.invoke Kanaele + Event-Kanaele (main -> renderer). */
@@ -78,6 +80,9 @@ export const Channels = {
   playerConvertUpdate: 'player:convertUpdate', // Event: ConvertJob
   playerLibraryList: 'player:libraryList',
   playerLibraryDelete: 'player:libraryDelete',
+  playerLibraryClear: 'player:libraryClear',
+  playerReconvert: 'player:reconvert',
+  playerMediaDir: 'player:mediaDir',
   playerLibraryChanged: 'player:libraryChanged', // Event (kein Payload)
   // Video-Player – Wiedergabe & Ausgabe
   playerGetState: 'player:getState',
@@ -86,7 +91,12 @@ export const Channels = {
   playerOpenOutput: 'player:openOutput',
   playerCloseOutput: 'player:closeOutput',
   playerState: 'player:state', // Event: PlayerState (main -> alle)
-  playerTick: 'player:tick' // Event: PlayerTick (main -> alle, häufig)
+  playerTick: 'player:tick', // Event: PlayerTick (main -> alle, häufig)
+  // Video-Player – Fernsteuerung (eingebetteter Webserver)
+  playerRemoteStatus: 'player:remoteStatus',
+  playerRemoteStart: 'player:remoteStart',
+  playerRemoteStop: 'player:remoteStop',
+  playerRemoteChanged: 'player:remoteChanged' // Event: RemoteStatus
 } as const
 
 export type ChannelName = (typeof Channels)[keyof typeof Channels]
@@ -107,6 +117,8 @@ export interface ToolboxApi {
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings>
   /** Pfad zur Debug-Logdatei (zum Anzeigen/Mitschicken). */
   getLogPath(): Promise<string>
+  /** Absoluter Pfad einer per Drag&Drop fallengelassenen Datei (Electron webUtils). */
+  pathForFile(file: File): string
 
   ffmpeg: {
     checkHap(): Promise<HapCheckResult>
@@ -172,6 +184,11 @@ export interface ToolboxApi {
     /** Bibliothek (alle abspielbereiten Medien). */
     libraryList(): Promise<MediaItem[]>
     libraryDelete(id: string): Promise<void>
+    libraryClear(): Promise<void>
+    /** Medien neu auf die angegebene Wand-Auflösung konvertieren (gleiche id). */
+    reconvert(mediaIds: string[], wall: WallResolution): Promise<{ jobIds: string[]; skipped: number }>
+    /** Speicherort der konvertierten Medien (userData/player-media). */
+    mediaDir(): Promise<string>
     onLibraryChanged(cb: () => void): () => void
     /** Aktueller Player-Zustand. */
     getState(): Promise<PlayerState>
@@ -182,5 +199,10 @@ export interface ToolboxApi {
     closeOutput(): Promise<void>
     onState(cb: (state: PlayerState) => void): () => void
     onTick(cb: (tick: PlayerTick) => void): () => void
+    /** Status der Tablet-Fernsteuerung (Webserver). */
+    remoteStatus(): Promise<RemoteStatus>
+    remoteStart(port: number): Promise<RemoteStatus>
+    remoteStop(): Promise<RemoteStatus>
+    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
   }
 }
