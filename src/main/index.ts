@@ -10,6 +10,7 @@ import {
 import { logLine } from './services/log'
 import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
+import { stopRemote } from './services/player/remoteServer'
 
 const isDev = !app.isPackaged
 
@@ -99,3 +100,6 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
+
+// Fernsteuerungs-Server beim Beenden sauber schliessen.
+app.on('will-quit', () => stopRemote())

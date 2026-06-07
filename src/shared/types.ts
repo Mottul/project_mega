@@ -288,6 +288,12 @@ export interface PlayerImportRequest {
   wall: WallResolution
 }
 
+export interface RemoteStatus {
+  running: boolean
+  port: number
+  urls: string[] // erreichbare http://<lan-ip>:<port>-Adressen
+}
+
 export interface EncoderInfo {
   id: string // ffmpeg-Encodername, z.B. 'h264_nvenc' | 'libx264'
   label: string
@@ -373,6 +379,8 @@ export interface PlayerSettings {
   transition: TransitionMode
   transitionMs: number
   encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
+  remoteEnabled: boolean
+  remotePort: number
 }
 
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
@@ -383,7 +391,9 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   imageDurationSec: 10,
   transition: 'cut',
   transitionMs: 500,
-  encoder: 'auto'
+  encoder: 'auto',
+  remoteEnabled: false,
+  remotePort: 8088
 }
 
 export interface AppSettings {

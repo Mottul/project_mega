@@ -26,6 +26,7 @@ import type {
   PlayerState,
   PlayerTick,
   ProbeResult,
+  RemoteStatus,
   SelectPathsOptions
 } from './types'
 
@@ -88,7 +89,12 @@ export const Channels = {
   playerOpenOutput: 'player:openOutput',
   playerCloseOutput: 'player:closeOutput',
   playerState: 'player:state', // Event: PlayerState (main -> alle)
-  playerTick: 'player:tick' // Event: PlayerTick (main -> alle, häufig)
+  playerTick: 'player:tick', // Event: PlayerTick (main -> alle, häufig)
+  // Video-Player – Fernsteuerung (eingebetteter Webserver)
+  playerRemoteStatus: 'player:remoteStatus',
+  playerRemoteStart: 'player:remoteStart',
+  playerRemoteStop: 'player:remoteStop',
+  playerRemoteChanged: 'player:remoteChanged' // Event: RemoteStatus
 } as const
 
 export type ChannelName = (typeof Channels)[keyof typeof Channels]
@@ -189,5 +195,10 @@ export interface ToolboxApi {
     closeOutput(): Promise<void>
     onState(cb: (state: PlayerState) => void): () => void
     onTick(cb: (tick: PlayerTick) => void): () => void
+    /** Status der Tablet-Fernsteuerung (Webserver). */
+    remoteStatus(): Promise<RemoteStatus>
+    remoteStart(port: number): Promise<RemoteStatus>
+    remoteStop(): Promise<RemoteStatus>
+    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
   }
 }

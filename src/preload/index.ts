@@ -81,7 +81,11 @@ const api: ToolboxApi = {
     openOutput: (displayId) => ipcRenderer.invoke(Channels.playerOpenOutput, displayId),
     closeOutput: () => ipcRenderer.invoke(Channels.playerCloseOutput),
     onState: (cb) => subscribe(Channels.playerState, (s) => cb(s as never)),
-    onTick: (cb) => subscribe(Channels.playerTick, (t) => cb(t as never))
+    onTick: (cb) => subscribe(Channels.playerTick, (t) => cb(t as never)),
+    remoteStatus: () => ipcRenderer.invoke(Channels.playerRemoteStatus),
+    remoteStart: (port) => ipcRenderer.invoke(Channels.playerRemoteStart, port),
+    remoteStop: () => ipcRenderer.invoke(Channels.playerRemoteStop),
+    onRemoteChanged: (cb) => subscribe(Channels.playerRemoteChanged, (s) => cb(s as never))
   }
 }
 

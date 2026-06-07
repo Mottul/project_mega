@@ -14,18 +14,36 @@ import {
   setTickSink
 } from '../services/player/playerState'
 import { closePlayerOutput, openPlayerOutput } from '../services/player/playerWindow'
+import {
+  getRemoteStatus,
+  pushRemoteLibrary,
+  pushRemoteState,
+  pushRemoteTick,
+  startRemote,
+  stopRemote
+} from '../services/player/remoteServer'
 import { getSettings, setSettings } from '../services/store'
 
 let wired = false
 
-// Live-Updates (Konvertierung, Bibliothek, Zustand) an alle Fenster spiegeln.
+// Live-Updates (Konvertierung, Bibliothek, Zustand) an alle Fenster UND – falls
+// aktiv – an die Tablet-Clients (SSE) spiegeln.
 function wireSinks(): void {
   if (wired) return
   wired = true
   convertManager.setSink((job) => broadcast(Channels.playerConvertUpdate, job))
-  convertManager.setLibrarySink(() => broadcast(Channels.playerLibraryChanged))
-  setStateSink((state) => broadcast(Channels.playerState, state))
-  setTickSink((tick) => broadcast(Channels.playerTick, tick))
+  convertManager.setLibrarySink(() => {
+    broadcast(Channels.playerLibraryChanged)
+    pushRemoteLibrary()
+  })
+  setStateSink((state) => {
+    broadcast(Channels.playerState, state)
+    pushRemoteState(state)
+  })
+  setTickSink((tick) => {
+    broadcast(Channels.playerTick, tick)
+    pushRemoteTick(tick)
+  })
 }
 
 export function registerPlayerHandlers(): void {
@@ -61,4 +79,28 @@ export function registerPlayerHandlers(): void {
     openPlayerOutput(displayId)
   })
   ipcMain.handle(Channels.playerCloseOutput, () => closePlayerOutput())
+
+  // Fernsteuerung (Tablet)
+  ipcMain.handle(Channels.playerRemoteStatus, () => getRemoteStatus())
+  ipcMain.handle(Channels.playerRemoteStart, async (_e, port: number) => {
+    const status = await startRemote(port)
+    setSettings({ player: { ...getSettings().player, remoteEnabled: true, remotePort: status.port } })
+    broadcast(Channels.playerRemoteChanged, status)
+    return status
+  })
+  ipcMain.handle(Channels.playerRemoteStop, () => {
+    stopRemote()
+    setSettings({ player: { ...getSettings().player, remoteEnabled: false } })
+    const status = getRemoteStatus()
+    broadcast(Channels.playerRemoteChanged, status)
+    return status
+  })
+
+  // Bei aktivierter Einstellung automatisch starten (best effort).
+  const ps = getSettings().player
+  if (ps.remoteEnabled) {
+    startRemote(ps.remotePort)
+      .then((s) => broadcast(Channels.playerRemoteChanged, s))
+      .catch(() => setSettings({ player: { ...getSettings().player, remoteEnabled: false } }))
+  }
 }

@@ -22,9 +22,11 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
+  Smartphone,
   Trash2,
   Volume2,
   VolumeX,
+  Wifi,
   X
 } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
@@ -42,6 +44,7 @@ import type {
   MediaItem,
   PlayerEncoderStatus,
   PlayerState,
+  RemoteStatus,
   TransitionMode
 } from '@shared/types'
 import { PlaybackEngine } from './PlaybackEngine'
@@ -104,6 +107,8 @@ export function VideoPlayer(): JSX.Element {
   const [scrub, setScrub] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [view, setView] = useState<ViewMode>('large')
+  const [remote, setRemote] = useState<RemoteStatus | null>(null)
+  const [remotePort, setRemotePort] = useState(8088)
 
   function loadLibrary(): void {
     void api.player.libraryList().then(setLibrary)
@@ -123,8 +128,10 @@ export function VideoPlayer(): JSX.Element {
       setWallH(s.player.wallHeight)
       setFit(s.player.defaultFit)
       setEncoder(s.player.encoder)
+      setRemotePort(s.player.remotePort)
       if (s.player.outputDisplayId != null) setDisplayId(s.player.outputDisplayId)
     })
+    void api.player.remoteStatus().then(setRemote)
 
     const offJob = api.player.onConvertUpdate((job) => {
       setJobs((prev) => ({ ...prev, [job.id]: job }))
@@ -133,11 +140,13 @@ export function VideoPlayer(): JSX.Element {
     const offLib = api.player.onLibraryChanged(() => loadLibrary())
     const offState = api.player.onState(setPstate)
     const offTick = api.player.onTick((t) => setTick(t))
+    const offRemote = api.player.onRemoteChanged(setRemote)
     return () => {
       offJob()
       offLib()
       offState()
       offTick()
+      offRemote()
     }
   }, [])
 
@@ -229,6 +238,16 @@ export function VideoPlayer(): JSX.Element {
   async function openOutput(): Promise<void> {
     if (displayId == null) return
     await api.player.openOutput(displayId)
+  }
+
+  async function toggleRemote(): Promise<void> {
+    if (remote?.running) setRemote(await api.player.remoteStop())
+    else
+      try {
+        setRemote(await api.player.remoteStart(remotePort))
+      } catch (e) {
+        alert(`Fernsteuerung konnte nicht starten (Port ${remotePort} belegt?).\n${e instanceof Error ? e.message : ''}`)
+      }
   }
 
   const ffmpegMissing = enc && !enc.ffmpegFound
@@ -762,6 +781,49 @@ export function VideoPlayer(): JSX.Element {
           </div>
         </Card>
       </div>
+
+      {/* Fernsteuerung (Tablet/Handy) */}
+      <Card className="space-y-3 p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <Smartphone className="size-5 text-primary" />
+          <div className="flex-1">
+            <h2 className="font-medium">Fernsteuerung (Tablet/Handy)</h2>
+            <p className="text-xs text-muted-foreground">
+              Steuerseite im lokalen Netz – Gerät muss im selben WLAN sein. Ohne Passwort.
+            </p>
+          </div>
+          <label className="flex items-center gap-1.5 text-sm">
+            <span className="text-muted-foreground">Port</span>
+            <NumberField
+              value={remotePort}
+              min={1}
+              max={65535}
+              className="w-24"
+              onCommit={setRemotePort}
+            />
+          </label>
+          <Button onClick={() => void toggleRemote()} variant={remote?.running ? 'outline' : 'default'}>
+            <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
+          </Button>
+        </div>
+        {remote?.running && (
+          <div className="rounded-md border border-border bg-muted/30 p-3">
+            <p className="mb-1 text-xs text-muted-foreground">Im Browser des Tablets öffnen:</p>
+            <div className="flex flex-wrap gap-2">
+              {remote.urls.map((u) => (
+                <button
+                  key={u}
+                  onClick={() => void navigator.clipboard?.writeText(u)}
+                  title="Adresse kopieren"
+                  className="rounded bg-background px-2 py-1 font-mono text-sm text-primary hover:bg-muted"
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </Card>
     </div>
   )
 }
