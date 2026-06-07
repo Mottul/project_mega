@@ -41,7 +41,10 @@ function createWindow(): BrowserWindow {
       // sichere Defaults
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // erlaubt der In-App-Vorschau des Players, ohne Nutzergeste (auto-advance,
+      // entstummt) weiterzuspielen
+      autoplayPolicy: 'no-user-gesture-required'
     }
   })
 

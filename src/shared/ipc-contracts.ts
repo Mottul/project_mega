@@ -78,6 +78,8 @@ export const Channels = {
   playerConvertUpdate: 'player:convertUpdate', // Event: ConvertJob
   playerLibraryList: 'player:libraryList',
   playerLibraryDelete: 'player:libraryDelete',
+  playerLibraryClear: 'player:libraryClear',
+  playerMediaDir: 'player:mediaDir',
   playerLibraryChanged: 'player:libraryChanged', // Event (kein Payload)
   // Video-Player – Wiedergabe & Ausgabe
   playerGetState: 'player:getState',
@@ -107,6 +109,8 @@ export interface ToolboxApi {
   setSettings(patch: Partial<AppSettings>): Promise<AppSettings>
   /** Pfad zur Debug-Logdatei (zum Anzeigen/Mitschicken). */
   getLogPath(): Promise<string>
+  /** Absoluter Pfad einer per Drag&Drop fallengelassenen Datei (Electron webUtils). */
+  pathForFile(file: File): string
 
   ffmpeg: {
     checkHap(): Promise<HapCheckResult>
@@ -172,6 +176,9 @@ export interface ToolboxApi {
     /** Bibliothek (alle abspielbereiten Medien). */
     libraryList(): Promise<MediaItem[]>
     libraryDelete(id: string): Promise<void>
+    libraryClear(): Promise<void>
+    /** Speicherort der konvertierten Medien (userData/player-media). */
+    mediaDir(): Promise<string>
     onLibraryChanged(cb: () => void): () => void
     /** Aktueller Player-Zustand. */
     getState(): Promise<PlayerState>

@@ -22,6 +22,8 @@ function ensureInit(): void {
   state = {
     ...EMPTY_PLAYER_STATE,
     imageDurationSec: p.imageDurationSec,
+    transition: p.transition,
+    transitionMs: p.transitionMs,
     wall: { width: p.wallWidth, height: p.wallHeight }
   }
 }
@@ -151,6 +153,13 @@ export function applyCommand(cmd: PlayerCommand): void {
     case 'setImageDuration':
       state.imageDurationSec = Math.max(1, Math.min(3600, Math.round(cmd.seconds)))
       setSettings({ player: { ...getSettings().player, imageDurationSec: state.imageDurationSec } })
+      break
+    case 'setTransition':
+      state.transition = cmd.transition
+      if (cmd.transitionMs != null) state.transitionMs = Math.max(100, Math.min(5000, Math.round(cmd.transitionMs)))
+      setSettings({
+        player: { ...getSettings().player, transition: state.transition, transitionMs: state.transitionMs }
+      })
       break
   }
   emitState()

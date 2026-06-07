@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import { Channels, type ToolboxApi } from '@shared/ipc-contracts'
 
 /** Event-Abo mit Cleanup -- verhindert Listener-Leaks bei Renderer-Navigation. */
@@ -15,6 +15,7 @@ const api: ToolboxApi = {
   getSettings: () => ipcRenderer.invoke(Channels.settingsGet),
   setSettings: (patch) => ipcRenderer.invoke(Channels.settingsSet, patch),
   getLogPath: () => ipcRenderer.invoke(Channels.appLogPath),
+  pathForFile: (file) => webUtils.getPathForFile(file),
 
   ffmpeg: {
     checkHap: () => ipcRenderer.invoke(Channels.ffmpegCheckHap),
@@ -70,6 +71,8 @@ const api: ToolboxApi = {
     onConvertUpdate: (cb) => subscribe(Channels.playerConvertUpdate, (j) => cb(j as never)),
     libraryList: () => ipcRenderer.invoke(Channels.playerLibraryList),
     libraryDelete: (id) => ipcRenderer.invoke(Channels.playerLibraryDelete, id),
+    libraryClear: () => ipcRenderer.invoke(Channels.playerLibraryClear),
+    mediaDir: () => ipcRenderer.invoke(Channels.playerMediaDir),
     onLibraryChanged: (cb) => subscribe(Channels.playerLibraryChanged, () => cb()),
     getState: () => ipcRenderer.invoke(Channels.playerGetState),
     command: (cmd) => ipcRenderer.invoke(Channels.playerCommand, cmd),

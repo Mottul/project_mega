@@ -215,10 +215,13 @@ src/
   **H.264/MP4** konvertiert (Chromium dekodiert das hardwarebeschleunigt; **GPU-Encoder** wie
   NVENC/QSV/AMF/VideoToolbox werden erkannt **und validiert**, sonst libx264-Fallback). Bilder
   werden gebacken (freie Standzeit), GIFs zu Loop-Videos. **Vollbild-Ausgabe** auf gewähltem
-  Monitor mit **doppelt gepuffertem** HTML5-Player (nahtlose Übergänge), Transport
+  Monitor mit **doppelt gepuffertem** HTML5-Player (nahtlose Übergänge), wahlweise **Schnitt oder
+  Überblenden** zwischen Medien (mit Audio-Fade). Transport
   (Play/Pause/Skip/**Seek**/**Loop**/**Shuffle**/Stumm), **Playlist** mit Drag&Drop, verwaltete
-  Bibliothek (Thumbnails). Adaptiert den bestehenden „LED Wall Player V4" (Python/mpv) in die
-  Electron/React-Suite – nutzt das Multi-Monitor-Ausgabefenster und das gebündelte ffmpeg.
+  Bibliothek (Thumbnails, Datei-**Drag&Drop**-Import, Listen-/Kachelansichten) und eine **In-App-Vorschau**
+  (treibt die Wiedergabe auch ohne geöffnetes Ausgabefenster – praktisch ohne zweiten Bildschirm).
+  Adaptiert den bestehenden „LED Wall Player V4" (Python/mpv) in die Electron/React-Suite – nutzt
+  das Multi-Monitor-Ausgabefenster und das gebündelte ffmpeg.
 
 ## Roadmap
 

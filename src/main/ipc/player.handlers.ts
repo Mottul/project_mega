@@ -4,7 +4,7 @@ import type { PlayerCommand, PlayerImportRequest } from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { convertManager } from '../services/player/convertManager'
 import { detectEncoders } from '../services/player/encoder'
-import { deleteMedia, listMedia } from '../services/player/mediaLibrary'
+import { clearLibrary, deleteMedia, listMedia, mediaDir } from '../services/player/mediaLibrary'
 import {
   applyCommand,
   dropMediaFromPlaylist,
@@ -43,6 +43,12 @@ export function registerPlayerHandlers(): void {
     dropMediaFromPlaylist(id)
     broadcast(Channels.playerLibraryChanged)
   })
+  ipcMain.handle(Channels.playerLibraryClear, () => {
+    clearLibrary()
+    applyCommand({ type: 'clear' })
+    broadcast(Channels.playerLibraryChanged)
+  })
+  ipcMain.handle(Channels.playerMediaDir, () => mediaDir())
 
   // Wiedergabe & Ausgabe
   ipcMain.handle(Channels.playerGetState, () => getPlayerState())

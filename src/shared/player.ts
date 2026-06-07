@@ -15,6 +15,8 @@ export const EMPTY_PLAYER_STATE: PlayerState = {
   positionSec: 0,
   durationSec: 0,
   imageDurationSec: 10,
+  transition: 'cut',
+  transitionMs: 500,
   outputOpen: false,
   wall: { width: 1920, height: 1080 },
   seekSeq: 0

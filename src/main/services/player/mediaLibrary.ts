@@ -169,6 +169,25 @@ export function deleteMedia(id: string): void {
   }
 }
 
+/** Löscht die komplette Bibliothek (DB-Einträge + Dateien). */
+export function clearLibrary(): void {
+  const rows = getDb()
+    .prepare('SELECT stored_name, thumb_name FROM media_items')
+    .all() as { stored_name: string; thumb_name: string | null }[]
+  getDb().prepare('DELETE FROM media_items').run()
+  for (const r of rows) {
+    for (const name of [r.stored_name, r.thumb_name]) {
+      if (!name) continue
+      try {
+        const abs = mediaFilePath(name)
+        if (existsSync(abs)) rmSync(abs)
+      } catch {
+        // best effort
+      }
+    }
+  }
+}
+
 /** Endung der konvertierten Datei je Medienart (Bild -> jpg, sonst mp4). */
 export function storedExtFor(kind: MediaKind): string {
   return kind === 'image' ? '.jpg' : '.mp4'

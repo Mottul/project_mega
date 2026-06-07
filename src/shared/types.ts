@@ -230,6 +230,9 @@ export type FitMode = 'blur' | 'bars' | 'stretch'
 
 export type LoopMode = 'none' | 'one' | 'all'
 
+// cut = harter Schnitt, crossfade = weiche Überblendung (Opazität + Audio-Fade)
+export type TransitionMode = 'cut' | 'crossfade'
+
 export interface WallResolution {
   width: number
   height: number
@@ -311,6 +314,8 @@ export interface PlayerState {
   positionSec: number
   durationSec: number
   imageDurationSec: number
+  transition: TransitionMode
+  transitionMs: number // Dauer der Überblendung (crossfade)
   outputOpen: boolean
   wall: WallResolution
   seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
@@ -340,6 +345,7 @@ export type PlayerCommand =
   | { type: 'setMuted'; muted: boolean }
   | { type: 'setVolume'; volume: number }
   | { type: 'setImageDuration'; seconds: number }
+  | { type: 'setTransition'; transition: TransitionMode; transitionMs?: number }
   | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig
 
 /* -------------------------------- Dialog -------------------------------- */
@@ -364,6 +370,8 @@ export interface PlayerSettings {
   defaultFit: FitMode
   outputDisplayId: number | null
   imageDurationSec: number
+  transition: TransitionMode
+  transitionMs: number
   encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
 }
 
@@ -373,6 +381,8 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   defaultFit: 'blur',
   outputDisplayId: null,
   imageDurationSec: 10,
+  transition: 'cut',
+  transitionMs: 500,
   encoder: 'auto'
 }
 
