@@ -30,8 +30,9 @@ export function PatternPreview({ config }: { config: PatternConfig }): JSX.Eleme
     }
     let raf = 0
     if (isAnimated(config.pattern)) {
-      const loop = (t: number): void => {
-        drawPattern(ctx, previewCfg, t)
+      // Gemeinsame Wanduhr (Date.now()) -> Vorschau und Vollbild-Ausgabe laufen synchron.
+      const loop = (): void => {
+        drawPattern(ctx, previewCfg, Date.now())
         raf = requestAnimationFrame(loop)
       }
       raf = requestAnimationFrame(loop)

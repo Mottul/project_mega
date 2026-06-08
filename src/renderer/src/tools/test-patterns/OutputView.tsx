@@ -20,7 +20,9 @@ export function OutputView(): JSX.Element {
   useEffect(() => {
     if (!config) return
     let raf = 0
-    const draw = (t: number): void => {
+    // Zeitbasis: gemeinsame Wanduhr (Date.now()) statt fensterlokalem performance.now()
+    // -> Timecode/Scroll/Farbzyklus sind in Vorschau UND Ausgabe identisch.
+    const draw = (): void => {
       const canvas = canvasRef.current
       if (!canvas) return
       const dpr = window.devicePixelRatio || 1
@@ -29,26 +31,56 @@ export function OutputView(): JSX.Element {
       if (canvas.width !== w) canvas.width = w
       if (canvas.height !== h) canvas.height = h
       const ctx = canvas.getContext('2d')
-      if (ctx) drawPattern(ctx, { ...config, width: w, height: h }, t)
+      if (ctx) drawPattern(ctx, { ...config, width: w, height: h }, Date.now())
     }
-    const loop = (t: number): void => {
-      draw(t)
+    const loop = (): void => {
+      draw()
       raf = requestAnimationFrame(loop)
     }
-    const onResize = (): void => draw(performance.now())
     if (isAnimated(config.pattern)) raf = requestAnimationFrame(loop)
-    else draw(performance.now())
-    window.addEventListener('resize', onResize)
+    else draw()
+    window.addEventListener('resize', draw)
     return () => {
       cancelAnimationFrame(raf)
-      window.removeEventListener('resize', onResize)
+      window.removeEventListener('resize', draw)
     }
   }, [config])
 
+  // Vollbild per Escape schließen.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') void api.patterns.close()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ display: 'block', width: '100vw', height: '100vh', background: '#000' }}
-    />
+    <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#000' }}>
+      <canvas ref={canvasRef} style={{ display: 'block', width: '100vw', height: '100vh' }} />
+      <button
+        onClick={() => void api.patterns.close()}
+        title="Vollbild schließen (Esc)"
+        style={{
+          position: 'fixed',
+          top: 12,
+          right: 12,
+          padding: '6px 10px',
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: 13,
+          color: '#fff',
+          background: 'rgba(0,0,0,0.55)',
+          border: '1px solid rgba(255,255,255,0.4)',
+          borderRadius: 6,
+          cursor: 'pointer',
+          opacity: 0.15,
+          transition: 'opacity 0.15s'
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.15')}
+      >
+        ✕ Schließen (Esc)
+      </button>
+    </div>
   )
 }

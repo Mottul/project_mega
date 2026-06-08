@@ -127,9 +127,8 @@ function drawGridModules(ctx: Ctx, cfg: PatternConfig): void {
   const { width: w, height: h } = cfg
   fill(ctx, w, h, '#000000')
   const base = moduleCells(w, h)
-  const mult = Math.max(1, Math.round(cfg.gridScale))
-  const nx = base.x * mult
-  const ny = base.y * mult
+  const nx = Math.max(1, Math.round(base.x * cfg.gridScale))
+  const ny = Math.max(1, Math.round(base.y * cfg.gridScale))
   ctx.strokeStyle = '#ffffff'
   ctx.lineWidth = 2
   ctx.beginPath()
@@ -188,8 +187,9 @@ function drawGeometry(ctx: Ctx, cfg: PatternConfig): void {
   // Eck-Doppelkreise: grosser Kreis fuellt das (skalierte) Modul-Quadrat,
   // kleiner = halber Durchmesser. gridScale verfeinert wie beim Gitter.
   const base = moduleCells(w, h)
-  const mult = Math.max(1, Math.round(cfg.gridScale))
-  const cell = Math.min(w / (base.x * mult), h / (base.y * mult))
+  const nx = Math.max(1, Math.round(base.x * cfg.gridScale))
+  const ny = Math.max(1, Math.round(base.y * cfg.gridScale))
+  const cell = Math.min(w / nx, h / ny)
   const c = cell / 2
   const centers: [number, number][] = [
     [c, c],
@@ -332,11 +332,12 @@ function drawConvergence(ctx: Ctx, w: number, h: number): void {
 }
 
 // Bewegt: vertikale Balken, die horizontal scrollen -> Tearing/Judder sichtbar.
-function drawScroll(ctx: Ctx, w: number, h: number, timeMs: number): void {
+function drawScroll(ctx: Ctx, w: number, h: number, timeMs: number, speed = 1): void {
   fill(ctx, w, h, '#000000')
   const barW = Math.max(8, Math.round(w / 40))
   const period = barW * 2
-  const offset = ((timeMs / 1000) * (w / 3)) % period
+  const v = speed > 0 ? speed : 1
+  const offset = ((timeMs / 1000) * (w / 3) * v) % period
   ctx.fillStyle = '#ffffff'
   for (let x = -period + offset; x < w; x += period) {
     ctx.fillRect(Math.round(x), 0, barW, h)
@@ -347,7 +348,8 @@ function drawScroll(ctx: Ctx, w: number, h: number, timeMs: number): void {
 // (Schirm abfilmen und vergleichen).
 function drawTimecode(ctx: Ctx, w: number, h: number, timeMs: number): void {
   fill(ctx, w, h, '#000000')
-  const t = timeMs / 1000
+  // Auf 100 s rollend -> lesbar und in Vorschau/Ausgabe identisch (gemeinsame Uhr).
+  const t = (timeMs / 1000) % 100
   ctx.fillStyle = '#ffffff'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -413,7 +415,7 @@ export function drawPattern(ctx: Ctx, cfg: PatternConfig, timeMs = 0): void {
       drawConvergence(ctx, w, h)
       break
     case 'scroll':
-      drawScroll(ctx, w, h, timeMs)
+      drawScroll(ctx, w, h, timeMs, cfg.scrollSpeed)
       return // ohne Label (sonst flackert es ueber dem bewegten Muster)
     case 'timecode':
       drawTimecode(ctx, w, h, timeMs)

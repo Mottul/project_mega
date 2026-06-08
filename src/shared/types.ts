@@ -161,6 +161,7 @@ export interface PatternConfig {
   gridScale: number // Multiplikator der Modul-Zellanzahl (Gitter + Geometrie-Eckkreise)
   cycleColors: string[] // fuer 'colorcycle' (Pixelcheck): Hex-Farben in Reihenfolge
   cycleSeconds: number // fuer 'colorcycle': Dauer je Farbe
+  scrollSpeed: number // fuer 'scroll' (Tearing): Geschwindigkeitsfaktor (1 = Standard)
   label: string // frei waehlbarer Output-Name (frame-info)
   showInfo: boolean // Auflösung/Label einblenden
 }
@@ -174,6 +175,7 @@ export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   gridScale: 1,
   cycleColors: ['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#000000'],
   cycleSeconds: 2,
+  scrollSpeed: 1,
   label: '',
   showInfo: true
 }

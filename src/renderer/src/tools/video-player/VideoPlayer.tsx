@@ -116,6 +116,8 @@ export function VideoPlayer(): JSX.Element {
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8088)
   const [saved, setSaved] = useState<SavedPlaylist[]>([])
+  const [naming, setNaming] = useState(false)
+  const [nameInput, setNameInput] = useState('')
 
   function loadLibrary(): void {
     void api.player.libraryList().then(setLibrary)
@@ -264,14 +266,18 @@ export function VideoPlayer(): JSX.Element {
     await api.setSettings({ player: { ...s.player, savedPlaylists: next } })
   }
 
-  function saveCurrentPlaylist(): void {
-    if (pstate.playlist.length === 0) return
-    const name = prompt('Playlist speichern als:')?.trim()
-    if (!name) return
-    const next = [...saved.filter((p) => p.name !== name), { name, mediaIds: pstate.playlist.map((m) => m.id) }].sort(
-      (a, b) => a.name.localeCompare(b.name)
-    )
+  function confirmSavePlaylist(): void {
+    const name = nameInput.trim()
+    if (!name) {
+      setNaming(false)
+      return
+    }
+    const next = [
+      ...saved.filter((p) => p.name !== name),
+      { name, mediaIds: pstate.playlist.map((m) => m.id) }
+    ].sort((a, b) => a.name.localeCompare(b.name))
     void persistSaved(next)
+    setNaming(false)
   }
 
   async function loadSaved(p: SavedPlaylist): Promise<void> {
@@ -693,14 +699,39 @@ export function VideoPlayer(): JSX.Element {
                 </button>
               </span>
             ))}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={saveCurrentPlaylist}
-              disabled={pstate.playlist.length === 0}
-            >
-              <Save className="size-4" /> Speichern
-            </Button>
+            {naming ? (
+              <span className="flex items-center gap-1">
+                <input
+                  autoFocus
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirmSavePlaylist()
+                    else if (e.key === 'Escape') setNaming(false)
+                  }}
+                  placeholder="Name…"
+                  className="h-7 w-32 rounded border border-border bg-background px-2 text-xs"
+                />
+                <Button variant="ghost" size="sm" onClick={confirmSavePlaylist}>
+                  ✓
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setNaming(false)}>
+                  ✕
+                </Button>
+              </span>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setNameInput('')
+                  setNaming(true)
+                }}
+                disabled={pstate.playlist.length === 0}
+              >
+                <Save className="size-4" /> Speichern
+              </Button>
+            )}
           </div>
 
           {/* Vorschau / Monitorhinweis */}
