@@ -10,6 +10,7 @@ import {
   Loader2,
   Pencil,
   Search,
+  Tags,
   Trash2,
   X
 } from 'lucide-react'
@@ -18,6 +19,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
+import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import type {
   ImportProgress,
@@ -172,101 +174,123 @@ export function ManualsLibrary(): JSX.Element {
   const showSearch = query.trim().length > 0
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Kopf: Suche + Import */}
-      <div className="border-b border-border p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-64 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Volltextsuche über alle Handbücher…"
-              className="pl-9"
-            />
-          </div>
-          <Button variant="secondary" onClick={importFiles} disabled={importing}>
-            <FileUp className="size-4" /> PDFs importieren
-          </Button>
-          <Button variant="secondary" onClick={importFolder} disabled={importing}>
-            <FolderUp className="size-4" /> Ordner importieren
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => void api.getLogPath().then((p) => api.showItemInFolder(p))}
-            title="Öffnet die Debug-Logdatei im Explorer (zum Mitschicken bei Problemen)"
-          >
-            Debug-Log
-          </Button>
-        </div>
+    <>
+      <ToolShell
+        id="manuals"
+        aside={
+          <>
+            <PanelSection id="import" title="Import" icon={FileUp}>
+              <Button
+                variant="secondary"
+                className="w-full justify-start"
+                onClick={importFiles}
+                disabled={importing}
+              >
+                <FileUp className="size-4" /> PDFs importieren
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-full justify-start"
+                onClick={importFolder}
+                disabled={importing}
+              >
+                <FolderUp className="size-4" /> Ordner importieren
+              </Button>
+              {(importing || progress) && (
+                <div>
+                  <Progress
+                    value={
+                      progress?.page && progress?.pageCount ? progress.page / progress.pageCount : 0
+                    }
+                    indeterminate={!progress?.pageCount}
+                  />
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    {progress
+                      ? `${PROGRESS_LABEL[progress.phase]} · ${basename(progress.file)} (${progress.fileIndex}/${progress.fileCount})${
+                          progress.page && progress.pageCount
+                            ? ` · Seite ${progress.page}/${progress.pageCount}`
+                            : ''
+                        }`
+                      : 'Import läuft…'}
+                  </p>
+                </div>
+              )}
+              {summary && !importing && (
+                <p className="text-xs text-muted-foreground">
+                  Import abgeschlossen: {summary.imported} neu, {summary.skipped} übersprungen
+                  {summary.failed.length > 0 ? `, ${summary.failed.length} fehlgeschlagen` : ''}.
+                </p>
+              )}
+              <button
+                className="text-left text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => void api.getLogPath().then((p) => api.showItemInFolder(p))}
+                title="Öffnet die Debug-Logdatei im Explorer (zum Mitschicken bei Problemen)"
+              >
+                Debug-Log öffnen
+              </button>
+            </PanelSection>
 
-        {(importing || progress) && (
-          <div className="mt-3">
-            <Progress
-              value={
-                progress?.page && progress?.pageCount
-                  ? progress.page / progress.pageCount
-                  : 0
-              }
-              indeterminate={!progress?.pageCount}
-            />
-            <p className="mt-1 truncate text-xs text-muted-foreground">
-              {progress
-                ? `${PROGRESS_LABEL[progress.phase]} · ${basename(progress.file)} (${progress.fileIndex}/${progress.fileCount})${
-                    progress.page && progress.pageCount ? ` · Seite ${progress.page}/${progress.pageCount}` : ''
-                  }`
-                : 'Import läuft…'}
-            </p>
-          </div>
-        )}
-
-        {summary && !importing && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Import abgeschlossen: {summary.imported} neu, {summary.skipped} übersprungen
-            {summary.failed.length > 0 ? `, ${summary.failed.length} fehlgeschlagen` : ''}.
-          </p>
-        )}
-      </div>
-
-      {/* Inhalt */}
-      <div className="flex-1 overflow-auto p-4">
-        {showSearch ? (
-          <SearchResults
-            groups={groups}
-            searching={searching}
-            onOpen={(manualId, page) => void openManual(manualId, page)}
-          />
-        ) : (
-          <div className="mx-auto max-w-4xl space-y-3">
             {manuals.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                <CategoryChip
-                  label={`Alle (${manuals.length})`}
-                  active={categoryFilter === null}
-                  onClick={() => setCategoryFilter(null)}
-                />
-                {categories
-                  .filter((c) => manuals.some((m) => m.category === c))
-                  .map((c) => (
-                    <CategoryChip
-                      key={c}
-                      label={`${c} (${manuals.filter((m) => m.category === c).length})`}
-                      active={categoryFilter === c}
-                      onClick={() => setCategoryFilter(c)}
-                    />
-                  ))}
-              </div>
+              <PanelSection id="cats" title="Kategorien" icon={Tags}>
+                <div className="flex flex-wrap gap-1.5">
+                  <CategoryChip
+                    label={`Alle (${manuals.length})`}
+                    active={categoryFilter === null}
+                    onClick={() => setCategoryFilter(null)}
+                  />
+                  {categories
+                    .filter((c) => manuals.some((m) => m.category === c))
+                    .map((c) => (
+                      <CategoryChip
+                        key={c}
+                        label={`${c} (${manuals.filter((m) => m.category === c).length})`}
+                        active={categoryFilter === c}
+                        onClick={() => setCategoryFilter(c)}
+                      />
+                    ))}
+                </div>
+              </PanelSection>
             )}
-            <LibraryList
-              manuals={visibleManuals}
-              onOpen={(id) => void openManual(id, 1)}
-              onEdit={setEditing}
-              onDelete={(m) => void removeManual(m)}
-            />
+          </>
+        }
+        main={
+          <div className="flex h-full flex-col">
+            {/* Kopf: Suche */}
+            <div className="border-b border-border p-4">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Volltextsuche über alle Handbücher…"
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            {/* Inhalt */}
+            <div className="flex-1 overflow-auto p-4">
+              {showSearch ? (
+                <SearchResults
+                  groups={groups}
+                  searching={searching}
+                  onOpen={(manualId, page) => void openManual(manualId, page)}
+                />
+              ) : (
+                <div className="mx-auto max-w-4xl space-y-3">
+                  <LibraryList
+                    manuals={visibleManuals}
+                    onOpen={(id) => void openManual(id, 1)}
+                    onEdit={setEditing}
+                    onDelete={(m) => void removeManual(m)}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+        }
+      />
 
       {viewer && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background">
@@ -294,7 +318,7 @@ export function ManualsLibrary(): JSX.Element {
           }}
         />
       )}
-    </div>
+    </>
   )
 }
 
