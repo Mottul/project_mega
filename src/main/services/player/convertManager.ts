@@ -39,6 +39,7 @@ const VIDEO_EXT = new Set([
 ])
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tif', '.tiff'])
 const MEDIA_EXT = new Set([...VIDEO_EXT, ...IMAGE_EXT, '.gif'])
+export const ALLOWED_MEDIA_EXT = MEDIA_EXT
 
 type JobSink = (job: ConvertJob) => void
 type LibrarySink = () => void

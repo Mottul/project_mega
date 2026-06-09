@@ -45,6 +45,12 @@ export const MOBILE_PAGE = `<!doctype html>
     cursor:grab; touch-action:none; flex:0 0 auto; }
   .item.dragging { opacity:0.6; border-color:var(--gold); }
   .empty { color:var(--sub); font-size:13px; text-align:center; padding:14px; }
+  .libhead { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .libhead h3 { margin:0; }
+  .uploadbtn { background:var(--muted); border:1px solid #3f3f46; border-radius:10px;
+    padding:9px 14px; font-size:14px; cursor:pointer; flex:0 0 auto; }
+  .uprog { font-size:12px; color:var(--sub); }
+  .uprog.active { padding:6px 2px; }
 </style>
 </head>
 <body>
@@ -73,7 +79,13 @@ export const MOBILE_PAGE = `<!doctype html>
   <h3>Playlist</h3>
   <div id="playlist" class="list"></div>
 
-  <h3>Bibliothek</h3>
+  <div class="libhead">
+    <h3>Bibliothek</h3>
+    <label class="uploadbtn">+ Hochladen
+      <input id="file" type="file" accept="image/*,video/*" multiple hidden />
+    </label>
+  </div>
+  <div id="uprog" class="uprog"></div>
   <div id="library" class="list"></div>
 
 <script>
@@ -199,6 +211,29 @@ export const MOBILE_PAGE = `<!doctype html>
   el('library').addEventListener('click',function(e){
     var a=e.target.closest('[data-add]'); if(a) api({type:'add',mediaIds:[a.dataset.add]});
   });
+
+  // Upload vom Tablet/Handy: Dateien nacheinander als rohen Body senden.
+  el('file').addEventListener('change',function(){
+    var fl=this.files; if(!fl||!fl.length) return;
+    uploadQueue(Array.prototype.slice.call(fl)); this.value='';
+  });
+  function uploadQueue(files){
+    var total=files.length, done=0, prog=el('uprog'); prog.className='uprog active';
+    function next(){
+      if(!files.length){ prog.textContent='Fertig – '+done+'/'+total+' hochgeladen, wird konvertiert…';
+        setTimeout(function(){ prog.className='uprog'; prog.textContent=''; },5000); return; }
+      var f=files.shift();
+      prog.textContent='Lade '+(done+1)+'/'+total+': '+f.name;
+      var xhr=new XMLHttpRequest();
+      xhr.open('POST','/api/upload');
+      xhr.setRequestHeader('x-filename', encodeURIComponent(f.name));
+      xhr.setRequestHeader('content-type','application/octet-stream');
+      xhr.onload=function(){ done++; next(); };
+      xhr.onerror=function(){ prog.textContent='Fehler bei '+f.name; setTimeout(next,600); };
+      xhr.send(f);
+    }
+    next();
+  }
 
   function loadState(){ fetch('/api/state').then(function(r){return r.json();}).then(function(s){ state=s; render(); }); }
   function loadLib(){ fetch('/api/library').then(function(r){return r.json();}).then(function(l){ lib=l; renderLib(); }); }
