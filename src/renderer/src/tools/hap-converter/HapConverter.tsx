@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
+  Cpu,
+  Film,
   FolderOpen,
   FolderSearch,
   Play,
@@ -13,6 +15,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
+import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import type {
   ChunksMode,
@@ -140,103 +143,92 @@ export function HapConverter(): JSX.Element {
   const hapUnavailable = check && !check.available
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
-      {hapUnavailable && (
-        <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400" />
-          <div className="text-sm">
-            <p className="font-medium text-amber-300">HAP-Encoder nicht verfügbar</p>
-            <p className="mt-1 text-muted-foreground">
-              {check?.ffmpegFound
-                ? 'Das gebündelte ffmpeg kennt den HAP-Encoder nicht (libsnappy fehlt). Bitte ein HAP-fähiges ffmpeg über das Download-Skript bereitstellen.'
-                : 'Es wurde kein ffmpeg gefunden. Im Dev-Modus über scripts/download-ffmpeg.mjs bereitstellen oder ein ffmpeg im PATH installieren.'}
-              {check?.error ? ` (${check.error})` : ''}
-            </p>
-          </div>
-        </Card>
-      )}
-
-      {/* Konfiguration */}
-      <Card className="p-5">
-        <div className="grid gap-5 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Format</span>
-            <select
-              className={selectClass}
-              value={format}
-              onChange={(e) => onFormatChange(e.target.value as HapFormat)}
-            >
-              {FORMAT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Gleichzeitige Konvertierungen</span>
-            <select
-              className={selectClass}
-              value={concurrency}
-              onChange={(e) => setConcurrency(Number(e.target.value))}
-            >
-              {CONCURRENCY_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n === 1 ? '1 (sequentiell)' : `${n} parallel`}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-muted-foreground">
-              Mehr parallel = mehr CPU-Auslastung (bis {CORES} Kerne sinnvoll).
-            </span>
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Kompressor</span>
-            <select
-              className={selectClass}
-              value={compressor}
-              onChange={(e) => setCompressor(e.target.value as HapCompressor)}
-            >
-              <option value="snappy">Snappy (kleinere Dateien, Standard)</option>
-              <option value="none">Keiner (schneller, größere Dateien)</option>
-            </select>
-            <span className="text-xs text-muted-foreground">
-              HAP-Encoding läuft auf der CPU (keine GPU); die GPU nutzt erst der Player.
-            </span>
-          </label>
-
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Chunks</span>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={autoChunks}
-                  onChange={(e) => setAutoChunks(e.target.checked)}
-                  className="size-4 accent-[hsl(var(--primary))]"
-                />
-                Automatisch
-              </label>
-              {!autoChunks && (
-                <NumberField
-                  value={manualChunks}
-                  min={1}
-                  max={64}
-                  className="w-24"
-                  onCommit={setManualChunks}
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Ausgabeordner</span>
-            <div className="flex items-center gap-2">
-              <span className="flex-1 truncate rounded-md border border-border bg-input/40 px-3 py-1.5 text-sm text-muted-foreground">
-                {outputDir ?? 'Neben der Quelldatei'}
+    <ToolShell
+      id="hap-converter"
+      aside={
+        <>
+          <PanelSection id="format" title="Format & Qualität" icon={Film}>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Format</span>
+              <select
+                className={selectClass}
+                value={format}
+                onChange={(e) => onFormatChange(e.target.value as HapFormat)}
+              >
+                {FORMAT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Kompressor</span>
+              <select
+                className={selectClass}
+                value={compressor}
+                onChange={(e) => setCompressor(e.target.value as HapCompressor)}
+              >
+                <option value="snappy">Snappy (kleinere Dateien, Standard)</option>
+                <option value="none">Keiner (schneller, größere Dateien)</option>
+              </select>
+              <span className="text-xs text-muted-foreground">
+                HAP-Encoding läuft auf der CPU (keine GPU); die GPU nutzt erst der Player.
               </span>
+            </label>
+          </PanelSection>
+
+          <PanelSection id="proc" title="Verarbeitung" icon={Cpu}>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Gleichzeitige Konvertierungen</span>
+              <select
+                className={selectClass}
+                value={concurrency}
+                onChange={(e) => setConcurrency(Number(e.target.value))}
+              >
+                {CONCURRENCY_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n === 1 ? '1 (sequentiell)' : `${n} parallel`}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted-foreground">
+                Mehr parallel = mehr CPU-Auslastung (bis {CORES} Kerne sinnvoll).
+              </span>
+            </label>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Chunks</span>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={autoChunks}
+                    onChange={(e) => setAutoChunks(e.target.checked)}
+                    className="size-4 accent-[hsl(var(--primary))]"
+                  />
+                  Automatisch
+                </label>
+                {!autoChunks && (
+                  <NumberField
+                    value={manualChunks}
+                    min={1}
+                    max={64}
+                    className="w-24"
+                    onCommit={setManualChunks}
+                  />
+                )}
+              </div>
+            </div>
+          </PanelSection>
+
+          <PanelSection id="output" title="Ausgabeordner" icon={FolderOpen}>
+            <span
+              className="block truncate rounded-md border border-border bg-input/40 px-3 py-1.5 text-sm text-muted-foreground"
+              title={outputDir ?? undefined}
+            >
+              {outputDir ?? 'Neben der Quelldatei'}
+            </span>
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={chooseOutput}>
                 <FolderOpen className="size-4" /> Wählen
               </Button>
@@ -253,90 +245,111 @@ export function HapConverter(): JSX.Element {
                 </Button>
               )}
             </div>
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
-          <Button variant="secondary" onClick={addFiles}>
-            <FolderSearch className="size-4" /> Dateien hinzufügen
-          </Button>
-          <Button variant="secondary" onClick={addFolder}>
-            <FolderOpen className="size-4" /> Ordner hinzufügen
-          </Button>
-          <div className="flex-1" />
-          <Button onClick={start} disabled={!inputs.length}>
-            <Play className="size-4" /> Konvertierung starten
-            {inputs.length > 0 ? ` (${inputs.length})` : ''}
-          </Button>
-        </div>
-
-        {inputs.length > 0 && (
-          <div className="mt-4 space-y-1">
-            {inputs.map((p) => (
-              <div
-                key={p}
-                className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-1.5 text-sm"
-              >
-                <span className="truncate" title={p}>
-                  {basename(p)}
-                </span>
-                <button
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => setInputs((prev) => prev.filter((x) => x !== p))}
-                  aria-label="Entfernen"
-                >
-                  <X className="size-4" />
-                </button>
+          </PanelSection>
+        </>
+      }
+      main={
+        <div className="mx-auto max-w-3xl space-y-6 p-6">
+          {hapUnavailable && (
+            <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-300">HAP-Encoder nicht verfügbar</p>
+                <p className="mt-1 text-muted-foreground">
+                  {check?.ffmpegFound
+                    ? 'Das gebündelte ffmpeg kennt den HAP-Encoder nicht (libsnappy fehlt). Bitte ein HAP-fähiges ffmpeg über das Download-Skript bereitstellen.'
+                    : 'Es wurde kein ffmpeg gefunden. Im Dev-Modus über scripts/download-ffmpeg.mjs bereitstellen oder ein ffmpeg im PATH installieren.'}
+                  {check?.error ? ` (${check.error})` : ''}
+                </p>
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
+            </Card>
+          )}
 
-      {/* Queue */}
-      <Card className="p-5">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <h2 className="font-medium">Warteschlange</h2>
-            <p className="text-sm text-muted-foreground">
-              {jobList.length} Job(s) · {doneCount} fertig · {activeCount} aktiv
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {hasFinished && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => void api.hap.clearFinished().then(refreshJobs)}
-              >
-                <Trash2 className="size-4" /> Erledigte entfernen
+          {/* Eingang */}
+          <Card className="space-y-4 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" onClick={addFiles}>
+                <FolderSearch className="size-4" /> Dateien hinzufügen
               </Button>
-            )}
-            {activeCount > 0 && (
-              <Button variant="outline" size="sm" onClick={() => void api.hap.cancelAll()}>
-                <XCircle className="size-4" /> Alle abbrechen
+              <Button variant="secondary" onClick={addFolder}>
+                <FolderOpen className="size-4" /> Ordner hinzufügen
               </Button>
+              <div className="flex-1" />
+              <Button onClick={start} disabled={!inputs.length}>
+                <Play className="size-4" /> Konvertierung starten
+                {inputs.length > 0 ? ` (${inputs.length})` : ''}
+              </Button>
+            </div>
+
+            {inputs.length > 0 && (
+              <div className="space-y-1">
+                {inputs.map((p) => (
+                  <div
+                    key={p}
+                    className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-1.5 text-sm"
+                  >
+                    <span className="truncate" title={p}>
+                      {basename(p)}
+                    </span>
+                    <button
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => setInputs((prev) => prev.filter((x) => x !== p))}
+                      aria-label="Entfernen"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
-          </div>
+          </Card>
+
+          {/* Queue */}
+          <Card className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h2 className="font-medium">Warteschlange</h2>
+                <p className="text-sm text-muted-foreground">
+                  {jobList.length} Job(s) · {doneCount} fertig · {activeCount} aktiv
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {hasFinished && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void api.hap.clearFinished().then(refreshJobs)}
+                  >
+                    <Trash2 className="size-4" /> Erledigte entfernen
+                  </Button>
+                )}
+                {activeCount > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => void api.hap.cancelAll()}>
+                    <XCircle className="size-4" /> Alle abbrechen
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {jobList.length > 0 && (
+              <Progress value={jobList.length ? settledCount / jobList.length : 0} className="mb-4" />
+            )}
+
+            {jobList.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Noch keine Jobs. Dateien/Ordner hinzufügen und Konvertierung starten.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {jobList.map((job) => (
+                  <JobRow key={job.id} job={job} />
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
-
-        {jobList.length > 0 && (
-          <Progress value={jobList.length ? settledCount / jobList.length : 0} className="mb-4" />
-        )}
-
-        {jobList.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Noch keine Jobs. Dateien/Ordner hinzufügen und Konvertierung starten.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {jobList.map((job) => (
-              <JobRow key={job.id} job={job} />
-            ))}
-          </div>
-        )}
-      </Card>
-    </div>
+      }
+    />
   )
 }
 

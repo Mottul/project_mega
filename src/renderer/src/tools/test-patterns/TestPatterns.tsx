@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Film, Image as ImageIcon, MonitorPlay, MonitorX } from 'lucide-react'
+import { Bookmark, Film, Image as ImageIcon, LayoutGrid, MonitorPlay, MonitorX, Ratio } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
+import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import {
   DEFAULT_PATTERN_CONFIG,
@@ -34,6 +35,12 @@ const LOOP_COLOR_OPTIONS = [
   { hex: '#000000', label: 'Schwarz' },
   { hex: '#808080', label: 'Grau' }
 ]
+
+// Modulanzahl hübsch: ganze Zahl als solche, sonst mit deutschem Dezimalkomma
+// (z. B. 4,5 bei ×0.5 von 16:9) – passend zu den Teilzellen am Rand.
+function fmtCells(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toLocaleString('de-DE', { maximumFractionDigits: 2 })
+}
 
 async function renderPngBytes(cfg: PatternConfig): Promise<Uint8Array> {
   const canvas = renderToCanvas(cfg)
@@ -197,17 +204,16 @@ export function TestPatterns(): JSX.Element {
   const showScale = config.pattern === 'grid' || config.pattern === 'geometry'
   const mc = moduleCells(config.width, config.height)
   const gridCells = {
-    x: Math.max(1, Math.round(mc.x * config.gridScale)),
-    y: Math.max(1, Math.round(mc.y * config.gridScale))
+    x: mc.x * config.gridScale,
+    y: mc.y * config.gridScale
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        {/* Steuerung */}
-        <Card className="space-y-5 p-5">
-          <div className="space-y-2 border-b border-border pb-4">
-            <span className="text-sm font-medium">Presets</span>
+    <ToolShell
+      id="test-patterns"
+      aside={
+        <>
+          <PanelSection id="presets" title="Presets" icon={Bookmark} defaultOpen={false}>
             <div className="flex items-center gap-2">
               <select
                 className={`${selectClass} flex-1`}
@@ -241,8 +247,9 @@ export function TestPatterns(): JSX.Element {
                 Speichern
               </Button>
             </div>
-          </div>
+          </PanelSection>
 
+          <PanelSection id="pattern" title="Testbild" icon={LayoutGrid}>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Testbild</span>
             <select
@@ -309,7 +316,7 @@ export function TestPatterns(): JSX.Element {
                   +
                 </Button>
                 <span className="text-xs text-muted-foreground">
-                  {gridCells.x} × {gridCells.y} Module
+                  {fmtCells(gridCells.x)} × {fmtCells(gridCells.y)} Module
                 </span>
               </div>
               <span className="text-xs text-muted-foreground">
@@ -375,7 +382,9 @@ export function TestPatterns(): JSX.Element {
               </span>
             </label>
           )}
+          </PanelSection>
 
+          <PanelSection id="res" title="Auflösung & Anzeige" icon={Ratio}>
           <div className="flex flex-col gap-1.5">
             <span className="text-sm font-medium">Auflösung</span>
             <div className="flex items-center gap-2">
@@ -424,16 +433,17 @@ export function TestPatterns(): JSX.Element {
               />
             </label>
           )}
-        </Card>
-
-        {/* Vorschau */}
-        <div className="space-y-3">
-          <PatternPreview config={config} />
-          <p className="text-center text-xs text-muted-foreground">
-            Vorschau · Ausgabe & Export erfolgen in voller Auflösung ({config.width} × {config.height})
-          </p>
-        </div>
-      </div>
+          </PanelSection>
+        </>
+      }
+      main={
+        <div className="mx-auto max-w-4xl space-y-6 p-6">
+          <div>
+            <PatternPreview config={config} />
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Vorschau · Ausgabe & Export erfolgen in voller Auflösung ({config.width} × {config.height})
+            </p>
+          </div>
 
       {/* Ausgabe auf Monitor */}
       <Card className="space-y-4 p-5">
@@ -526,6 +536,8 @@ export function TestPatterns(): JSX.Element {
         )}
         {note && <p className="break-all text-xs text-muted-foreground">{note}</p>}
       </Card>
-    </div>
+        </div>
+      }
+    />
   )
 }

@@ -121,26 +121,28 @@ function drawEdgeFrame(ctx: Ctx, w: number, h: number): void {
   ctx.strokeRect(0.5, 0.5, w - 1, h - 1)
 }
 
-// Modul-Gitter: Zellanzahl aus dem Seitenverhaeltnis x Skalierungsfaktor; 2px-Linien;
+// Modul-Gitter: exakte Zellgröße aus Seitenverhältnis × Skalierungsfaktor (NICHT
+// gerundet -> 16:9 bleibt bei ×0.5 genau 8×4.5, kein verzerrtes 8×5). Am rechten/
+// unteren Rand sind Teilzellen (halbe/viertel Quadrate) erlaubt. 2px-Linien,
 // 1px-Rahmen aussen. Klare Abgrenzung von LED-Wall-Modulen.
 function drawGridModules(ctx: Ctx, cfg: PatternConfig): void {
   const { width: w, height: h } = cfg
   fill(ctx, w, h, '#000000')
   const base = moduleCells(w, h)
-  const nx = Math.max(1, Math.round(base.x * cfg.gridScale))
-  const ny = Math.max(1, Math.round(base.y * cfg.gridScale))
+  const cellW = w / Math.max(0.0001, base.x * cfg.gridScale)
+  const cellH = h / Math.max(0.0001, base.y * cfg.gridScale)
   ctx.strokeStyle = '#ffffff'
   ctx.lineWidth = 2
   ctx.beginPath()
-  for (let i = 1; i < nx; i++) {
-    const x = Math.round((i * w) / nx)
-    ctx.moveTo(x + 0.5, 0)
-    ctx.lineTo(x + 0.5, h)
+  for (let x = cellW; x < w - 0.5; x += cellW) {
+    const px = Math.round(x)
+    ctx.moveTo(px + 0.5, 0)
+    ctx.lineTo(px + 0.5, h)
   }
-  for (let j = 1; j < ny; j++) {
-    const y = Math.round((j * h) / ny)
-    ctx.moveTo(0, y + 0.5)
-    ctx.lineTo(w, y + 0.5)
+  for (let y = cellH; y < h - 0.5; y += cellH) {
+    const py = Math.round(y)
+    ctx.moveTo(0, py + 0.5)
+    ctx.lineTo(w, py + 0.5)
   }
   ctx.stroke()
   drawEdgeFrame(ctx, w, h)
@@ -187,9 +189,9 @@ function drawGeometry(ctx: Ctx, cfg: PatternConfig): void {
   // Eck-Doppelkreise: grosser Kreis fuellt das (skalierte) Modul-Quadrat,
   // kleiner = halber Durchmesser. gridScale verfeinert wie beim Gitter.
   const base = moduleCells(w, h)
-  const nx = Math.max(1, Math.round(base.x * cfg.gridScale))
-  const ny = Math.max(1, Math.round(base.y * cfg.gridScale))
-  const cell = Math.min(w / nx, h / ny)
+  const cellW = w / Math.max(0.0001, base.x * cfg.gridScale)
+  const cellH = h / Math.max(0.0001, base.y * cfg.gridScale)
+  const cell = Math.min(cellW, cellH)
   const c = cell / 2
   const centers: [number, number][] = [
     [c, c],
