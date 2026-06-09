@@ -27,5 +27,12 @@ module.exports = {
       }
     }
   },
-  plugins: []
+  plugins: [
+    // `light:`-Variante (Hell-Theme = Klasse .light am <html>). Damit lassen sich
+    // die wenigen fest kodierten Akzentfarben (amber/emerald/red auf transluzentem
+    // Grund) im Hellmodus gezielt abdunkeln, ohne sie sonst anzufassen.
+    function ({ addVariant }) {
+      addVariant('light', '.light &')
+    }
+  ]
 }

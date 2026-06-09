@@ -420,11 +420,15 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   savedPlaylists: []
 }
 
+/** Farbschema der Oberfläche. 'system' folgt der OS-Einstellung. */
+export type ThemeMode = 'system' | 'light' | 'dark'
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
   lastImportDir: string | null
   patternPresets: PatternPreset[]
+  theme: ThemeMode
   player: PlayerSettings
 }
 
@@ -433,5 +437,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastHapFormat: 'hap_q',
   lastImportDir: null,
   patternPresets: [],
+  theme: 'dark', // bisheriges Erscheinungsbild bleibt Standard
   player: DEFAULT_PLAYER_SETTINGS
 }

@@ -503,7 +503,7 @@ export function VideoPlayer(): JSX.Element {
             <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
               <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400" />
               <div className="text-sm">
-                <p className="font-medium text-amber-300">ffmpeg nicht gefunden</p>
+                <p className="font-medium text-amber-300 light:text-amber-700">ffmpeg nicht gefunden</p>
                 <p className="mt-1 text-muted-foreground">
                   Zum Konvertieren der Medien wird das gebündelte ffmpeg benötigt. Im Dev-Modus über
                   <code className="mx-1 rounded bg-muted px-1">npm run ff:fetch</code> bereitstellen; im
@@ -595,7 +595,7 @@ export function VideoPlayer(): JSX.Element {
           {staleItems.length > 0 && (
             <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
               <RefreshCw className="size-4 shrink-0 text-amber-400" />
-              <span className="flex-1 text-amber-200">
+              <span className="flex-1 text-amber-200 light:text-amber-700">
                 {staleItems.length} Medium/Medien ≠ Wand-Auflösung ({wallW}×{wallH}).
               </span>
               <Button size="sm" variant="outline" onClick={() => void reconvertStale()}>

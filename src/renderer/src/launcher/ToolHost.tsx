@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
+import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { findTool } from '@renderer/tools/registry'
 
 export function ToolHost(): JSX.Element {
@@ -30,6 +31,8 @@ export function ToolHost(): JSX.Element {
         </Button>
         <Icon className="size-5 text-primary" />
         <h1 className="font-semibold">{tool.name}</h1>
+        <div className="flex-1" />
+        <ThemeToggle />
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
         <Suspense
