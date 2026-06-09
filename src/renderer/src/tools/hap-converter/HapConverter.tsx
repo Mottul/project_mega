@@ -254,7 +254,7 @@ export function HapConverter(): JSX.Element {
             <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
               <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400" />
               <div className="text-sm">
-                <p className="font-medium text-amber-300">HAP-Encoder nicht verfügbar</p>
+                <p className="font-medium text-amber-300 light:text-amber-700">HAP-Encoder nicht verfügbar</p>
                 <p className="mt-1 text-muted-foreground">
                   {check?.ffmpegFound
                     ? 'Das gebündelte ffmpeg kennt den HAP-Encoder nicht (libsnappy fehlt). Bitte ein HAP-fähiges ffmpeg über das Download-Skript bereitstellen.'

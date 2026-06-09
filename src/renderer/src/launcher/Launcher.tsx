@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { tools } from '@renderer/tools/registry'
 import { CATEGORY_LABELS, type ToolModule } from '@renderer/tools/types'
 import type { ToolCategoryId } from '@shared/types'
@@ -35,10 +36,15 @@ export function Launcher(): JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-8 py-6">
-        <h1 className="text-2xl font-semibold tracking-tight">AV Toolbox</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Werkzeuge für den AV-Alltag – offline, an einem Ort.
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">AV Toolbox</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Werkzeuge für den AV-Alltag – offline, an einem Ort.
+            </p>
+          </div>
+          <ThemeToggle />
+        </div>
         <div className="relative mt-4 max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -84,7 +90,7 @@ export function Launcher(): JSX.Element {
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium">{tool.name}</h3>
                               {running > 0 && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 light:text-emerald-700">
                                   <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
                                   läuft · {running}
                                 </span>

@@ -331,7 +331,7 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
         </div>
       )}
 
-      <div ref={setRootEl} className="relative flex-1 overflow-auto bg-zinc-900/60">
+      <div ref={setRootEl} className="relative flex-1 overflow-auto bg-zinc-900/60 light:bg-zinc-200/70">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />

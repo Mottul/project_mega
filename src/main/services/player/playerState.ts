@@ -109,8 +109,17 @@ export function applyCommand(cmd: PlayerCommand): void {
       const at = cmd.at == null ? state.playlist.length : Math.max(0, Math.min(cmd.at, state.playlist.length))
       const keepId = currentId()
       state.playlist.splice(at, 0, ...items)
-      if (state.index < 0) goToIndex(0, false)
+      // Erstes Medium in eine leere Playlist -> sofort abspielen (kein manuelles Play nötig).
+      if (state.index < 0) goToIndex(0, true)
       else reindexTo(keepId)
+      break
+    }
+    case 'replace': {
+      // Playlist in EINEM Zustandswechsel austauschen (nahtloser Playlist-Wechsel,
+      // kein Zwischenschritt über eine leere Liste -> keine Idle-Blende, kein Pause).
+      const items = cmd.mediaIds.map(getMedia).filter((m): m is MediaItem => m !== null)
+      state.playlist = items
+      goToIndex(items.length ? 0 : -1, items.length > 0)
       break
     }
     case 'remove': {

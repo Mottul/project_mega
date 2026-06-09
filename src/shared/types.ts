@@ -356,6 +356,7 @@ export type PlayerCommand =
   | { type: 'goto'; index: number }
   | { type: 'seek'; positionSec: number }
   | { type: 'add'; mediaIds: string[]; at?: number }
+  | { type: 'replace'; mediaIds: string[] } // Playlist atomar ersetzen (nahtloser Wechsel)
   | { type: 'remove'; index: number }
   | { type: 'move'; from: number; to: number }
   | { type: 'clear' }
@@ -419,11 +420,15 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   savedPlaylists: []
 }
 
+/** Farbschema der Oberfläche. 'system' folgt der OS-Einstellung. */
+export type ThemeMode = 'system' | 'light' | 'dark'
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
   lastImportDir: string | null
   patternPresets: PatternPreset[]
+  theme: ThemeMode
   player: PlayerSettings
 }
 
@@ -432,5 +437,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastHapFormat: 'hap_q',
   lastImportDir: null,
   patternPresets: [],
+  theme: 'dark', // bisheriges Erscheinungsbild bleibt Standard
   player: DEFAULT_PLAYER_SETTINGS
 }
