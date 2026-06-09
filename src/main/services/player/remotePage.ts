@@ -41,6 +41,9 @@ export const MOBILE_PAGE = `<!doctype html>
   .item .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:14px; }
   .item .d { font-size:12px; color:var(--sub); flex:0 0 auto; }
   .x { background:transparent; border:none; color:var(--sub); padding:8px; min-height:0; font-size:18px; }
+  .grip { background:transparent; border:none; color:var(--sub); padding:8px 6px; min-height:0; font-size:20px;
+    cursor:grab; touch-action:none; flex:0 0 auto; }
+  .item.dragging { opacity:0.6; border-color:var(--gold); }
   .empty { color:var(--sub); font-size:13px; text-align:center; padding:14px; }
 </style>
 </head>
@@ -76,6 +79,7 @@ export const MOBILE_PAGE = `<!doctype html>
 <script>
 (function(){
   var state=null, lib=[], seeking=false;
+  var dragging=false, dragEl=null, dragFrom=-1;
   function el(id){ return document.getElementById(id); }
   function api(cmd){ fetch('/api/command',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(cmd)}); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
@@ -104,12 +108,14 @@ export const MOBILE_PAGE = `<!doctype html>
   }
 
   function renderPlaylist(){
+    if(dragging) return; // während des Ziehens nicht neu aufbauen
     var box=el('playlist');
     if(!state || state.playlist.length===0){ box.innerHTML='<div class="empty">Playlist leer</div>'; return; }
     var h='';
     for(var i=0;i<state.playlist.length;i++){
       var m=state.playlist[i];
       h += '<div class="item'+(i===state.index?' cur':'')+'" data-goto="'+i+'">'
+        + '<button class="grip" data-drag="'+i+'">⠿</button>'
         + (m.thumbUrl?'<img src="'+esc(m.thumbUrl)+'" />':'<img />')
         + '<div class="t">'+(i+1)+'. '+esc(m.title)+'</div>'
         + '<div class="d">'+(m.durationSec?fmt(m.durationSec):'Bild')+'</div>'
@@ -149,9 +155,46 @@ export const MOBILE_PAGE = `<!doctype html>
   seek.addEventListener('change',function(){ api({type:'seek',positionSec:+seek.value}); seeking=false; });
 
   el('playlist').addEventListener('click',function(e){
+    if(e.target.closest('[data-drag]')) return; // Griff -> kein Sprung
     var rm=e.target.closest('[data-remove]');
     if(rm){ e.stopPropagation(); api({type:'remove',index:+rm.dataset.remove}); return; }
     var go=e.target.closest('[data-goto]'); if(go) api({type:'goto',index:+go.dataset.goto});
+  });
+
+  // Playlist per Drag&Drop umordnen (Pointer-Events -> Touch + Maus).
+  function onDragMove(e){
+    if(!dragging) return;
+    e.preventDefault();
+    var box=el('playlist'), nodes=box.querySelectorAll('.item'), y=e.clientY, after=null;
+    for(var i=0;i<nodes.length;i++){
+      var n=nodes[i]; if(n===dragEl) continue;
+      var r=n.getBoundingClientRect();
+      if(y < r.top + r.height/2){ after=n; break; }
+    }
+    if(after){ if(after!==dragEl.nextSibling) box.insertBefore(dragEl, after); }
+    else box.appendChild(dragEl);
+  }
+  function onDragEnd(){
+    if(!dragging) return;
+    document.removeEventListener('pointermove', onDragMove);
+    document.removeEventListener('pointerup', onDragEnd);
+    document.removeEventListener('pointercancel', onDragEnd);
+    var nodes=el('playlist').querySelectorAll('.item'), to=-1;
+    for(var i=0;i<nodes.length;i++){ if(nodes[i]===dragEl){ to=i; break; } }
+    if(dragEl) dragEl.classList.remove('dragging');
+    var from=dragFrom; dragging=false; dragEl=null; dragFrom=-1;
+    // DOM bleibt wie gezogen; der autoritative State-Broadcast rendert gleich neu.
+    if(to>=0 && to!==from) api({type:'move',from:from,to:to});
+  }
+  el('playlist').addEventListener('pointerdown',function(e){
+    var h=e.target.closest('[data-drag]'); if(!h) return;
+    var item=h.closest('.item'); if(!item) return;
+    e.preventDefault();
+    dragging=true; dragEl=item; dragFrom=+h.dataset.drag;
+    item.classList.add('dragging');
+    document.addEventListener('pointermove', onDragMove);
+    document.addEventListener('pointerup', onDragEnd);
+    document.addEventListener('pointercancel', onDragEnd);
   });
   el('library').addEventListener('click',function(e){
     var a=e.target.closest('[data-add]'); if(a) api({type:'add',mediaIds:[a.dataset.add]});
