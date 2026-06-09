@@ -17,6 +17,7 @@ import {
   Pause,
   Play,
   Plus,
+  Ratio,
   RefreshCw,
   Repeat,
   Repeat1,
@@ -24,6 +25,7 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
+  SlidersHorizontal,
   Smartphone,
   Trash2,
   Volume2,
@@ -36,6 +38,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
+import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
 import type {
@@ -317,34 +320,17 @@ export function VideoPlayer(): JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
-      {ffmpegMissing && (
-        <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
-          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400" />
-          <div className="text-sm">
-            <p className="font-medium text-amber-300">ffmpeg nicht gefunden</p>
-            <p className="mt-1 text-muted-foreground">
-              Zum Konvertieren der Medien wird das gebündelte ffmpeg benötigt. Im Dev-Modus über
-              <code className="mx-1 rounded bg-muted px-1">npm run ff:fetch</code> bereitstellen; im
-              fertigen Paket ist es enthalten.
-              {enc?.error ? ` (${enc.error})` : ''}
-            </p>
-          </div>
-        </Card>
-      )}
-
-      {/* Aufbereitung & Ausgabe */}
-      <Card className="space-y-4 p-5">
-        <h2 className="font-medium">Aufbereitung & Ausgabe</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Wand-Auflösung</span>
+    <ToolShell
+      id="video-player"
+      aside={
+        <>
+          <PanelSection id="wall" title="Wand / Auflösung" icon={Ratio}>
             <div className="flex items-center gap-2">
               <NumberField value={wallW} min={2} max={16384} onCommit={(v) => setWall(v, wallH)} />
               <span className="text-muted-foreground">×</span>
               <NumberField value={wallH} min={2} max={16384} onCommit={(v) => setWall(wallW, v)} />
             </div>
-            <div className="mt-1 flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {RES_PRESETS.map((r) => (
                 <Button key={r.label} variant="outline" size="sm" onClick={() => setWall(r.w, r.h)}>
                   {r.label}
@@ -354,52 +340,57 @@ export function VideoPlayer(): JSX.Element {
                 von Monitor
               </Button>
             </div>
-          </div>
+          </PanelSection>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Fit-Modus (Einbacken)</span>
-            <select
-              className={selectClass}
-              value={fit}
-              onChange={(e) => {
-                const v = e.target.value as FitMode
-                setFit(v)
-                void persistPlayer({ defaultFit: v })
-              }}
-            >
-              {FIT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
+          <PanelSection id="prep" title="Aufbereitung" icon={SlidersHorizontal}>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Fit-Modus (Einbacken)</span>
+              <select
+                className={selectClass}
+                value={fit}
+                onChange={(e) => {
+                  const v = e.target.value as FitMode
+                  setFit(v)
+                  void persistPlayer({ defaultFit: v })
+                }}
+              >
+                {FIT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted-foreground">Gilt für neu importierte Medien.</span>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Encoder</span>
+              <select
+                className={selectClass}
+                value={encoder}
+                onChange={(e) => {
+                  setEncoder(e.target.value)
+                  void persistPlayer({ encoder: e.target.value })
+                }}
+              >
+                <option value="auto">
+                  Automatisch{enc ? ` (${enc.available.find((a) => a.id === enc.recommended)?.label ?? enc.recommended})` : ''}
                 </option>
-              ))}
-            </select>
-            <span className="text-xs text-muted-foreground">Gilt für neu importierte Medien.</span>
-          </label>
+                {enc?.available.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted-foreground">Konvertierung nach H.264/MP4 (GPU, falls verfügbar).</span>
+            </label>
+          </PanelSection>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Encoder</span>
-            <select
-              className={selectClass}
-              value={encoder}
-              onChange={(e) => {
-                setEncoder(e.target.value)
-                void persistPlayer({ encoder: e.target.value })
-              }}
-            >
-              <option value="auto">
-                Automatisch{enc ? ` (${enc.available.find((a) => a.id === enc.recommended)?.label ?? enc.recommended})` : ''}
-              </option>
-              {enc?.available.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-muted-foreground">Konvertierung nach H.264/MP4 (GPU, falls verfügbar).</span>
-          </label>
-
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Ausgabe-Monitor</span>
+          <PanelSection
+            id="output"
+            title="Ausgabe-Monitor"
+            icon={MonitorPlay}
+            right={pstate.outputOpen ? <Badge tone="success">aktiv</Badge> : undefined}
+          >
             <select
               className={selectClass}
               value={displayId ?? ''}
@@ -411,7 +402,7 @@ export function VideoPlayer(): JSX.Element {
                 </option>
               ))}
             </select>
-            <div className="mt-1 flex gap-2">
+            <div className="flex gap-2">
               <Button size="sm" onClick={() => void openOutput()} disabled={displayId == null}>
                 <MonitorPlay className="size-4" /> {pstate.outputOpen ? 'Auf Monitor' : 'Vollbild'}
               </Button>
@@ -421,45 +412,108 @@ export function VideoPlayer(): JSX.Element {
                 </Button>
               )}
             </div>
-          </div>
-        </div>
-        <label className="flex flex-col gap-1.5 border-t border-border pt-4 sm:max-w-sm">
-          <span className="text-sm font-medium">Idle-Bild (wenn nichts läuft)</span>
-          <select
-            className={selectClass}
-            value={pstate.idlePattern}
-            onChange={(e) => {
-              const v = e.target.value
-              if (v === 'custom') void pickIdleMedia()
-              else void cmd({ type: 'setIdlePattern', pattern: v as PatternId | 'off' })
-            }}
-          >
-            <option value="off">Aus (schwarz)</option>
-            <option value="custom">Eigenes Bild/Video…</option>
-            {PATTERN_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          {pstate.idlePattern === 'custom' ? (
-            <span className="text-xs text-muted-foreground">
-              Eigenes {pstate.idleMediaKind === 'video' ? 'Video' : 'Bild'} aktiv ·{' '}
-              <button className="underline" onClick={() => void pickIdleMedia()}>
-                ändern
-              </button>{' '}
-              ·{' '}
-              <button className="underline" onClick={() => void cmd({ type: 'setIdlePattern', pattern: 'off' })}>
-                entfernen
-              </button>
-            </span>
-          ) : (
-            <span className="text-xs text-muted-foreground">Testbild oder eigenes Medium als Fallback auf der Ausgabe.</span>
-          )}
-        </label>
-      </Card>
+          </PanelSection>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+          <PanelSection id="idle" title="Idle-Bild" icon={ImageIcon} defaultOpen={false}>
+            <select
+              className={selectClass}
+              value={pstate.idlePattern}
+              onChange={(e) => {
+                const v = e.target.value
+                if (v === 'custom') void pickIdleMedia()
+                else void cmd({ type: 'setIdlePattern', pattern: v as PatternId | 'off' })
+              }}
+            >
+              <option value="off">Aus (schwarz)</option>
+              <option value="custom">Eigenes Bild/Video…</option>
+              {PATTERN_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {pstate.idlePattern === 'custom' ? (
+              <span className="text-xs text-muted-foreground">
+                Eigenes {pstate.idleMediaKind === 'video' ? 'Video' : 'Bild'} aktiv ·{' '}
+                <button className="underline" onClick={() => void pickIdleMedia()}>
+                  ändern
+                </button>{' '}
+                ·{' '}
+                <button className="underline" onClick={() => void cmd({ type: 'setIdlePattern', pattern: 'off' })}>
+                  entfernen
+                </button>
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">Testbild oder eigenes Medium als Fallback auf der Ausgabe.</span>
+            )}
+          </PanelSection>
+
+          <PanelSection
+            id="remote"
+            title="Fernsteuerung"
+            icon={Smartphone}
+            defaultOpen={false}
+            right={remote?.running ? <Badge tone="success">an</Badge> : undefined}
+          >
+            <p className="text-xs text-muted-foreground">
+              Steuerseite im lokalen Netz – Tablet/Handy muss im selben WLAN sein. Ohne Passwort.
+            </p>
+            <label className="flex items-center justify-between gap-2 text-sm">
+              <span className="text-muted-foreground">Port</span>
+              <NumberField value={remotePort} min={1} max={65535} className="w-24" onCommit={setRemotePort} />
+            </label>
+            <Button
+              onClick={() => void toggleRemote()}
+              variant={remote?.running ? 'outline' : 'default'}
+              className="w-full"
+            >
+              <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
+            </Button>
+            {remote?.running && (
+              <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+                {remote.urls[0] && (
+                  <div className="flex justify-center">
+                    <QrCode text={remote.urls[0]} />
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Im Browser des Tablets öffnen (QR scannen oder Adresse eintippen):
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {remote.urls.map((u) => (
+                    <button
+                      key={u}
+                      onClick={() => void navigator.clipboard?.writeText(u)}
+                      title="Adresse kopieren"
+                      className="rounded bg-background px-2 py-1 font-mono text-xs text-primary hover:bg-muted"
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </PanelSection>
+        </>
+      }
+      main={
+        <div className="space-y-6 p-6">
+          {ffmpegMissing && (
+            <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-300">ffmpeg nicht gefunden</p>
+                <p className="mt-1 text-muted-foreground">
+                  Zum Konvertieren der Medien wird das gebündelte ffmpeg benötigt. Im Dev-Modus über
+                  <code className="mx-1 rounded bg-muted px-1">npm run ff:fetch</code> bereitstellen; im
+                  fertigen Paket ist es enthalten.
+                  {enc?.error ? ` (${enc.error})` : ''}
+                </p>
+              </div>
+            </Card>
+          )}
+
+          <div className="grid gap-6 xl:grid-cols-2">
         {/* Bibliothek */}
         <Card className="flex flex-col p-5">
           <div className="mb-3 flex items-center justify-between gap-2">
@@ -929,55 +983,9 @@ export function VideoPlayer(): JSX.Element {
             )}
           </div>
         </Card>
-      </div>
-
-      {/* Fernsteuerung (Tablet/Handy) */}
-      <Card className="space-y-3 p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <Smartphone className="size-5 text-primary" />
-          <div className="flex-1">
-            <h2 className="font-medium">Fernsteuerung (Tablet/Handy)</h2>
-            <p className="text-xs text-muted-foreground">
-              Steuerseite im lokalen Netz – Gerät muss im selben WLAN sein. Ohne Passwort.
-            </p>
           </div>
-          <label className="flex items-center gap-1.5 text-sm">
-            <span className="text-muted-foreground">Port</span>
-            <NumberField
-              value={remotePort}
-              min={1}
-              max={65535}
-              className="w-24"
-              onCommit={setRemotePort}
-            />
-          </label>
-          <Button onClick={() => void toggleRemote()} variant={remote?.running ? 'outline' : 'default'}>
-            <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
-          </Button>
         </div>
-        {remote?.running && (
-          <div className="flex flex-wrap items-center gap-4 rounded-md border border-border bg-muted/30 p-3">
-            {remote.urls[0] && <QrCode text={remote.urls[0]} />}
-            <div className="min-w-0 flex-1">
-              <p className="mb-1 text-xs text-muted-foreground">
-                Im Browser des Tablets öffnen (QR scannen oder Adresse eintippen):
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {remote.urls.map((u) => (
-                  <button
-                    key={u}
-                    onClick={() => void navigator.clipboard?.writeText(u)}
-                    title="Adresse kopieren"
-                    className="rounded bg-background px-2 py-1 font-mono text-sm text-primary hover:bg-muted"
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </Card>
-    </div>
+      }
+    />
   )
 }
