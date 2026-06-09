@@ -10,7 +10,6 @@ import {
   Loader2,
   Pencil,
   Search,
-  Tags,
   Trash2,
   X
 } from 'lucide-react'
@@ -229,28 +228,6 @@ export function ManualsLibrary(): JSX.Element {
                 Debug-Log öffnen
               </button>
             </PanelSection>
-
-            {manuals.length > 0 && (
-              <PanelSection id="cats" title="Kategorien" icon={Tags}>
-                <div className="flex flex-wrap gap-1.5">
-                  <CategoryChip
-                    label={`Alle (${manuals.length})`}
-                    active={categoryFilter === null}
-                    onClick={() => setCategoryFilter(null)}
-                  />
-                  {categories
-                    .filter((c) => manuals.some((m) => m.category === c))
-                    .map((c) => (
-                      <CategoryChip
-                        key={c}
-                        label={`${c} (${manuals.filter((m) => m.category === c).length})`}
-                        active={categoryFilter === c}
-                        onClick={() => setCategoryFilter(c)}
-                      />
-                    ))}
-                </div>
-              </PanelSection>
-            )}
           </>
         }
         main={
@@ -279,6 +256,25 @@ export function ManualsLibrary(): JSX.Element {
                 />
               ) : (
                 <div className="mx-auto max-w-4xl space-y-3">
+                  {manuals.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      <CategoryChip
+                        label={`Alle (${manuals.length})`}
+                        active={categoryFilter === null}
+                        onClick={() => setCategoryFilter(null)}
+                      />
+                      {categories
+                        .filter((c) => manuals.some((m) => m.category === c))
+                        .map((c) => (
+                          <CategoryChip
+                            key={c}
+                            label={`${c} (${manuals.filter((m) => m.category === c).length})`}
+                            active={categoryFilter === c}
+                            onClick={() => setCategoryFilter(c)}
+                          />
+                        ))}
+                    </div>
+                  )}
                   <LibraryList
                     manuals={visibleManuals}
                     onOpen={(id) => void openManual(id, 1)}
