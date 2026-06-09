@@ -298,7 +298,28 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
         </div>
       ))}
 
-      {!curr && state.idlePattern !== 'off' && (
+      {!curr && state.idlePattern === 'custom' && state.idleMediaUrl && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: '#000' }}>
+          {state.idleMediaKind === 'video' ? (
+            <video
+              key={state.idleMediaUrl}
+              src={state.idleMediaUrl}
+              autoPlay
+              loop
+              muted
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: objectFit === 'contain' ? 'contain' : 'cover' }}
+            />
+          ) : (
+            <img
+              key={state.idleMediaUrl}
+              src={state.idleMediaUrl}
+              style={{ width: '100%', height: '100%', objectFit: objectFit === 'contain' ? 'contain' : 'cover' }}
+            />
+          )}
+        </div>
+      )}
+      {!curr && state.idlePattern !== 'off' && state.idlePattern !== 'custom' && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
           <IdlePattern pattern={state.idlePattern as PatternId} />
         </div>

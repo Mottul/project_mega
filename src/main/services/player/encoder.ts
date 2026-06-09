@@ -192,6 +192,22 @@ export function buildVideoArgs(opts: {
   ]
 }
 
+/** ffmpeg-Argumente: schon passendes Video nur in den Container kopieren (kein Re-Encode). */
+export function buildCopyArgs(opts: { input: string; output: string; hasAudio: boolean }): string[] {
+  const args = ['-hide_banner', '-i', opts.input, '-map', '0:v:0']
+  if (opts.hasAudio) args.push('-map', '0:a:0?', '-c:a', 'copy')
+  else args.push('-an')
+  args.push(
+    '-c:v', 'copy',
+    '-movflags', '+faststart',
+    '-progress', 'pipe:1',
+    '-nostats',
+    '-y',
+    opts.output
+  )
+  return args
+}
+
 /** ffmpeg-Argumente: Standbild -> in Wand-Auflösung gebackenes JPG. */
 export function buildImageArgs(opts: {
   input: string

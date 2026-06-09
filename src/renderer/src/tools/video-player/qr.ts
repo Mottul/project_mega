@@ -36,29 +36,33 @@ function gfMul(a: number, b: number): number {
   return EXP[LOG[a] + LOG[b]]
 }
 
+// Generatorpolynom, Koeffizienten höchster Grad zuerst (Leitkoeffizient gen[0]=1).
 function rsGenerator(degree: number): number[] {
   let poly = [1]
   for (let i = 0; i < degree; i++) {
+    // poly * (x + α^i)
     const next = new Array<number>(poly.length + 1).fill(0)
     for (let j = 0; j < poly.length; j++) {
-      next[j] ^= gfMul(poly[j], EXP[i])
-      next[j + 1] ^= poly[j]
+      next[j] ^= poly[j] // x·poly
+      next[j + 1] ^= gfMul(poly[j], EXP[i]) // α^i·poly
     }
     poly = next
   }
   return poly
 }
 
+// Reed-Solomon EC-Codewörter per synthetischer Division (Standardform).
 function rsEncode(data: number[], ecLen: number): number[] {
   const gen = rsGenerator(ecLen)
-  const res = new Array<number>(ecLen).fill(0)
-  for (const d of data) {
-    const factor = d ^ res[0]
-    res.shift()
-    res.push(0)
-    for (let j = 0; j < ecLen; j++) res[j] ^= gfMul(gen[j], factor)
+  const res = new Array<number>(data.length + ecLen).fill(0)
+  for (let i = 0; i < data.length; i++) res[i] = data[i]
+  for (let i = 0; i < data.length; i++) {
+    const coef = res[i]
+    if (coef !== 0) {
+      for (let j = 1; j < gen.length; j++) res[i + j] ^= gfMul(gen[j], coef)
+    }
   }
-  return res
+  return res.slice(data.length)
 }
 
 function encodeData(text: string, spec: VersionSpec): number[] {
@@ -145,12 +149,12 @@ function buildFunctionPatterns(g: Grid, spec: VersionSpec): void {
   }
   // Dunkelmodul
   setFn(g, s - 8, 8, 1)
-  // Formatbereiche reservieren (Wert später)
-  for (let i = 0; i < 9; i++) {
+  // Formatbereiche reservieren (2×15 Module, exakt nach Standard) – Werte in placeFormat.
+  for (let i = 0; i <= 8; i++) {
     if (!g.fn[8][i]) setFn(g, 8, i, 0)
     if (!g.fn[i][8]) setFn(g, i, 8, 0)
   }
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i <= 7; i++) {
     if (!g.fn[8][s - 1 - i]) setFn(g, 8, s - 1 - i, 0)
     if (!g.fn[s - 1 - i][8]) setFn(g, s - 1 - i, 8, 0)
   }
@@ -208,17 +212,20 @@ function formatBits(mask: number): number[] {
   return arr
 }
 
+// Formatinfo in beide Kopien schreiben – exakte Modulzuordnung nach Standard.
 function placeFormat(matrix: number[][], size: number, mask: number): void {
-  const f = formatBits(mask)
-  // um die linke obere Ecke
-  for (let i = 0; i <= 5; i++) matrix[8][i] = f[i]
-  matrix[8][7] = f[6]
-  matrix[8][8] = f[7]
-  matrix[7][8] = f[8]
-  for (let i = 9; i <= 14; i++) matrix[14 - i][8] = f[i]
-  // gespiegelt an TR/BL
-  for (let i = 0; i <= 7; i++) matrix[size - 1 - i][8] = f[i]
-  for (let i = 8; i <= 14; i++) matrix[8][size - 15 + i] = f[i]
+  const f = formatBits(mask) // f[i] = Bit i
+  for (let i = 0; i < 15; i++) {
+    const mod = f[i]
+    // vertikale Kopie (Spalte 8)
+    if (i < 6) matrix[i][8] = mod
+    else if (i < 8) matrix[i + 1][8] = mod
+    else matrix[size - 15 + i][8] = mod
+    // horizontale Kopie (Reihe 8)
+    if (i < 8) matrix[8][size - i - 1] = mod
+    else if (i < 9) matrix[8][7] = mod
+    else matrix[8][15 - i - 1] = mod
+  }
   matrix[size - 8][8] = 1 // Dunkelmodul
 }
 

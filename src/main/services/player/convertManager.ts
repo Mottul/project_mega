@@ -12,6 +12,7 @@ import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 import { logLine } from '../log'
 import { getSettings } from '../store'
 import {
+  buildCopyArgs,
   buildImageArgs,
   buildThumbArgs,
   buildVideoArgs,
@@ -38,6 +39,7 @@ const VIDEO_EXT = new Set([
 ])
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tif', '.tiff'])
 const MEDIA_EXT = new Set([...VIDEO_EXT, ...IMAGE_EXT, '.gif'])
+export const ALLOWED_MEDIA_EXT = MEDIA_EXT
 
 type JobSink = (job: ConvertJob) => void
 type LibrarySink = () => void
@@ -48,6 +50,8 @@ interface ProbeInfo {
   durationSec: number | null
   hasVideo: boolean
   hasAudio: boolean
+  codecName: string | null
+  pixFmt: string | null
 }
 
 function readEntries(dir: string): Dirent<string>[] {
@@ -96,7 +100,14 @@ async function probeSource(path: string): Promise<ProbeInfo> {
     maxBuffer: 16 * 1024 * 1024
   })
   const json = JSON.parse(stdout) as {
-    streams?: { codec_type?: string; width?: number; height?: number; duration?: string }[]
+    streams?: {
+      codec_type?: string
+      codec_name?: string
+      pix_fmt?: string
+      width?: number
+      height?: number
+      duration?: string
+    }[]
     format?: { duration?: string }
   }
   const streams = json.streams ?? []
@@ -109,8 +120,22 @@ async function probeSource(path: string): Promise<ProbeInfo> {
     height: video?.height ?? null,
     durationSec: dur && Number.isFinite(dur) ? dur : null,
     hasVideo: Boolean(video),
-    hasAudio
+    hasAudio,
+    codecName: video?.codec_name ?? null,
+    pixFmt: video?.pix_fmt ?? null
   }
+}
+
+// Quelle liegt bereits exakt in Zielauflösung + browsertauglichem H.264 vor
+// -> kein Re-Encode nötig, nur Container-Copy.
+function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): boolean {
+  return (
+    kind === 'video' &&
+    info.width === w &&
+    info.height === h &&
+    info.codecName === 'h264' &&
+    info.pixFmt === 'yuv420p'
+  )
 }
 
 class ConvertManager {
@@ -257,6 +282,12 @@ class ConvertManager {
         await this.spawnFf(job, buildImageArgs({
           input: job.sourcePath, output, fit: spec.fit, width: spec.width, height: spec.height
         }), null)
+      } else if (canStreamCopy(kind, info, spec.width, spec.height)) {
+        // Schon passend -> nur kopieren, kein Re-Encode.
+        this.update(job, { status: 'converting', encoder: 'copy' })
+        await this.spawnFf(job, buildCopyArgs({
+          input: job.sourcePath, output, hasAudio: info.hasAudio
+        }), info.durationSec)
       } else {
         const encoder = await resolveEncoder(getSettings().player.encoder)
         this.update(job, { status: 'converting', encoder })
@@ -356,6 +387,11 @@ class ConvertManager {
         await this.spawnFf(job, buildImageArgs({
           input: job.sourcePath, output: tmpStored, fit: spec.fit, width: spec.width, height: spec.height
         }), null)
+      } else if (canStreamCopy(kind, info, spec.width, spec.height)) {
+        this.update(job, { status: 'converting', encoder: 'copy' })
+        await this.spawnFf(job, buildCopyArgs({
+          input: job.sourcePath, output: tmpStored, hasAudio: info.hasAudio
+        }), info.durationSec)
       } else {
         const encoder = await resolveEncoder(getSettings().player.encoder)
         this.update(job, { status: 'converting', encoder })

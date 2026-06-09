@@ -193,9 +193,13 @@ export function TestPatterns(): JSX.Element {
 
   const isSolid = config.pattern === 'solid'
   const isCycle = config.pattern === 'colorcycle'
+  const isScroll = config.pattern === 'scroll'
   const showScale = config.pattern === 'grid' || config.pattern === 'geometry'
   const mc = moduleCells(config.width, config.height)
-  const gridCells = { x: mc.x * config.gridScale, y: mc.y * config.gridScale }
+  const gridCells = {
+    x: Math.max(1, Math.round(mc.x * config.gridScale)),
+    y: Math.max(1, Math.round(mc.y * config.gridScale))
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -289,8 +293,8 @@ export function TestPatterns(): JSX.Element {
                   variant="outline"
                   size="icon"
                   className="size-8"
-                  onClick={() => patch({ gridScale: Math.max(1, config.gridScale / 2) })}
-                  disabled={config.gridScale <= 1}
+                  onClick={() => patch({ gridScale: Math.max(0.25, config.gridScale / 2) })}
+                  disabled={config.gridScale <= 0.25}
                 >
                   −
                 </Button>
@@ -349,6 +353,27 @@ export function TestPatterns(): JSX.Element {
                 />
               </label>
             </div>
+          )}
+
+          {isScroll && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Scroll-Geschwindigkeit</span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={0.1}
+                  max={6}
+                  step={0.1}
+                  value={config.scrollSpeed}
+                  onChange={(e) => patch({ scrollSpeed: Number(e.target.value) })}
+                  className="w-48"
+                />
+                <span className="min-w-12 text-sm tabular-nums">×{config.scrollSpeed.toFixed(1)}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Höher = schnellere Balken (Tearing/Judder deutlicher).
+              </span>
+            </label>
           )}
 
           <div className="flex flex-col gap-1.5">

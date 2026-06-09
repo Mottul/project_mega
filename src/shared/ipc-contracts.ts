@@ -82,6 +82,7 @@ export const Channels = {
   playerLibraryDelete: 'player:libraryDelete',
   playerLibraryClear: 'player:libraryClear',
   playerReconvert: 'player:reconvert',
+  playerPickIdleMedia: 'player:pickIdleMedia',
   playerMediaDir: 'player:mediaDir',
   playerLibraryChanged: 'player:libraryChanged', // Event (kein Payload)
   // Video-Player – Wiedergabe & Ausgabe
@@ -187,6 +188,8 @@ export interface ToolboxApi {
     libraryClear(): Promise<void>
     /** Medien neu auf die angegebene Wand-Auflösung konvertieren (gleiche id). */
     reconvert(mediaIds: string[], wall: WallResolution): Promise<{ jobIds: string[]; skipped: number }>
+    /** Datei-Dialog für ein eigenes Idle-Bild/-Video; kopiert es in den Medienordner. */
+    pickIdleMedia(): Promise<{ url: string; kind: 'image' | 'video' } | null>
     /** Speicherort der konvertierten Medien (userData/player-media). */
     mediaDir(): Promise<string>
     onLibraryChanged(cb: () => void): () => void
