@@ -88,6 +88,19 @@ function kindOf(path: string): MediaKind {
   return 'video'
 }
 
+// Dieselbe Quelle kann mit unterschiedlicher Aufbereitung mehrfach in der
+// Bibliothek liegen (eigene conv_key je Fit-Modus). Damit die Einträge nicht
+// gleich aussehen, wandert der Fit in den Titel (das Thumbnail wird ohnehin aus
+// dem aufbereiteten Ergebnis erzeugt, zeigt also Blur/Balken/Streckung direkt).
+const FIT_TITLE: Record<PlayerImportRequest['fitMode'], string> = {
+  blur: 'Blur',
+  bars: 'Letterbox',
+  stretch: 'Stretch'
+}
+function titleWithFit(base: string, fit: PlayerImportRequest['fitMode']): string {
+  return `${base} · ${FIT_TITLE[fit]}`
+}
+
 async function probeSource(path: string): Promise<ProbeInfo> {
   const args = [
     '-v', 'quiet',
@@ -180,7 +193,7 @@ class ConvertManager {
       const job: ConvertJob = {
         id,
         sourcePath: src,
-        title: basename(src, extname(src)),
+        title: titleWithFit(basename(src, extname(src)), req.fitMode),
         status: 'queued',
         progress: 0,
         fitMode: req.fitMode,
@@ -303,8 +316,10 @@ class ConvertManager {
       let thumbOk = false
       try {
         const seek = Math.min(1, (info.durationSec ?? 1) * 0.1)
+        // Aus dem AUFBEREITETEN Ergebnis (output) miniaturisieren -> das Thumbnail
+        // zeigt den tatsächlichen Fit (Blur-Rand / Letterbox / Streckung).
         await this.spawnFf(job, buildThumbArgs({
-          input: kind === 'image' ? output : job.sourcePath,
+          input: output,
           output: thumbPath,
           seekSec: seek,
           isVideo: kind !== 'image'
@@ -407,7 +422,7 @@ class ConvertManager {
       try {
         const seek = Math.min(1, (info.durationSec ?? 1) * 0.1)
         await this.spawnFf(job, buildThumbArgs({
-          input: kind === 'image' ? tmpStored : job.sourcePath, output: tmpThumb, seekSec: seek, isVideo: kind !== 'image'
+          input: tmpStored, output: tmpThumb, seekSec: seek, isVideo: kind !== 'image'
         }), null, true)
         thumbOk = existsSync(tmpThumb)
       } catch (thumbErr) {

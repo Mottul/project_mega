@@ -356,6 +356,7 @@ export type PlayerCommand =
   | { type: 'goto'; index: number }
   | { type: 'seek'; positionSec: number }
   | { type: 'add'; mediaIds: string[]; at?: number }
+  | { type: 'replace'; mediaIds: string[] } // Playlist atomar ersetzen (nahtloser Wechsel)
   | { type: 'remove'; index: number }
   | { type: 'move'; from: number; to: number }
   | { type: 'clear' }

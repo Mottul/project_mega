@@ -284,8 +284,9 @@ export function VideoPlayer(): JSX.Element {
   }
 
   async function loadSaved(p: SavedPlaylist): Promise<void> {
-    await cmd({ type: 'clear' })
-    await cmd({ type: 'add', mediaIds: p.mediaIds })
+    // Atomar ersetzen statt clear + add: kein Zwischenstopp über eine leere Liste
+    // -> der Wechsel pausiert nicht und blendet nicht kurz aufs Idle-Bild.
+    await cmd({ type: 'replace', mediaIds: p.mediaIds })
   }
 
   async function pickIdleMedia(): Promise<void> {
@@ -513,9 +514,10 @@ export function VideoPlayer(): JSX.Element {
             </Card>
           )}
 
-          <div className="grid gap-6 xl:grid-cols-2">
-        {/* Bibliothek */}
-        <Card className="flex flex-col p-5">
+          <div className="flex flex-col gap-6 xl:flex-row">
+        {/* Bibliothek – auf breiten Screens links, beim Stapeln NACH dem Player
+            (order-2): schmal soll zuerst der Player kommen, nicht die Bibliothek. */}
+        <Card className="order-2 flex min-w-0 flex-col p-5 xl:order-1 xl:flex-1">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="font-medium">Bibliothek</h2>
             <div className="flex items-center gap-1">
@@ -743,36 +745,35 @@ export function VideoPlayer(): JSX.Element {
           </div>
         </Card>
 
-        {/* Wiedergabe */}
-        <Card className="flex flex-col p-5">
-          <div className="mb-3 flex items-center justify-between">
+        {/* Wiedergabe – beim Stapeln zuerst (order-1), auf breiten Screens rechts. */}
+        <Card className="order-1 flex min-w-0 flex-col p-5 xl:order-2 xl:flex-1">
+          <div className="mb-3">
             <h2 className="font-medium">Wiedergabe</h2>
-            {pstate.playlist.length > 0 && (
-              <button
-                className="text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => void cmd({ type: 'clear' })}
-              >
-                Playlist leeren
-              </button>
-            )}
           </div>
 
-          {/* Gespeicherte Playlists (Tabs) */}
-          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          {/* Gespeicherte Playlists (Tabs) – prominent mit Akzentfarbe + Anzahl */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             {saved.map((p) => (
               <span
                 key={p.name}
-                className="flex items-center gap-1 rounded-full border border-border bg-muted/40 py-0.5 pl-2.5 pr-1 text-xs"
+                className="flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 py-1 pl-3 pr-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/70 hover:bg-primary/20"
               >
-                <button onClick={() => void loadSaved(p)} title={`Laden (${p.mediaIds.length})`}>
+                <button
+                  onClick={() => void loadSaved(p)}
+                  title={`Playlist „${p.name}" laden (${p.mediaIds.length} Medien)`}
+                  className="flex items-center gap-1.5"
+                >
                   {p.name}
+                  <span className="rounded-full bg-primary/25 px-1.5 text-xs tabular-nums text-primary">
+                    {p.mediaIds.length}
+                  </span>
                 </button>
                 <button
                   onClick={() => void persistSaved(saved.filter((x) => x.name !== p.name))}
                   className="text-muted-foreground hover:text-red-400"
                   title="Löschen"
                 >
-                  <X className="size-3" />
+                  <X className="size-3.5" />
                 </button>
               </span>
             ))}
@@ -882,7 +883,7 @@ export function VideoPlayer(): JSX.Element {
           </div>
 
           {/* Modi */}
-          <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
             <Button variant={pstate.loop !== 'none' ? 'secondary' : 'ghost'} size="sm" onClick={toggleLoop} title={`Loop: ${pstate.loop}`}>
               {loopIcon}
               {pstate.loop === 'none' ? 'Kein Loop' : pstate.loop === 'one' ? 'Eines' : 'Alle'}
@@ -919,7 +920,7 @@ export function VideoPlayer(): JSX.Element {
             )}
           </div>
 
-          <div className="mb-2 flex items-center justify-end">
+          <div className="mb-3 flex items-center justify-center">
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock className="size-3.5" /> Bild-Standzeit
               <NumberField
@@ -934,6 +935,20 @@ export function VideoPlayer(): JSX.Element {
           </div>
 
           {/* Playlist */}
+          {pstate.playlist.length > 0 && (
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Playlist · {pstate.playlist.length}
+              </span>
+              <button
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-400"
+                onClick={() => void cmd({ type: 'clear' })}
+                title="Playlist leeren"
+              >
+                <Eraser className="size-3.5" /> Leeren
+              </button>
+            </div>
+          )}
           <div
             className="min-h-0 flex-1 space-y-1 overflow-auto"
             onDragOver={(e) => e.preventDefault()}

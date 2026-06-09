@@ -94,18 +94,22 @@ export function registerPlayerHandlers(): void {
     const src = res.filePaths[0]
     const ext = extname(src).toLowerCase() || '.bin'
     const kind: 'image' | 'video' = isImageExt(src) || isGifExt(src) ? 'image' : 'video'
-    // vorheriges Idle-Medium (egal welche Endung) entfernen
+    // Immer in eine NEUE Datei kopieren: das bisherige Idle-Medium wird u.U. noch
+    // vom Ausgabefenster gehalten (Windows -> Datei gesperrt). Würde man denselben
+    // Namen überschreiben, scheitert copyfile mit EPERM. Eindeutiger Name umgeht das.
+    const storedName = `__idle-${Date.now()}${ext}`
+    copyFileSync(src, mediaFilePath(storedName))
+    // Alte Idle-Dateien best effort aufräumen (die gerade aktive ist evtl. noch
+    // gesperrt -> wird beim nächsten Wechsel mitgenommen).
     for (const f of readdirSync(mediaDir())) {
-      if (f.startsWith('__idle.')) {
+      if (f.startsWith('__idle') && f !== storedName) {
         try {
           rmSync(join(mediaDir(), f))
         } catch {
-          // ignorieren
+          // gesperrt/in Benutzung -> ignorieren
         }
       }
     }
-    const storedName = `__idle${ext}`
-    copyFileSync(src, mediaFilePath(storedName))
     return { url: `${MEDIA_PROTOCOL}://library/${storedName}?v=${Date.now()}`, kind }
   })
 

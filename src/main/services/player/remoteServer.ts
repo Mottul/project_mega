@@ -46,6 +46,13 @@ function rewriteJson(value: unknown): string {
   return JSON.stringify(value).split('media://library/').join('/media/')
 }
 
+// Zustand fürs Tablet: Player-State + die gespeicherten Playlists (zum Umschalten).
+// Letztere liegen in den Einstellungen, nicht im Player-State -> hier zusammenführen.
+function stateForRemote(state?: PlayerState): PlayerState & { savedPlaylists: unknown } {
+  const s = state ?? getPlayerState()
+  return { ...s, savedPlaylists: getSettings().player.savedPlaylists ?? [] }
+}
+
 function mediaType(path: string): string {
   switch (extname(path).toLowerCase()) {
     case '.mp4':
@@ -178,7 +185,7 @@ function openSse(req: IncomingMessage, res: ServerResponse): void {
     Connection: 'keep-alive'
   })
   res.write('retry: 2000\n\n')
-  res.write(`data: ${JSON.stringify({ type: 'state', payload: JSON.parse(rewriteJson(getPlayerState())) })}\n\n`)
+  res.write(`data: ${JSON.stringify({ type: 'state', payload: JSON.parse(rewriteJson(stateForRemote())) })}\n\n`)
   clients.add(res)
   req.on('close', () => {
     clients.delete(res)
@@ -194,7 +201,7 @@ function handle(req: IncomingMessage, res: ServerResponse): void {
     res.end(MOBILE_PAGE)
     return
   }
-  if (path === '/api/state') return sendJson(res, rewriteJson(getPlayerState()))
+  if (path === '/api/state') return sendJson(res, rewriteJson(stateForRemote()))
   if (path === '/api/library') return sendJson(res, rewriteJson(listMedia()))
   if (path === '/api/events') return openSse(req, res)
   if (path === '/api/command' && req.method === 'POST') {
@@ -231,7 +238,7 @@ function broadcast(type: string, payload: unknown): void {
 
 export function pushRemoteState(state: PlayerState): void {
   if (!server) return
-  broadcast('state', JSON.parse(rewriteJson(state)))
+  broadcast('state', JSON.parse(rewriteJson(stateForRemote(state))))
 }
 export function pushRemoteTick(tick: PlayerTick): void {
   if (!server) return

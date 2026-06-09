@@ -51,6 +51,17 @@ export const MOBILE_PAGE = `<!doctype html>
     padding:9px 14px; font-size:14px; cursor:pointer; flex:0 0 auto; }
   .uprog { font-size:12px; color:var(--sub); }
   .uprog.active { padding:6px 2px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { background:var(--muted); border:1px solid #3f3f46; border-radius:999px;
+    padding:10px 16px; font-size:15px; color:var(--fg); cursor:pointer; }
+  .chip .n { color:var(--sub); font-size:12px; margin-left:7px; }
+  .setrow { display:flex; gap:12px; margin-top:8px; }
+  .setblock { flex:1; min-width:0; }
+  .setlabel { font-size:12px; color:var(--sub); margin-bottom:6px; }
+  .modes.two { grid-template-columns:1fr 1fr; margin-top:0; }
+  .stepper { display:flex; align-items:center; gap:8px; }
+  .stepper button { min-width:48px; font-size:22px; }
+  .stepper .v { font-size:16px; min-width:54px; text-align:center; }
 </style>
 </head>
 <body>
@@ -73,6 +84,30 @@ export const MOBILE_PAGE = `<!doctype html>
       <button id="loop">Loop</button>
       <button id="shuffle">Zufall</button>
       <button id="mute">Ton</button>
+    </div>
+  </div>
+
+  <div id="plwrap" style="display:none">
+    <h3>Playlists</h3>
+    <div id="playlists" class="chips"></div>
+  </div>
+
+  <h3>Einstellungen</h3>
+  <div class="card setrow">
+    <div class="setblock">
+      <div class="setlabel">Übergang</div>
+      <div class="modes two">
+        <button id="tr-cut">Schnitt</button>
+        <button id="tr-xf">Überblenden</button>
+      </div>
+    </div>
+    <div class="setblock">
+      <div class="setlabel">Bild-Standzeit</div>
+      <div class="stepper">
+        <button id="dur-dec" aria-label="weniger">−</button>
+        <span id="dur-val" class="v">10s</span>
+        <button id="dur-inc" aria-label="mehr">+</button>
+      </div>
     </div>
   </div>
 
@@ -116,7 +151,23 @@ export const MOBILE_PAGE = `<!doctype html>
     loopBtn.className = state.loop!=='none' ? 'on' : '';
     el('shuffle').className = state.shuffle ? 'on' : '';
     var muteBtn=el('mute'); muteBtn.textContent = state.muted ? 'Stumm' : 'Ton'; muteBtn.className = state.muted ? '' : 'on';
+    el('tr-cut').className = state.transition==='crossfade' ? '' : 'on';
+    el('tr-xf').className = state.transition==='crossfade' ? 'on' : '';
+    el('dur-val').textContent = (state.imageDurationSec||10)+'s';
+    renderSaved();
     renderPlaylist();
+  }
+
+  function renderSaved(){
+    var wrap=el('plwrap'), box=el('playlists');
+    var pls=(state&&state.savedPlaylists)||[];
+    if(!pls.length){ wrap.style.display='none'; box.innerHTML=''; return; }
+    wrap.style.display='';
+    var h='';
+    for(var i=0;i<pls.length;i++){
+      h += '<button class="chip" data-pl="'+i+'">'+esc(pls[i].name)+'<span class="n">'+pls[i].mediaIds.length+'</span></button>';
+    }
+    box.innerHTML=h;
   }
 
   function renderPlaylist(){
@@ -161,6 +212,15 @@ export const MOBILE_PAGE = `<!doctype html>
   });
   el('shuffle').addEventListener('click',function(){ api({type:'setShuffle',shuffle:!(state&&state.shuffle)}); });
   el('mute').addEventListener('click',function(){ api({type:'setMuted',muted:!(state&&state.muted)}); });
+  el('tr-cut').addEventListener('click',function(){ api({type:'setTransition',transition:'cut'}); });
+  el('tr-xf').addEventListener('click',function(){ api({type:'setTransition',transition:'crossfade'}); });
+  el('dur-dec').addEventListener('click',function(){ var v=(state&&state.imageDurationSec)||10; api({type:'setImageDuration',seconds:Math.max(1,v-1)}); });
+  el('dur-inc').addEventListener('click',function(){ var v=(state&&state.imageDurationSec)||10; api({type:'setImageDuration',seconds:Math.min(3600,v+1)}); });
+  el('playlists').addEventListener('click',function(e){
+    var b=e.target.closest('[data-pl]'); if(!b) return;
+    var pls=(state&&state.savedPlaylists)||[]; var p=pls[+b.dataset.pl];
+    if(p) api({type:'replace',mediaIds:p.mediaIds});
+  });
 
   var seek=el('seek');
   seek.addEventListener('input',function(){ seeking=true; el('pos').textContent=fmt(+seek.value); });
