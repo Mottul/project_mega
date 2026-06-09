@@ -25,6 +25,8 @@ function ensureInit(): void {
     transition: p.transition,
     transitionMs: p.transitionMs,
     idlePattern: p.idlePattern,
+    idleMediaUrl: p.idleMediaUrl,
+    idleMediaKind: p.idleMediaKind,
     wall: { width: p.wallWidth, height: p.wallHeight }
   }
 }
@@ -165,6 +167,25 @@ export function applyCommand(cmd: PlayerCommand): void {
     case 'setIdlePattern':
       state.idlePattern = cmd.pattern
       setSettings({ player: { ...getSettings().player, idlePattern: state.idlePattern } })
+      break
+    case 'setIdleMedia':
+      if (cmd.url) {
+        state.idlePattern = 'custom'
+        state.idleMediaUrl = cmd.url
+        state.idleMediaKind = cmd.kind
+      } else {
+        state.idlePattern = 'off'
+        state.idleMediaUrl = null
+        state.idleMediaKind = null
+      }
+      setSettings({
+        player: {
+          ...getSettings().player,
+          idlePattern: state.idlePattern,
+          idleMediaUrl: state.idleMediaUrl,
+          idleMediaKind: state.idleMediaKind
+        }
+      })
       break
   }
   emitState()

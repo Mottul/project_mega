@@ -1,10 +1,21 @@
-import { ipcMain } from 'electron'
-import { Channels } from '@shared/ipc-contracts'
+import { copyFileSync, readdirSync, rmSync } from 'node:fs'
+import { extname, join } from 'node:path'
+import { dialog, ipcMain } from 'electron'
+import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import type { PlayerCommand, PlayerImportRequest } from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { convertManager } from '../services/player/convertManager'
 import { detectEncoders } from '../services/player/encoder'
-import { clearLibrary, deleteMedia, getMedia, listMedia, mediaDir } from '../services/player/mediaLibrary'
+import {
+  clearLibrary,
+  deleteMedia,
+  getMedia,
+  isGifExt,
+  isImageExt,
+  listMedia,
+  mediaDir,
+  mediaFilePath
+} from '../services/player/mediaLibrary'
 import {
   applyCommand,
   dropMediaFromPlaylist,
@@ -68,6 +79,36 @@ export function registerPlayerHandlers(): void {
     applyCommand({ type: 'clear' })
     broadcast(Channels.playerLibraryChanged)
   })
+  ipcMain.handle(Channels.playerPickIdleMedia, async () => {
+    const res = await dialog.showOpenDialog({
+      title: 'Idle-Bild/-Video wählen',
+      properties: ['openFile'],
+      filters: [
+        {
+          name: 'Bilder & Videos',
+          extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v']
+        }
+      ]
+    })
+    if (res.canceled || res.filePaths.length === 0) return null
+    const src = res.filePaths[0]
+    const ext = extname(src).toLowerCase() || '.bin'
+    const kind: 'image' | 'video' = isImageExt(src) || isGifExt(src) ? 'image' : 'video'
+    // vorheriges Idle-Medium (egal welche Endung) entfernen
+    for (const f of readdirSync(mediaDir())) {
+      if (f.startsWith('__idle.')) {
+        try {
+          rmSync(join(mediaDir(), f))
+        } catch {
+          // ignorieren
+        }
+      }
+    }
+    const storedName = `__idle${ext}`
+    copyFileSync(src, mediaFilePath(storedName))
+    return { url: `${MEDIA_PROTOCOL}://library/${storedName}?v=${Date.now()}`, kind }
+  })
+
   ipcMain.handle(Channels.playerMediaDir, () => mediaDir())
   ipcMain.handle(
     Channels.playerReconvert,

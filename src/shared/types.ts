@@ -332,7 +332,9 @@ export interface PlayerState {
   imageDurationSec: number
   transition: TransitionMode
   transitionMs: number // Dauer der Überblendung (crossfade)
-  idlePattern: PatternId | 'off' // Testbild, wenn nichts läuft
+  idlePattern: PatternId | 'off' | 'custom' // Idle-Anzeige, wenn nichts läuft
+  idleMediaUrl: string | null // bei 'custom': media://-URL des eigenen Bilds/Videos
+  idleMediaKind: 'image' | 'video' | null
   outputOpen: boolean
   wall: WallResolution
   seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
@@ -364,6 +366,7 @@ export type PlayerCommand =
   | { type: 'setImageDuration'; seconds: number }
   | { type: 'setTransition'; transition: TransitionMode; transitionMs?: number }
   | { type: 'setIdlePattern'; pattern: PatternId | 'off' }
+  | { type: 'setIdleMedia'; url: string | null; kind: 'image' | 'video' | null }
   | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig
 
 /* -------------------------------- Dialog -------------------------------- */
@@ -390,7 +393,9 @@ export interface PlayerSettings {
   imageDurationSec: number
   transition: TransitionMode
   transitionMs: number
-  idlePattern: PatternId | 'off'
+  idlePattern: PatternId | 'off' | 'custom'
+  idleMediaUrl: string | null
+  idleMediaKind: 'image' | 'video' | null
   encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
   remoteEnabled: boolean
   remotePort: number
@@ -406,6 +411,8 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   transition: 'cut',
   transitionMs: 500,
   idlePattern: 'off',
+  idleMediaUrl: null,
+  idleMediaKind: null,
   encoder: 'auto',
   remoteEnabled: false,
   remotePort: 8088,

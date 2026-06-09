@@ -285,6 +285,11 @@ export function VideoPlayer(): JSX.Element {
     await cmd({ type: 'add', mediaIds: p.mediaIds })
   }
 
+  async function pickIdleMedia(): Promise<void> {
+    const r = await api.player.pickIdleMedia()
+    if (r) await cmd({ type: 'setIdleMedia', url: r.url, kind: r.kind })
+  }
+
   // Medien, die nicht in der aktuellen Wand-Auflösung vorliegen.
   const staleItems = library.filter((m) => m.width !== wallW || m.height !== wallH)
   async function reconvertStale(): Promise<void> {
@@ -423,16 +428,34 @@ export function VideoPlayer(): JSX.Element {
           <select
             className={selectClass}
             value={pstate.idlePattern}
-            onChange={(e) => void cmd({ type: 'setIdlePattern', pattern: e.target.value as PatternId | 'off' })}
+            onChange={(e) => {
+              const v = e.target.value
+              if (v === 'custom') void pickIdleMedia()
+              else void cmd({ type: 'setIdlePattern', pattern: v as PatternId | 'off' })
+            }}
           >
             <option value="off">Aus (schwarz)</option>
+            <option value="custom">Eigenes Bild/Video…</option>
             {PATTERN_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
           </select>
-          <span className="text-xs text-muted-foreground">Testbild als Fallback auf der Ausgabe.</span>
+          {pstate.idlePattern === 'custom' ? (
+            <span className="text-xs text-muted-foreground">
+              Eigenes {pstate.idleMediaKind === 'video' ? 'Video' : 'Bild'} aktiv ·{' '}
+              <button className="underline" onClick={() => void pickIdleMedia()}>
+                ändern
+              </button>{' '}
+              ·{' '}
+              <button className="underline" onClick={() => void cmd({ type: 'setIdlePattern', pattern: 'off' })}>
+                entfernen
+              </button>
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">Testbild oder eigenes Medium als Fallback auf der Ausgabe.</span>
+          )}
         </label>
       </Card>
 
