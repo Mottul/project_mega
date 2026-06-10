@@ -366,6 +366,7 @@ export type PlayerCommand =
   | { type: 'setVolume'; volume: number }
   | { type: 'setImageDuration'; seconds: number }
   | { type: 'setTransition'; transition: TransitionMode; transitionMs?: number }
+  | { type: 'setDefaultFit'; fit: FitMode } // Aufbereitung für neue Importe/Uploads (Tablet)
   | { type: 'setIdlePattern'; pattern: PatternId | 'off' }
   | { type: 'setIdleMedia'; url: string | null; kind: 'image' | 'video' | null }
   | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig

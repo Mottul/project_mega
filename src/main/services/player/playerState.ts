@@ -173,6 +173,10 @@ export function applyCommand(cmd: PlayerCommand): void {
         player: { ...getSettings().player, transition: state.transition, transitionMs: state.transitionMs }
       })
       break
+    case 'setDefaultFit':
+      // Reine Einstellung (kein Wiedergabe-Zustand) – wirkt auf neue Importe/Uploads.
+      setSettings({ player: { ...getSettings().player, defaultFit: cmd.fit } })
+      break
     case 'setIdlePattern':
       state.idlePattern = cmd.pattern
       setSettings({ player: { ...getSettings().player, idlePattern: state.idlePattern } })
