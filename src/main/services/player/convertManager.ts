@@ -550,6 +550,50 @@ class ConvertManager {
       }
     }
   }
+
+  /**
+   * Eigenes Idle-Medium (Bild/Video) genau wie Bibliotheks-Medien auf die Wand-
+   * Auflösung backen (Fit) und nach H.264/MP4 bzw. JPG konvertieren -> spielt auf
+   * der Ausgabe sauber und formatfüllend. Legt KEINEN DB-Eintrag an, nur die Datei.
+   */
+  async convertIdle(sourcePath: string): Promise<{ storedName: string; kind: 'image' | 'video' }> {
+    const p = getSettings().player
+    const width = Math.max(2, Math.round(p.wallWidth))
+    const height = Math.max(2, Math.round(p.wallHeight))
+    const fit = p.defaultFit
+    const kind = kindOf(sourcePath)
+    const storedName = `__idle-${Date.now()}${storedExtFor(kind)}`
+    const output = mediaFilePath(storedName)
+    if (kind === 'image') {
+      await this.spawnRaw(buildImageArgs({ input: sourcePath, output, fit, width, height }))
+      return { storedName, kind: 'image' }
+    }
+    // Video/GIF -> auf Wand-Auflösung gebackenes H.264-MP4 (GIF wird zur Loop-Datei).
+    const info = await probeSource(sourcePath)
+    if (!info.hasVideo) throw new Error('Keine Videospur in der Idle-Datei gefunden')
+    const encoder = await resolveEncoder(p.encoder)
+    await this.spawnRaw(
+      buildVideoArgs({ input: sourcePath, output, encoder, fit, width, height, hasAudio: info.hasAudio })
+    )
+    return { storedName, kind: 'video' }
+  }
+
+  // Schlanker ffmpeg-Lauf ohne Job-/Fortschritts-Anbindung (Einzelfälle wie Idle).
+  private spawnRaw(args: string[]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(ffmpegBinPath('ffmpeg'), args, { windowsHide: true })
+      let tail = ''
+      proc.stderr.on('data', (c: Buffer) => {
+        tail = (tail + c.toString()).slice(-2000)
+      })
+      proc.on('error', reject)
+      proc.on('close', (code) =>
+        code === 0
+          ? resolve()
+          : reject(new Error(`ffmpeg beendet mit Code ${code}. ${tail.trim().split('\n').pop() ?? ''}`))
+      )
+    })
+  }
 }
 
 export const convertManager = new ConvertManager()

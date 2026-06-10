@@ -324,23 +324,7 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
           <IdlePattern pattern={state.idlePattern as PatternId} />
         </div>
       )}
-      {!curr && state.idlePattern === 'off' && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#3f3f46',
-            fontFamily: 'system-ui, sans-serif',
-            fontSize: objectFit === 'contain' ? '0.9rem' : '2vw',
-            zIndex: 3
-          }}
-        >
-          Keine Wiedergabe
-        </div>
-      )}
+      {/* idlePattern 'off' -> bewusst nichts: reines Schwarz auf der Ausgabe (kein Text). */}
 
       {debug && (
         <div

@@ -226,10 +226,14 @@ src/
   vorhandenen Generator) und **Batch-Reconvert** bei Auflösungswechsel. Adaptiert den bestehenden
   „LED Wall Player V4" (Python/mpv) in die Electron/React-Suite – nutzt das
   Multi-Monitor-Ausgabefenster und das gebündelte ffmpeg.
+- **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
+  (Throw Ratio / Objektivwahl), **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro
+  Stromkreis) und **Audio-Delay & SPL** (Laufzeit aus Distanz, Pegelabfall über Entfernung).
+- **Theme** – umschaltbarer **Hell-/Dunkelmodus** (System/Hell/Dunkel) in allen Werkzeugen.
 
 ## Roadmap
 
 - Video-Player-Feinschliff nach Praxistest (z.B. echter Overlap-Crossfade, Shuffle-Gapless).
-- **Projektionsverhältnis-Rechner**, **LED-Wall-Konfigurator** – kleinere Rechner-Tools.
+- **LED-Wall-Konfigurator** und weitere Event-Rechner (Rigging-Last, Beamer-Lumen, Timecode) – optional.
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).

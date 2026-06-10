@@ -1,5 +1,5 @@
-import { copyFileSync, readdirSync, rmSync } from 'node:fs'
-import { extname, join } from 'node:path'
+import { readdirSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
 import { dialog, ipcMain } from 'electron'
 import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import type { PlayerCommand, PlayerImportRequest } from '@shared/types'
@@ -10,11 +10,8 @@ import {
   clearLibrary,
   deleteMedia,
   getMedia,
-  isGifExt,
-  isImageExt,
   listMedia,
-  mediaDir,
-  mediaFilePath
+  mediaDir
 } from '../services/player/mediaLibrary'
 import {
   applyCommand,
@@ -92,13 +89,10 @@ export function registerPlayerHandlers(): void {
     })
     if (res.canceled || res.filePaths.length === 0) return null
     const src = res.filePaths[0]
-    const ext = extname(src).toLowerCase() || '.bin'
-    const kind: 'image' | 'video' = isImageExt(src) || isGifExt(src) ? 'image' : 'video'
-    // Immer in eine NEUE Datei kopieren: das bisherige Idle-Medium wird u.U. noch
-    // vom Ausgabefenster gehalten (Windows -> Datei gesperrt). Würde man denselben
-    // Namen überschreiben, scheitert copyfile mit EPERM. Eindeutiger Name umgeht das.
-    const storedName = `__idle-${Date.now()}${ext}`
-    copyFileSync(src, mediaFilePath(storedName))
+    // Auf die Wand-Auflösung backen (Fit) und nach H.264/MP4 bzw. JPG konvertieren –
+    // sonst spielt z.B. ein inkompatibler Codec auf der Ausgabe gar nicht. Der
+    // eindeutige Dateiname verhindert EPERM auf eine evtl. noch gehaltene Idle-Datei.
+    const { storedName, kind } = await convertManager.convertIdle(src)
     // Alte Idle-Dateien best effort aufräumen (die gerade aktive ist evtl. noch
     // gesperrt -> wird beim nächsten Wechsel mitgenommen).
     for (const f of readdirSync(mediaDir())) {

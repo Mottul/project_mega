@@ -290,8 +290,14 @@ export function VideoPlayer(): JSX.Element {
   }
 
   async function pickIdleMedia(): Promise<void> {
-    const r = await api.player.pickIdleMedia()
-    if (r) await cmd({ type: 'setIdleMedia', url: r.url, kind: r.kind })
+    // Das Medium wird auf Wand-Auflösung gebacken (ffmpeg) -> kann je nach Quelle
+    // einen Moment dauern und auch fehlschlagen (z.B. exotischer Codec).
+    try {
+      const r = await api.player.pickIdleMedia()
+      if (r) await cmd({ type: 'setIdleMedia', url: r.url, kind: r.kind })
+    } catch (e) {
+      alert(`Idle-Medium konnte nicht aufbereitet werden.\n${e instanceof Error ? e.message : ''}`)
+    }
   }
 
   // Medien, die nicht in der aktuellen Wand-Auflösung vorliegen.

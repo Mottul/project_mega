@@ -46,11 +46,16 @@ function rewriteJson(value: unknown): string {
   return JSON.stringify(value).split('media://library/').join('/media/')
 }
 
-// Zustand fürs Tablet: Player-State + die gespeicherten Playlists (zum Umschalten).
-// Letztere liegen in den Einstellungen, nicht im Player-State -> hier zusammenführen.
-function stateForRemote(state?: PlayerState): PlayerState & { savedPlaylists: unknown } {
+// Zustand fürs Tablet: Player-State + gespeicherte Playlists (zum Umschalten) und
+// die Default-Aufbereitung (Fit für Uploads). Beide liegen in den Einstellungen,
+// nicht im Player-State -> hier zusammenführen.
+function stateForRemote(state?: PlayerState): PlayerState & {
+  savedPlaylists: unknown
+  defaultFit: string
+} {
   const s = state ?? getPlayerState()
-  return { ...s, savedPlaylists: getSettings().player.savedPlaylists ?? [] }
+  const p = getSettings().player
+  return { ...s, savedPlaylists: p.savedPlaylists ?? [], defaultFit: p.defaultFit }
 }
 
 function mediaType(path: string): string {
