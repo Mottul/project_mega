@@ -28,6 +28,9 @@ import type {
   ProbeResult,
   RemoteStatus,
   SelectPathsOptions,
+  StageTimerState,
+  StageTimerTick,
+  TimerCommand,
   WallResolution
 } from './types'
 
@@ -97,7 +100,16 @@ export const Channels = {
   playerRemoteStatus: 'player:remoteStatus',
   playerRemoteStart: 'player:remoteStart',
   playerRemoteStop: 'player:remoteStop',
-  playerRemoteChanged: 'player:remoteChanged' // Event: RemoteStatus
+  playerRemoteChanged: 'player:remoteChanged', // Event: RemoteStatus
+  // Stage-Timer & Uhr
+  timerGetState: 'timer:getState',
+  timerCommand: 'timer:command',
+  timerOpenOutput: 'timer:openOutput',
+  timerCloseOutput: 'timer:closeOutput',
+  timerState: 'timer:state', // Event: StageTimerState (main -> alle)
+  timerTick: 'timer:tick', // Event: StageTimerTick (main -> alle, häufig)
+  // Werkzeuge
+  utilExportPdf: 'util:exportPdf' // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
 } as const
 
 export type ChannelName = (typeof Channels)[keyof typeof Channels]
@@ -207,5 +219,22 @@ export interface ToolboxApi {
     remoteStart(port: number): Promise<RemoteStatus>
     remoteStop(): Promise<RemoteStatus>
     onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
+  }
+
+  timer: {
+    /** Aktueller Timer-Zustand (Steuer-UI und Ausgabefenster holen ihn beim Start). */
+    getState(): Promise<StageTimerState>
+    command(cmd: TimerCommand): Promise<void>
+    /** Vollbild-Timeranzeige auf dem gewählten Monitor öffnen/schließen. */
+    openOutput(displayId: number): Promise<void>
+    closeOutput(): Promise<void>
+    onState(cb: (state: StageTimerState) => void): () => void
+    onTick(cb: (tick: StageTimerTick) => void): () => void
+  }
+
+  util: {
+    /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF).
+     *  Liefert den gewählten Pfad oder null (abgebrochen). */
+    exportPdf(html: string, suggestedName: string): Promise<string | null>
   }
 }

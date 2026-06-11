@@ -1,6 +1,8 @@
 // Gemeinsame Bausteine der Rechner-Tools: schlankes, einheitliches Formular-Layout
-// (Label links, Eingabe rechts mit Einheit), Ergebnis-Zeilen und Zahl-Helfer.
-// Bewusst dezimalfähig (NumberField rundet auf ganze Zahlen -> hier nicht nutzbar).
+// (Label links, Eingabe rechts mit Einheit), hervorgehobene Ergebnis-Zeilen und
+// Zahl-Helfer. Bewusst dezimalfähig (NumberField rundet auf ganze Zahlen -> hier
+// nicht nutzbar). Ergebnisse tragen den Gold-Akzent der Marke; bei verknüpften
+// Feldern zeigt die Akzentfarbe live, welche Werte gerade BERECHNET werden.
 import type { ReactNode } from 'react'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -24,14 +26,16 @@ export function SectionCard({
 }): JSX.Element {
   return (
     <Card className="p-5">
-      <h2 className="font-medium">{title}</h2>
-      {desc && <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>}
+      <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{title}</h2>
+      {desc && <p className="mt-1 text-xs text-muted-foreground">{desc}</p>}
       <div className="mt-4 space-y-3">{children}</div>
     </Card>
   )
 }
 
-/** Eingabe- oder (readOnly) Ergebnisfeld mit Label und Einheit. */
+/** Eingabe- oder Ergebnisfeld mit Label und Einheit. `derived` markiert bei
+ *  verknüpften Feldern den gerade BERECHNETEN Wert (Akzentfarbe) – tippt man
+ *  hinein, wird das Feld zur Eingabe und die Markierung wandert weiter. */
 export function NumField({
   label,
   unit,
@@ -39,6 +43,7 @@ export function NumField({
   onChange,
   onFocus,
   readOnly,
+  derived,
   placeholder
 }: {
   label: string
@@ -47,6 +52,7 @@ export function NumField({
   onChange?: (v: string) => void
   onFocus?: () => void
   readOnly?: boolean
+  derived?: boolean
   placeholder?: string
 }): JSX.Element {
   return (
@@ -58,9 +64,12 @@ export function NumField({
           value={value}
           placeholder={placeholder}
           readOnly={readOnly}
+          title={derived ? 'berechneter Wert – zum Eingeben einfach anklicken' : undefined}
           onFocus={onFocus}
           onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-          className={`${unit ? 'pr-12' : ''} ${readOnly ? 'cursor-default bg-muted/30' : ''}`}
+          className={`${unit ? 'pr-12' : ''} ${readOnly ? 'cursor-default bg-muted/30' : ''} ${
+            derived ? 'border-primary/40 bg-primary/[0.07] font-semibold text-primary' : ''
+          }`}
         />
         {unit && (
           <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
@@ -93,24 +102,43 @@ export function SelectField({
   )
 }
 
-/** Hervorgehobene Ergebniszeile. */
+/** Ergebniszeile. `accent` hebt DIE Kernaussage des Rechners hervor (Gold),
+ *  `big` vergrößert den Wert (Hero-Ergebnis). */
 export function Readout({
   label,
   value,
   unit,
-  big
+  big,
+  accent
 }: {
   label: string
   value: string
   unit?: string
   big?: boolean
+  accent?: boolean
 }): JSX.Element {
   return (
-    <div className="flex items-baseline justify-between gap-3 rounded-md border border-border bg-muted/20 px-3 py-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={`tabular-nums ${big ? 'text-lg font-semibold' : 'font-medium'}`}>
+    <div
+      className={`flex items-baseline justify-between gap-3 rounded-md border px-3 py-2 ${
+        accent ? 'border-primary/35 bg-primary/[0.09]' : 'border-border bg-muted/20'
+      }`}
+    >
+      <span className={`text-sm ${accent ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
+        {label}
+      </span>
+      <span
+        className={`tabular-nums ${accent ? 'text-primary' : ''} ${
+          big ? 'text-2xl font-bold tracking-tight' : 'text-base font-semibold'
+        }`}
+      >
         {value || '–'}
-        {unit && value && <span className="ml-1 text-xs font-normal text-muted-foreground">{unit}</span>}
+        {unit && value && (
+          <span
+            className={`ml-1 text-xs font-normal ${accent ? 'text-primary/70' : 'text-muted-foreground'}`}
+          >
+            {unit}
+          </span>
+        )}
       </span>
     </div>
   )

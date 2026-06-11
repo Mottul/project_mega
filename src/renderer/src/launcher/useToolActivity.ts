@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/api'
 import { hapConverterTool } from '@renderer/tools/hap-converter'
+import { stageTimerTool } from '@renderer/tools/stage-timer'
 
 // Liefert pro Tool-ID die Anzahl aktiver Vorgaenge -- fuer eine "laeuft"-Markierung
-// im Launcher. Aktuell kennt nur der HAP-Konverter laufende Jobs; weitere Tools
-// koennen hier spaeter ergaenzt werden.
+// im Launcher (HAP-Jobs, laufender Stage-Timer; weitere Tools spaeter ergaenzbar).
 export function useToolActivity(): Record<string, number> {
   const [hapActive, setHapActive] = useState(0)
+  const [timerActive, setTimerActive] = useState(0)
 
   useEffect(() => {
     const jobs = new Map<string, string>()
@@ -26,5 +27,10 @@ export function useToolActivity(): Record<string, number> {
     })
   }, [])
 
-  return { [hapConverterTool.id]: hapActive }
+  useEffect(() => {
+    void api.timer.getState().then((s) => setTimerActive(s.running ? 1 : 0))
+    return api.timer.onState((s) => setTimerActive(s.running ? 1 : 0))
+  }, [])
+
+  return { [hapConverterTool.id]: hapActive, [stageTimerTool.id]: timerActive }
 }

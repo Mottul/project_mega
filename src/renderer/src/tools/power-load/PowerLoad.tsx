@@ -39,9 +39,15 @@ export function PowerLoad(): JSX.Element {
   const loadVals: Record<LoadField, number | null> = { p, i }
   const apparent = u != null && i != null ? factor * u * i : null // Scheinleistung VA
 
-  function bindLoad(field: LoadField): { value: string; onChange: (v: string) => void; onFocus: () => void } {
+  function bindLoad(field: LoadField): {
+    value: string
+    derived: boolean
+    onChange: (v: string) => void
+    onFocus: () => void
+  } {
     return {
       value: field === driver ? loadRaw : trimNum(loadVals[field], 2),
+      derived: field !== driver,
       onChange: (v) => {
         setDriver(field)
         setLoadRaw(v)
@@ -102,7 +108,7 @@ export function PowerLoad(): JSX.Element {
         </SelectField>
         <div className="grid gap-2 sm:grid-cols-2">
           <Readout label="Strom je Gerät" value={fmt(iDev)} unit="A" />
-          <Readout label="max. Geräte" value={maxDevices != null ? String(maxDevices) : ''} big />
+          <Readout label="max. Geräte" value={maxDevices != null ? String(maxDevices) : ''} big accent />
           <Readout label="Summe Leistung" value={fmt(sumP, 0)} unit="W" />
           <Readout label="Summe Strom" value={fmt(sumI)} unit="A" />
         </div>

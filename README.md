@@ -216,7 +216,9 @@ src/
   NVENC/QSV/AMF/VideoToolbox werden erkannt **und validiert**, sonst libx264-Fallback). Bilder
   werden gebacken (freie Standzeit), GIFs zu Loop-Videos. **Vollbild-Ausgabe** auf gewähltem
   Monitor mit **doppelt gepuffertem** HTML5-Player (nahtlose Übergänge), wahlweise **Schnitt oder
-  Überblenden** zwischen Medien (mit Audio-Fade). Transport
+  echtes Overlap-Überblenden** zwischen Medien (das alte Video läuft durch die Blende weiter,
+  mit Audio-Crossfade); **Shuffle ist gapless** (das nächste Zufallsmedium wird vorab bestimmt
+  und vorgeladen). Transport
   (Play/Pause/Skip/**Seek**/**Loop**/**Shuffle**/Stumm), **Playlist** mit Drag&Drop, verwaltete
   Bibliothek (Thumbnails, Datei-**Drag&Drop**-Import, Listen-/Kachelansichten) und eine **In-App-Vorschau**
   (treibt die Wiedergabe auch ohne geöffnetes Ausgabefenster – praktisch ohne zweiten Bildschirm).
@@ -226,14 +228,29 @@ src/
   vorhandenen Generator) und **Batch-Reconvert** bei Auflösungswechsel. Adaptiert den bestehenden
   „LED Wall Player V4" (Python/mpv) in die Electron/React-Suite – nutzt das
   Multi-Monitor-Ausgabefenster und das gebündelte ffmpeg.
+- **LED-Wall-Konfigurator** – Wandgröße + Modultyp (Bestand: 496-2,0 / uS2+ / rX3ioBF) ->
+  Auflösung, **16:9-Einpassung**, Gewicht, Strom, **Ballast-Rechnung** (LSU-Füße); **zeichenbare
+  Signal-/Strom-Verkabelungspläne** (farbcodierte Ketten), **Curving-Planung** für uS2+
+  (Vollkreis-Tabelle, Kreissegment aus Sehne+Stichhöhe, freier Segment-Builder, Squircle – mit
+  Draufsicht-SVG und Winkelverteilung) und **PDF-Projektdoku**. Konfiguration bleibt über
+  App-Neustarts erhalten. Ersetzt den bisherigen Einzeldatei-HTML-Konfigurator (und behebt dessen
+  Messfehler bei der „erreichten Stichhöhe").
+- **Stage-Timer & Uhr** – Sprechzeit-Timer mit **mehreren Abschnitten** (laufen nacheinander),
+  **Farbwarnung nach Restzeit** (weiß → gelb → rot, Schwellen einstellbar), wählbarem
+  **Ablauf-Verhalten** (stehen bleiben / Überziehung rot blinkend / automatisch weiter),
+  **±1-Minute-Korrektur live**, **Nachrichten an die Bühne** (mit Blink-Option und
+  Schnellnachrichten) und **Vollbild-Anzeige** auf gewähltem Monitor – synchron zur Vorschau,
+  da der main-Prozess autoritativ tickt. Alternativ **große Uhr mit Sekundenanzeige**.
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
-  (Throw Ratio / Objektivwahl), **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro
-  Stromkreis) und **Audio-Delay & SPL** (Laufzeit aus Distanz, Pegelabfall über Entfernung).
+  (Throw Ratio / Objektivwahl), **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
+  **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis) und
+  **Audio-Delay & SPL** (Laufzeit aus Distanz, Pegelabfall über Entfernung). Berechnete Werte
+  sind farblich markiert (Gold = Ergebnis), Kernaussagen als hervorgehobene Ergebniszeilen.
 - **Theme** – umschaltbarer **Hell-/Dunkelmodus** (System/Hell/Dunkel) in allen Werkzeugen.
 
 ## Roadmap
 
-- Video-Player-Feinschliff nach Praxistest (z.B. echter Overlap-Crossfade, Shuffle-Gapless).
-- **LED-Wall-Konfigurator** und weitere Event-Rechner (Rigging-Last, Beamer-Lumen, Timecode) – optional.
+- **Teleprompter** im Stage-Timer (scrollender Text auf dem Referentenmonitor) – Idee.
+- Weitere Event-Rechner (Rigging-Last, SMPTE-Timecode/Frames) – optional.
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).

@@ -338,6 +338,10 @@ export interface PlayerState {
   outputOpen: boolean
   wall: WallResolution
   seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
+  /** Bei Shuffle: VORAB gewürfelter nächster Index (-1 = keiner). Main würfelt,
+   *  alle Fenster lesen denselben Wert -> das vorgeladene Medium ist garantiert
+   *  das, das beim Track-Ende auch wirklich gespielt wird (gapless). */
+  shuffleNext: number
 }
 
 /** Leichtgewichtiger Positions-Tick (häufig; ohne Playlist-Payload). */
@@ -370,6 +374,70 @@ export type PlayerCommand =
   | { type: 'setIdlePattern'; pattern: PatternId | 'off' }
   | { type: 'setIdleMedia'; url: string | null; kind: 'image' | 'video' | null }
   | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig
+
+/* --------------------------- Stage-Timer & Uhr --------------------------- */
+// Sprechzeit-Timer mit Vollbild-Ausgabe (Referentenmonitor). Der main-Prozess
+// tickt autoritativ; Steuer-UI und Ausgabefenster spiegeln denselben Zustand
+// (gleiche Architektur wie der Video-Player).
+
+export type TimerDisplayMode = 'timer' | 'clock'
+
+// stop     = bei 0:00 stehen bleiben
+// overtime = ins Minus weiterzaehlen (rot blinkend)
+// next     = automatisch zum naechsten Abschnitt springen
+export type TimerEndBehavior = 'stop' | 'overtime' | 'next'
+
+export interface TimerSegment {
+  id: string
+  label: string
+  durationSec: number
+}
+
+export interface TimerMessage {
+  text: string
+  flash: boolean
+  /** monoton steigend -> Ausgabe kann die Einblende-Animation je Senden neu starten */
+  seq: number
+}
+
+export interface StageTimerState {
+  segments: TimerSegment[]
+  current: number // Index in segments, -1 = keiner
+  running: boolean
+  remainingSec: number // kann bei 'overtime' negativ werden
+  endBehavior: TimerEndBehavior
+  warnSec: number // ab dieser Restzeit: gelb
+  alertSec: number // ab dieser Restzeit: rot
+  message: TimerMessage | null
+  displayMode: TimerDisplayMode
+  showClockInTimer: boolean // kleine Uhrzeit zusaetzlich im Timer-Modus
+  outputOpen: boolean
+}
+
+/** Leichter, haeufiger Tick (Restzeit), analog PlayerTick. */
+export interface StageTimerTick {
+  remainingSec: number
+  running: boolean
+  current: number
+}
+
+export type TimerCommand =
+  | { type: 'setSegments'; segments: TimerSegment[] }
+  | { type: 'start' }
+  | { type: 'pause' }
+  | { type: 'toggle' }
+  | { type: 'reset' } // aktuellen Abschnitt auf volle Zeit
+  | { type: 'resetAll' } // zurueck zum ersten Abschnitt, gestoppt
+  | { type: 'next' }
+  | { type: 'prev' }
+  | { type: 'goto'; index: number }
+  | { type: 'adjust'; deltaSec: number } // Restzeit live korrigieren (+/- Minute)
+  | { type: 'setEndBehavior'; behavior: TimerEndBehavior }
+  | { type: 'setThresholds'; warnSec: number; alertSec: number }
+  | { type: 'setDisplayMode'; mode: TimerDisplayMode }
+  | { type: 'setShowClock'; show: boolean }
+  | { type: 'message'; text: string; flash: boolean }
+  | { type: 'clearMessage' }
 
 /* -------------------------------- Dialog -------------------------------- */
 

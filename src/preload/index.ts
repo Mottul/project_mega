@@ -88,6 +88,20 @@ const api: ToolboxApi = {
     remoteStart: (port) => ipcRenderer.invoke(Channels.playerRemoteStart, port),
     remoteStop: () => ipcRenderer.invoke(Channels.playerRemoteStop),
     onRemoteChanged: (cb) => subscribe(Channels.playerRemoteChanged, (s) => cb(s as never))
+  },
+
+  timer: {
+    getState: () => ipcRenderer.invoke(Channels.timerGetState),
+    command: (cmd) => ipcRenderer.invoke(Channels.timerCommand, cmd),
+    openOutput: (displayId) => ipcRenderer.invoke(Channels.timerOpenOutput, displayId),
+    closeOutput: () => ipcRenderer.invoke(Channels.timerCloseOutput),
+    onState: (cb) => subscribe(Channels.timerState, (s) => cb(s as never)),
+    onTick: (cb) => subscribe(Channels.timerTick, (t) => cb(t as never))
+  },
+
+  util: {
+    exportPdf: (html, suggestedName) =>
+      ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName)
   }
 }
 

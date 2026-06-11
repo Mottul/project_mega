@@ -11,6 +11,8 @@ import { logLine } from './services/log'
 import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
 import { stopRemote } from './services/player/remoteServer'
+import { disposeTimer } from './services/stageTimer'
+import { closeTimerOutput } from './services/timerWindow'
 
 const isDev = !app.isPackaged
 
@@ -57,6 +59,7 @@ function createWindow(): BrowserWindow {
   win.on('closed', () => {
     closePattern()
     closePlayerOutput()
+    closeTimerOutput()
   })
 
   // Externe Links im Standardbrowser oeffnen, keine neuen Fenster zulassen
@@ -101,5 +104,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// Fernsteuerungs-Server beim Beenden sauber schliessen.
-app.on('will-quit', () => stopRemote())
+// Fernsteuerungs-Server + Timer-Intervall beim Beenden sauber schliessen.
+app.on('will-quit', () => {
+  stopRemote()
+  disposeTimer()
+})
