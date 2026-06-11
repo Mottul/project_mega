@@ -6,9 +6,11 @@ import { ledWallTool } from './led-wall'
 import { manualsTool } from './manuals'
 import { powerLoadTool } from './power-load'
 import { projectorLumenTool } from './projector-lumen'
+import { riggingTool } from './rigging'
 import { stageTimerTool } from './stage-timer'
 import { testPatternsTool } from './test-patterns'
 import { throwRatioTool } from './throw-ratio'
+import { timecodeTool } from './timecode'
 import { videoPlayerTool } from './video-player'
 import type { ToolModule } from './types'
 
@@ -25,7 +27,9 @@ export const tools: ToolModule[] = [
   projectorLumenTool,
   dmxAddressTool,
   powerLoadTool,
-  audioDelayTool
+  audioDelayTool,
+  riggingTool,
+  timecodeTool
 ]
 
 export function findTool(id: string): ToolModule | undefined {

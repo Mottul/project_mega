@@ -231,10 +231,13 @@ src/
 - **LED-Wall-Konfigurator** – Wandgröße + Modultyp (Bestand: 496-2,0 / uS2+ / rX3ioBF) ->
   Auflösung, **16:9-Einpassung**, Gewicht, Strom, **Ballast-Rechnung** (LSU-Füße); **zeichenbare
   Signal-/Strom-Verkabelungspläne** (farbcodierte Ketten), **Curving-Planung** für uS2+
-  (Vollkreis-Tabelle, Kreissegment aus Sehne+Stichhöhe, freier Segment-Builder, Squircle – mit
-  Draufsicht-SVG und Winkelverteilung) und **PDF-Projektdoku**. Konfiguration bleibt über
-  App-Neustarts erhalten. Ersetzt den bisherigen Einzeldatei-HTML-Konfigurator (und behebt dessen
-  Messfehler bei der „erreichten Stichhöhe").
+  (Vollkreis-Tabelle mit **auswählbaren Kreisen**, Kreissegment aus Sehne+Stichhöhe – auch als
+  Startpunkt **in den Segment-Builder übernehmbar** –, freier Segment-Builder, Squircle; je mit
+  Draufsicht-SVG, Winkelverteilung und **belegter Grundfläche B×T**). Die Curving-Form bestimmt
+  Modulzahl/Breite der Wand mit (Sehne/Squircle-Breite = Wandbreite, Vollkreis gibt seine Größe
+  vor) und wandert **inkl. Draufsicht und Winkeln in die PDF-Projektdoku**. Konfiguration bleibt
+  über App-Neustarts erhalten. Ersetzt den bisherigen Einzeldatei-HTML-Konfigurator (und behebt
+  dessen Messfehler bei der „erreichten Stichhöhe").
 - **Stage-Timer & Uhr** – Sprechzeit-Timer mit **mehreren Abschnitten** (laufen nacheinander),
   **Farbwarnung nach Restzeit** (weiß → gelb → rot, Schwellen einstellbar), wählbarem
   **Ablauf-Verhalten** (stehen bleiben / Überziehung rot blinkend / automatisch weiter),
@@ -243,14 +246,16 @@ src/
   da der main-Prozess autoritativ tickt. Alternativ **große Uhr mit Sekundenanzeige**.
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
   (Throw Ratio / Objektivwahl), **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
-  **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis) und
-  **Audio-Delay & SPL** (Laufzeit aus Distanz, Pegelabfall über Entfernung). Berechnete Werte
+  **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis),
+  **Audio-Delay & SPL** (Laufzeit aus Distanz, Pegelabfall über Entfernung), **Rigging-Last**
+  (Auflagerkräfte einer Traverse auf 2 Punkten + Bridle-Strangkräfte nach Anschlagwinkel, mit
+  Warnstufen – Richtwerte, ersetzt keinen Sachkundigen) und **Timecode-Rechner** (SMPTE-Timecode ↔
+  Frames ↔ Echtzeit inkl. **Drop-Frame** 29,97/59,94, Dauer zwischen In/Out). Berechnete Werte
   sind farblich markiert (Gold = Ergebnis), Kernaussagen als hervorgehobene Ergebniszeilen.
 - **Theme** – umschaltbarer **Hell-/Dunkelmodus** (System/Hell/Dunkel) in allen Werkzeugen.
 
 ## Roadmap
 
 - **Teleprompter** im Stage-Timer (scrollender Text auf dem Referentenmonitor) – Idee.
-- Weitere Event-Rechner (Rigging-Last, SMPTE-Timecode/Frames) – optional.
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).

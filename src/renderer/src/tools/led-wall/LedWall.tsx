@@ -7,13 +7,16 @@ import { FileDown } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
-import { NumField, Readout, fmt, parseNum } from '../_calc/ui'
+import { Readout, fmt, parseNum } from '../_calc/ui'
 import { CableGrid } from './CableGrid'
 import { Curving } from './Curving'
+import { CURVE_MODE_LABELS, computeCurve } from './curve'
 import { MODULES, PWR_COLORS, SIG_COLORS } from './data'
 import { calc169, gcd, getBallastPerBase } from './math'
 import { exportLedWallPdf } from './print'
 import { useLedWall, type BuildMode } from './store'
+import { topDownMarkup } from './topdown'
+import { LField } from './ui'
 
 function SectionTitle({ children }: { children: string }): JSX.Element {
   return <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{children}</h2>
@@ -26,10 +29,27 @@ export function LedWall(): JSX.Element {
     const mod = MODULES[s.moduleKey] ?? MODULES['496-2,0']
     const wM = parseNum(s.widthM) ?? 0.5
     const hM = parseNum(s.heightM) ?? 0.5
-    const cols = Math.max(1, Math.round(wM / (mod.dimW / 1000)))
+
+    // uS2+: das Curving bestimmt die Module pro Reihe (= Spalten) UND die belegte
+    // Breite am Boden; nur die Höhe (Reihen) kommt weiter aus der Eingabe.
+    const curve = mod.canCurve
+      ? computeCurve({
+          curveMode: s.curveMode,
+          widthM: parseNum(s.widthM),
+          segSag: parseNum(s.segSag),
+          builderSegs: s.builderSegs,
+          sqD: parseNum(s.sqD),
+          sqCorner: s.sqCorner,
+          selectedCircle: s.selectedCircle
+        })
+      : null
+
+    const cols = curve ? Math.max(1, curve.mods) : Math.max(1, Math.round(wM / (mod.dimW / 1000)))
     const rows = Math.max(1, Math.round(hM / (mod.dimH / 1000)))
     const total = cols * rows
-    const actualW = ((cols * mod.dimW) / 1000).toFixed(3)
+    // Boden-/Aufstellbreite: flach = Modulbreite·Spalten, gebogen = Grundfläche.
+    const floorWidthM = curve ? curve.footprintW : (cols * mod.dimW) / 1000
+    const actualW = floorWidthM.toFixed(3)
     const actualH = ((rows * mod.dimH) / 1000).toFixed(3)
     const resX = cols * mod.resX
     const resY = rows * mod.resY
@@ -37,9 +57,10 @@ export function LedWall(): JSX.Element {
     const powerTypW = total * mod.powerTyp
     const powerMaxW = total * mod.powerMax
     const ballastPerBase = getBallastPerBase(parseFloat(actualH))
-    const baseUnits = Math.ceil(parseFloat(actualW))
+    const baseUnits = Math.max(1, Math.ceil(floorWidthM))
     return {
       mod,
+      curve,
       cols,
       rows,
       total,
@@ -59,13 +80,56 @@ export function LedWall(): JSX.Element {
       baseUnits,
       totalBallast: ballastPerBase * baseUnits
     }
-  }, [s.moduleKey, s.widthM, s.heightM])
+  }, [
+    s.moduleKey,
+    s.widthM,
+    s.heightM,
+    s.curveMode,
+    s.segSag,
+    s.builderSegs,
+    s.sqD,
+    s.sqCorner,
+    s.selectedCircle
+  ])
 
   // Verkabelungs-Grids an die Modulzahl anpassen (Zuordnungen bleiben erhalten).
   useEffect(() => {
     s.ensureGridSize(d.rows, d.cols)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d.rows, d.cols])
+
+  // Breite ist nur dort frei editierbar, wo sie das Curving treibt (Segment/
+  // Squircle) bzw. bei flachen Modulen. Bei Vollkreis/Builder ergibt sie sich.
+  const curve = d.curve
+  const widthEditable = !curve || curve.drivesWidth != null
+
+  function doExport(): void {
+    const curveForPdf = curve
+      ? {
+          modeLabel: CURVE_MODE_LABELS[curve.mode],
+          mods: curve.mods,
+          angles: curve.angles,
+          footprintW: curve.footprintW,
+          footprintD: curve.footprintD,
+          svg: topDownMarkup(curve.angles, {
+            showChord: curve.mode === 'segment',
+            chordHorizontal: curve.mode === 'segment',
+            chordLabel: curve.arc?.ca ?? null,
+            sagLabel: curve.arc?.sa ?? null,
+            maxPx: 470
+          })
+        }
+      : null
+    void exportLedWallPdf({
+      ...d,
+      projectName: s.projectName,
+      customerName: s.customerName,
+      buildMode: s.buildMode,
+      sig: s.sig,
+      pwr: s.pwr,
+      curve: curveForPdf
+    })
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-6">
@@ -74,7 +138,7 @@ export function LedWall(): JSX.Element {
         <Card className="p-5">
           <div className="flex items-start justify-between gap-3">
             <SectionTitle>Projekt</SectionTitle>
-            <Button size="sm" onClick={() => void exportLedWallPdf({ ...d, projectName: s.projectName, customerName: s.customerName, buildMode: s.buildMode, sig: s.sig, pwr: s.pwr })}>
+            <Button size="sm" onClick={doExport}>
               <FileDown className="size-4" /> PDF exportieren
             </Button>
           </div>
@@ -102,9 +166,24 @@ export function LedWall(): JSX.Element {
           <SectionTitle>Wandgröße &amp; Aufbau</SectionTitle>
           <div className="mt-3 space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <NumField label="Breite" unit="m" value={s.widthM} onChange={(v) => s.set({ widthM: v })} />
-              <NumField label="Höhe" unit="m" value={s.heightM} onChange={(v) => s.set({ heightM: v })} />
+              {widthEditable ? (
+                <LField label="Breite" unit="m" value={s.widthM} onChange={(v) => s.set({ widthM: v })} />
+              ) : (
+                <div>
+                  <span className="mb-1 block text-xs text-muted-foreground">Breite (aus Curving)</span>
+                  <div className="flex h-9 items-center rounded-md border border-primary/30 bg-primary/[0.07] px-3 text-sm font-semibold text-primary">
+                    {d.actualW} m
+                  </div>
+                </div>
+              )}
+              <LField label="Höhe" unit="m" value={s.heightM} onChange={(v) => s.set({ heightM: v })} />
             </div>
+            {curve && (
+              <p className="text-xs text-muted-foreground">
+                Form: <span className="font-medium text-foreground">{CURVE_MODE_LABELS[curve.mode]}</span> ·{' '}
+                {curve.mods} Module/Reihe · belegt {fmt(curve.footprintW, 2)} × {fmt(curve.footprintD, 2)} m
+              </p>
+            )}
             <div className="flex gap-2">
               {(
                 [

@@ -73,7 +73,10 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
       className="absolute inset-0 overflow-hidden"
       style={{
         background: '#000',
-        animation: phase === 'overtime' ? 'timer-bg-flash 1s steps(1) infinite' : undefined
+        animation:
+          phase === 'overtime' && state.displayMode === 'timer'
+            ? 'timer-bg-flash 1s steps(1) infinite'
+            : undefined
       }}
     >
       {state.displayMode === 'clock' ? (
