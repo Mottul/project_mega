@@ -34,9 +34,15 @@ export function AudioDelay(): JSX.Element {
   const delayVals: Record<DelayField, number | null> = { dist, delay: delayMs }
   const samples48 = delayMs == null ? null : (delayMs / 1000) * 48000
 
-  function bindDelay(field: DelayField): { value: string; onChange: (v: string) => void; onFocus: () => void } {
+  function bindDelay(field: DelayField): {
+    value: string
+    derived: boolean
+    onChange: (v: string) => void
+    onFocus: () => void
+  } {
     return {
       value: field === driver ? delayRaw : trimNum(delayVals[field], 3),
+      derived: field !== driver,
       onChange: (v) => {
         setDriver(field)
         setDelayRaw(v)
@@ -81,7 +87,7 @@ export function AudioDelay(): JSX.Element {
         <NumField label="Pegel (Referenz)" unit="dB" value={splRaw} onChange={setSplRaw} />
         <NumField label="Referenz-Distanz" unit="m" value={dRefRaw} onChange={setDRefRaw} />
         <NumField label="Ziel-Distanz" unit="m" value={dTgtRaw} onChange={setDTgtRaw} />
-        <Readout label="Pegel in Ziel-Distanz" value={fmt(splTarget, 1)} unit="dB" big />
+        <Readout label="Pegel in Ziel-Distanz" value={fmt(splTarget, 1)} unit="dB" big accent />
       </SectionCard>
     </CalcPage>
   )

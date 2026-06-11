@@ -13,9 +13,13 @@ interface EngineProps {
 // Gemeinsame Wiedergabe-Engine. Zwei Ebenen (0/1), jede hält ein <video> ODER
 // <img>. Das aktuelle Medium läuft aktiv, das nächste wird in der inaktiven Ebene
 // vorgeladen -> nahtloser Wechsel. Übergänge per Opazität (cut = 0ms, crossfade),
-// Audio wird zur Vermeidung von Knacksern weich ein-/ausgeblendet. Beim Wechsel
-// wird die alte Ebene aktiv pausiert (sonst doppelter Ton); das Vorladen erfolgt
-// erst NACH der Überblendung (sonst blitzt das nächste Medium kurz auf).
+// Audio wird zur Vermeidung von Knacksern weich ein-/ausgeblendet.
+//
+// Crossfade ist ein ECHTER Overlap: kurz vor dem natürlichen Ende (Restzeit =
+// Überblenddauer) meldet die Engine 'ended' vor -> das nächste Medium startet,
+// während das alte WEITERLÄUFT und erst nach Abschluss der Blende pausiert wird
+// (kein eingefrorenes Schlussbild). Das Vorladen des übernächsten Mediums erfolgt
+// erst NACH der Überblendung (sonst blitzt es kurz auf).
 //
 // Der main-Prozess bleibt autoritativ; diese Engine meldet nur Position/Ende.
 export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProps): JSX.Element {
@@ -31,10 +35,14 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
   const engaged = useRef<{ id: string | null; playing: boolean }>({ id: null, playing: false })
 
   const rampTimers = useRef<(ReturnType<typeof setInterval> | null)[]>([null, null])
+  const pauseTimers = useRef<(ReturnType<typeof setTimeout> | null)[]>([null, null])
   const preloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const imageTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const imageElapsed = useRef(0)
   const imageItemId = useRef<string | null>(null)
+  // seekSeq, fuer den bereits ein vorgezogenes 'ended' gemeldet wurde (Overlap);
+  // jeder Titelwechsel/Seek erhoeht seekSeq -> Guard re-armiert sich automatisch.
+  const earlyEndedAt = useRef(-1)
 
   useEffect(() => {
     void api.player.getState().then((s) => {
@@ -87,7 +95,15 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
     }
   }
 
+  function clearPauseTimer(slot: number): void {
+    if (pauseTimers.current[slot]) {
+      clearTimeout(pauseTimers.current[slot]!)
+      pauseTimers.current[slot] = null
+    }
+  }
+
   function assignSlot(slot: number, item: MediaItem | null): void {
+    clearPauseTimer(slot)
     const v = videoRefs.current[slot]
     const img = imgRefs.current[slot]
     slotItems.current[slot] = item
@@ -209,12 +225,19 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
     const xMs = state.transition === 'crossfade' ? state.transitionMs : 0
 
     if (swapped) {
-      // alte Ebene: Audio ausblenden + pausieren (kein Doppel-Ton)
+      // Alte Ebene: Audio über die volle Blende ausfaden. Pausiert wird erst NACH
+      // Abschluss der Blende und unabhängig vom Audio (läuft auch muted weiter)
+      // -> echter Overlap statt eingefrorenem Schlussbild.
       const old = a
-      fadeAudio(old, 0, Math.min(150, xMs || 80), () => {
+      clearPauseTimer(old)
+      fadeAudio(old, 0, xMs || 80)
+      pauseTimers.current[old] = setTimeout(() => {
+        pauseTimers.current[old] = null
+        if (old === activeRef.current) return // inzwischen wieder aktiv -> nicht anfassen
         const vi = videoRefs.current[old]
         if (vi && slotItems.current[old]?.kind !== 'image') vi.pause()
-      })
+      }, (xMs || 80) + 30)
+      clearPauseTimer(targetSlot)
       setActiveSlot(targetSlot)
     }
 
@@ -241,6 +264,7 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
     const videos = videoRefs.current
     return () => {
       rampTimers.current.forEach((t) => t && clearInterval(t))
+      pauseTimers.current.forEach((t) => t && clearTimeout(t))
       if (preloadTimer.current) clearTimeout(preloadTimer.current)
       clearImageTimer()
       // Videos beim Unmount aktiv stoppen (z.B. Vorschau weicht dem Vollbild)
@@ -263,7 +287,24 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
   function onVideoTime(slot: number): void {
     if (slot !== activeRef.current) return
     const v = videoRefs.current[slot]
-    if (v && Number.isFinite(v.duration)) void api.player.report(v.currentTime, v.duration || 0)
+    if (!v || !Number.isFinite(v.duration)) return
+    void api.player.report(v.currentTime, v.duration || 0)
+
+    // Overlap-Crossfade: Restzeit = Überblenddauer -> 'ended' VORZIEHEN, damit das
+    // nächste Medium startet, während dieses noch läuft. Pro seekSeq nur einmal
+    // (jeder Titelwechsel/Seek erhöht seekSeq und re-armiert den Guard).
+    const s = stateRef.current
+    if (s.transition !== 'crossfade' || !s.playing || v.loop || v.paused) return
+    const xSec = s.transitionMs / 1000
+    if (v.duration <= xSec + 1) return // zu kurz -> normaler Wechsel am echten Ende
+    if (v.duration - v.currentTime > xSec) return
+    if (earlyEndedAt.current === s.seekSeq) return
+    const ni = nextIndex(s)
+    const nxt = ni >= 0 ? s.playlist[ni] : null
+    // Ohne (anderes) Folge-Medium kein Overlap möglich -> natürliches Ende abwarten.
+    if (!nxt || nxt.id === slotItems.current[slot]?.id) return
+    earlyEndedAt.current = s.seekSeq
+    void api.player.command({ type: 'ended' })
   }
 
   const curr = currentItem(state)

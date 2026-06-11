@@ -74,7 +74,7 @@ export function DmxAddress(): JSX.Element {
         </div>
 
         <div className="grid gap-2 pt-1 sm:grid-cols-2">
-          <Readout label="Adresse" value={addr != null ? String(addr) : ''} big />
+          <Readout label="Adresse" value={addr != null ? String(addr) : ''} big accent />
           <Readout label="Binär (Schalter 9→1)" value={addr != null ? binary : ''} />
         </div>
         <p className="text-xs text-muted-foreground">

@@ -15,6 +15,8 @@ import { registerFfmpegHandlers } from './ffmpeg.handlers'
 import { registerManualsHandlers } from './manuals.handlers'
 import { registerPatternHandlers } from './pattern.handlers'
 import { registerPlayerHandlers } from './player.handlers'
+import { registerTimerHandlers } from './timer.handlers'
+import { registerUtilHandlers } from './util.handlers'
 
 /** Bedient das custom `manual://`-Protocol (PDF-Bytes der Bibliothek). */
 export function registerManualProtocol(): void {
@@ -139,6 +141,8 @@ export function registerIpcHandlers(): void {
   registerManualsHandlers()
   registerPatternHandlers()
   registerPlayerHandlers()
+  registerTimerHandlers()
+  registerUtilHandlers()
 }
 
 /** Verbindet die Live-Job-Updates mit dem konkreten Fenster. */

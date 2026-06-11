@@ -28,9 +28,15 @@ export function CircleCalc(): JSX.Element {
     a: r == null ? null : Math.PI * r * r
   }
 
-  function bind(field: Field): { value: string; onChange: (v: string) => void; onFocus: () => void } {
+  function bind(field: Field): {
+    value: string
+    derived: boolean
+    onChange: (v: string) => void
+    onFocus: () => void
+  } {
     return {
       value: field === driver ? raw : trimNum(vals[field]),
+      derived: field !== driver,
       onChange: (v) => {
         setDriver(field)
         setRaw(v)

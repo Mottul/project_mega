@@ -912,7 +912,7 @@ export function VideoPlayer(): JSX.Element {
               title="Übergang zwischen Medien"
             >
               <option value="cut">Schnitt (Cut)</option>
-              <option value="crossfade">Überblenden</option>
+              <option value="crossfade">Überblenden (Overlap)</option>
             </select>
             {pstate.transition === 'crossfade' && (
               <NumberField

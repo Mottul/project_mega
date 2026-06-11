@@ -62,9 +62,15 @@ export function ThrowRatio(): JSX.Element {
   }
   const throwVals: Record<ThrowField, number | null> = { tr, dist }
 
-  function bindSize(field: SizeField): { value: string; onChange: (v: string) => void; onFocus: () => void } {
+  function bindSize(field: SizeField): {
+    value: string
+    derived: boolean
+    onChange: (v: string) => void
+    onFocus: () => void
+  } {
     return {
       value: field === sizeDriver ? sizeRaw : trimNum(sizeVals[field], 3),
+      derived: field !== sizeDriver,
       onChange: (v) => {
         setSizeDriver(field)
         setSizeRaw(v)
@@ -78,9 +84,15 @@ export function ThrowRatio(): JSX.Element {
     }
   }
 
-  function bindThrow(field: ThrowField): { value: string; onChange: (v: string) => void; onFocus: () => void } {
+  function bindThrow(field: ThrowField): {
+    value: string
+    derived: boolean
+    onChange: (v: string) => void
+    onFocus: () => void
+  } {
     return {
       value: field === throwDriver ? throwRaw : trimNum(throwVals[field], 3),
+      derived: field !== throwDriver,
       onChange: (v) => {
         setThrowDriver(field)
         setThrowRaw(v)

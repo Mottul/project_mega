@@ -2,7 +2,7 @@
 // schicken Befehle hierher; das Ausgabefenster meldet Position/Ende zurück. Jede
 // Änderung wird an ALLE Fenster gebroadcastet -> ein einziger, geteilter Zustand.
 
-import { EMPTY_PLAYER_STATE, nextIndex, prevIndex } from '@shared/player'
+import { EMPTY_PLAYER_STATE, nextIndex, prevIndex, rollShuffleNext } from '@shared/player'
 import type { MediaItem, PlayerCommand, PlayerState, PlayerTick } from '@shared/types'
 import { getMedia } from './mediaLibrary'
 import { getSettings, setSettings } from '../store'
@@ -43,7 +43,23 @@ export function getPlayerState(): PlayerState {
   return state
 }
 
+// Haelt den vorab gewuerfelten Shuffle-Index gueltig: nach Konsum (ended ->
+// goToIndex), Playlist-Aenderungen oder Shuffle-Umschalten wird neu gewuerfelt.
+// Ein noch gueltiger Wert (in Range, != aktueller) bleibt bewusst stehen, damit
+// das bereits vorgeladene Medium nicht umsonst geladen wurde.
+function normalizeShuffleNext(): void {
+  if (!state.shuffle || state.loop === 'one') {
+    state.shuffleNext = -1
+    return
+  }
+  const n = state.playlist.length
+  if (n <= 1 || state.shuffleNext < 0 || state.shuffleNext >= n || state.shuffleNext === state.index) {
+    state.shuffleNext = rollShuffleNext(state)
+  }
+}
+
 function emitState(): void {
+  normalizeShuffleNext()
   stateSink({ ...state, playlist: [...state.playlist] })
 }
 
