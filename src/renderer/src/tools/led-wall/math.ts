@@ -161,6 +161,41 @@ export function measureArc(shapes: ModuleShape[]): ArcMeasure {
   return { chord: chordLen, sag: maxDev, first, last, chordAngle }
 }
 
+/** Grundfläche (Draufsicht-Bounding-Box) der gebauten Form: Breite × Tiefe in m.
+ *  `chordHorizontal` misst in der Aufstell-Lage „Sehne waagrecht“ (Kreissegment) –
+ *  identisch zur gezeichneten Draufsicht. */
+export function measureFootprint(
+  angles: number[],
+  opts: { chordHorizontal?: boolean } = {}
+): { width: number; depth: number } {
+  if (!angles.length) return { width: 0, depth: 0 }
+  const shapes = computeModuleShapes(angles)
+  let rot = 0
+  let origin: Pt = { x: 0, y: 0 }
+  if (opts.chordHorizontal) {
+    const measured = measureArc(shapes)
+    rot = -measured.chordAngle
+    origin = measured.first
+  }
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const s of shapes) {
+    for (const p of [...s.frontPts, ...s.backPts]) {
+      const dx = p.x - origin.x
+      const dy = p.y - origin.y
+      const x = dx * Math.cos(rot) - dy * Math.sin(rot)
+      const y = dx * Math.sin(rot) + dy * Math.cos(rot)
+      minX = Math.min(minX, x)
+      maxX = Math.max(maxX, x)
+      minY = Math.min(minY, y)
+      maxY = Math.max(maxY, y)
+    }
+  }
+  return { width: maxX - minX, depth: maxY - minY }
+}
+
 export interface ArcResult {
   r: number
   totalDeg: number

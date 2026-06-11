@@ -15,6 +15,7 @@ import {
   Play,
   Plus,
   RotateCcw,
+  Square,
   Trash2,
   X
 } from 'lucide-react'
@@ -184,8 +185,14 @@ export function StageTimer(): JSX.Element {
               <Button variant="ghost" size="sm" onClick={() => cmd({ type: 'reset' })} disabled={state.current < 0}>
                 <RotateCcw className="size-4" /> Abschnitt
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => cmd({ type: 'resetAll' })} disabled={segs.length === 0}>
-                <RotateCcw className="size-4" /> Alles
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => cmd({ type: 'resetAll' })}
+                disabled={segs.length === 0}
+                title="Stoppen und zurück zum ersten Abschnitt"
+              >
+                <Square className="size-4" /> Stopp
               </Button>
             </div>
           </Card>

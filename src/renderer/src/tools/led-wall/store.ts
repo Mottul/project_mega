@@ -21,12 +21,13 @@ interface LedWallState {
   sigChain: number
   pwrChain: number
   curveMode: CurveMode
-  segChord: string
+  // Curving teilt sich die Wandbreite (widthM = Sehne/Squircle-Breite); nur die
+  // kurvenspezifische Tiefe und der gewählte Vollkreis sind eigene Felder.
   segSag: string
   builderSegs: BuilderSegment[]
-  sqW: string
   sqD: string
   sqCorner: number
+  selectedCircle: number // Index in CIRCLE_TABLE
 
   set: (patch: Partial<LedWallState>) => void
   /** Grids an neue Modulzahl anpassen (Zuordnungen im Überlapp bleiben erhalten). */
@@ -50,16 +51,15 @@ export const useLedWall = create<LedWallState>()(
       sigChain: 0,
       pwrChain: 0,
       curveMode: 'circle',
-      segChord: '4',
       segSag: '0,5',
       builderSegs: [
         { type: 'straight', count: 3 },
         { type: 'curved', count: 6, angle: 45, dir: 'convex' },
         { type: 'straight', count: 3 }
       ],
-      sqW: '4',
       sqD: '2',
       sqCorner: 3,
+      selectedCircle: 0,
 
       set: (patch) => set(patch),
 

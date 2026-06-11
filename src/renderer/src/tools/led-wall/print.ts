@@ -30,6 +30,14 @@ export interface PrintData {
   totalBallast: number
   sig: number[][]
   pwr: number[][]
+  curve: {
+    modeLabel: string
+    mods: number
+    angles: number[]
+    footprintW: number
+    footprintD: number
+    svg: string // fertiges SVG-Markup der Draufsicht
+  } | null
 }
 
 function esc(s: string): string {
@@ -85,6 +93,7 @@ td,th{border:1px solid #ddd;padding:3px 7px;font-size:11px;text-align:left}
 th{background:#f7f7f7;font-weight:600;width:44%}
 .bar{background:#fdf6dd;padding:5px 9px;border-radius:4px;border-left:3px solid #eab308;font-size:11px;margin:5px 0}
 .cdot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.ap{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;margin:1px}
 </style></head><body>`
 
   html += `<h1>LEDWall Konfiguration</h1><div class="meta">${pn ? `Projekt: <b>${pn}</b> · ` : ''}${cn ? `Kunde: <b>${cn}</b> · ` : ''}Datum: ${dt} · Modul: <b>${esc(d.mod.name)}</b> · Aufbau: <b>${d.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend (Traverse)'}</b></div>`
@@ -110,6 +119,22 @@ th{background:#f7f7f7;font-weight:600;width:44%}
     html += `<div class="bar"><b>Ground-Stack:</b> ${d.baseUnits} Standfüße × ${d.ballastPerBase} kg = <b>${d.totalBallast} kg Ballast</b></div>`
   else html += `<div class="bar"><b>Fliegend:</b> Gesamtgewicht ${d.weightKg} kg an Traverse</div>`
   html += `</div></div>`
+
+  // Curving: Draufsicht + Winkel je Modul (eine Reihe)
+  if (d.curve && d.curve.angles.length > 0) {
+    const c = d.curve
+    const pills = c.angles
+      .map((a) => {
+        const abs = Math.abs(a)
+        const col = abs === 0 ? '#14b8a6' : a > 0 ? '#b8860b' : '#7c3aed'
+        const bg = abs === 0 ? '#e7f8f5' : a > 0 ? '#fdf6dd' : '#f1ecfd'
+        return `<span class="ap" style="color:${col};background:${bg}">${abs}°${a < 0 ? ' &#8634;' : ''}</span>`
+      })
+      .join('')
+    html += `<h2>Curving – ${esc(c.modeLabel)}</h2><div style="margin-bottom:6px;font-size:11px">${c.mods} Module/Reihe · belegte Fläche ${c.footprintW.toFixed(2)} × ${c.footprintD.toFixed(2)} m</div>`
+    html += `<div style="max-width:480px;margin-bottom:6px">${c.svg}</div>`
+    html += `<div style="font-size:10px;color:#555;margin-bottom:3px">Winkelverteilung je Modul:</div><div>${pills}</div>`
+  }
 
   const printPx = d.cols > 16 ? 20 : d.cols > 12 ? 24 : 28
   const gridClass = d.cols > 16 ? 'g1' : 'g2'
