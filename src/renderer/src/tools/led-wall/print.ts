@@ -30,6 +30,7 @@ export interface PrintData {
   totalBallast: number
   sig: number[][]
   pwr: number[][]
+  landscape: boolean
   curve: {
     modeLabel: string
     mods: number
@@ -132,16 +133,19 @@ th{background:#f7f7f7;font-weight:600;width:44%}
       })
       .join('')
     html += `<h2>Curving – ${esc(c.modeLabel)}</h2><div style="margin-bottom:6px;font-size:11px">${c.mods} Module/Reihe · belegte Fläche ${c.footprintW.toFixed(2)} × ${c.footprintD.toFixed(2)} m</div>`
-    html += `<div style="max-width:480px;margin-bottom:6px">${c.svg}</div>`
+    html += `<div style="max-width:${d.landscape ? 640 : 480}px;margin-bottom:6px">${c.svg}</div>`
     html += `<div style="font-size:10px;color:#555;margin-bottom:3px">Winkelverteilung je Modul:</div><div>${pills}</div>`
   }
 
-  const printPx = d.cols > 16 ? 20 : d.cols > 12 ? 24 : 28
-  const gridClass = d.cols > 16 ? 'g1' : 'g2'
+  // Querformat bietet ~1030 px nutzbare Breite (A4 ~700) -> Pläne länger
+  // nebeneinander und mit größeren Zellen drucken.
+  const sideBySideMax = d.landscape ? 24 : 16
+  const printPx = d.cols > sideBySideMax ? 20 : d.cols > sideBySideMax * 0.75 ? 24 : 28
+  const gridClass = d.cols > sideBySideMax ? 'g1' : 'g2'
   html += `<div class="${gridClass}"><div><h2>Signalverkabelung</h2><div style="margin-bottom:4px">${legend(d.sig, SIG_COLORS, 'S')}</div>${gridSvg(d.sig, SIG_COLORS, 'S', d.cols, d.rows, printPx)}</div>`
   html += `<div><h2>Stromverkabelung</h2><div style="margin-bottom:4px">${legend(d.pwr, PWR_COLORS, 'P')}</div>${gridSvg(d.pwr, PWR_COLORS, 'P', d.cols, d.rows, printPx)}</div></div>`
   html += `<div style="margin-top:14px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">AV Toolbox · LED-Wall-Konfigurator · ${dt}</div></body></html>`
 
   const safe = d.projectName.replace(/[^\wäöüÄÖÜß -]+/g, '').trim()
-  return api.util.exportPdf(html, `LEDWall${safe ? '-' + safe : ''}.pdf`)
+  return api.util.exportPdf(html, `LEDWall${safe ? '-' + safe : ''}.pdf`, d.landscape)
 }

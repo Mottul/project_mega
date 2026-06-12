@@ -235,6 +235,6 @@ export interface ToolboxApi {
   util: {
     /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF).
      *  Liefert den gewählten Pfad oder null (abgebrochen). */
-    exportPdf(html: string, suggestedName: string): Promise<string | null>
+    exportPdf(html: string, suggestedName: string, landscape?: boolean): Promise<string | null>
   }
 }

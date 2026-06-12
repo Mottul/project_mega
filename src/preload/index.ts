@@ -100,8 +100,8 @@ const api: ToolboxApi = {
   },
 
   util: {
-    exportPdf: (html, suggestedName) =>
-      ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName)
+    exportPdf: (html, suggestedName, landscape) =>
+      ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName, landscape ?? false)
   }
 }
 

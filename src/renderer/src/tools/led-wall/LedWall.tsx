@@ -116,7 +116,7 @@ export function LedWall(): JSX.Element {
             chordHorizontal: curve.mode === 'segment',
             chordLabel: curve.arc?.ca ?? null,
             sagLabel: curve.arc?.sa ?? null,
-            maxPx: 470
+            maxPx: s.pdfLandscape ? 620 : 470
           })
         }
       : null
@@ -127,6 +127,7 @@ export function LedWall(): JSX.Element {
       buildMode: s.buildMode,
       sig: s.sig,
       pwr: s.pwr,
+      landscape: s.pdfLandscape,
       curve: curveForPdf
     })
   }
@@ -138,9 +139,32 @@ export function LedWall(): JSX.Element {
         <Card className="p-5">
           <div className="flex items-start justify-between gap-3">
             <SectionTitle>Projekt</SectionTitle>
-            <Button size="sm" onClick={doExport}>
-              <FileDown className="size-4" /> PDF exportieren
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <div className="flex overflow-hidden rounded-md border border-border" title="Seitenformat der PDF-Doku">
+                {(
+                  [
+                    [false, 'Hoch'],
+                    [true, 'Quer']
+                  ] as [boolean, string][]
+                ).map(([landscape, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => s.set({ pdfLandscape: landscape })}
+                    className={`px-2 py-1 text-xs transition-colors ${
+                      s.pdfLandscape === landscape
+                        ? 'bg-primary/15 font-semibold text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <Button size="sm" onClick={doExport}>
+                <FileDown className="size-4" /> PDF exportieren
+              </Button>
+            </div>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="block">
