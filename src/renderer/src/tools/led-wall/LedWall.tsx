@@ -7,12 +7,12 @@ import { FileDown } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
-import { Readout, fmt, parseNum } from '../_calc/ui'
+import { Readout, fmt } from '../_calc/ui'
 import { CableGrid } from './CableGrid'
+import { computeWall } from './compute'
 import { Curving } from './Curving'
-import { CURVE_MODE_LABELS, computeCurve } from './curve'
+import { CURVE_MODE_LABELS } from './curve'
 import { MODULES, PWR_COLORS, SIG_COLORS } from './data'
-import { calc169, gcd, getBallastPerBase } from './math'
 import { exportLedWallPdf } from './print'
 import { useLedWall, type BuildMode } from './store'
 import { topDownMarkup } from './topdown'
@@ -25,72 +25,21 @@ function SectionTitle({ children }: { children: string }): JSX.Element {
 export function LedWall(): JSX.Element {
   const s = useLedWall()
 
-  const d = useMemo(() => {
-    const mod = MODULES[s.moduleKey] ?? MODULES['496-2,0']
-    const wM = parseNum(s.widthM) ?? 0.5
-    const hM = parseNum(s.heightM) ?? 0.5
-
-    // uS2+: das Curving bestimmt die Module pro Reihe (= Spalten) UND die belegte
-    // Breite am Boden; nur die Höhe (Reihen) kommt weiter aus der Eingabe.
-    const curve = mod.canCurve
-      ? computeCurve({
-          curveMode: s.curveMode,
-          widthM: parseNum(s.widthM),
-          segSag: parseNum(s.segSag),
-          builderSegs: s.builderSegs,
-          sqD: parseNum(s.sqD),
-          sqCorner: s.sqCorner,
-          selectedCircle: s.selectedCircle
-        })
-      : null
-
-    const cols = curve ? Math.max(1, curve.mods) : Math.max(1, Math.round(wM / (mod.dimW / 1000)))
-    const rows = Math.max(1, Math.round(hM / (mod.dimH / 1000)))
-    const total = cols * rows
-    // Boden-/Aufstellbreite: flach = Modulbreite·Spalten, gebogen = Grundfläche.
-    const floorWidthM = curve ? curve.footprintW : (cols * mod.dimW) / 1000
-    const actualW = floorWidthM.toFixed(3)
-    const actualH = ((rows * mod.dimH) / 1000).toFixed(3)
-    const resX = cols * mod.resX
-    const resY = rows * mod.resY
-    const g = gcd(resX, resY)
-    const powerTypW = total * mod.powerTyp
-    const powerMaxW = total * mod.powerMax
-    const ballastPerBase = getBallastPerBase(parseFloat(actualH))
-    const baseUnits = Math.max(1, Math.ceil(floorWidthM))
-    return {
-      mod,
-      curve,
-      cols,
-      rows,
-      total,
-      actualW,
-      actualH,
-      resX,
-      resY,
-      ratioW: resX / g,
-      ratioH: resY / g,
-      fit169: calc169(resX, resY),
-      weightKg: (total * mod.weight).toFixed(1),
-      powerTypW,
-      powerMaxW,
-      ampsTyp: (powerTypW / 230).toFixed(1),
-      ampsMax: (powerMaxW / 230).toFixed(1),
-      ballastPerBase,
-      baseUnits,
-      totalBallast: ballastPerBase * baseUnits
-    }
-  }, [
-    s.moduleKey,
-    s.widthM,
-    s.heightM,
-    s.curveMode,
-    s.segSag,
-    s.builderSegs,
-    s.sqD,
-    s.sqCorner,
-    s.selectedCircle
-  ])
+  const d = useMemo(
+    () =>
+      computeWall({
+        moduleKey: s.moduleKey,
+        widthM: s.widthM,
+        heightM: s.heightM,
+        curveMode: s.curveMode,
+        segSag: s.segSag,
+        builderSegs: s.builderSegs,
+        sqD: s.sqD,
+        sqCorner: s.sqCorner,
+        selectedCircle: s.selectedCircle
+      }),
+    [s.moduleKey, s.widthM, s.heightM, s.curveMode, s.segSag, s.builderSegs, s.sqD, s.sqCorner, s.selectedCircle]
+  )
 
   // Verkabelungs-Grids an die Modulzahl anpassen (Zuordnungen bleiben erhalten).
   useEffect(() => {

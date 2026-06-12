@@ -102,6 +102,21 @@ const api: ToolboxApi = {
   util: {
     exportPdf: (html, suggestedName, landscape) =>
       ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName, landscape ?? false)
+  },
+
+  jingles: {
+    import: (paths) => ipcRenderer.invoke(Channels.jingleImport, paths),
+    cleanup: (keep) => ipcRenderer.invoke(Channels.jingleCleanup, keep)
+  },
+
+  youtube: {
+    status: () => ipcRenderer.invoke(Channels.ytStatus),
+    updateTool: () => ipcRenderer.invoke(Channels.ytUpdate),
+    enqueue: (req) => ipcRenderer.invoke(Channels.ytEnqueue, req),
+    list: () => ipcRenderer.invoke(Channels.ytList),
+    cancel: (id) => ipcRenderer.invoke(Channels.ytCancel, id),
+    clearFinished: () => ipcRenderer.invoke(Channels.ytClearFinished),
+    onJobUpdate: (cb) => subscribe(Channels.ytJobUpdate, (j) => cb(j as never))
   }
 }
 

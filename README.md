@@ -238,6 +238,19 @@ src/
   vor) und wandert **inkl. Draufsicht und Winkeln in die PDF-Projektdoku**. Konfiguration bleibt
   über App-Neustarts erhalten. Ersetzt den bisherigen Einzeldatei-HTML-Konfigurator (und behebt
   dessen Messfehler bei der „erreichten Stichhöhe").
+- **Jingle-Player** – kurze Audios (Auftrittsmusik/Stinger) auf **belegbaren Pads**: Klick oder
+  **Hotkey** (1–9, q…) spielt ab, je Pad Farbe/Lautstärke/**Loop**/Modus (One-Shot oder Toggle)
+  und **Fade-Out**. **Audio-Ausgabegerät wählbar** (`setSinkId` → Interface/Pult statt
+  Laptop-Lautsprecher), **Solo-Modus** (nur einer gleichzeitig), großer **Fade-All-Stopp** (Esc),
+  mehrere **Sets/Bänke**. Dateien werden nach userData kopiert und über das `jingle://`-Protocol
+  abgespielt (kein file://-Zugriff); Belegung übersteht App-Neustarts.
+- **YouTube-Downloader** – Wrapper um **yt-dlp** (Video MP4 / Audio MP3 / M4A, Auflösungsdeckel),
+  Queue mit **Fortschritt/Speed/ETA**, Muxing über das gebündelte ffmpeg. yt-dlp wird bei Bedarf
+  als **eigenständige Binary nach userData/bin geladen** und per Knopf **aktualisiert** (YouTube
+  ändert ständig etwas). Hinweis im UI: nur freigegebene/eigene Inhalte laden.
+- **Packliste** – Material-Checkliste mit Mengen/Einheiten/Notizen, abhakbar, gruppiert nach
+  Kategorie. **Aus der LED-Wall-Konfiguration befüllbar** (Module, Standfüße, Ballast und
+  Kabelmengen aus den gezeichneten Ketten), Export als PDF. Übersteht App-Neustarts.
 - **Stage-Timer & Uhr** – Sprechzeit-Timer mit **mehreren Abschnitten** (laufen nacheinander),
   **Farbwarnung nach Restzeit** (weiß → gelb → rot, Schwellen einstellbar), wählbarem
   **Ablauf-Verhalten** (stehen bleiben / Überziehung rot blinkend / automatisch weiter),
@@ -252,10 +265,16 @@ src/
   Warnstufen – Richtwerte, ersetzt keinen Sachkundigen) und **Timecode-Rechner** (SMPTE-Timecode ↔
   Frames ↔ Echtzeit inkl. **Drop-Frame** 29,97/59,94, Dauer zwischen In/Out). Berechnete Werte
   sind farblich markiert (Gold = Ergebnis), Kernaussagen als hervorgehobene Ergebniszeilen.
+- **PDF-Export** – LED-Wall-Doku und Packliste werden über ein verstecktes Fenster (`printToPDF`)
+  gespeichert; die LED-Wall-Doku wahlweise im **Querformat**.
 - **Theme** – umschaltbarer **Hell-/Dunkelmodus** (System/Hell/Dunkel) in allen Werkzeugen.
 
 ## Roadmap
 
-- **Teleprompter** im Stage-Timer (scrollender Text auf dem Referentenmonitor) – Idee.
+- **Teleprompter** im Stage-Timer (scrollender Text auf dem Referentenmonitor).
+- **ArtNet/sACN-Tester** (DMX über Netzwerk senden + Node-Discovery) und **DMX-Universum-Planer**
+  (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem Dip-Schalter-Rechner.
+- Kleinere Event-Rechner: **Edge-Blend** (Beamer-Softedge), **Video-Datenrate/Dateigröße**,
+  **Funkfrequenz-Planer**, **Sonnenstand/Dämmerung** für Open-Air.
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).

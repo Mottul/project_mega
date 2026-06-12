@@ -1,9 +1,10 @@
 import { app, BrowserWindow, protocol, shell } from 'electron'
 import { join } from 'node:path'
-import { MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
+import { JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import {
   attachWindow,
   registerIpcHandlers,
+  registerJingleProtocol,
   registerManualProtocol,
   registerMediaProtocol
 } from './ipc/registry'
@@ -25,6 +26,10 @@ protocol.registerSchemesAsPrivileged([
   },
   {
     scheme: MEDIA_PROTOCOL,
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
+  },
+  {
+    scheme: JINGLE_PROTOCOL,
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
   }
 ])
@@ -92,6 +97,7 @@ app.whenReady().then(() => {
   logLine('userData=', app.getPath('userData'))
   registerManualProtocol()
   registerMediaProtocol()
+  registerJingleProtocol()
   registerIpcHandlers()
   attachWindow(createWindow())
 
