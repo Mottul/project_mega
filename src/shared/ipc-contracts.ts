@@ -31,7 +31,11 @@ import type {
   StageTimerState,
   StageTimerTick,
   TimerCommand,
-  WallResolution
+  WallResolution,
+  JingleImportResult,
+  YtEnqueueRequest,
+  YtJob,
+  YtToolStatus
 } from './types'
 
 /** Alle ipcMain.handle / ipcRenderer.invoke Kanaele + Event-Kanaele (main -> renderer). */
@@ -109,7 +113,18 @@ export const Channels = {
   timerState: 'timer:state', // Event: StageTimerState (main -> alle)
   timerTick: 'timer:tick', // Event: StageTimerTick (main -> alle, häufig)
   // Werkzeuge
-  utilExportPdf: 'util:exportPdf' // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
+  utilExportPdf: 'util:exportPdf', // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
+  // Jingle-Player
+  jingleImport: 'jingle:import',
+  jingleCleanup: 'jingle:cleanup',
+  // YouTube-Downloader (yt-dlp)
+  ytStatus: 'yt:status',
+  ytUpdate: 'yt:update', // yt-dlp-Binary herunterladen/aktualisieren
+  ytEnqueue: 'yt:enqueue',
+  ytList: 'yt:list',
+  ytCancel: 'yt:cancel',
+  ytClearFinished: 'yt:clearFinished',
+  ytJobUpdate: 'yt:jobUpdate' // Event: YtJob
 } as const
 
 export type ChannelName = (typeof Channels)[keyof typeof Channels]
@@ -120,6 +135,9 @@ export const MANUAL_PROTOCOL = 'manual'
 /** Custom-Protocol fuer konvertierte Player-Medien (Video/Bild + Thumbnails).
  *  Unterstuetzt Range-Requests -> HTML5-`<video>` kann seeken/streamen. */
 export const MEDIA_PROTOCOL = 'media'
+
+/** Custom-Protocol fuer Jingle-Audiodateien (userData/jingles). */
+export const JINGLE_PROTOCOL = 'jingle'
 
 /** Die komplette, getypte Bruecke window.api. */
 export interface ToolboxApi {
@@ -235,6 +253,25 @@ export interface ToolboxApi {
   util: {
     /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF).
      *  Liefert den gewählten Pfad oder null (abgebrochen). */
-    exportPdf(html: string, suggestedName: string): Promise<string | null>
+    exportPdf(html: string, suggestedName: string, landscape?: boolean): Promise<string | null>
+  }
+
+  jingles: {
+    /** Audiodateien nach userData/jingles kopieren; liefert die sicheren Namen. */
+    import(paths: string[]): Promise<JingleImportResult[]>
+    /** Nicht mehr belegte Dateien aufräumen (alles außer `keep`). */
+    cleanup(keep: string[]): Promise<void>
+  }
+
+  youtube: {
+    /** yt-dlp-Status (vorhanden? Version? ffmpeg?). */
+    status(): Promise<YtToolStatus>
+    /** yt-dlp-Binary herunterladen/aktualisieren. Liefert den neuen Status. */
+    updateTool(): Promise<YtToolStatus>
+    enqueue(req: YtEnqueueRequest): Promise<{ jobId: string }>
+    list(): Promise<YtJob[]>
+    cancel(id: string): Promise<void>
+    clearFinished(): Promise<void>
+    onJobUpdate(cb: (job: YtJob) => void): () => void
   }
 }

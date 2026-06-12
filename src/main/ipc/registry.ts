@@ -3,20 +3,23 @@ import { createReadStream } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { Readable } from 'node:stream'
-import { Channels, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
+import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import type { AppSettings } from '@shared/types'
 import { jobManager } from '../services/ffmpeg/jobManager'
+import { jingleContentType, resolveJingleFile } from '../services/jingleLibrary'
 import { logFilePath, logLine } from '../services/log'
 import { resolveManualFile } from '../services/manuals/manualsService'
 import { resolveMediaFile } from '../services/player/mediaLibrary'
 import { getSettings, setSettings } from '../services/store'
 import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
+import { registerJingleHandlers } from './jingle.handlers'
 import { registerManualsHandlers } from './manuals.handlers'
 import { registerPatternHandlers } from './pattern.handlers'
 import { registerPlayerHandlers } from './player.handlers'
 import { registerTimerHandlers } from './timer.handlers'
 import { registerUtilHandlers } from './util.handlers'
+import { registerYoutubeHandlers } from './youtube.handlers'
 
 /** Bedient das custom `manual://`-Protocol (PDF-Bytes der Bibliothek). */
 export function registerManualProtocol(): void {
@@ -125,6 +128,52 @@ export function registerMediaProtocol(): void {
   })
 }
 
+/** Bedient `jingle://` (Audiodateien des Jingle-Players) mit Range-Support. */
+export function registerJingleProtocol(): void {
+  protocol.handle(JINGLE_PROTOCOL, async (request) => {
+    try {
+      const url = new URL(request.url)
+      const abs = resolveJingleFile(url.pathname)
+      if (!abs) return new Response('Not found', { status: 404 })
+
+      const total = (await stat(abs)).size
+      const ct = jingleContentType(abs)
+      const range = request.headers.get('Range')
+      if (range) {
+        const m = /bytes=(\d*)-(\d*)/.exec(range)
+        let start = m && m[1] ? parseInt(m[1], 10) : 0
+        let end = m && m[2] ? parseInt(m[2], 10) : total - 1
+        if (!Number.isFinite(start) || start < 0) start = 0
+        if (!Number.isFinite(end) || end >= total) end = total - 1
+        if (start > end || start >= total) {
+          return new Response('Range Not Satisfiable', {
+            status: 416,
+            headers: { 'Content-Range': `bytes */${total}` }
+          })
+        }
+        const stream = Readable.toWeb(createReadStream(abs, { start, end })) as ReadableStream
+        return new Response(stream, {
+          status: 206,
+          headers: {
+            'Content-Type': ct,
+            'Content-Length': String(end - start + 1),
+            'Content-Range': `bytes ${start}-${end}/${total}`,
+            'Accept-Ranges': 'bytes'
+          }
+        })
+      }
+      const stream = Readable.toWeb(createReadStream(abs)) as ReadableStream
+      return new Response(stream, {
+        status: 200,
+        headers: { 'Content-Type': ct, 'Content-Length': String(total), 'Accept-Ranges': 'bytes' }
+      })
+    } catch (err) {
+      logLine('[jingle://] FEHLER url=', request.url, '->', err instanceof Error ? err.message : String(err))
+      return new Response('Error', { status: 500 })
+    }
+  })
+}
+
 let handlersRegistered = false
 
 /** Registriert alle ipcMain.handle-Kanaele -- genau einmal. */
@@ -143,6 +192,8 @@ export function registerIpcHandlers(): void {
   registerPlayerHandlers()
   registerTimerHandlers()
   registerUtilHandlers()
+  registerJingleHandlers()
+  registerYoutubeHandlers()
 }
 
 /** Verbindet die Live-Job-Updates mit dem konkreten Fenster. */

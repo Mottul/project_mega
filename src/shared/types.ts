@@ -448,6 +448,53 @@ export interface SelectPathsOptions {
   directories?: boolean // true => Ordnerauswahl
 }
 
+/* ------------------------------- Jingles -------------------------------- */
+// Jingle-Player: kurze Audios (Auftrittsmusik/Stinger) auf belegbaren Pads.
+// Dateien werden nach userData/jingles kopiert und über jingle:// geladen; die
+// Pad-Belegung lebt im Renderer-Store. Kein SQLite, keine Konvertierung nötig.
+
+export interface JingleImportResult {
+  storedName: string // sicherer Dateiname in userData/jingles (<uuid>.<ext>)
+  originalName: string // Anzeigename der Quelldatei
+}
+
+/* --------------------------- YouTube-Download --------------------------- */
+// yt-dlp-Wrapper. Binary wird (falls nicht gefunden) nach userData/bin geladen
+// und per Knopf aktualisiert; ffmpeg fürs Muxen kommt aus dem Bundle.
+
+export type YtFormatId = 'video' | 'audio-mp3' | 'audio-m4a'
+
+export interface YtToolStatus {
+  available: boolean // yt-dlp gefunden + lauffähig
+  version: string | null
+  location: 'managed' | 'path' | null // userData/bin oder System-PATH
+  ffmpeg: boolean
+}
+
+export interface YtEnqueueRequest {
+  url: string
+  format: YtFormatId
+  maxHeight: number | null // Auflösungsdeckel (px) für 'video', null = beste
+  outputDir: string
+}
+
+export type YtJobStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
+
+export interface YtJob {
+  id: string
+  url: string
+  format: YtFormatId
+  status: YtJobStatus
+  progress: number // 0..1
+  title: string | null
+  speed: string | null
+  eta: string | null
+  outputDir: string
+  outputFile: string | null
+  error?: string
+  createdAt: number
+}
+
 /* ------------------------------- Settings ------------------------------- */
 
 export interface PatternPreset {

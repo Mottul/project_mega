@@ -8,7 +8,7 @@ import { Channels } from '@shared/ipc-contracts'
 import { logLine } from '../services/log'
 
 export function registerUtilHandlers(): void {
-  ipcMain.handle(Channels.utilExportPdf, async (e, html: string, suggestedName: string) => {
+  ipcMain.handle(Channels.utilExportPdf, async (e, html: string, suggestedName: string, landscape = false) => {
     const parent = BrowserWindow.fromWebContents(e.sender)
     const opts = {
       title: 'Als PDF speichern',
@@ -27,6 +27,7 @@ export function registerUtilHandlers(): void {
       const pdf = await win.webContents.printToPDF({
         printBackground: true,
         pageSize: 'A4',
+        landscape,
         margins: { top: 0.4, bottom: 0.4, left: 0.4, right: 0.4 }
       })
       await writeFile(res.filePath, pdf)

@@ -28,6 +28,7 @@ interface LedWallState {
   sqD: string
   sqCorner: number
   selectedCircle: number // Index in CIRCLE_TABLE
+  pdfLandscape: boolean // PDF-Doku im Querformat (Default: ja – Pläne sind breit)
 
   set: (patch: Partial<LedWallState>) => void
   /** Grids an neue Modulzahl anpassen (Zuordnungen im Überlapp bleiben erhalten). */
@@ -60,6 +61,7 @@ export const useLedWall = create<LedWallState>()(
       sqD: '2',
       sqCorner: 3,
       selectedCircle: 0,
+      pdfLandscape: true,
 
       set: (patch) => set(patch),
 
