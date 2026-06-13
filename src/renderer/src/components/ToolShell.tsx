@@ -3,7 +3,7 @@
 // gleich aus: links/mittig wird gearbeitet, rechts wird eingestellt. Der
 // Aufklapp-Zustand jeder Kategorie wird pro Tool im localStorage gemerkt.
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 
@@ -22,18 +22,63 @@ export function ToolShell({
   aside?: ReactNode
   asideWidth?: number
 }): JSX.Element {
+  // Panel ein-/ausklappbar (Zustand pro Tool gemerkt) -> mehr Platz für den Inhalt.
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`shell:${id}:aside`) === '1'
+    } catch {
+      return false
+    }
+  })
+  function toggleAside(): void {
+    setCollapsed((c) => {
+      const next = !c
+      try {
+        localStorage.setItem(`shell:${id}:aside`, next ? '1' : '0')
+      } catch {
+        /* localStorage nicht verfügbar */
+      }
+      return next
+    })
+  }
+
   return (
     <ShellCtx.Provider value={id}>
       <div className="flex h-full min-h-0">
         <section className="min-w-0 flex-1 overflow-auto">{main}</section>
-        {aside != null && (
-          <aside
-            className="flex shrink-0 flex-col overflow-y-auto border-l border-border bg-card/40"
-            style={{ width: asideWidth }}
-          >
-            {aside}
-          </aside>
-        )}
+        {aside != null &&
+          (collapsed ? (
+            <div className="flex shrink-0 flex-col items-center border-l border-border bg-card/40 py-2">
+              <button
+                type="button"
+                onClick={toggleAside}
+                title="Einstellungen einblenden"
+                className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              >
+                <PanelRightOpen className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <aside
+              className="flex shrink-0 flex-col overflow-y-auto border-l border-border bg-card/40"
+              style={{ width: asideWidth }}
+            >
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Einstellungen
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleAside}
+                  title="Einstellungen ausblenden"
+                  className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                >
+                  <PanelRightClose className="size-4" />
+                </button>
+              </div>
+              {aside}
+            </aside>
+          ))}
       </div>
     </ShellCtx.Provider>
   )
