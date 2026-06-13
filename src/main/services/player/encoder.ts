@@ -140,7 +140,8 @@ export function buildFitFilter(
   fit: FitMode,
   width: number,
   height: number,
-  pixFmt: 'yuv420p' | 'nv12' | null
+  pixFmt: 'yuv420p' | 'nv12' | null,
+  blur?: { strength: number; darken: number }
 ): string {
   const W = Math.max(2, Math.round(width))
   const H = Math.max(2, Math.round(height))
@@ -156,10 +157,16 @@ export function buildFitFilter(
     )
   }
   // blur: formatfüllender, unscharfer Hintergrund + scharfer Inhalt mittig.
-  const radius = Math.max(2, Math.round(Math.min(W, H) / 40))
+  // Stärke 0..100 skaliert den boxblur-Radius (50 ~ bisheriges min/40), gedeckelt
+  // gegen Extremkosten. Abdunkelung legt ein halbtransparentes Schwarz darüber.
+  const minWH = Math.min(W, H)
+  const strength = Math.max(0, Math.min(100, blur?.strength ?? 50))
+  const radius = Math.max(1, Math.min(Math.round(minWH / 8), Math.round((minWH * strength) / 2000)))
+  const dim = Math.max(0, Math.min(100, blur?.darken ?? 0)) / 100
+  const dimChain = dim > 0 ? `,drawbox=x=0:y=0:w=${W}:h=${H}:color=black@${dim.toFixed(3)}:t=fill` : ''
   return (
     `split=2[bg][fg];` +
-    `[bg]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=${radius}:1[bgb];` +
+    `[bg]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=${radius}:1${dimChain}[bgb];` +
     `[fg]scale=${W}:${H}:force_original_aspect_ratio=decrease[fgs];` +
     `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1${suffix}`
   )
@@ -174,9 +181,10 @@ export function buildVideoArgs(opts: {
   width: number
   height: number
   hasAudio: boolean
+  blur?: { strength: number; darken: number }
 }): string[] {
   const pf = encoderPixFmt(opts.encoder)
-  const vf = buildFitFilter(opts.fit, opts.width, opts.height, pf)
+  const vf = buildFitFilter(opts.fit, opts.width, opts.height, pf, opts.blur)
   const audio = opts.hasAudio ? ['-c:a', 'aac', '-b:a', '192k'] : ['-an']
   return [
     '-hide_banner',
@@ -215,8 +223,9 @@ export function buildImageArgs(opts: {
   fit: FitMode
   width: number
   height: number
+  blur?: { strength: number; darken: number }
 }): string[] {
-  const vf = buildFitFilter(opts.fit, opts.width, opts.height, null)
+  const vf = buildFitFilter(opts.fit, opts.width, opts.height, null, opts.blur)
   return [
     '-hide_banner',
     '-i', opts.input,

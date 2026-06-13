@@ -514,6 +514,11 @@ export interface PlayerSettings {
   idleMediaUrl: string | null
   idleMediaKind: 'image' | 'video' | null
   encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
+  // Blur-Fill: Unschärfe-Stärke (0..100, 50 = bisheriger Standard) und Abdunkelung
+  // des Hintergrunds (0..100 %). Wird beim Einbacken angewandt -> gilt für neu
+  // importierte/neu konvertierte Medien.
+  blurStrength: number
+  blurDarken: number
   remoteEnabled: boolean
   remotePort: number
   savedPlaylists: SavedPlaylist[]
@@ -531,6 +536,8 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   idleMediaUrl: null,
   idleMediaKind: null,
   encoder: 'auto',
+  blurStrength: 50,
+  blurDarken: 0,
   remoteEnabled: false,
   remotePort: 8088,
   savedPlaylists: []

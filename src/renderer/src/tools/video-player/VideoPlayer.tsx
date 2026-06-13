@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type DragEvent, type HTMLAttributes } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent, type HTMLAttributes } from 'react'
+import { useKiosk } from '@renderer/launcher/kiosk'
 import {
   AlertTriangle,
   Clock,
@@ -100,6 +101,10 @@ function kindIcon(kind: MediaItem['kind']): JSX.Element {
 }
 
 export function VideoPlayer(): JSX.Element {
+  // Kundenansicht: technische Setup-Optionen ausblenden (Wand/Auflösung, Encoder,
+  // Idle-Bild). Bibliothek, Import, Fit-Modus, Fernsteuerung, Ausgabe und Playlist
+  // bleiben voll bedienbar.
+  const locked = useKiosk()
   const [enc, setEnc] = useState<PlayerEncoderStatus | null>(null)
   const [library, setLibrary] = useState<MediaItem[]>([])
   const [jobs, setJobs] = useState<Record<string, ConvertJob>>({})
@@ -111,9 +116,17 @@ export function VideoPlayer(): JSX.Element {
   const [wallH, setWallH] = useState(1080)
   const [fit, setFit] = useState<FitMode>('blur')
   const [encoder, setEncoder] = useState('auto')
+  const [blurStrength, setBlurStrength] = useState(50)
+  const [blurDarken, setBlurDarken] = useState(0)
   const [displayId, setDisplayId] = useState<number | null>(null)
 
+  // Live gezogene Position (während des Scrubbens) und die committe Zielposition,
+  // die gehalten wird, bis der Tick sie erreicht -> kein Zurückspringen auf die
+  // alte Position nach dem Loslassen. scrubRef = neuester Wert, damit das
+  // Loslassen AUCH außerhalb des Sliders sauber committet.
   const [scrub, setScrub] = useState<number | null>(null)
+  const [seekTarget, setSeekTarget] = useState<number | null>(null)
+  const scrubRef = useRef<number | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [view, setView] = useState<ViewMode>('large')
   // Bewegte Live-Vorschau des Wandbilds AUCH bei offenem Ausgabefenster (passiver
@@ -160,6 +173,8 @@ export function VideoPlayer(): JSX.Element {
       setWallH(s.player.wallHeight)
       setFit(s.player.defaultFit)
       setEncoder(s.player.encoder)
+      setBlurStrength(s.player.blurStrength ?? 50)
+      setBlurDarken(s.player.blurDarken ?? 0)
       setRemotePort(s.player.remotePort)
       setSaved(s.player.savedPlaylists ?? [])
       if (s.player.outputDisplayId != null) setDisplayId(s.player.outputDisplayId)
@@ -191,13 +206,63 @@ export function VideoPlayer(): JSX.Element {
 
   const current = pstate.index >= 0 ? pstate.playlist[pstate.index] : null
   const duration = tick?.durationSec || pstate.durationSec || current?.durationSec || 0
-  const position = scrub ?? tick?.positionSec ?? pstate.positionSec
+  // Anzeige-Position: aktives Ziehen > committe Zielposition > Tick > Zustand.
+  const position = scrub ?? seekTarget ?? tick?.positionSec ?? pstate.positionSec
   const seekable = current != null && current.kind !== 'image' && duration > 0
 
   const cmd = api.player.command
 
+  // Suche committen: einmalig (idempotent über scrubRef). Hält die Zielposition,
+  // bis der Tick sie erreicht -> kein Zurückspringen.
+  function commitSeek(): void {
+    const v = scrubRef.current
+    if (v == null) return
+    scrubRef.current = null
+    setScrub(null)
+    setSeekTarget(v)
+    void cmd({ type: 'seek', positionSec: v })
+    // Fallback: spätestens nach 2 s wieder dem Tick folgen.
+    window.setTimeout(() => setSeekTarget((cur) => (cur === v ? null : cur)), 2000)
+  }
+
+  // Zusätzlich am window lauschen, damit das Loslassen AUCH außerhalb des Sliders
+  // sicher committet (sonst bliebe der Playhead an der alten Stelle hängen).
+  useEffect(() => {
+    if (scrub == null) return
+    const onUp = (): void => commitSeek()
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+    // bewusst nur am Start/Ende des Scrubbens neu binden (scrub==null als Schwelle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrub == null])
+
+  // Zielposition halten, bis der Tick sie (ungefähr) erreicht.
+  useEffect(() => {
+    if (seekTarget == null) return
+    const p = tick?.positionSec ?? pstate.positionSec
+    if (Math.abs(p - seekTarget) < 0.75) setSeekTarget(null)
+  }, [tick, pstate.positionSec, seekTarget])
+
+  // Bei Track-Wechsel Scrub/Ziel verwerfen.
+  useEffect(() => {
+    setScrub(null)
+    setSeekTarget(null)
+    scrubRef.current = null
+  }, [pstate.index])
+
   async function persistPlayer(
-    patch: Partial<{ wallWidth: number; wallHeight: number; defaultFit: FitMode; encoder: string }>
+    patch: Partial<{
+      wallWidth: number
+      wallHeight: number
+      defaultFit: FitMode
+      encoder: string
+      blurStrength: number
+      blurDarken: number
+    }>
   ): Promise<void> {
     const s = await api.getSettings()
     await api.setSettings({ player: { ...s.player, ...patch } })
@@ -351,6 +416,7 @@ export function VideoPlayer(): JSX.Element {
       id="video-player"
       aside={
         <>
+          {!locked && (
           <PanelSection id="wall" title="Wand / Auflösung" icon={Ratio}>
             <div className="flex items-center gap-2">
               <NumberField value={wallW} min={2} max={16384} onCommit={(v) => setWall(v, wallH)} />
@@ -368,6 +434,7 @@ export function VideoPlayer(): JSX.Element {
               </Button>
             </div>
           </PanelSection>
+          )}
 
           <PanelSection id="prep" title="Aufbereitung" icon={SlidersHorizontal}>
             <label className="flex flex-col gap-1.5">
@@ -389,6 +456,69 @@ export function VideoPlayer(): JSX.Element {
               </select>
               <span className="text-xs text-muted-foreground">Gilt für neu importierte Medien.</span>
             </label>
+
+            {fit === 'blur' && (
+              <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/20 p-3">
+                <label className="flex flex-col gap-1">
+                  <span className="flex items-center justify-between text-xs">
+                    <span className="font-medium">Blur-Stärke</span>
+                    <span className="text-muted-foreground">{blurStrength} %</span>
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={blurStrength}
+                    onChange={(e) => setBlurStrength(Number(e.target.value))}
+                    onPointerUp={(e) =>
+                      void persistPlayer({ blurStrength: Number((e.target as HTMLInputElement).value) })
+                    }
+                    className="w-full accent-primary"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="flex items-center justify-between text-xs">
+                    <span className="font-medium">Abdunkelung</span>
+                    <span className="text-muted-foreground">{blurDarken} %</span>
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={blurDarken}
+                    onChange={(e) => setBlurDarken(Number(e.target.value))}
+                    onPointerUp={(e) =>
+                      void persistPlayer({ blurDarken: Number((e.target as HTMLInputElement).value) })
+                    }
+                    className="w-full accent-primary"
+                  />
+                </label>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    Wirkt beim Einbacken (neue Importe).
+                  </span>
+                  {library.some((m) => m.fitMode === 'blur') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        void api.player.reconvert(
+                          library.filter((m) => m.fitMode === 'blur').map((m) => m.id),
+                          { width: wallW, height: wallH }
+                        )
+                      }
+                      title="Aktuelle Blur-Einstellungen auf bereits importierte Blur-Medien anwenden (kann dauern)"
+                    >
+                      Vorhandene neu einbacken
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!locked && (
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Encoder</span>
               <select
@@ -410,6 +540,7 @@ export function VideoPlayer(): JSX.Element {
               </select>
               <span className="text-xs text-muted-foreground">Konvertierung nach H.264/MP4 (GPU, falls verfügbar).</span>
             </label>
+            )}
           </PanelSection>
 
           <PanelSection
@@ -441,6 +572,7 @@ export function VideoPlayer(): JSX.Element {
             </div>
           </PanelSection>
 
+          {!locked && (
           <PanelSection id="idle" title="Idle-Bild" icon={ImageIcon} defaultOpen={false}>
             <select
               className={selectClass}
@@ -474,6 +606,7 @@ export function VideoPlayer(): JSX.Element {
               <span className="text-xs text-muted-foreground">Testbild oder eigenes Medium als Fallback auf der Ausgabe.</span>
             )}
           </PanelSection>
+          )}
 
           <PanelSection
             id="remote"
@@ -838,9 +971,17 @@ export function VideoPlayer(): JSX.Element {
             )}
           </div>
 
-          {/* Vorschau / Monitorhinweis – Größe begrenzt, damit sie auf großen
-              Fenstern nicht den ganzen Player dominiert. */}
-          <div className="relative mb-2 aspect-video w-full max-w-[480px] overflow-hidden rounded-md border border-border bg-black">
+          {/* Vorschau / Monitorhinweis. Bei offenem Ausgabefenster schaltet ein
+              Klick zwischen bewegtem Spiegel und Standbild um. */}
+          <div
+            onClick={() => {
+              if (pstate.outputOpen) togglePreviewLive()
+            }}
+            title={pstate.outputOpen ? 'Klick: Live-Vorschau ein/aus' : undefined}
+            className={`relative mb-2 aspect-video w-full overflow-hidden rounded-md border border-border bg-black ${
+              pstate.outputOpen ? 'cursor-pointer' : ''
+            }`}
+          >
             {!pstate.outputOpen || previewLive ? (
               // Kein Ausgabefenster -> aktive Engine (treibt die Wiedergabe);
               // Ausgabefenster offen + Live an -> passiver Spiegel des Wandbilds.
@@ -859,6 +1000,11 @@ export function VideoPlayer(): JSX.Element {
                   <Badge tone="info">Wiedergabe läuft auf dem Monitor</Badge>
                 </div>
               </>
+            )}
+            {pstate.outputOpen && (
+              <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white/90">
+                {previewLive ? 'Live · Klick = Standbild' : 'Standbild · Klick = Live'}
+              </span>
             )}
           </div>
           <div className="mb-3 flex items-center gap-2">
@@ -894,15 +1040,12 @@ export function VideoPlayer(): JSX.Element {
               step={0.1}
               value={Math.min(position, duration || 1)}
               disabled={!seekable}
-              onChange={(e) => setScrub(Number(e.target.value))}
-              onMouseUp={() => {
-                if (scrub != null) void cmd({ type: 'seek', positionSec: scrub })
-                setScrub(null)
+              onChange={(e) => {
+                const v = Number(e.target.value)
+                scrubRef.current = v
+                setScrub(v)
               }}
-              onTouchEnd={() => {
-                if (scrub != null) void cmd({ type: 'seek', positionSec: scrub })
-                setScrub(null)
-              }}
+              onPointerUp={commitSeek}
               className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-[hsl(var(--primary))] disabled:opacity-50"
             />
             <span className="w-10 text-xs tabular-nums text-muted-foreground">{fmtTime(duration)}</span>

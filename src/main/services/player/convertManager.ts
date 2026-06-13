@@ -151,12 +151,34 @@ function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): 
   )
 }
 
+/** Aktuelle Blur-Fill-Parameter aus den Einstellungen (global). */
+function currentBlur(): { blurStrength: number; blurDarken: number } {
+  const p = getSettings().player
+  return { blurStrength: p.blurStrength ?? 50, blurDarken: p.blurDarken ?? 0 }
+}
+
+/** Schlüssel-Variante nur für Blur-Fit (Stärke/Abdunkelung verändern das Bild). */
+function blurVariant(spec: {
+  fit: PlayerImportRequest['fitMode']
+  blurStrength: number
+  blurDarken: number
+}): string | undefined {
+  return spec.fit === 'blur' ? `b${spec.blurStrength}d${spec.blurDarken}` : undefined
+}
+
 class ConvertManager {
   private jobs = new Map<string, ConvertJob>()
   private procs = new Map<string, ChildProcessWithoutNullStreams>()
   private specs = new Map<
     string,
-    { fit: PlayerImportRequest['fitMode']; width: number; height: number; reconvertId?: string }
+    {
+      fit: PlayerImportRequest['fitMode']
+      width: number
+      height: number
+      blurStrength: number
+      blurDarken: number
+      reconvertId?: string
+    }
   >()
   private sink: JobSink = () => {}
   private librarySink: LibrarySink = () => {}
@@ -205,7 +227,7 @@ class ConvertManager {
         createdAt: Date.now()
       }
       this.jobs.set(id, job)
-      this.specs.set(id, { fit: req.fitMode, width, height })
+      this.specs.set(id, { fit: req.fitMode, width, height, ...currentBlur() })
       this.sink({ ...job })
       jobIds.push(id)
     }
@@ -239,6 +261,7 @@ class ConvertManager {
         fit: it.fit,
         width: job.targetWidth,
         height: job.targetHeight,
+        ...currentBlur(),
         reconvertId: it.reconvertId
       })
       this.sink({ ...job })
@@ -268,9 +291,9 @@ class ConvertManager {
     if (spec.reconvertId) return this.runReconvert(job, spec.reconvertId)
     try {
       const kind = job.kind ?? kindOf(job.sourcePath)
-      const convKey = convKeyFor(job.sourcePath, spec.fit, spec.width, spec.height)
+      const convKey = convKeyFor(job.sourcePath, spec.fit, spec.width, spec.height, blurVariant(spec))
 
-      // Dedup: gleiche Quelle, gleicher Fit, gleiche Auflösung -> bereits vorhanden.
+      // Dedup: gleiche Quelle, gleicher Fit, gleiche Auflösung, gleicher Blur-Look.
       const existing = findByConvKey(convKey)
       if (existing) {
         this.update(job, { status: 'done', progress: 1, kind, mediaId: existing.id })
@@ -290,10 +313,11 @@ class ConvertManager {
       const thumbName = `${job.id}_thumb.jpg`
       const thumbPath = mediaFilePath(thumbName)
 
+      const blur = { strength: spec.blurStrength, darken: spec.blurDarken }
       if (kind === 'image') {
         this.update(job, { status: 'converting' })
         await this.spawnFf(job, buildImageArgs({
-          input: job.sourcePath, output, fit: spec.fit, width: spec.width, height: spec.height
+          input: job.sourcePath, output, fit: spec.fit, width: spec.width, height: spec.height, blur
         }), null)
       } else if (canStreamCopy(kind, info, spec.width, spec.height)) {
         // Schon passend -> nur kopieren, kein Re-Encode.
@@ -306,7 +330,7 @@ class ConvertManager {
         this.update(job, { status: 'converting', encoder })
         await this.spawnFf(job, buildVideoArgs({
           input: job.sourcePath, output, encoder, fit: spec.fit,
-          width: spec.width, height: spec.height, hasAudio: info.hasAudio
+          width: spec.width, height: spec.height, hasAudio: info.hasAudio, blur
         }), info.durationSec)
       }
       if (this.isCanceled(job)) return
@@ -381,7 +405,7 @@ class ConvertManager {
     const ext = storedExtFor(job.kind ?? kindOf(job.sourcePath))
     try {
       const kind = job.kind ?? kindOf(job.sourcePath)
-      const convKey = convKeyFor(job.sourcePath, spec.fit, spec.width, spec.height)
+      const convKey = convKeyFor(job.sourcePath, spec.fit, spec.width, spec.height, blurVariant(spec))
       const collision = findByConvKey(convKey)
       if (collision && collision.id === id) {
         this.update(job, { status: 'done', progress: 1, kind, mediaId: id }) // bereits in dieser Auflösung
@@ -397,10 +421,11 @@ class ConvertManager {
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
       if (kind !== 'image' && !info.hasVideo) throw new Error('Keine Videospur gefunden')
 
+      const blur = { strength: spec.blurStrength, darken: spec.blurDarken }
       if (kind === 'image') {
         this.update(job, { status: 'converting' })
         await this.spawnFf(job, buildImageArgs({
-          input: job.sourcePath, output: tmpStored, fit: spec.fit, width: spec.width, height: spec.height
+          input: job.sourcePath, output: tmpStored, fit: spec.fit, width: spec.width, height: spec.height, blur
         }), null)
       } else if (canStreamCopy(kind, info, spec.width, spec.height)) {
         this.update(job, { status: 'converting', encoder: 'copy' })
@@ -412,7 +437,7 @@ class ConvertManager {
         this.update(job, { status: 'converting', encoder })
         await this.spawnFf(job, buildVideoArgs({
           input: job.sourcePath, output: tmpStored, encoder, fit: spec.fit,
-          width: spec.width, height: spec.height, hasAudio: info.hasAudio
+          width: spec.width, height: spec.height, hasAudio: info.hasAudio, blur
         }), info.durationSec)
       }
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
@@ -561,11 +586,12 @@ class ConvertManager {
     const width = Math.max(2, Math.round(p.wallWidth))
     const height = Math.max(2, Math.round(p.wallHeight))
     const fit = p.defaultFit
+    const blur = { strength: p.blurStrength ?? 50, darken: p.blurDarken ?? 0 }
     const kind = kindOf(sourcePath)
     const storedName = `__idle-${Date.now()}${storedExtFor(kind)}`
     const output = mediaFilePath(storedName)
     if (kind === 'image') {
-      await this.spawnRaw(buildImageArgs({ input: sourcePath, output, fit, width, height }))
+      await this.spawnRaw(buildImageArgs({ input: sourcePath, output, fit, width, height, blur }))
       return { storedName, kind: 'image' }
     }
     // Video/GIF -> auf Wand-Auflösung gebackenes H.264-MP4 (GIF wird zur Loop-Datei).
@@ -573,7 +599,7 @@ class ConvertManager {
     if (!info.hasVideo) throw new Error('Keine Videospur in der Idle-Datei gefunden')
     const encoder = await resolveEncoder(p.encoder)
     await this.spawnRaw(
-      buildVideoArgs({ input: sourcePath, output, encoder, fit, width, height, hasAudio: info.hasAudio })
+      buildVideoArgs({ input: sourcePath, output, encoder, fit, width, height, hasAudio: info.hasAudio, blur })
     )
     return { storedName, kind: 'video' }
   }

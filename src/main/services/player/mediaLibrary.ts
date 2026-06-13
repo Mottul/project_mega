@@ -78,7 +78,9 @@ export function convKeyFor(
   sourcePath: string,
   fit: FitMode,
   width: number,
-  height: number
+  height: number,
+  /** zusätzliche Variante (z.B. Blur-Stärke/Abdunkelung) -> getrennte Datei pro Look. */
+  variant?: string
 ): string {
   let sig = basename(sourcePath)
   try {
@@ -87,7 +89,7 @@ export function convKeyFor(
   } catch {
     // Quelle nicht lesbar -> nur der Name, Konvertierung schlägt ohnehin sauber fehl
   }
-  return `${sig}__${fit}__${width}x${height}`
+  return `${sig}__${fit}__${width}x${height}${variant ? `__${variant}` : ''}`
 }
 
 export function findByConvKey(convKey: string): MediaItem | null {
