@@ -43,9 +43,9 @@ export function openPlayerOutput(displayId: number): void {
     win = null
     setOutputOpen(false)
   })
-  win.webContents.on('before-input-event', (_e, input) => {
-    if (input.type === 'keyDown' && input.key === 'Escape') closePlayerOutput()
-  })
+  // Bewusst KEIN Esc-zum-Schließen: ein Live-Bild darf nicht versehentlich per
+  // Tastendruck verschwinden. Geschlossen wird über die App (Ausgabe-Schalter)
+  // oder den dezenten Button im Ausgabefenster.
 
   const devUrl = process.env['ELECTRON_RENDERER_URL']
   if (devUrl) void win.loadURL(`${devUrl}#/player-output`)
