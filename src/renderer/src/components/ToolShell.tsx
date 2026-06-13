@@ -18,19 +18,22 @@ export function ToolShell({
   /** eindeutige Tool-Kennung – Namensraum für gemerkte Panel-Zustände */
   id: string
   main: ReactNode
-  aside: ReactNode
+  /** Inspector-Panel rechts; weggelassen (z. B. Kundenansicht) -> nur Inhalt. */
+  aside?: ReactNode
   asideWidth?: number
 }): JSX.Element {
   return (
     <ShellCtx.Provider value={id}>
       <div className="flex h-full min-h-0">
         <section className="min-w-0 flex-1 overflow-auto">{main}</section>
-        <aside
-          className="flex shrink-0 flex-col overflow-y-auto border-l border-border bg-card/40"
-          style={{ width: asideWidth }}
-        >
-          {aside}
-        </aside>
+        {aside != null && (
+          <aside
+            className="flex shrink-0 flex-col overflow-y-auto border-l border-border bg-card/40"
+            style={{ width: asideWidth }}
+          >
+            {aside}
+          </aside>
+        )}
       </div>
     </ShellCtx.Provider>
   )

@@ -233,7 +233,7 @@ export function StageTimer(): JSX.Element {
                 <button
                   key={q}
                   type="button"
-                  onClick={() => cmd({ type: 'message', text: q, flash: q === 'Zeit ist um' })}
+                  onClick={() => cmd({ type: 'message', text: q, flash: msgFlash })}
                   className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary"
                 >
                   {q}

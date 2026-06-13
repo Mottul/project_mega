@@ -5,6 +5,7 @@ import { extname } from 'node:path'
 import { Readable } from 'node:stream'
 import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import type { AppSettings } from '@shared/types'
+import { broadcast } from '../services/broadcast'
 import { jobManager } from '../services/ffmpeg/jobManager'
 import { jingleContentType, resolveJingleFile } from '../services/jingleLibrary'
 import { logFilePath, logLine } from '../services/log'
@@ -196,9 +197,8 @@ export function registerIpcHandlers(): void {
   registerYoutubeHandlers()
 }
 
-/** Verbindet die Live-Job-Updates mit dem konkreten Fenster. */
-export function attachWindow(win: BrowserWindow): void {
-  jobManager.setSink((job) => {
-    if (!win.isDestroyed()) win.webContents.send(Channels.hapUpdate, job)
-  })
+/** Verbindet die Live-Job-Updates mit ALLEN Fenstern (Multi-Window: ein HAP-
+ *  Konverter in einem Zweitfenster bekommt dieselben Updates). */
+export function attachWindow(_win: BrowserWindow): void {
+  jobManager.setSink((job) => broadcast(Channels.hapUpdate, job))
 }

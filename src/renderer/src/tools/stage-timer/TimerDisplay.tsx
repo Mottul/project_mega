@@ -117,11 +117,13 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
 
           {/* Fußzeile: nächster Abschnitt + Fortschritt */}
           <div className="absolute bottom-0 left-0 right-0">
-            {nextSeg && state.current < state.segments.length - (state.current >= 0 ? 1 : 0) && (
-              <p className="px-[2.5%] pb-[1%] text-neutral-500" style={{ fontSize: smallFs }}>
-                Danach: {nextSeg.label} ({fmtTimer(nextSeg.durationSec)})
-              </p>
-            )}
+            {!state.message &&
+              nextSeg &&
+              state.current < state.segments.length - (state.current >= 0 ? 1 : 0) && (
+                <p className="px-[2.5%] pb-[1%] text-neutral-500" style={{ fontSize: smallFs }}>
+                  Danach: {nextSeg.label} ({fmtTimer(nextSeg.durationSec)})
+                </p>
+              )}
             <div className="h-[1.2%] min-h-[3px] w-full bg-neutral-900">
               <div
                 className="h-full transition-[width] duration-200 ease-linear"
@@ -132,13 +134,14 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
         </>
       )}
 
-      {/* Nachricht an die Bühne */}
+      {/* Nachricht an die Bühne – sitzt ganz unten (über dem Fortschrittsbalken),
+          deckt nichts vom Timer ab; der „Danach“-Hinweis weicht ihr. */}
       {state.message && (
         <div
           key={state.message.seq}
-          className="absolute inset-x-[4%] bottom-[10%] rounded-xl border-2 px-[3%] py-[2%] text-center"
+          className="absolute inset-x-[3%] bottom-[3.5%] rounded-xl border-2 px-[3%] py-[1.8%] text-center"
           style={{
-            background: 'rgba(234,179,8,0.95)',
+            background: 'rgba(234,179,8,0.97)',
             borderColor: '#fff',
             animation: state.message.flash ? 'timer-flash 0.8s steps(1) infinite' : undefined
           }}

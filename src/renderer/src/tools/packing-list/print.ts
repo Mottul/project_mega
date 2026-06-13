@@ -41,7 +41,7 @@ td.chk::before{content:"";display:block;width:13px;height:13px;border:1.5px soli
 </style></head><body>
 <h1>Packliste</h1><div class="meta">${projectName ? 'Projekt: <b>' + esc(projectName) + '</b> · ' : ''}Datum: ${dt} · ${items.length} Positionen</div>
 ${body}
-<div style="margin-top:16px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">AV Toolbox · Packliste · ${dt}</div>
+<div style="margin-top:16px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">MegaToolBox · Packliste · ${dt}</div>
 </body></html>`
 
   const safe = projectName.replace(/[^\wäöüÄÖÜß -]+/g, '').trim()

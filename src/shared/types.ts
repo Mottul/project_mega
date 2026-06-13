@@ -220,7 +220,7 @@ export interface PatternVideoProgress {
 // LED-Wall-/Playlist-Player. Medien werden auf die Wand-Auflösung "eingebacken"
 // (Fit-Modus) und nach H.264/MP4 konvertiert -> Chromium spielt das
 // hardwarebeschleunigt ab (HAP kann der Browser NICHT dekodieren, das bleibt
-// dem HAP-Konverter/Resolume vorbehalten). Stehende Bilder werden als JPG in
+// dem HAP-Konverter/MadMapper vorbehalten). Stehende Bilder werden als JPG in
 // Wand-Auflösung gebacken und mit einstellbarer Standzeit gezeigt.
 
 export type MediaKind = 'video' | 'image' | 'gif'
@@ -546,6 +546,9 @@ export interface AppSettings {
   patternPresets: PatternPreset[]
   theme: ThemeMode
   player: PlayerSettings
+  /** Kundenansicht: beim Start direkt in dieses Tool springen (gesperrt, ohne
+   *  Zurück). null = normaler Start mit Übersicht. Exit per Strg+Shift+K. */
+  kioskToolId: string | null
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -554,5 +557,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastImportDir: null,
   patternPresets: [],
   theme: 'dark', // bisheriges Erscheinungsbild bleibt Standard
-  player: DEFAULT_PLAYER_SETTINGS
+  player: DEFAULT_PLAYER_SETTINGS,
+  kioskToolId: null
 }

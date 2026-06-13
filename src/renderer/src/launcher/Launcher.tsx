@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { ExternalLink, Search } from 'lucide-react'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
-import { tools } from '@renderer/tools/registry'
+import { api } from '@renderer/lib/api'
+import { findTool, tools } from '@renderer/tools/registry'
 import { CATEGORY_LABELS, type ToolModule } from '@renderer/tools/types'
 import type { ToolCategoryId } from '@shared/types'
 import { useToolActivity } from './useToolActivity'
@@ -25,6 +26,15 @@ export function Launcher(): JSX.Element {
   const navigate = useNavigate()
   const activity = useToolActivity()
 
+  // Kundenansicht: ist ein Start-Tool gesetzt, direkt (gesperrt) dorthin springen.
+  useEffect(() => {
+    void api.getSettings().then((s) => {
+      if (s.kioskToolId && findTool(s.kioskToolId)) {
+        navigate(`/tool/${s.kioskToolId}?kiosk=1`, { replace: true })
+      }
+    })
+  }, [navigate])
+
   const groups = useMemo(() => {
     const filtered = tools.filter((t) => matches(t, q))
     return CATEGORY_ORDER.map((cat) => ({
@@ -38,7 +48,7 @@ export function Launcher(): JSX.Element {
       <header className="border-b border-border px-8 py-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">AV Toolbox</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">MegaToolBox</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Werkzeuge für den AV-Alltag – offline, an einem Ort.
             </p>
@@ -70,7 +80,7 @@ export function Launcher(): JSX.Element {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {g.items.map((tool) => {
                     const Icon = tool.icon
-                    const running = activity[tool.id] ?? 0
+                    const act = activity[tool.id]
                     return (
                       <Card
                         key={tool.id}
@@ -80,8 +90,19 @@ export function Launcher(): JSX.Element {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') navigate(`/tool/${tool.id}`)
                         }}
-                        className="cursor-pointer p-5 transition-colors hover:border-primary/50 hover:bg-muted/40"
+                        className="group relative cursor-pointer p-5 transition-colors hover:border-primary/50 hover:bg-muted/40"
                       >
+                        <button
+                          type="button"
+                          title="In neuem Fenster öffnen"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void api.openToolWindow(tool.id)
+                          }}
+                          className="absolute right-2 top-2 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+                        >
+                          <ExternalLink className="size-4" />
+                        </button>
                         <div className="flex items-start gap-4">
                           <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
                             <Icon className="size-5" />
@@ -89,10 +110,10 @@ export function Launcher(): JSX.Element {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <h3 className="font-medium">{tool.name}</h3>
-                              {running > 0 && (
+                              {act && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 light:text-emerald-700">
                                   <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
-                                  läuft · {running}
+                                  {act.label}
                                 </span>
                               )}
                             </div>
