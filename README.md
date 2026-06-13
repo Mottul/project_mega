@@ -1,7 +1,11 @@
-# AV Toolbox (project_mega)
+# MegaToolBox (project_mega)
 
 Plattformübergreifende Desktop-App (Windows / macOS / Linux), die kleine AV-Arbeitswerkzeuge
-unter einem Dach bündelt und über einen Launcher auswählbar macht. Läuft **offline**.
+unter einem Dach bündelt und über einen Launcher auswählbar macht. Läuft **offline**. Tools lassen
+sich **in eigenen Fenstern parallel** öffnen (z.B. Video-Player + Jingles + Rechner gleichzeitig),
+und ein Tool kann als **gesperrte Kundenansicht** beim Start direkt angezeigt werden (z.B. nur der
+Video-Player ohne Konfiguration; Verlassen mit Strg+Shift+K). Der Homescreen zeigt je Tool an, was
+gerade läuft (Konvertierungen, Downloads, Timer, Player-Ausgabe).
 
 Enthaltene Werkzeuge (Runde 1):
 
