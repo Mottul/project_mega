@@ -8,6 +8,10 @@ interface EngineProps {
   /** 'fill' für die Wand (1:1 eingebacken), 'contain' für die kleine Vorschau. */
   objectFit?: 'fill' | 'contain'
   debug?: boolean
+  /** Passiver Spiegel: zeigt nur, treibt NICHT (keine Positions-/Ende-Meldung,
+   *  immer stumm). Für eine bewegte Vorschau NEBEN dem autoritativen
+   *  Ausgabefenster – sonst gäbe es doppelte „ended"-Sprünge und doppelten Ton. */
+  passive?: boolean
 }
 
 // Gemeinsame Wiedergabe-Engine. Zwei Ebenen (0/1), jede hält ein <video> ODER
@@ -22,7 +26,7 @@ interface EngineProps {
 // erst NACH der Überblendung (sonst blitzt es kurz auf).
 //
 // Der main-Prozess bleibt autoritativ; diese Engine meldet nur Position/Ende.
-export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProps): JSX.Element {
+export function PlaybackEngine({ objectFit = 'fill', debug = false, passive = false }: EngineProps): JSX.Element {
   const [state, setState] = useState<PlayerState>(EMPTY_PLAYER_STATE)
   const [active, setActive] = useState(0)
 
@@ -141,6 +145,7 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
       imageElapsed.current = 0
     }
     clearImageTimer()
+    if (passive) return // Spiegel: Bild nur anzeigen, nicht weiterschalten
     void api.player.report(Math.min(imageElapsed.current, durationSec), durationSec)
     if (!playing) return
     imageTimer.current = setInterval(() => {
@@ -165,7 +170,7 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
     const v = videoRefs.current[slot]
     if (!v) return
     v.loop = state.loop === 'one' || (state.playlist.length === 1 && state.loop === 'all')
-    v.muted = state.muted
+    v.muted = passive || state.muted // Spiegel immer stumm (Ton kommt vom Ausgabefenster)
     if (state.playing) {
       const start = swapped || isNew || !engaged.current.playing
       if (start) {
@@ -278,6 +283,7 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
   }, [])
 
   function onVideoEnded(slot: number): void {
+    if (passive) return // Spiegel schaltet nicht weiter – das macht das Ausgabefenster
     if (slot !== activeRef.current) return
     const item = slotItems.current[slot]
     if (item && (item.kind === 'image' || videoRefs.current[slot]?.loop)) return
@@ -285,6 +291,7 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false }: EngineProp
   }
 
   function onVideoTime(slot: number): void {
+    if (passive) return // Spiegel meldet keine Position/kein Ende
     if (slot !== activeRef.current) return
     const v = videoRefs.current[slot]
     if (!v || !Number.isFinite(v.duration)) return

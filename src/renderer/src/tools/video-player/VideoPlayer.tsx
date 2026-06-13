@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type DragEvent, type HTMLAttributes } from 'react'
-import { useKiosk } from '@renderer/launcher/kiosk'
 import {
   AlertTriangle,
   Clock,
@@ -101,10 +100,6 @@ function kindIcon(kind: MediaItem['kind']): JSX.Element {
 }
 
 export function VideoPlayer(): JSX.Element {
-  // Kundenansicht: Konfiguration (Wand/Encoder/Fernsteuerung/Idle) und die
-  // Bibliotheks-/Importverwaltung werden ausgeblendet – es bleiben Transport
-  // und Playlist. Der Operator richtet Ausgabe + Playlist vorher ein.
-  const locked = useKiosk()
   const [enc, setEnc] = useState<PlayerEncoderStatus | null>(null)
   const [library, setLibrary] = useState<MediaItem[]>([])
   const [jobs, setJobs] = useState<Record<string, ConvertJob>>({})
@@ -121,6 +116,26 @@ export function VideoPlayer(): JSX.Element {
   const [scrub, setScrub] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [view, setView] = useState<ViewMode>('large')
+  // Bewegte Live-Vorschau des Wandbilds AUCH bei offenem Ausgabefenster (passiver
+  // Spiegel). Aus = statisches Standbild (spart Decodierung). Wahl wird gemerkt.
+  const [previewLive, setPreviewLive] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('player:previewLive') === '1'
+    } catch {
+      return false
+    }
+  })
+  function togglePreviewLive(): void {
+    setPreviewLive((v) => {
+      const next = !v
+      try {
+        localStorage.setItem('player:previewLive', next ? '1' : '0')
+      } catch {
+        /* localStorage nicht verfügbar */
+      }
+      return next
+    })
+  }
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8088)
   const [saved, setSaved] = useState<SavedPlaylist[]>([])
@@ -335,7 +350,6 @@ export function VideoPlayer(): JSX.Element {
     <ToolShell
       id="video-player"
       aside={
-        locked ? undefined : (
         <>
           <PanelSection id="wall" title="Wand / Auflösung" icon={Ratio}>
             <div className="flex items-center gap-2">
@@ -508,7 +522,6 @@ export function VideoPlayer(): JSX.Element {
             )}
           </PanelSection>
         </>
-        )
       }
       main={
         <div className="space-y-6 p-6">
@@ -529,9 +542,7 @@ export function VideoPlayer(): JSX.Element {
 
           <div className="flex flex-col gap-6 xl:flex-row">
         {/* Bibliothek – auf breiten Screens links, beim Stapeln NACH dem Player
-            (order-2): schmal soll zuerst der Player kommen, nicht die Bibliothek.
-            In der Kundenansicht ausgeblendet (kein Import/keine Verwaltung). */}
-        {!locked && (
+            (order-2): schmal soll zuerst der Player kommen, nicht die Bibliothek. */}
         <Card className="order-2 flex min-w-0 flex-col p-5 xl:order-1 xl:flex-1">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="font-medium">Bibliothek</h2>
@@ -759,7 +770,6 @@ export function VideoPlayer(): JSX.Element {
             )}
           </div>
         </Card>
-        )}
 
         {/* Wiedergabe – beim Stapeln zuerst (order-1), auf breiten Screens rechts. */}
         <Card className="order-1 flex min-w-0 flex-col p-5 xl:order-2 xl:flex-1">
@@ -828,9 +838,19 @@ export function VideoPlayer(): JSX.Element {
             )}
           </div>
 
-          {/* Vorschau / Monitorhinweis */}
-          <div className="relative mb-2 aspect-video w-full overflow-hidden rounded-md border border-border bg-black">
-            {pstate.outputOpen ? (
+          {/* Vorschau / Monitorhinweis – Größe begrenzt, damit sie auf großen
+              Fenstern nicht den ganzen Player dominiert. */}
+          <div className="relative mb-2 aspect-video w-full max-w-[480px] overflow-hidden rounded-md border border-border bg-black">
+            {!pstate.outputOpen || previewLive ? (
+              // Kein Ausgabefenster -> aktive Engine (treibt die Wiedergabe);
+              // Ausgabefenster offen + Live an -> passiver Spiegel des Wandbilds.
+              // key erzwingt sauberen Remount beim Wechsel aktiv <-> Spiegel.
+              <PlaybackEngine
+                key={pstate.outputOpen ? 'mirror' : 'live'}
+                objectFit="contain"
+                passive={pstate.outputOpen}
+              />
+            ) : (
               <>
                 {current?.thumbUrl ? (
                   <img src={current.thumbUrl} alt="" className="h-full w-full object-contain opacity-60" />
@@ -839,8 +859,6 @@ export function VideoPlayer(): JSX.Element {
                   <Badge tone="info">Wiedergabe läuft auf dem Monitor</Badge>
                 </div>
               </>
-            ) : (
-              <PlaybackEngine objectFit="contain" />
             )}
           </div>
           <div className="mb-3 flex items-center gap-2">
@@ -852,7 +870,18 @@ export function VideoPlayer(): JSX.Element {
                   : 'Medien aus der Bibliothek hinzufügen (Doppelklick oder ziehen)'}
               </p>
             </div>
-            {!pstate.outputOpen && <Badge tone="neutral">Vorschau</Badge>}
+            {pstate.outputOpen ? (
+              <Button
+                variant={previewLive ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={togglePreviewLive}
+                title="Bewegte Live-Vorschau des Wandbilds (stumm) – sonst Standbild"
+              >
+                <MonitorPlay className="size-4" /> Live-Vorschau
+              </Button>
+            ) : (
+              <Badge tone="neutral">Vorschau</Badge>
+            )}
           </div>
 
           {/* Seek */}
