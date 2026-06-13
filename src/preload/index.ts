@@ -16,6 +16,7 @@ const api: ToolboxApi = {
   setSettings: (patch) => ipcRenderer.invoke(Channels.settingsSet, patch),
   getLogPath: () => ipcRenderer.invoke(Channels.appLogPath),
   pathForFile: (file) => webUtils.getPathForFile(file),
+  openToolWindow: (id) => ipcRenderer.invoke(Channels.windowOpenTool, id),
 
   ffmpeg: {
     checkHap: () => ipcRenderer.invoke(Channels.ffmpegCheckHap),

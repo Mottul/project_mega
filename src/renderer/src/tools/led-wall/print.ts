@@ -144,7 +144,7 @@ th{background:#f7f7f7;font-weight:600;width:44%}
   const gridClass = d.cols > sideBySideMax ? 'g1' : 'g2'
   html += `<div class="${gridClass}"><div><h2>Signalverkabelung</h2><div style="margin-bottom:4px">${legend(d.sig, SIG_COLORS, 'S')}</div>${gridSvg(d.sig, SIG_COLORS, 'S', d.cols, d.rows, printPx)}</div>`
   html += `<div><h2>Stromverkabelung</h2><div style="margin-bottom:4px">${legend(d.pwr, PWR_COLORS, 'P')}</div>${gridSvg(d.pwr, PWR_COLORS, 'P', d.cols, d.rows, printPx)}</div></div>`
-  html += `<div style="margin-top:14px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">AV Toolbox · LED-Wall-Konfigurator · ${dt}</div></body></html>`
+  html += `<div style="margin-top:14px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">MegaToolBox · LED-Wall-Konfigurator · ${dt}</div></body></html>`
 
   const safe = d.projectName.replace(/[^\wäöüÄÖÜß -]+/g, '').trim()
   return api.util.exportPdf(html, `LEDWall${safe ? '-' + safe : ''}.pdf`, d.landscape)

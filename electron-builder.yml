@@ -28,6 +28,9 @@ extraResources:
     to: ffmpeg
     filter:
       - "**/*"
+  # Icon zur Laufzeit erreichbar machen (BrowserWindow.icon -> Taskleiste/Fenster).
+  - from: build/icon.png
+    to: icon.png
 
 win:
   target:

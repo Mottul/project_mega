@@ -1,5 +1,6 @@
 {
-  "name": "av-toolbox",
+  "name": "megatoolbox",
+  "productName": "MegaToolBox",
   "version": "0.1.0",
   "private": true,
   "description": "Plattformuebergreifende AV-Werkzeug-App (HAP-Konverter, Manuals-Bibliothek, ...)",

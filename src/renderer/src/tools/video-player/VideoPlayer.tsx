@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type DragEvent, type HTMLAttributes } from 'react'
+import { useKiosk } from '@renderer/launcher/kiosk'
 import {
   AlertTriangle,
   Clock,
@@ -100,6 +101,10 @@ function kindIcon(kind: MediaItem['kind']): JSX.Element {
 }
 
 export function VideoPlayer(): JSX.Element {
+  // Kundenansicht: Konfiguration (Wand/Encoder/Fernsteuerung/Idle) und die
+  // Bibliotheks-/Importverwaltung werden ausgeblendet – es bleiben Transport
+  // und Playlist. Der Operator richtet Ausgabe + Playlist vorher ein.
+  const locked = useKiosk()
   const [enc, setEnc] = useState<PlayerEncoderStatus | null>(null)
   const [library, setLibrary] = useState<MediaItem[]>([])
   const [jobs, setJobs] = useState<Record<string, ConvertJob>>({})
@@ -330,6 +335,7 @@ export function VideoPlayer(): JSX.Element {
     <ToolShell
       id="video-player"
       aside={
+        locked ? undefined : (
         <>
           <PanelSection id="wall" title="Wand / Auflösung" icon={Ratio}>
             <div className="flex items-center gap-2">
@@ -502,6 +508,7 @@ export function VideoPlayer(): JSX.Element {
             )}
           </PanelSection>
         </>
+        )
       }
       main={
         <div className="space-y-6 p-6">
@@ -522,7 +529,9 @@ export function VideoPlayer(): JSX.Element {
 
           <div className="flex flex-col gap-6 xl:flex-row">
         {/* Bibliothek – auf breiten Screens links, beim Stapeln NACH dem Player
-            (order-2): schmal soll zuerst der Player kommen, nicht die Bibliothek. */}
+            (order-2): schmal soll zuerst der Player kommen, nicht die Bibliothek.
+            In der Kundenansicht ausgeblendet (kein Import/keine Verwaltung). */}
+        {!locked && (
         <Card className="order-2 flex min-w-0 flex-col p-5 xl:order-1 xl:flex-1">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="font-medium">Bibliothek</h2>
@@ -750,6 +759,7 @@ export function VideoPlayer(): JSX.Element {
             )}
           </div>
         </Card>
+        )}
 
         {/* Wiedergabe – beim Stapeln zuerst (order-1), auf breiten Screens rechts. */}
         <Card className="order-1 flex min-w-0 flex-col p-5 xl:order-2 xl:flex-1">

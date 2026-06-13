@@ -1,6 +1,7 @@
-import { app, BrowserWindow, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
+import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import {
   attachWindow,
   registerIpcHandlers,
@@ -34,7 +35,18 @@ protocol.registerSchemesAsPrivileged([
   }
 ])
 
-function createWindow(): BrowserWindow {
+/** App-Icon für die laufenden Fenster (Taskleiste/Titelleiste). Auf macOS kommt
+ *  das Icon aus dem Bundle, daher dort ohne Effekt. */
+function appIconPath(): string | undefined {
+  const candidate = app.isPackaged
+    ? join(process.resourcesPath, 'icon.png')
+    : join(app.getAppPath(), 'build', 'icon.png')
+  return existsSync(candidate) ? candidate : undefined
+}
+
+// Erstellt ein App-Fenster. `hash` = Start-Route (z.B. "/tool/jingle-player");
+// `isMain` = das Hauptfenster, das beim Schließen die Vollbild-Ausgaben mitnimmt.
+function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWindow {
   const win = new BrowserWindow({
     width: 1240,
     height: 840,
@@ -43,7 +55,8 @@ function createWindow(): BrowserWindow {
     show: false,
     backgroundColor: '#09090b',
     autoHideMenuBar: true,
-    title: 'AV Toolbox',
+    title: 'MegaToolBox',
+    icon: appIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // sichere Defaults
@@ -60,12 +73,15 @@ function createWindow(): BrowserWindow {
   // Pinch-/Strg-Rad-Seitenzoom des ganzen Fensters abschalten -> der PDF-Viewer
   // steuert den Zoom selbst (sonst zoomt/scrollt die ganze App ungewollt).
   win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
-  // Vollbild-Ausgaben (Testbild + Player) mitschliessen, wenn das Hauptfenster geht
-  win.on('closed', () => {
-    closePattern()
-    closePlayerOutput()
-    closeTimerOutput()
-  })
+  // Nur das Hauptfenster nimmt die Vollbild-Ausgaben (Testbild/Player/Timer) mit;
+  // Zusatzfenster (z.B. parallel geöffnete Tools) lassen sie weiterlaufen.
+  if (opts.isMain) {
+    win.on('closed', () => {
+      closePattern()
+      closePlayerOutput()
+      closeTimerOutput()
+    })
+  }
 
   // Externe Links im Standardbrowser oeffnen, keine neuen Fenster zulassen
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -82,12 +98,18 @@ function createWindow(): BrowserWindow {
   })
 
   const devUrl = process.env['ELECTRON_RENDERER_URL']
+  const hash = opts.hash ?? ''
   if (isDev && devUrl) {
-    void win.loadURL(devUrl)
+    void win.loadURL(devUrl + (hash ? `#${hash}` : ''))
   } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'))
+    void win.loadFile(join(__dirname, '../renderer/index.html'), hash ? { hash } : undefined)
   }
   return win
+}
+
+/** Öffnet ein Tool in einem EIGENEN Fenster (parallel zum Hauptfenster). */
+export function openToolWindow(id: string): void {
+  createWindow({ hash: `/tool/${id}` })
 }
 
 app.whenReady().then(() => {
@@ -99,10 +121,11 @@ app.whenReady().then(() => {
   registerMediaProtocol()
   registerJingleProtocol()
   registerIpcHandlers()
-  attachWindow(createWindow())
+  ipcMain.handle(Channels.windowOpenTool, (_e, id: string) => openToolWindow(id))
+  attachWindow(createWindow({ isMain: true }))
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) attachWindow(createWindow())
+    if (BrowserWindow.getAllWindows().length === 0) attachWindow(createWindow({ isMain: true }))
   })
 })
 

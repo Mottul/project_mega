@@ -112,6 +112,8 @@ export const Channels = {
   timerCloseOutput: 'timer:closeOutput',
   timerState: 'timer:state', // Event: StageTimerState (main -> alle)
   timerTick: 'timer:tick', // Event: StageTimerTick (main -> alle, häufig)
+  // Fenster
+  windowOpenTool: 'window:openTool', // Tool in eigenem Fenster öffnen
   // Werkzeuge
   utilExportPdf: 'util:exportPdf', // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
   // Jingle-Player
@@ -150,6 +152,8 @@ export interface ToolboxApi {
   getLogPath(): Promise<string>
   /** Absoluter Pfad einer per Drag&Drop fallengelassenen Datei (Electron webUtils). */
   pathForFile(file: File): string
+  /** Öffnet ein Tool in einem eigenen Fenster (parallele Nutzung). */
+  openToolWindow(id: string): Promise<void>
 
   ffmpeg: {
     checkHap(): Promise<HapCheckResult>
