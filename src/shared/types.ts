@@ -458,6 +458,26 @@ export interface JingleImportResult {
   originalName: string // Anzeigename der Quelldatei
 }
 
+// Fernsteuerung des Jingle-Players (Handy/Tablet). Audio läuft im Renderer-Tab,
+// daher veröffentlicht der Tab einen Schnappschuss an den main-Server und führt
+// die hereinkommenden Trigger aus.
+export interface JinglePadPublic {
+  id: string
+  label: string
+  color: string
+  loaded: boolean // hat eine Audiodatei
+}
+
+export interface JingleRemoteSnapshot {
+  connected: boolean // ist ein Jingle-Player-Tab offen?
+  bankName: string
+  columns: number
+  pads: JinglePadPublic[]
+  playing: string[] // laufende Pad-IDs
+}
+
+export type JingleRemoteCommand = { type: 'trigger'; padId: string } | { type: 'stopAll' }
+
 /* --------------------------- YouTube-Download --------------------------- */
 // yt-dlp-Wrapper. Binary wird (falls nicht gefunden) nach userData/bin geladen
 // und per Knopf aktualisiert; ffmpeg fürs Muxen kommt aus dem Bundle.

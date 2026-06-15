@@ -107,7 +107,13 @@ const api: ToolboxApi = {
 
   jingles: {
     import: (paths) => ipcRenderer.invoke(Channels.jingleImport, paths),
-    cleanup: (keep) => ipcRenderer.invoke(Channels.jingleCleanup, keep)
+    cleanup: (keep) => ipcRenderer.invoke(Channels.jingleCleanup, keep),
+    publish: (snapshot) => ipcRenderer.invoke(Channels.jinglePublish, snapshot),
+    onRemoteCommand: (cb) => subscribe(Channels.jingleRemoteCommand, (c) => cb(c as never)),
+    remoteStatus: () => ipcRenderer.invoke(Channels.jingleRemoteStatus),
+    remoteStart: (port) => ipcRenderer.invoke(Channels.jingleRemoteStart, port),
+    remoteStop: () => ipcRenderer.invoke(Channels.jingleRemoteStop),
+    onRemoteChanged: (cb) => subscribe(Channels.jingleRemoteChanged, (s) => cb(s as never))
   },
 
   youtube: {
