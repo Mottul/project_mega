@@ -3,12 +3,14 @@
 // (z.B. Interface/Pult). Bänke als Sets, Solo-Modus, großer Fade-All-Stopp.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Music, Plus, Settings2, Square, Trash2, Upload, X } from 'lucide-react'
+import { Music, Plus, Settings2, Square, Trash2, Upload, Wifi, X } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { api } from '@renderer/lib/api'
+import type { JingleRemoteSnapshot, RemoteStatus } from '@shared/types'
 import { selectClass } from '../_calc/ui'
+import { QrCode } from '../video-player/QrCode'
 import { useJingleEngine } from './engine'
 import { HOTKEYS, PAD_COLORS, useJingles, type Pad } from './store'
 
@@ -21,6 +23,8 @@ export function JinglePlayer(): JSX.Element {
   const bank = s.currentBank()
   const [editPad, setEditPad] = useState<string | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+  const [remote, setRemote] = useState<RemoteStatus | null>(null)
+  const [remotePort, setRemotePort] = useState(8089)
 
   const engine = useJingleEngine({
     pads: bank.pads,
@@ -29,6 +33,56 @@ export function JinglePlayer(): JSX.Element {
   })
   const engineRef = useRef(engine)
   engineRef.current = engine
+
+  // Fernsteuerung: Status holen + auf Änderungen lauschen; Trigger vom Handy
+  // (main -> Renderer) an die Engine geben (Audio läuft hier im Tab).
+  useEffect(() => {
+    void api.jingles.remoteStatus().then(setRemote)
+    const offChanged = api.jingles.onRemoteChanged(setRemote)
+    const offCmd = api.jingles.onRemoteCommand((cmd) => {
+      if (cmd.type === 'stopAll') engineRef.current.stopAll()
+      else if (cmd.type === 'trigger') engineRef.current.trigger(cmd.padId)
+    })
+    return () => {
+      offChanged()
+      offCmd()
+    }
+  }, [])
+
+  // Schnappschuss der Bank/Wiedergabe an den Server geben (für die Handy-Seite).
+  useEffect(() => {
+    const snap: JingleRemoteSnapshot = {
+      connected: true,
+      bankName: bank.name,
+      columns: s.columns,
+      pads: bank.pads.map((p) => ({
+        id: p.id,
+        label: p.label || (p.storedName ? 'Jingle' : ''),
+        color: p.color,
+        loaded: !!p.storedName
+      })),
+      playing: Object.keys(engine.playing)
+    }
+    void api.jingles.publish(snap)
+  }, [bank, s.columns, engine.playing])
+
+  // Tab geschlossen -> der Server zeigt „nicht geöffnet".
+  useEffect(() => {
+    return () => {
+      void api.jingles.publish({ connected: false, bankName: '', columns: 4, pads: [], playing: [] })
+    }
+  }, [])
+
+  async function toggleRemote(): Promise<void> {
+    if (remote?.running) setRemote(await api.jingles.remoteStop())
+    else {
+      try {
+        setRemote(await api.jingles.remoteStart(remotePort))
+      } catch {
+        // Port belegt o.ä.
+      }
+    }
+  }
 
   // Ausgabegeräte auflisten (Labels brauchen u.U. eine Audio-Berechtigung).
   useEffect(() => {
@@ -203,6 +257,51 @@ export function JinglePlayer(): JSX.Element {
             Gerätenamen erscheinen erst nach Audio-Freigabe – die Wiedergabe funktioniert dennoch.
           </p>
         ) : null}
+      </Card>
+
+      {/* Fernsteuerung per Handy/Tablet */}
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Wifi className="size-4 text-primary" />
+            <span className="text-sm font-medium">Fernsteuerung</span>
+            {remote?.running && (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 light:text-emerald-700">
+                an
+              </span>
+            )}
+          </div>
+          <div className="flex-1" />
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            Port
+            <Input
+              className="h-8 w-20"
+              type="number"
+              value={remotePort}
+              onChange={(e) => setRemotePort(Number(e.target.value) || 8089)}
+              disabled={remote?.running}
+            />
+          </label>
+          <Button variant={remote?.running ? 'outline' : 'default'} size="sm" onClick={() => void toggleRemote()}>
+            <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
+          </Button>
+        </div>
+        {remote?.running && (
+          <div className="mt-3 flex flex-wrap items-center gap-4 rounded-md border border-border bg-muted/30 p-3">
+            {remote.urls[0] && <QrCode text={remote.urls[0]} size={120} />}
+            <div className="min-w-0 text-sm">
+              <p className="text-muted-foreground">Im selben WLAN öffnen (ohne Passwort):</p>
+              {remote.urls.map((u) => (
+                <p key={u} className="font-mono text-xs text-foreground">
+                  {u}
+                </p>
+              ))}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Dieses Fenster muss offen bleiben – die Jingles spielen hier auf dem gewählten Gerät.
+              </p>
+            </div>
+          </div>
+        )}
       </Card>
 
       {editing && (

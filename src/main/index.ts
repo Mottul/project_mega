@@ -10,6 +10,7 @@ import {
   registerMediaProtocol
 } from './ipc/registry'
 import { logLine } from './services/log'
+import { stopJingleRemote } from './services/jingleRemoteServer'
 import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
 import { stopRemote } from './services/player/remoteServer'
@@ -136,5 +137,6 @@ app.on('window-all-closed', () => {
 // Fernsteuerungs-Server + Timer-Intervall beim Beenden sauber schliessen.
 app.on('will-quit', () => {
   stopRemote()
+  stopJingleRemote()
   disposeTimer()
 })

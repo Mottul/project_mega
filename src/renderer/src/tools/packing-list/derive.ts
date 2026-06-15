@@ -40,13 +40,19 @@ export function deriveFromLedWall(): DerivedItem[] {
       note: `${d.baseUnits} × ${d.ballastPerBase} kg`
     })
   } else {
-    items.push({
-      category: cat,
-      name: 'Rigging-Punkt / Motor',
-      qty: Math.max(2, Math.ceil(parseFloat(d.actualW) / 3)),
-      unit: 'Stk.',
-      note: `Traverse für ${d.weightKg} kg planen`
-    })
+    // Anhängepunkte: gerade Traverse ~1 je 3 m (mind. 2); Rundtraverse braucht
+    // mind. 3 (verteilt), grob 1 je 4 m Umfang; andere gebogene Formen mind. 3.
+    const flatPoints = Math.max(2, Math.ceil(parseFloat(d.actualW) / 3))
+    let points = flatPoints
+    let note = `Traverse für ${d.weightKg} kg planen`
+    if (d.curve?.mode === 'circle') {
+      points = Math.max(3, Math.ceil((d.curve.footprintW * Math.PI) / 4))
+      note = `Rundtraverse: mind. 3 Punkte gleichmäßig verteilen · Last/Punkt prüfen (Motor-/Kettenzug-WLL)`
+    } else if (d.curve) {
+      points = Math.max(3, flatPoints)
+      note = `Gebogene Traverse: mind. 3 Punkte · Last/Punkt prüfen`
+    }
+    items.push({ category: cat, name: 'Rigging-Punkt / Motor', qty: points, unit: 'Stk.', note })
   }
 
   const sig = chainStats(s.sig)

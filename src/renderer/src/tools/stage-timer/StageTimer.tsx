@@ -81,6 +81,39 @@ function DurationInput({
   )
 }
 
+/** Textfeld mit lokalem Puffer: tippt man mitten im Text, springt der Cursor
+ *  NICHT ans Ende, obwohl der Wert über main (setSegments) zurückgespiegelt wird.
+ *  Externe Änderungen (z. B. Reorder) werden nur übernommen, wenn nicht fokussiert. */
+function SegText({
+  value,
+  onCommit,
+  className,
+  placeholder
+}: {
+  value: string
+  onCommit: (v: string) => void
+  className?: string
+  placeholder?: string
+}): JSX.Element {
+  const [text, setText] = useState(value)
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setText(value)
+  }, [value])
+  return (
+    <Input
+      ref={ref}
+      value={text}
+      placeholder={placeholder}
+      className={className}
+      onChange={(e) => {
+        setText(e.target.value)
+        onCommit(e.target.value)
+      }}
+    />
+  )
+}
+
 export function StageTimer(): JSX.Element {
   const [state, setState] = useState<StageTimerState | null>(null)
   const [remaining, setRemaining] = useState(0)
@@ -267,11 +300,11 @@ export function StageTimer(): JSX.Element {
                   >
                     {i + 1}
                   </button>
-                  <Input
+                  <SegText
                     value={seg.label}
                     className="h-7 flex-1 text-xs"
-                    onChange={(e) =>
-                      patchSegments(segs.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))
+                    onCommit={(v) =>
+                      patchSegments(segs.map((x, j) => (j === i ? { ...x, label: v } : x)))
                     }
                   />
                   <DurationInput

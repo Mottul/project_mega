@@ -33,6 +33,8 @@ import type {
   TimerCommand,
   WallResolution,
   JingleImportResult,
+  JingleRemoteCommand,
+  JingleRemoteSnapshot,
   YtEnqueueRequest,
   YtJob,
   YtToolStatus
@@ -119,6 +121,13 @@ export const Channels = {
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
+  // Jingle-Fernsteuerung
+  jinglePublish: 'jingle:publish', // Renderer -> main: Schnappschuss der Bank
+  jingleRemoteCommand: 'jingle:remoteCommand', // main -> Renderer: Trigger/Stopp
+  jingleRemoteStatus: 'jingle:remoteStatus',
+  jingleRemoteStart: 'jingle:remoteStart',
+  jingleRemoteStop: 'jingle:remoteStop',
+  jingleRemoteChanged: 'jingle:remoteChanged', // Event: RemoteStatus
   // YouTube-Downloader (yt-dlp)
   ytStatus: 'yt:status',
   ytUpdate: 'yt:update', // yt-dlp-Binary herunterladen/aktualisieren
@@ -265,6 +274,14 @@ export interface ToolboxApi {
     import(paths: string[]): Promise<JingleImportResult[]>
     /** Nicht mehr belegte Dateien aufräumen (alles außer `keep`). */
     cleanup(keep: string[]): Promise<void>
+    /** Aktuellen Bank-/Wiedergabe-Schnappschuss an den Fernsteuer-Server geben. */
+    publish(snapshot: JingleRemoteSnapshot): Promise<void>
+    /** Trigger/Stopp-Befehle vom Handy (main -> Renderer). Liefert Cleanup. */
+    onRemoteCommand(cb: (cmd: JingleRemoteCommand) => void): () => void
+    remoteStatus(): Promise<RemoteStatus>
+    remoteStart(port: number): Promise<RemoteStatus>
+    remoteStop(): Promise<RemoteStatus>
+    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
   }
 
   youtube: {

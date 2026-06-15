@@ -246,8 +246,10 @@ src/
   **Hotkey** (1–9, q…) spielt ab, je Pad Farbe/Lautstärke/**Loop**/Modus (One-Shot oder Toggle)
   und **Fade-Out**. **Audio-Ausgabegerät wählbar** (`setSinkId` → Interface/Pult statt
   Laptop-Lautsprecher), **Solo-Modus** (nur einer gleichzeitig), großer **Fade-All-Stopp** (Esc),
-  mehrere **Sets/Bänke**. Dateien werden nach userData kopiert und über das `jingle://`-Protocol
-  abgespielt (kein file://-Zugriff); Belegung übersteht App-Neustarts.
+  mehrere **Sets/Bänke**. **Fernsteuerung per Handy/Tablet** über einen eingebetteten, dependency-
+  freien Webserver (Pad-Raster + Live-Status via SSE, LAN, mit QR-Code; der Jingle-Tab spielt das
+  Audio). Dateien werden nach userData kopiert und über das `jingle://`-Protocol abgespielt (kein
+  file://-Zugriff); Belegung übersteht App-Neustarts.
 - **YouTube-Downloader** – Wrapper um **yt-dlp** (Video MP4 / Audio MP3 / M4A, Auflösungsdeckel),
   Queue mit **Fortschritt/Speed/ETA**, Muxing über das gebündelte ffmpeg. yt-dlp wird bei Bedarf
   als **eigenständige Binary nach userData/bin geladen** und per Knopf **aktualisiert** (YouTube
@@ -275,6 +277,12 @@ src/
 
 ## Roadmap
 
+- **OSC-Steueroberfläche** (à la Open Stage Control) mit Fernsteuerung – v. a. für MadMapper
+  (eigene, bereits mit Claude erstellte Referenz wird beim Start der Umsetzung geliefert).
+- **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
+  eingebacken).
+- **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der
+  Manuals-Bibliothek).
 - **Teleprompter** im Stage-Timer (scrollender Text auf dem Referentenmonitor).
 - **ArtNet/sACN-Tester** (DMX über Netzwerk senden + Node-Discovery) und **DMX-Universum-Planer**
   (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem Dip-Schalter-Rechner.
