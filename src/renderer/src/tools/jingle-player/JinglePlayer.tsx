@@ -12,6 +12,7 @@ import type { JingleRemoteSnapshot, RemoteStatus } from '@shared/types'
 import { selectClass } from '../_calc/ui'
 import { QrCode } from '../video-player/QrCode'
 import { useJingleEngine } from './engine'
+import { Waveform } from './Waveform'
 import { HOTKEYS, PAD_COLORS, useJingles, type Pad } from './store'
 
 const AUDIO_FILTER = [
@@ -307,6 +308,7 @@ export function JinglePlayer(): JSX.Element {
       {editing && (
         <PadEditor
           pad={editing}
+          outputDeviceId={s.outputDeviceId}
           onClose={() => setEditPad(null)}
           onChange={(patch) => s.updatePad(editing.id, patch)}
           onClear={() => {
@@ -426,12 +428,14 @@ function PadTile({
 
 function PadEditor({
   pad,
+  outputDeviceId,
   onClose,
   onChange,
   onClear,
   onRemove
 }: {
   pad: Pad
+  outputDeviceId: string
   onClose: () => void
   onChange: (patch: Partial<Pad>) => void
   onClear: () => void
@@ -512,7 +516,23 @@ function PadEditor({
         </div>
 
         <div>
-          <div className="grid grid-cols-2 gap-3">
+          <span className="mb-1 block text-xs text-muted-foreground">Ausschnitt (Start/Stopp)</span>
+          {pad.storedName ? (
+            <Waveform
+              storedName={pad.storedName}
+              color={pad.color}
+              volume={pad.volume}
+              outputDeviceId={outputDeviceId}
+              startSec={pad.startSec}
+              endSec={pad.endSec}
+              onChange={(start, end) => onChange({ startSec: start, endSec: end })}
+            />
+          ) : (
+            <p className="rounded-md border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
+              Erst einen Jingle laden, dann lässt sich der Ausschnitt in der Waveform setzen.
+            </p>
+          )}
+          <div className="mt-2 grid grid-cols-2 gap-3">
             <label className="block">
               <span className="mb-1 block text-xs text-muted-foreground">Start (mm:ss)</span>
               <MarkInput value={pad.startSec} placeholder="0:00" onCommit={(v) => onChange({ startSec: v ?? 0 })} />
@@ -523,7 +543,7 @@ function PadEditor({
             </label>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Nur einen Ausschnitt abspielen. Ende leer = bis zum Dateiende.
+            Marker ziehen oder Zeiten eintippen. Ende leer = bis zum Dateiende.
           </p>
         </div>
 

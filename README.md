@@ -244,9 +244,11 @@ src/
   dessen Messfehler bei der „erreichten Stichhöhe").
 - **Jingle-Player** – kurze Audios (Auftrittsmusik/Stinger) auf **belegbaren Pads**: Klick oder
   **Hotkey** (1–9, q…) spielt ab, je Pad Farbe/Lautstärke/**Loop**/Modus (One-Shot oder Toggle)
-  und **Fade-Out**. **Audio-Ausgabegerät wählbar** (`setSinkId` → Interface/Pult statt
-  Laptop-Lautsprecher), **Solo-Modus** (nur einer gleichzeitig), großer **Fade-All-Stopp** (Esc),
-  mehrere **Sets/Bänke**. **Fernsteuerung per Handy/Tablet** über einen eingebetteten, dependency-
+  und **Fade-Out**. Je Pad ein **Start-/Stopp-Ausschnitt** mit **Waveform-Editor** (Datei wird per
+  Web Audio dekodiert, Marker ziehbar, Vorschau-Wiedergabe mit Abspielkopf, **„Stille trimmen"**
+  schneidet Pausen am Anfang/Ende automatisch weg). **Audio-Ausgabegerät wählbar** (`setSinkId` →
+  Interface/Pult statt Laptop-Lautsprecher), **Solo-Modus** (nur einer gleichzeitig), großer
+  **Fade-All-Stopp** (Esc), mehrere **Sets/Bänke**. **Fernsteuerung per Handy/Tablet** über einen eingebetteten, dependency-
   freien Webserver (Pad-Raster + Live-Status via SSE, LAN, mit QR-Code; der Jingle-Tab spielt das
   Audio). Dateien werden nach userData kopiert und über das `jingle://`-Protocol abgespielt (kein
   file://-Zugriff); Belegung übersteht App-Neustarts.
