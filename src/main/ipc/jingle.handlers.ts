@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { JingleImportResult, JingleRemoteSnapshot } from '@shared/types'
 import { broadcast } from '../services/broadcast'
-import { cleanupJingles, importJingle } from '../services/jingleLibrary'
+import { cleanupJingles, importJingle, readJingleBytes } from '../services/jingleLibrary'
 import {
   getJingleRemoteStatus,
   publishSnapshot,
@@ -34,6 +34,7 @@ export function registerJingleHandlers(): void {
   })
 
   ipcMain.handle(Channels.jingleCleanup, (_e, keep: string[]) => cleanupJingles(keep))
+  ipcMain.handle(Channels.jingleBytes, (_e, storedName: string) => readJingleBytes(storedName))
 
   // Fernsteuerung
   ipcMain.handle(Channels.jinglePublish, (_e, snap: JingleRemoteSnapshot) => publishSnapshot(snap))
