@@ -131,7 +131,17 @@ export function StageTimer(): JSX.Element {
         try {
           const saved = JSON.parse(localStorage.getItem(LS_KEY) ?? 'null') as SavedSetup | null
           if (saved && saved.segments.length > 0) {
-            cmd({ type: 'setSegments', segments: saved.segments })
+            // Migration alter Daten: einzelnes `label` -> `title`.
+            const segments = saved.segments.map((seg) => {
+              const old = seg as TimerSegment & { label?: string }
+              return {
+                id: old.id,
+                speaker: old.speaker ?? '',
+                title: old.title ?? old.label ?? '',
+                durationSec: old.durationSec
+              }
+            })
+            cmd({ type: 'setSegments', segments })
             cmd({ type: 'setThresholds', warnSec: saved.warnSec, alertSec: saved.alertSec })
             cmd({ type: 'setEndBehavior', behavior: saved.endBehavior })
             cmd({ type: 'resetAll' })
@@ -284,70 +294,85 @@ export function StageTimer(): JSX.Element {
               {segs.map((seg, i) => (
                 <div
                   key={seg.id}
-                  className={`flex items-center gap-1.5 rounded-md border p-1.5 ${
+                  className={`space-y-1 rounded-md border p-1.5 ${
                     i === state.current ? 'border-primary/60 bg-primary/[0.07]' : 'border-border'
                   }`}
                 >
-                  <button
-                    type="button"
-                    title="Zu diesem Abschnitt springen"
-                    onClick={() => cmd({ type: 'goto', index: i })}
-                    className={`size-5 shrink-0 rounded-full border text-[10px] font-bold ${
-                      i === state.current
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border text-muted-foreground hover:border-primary'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                  <SegText
-                    value={seg.label}
-                    className="h-7 flex-1 text-xs"
-                    onCommit={(v) =>
-                      patchSegments(segs.map((x, j) => (j === i ? { ...x, label: v } : x)))
-                    }
-                  />
-                  <DurationInput
-                    seconds={seg.durationSec}
-                    className="h-7 w-16 text-center text-xs"
-                    onCommit={(sec) =>
-                      patchSegments(segs.map((x, j) => (j === i ? { ...x, durationSec: sec } : x)))
-                    }
-                  />
-                  <div className="flex shrink-0 flex-col">
+                  {/* Zeile 1: Redner (kleiner) + Transport-Controls */}
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      disabled={i === 0}
-                      onClick={() => {
-                        const next = [...segs]
-                        ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
-                        patchSegments(next)
-                      }}
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      title="Zu diesem Abschnitt springen"
+                      onClick={() => cmd({ type: 'goto', index: i })}
+                      className={`size-5 shrink-0 rounded-full border text-[10px] font-bold ${
+                        i === state.current
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border text-muted-foreground hover:border-primary'
+                      }`}
                     >
-                      <ArrowUp className="size-3" />
+                      {i + 1}
                     </button>
+                    <SegText
+                      value={seg.speaker}
+                      placeholder="Redner"
+                      className="h-6 flex-1 text-[11px]"
+                      onCommit={(v) =>
+                        patchSegments(segs.map((x, j) => (j === i ? { ...x, speaker: v } : x)))
+                      }
+                    />
+                    <div className="flex shrink-0 flex-col">
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => {
+                          const next = [...segs]
+                          ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+                          patchSegments(next)
+                        }}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowUp className="size-3" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === segs.length - 1}
+                        onClick={() => {
+                          const next = [...segs]
+                          ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                          patchSegments(next)
+                        }}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowDown className="size-3" />
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      disabled={i === segs.length - 1}
-                      onClick={() => {
-                        const next = [...segs]
-                        ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
-                        patchSegments(next)
-                      }}
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      onClick={() => patchSegments(segs.filter((_, j) => j !== i))}
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      title="Abschnitt löschen"
                     >
-                      <ArrowDown className="size-3" />
+                      <Trash2 className="size-3.5" />
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => patchSegments(segs.filter((_, j) => j !== i))}
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                    title="Abschnitt löschen"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  {/* Zeile 2: Titel (größer) + Dauer */}
+                  <div className="flex items-center gap-1.5 pl-[26px]">
+                    <SegText
+                      value={seg.title}
+                      placeholder="Titel / Beitrag"
+                      className="h-7 flex-1 text-xs font-medium"
+                      onCommit={(v) =>
+                        patchSegments(segs.map((x, j) => (j === i ? { ...x, title: v } : x)))
+                      }
+                    />
+                    <DurationInput
+                      seconds={seg.durationSec}
+                      className="h-7 w-16 text-center text-xs"
+                      onCommit={(sec) =>
+                        patchSegments(segs.map((x, j) => (j === i ? { ...x, durationSec: sec } : x)))
+                      }
+                    />
+                  </div>
                 </div>
               ))}
             </div>
@@ -360,7 +385,8 @@ export function StageTimer(): JSX.Element {
                   ...segs,
                   {
                     id: crypto.randomUUID(),
-                    label: `Redner ${segs.length + 1}`,
+                    speaker: `Redner ${segs.length + 1}`,
+                    title: '',
                     durationSec: 600
                   }
                 ])

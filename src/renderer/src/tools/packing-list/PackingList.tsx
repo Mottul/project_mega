@@ -1,11 +1,13 @@
-// Packliste: editierbare Positionen (Menge/Einheit/Notiz), abhakbar, gruppiert
-// nach Kategorie. Befüllbar aus der LED-Wall-Konfiguration, Export als PDF.
+// Packliste: editierbare Positionen (Menge/Einheit/Notiz/Kategorie), abhakbar,
+// gruppiert nach frei anlegbaren Kategorien. Befüllbar aus der LED-Wall-
+// Konfiguration, Export als PDF.
 
-import { useMemo } from 'react'
-import { Check, FileDown, LayoutGrid, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, FileDown, FolderPlus, LayoutGrid, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { selectClass } from '../_calc/ui'
 import { deriveFromLedWall } from './derive'
 import { exportPackingPdf } from './print'
 import { usePacking, type PackItem } from './store'
@@ -13,15 +15,18 @@ import { usePacking, type PackItem } from './store'
 export function PackingList(): JSX.Element {
   const s = usePacking()
 
+  // Gruppen in Kategorie-Reihenfolge; unbekannte Kategorien (Altdaten) hinten anhängen.
   const groups = useMemo(() => {
-    const map = new Map<string, PackItem[]>()
+    const byCat = new Map<string, PackItem[]>()
     for (const it of s.items) {
-      const arr = map.get(it.category) ?? []
+      const arr = byCat.get(it.category) ?? []
       arr.push(it)
-      map.set(it.category, arr)
+      byCat.set(it.category, arr)
     }
-    return [...map.entries()]
-  }, [s.items])
+    const order = [...s.categories]
+    for (const c of byCat.keys()) if (!order.includes(c)) order.push(c)
+    return order.map((cat) => [cat, byCat.get(cat) ?? []] as const)
+  }, [s.items, s.categories])
 
   const openCount = s.items.filter((i) => !i.checked).length
 
@@ -47,32 +52,48 @@ export function PackingList(): JSX.Element {
         </Button>
       </Card>
 
-      {s.items.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          Noch keine Positionen. Mit „Aus LED-Wall übernehmen“ befüllen oder unten eigene Zeilen
-          hinzufügen.
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {groups.map(([cat, items]) => (
-            <Card key={cat} className="overflow-hidden">
-              <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2">
-                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{cat}</h2>
-                <span className="text-xs text-muted-foreground">{items.length}</span>
-              </div>
-              <div className="divide-y divide-border">
-                {items.map((it) => (
-                  <Row key={it.id} item={it} />
-                ))}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+      <div className="space-y-4">
+        {groups.map(([cat, items]) => (
+          <Card key={cat} className="overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2">
+              <CategoryName
+                value={cat}
+                onCommit={(v) => s.renameCategory(cat, v)}
+                className="h-7 max-w-[260px] flex-1 text-[12px] font-bold uppercase tracking-wide text-primary"
+              />
+              <span className="text-xs text-muted-foreground">{items.length}</span>
+              <div className="flex-1" />
+              <Button variant="ghost" size="sm" onClick={() => s.addItem(cat)}>
+                <Plus className="size-4" /> Position
+              </Button>
+              {s.categories.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => s.removeCategory(cat)}
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  title="Kategorie löschen (Positionen wandern in die erste Kategorie)"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+            <div className="divide-y divide-border">
+              {items.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">Keine Positionen.</p>
+              ) : (
+                items.map((it) => <Row key={it.id} item={it} categories={s.categories} />)
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={() => s.addItem()}>
           <Plus className="size-4" /> Position
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => s.addCategory()}>
+          <FolderPlus className="size-4" /> Kategorie
         </Button>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground">{openCount} offen</span>
@@ -87,7 +108,41 @@ export function PackingList(): JSX.Element {
   )
 }
 
-function Row({ item }: { item: PackItem }): JSX.Element {
+/** Kategoriename mit lokalem Puffer – Umbenennen erst beim Verlassen/Enter
+ *  (sonst würde der Gruppen-Key bei jedem Tastendruck wechseln). */
+function CategoryName({
+  value,
+  onCommit,
+  className
+}: {
+  value: string
+  onCommit: (v: string) => void
+  className?: string
+}): JSX.Element {
+  const [text, setText] = useState(value)
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setText(value)
+  }, [value])
+  const commit = (): void => {
+    if (text.trim() && text.trim() !== value) onCommit(text.trim())
+    else setText(value)
+  }
+  return (
+    <Input
+      ref={ref}
+      value={text}
+      className={className}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+      }}
+    />
+  )
+}
+
+function Row({ item, categories }: { item: PackItem; categories: string[] }): JSX.Element {
   const s = usePacking()
   const up = (patch: Partial<PackItem>): void => s.updateItem(item.id, patch)
   return (
@@ -103,9 +158,9 @@ function Row({ item }: { item: PackItem }): JSX.Element {
         value={item.qty}
         min={0}
         onChange={(e) => up({ qty: Math.max(0, Number(e.target.value) || 0) })}
-        className="h-8 w-16 text-right"
+        className="h-8 w-14 text-right"
       />
-      <Input value={item.unit} onChange={(e) => up({ unit: e.target.value })} className="h-8 w-16" />
+      <Input value={item.unit} onChange={(e) => up({ unit: e.target.value })} className="h-8 w-14" />
       <Input
         value={item.name}
         placeholder="Position"
@@ -116,8 +171,21 @@ function Row({ item }: { item: PackItem }): JSX.Element {
         value={item.note}
         placeholder="Notiz"
         onChange={(e) => up({ note: e.target.value })}
-        className="h-8 w-40 text-xs"
+        className="h-8 w-28 text-xs"
       />
+      <select
+        value={item.category}
+        onChange={(e) => up({ category: e.target.value })}
+        className={`${selectClass} h-8 w-28 text-xs`}
+        title="Kategorie"
+      >
+        {categories.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+        {!categories.includes(item.category) && <option value={item.category}>{item.category}</option>}
+      </select>
       <button
         type="button"
         onClick={() => s.removeItem(item.id)}

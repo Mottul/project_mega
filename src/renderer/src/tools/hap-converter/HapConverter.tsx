@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import {
   AlertTriangle,
   Cpu,
@@ -69,6 +69,18 @@ export function HapConverter(): JSX.Element {
   const [concurrency, setConcurrency] = useState(1)
   const [compressor, setCompressor] = useState<HapCompressor>('snappy')
   const [jobs, setJobs] = useState<Record<string, HapJob>>({})
+  const [dragOver, setDragOver] = useState(false)
+
+  // Drag&Drop: Dateien UND Ordner – webUtils liefert auch für Ordner den Pfad,
+  // die Queue (collectVideos) durchsucht Ordner rekursiv.
+  function onDropInputs(e: DragEvent): void {
+    e.preventDefault()
+    setDragOver(false)
+    const paths = Array.from(e.dataTransfer.files)
+      .map((f) => api.pathForFile(f))
+      .filter(Boolean)
+    if (paths.length) setInputs((prev) => [...new Set([...prev, ...paths])])
+  }
 
   // Initialer Zustand: Settings, HAP-Verfügbarkeit, laufende Jobs + Live-Updates
   useEffect(() => {
@@ -265,8 +277,16 @@ export function HapConverter(): JSX.Element {
             </Card>
           )}
 
-          {/* Eingang */}
-          <Card className="space-y-4 p-5">
+          {/* Eingang (auch Drop-Ziel für Dateien/Ordner) */}
+          <Card
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDragOver(true)
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDropInputs}
+            className={`space-y-4 p-5 transition-colors ${dragOver ? 'border-primary bg-primary/5' : ''}`}
+          >
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="secondary" onClick={addFiles}>
                 <FolderSearch className="size-4" /> Dateien hinzufügen
@@ -280,6 +300,12 @@ export function HapConverter(): JSX.Element {
                 {inputs.length > 0 ? ` (${inputs.length})` : ''}
               </Button>
             </div>
+
+            {inputs.length === 0 && (
+              <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                Dateien oder Ordner hierher ziehen – oder oben hinzufügen.
+              </p>
+            )}
 
             {inputs.length > 0 && (
               <div className="space-y-1">

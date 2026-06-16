@@ -18,6 +18,8 @@ export interface Pad {
   loop: boolean
   mode: PadMode
   fadeMs: number
+  startSec: number // Abspiel-Start (0 = Anfang)
+  endSec: number | null // Abspiel-Ende (null = Dateiende) -> nur Ausschnitt
 }
 
 export interface Bank {
@@ -44,7 +46,9 @@ function emptyPad(): Pad {
     volume: 1,
     loop: false,
     mode: 'oneshot',
-    fadeMs: 400
+    fadeMs: 400,
+    startSec: 0,
+    endSec: null
   }
 }
 

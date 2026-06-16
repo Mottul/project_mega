@@ -47,7 +47,6 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
   const { ref, w, h } = useElementSize()
   const now = useClockNow()
   const seg = state.current >= 0 ? state.segments[state.current] : null
-  const nextSeg = state.current >= 0 ? state.segments[state.current + 1] : state.segments[0]
 
   const phase =
     remainingSec < 0
@@ -58,6 +57,8 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
           ? 'warn'
           : 'ok'
   const color = phase === 'ok' ? '#ffffff' : phase === 'warn' ? '#eab308' : '#ef4444'
+  // Fortschrittsbalken: grün -> gelb -> rot (übernimmt die Warnstufen des Timers).
+  const barColor = phase === 'ok' ? '#22c55e' : phase === 'warn' ? '#eab308' : '#ef4444'
 
   // Schriftgröße aus Containermaß + Textlänge (Vorschau und Vollbild identisch).
   const mainText = state.displayMode === 'clock' ? fmtClock(now) : seg ? fmtTimer(remainingSec) : '--:--'
@@ -93,13 +94,39 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
         </div>
       ) : (
         <>
-          {/* Kopfzeile: Abschnitt links, Uhrzeit rechts */}
-          <div className="absolute left-0 right-0 top-0 flex items-start justify-between p-[2.5%]">
-            <span className="font-semibold text-neutral-300" style={{ fontSize: smallFs * 1.25 }}>
-              {seg?.label ?? 'Kein Abschnitt'}
-            </span>
+          {/* Kopfzeile: Redner (klein) + Titel (groß) links, Uhrzeit rechts */}
+          <div className="absolute left-0 right-0 top-0 flex items-start justify-between gap-4 p-[2.5%]">
+            <div className="flex min-w-0 flex-col leading-tight">
+              {seg ? (
+                <>
+                  {seg.speaker && (
+                    <span className="truncate text-neutral-400" style={{ fontSize: smallFs }}>
+                      {seg.speaker}
+                    </span>
+                  )}
+                  {seg.title ? (
+                    <span className="truncate font-semibold text-neutral-200" style={{ fontSize: smallFs * 1.5 }}>
+                      {seg.title}
+                    </span>
+                  ) : (
+                    !seg.speaker && (
+                      <span className="text-neutral-500" style={{ fontSize: smallFs * 1.25 }}>
+                        Abschnitt {state.current + 1}
+                      </span>
+                    )
+                  )}
+                </>
+              ) : (
+                <span className="text-neutral-400" style={{ fontSize: smallFs * 1.25 }}>
+                  Kein Abschnitt
+                </span>
+              )}
+            </div>
             {state.showClockInTimer && (
-              <span className="text-neutral-500" style={{ fontSize: smallFs * 1.25, fontVariantNumeric: 'tabular-nums' }}>
+              <span
+                className="shrink-0 text-neutral-500"
+                style={{ fontSize: smallFs * 1.25, fontVariantNumeric: 'tabular-nums' }}
+              >
                 {fmtClock(now)}
               </span>
             )}
@@ -115,21 +142,13 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
             </span>
           </div>
 
-          {/* Fußzeile: nächster Abschnitt + Fortschritt */}
-          <div className="absolute bottom-0 left-0 right-0">
-            {!state.message &&
-              nextSeg &&
-              state.current < state.segments.length - (state.current >= 0 ? 1 : 0) && (
-                <p className="px-[2.5%] pb-[1%] text-neutral-500" style={{ fontSize: smallFs }}>
-                  Danach: {nextSeg.label} ({fmtTimer(nextSeg.durationSec)})
-                </p>
-              )}
-            <div className="h-[1.2%] min-h-[3px] w-full bg-neutral-900">
-              <div
-                className="h-full transition-[width] duration-200 ease-linear"
-                style={{ width: `${progress * 100}%`, background: color }}
-              />
-            </div>
+          {/* Fußzeile: kräftiger Restzeit-Balken – schrumpft mit verstrichener Zeit
+              und übernimmt die Warnfarbe (grün -> gelb -> rot). */}
+          <div className="absolute bottom-0 left-0 right-0 h-[3%] min-h-[10px] bg-neutral-900">
+            <div
+              className="h-full transition-[width,background] duration-200 ease-linear"
+              style={{ width: `${progress * 100}%`, background: barColor }}
+            />
           </div>
         </>
       )}
