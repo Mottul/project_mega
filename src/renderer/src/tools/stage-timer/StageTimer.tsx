@@ -286,121 +286,8 @@ export function StageTimer(): JSX.Element {
           </Card>
         </div>
 
-        {/* Rechte Spalte */}
+        {/* Rechte Spalte: Verhalten + Ausgabe (Abschnitte stehen vollbreit unten) */}
         <div className="space-y-4">
-          <Card className="p-5">
-            <SectionTitle>Abschnitte</SectionTitle>
-            <div className="mt-3 space-y-1.5">
-              {segs.map((seg, i) => (
-                <div
-                  key={seg.id}
-                  className={`space-y-1 rounded-md border p-1.5 ${
-                    i === state.current ? 'border-primary/60 bg-primary/[0.07]' : 'border-border'
-                  }`}
-                >
-                  {/* Zeile 1: Redner (kleiner) + Transport-Controls */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      title="Zu diesem Abschnitt springen"
-                      onClick={() => cmd({ type: 'goto', index: i })}
-                      className={`size-5 shrink-0 rounded-full border text-[10px] font-bold ${
-                        i === state.current
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border text-muted-foreground hover:border-primary'
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                    <SegText
-                      value={seg.speaker}
-                      placeholder="Redner"
-                      className="h-6 flex-1 text-[11px]"
-                      onCommit={(v) =>
-                        patchSegments(segs.map((x, j) => (j === i ? { ...x, speaker: v } : x)))
-                      }
-                    />
-                    <div className="flex shrink-0 flex-col">
-                      <button
-                        type="button"
-                        disabled={i === 0}
-                        onClick={() => {
-                          const next = [...segs]
-                          ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
-                          patchSegments(next)
-                        }}
-                        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      >
-                        <ArrowUp className="size-3" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={i === segs.length - 1}
-                        onClick={() => {
-                          const next = [...segs]
-                          ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
-                          patchSegments(next)
-                        }}
-                        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                      >
-                        <ArrowDown className="size-3" />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => patchSegments(segs.filter((_, j) => j !== i))}
-                      className="shrink-0 text-muted-foreground hover:text-destructive"
-                      title="Abschnitt löschen"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </div>
-                  {/* Zeile 2: Titel (größer) + Dauer */}
-                  <div className="flex items-center gap-1.5 pl-[26px]">
-                    <SegText
-                      value={seg.title}
-                      placeholder="Titel / Beitrag"
-                      className="h-7 flex-1 text-xs font-medium"
-                      onCommit={(v) =>
-                        patchSegments(segs.map((x, j) => (j === i ? { ...x, title: v } : x)))
-                      }
-                    />
-                    <DurationInput
-                      seconds={seg.durationSec}
-                      className="h-7 w-16 text-center text-xs"
-                      onCommit={(sec) =>
-                        patchSegments(segs.map((x, j) => (j === i ? { ...x, durationSec: sec } : x)))
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2 w-full"
-              onClick={() =>
-                patchSegments([
-                  ...segs,
-                  {
-                    id: crypto.randomUUID(),
-                    speaker: `Redner ${segs.length + 1}`,
-                    title: '',
-                    durationSec: 600
-                  }
-                ])
-              }
-            >
-              <Plus className="size-4" /> Abschnitt hinzufügen
-            </Button>
-            {segs.length === 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Abschnitte laufen nacheinander – z.B. „Begrüßung 5:00“, „Vortrag 20:00“, „Q&amp;A 10:00“.
-              </p>
-            )}
-          </Card>
-
           <Card className="p-5">
             <SectionTitle>Verhalten</SectionTitle>
             <div className="mt-3 space-y-3 text-sm">
@@ -489,6 +376,103 @@ export function StageTimer(): JSX.Element {
             </div>
           </Card>
         </div>
+
+        {/* Abschnitte – volle Breite (col-span-2) für angenehmere Eingabe */}
+        <Card className="p-5 lg:col-span-2">
+          <SectionTitle>Abschnitte</SectionTitle>
+          <div className="mt-3 space-y-1.5">
+            {segs.map((seg, i) => (
+              <div
+                key={seg.id}
+                className={`flex items-center gap-2 rounded-md border p-2 ${
+                  i === state.current ? 'border-primary/60 bg-primary/[0.07]' : 'border-border'
+                }`}
+              >
+                <button
+                  type="button"
+                  title="Zu diesem Abschnitt springen"
+                  onClick={() => cmd({ type: 'goto', index: i })}
+                  className={`size-6 shrink-0 rounded-full border text-[11px] font-bold ${
+                    i === state.current
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border text-muted-foreground hover:border-primary'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+                <SegText
+                  value={seg.speaker}
+                  placeholder="Redner"
+                  className="h-8 w-48 shrink-0 text-xs"
+                  onCommit={(v) => patchSegments(segs.map((x, j) => (j === i ? { ...x, speaker: v } : x)))}
+                />
+                <SegText
+                  value={seg.title}
+                  placeholder="Titel / Beitrag"
+                  className="h-8 flex-1 text-sm font-medium"
+                  onCommit={(v) => patchSegments(segs.map((x, j) => (j === i ? { ...x, title: v } : x)))}
+                />
+                <DurationInput
+                  seconds={seg.durationSec}
+                  className="h-8 w-20 shrink-0 text-center text-sm"
+                  onCommit={(sec) => patchSegments(segs.map((x, j) => (j === i ? { ...x, durationSec: sec } : x)))}
+                />
+                <div className="flex shrink-0 flex-col">
+                  <button
+                    type="button"
+                    disabled={i === 0}
+                    onClick={() => {
+                      const next = [...segs]
+                      ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+                      patchSegments(next)
+                    }}
+                    className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  >
+                    <ArrowUp className="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={i === segs.length - 1}
+                    onClick={() => {
+                      const next = [...segs]
+                      ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                      patchSegments(next)
+                    }}
+                    className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  >
+                    <ArrowDown className="size-3.5" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => patchSegments(segs.filter((_, j) => j !== i))}
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  title="Abschnitt löschen"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() =>
+              patchSegments([
+                ...segs,
+                { id: crypto.randomUUID(), speaker: `Redner ${segs.length + 1}`, title: '', durationSec: 600 }
+              ])
+            }
+          >
+            <Plus className="size-4" /> Abschnitt hinzufügen
+          </Button>
+          {segs.length === 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Abschnitte laufen nacheinander – z.B. „Begrüßung 5:00“, „Vortrag 20:00“, „Q&amp;A 10:00“.
+            </p>
+          )}
+        </Card>
       </div>
     </div>
   )

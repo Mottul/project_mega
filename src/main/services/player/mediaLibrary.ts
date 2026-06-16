@@ -158,13 +158,15 @@ export function updateMediaConversion(
     convKey: string
     sizeBytes: number
     thumbName: string | null
+    title?: string // optional: Fit-Hinweis im Namen mitziehen
   }
 ): MediaItem | null {
+  const titleSet = patch.title !== undefined ? ', title=@title' : ''
   getDb()
     .prepare(
       `UPDATE media_items SET width=@width, height=@height, duration_sec=@duration_sec,
          fit_mode=@fit_mode, has_audio=@has_audio, conv_key=@conv_key, size_bytes=@size_bytes,
-         thumb_name=@thumb_name WHERE id=@id`
+         thumb_name=@thumb_name${titleSet} WHERE id=@id`
     )
     .run({
       id,
@@ -175,7 +177,8 @@ export function updateMediaConversion(
       has_audio: patch.hasAudio ? 1 : 0,
       conv_key: patch.convKey,
       size_bytes: patch.sizeBytes,
-      thumb_name: patch.thumbName
+      thumb_name: patch.thumbName,
+      ...(patch.title !== undefined ? { title: patch.title } : {})
     })
   return getMedia(id)
 }

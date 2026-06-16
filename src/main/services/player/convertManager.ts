@@ -489,7 +489,9 @@ class ConvertManager {
         hasAudio: kind === 'image' ? false : info.hasAudio,
         convKey,
         sizeBytes,
-        thumbName: existsSync(finalThumb) ? `${id}_thumb.jpg` : null
+        thumbName: existsSync(finalThumb) ? `${id}_thumb.jpg` : null,
+        // Fit-Hinweis im Namen an die (evtl. geänderte) Aufbereitung anpassen.
+        title: titleWithFit(basename(job.sourcePath, extname(job.sourcePath)), spec.fit)
       })
       this.update(job, { status: 'done', progress: 1, kind, mediaId: id })
       this.librarySink()

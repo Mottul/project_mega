@@ -100,17 +100,20 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
               {seg ? (
                 <>
                   {seg.speaker && (
-                    <span className="truncate text-neutral-400" style={{ fontSize: smallFs }}>
+                    <span className="truncate text-neutral-400" style={{ fontSize: smallFs * 0.95 }}>
                       {seg.speaker}
                     </span>
                   )}
                   {seg.title ? (
-                    <span className="truncate font-semibold text-neutral-200" style={{ fontSize: smallFs * 1.5 }}>
+                    <span
+                      className="line-clamp-2 font-semibold leading-tight text-neutral-200"
+                      style={{ fontSize: smallFs * 1.3 }}
+                    >
                       {seg.title}
                     </span>
                   ) : (
                     !seg.speaker && (
-                      <span className="text-neutral-500" style={{ fontSize: smallFs * 1.25 }}>
+                      <span className="text-neutral-500" style={{ fontSize: smallFs * 1.2 }}>
                         Abschnitt {state.current + 1}
                       </span>
                     )
