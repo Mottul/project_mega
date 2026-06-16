@@ -6,6 +6,7 @@ import type {
   ColorLoopRequest,
   ConvertJob,
   DisplayInfo,
+  FitMode,
   HapCheckResult,
   HapEnqueueRequest,
   HapJob,
@@ -229,8 +230,14 @@ export interface ToolboxApi {
     libraryList(): Promise<MediaItem[]>
     libraryDelete(id: string): Promise<void>
     libraryClear(): Promise<void>
-    /** Medien neu auf die angegebene Wand-Auflösung konvertieren (gleiche id). */
-    reconvert(mediaIds: string[], wall: WallResolution): Promise<{ jobIds: string[]; skipped: number }>
+    /** Medien neu konvertieren (gleiche id), aus der ORIGINAL-Quelle. `fit`
+     *  überschreibt die Aufbereitung (sonst bleibt der gespeicherte Fit-Modus);
+     *  Blur-Stärke/Abdunkelung kommen immer aus den aktuellen Einstellungen. */
+    reconvert(
+      mediaIds: string[],
+      wall: WallResolution,
+      fit?: FitMode
+    ): Promise<{ jobIds: string[]; skipped: number }>
     /** Datei-Dialog für ein eigenes Idle-Bild/-Video; kopiert es in den Medienordner. */
     pickIdleMedia(): Promise<{ url: string; kind: 'image' | 'video' } | null>
     /** Speicherort der konvertierten Medien (userData/player-media). */

@@ -73,7 +73,7 @@ const api: ToolboxApi = {
     libraryList: () => ipcRenderer.invoke(Channels.playerLibraryList),
     libraryDelete: (id) => ipcRenderer.invoke(Channels.playerLibraryDelete, id),
     libraryClear: () => ipcRenderer.invoke(Channels.playerLibraryClear),
-    reconvert: (mediaIds, wall) => ipcRenderer.invoke(Channels.playerReconvert, mediaIds, wall),
+    reconvert: (mediaIds, wall, fit) => ipcRenderer.invoke(Channels.playerReconvert, mediaIds, wall, fit),
     pickIdleMedia: () => ipcRenderer.invoke(Channels.playerPickIdleMedia),
     mediaDir: () => ipcRenderer.invoke(Channels.playerMediaDir),
     onLibraryChanged: (cb) => subscribe(Channels.playerLibraryChanged, () => cb()),

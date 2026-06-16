@@ -7,7 +7,6 @@ import { Check, FileDown, FolderPlus, LayoutGrid, Plus, RotateCcw, Trash2, X } f
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
-import { selectClass } from '../_calc/ui'
 import { deriveFromLedWall } from './derive'
 import { exportPackingPdf } from './print'
 import { usePacking, type PackItem } from './store'
@@ -145,55 +144,71 @@ function CategoryName({
 function Row({ item, categories }: { item: PackItem; categories: string[] }): JSX.Element {
   const s = usePacking()
   const up = (patch: Partial<PackItem>): void => s.updateItem(item.id, patch)
+  // Eigene Select-Klassen (NICHT selectClass) – das enthielt w-full und hätte das
+  // Namensfeld zerquetscht.
+  const catSelect =
+    'h-7 w-40 shrink-0 rounded-md border border-border bg-input/40 px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
   return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 ${item.checked ? 'opacity-50' : ''}`}>
-      <input
-        type="checkbox"
-        checked={item.checked}
-        onChange={(e) => up({ checked: e.target.checked })}
-        className="size-4 accent-primary"
-      />
-      <Input
-        type="number"
-        value={item.qty}
-        min={0}
-        onChange={(e) => up({ qty: Math.max(0, Number(e.target.value) || 0) })}
-        className="h-8 w-14 text-right"
-      />
-      <Input value={item.unit} onChange={(e) => up({ unit: e.target.value })} className="h-8 w-14" />
-      <Input
-        value={item.name}
-        placeholder="Position"
-        onChange={(e) => up({ name: e.target.value })}
-        className={`h-8 flex-1 ${item.checked ? 'line-through' : ''}`}
-      />
-      <Input
-        value={item.note}
-        placeholder="Notiz"
-        onChange={(e) => up({ note: e.target.value })}
-        className="h-8 w-28 text-xs"
-      />
-      <select
-        value={item.category}
-        onChange={(e) => up({ category: e.target.value })}
-        className={`${selectClass} h-8 w-28 text-xs`}
-        title="Kategorie"
-      >
-        {categories.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-        {!categories.includes(item.category) && <option value={item.category}>{item.category}</option>}
-      </select>
-      <button
-        type="button"
-        onClick={() => s.removeItem(item.id)}
-        className="shrink-0 text-muted-foreground hover:text-destructive"
-        title="Entfernen"
-      >
-        <Trash2 className="size-4" />
-      </button>
+    <div className={`px-3 py-2 ${item.checked ? 'opacity-50' : ''}`}>
+      {/* Zeile 1: Haken · Position (groß) · Menge · Einheit · Entfernen */}
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={item.checked}
+          onChange={(e) => up({ checked: e.target.checked })}
+          className="size-4 shrink-0 accent-primary"
+        />
+        <Input
+          value={item.name}
+          placeholder="Position"
+          onChange={(e) => up({ name: e.target.value })}
+          className={`h-8 min-w-0 flex-1 ${item.checked ? 'line-through' : ''}`}
+        />
+        <Input
+          type="number"
+          value={item.qty}
+          min={0}
+          onChange={(e) => up({ qty: Math.max(0, Number(e.target.value) || 0) })}
+          className="h-8 w-16 shrink-0 text-right"
+          title="Menge"
+        />
+        <Input
+          value={item.unit}
+          onChange={(e) => up({ unit: e.target.value })}
+          className="h-8 w-16 shrink-0"
+          title="Einheit"
+        />
+        <button
+          type="button"
+          onClick={() => s.removeItem(item.id)}
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+          title="Entfernen"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+      {/* Zeile 2: Kategorie (kompakt) · Notiz */}
+      <div className="mt-1.5 flex items-center gap-2 pl-6">
+        <select
+          value={item.category}
+          onChange={(e) => up({ category: e.target.value })}
+          className={catSelect}
+          title="Kategorie wechseln"
+        >
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+          {!categories.includes(item.category) && <option value={item.category}>{item.category}</option>}
+        </select>
+        <Input
+          value={item.note}
+          placeholder="Notiz"
+          onChange={(e) => up({ note: e.target.value })}
+          className="h-7 min-w-0 flex-1 text-xs"
+        />
+      </div>
     </div>
   )
 }

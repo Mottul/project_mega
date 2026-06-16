@@ -812,8 +812,8 @@ export function VideoPlayer(): JSX.Element {
                     </button>
                     <button
                       className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
-                      onClick={() => void api.player.reconvert([m.id], { width: wallW, height: wallH })}
-                      title="Neu einbacken (aktuelle Auflösung/Aufbereitung)"
+                      onClick={() => void api.player.reconvert([m.id], { width: wallW, height: wallH }, fit)}
+                      title="Neu einbacken aus dem Original (aktuelle Auflösung + Aufbereitung/Blur)"
                     >
                       <RefreshCw className="size-4" />
                     </button>

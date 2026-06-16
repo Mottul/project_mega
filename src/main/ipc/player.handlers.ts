@@ -110,7 +110,7 @@ export function registerPlayerHandlers(): void {
   ipcMain.handle(Channels.playerMediaDir, () => mediaDir())
   ipcMain.handle(
     Channels.playerReconvert,
-    (_e, mediaIds: string[], wall: { width: number; height: number }) => {
+    (_e, mediaIds: string[], wall: { width: number; height: number }, fit?: 'blur' | 'bars' | 'stretch') => {
       const items: {
         sourcePath: string
         title: string
@@ -127,9 +127,9 @@ export function registerPlayerHandlers(): void {
           continue
         }
         items.push({
-          sourcePath: m.sourcePath,
+          sourcePath: m.sourcePath, // immer aus dem Original neu aufbereiten
           title: m.title,
-          fit: m.fitMode,
+          fit: fit ?? m.fitMode, // optionaler Override -> andere Aufbereitung anwenden
           width: wall.width,
           height: wall.height,
           reconvertId: id
