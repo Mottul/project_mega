@@ -122,6 +122,7 @@ export const Channels = {
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
+  jingleBytes: 'jingle:bytes', // Roh-Bytes für die Waveform-Analyse
   // Jingle-Fernsteuerung
   jinglePublish: 'jingle:publish', // Renderer -> main: Schnappschuss der Bank
   jingleRemoteCommand: 'jingle:remoteCommand', // main -> Renderer: Trigger/Stopp
@@ -281,6 +282,8 @@ export interface ToolboxApi {
     import(paths: string[]): Promise<JingleImportResult[]>
     /** Nicht mehr belegte Dateien aufräumen (alles außer `keep`). */
     cleanup(keep: string[]): Promise<void>
+    /** Roh-Bytes eines Jingles (für die Waveform). null, wenn nicht gefunden. */
+    bytes(storedName: string): Promise<Uint8Array | null>
     /** Aktuellen Bank-/Wiedergabe-Schnappschuss an den Fernsteuer-Server geben. */
     publish(snapshot: JingleRemoteSnapshot): Promise<void>
     /** Trigger/Stopp-Befehle vom Handy (main -> Renderer). Liefert Cleanup. */

@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pause, Play, Scissors } from 'lucide-react'
 import { JINGLE_PROTOCOL } from '@shared/ipc-contracts'
+import { api } from '@renderer/lib/api'
 import { Button } from '@renderer/components/ui/button'
 
 const BUCKETS = 800
@@ -17,8 +18,10 @@ async function loadPeaks(storedName: string): Promise<{ peaks: Float32Array; dur
   const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
   const ac = new Ctx()
   try {
-    const resp = await fetch(`${JINGLE_PROTOCOL}://library/${storedName}`)
-    const arr = await resp.arrayBuffer()
+    // Bytes per IPC holen (fetch auf jingle:// scheitert an CORS), dann dekodieren.
+    const bytes = await api.jingles.bytes(storedName)
+    if (!bytes) throw new Error('Datei nicht gefunden')
+    const arr = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
     const audio = await ac.decodeAudioData(arr)
     const ch = audio.getChannelData(0)
     const peaks = new Float32Array(BUCKETS)

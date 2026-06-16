@@ -4,6 +4,7 @@
 
 import { app } from 'electron'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { basename, extname, join } from 'node:path'
 import type { JingleImportResult } from '@shared/types'
@@ -33,6 +34,14 @@ export function resolveJingleFile(relative: string): string | null {
   if (!SAFE_NAME_RE.test(name)) return null
   const abs = join(jingleDir(), name)
   return existsSync(abs) ? abs : null
+}
+
+/** Roh-Bytes eines Jingles (für die Waveform-Analyse im Renderer via Web Audio).
+ *  Bewusst per IPC statt fetch – fetch auf Custom-Protokolle scheitert (CORS). */
+export async function readJingleBytes(storedName: string): Promise<Buffer | null> {
+  const abs = resolveJingleFile(storedName)
+  if (!abs) return null
+  return readFile(abs)
 }
 
 /** Alle Dateien außer den noch belegten löschen (Aufräumen verwaister Jingles). */
