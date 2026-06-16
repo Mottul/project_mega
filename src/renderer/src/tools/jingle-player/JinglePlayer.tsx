@@ -511,6 +511,22 @@ function PadEditor({
           </label>
         </div>
 
+        <div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-1 block text-xs text-muted-foreground">Start (mm:ss)</span>
+              <MarkInput value={pad.startSec} placeholder="0:00" onCommit={(v) => onChange({ startSec: v ?? 0 })} />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-muted-foreground">Ende (mm:ss)</span>
+              <MarkInput value={pad.endSec} placeholder="bis Ende" onCommit={(v) => onChange({ endSec: v })} />
+            </label>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Nur einen Ausschnitt abspielen. Ende leer = bis zum Dateiende.
+          </p>
+        </div>
+
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={pad.loop} onChange={(e) => onChange({ loop: e.target.checked })} />
           Wiederholen (Loop)
@@ -528,5 +544,55 @@ function PadEditor({
         </div>
       </Card>
     </div>
+  )
+}
+
+// Marker-Feld (mm:ss oder Sekunden). Leer -> null. Lokaler Puffer, Commit bei Blur.
+function fmtMark(sec: number | null): string {
+  if (sec == null) return ''
+  const s = Math.max(0, sec)
+  const m = Math.floor(s / 60)
+  const r = Math.round(s % 60)
+  return `${m}:${String(r).padStart(2, '0')}`
+}
+function parseMark(text: string): number | null {
+  const t = text.trim().replace(',', '.')
+  if (t === '') return null
+  if (t.includes(':')) {
+    const parts = t.split(':').map(Number)
+    if (parts.some((n) => !Number.isFinite(n))) return null
+    return parts.reduce((acc, n) => acc * 60 + n, 0)
+  }
+  const n = Number(t)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
+function MarkInput({
+  value,
+  onCommit,
+  placeholder
+}: {
+  value: number | null
+  onCommit: (v: number | null) => void
+  placeholder?: string
+}): JSX.Element {
+  const [text, setText] = useState(fmtMark(value))
+  useEffect(() => setText(fmtMark(value)), [value])
+  const commit = (): void => {
+    const v = parseMark(text)
+    onCommit(v)
+    setText(fmtMark(v))
+  }
+  return (
+    <Input
+      value={text}
+      placeholder={placeholder}
+      inputMode="numeric"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+      }}
+    />
   )
 }

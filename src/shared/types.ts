@@ -389,7 +389,8 @@ export type TimerEndBehavior = 'stop' | 'overtime' | 'next'
 
 export interface TimerSegment {
   id: string
-  label: string
+  speaker: string // Redner (Name) – auf der Anzeige kleiner, zuerst
+  title: string // Titel/Beitrag – größer
   durationSec: number
 }
 

@@ -811,6 +811,13 @@ export function VideoPlayer(): JSX.Element {
                       <Plus className="size-4" />
                     </button>
                     <button
+                      className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
+                      onClick={() => void api.player.reconvert([m.id], { width: wallW, height: wallH })}
+                      title="Neu einbacken (aktuelle Auflösung/Aufbereitung)"
+                    >
+                      <RefreshCw className="size-4" />
+                    </button>
+                    <button
                       className="shrink-0 rounded p-1 text-muted-foreground hover:text-red-400"
                       onClick={() => void api.player.libraryDelete(m.id)}
                       title="Löschen"
@@ -859,6 +866,13 @@ export function VideoPlayer(): JSX.Element {
                         title="Zur Playlist hinzufügen"
                       >
                         <Plus className="size-3.5" />
+                      </button>
+                      <button
+                        className="rounded bg-black/70 p-1 text-white hover:bg-primary hover:text-primary-foreground"
+                        onClick={() => void api.player.reconvert([m.id], { width: wallW, height: wallH })}
+                        title="Neu einbacken (aktuelle Auflösung/Aufbereitung)"
+                      >
+                        <RefreshCw className="size-3.5" />
                       </button>
                       <button
                         className="rounded bg-black/70 p-1 text-white hover:bg-destructive"
