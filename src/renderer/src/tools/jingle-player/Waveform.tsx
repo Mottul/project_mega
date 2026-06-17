@@ -53,9 +53,9 @@ function detectSilence(peaks: Float32Array, duration: number, threshold = 0.02):
   return { start: (s / peaks.length) * duration, end: ((e + 1) / peaks.length) * duration }
 }
 
-/** m:ss.mmm (millisekundengenau). */
+/** m:ss.mmm (millisekundengenau). NaN/undefined -> 0. */
 export function fmtMs(sec: number): string {
-  const s = Math.max(0, sec)
+  const s = Number.isFinite(sec) ? Math.max(0, sec) : 0
   const m = Math.floor(s / 60)
   const r = Math.floor(s % 60)
   const ms = Math.round((s - Math.floor(s)) * 1000)
