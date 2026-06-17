@@ -831,49 +831,110 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-1">
-        <div className="h-1.5 w-full rounded-full" style={{ background: HUE_GRADIENT }} />
-        <input
-          type="range"
-          min={0}
-          max={360}
-          value={Math.round(hsv.h)}
-          onChange={(e) => setHue(Number(e.target.value))}
-          className="h-1.5 w-full cursor-pointer"
-          style={{ accentColor: hueAccent }}
+      <div className="min-h-0 flex-1 space-y-2">
+        {/* Alle Regler greifen relativ (kein Sprung auf den Klickpunkt). */}
+        <ChannelRow
+          letter="H"
+          value={hsv.h / 360}
+          accent={hueAccent}
+          track={HUE_GRADIENT}
+          onChange={(v) => setHue(v * 360)}
         />
-        <ChannelSlider letter="R" value={w.r} accent="#ef4444" onChange={(v) => emit(v, w.g, w.b)} />
-        <ChannelSlider letter="G" value={w.g} accent="#22c55e" onChange={(v) => emit(w.r, v, w.b)} />
-        <ChannelSlider letter="B" value={w.b} accent="#3b82f6" onChange={(v) => emit(w.r, w.g, v)} />
+        <ChannelRow letter="R" value={w.r} accent="#ef4444" onChange={(v) => emit(v, w.g, w.b)} />
+        <ChannelRow letter="G" value={w.g} accent="#22c55e" onChange={(v) => emit(w.r, v, w.b)} />
+        <ChannelRow letter="B" value={w.b} accent="#3b82f6" onChange={(v) => emit(w.r, w.g, v)} />
       </div>
     </div>
   )
 }
 
-function ChannelSlider({
+function ChannelRow({
   letter,
   value,
   accent,
+  track,
   onChange
 }: {
   letter: string
   value: number
   accent: string
+  track?: string
   onChange: (v: number) => void
 }): JSX.Element {
   return (
-    <label className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5">
       <span className="w-3 shrink-0 text-[10px] font-medium text-muted-foreground">{letter}</span>
-      <input
-        type="range"
-        min={0}
-        max={255}
-        value={Math.round(clamp01(value) * 255)}
-        onChange={(e) => onChange(Number(e.target.value) / 255)}
-        className="h-1.5 w-full cursor-pointer"
-        style={{ accentColor: accent }}
+      <RelSlider value={value} accent={accent} track={track} onChange={onChange} />
+    </div>
+  )
+}
+
+// Horizontaler Regler mit RELATIVEM Greifen (wie Fader/XY): beim Antippen wird der
+// Anfasspunkt gemerkt und ab dort gezogen, statt auf den Klickwert zu springen.
+function RelSlider({
+  value,
+  onChange,
+  accent,
+  track
+}: {
+  value: number // 0..1
+  onChange: (v: number) => void
+  accent: string
+  track?: string // optionaler Track-Hintergrund (z.B. Hue-Verlauf)
+}): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  const raf = useRef(0)
+  const pending = useRef<number | null>(null)
+  const start = useRef<{ px: number; v: number } | null>(null)
+
+  useEffect(() => () => cancelAnimationFrame(raf.current), [])
+
+  function flush(): void {
+    raf.current = 0
+    if (pending.current == null) return
+    const v = pending.current
+    pending.current = null
+    onChange(v)
+  }
+  function drag(clientX: number): void {
+    const el = ref.current
+    const st = start.current
+    if (!el || !st) return
+    const r = el.getBoundingClientRect()
+    pending.current = clamp01(st.v + (clientX - st.px) / r.width)
+    if (!raf.current) raf.current = requestAnimationFrame(flush)
+  }
+  const pct = clamp01(value) * 100
+
+  return (
+    <div
+      ref={ref}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        start.current = { px: e.clientX, v: clamp01(value) }
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons) drag(e.clientX)
+      }}
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+        start.current = null
+      }}
+      className="relative h-4 w-full cursor-ew-resize touch-none overflow-hidden rounded"
+      style={track ? { background: track } : undefined}
+    >
+      {!track && <div className="absolute inset-0 bg-muted/50" />}
+      {!track && (
+        <div
+          className="absolute inset-y-0 left-0"
+          style={{ width: `${pct}%`, background: accent, opacity: 0.45 }}
+        />
+      )}
+      <div
+        className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow"
+        style={{ left: `${pct}%`, background: accent }}
       />
-    </label>
+    </div>
   )
 }
 
