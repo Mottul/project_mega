@@ -117,6 +117,16 @@ const api: ToolboxApi = {
     onRemoteChanged: (cb) => subscribe(Channels.jingleRemoteChanged, (s) => cb(s as never))
   },
 
+  osc: {
+    send: (msg) => ipcRenderer.invoke(Channels.oscSend, msg),
+    sendMany: (msgs) => ipcRenderer.invoke(Channels.oscSendMany, msgs),
+    status: () => ipcRenderer.invoke(Channels.oscStatus),
+    config: () => ipcRenderer.invoke(Channels.oscConfig),
+    setConfig: (patch) => ipcRenderer.invoke(Channels.oscConfigSet, patch),
+    onFeedback: (cb) => subscribe(Channels.oscFeedback, (fb) => cb(fb as never)),
+    onStatus: (cb) => subscribe(Channels.oscStatusChanged, (s) => cb(s as never))
+  },
+
   youtube: {
     status: () => ipcRenderer.invoke(Channels.ytStatus),
     updateTool: () => ipcRenderer.invoke(Channels.ytUpdate),

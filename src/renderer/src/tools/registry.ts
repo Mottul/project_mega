@@ -5,6 +5,7 @@ import { hapConverterTool } from './hap-converter'
 import { jinglePlayerTool } from './jingle-player'
 import { ledWallTool } from './led-wall'
 import { manualsTool } from './manuals'
+import { oscControlTool } from './osc-control'
 import { packingListTool } from './packing-list'
 import { powerLoadTool } from './power-load'
 import { projectorLumenTool } from './projector-lumen'
@@ -24,6 +25,7 @@ export const tools: ToolModule[] = [
   testPatternsTool,
   videoPlayerTool,
   jinglePlayerTool,
+  oscControlTool,
   youtubeDlTool,
   stageTimerTool,
   ledWallTool,
