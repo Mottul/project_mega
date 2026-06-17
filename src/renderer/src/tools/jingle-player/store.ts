@@ -56,14 +56,19 @@ function newBank(name: string, padCount = 8): Bank {
   return { id: crypto.randomUUID(), name, pads: Array.from({ length: padCount }, emptyPad) }
 }
 
+export type JingleMode = 'edit' | 'live'
+
 interface JingleState {
   banks: Bank[]
   currentBankId: string
   columns: number
   outputDeviceId: string // '' = Standardgerät
   soloMode: boolean // nur ein Jingle gleichzeitig
+  mode: JingleMode // edit = anklicken wählt aus (Panel), live = anklicken spielt
 
-  set: (patch: Partial<Pick<JingleState, 'columns' | 'outputDeviceId' | 'soloMode' | 'currentBankId'>>) => void
+  set: (
+    patch: Partial<Pick<JingleState, 'columns' | 'outputDeviceId' | 'soloMode' | 'currentBankId' | 'mode'>>
+  ) => void
   currentBank: () => Bank
   addBank: () => void
   renameBank: (id: string, name: string) => void
@@ -94,6 +99,7 @@ export const useJingles = create<JingleState>()(
         columns: 4,
         outputDeviceId: '',
         soloMode: false,
+        mode: 'edit',
 
         set: (patch) => set(patch),
         currentBank: () => {
