@@ -1,12 +1,13 @@
-// Jingle-Player: Raster belegbarer Pads (Klick oder Hotkey spielt ab), je Pad
-// Datei/Farbe/Lautstärke/Loop/Modus/Fade. Audio geht aufs gewählte Ausgabegerät
-// (z.B. Interface/Pult). Bänke als Sets, Solo-Modus, großer Fade-All-Stopp.
+// Jingle-Player: Raster belegbarer Pads. Zwei Modi – LIVE (Klick/Hotkey spielt
+// ab) und EDIT (Klick wählt ein Pad aus, Einstellungen inkl. Wellenform erscheinen
+// im seitlichen Panel, wie in den anderen Tools). Audio geht aufs gewählte
+// Ausgabegerät; Bänke als Sets, Solo-Modus, großer Fade-All-Stopp, Fernsteuerung.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Music, Plus, Settings2, Square, Trash2, Upload, Wifi, X } from 'lucide-react'
+import { FolderOpen, Music, Pencil, Play, Plus, Settings2, Square, Trash2, Upload, Volume2, Wifi } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
-import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import type { JingleRemoteSnapshot, RemoteStatus } from '@shared/types'
 import { selectClass } from '../_calc/ui'
@@ -22,7 +23,8 @@ const AUDIO_FILTER = [
 export function JinglePlayer(): JSX.Element {
   const s = useJingles()
   const bank = s.currentBank()
-  const [editPad, setEditPad] = useState<string | null>(null)
+  const live = s.mode === 'live'
+  const [selectedPadId, setSelectedPadId] = useState<string | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8089)
@@ -35,8 +37,7 @@ export function JinglePlayer(): JSX.Element {
   const engineRef = useRef(engine)
   engineRef.current = engine
 
-  // Fernsteuerung: Status holen + auf Änderungen lauschen; Trigger vom Handy
-  // (main -> Renderer) an die Engine geben (Audio läuft hier im Tab).
+  // Fernsteuerung: Status + Trigger vom Handy an die Engine geben.
   useEffect(() => {
     void api.jingles.remoteStatus().then(setRemote)
     const offChanged = api.jingles.onRemoteChanged(setRemote)
@@ -50,7 +51,7 @@ export function JinglePlayer(): JSX.Element {
     }
   }, [])
 
-  // Schnappschuss der Bank/Wiedergabe an den Server geben (für die Handy-Seite).
+  // Schnappschuss der Bank/Wiedergabe an den Server (für die Handy-Seite).
   useEffect(() => {
     const snap: JingleRemoteSnapshot = {
       connected: true,
@@ -67,7 +68,6 @@ export function JinglePlayer(): JSX.Element {
     void api.jingles.publish(snap)
   }, [bank, s.columns, engine.playing])
 
-  // Tab geschlossen -> der Server zeigt „nicht geöffnet".
   useEffect(() => {
     return () => {
       void api.jingles.publish({ connected: false, bankName: '', columns: 4, pads: [], playing: [] })
@@ -98,7 +98,10 @@ export function JinglePlayer(): JSX.Element {
     return () => navigator.mediaDevices.removeEventListener('devicechange', load)
   }, [])
 
-  // Hotkeys: Position -> Taste; Esc/Leertaste = alles ausfaden.
+  // Beim Set-Wechsel die Pad-Auswahl zurücksetzen.
+  useEffect(() => setSelectedPadId(null), [s.currentBankId])
+
+  // Hotkeys: NUR im Live-Modus spielen Pads; Esc/Leertaste stoppt immer.
   const padByKey = useMemo(() => {
     const map = new Map<string, string>()
     bank.pads.forEach((p, i) => {
@@ -116,6 +119,7 @@ export function JinglePlayer(): JSX.Element {
         engineRef.current.stopAll()
         return
       }
+      if (s.mode !== 'live') return
       const padId = padByKey.get(e.key.toLowerCase())
       if (padId) {
         e.preventDefault()
@@ -124,13 +128,16 @@ export function JinglePlayer(): JSX.Element {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [padByKey])
+  }, [padByKey, s.mode])
 
   async function pickFor(padId: string): Promise<void> {
     const paths = await api.selectPaths({ title: 'Jingle wählen', filters: AUDIO_FILTER })
     if (paths.length === 0) return
     const [res] = await api.jingles.import(paths)
-    if (res) s.assignJingle(padId, res.storedName, res.originalName)
+    if (res) {
+      s.assignJingle(padId, res.storedName, res.originalName)
+      setSelectedPadId(padId)
+    }
   }
 
   async function dropFor(padId: string, files: FileList): Promise<void> {
@@ -139,15 +146,27 @@ export function JinglePlayer(): JSX.Element {
       .filter(Boolean)
     if (paths.length === 0) return
     const [res] = await api.jingles.import(paths)
-    if (res) s.assignJingle(padId, res.storedName, res.originalName)
+    if (res) {
+      s.assignJingle(padId, res.storedName, res.originalName)
+      setSelectedPadId(padId)
+    }
   }
 
-  const editing = editPad ? bank.pads.find((p) => p.id === editPad) ?? null : null
+  function onPadClick(pad: Pad): void {
+    if (!pad.storedName) {
+      void pickFor(pad.id) // leeres Pad: immer laden
+      return
+    }
+    if (live) engine.trigger(pad.id)
+    else setSelectedPadId(pad.id)
+  }
 
-  return (
-    <div className="mx-auto max-w-5xl space-y-4 p-6">
+  const selected = selectedPadId ? bank.pads.find((p) => p.id === selectedPadId) ?? null : null
+
+  const main = (
+    <div className="space-y-4 p-6">
       {/* Bänke + globale Steuerung */}
-      <Card className="flex flex-wrap items-center gap-2 p-3">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="flex flex-wrap items-center gap-1">
           {s.banks.map((b) => (
             <button
@@ -168,14 +187,27 @@ export function JinglePlayer(): JSX.Element {
           </Button>
         </div>
         <div className="flex-1" />
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={s.soloMode}
-            onChange={(e) => s.set({ soloMode: e.target.checked })}
-          />
-          Solo (nur einer)
-        </label>
+        {/* Edit / Live */}
+        <div className="flex overflow-hidden rounded-md border border-border">
+          <button
+            type="button"
+            onClick={() => s.set({ mode: 'edit' })}
+            className={`flex items-center gap-1 px-3 py-1.5 text-sm transition-colors ${
+              !live ? 'bg-primary/15 font-semibold text-primary' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Pencil className="size-4" /> Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => s.set({ mode: 'live' })}
+            className={`flex items-center gap-1 px-3 py-1.5 text-sm transition-colors ${
+              live ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Play className="size-4" /> Live
+          </button>
+        </div>
         <select
           className={`${selectClass} h-8 w-auto`}
           value={s.columns}
@@ -188,10 +220,14 @@ export function JinglePlayer(): JSX.Element {
             </option>
           ))}
         </select>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <input type="checkbox" checked={s.soloMode} onChange={(e) => s.set({ soloMode: e.target.checked })} />
+          Solo
+        </label>
         <Button variant="destructive" size="sm" onClick={() => engine.stopAll()}>
           <Square className="size-4" /> Stopp (Esc)
         </Button>
-      </Card>
+      </div>
 
       {/* Pad-Raster */}
       <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${s.columns}, minmax(0, 1fr))` }}>
@@ -200,79 +236,98 @@ export function JinglePlayer(): JSX.Element {
             key={pad.id}
             pad={pad}
             hotkey={HOTKEYS[i]}
+            live={live}
+            selected={pad.id === selectedPadId}
             playing={!!engine.playing[pad.id]}
             progress={engine.progress[pad.id] ?? 0}
-            onTrigger={() => engine.trigger(pad.id)}
+            onClick={() => onPadClick(pad)}
             onStop={() => engine.stop(pad.id)}
-            onPick={() => void pickFor(pad.id)}
             onDrop={(files) => void dropFor(pad.id, files)}
-            onEdit={() => setEditPad(pad.id)}
           />
         ))}
-        <button
-          type="button"
-          onClick={() => s.addPad()}
-          className="flex min-h-[104px] items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-        >
-          <Plus className="size-5" />
-        </button>
+        {!live && (
+          <button
+            type="button"
+            onClick={() => s.addPad()}
+            className="flex min-h-[104px] items-center justify-center rounded-lg border-2 border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+          >
+            <Plus className="size-5" />
+          </button>
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Tipp: Datei auf ein Pad ziehen oder „Laden“. Tasten {HOTKEYS.slice(0, Math.min(bank.pads.length, 9)).join(' ')}…
-        spielen die Pads, <kbd className="rounded border border-border px-1">Esc</kbd> faded alles aus.
+        {live ? (
+          <>
+            Klick oder Tasten {HOTKEYS.slice(0, Math.min(bank.pads.length, 9)).join(' ')}… spielen die Pads,{' '}
+            <kbd className="rounded border border-border px-1">Esc</kbd> faded alles aus.
+          </>
+        ) : (
+          <>Edit-Modus: Pad anklicken, um es rechts zu bearbeiten. Leeres Pad anklicken oder Datei darauf ziehen, um zu laden.</>
+        )}
       </p>
+    </div>
+  )
 
-      {/* Ausgabegerät + Set-Verwaltung */}
-      <Card className="space-y-3 p-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="block min-w-[260px] flex-1">
-            <span className="mb-1 block text-xs text-muted-foreground">Audio-Ausgabegerät</span>
-            <select
-              className={selectClass}
-              value={s.outputDeviceId}
-              onChange={(e) => s.set({ outputDeviceId: e.target.value })}
-            >
-              <option value="">Standardgerät</option>
-              {devices.map((d, i) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.label || `Ausgabegerät ${i + 1}`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Input
-            className="h-9 w-40"
-            value={bank.name}
-            onChange={(e) => s.renameBank(bank.id, e.target.value)}
-            aria-label="Set-Name"
+  const aside = (
+    <>
+      <PanelSection id="pad" title="Pad" icon={Settings2}>
+        {selected ? (
+          <PadSettings
+            pad={selected}
+            outputDeviceId={s.outputDeviceId}
+            onChange={(patch) => s.updatePad(selected.id, patch)}
+            onPick={() => void pickFor(selected.id)}
+            onClear={() => s.clearPad(selected.id)}
+            onRemove={() => {
+              s.removePad(selected.id)
+              setSelectedPadId(null)
+            }}
           />
-          {s.banks.length > 1 && (
-            <Button variant="outline" size="sm" onClick={() => s.deleteBank(bank.id)}>
-              <Trash2 className="size-4" /> Set löschen
-            </Button>
-          )}
-        </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {live ? 'In den Edit-Modus wechseln und ein Pad anklicken.' : 'Ein Pad anklicken, um es hier zu bearbeiten.'}
+          </p>
+        )}
+      </PanelSection>
+
+      <PanelSection id="output" title="Audio-Ausgabe" icon={Volume2}>
+        <select
+          className={selectClass}
+          value={s.outputDeviceId}
+          onChange={(e) => s.set({ outputDeviceId: e.target.value })}
+        >
+          <option value="">Standardgerät</option>
+          {devices.map((d, i) => (
+            <option key={d.deviceId} value={d.deviceId}>
+              {d.label || `Ausgabegerät ${i + 1}`}
+            </option>
+          ))}
+        </select>
         {devices.length === 0 || devices.every((d) => !d.label) ? (
           <p className="text-xs text-muted-foreground">
             Gerätenamen erscheinen erst nach Audio-Freigabe – die Wiedergabe funktioniert dennoch.
           </p>
         ) : null}
-      </Card>
+      </PanelSection>
 
-      {/* Fernsteuerung per Handy/Tablet */}
-      <Card className="p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Wifi className="size-4 text-primary" />
-            <span className="text-sm font-medium">Fernsteuerung</span>
-            {remote?.running && (
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 light:text-emerald-700">
-                an
-              </span>
-            )}
-          </div>
-          <div className="flex-1" />
+      <PanelSection
+        id="remote"
+        title="Fernsteuerung"
+        icon={Wifi}
+        defaultOpen={false}
+        right={
+          remote?.running ? (
+            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 light:text-emerald-700">
+              an
+            </span>
+          ) : undefined
+        }
+      >
+        <p className="text-xs text-muted-foreground">
+          Handy/Tablet im selben WLAN steuert die Pads (ohne Passwort). Dieses Fenster muss offen bleiben.
+        </p>
+        <div className="flex items-center gap-2">
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             Port
             <Input
@@ -287,67 +342,61 @@ export function JinglePlayer(): JSX.Element {
             <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
           </Button>
         </div>
-        {remote?.running && (
-          <div className="mt-3 flex flex-wrap items-center gap-4 rounded-md border border-border bg-muted/30 p-3">
-            {remote.urls[0] && <QrCode text={remote.urls[0]} size={120} />}
-            <div className="min-w-0 text-sm">
-              <p className="text-muted-foreground">Im selben WLAN öffnen (ohne Passwort):</p>
+        {remote?.running && remote.urls[0] && (
+          <div className="flex items-center gap-3 rounded-md border border-border bg-muted/30 p-2">
+            <QrCode text={remote.urls[0]} size={96} />
+            <div className="min-w-0">
               {remote.urls.map((u) => (
-                <p key={u} className="font-mono text-xs text-foreground">
+                <p key={u} className="truncate font-mono text-[11px] text-foreground">
                   {u}
                 </p>
               ))}
-              <p className="mt-1 text-xs text-muted-foreground">
-                Dieses Fenster muss offen bleiben – die Jingles spielen hier auf dem gewählten Gerät.
-              </p>
             </div>
           </div>
         )}
-      </Card>
+      </PanelSection>
 
-      {editing && (
-        <PadEditor
-          pad={editing}
-          outputDeviceId={s.outputDeviceId}
-          onClose={() => setEditPad(null)}
-          onChange={(patch) => s.updatePad(editing.id, patch)}
-          onClear={() => {
-            s.clearPad(editing.id)
-            setEditPad(null)
-          }}
-          onRemove={() => {
-            s.removePad(editing.id)
-            setEditPad(null)
-          }}
-        />
-      )}
-    </div>
+      <PanelSection id="set" title="Set" icon={Music} defaultOpen={false}>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Name</span>
+          <Input value={bank.name} onChange={(e) => s.renameBank(bank.id, e.target.value)} />
+        </label>
+        {s.banks.length > 1 && (
+          <Button variant="outline" size="sm" onClick={() => s.deleteBank(bank.id)}>
+            <Trash2 className="size-4" /> Set löschen
+          </Button>
+        )}
+      </PanelSection>
+    </>
   )
+
+  return <ToolShell id="jingle-player" main={main} aside={aside} asideWidth={400} />
 }
 
 function PadTile({
   pad,
   hotkey,
+  live,
+  selected,
   playing,
   progress,
-  onTrigger,
+  onClick,
   onStop,
-  onPick,
-  onDrop,
-  onEdit
+  onDrop
 }: {
   pad: Pad
   hotkey: string | undefined
+  live: boolean
+  selected: boolean
   playing: boolean
   progress: number
-  onTrigger: () => void
+  onClick: () => void
   onStop: () => void
-  onPick: () => void
   onDrop: (files: FileList) => void
-  onEdit: () => void
 }): JSX.Element {
   const [over, setOver] = useState(false)
   const empty = !pad.storedName
+  const ring = over ? 'border-primary' : selected && !live ? 'border-foreground/70' : playing ? '' : 'border-transparent'
 
   return (
     <div
@@ -361,52 +410,32 @@ function PadTile({
         setOver(false)
         if (e.dataTransfer.files.length) onDrop(e.dataTransfer.files)
       }}
-      className={`relative min-h-[104px] overflow-hidden rounded-lg border-2 transition-colors ${
-        over ? 'border-primary' : 'border-transparent'
-      }`}
+      className={`relative min-h-[104px] overflow-hidden rounded-lg border-2 transition-colors ${ring}`}
       style={{ background: empty ? undefined : `${pad.color}22`, borderColor: playing ? pad.color : undefined }}
     >
-      {/* Fortschrittsbalken */}
       {playing && (
-        <div
-          className="absolute inset-x-0 top-0 h-1 transition-[width]"
-          style={{ width: `${progress * 100}%`, background: pad.color }}
-        />
+        <div className="absolute inset-x-0 top-0 h-1 transition-[width]" style={{ width: `${progress * 100}%`, background: pad.color }} />
       )}
       {empty ? (
         <button
           type="button"
-          onClick={onPick}
+          onClick={onClick}
           className="flex size-full min-h-[104px] flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary"
         >
           <Upload className="size-5" />
           <span className="text-xs">Laden / hierher ziehen</span>
         </button>
       ) : (
-        <button
-          type="button"
-          onClick={onTrigger}
-          className="flex size-full min-h-[104px] flex-col justify-between p-3 text-left"
-          style={{ borderRadius: 6 }}
-        >
+        <button type="button" onClick={onClick} className="flex size-full min-h-[104px] flex-col justify-between p-3 text-left">
           <div className="flex items-start justify-between gap-2">
             <span className="flex size-6 items-center justify-center rounded text-xs font-bold text-black" style={{ background: pad.color }}>
               {hotkey?.toUpperCase() ?? <Music className="size-3.5" />}
             </span>
-            <div className="flex items-center gap-1">
-              {pad.loop && <span className="text-[10px] text-muted-foreground">⟳</span>}
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEdit()
-                }}
-                className="text-muted-foreground hover:text-foreground"
-                title="Pad bearbeiten"
-              >
-                <Settings2 className="size-4" />
-              </span>
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              {pad.loop && <span title="Loop">⟳</span>}
+              {pad.mode === 'toggle' && <span title="Toggle">⇄</span>}
+              {(pad.startSec > 0 || pad.endSec != null) && <span title="Ausschnitt">✂</span>}
+              {!live && <Pencil className="size-3" />}
             </div>
           </div>
           <span className="line-clamp-2 text-sm font-medium leading-tight">{pad.label}</span>
@@ -415,7 +444,10 @@ function PadTile({
       {playing && (
         <button
           type="button"
-          onClick={onStop}
+          onClick={(e) => {
+            e.stopPropagation()
+            onStop()
+          }}
           className="absolute bottom-2 right-2 flex size-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
           title="Stoppen"
         >
@@ -426,154 +458,140 @@ function PadTile({
   )
 }
 
-function PadEditor({
+function PadSettings({
   pad,
   outputDeviceId,
-  onClose,
   onChange,
+  onPick,
   onClear,
   onRemove
 }: {
   pad: Pad
   outputDeviceId: string
-  onClose: () => void
   onChange: (patch: Partial<Pad>) => void
+  onPick: () => void
   onClear: () => void
   onRemove: () => void
 }): JSX.Element {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <Card className="w-full max-w-md space-y-4 p-5" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Pad bearbeiten</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="size-4" />
-          </Button>
-        </div>
+    <div className="space-y-3">
+      <label className="block">
+        <span className="mb-1 block text-xs text-muted-foreground">Beschriftung</span>
+        <Input value={pad.label} onChange={(e) => onChange({ label: e.target.value })} />
+      </label>
 
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Beschriftung</span>
-          <Input value={pad.label} onChange={(e) => onChange({ label: e.target.value })} />
-        </label>
-
-        <div>
-          <span className="mb-1 block text-xs text-muted-foreground">Farbe</span>
-          <div className="flex flex-wrap gap-1.5">
-            {PAD_COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => onChange({ color: c })}
-                className={`size-7 rounded-full border-2 ${pad.color === c ? 'border-foreground' : 'border-transparent'}`}
-                style={{ background: c }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <label className="block">
-          <span className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Lautstärke</span>
-            <span>{Math.round(pad.volume * 100)} %</span>
-          </span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={pad.volume}
-            onChange={(e) => onChange({ volume: Number(e.target.value) })}
-            className="w-full accent-primary"
-          />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Modus</span>
-            <select
-              className={selectClass}
-              value={pad.mode}
-              onChange={(e) => onChange({ mode: e.target.value as Pad['mode'] })}
-            >
-              <option value="oneshot">One-Shot (neu starten)</option>
-              <option value="toggle">Toggle (Start/Stopp)</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Fade-Out</span>
-            <select
-              className={selectClass}
-              value={pad.fadeMs}
-              onChange={(e) => onChange({ fadeMs: Number(e.target.value) })}
-            >
-              <option value={0}>Hart (0 ms)</option>
-              <option value={200}>200 ms</option>
-              <option value={400}>400 ms</option>
-              <option value={1000}>1 s</option>
-              <option value={2000}>2 s</option>
-            </select>
-          </label>
-        </div>
-
-        <div>
-          <span className="mb-1 block text-xs text-muted-foreground">Ausschnitt (Start/Stopp)</span>
-          {pad.storedName ? (
-            <Waveform
-              storedName={pad.storedName}
-              color={pad.color}
-              volume={pad.volume}
-              outputDeviceId={outputDeviceId}
-              startSec={pad.startSec}
-              endSec={pad.endSec}
-              onChange={(start, end) => onChange({ startSec: start, endSec: end })}
+      <div>
+        <span className="mb-1 block text-xs text-muted-foreground">Farbe</span>
+        <div className="flex flex-wrap gap-1.5">
+          {PAD_COLORS.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onChange({ color: c })}
+              className={`size-7 rounded-full border-2 ${pad.color === c ? 'border-foreground' : 'border-transparent'}`}
+              style={{ background: c }}
             />
-          ) : (
-            <p className="rounded-md border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
-              Erst einen Jingle laden, dann lässt sich der Ausschnitt in der Waveform setzen.
-            </p>
-          )}
-          <div className="mt-2 grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">Start (mm:ss)</span>
-              <MarkInput value={pad.startSec} placeholder="0:00" onCommit={(v) => onChange({ startSec: v ?? 0 })} />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">Ende (mm:ss)</span>
-              <MarkInput value={pad.endSec} placeholder="bis Ende" onCommit={(v) => onChange({ endSec: v })} />
-            </label>
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Marker ziehen oder Zeiten eintippen. Ende leer = bis zum Dateiende.
-          </p>
+          ))}
         </div>
+      </div>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={pad.loop} onChange={(e) => onChange({ loop: e.target.checked })} />
-          Wiederholen (Loop)
+      <label className="block">
+        <span className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+          <span>Lautstärke</span>
+          <span>{Math.round(pad.volume * 100)} %</span>
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={pad.volume}
+          onChange={(e) => onChange({ volume: Number(e.target.value) })}
+          className="w-full accent-primary"
+        />
+      </label>
+
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Modus</span>
+          <select className={selectClass} value={pad.mode} onChange={(e) => onChange({ mode: e.target.value as Pad['mode'] })}>
+            <option value="oneshot">One-Shot</option>
+            <option value="toggle">Toggle</option>
+          </select>
         </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Fade-Out</span>
+          <select className={selectClass} value={pad.fadeMs} onChange={(e) => onChange({ fadeMs: Number(e.target.value) })}>
+            <option value={0}>Hart (0 ms)</option>
+            <option value={200}>200 ms</option>
+            <option value={400}>400 ms</option>
+            <option value={1000}>1 s</option>
+            <option value={2000}>2 s</option>
+          </select>
+        </label>
+      </div>
 
-        <div className="flex justify-between border-t border-border pt-3">
-          <Button variant="ghost" size="sm" onClick={onRemove}>
-            <Trash2 className="size-4" /> Pad entfernen
-          </Button>
-          {pad.storedName && (
-            <Button variant="outline" size="sm" onClick={onClear}>
-              Jingle leeren
-            </Button>
-          )}
+      <div>
+        <span className="mb-1 block text-xs text-muted-foreground">Ausschnitt (Start/Stopp)</span>
+        {pad.storedName ? (
+          <Waveform
+            storedName={pad.storedName}
+            color={pad.color}
+            volume={pad.volume}
+            outputDeviceId={outputDeviceId}
+            startSec={pad.startSec}
+            endSec={pad.endSec}
+            onChange={(start, end) => onChange({ startSec: start, endSec: end })}
+          />
+        ) : (
+          <p className="rounded-md border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
+            Kein Jingle geladen.
+          </p>
+        )}
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted-foreground">Start (mm:ss.ms)</span>
+            <MarkInput value={pad.startSec} placeholder="0:00.000" onCommit={(v) => onChange({ startSec: v ?? 0 })} />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted-foreground">Ende (mm:ss.ms)</span>
+            <MarkInput value={pad.endSec} placeholder="bis Ende" onCommit={(v) => onChange({ endSec: v })} />
+          </label>
         </div>
-      </Card>
+        <p className="mt-1 text-xs text-muted-foreground">Marker ziehen, Mausrad zoomt. Ende leer = bis zum Dateiende.</p>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={pad.loop} onChange={(e) => onChange({ loop: e.target.checked })} />
+        Wiederholen (Loop)
+      </label>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+        <Button variant="outline" size="sm" onClick={onPick}>
+          <FolderOpen className="size-4" /> {pad.storedName ? 'Datei ersetzen' : 'Datei laden'}
+        </Button>
+        {pad.storedName && (
+          <Button variant="ghost" size="sm" onClick={onClear}>
+            Leeren
+          </Button>
+        )}
+        <div className="flex-1" />
+        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={onRemove}>
+          <Trash2 className="size-4" /> Pad
+        </Button>
+      </div>
     </div>
   )
 }
 
-// Marker-Feld (mm:ss oder Sekunden). Leer -> null. Lokaler Puffer, Commit bei Blur.
+// Marker-Feld (mm:ss.mmm oder Sekunden). Leer -> null. Lokaler Puffer, Commit bei Blur.
 function fmtMark(sec: number | null): string {
   if (sec == null) return ''
   const s = Math.max(0, sec)
   const m = Math.floor(s / 60)
-  const r = Math.round(s % 60)
-  return `${m}:${String(r).padStart(2, '0')}`
+  const r = Math.floor(s % 60)
+  const ms = Math.round((s - Math.floor(s)) * 1000)
+  return `${m}:${String(r).padStart(2, '0')}.${String(ms).padStart(3, '0')}`
 }
 function parseMark(text: string): number | null {
   const t = text.trim().replace(',', '.')

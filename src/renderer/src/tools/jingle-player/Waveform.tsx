@@ -1,15 +1,16 @@
 // Waveform-Editor für die Start-/Stopp-Marker eines Jingles. Dekodiert die Datei
-// (Web Audio) zu Peaks, zeichnet sie auf ein Canvas, erlaubt das Ziehen zweier
-// Marker, eine Vorschau-Wiedergabe des Ausschnitts (mit Abspielkopf) und das
-// automatische Trimmen von Stille am Anfang/Ende. Peaks werden je Datei gecacht.
+// (Web Audio, Bytes via IPC) zu Peaks, zeichnet einen ausschnittweise zoombaren
+// Verlauf, erlaubt millisekundengenaues Ziehen zweier Marker, eine Vorschau des
+// Ausschnitts (mit Abspielkopf) und automatisches Trimmen von Stille. Peaks je
+// Datei gecacht.
 
 import { useEffect, useRef, useState } from 'react'
-import { Pause, Play, Scissors } from 'lucide-react'
+import { Minus, Pause, Play, Plus, Scissors } from 'lucide-react'
 import { JINGLE_PROTOCOL } from '@shared/ipc-contracts'
 import { api } from '@renderer/lib/api'
 import { Button } from '@renderer/components/ui/button'
 
-const BUCKETS = 800
+const BUCKETS = 4000 // hohe Auflösung -> auch beim Hineinzoomen brauchbar
 const peakCache = new Map<string, { peaks: Float32Array; duration: number }>()
 
 async function loadPeaks(storedName: string): Promise<{ peaks: Float32Array; duration: number }> {
@@ -18,7 +19,6 @@ async function loadPeaks(storedName: string): Promise<{ peaks: Float32Array; dur
   const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
   const ac = new Ctx()
   try {
-    // Bytes per IPC holen (fetch auf jingle:// scheitert an CORS), dann dekodieren.
     const bytes = await api.jingles.bytes(storedName)
     if (!bytes) throw new Error('Datei nicht gefunden')
     const arr = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
@@ -49,15 +49,20 @@ function detectSilence(peaks: Float32Array, duration: number, threshold = 0.02):
   let e = peaks.length - 1
   while (s < peaks.length && peaks[s] < threshold) s++
   while (e > s && peaks[e] < threshold) e--
-  if (s >= e) return { start: 0, end: duration } // (fast) Stille überall -> nicht trimmen
+  if (s >= e) return { start: 0, end: duration }
   return { start: (s / peaks.length) * duration, end: ((e + 1) / peaks.length) * duration }
 }
 
-function fmt(sec: number): string {
-  const m = Math.floor(sec / 60)
-  const r = Math.floor(sec % 60)
-  return `${m}:${String(r).padStart(2, '0')}`
+/** m:ss.mmm (millisekundengenau). */
+export function fmtMs(sec: number): string {
+  const s = Math.max(0, sec)
+  const m = Math.floor(s / 60)
+  const r = Math.floor(s % 60)
+  const ms = Math.round((s - Math.floor(s)) * 1000)
+  return `${m}:${String(r).padStart(2, '0')}.${String(ms).padStart(3, '0')}`
 }
+
+const clamp01 = (x: number): number => Math.max(0, Math.min(1, x))
 
 interface Props {
   storedName: string
@@ -72,16 +77,26 @@ interface Props {
 export function Waveform({ storedName, color, volume, outputDeviceId, startSec, endSec, onChange }: Props): JSX.Element {
   const [data, setData] = useState<{ peaks: Float32Array; duration: number } | null>(null)
   const [error, setError] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [zoom, setZoom] = useState(1)
+  const [offset, setOffset] = useState(0) // sichtbarer Startzeitpunkt
   const [playT, setPlayT] = useState<number | null>(null)
   const [playing, setPlaying] = useState(false)
-  const drag = useRef<'start' | 'end' | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const drag = useRef<'start' | 'end' | 'pan' | null>(null)
 
-  // refs für die window-Listener (immer aktuelle Werte)
-  const stateRef = useRef({ startSec, endSec, duration: 0 })
-  stateRef.current = { startSec, endSec, duration: data?.duration ?? 0 }
+  const duration = data?.duration ?? 0
+  const viewDur = duration > 0 ? duration / zoom : 1
+  const maxOffset = Math.max(0, duration - viewDur)
+  const viewStart = Math.min(Math.max(0, offset), maxOffset)
+  const viewEnd = viewStart + viewDur
+  const end = endSec ?? duration
+
+  // aktuelle Werte für die window-Listener
+  const ref = useRef({ startSec, endSec, duration, viewStart, viewDur })
+  ref.current = { startSec, endSec, duration, viewStart, viewDur }
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
@@ -89,6 +104,8 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
     let alive = true
     setData(null)
     setError(false)
+    setZoom(1)
+    setOffset(0)
     loadPeaks(storedName)
       .then((d) => alive && setData(d))
       .catch(() => alive && setError(true))
@@ -99,10 +116,11 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
         audioRef.current = null
       }
       setPlayT(null)
+      setPlaying(false)
     }
   }, [storedName])
 
-  // Zeichnen
+  // Zeichnen (nur sichtbares Fenster)
   useEffect(() => {
     const canvas = canvasRef.current
     const wrap = wrapRef.current
@@ -114,48 +132,54 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
     canvas.height = Math.max(1, Math.round(h * dpr))
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.scale(dpr, dpr)
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, w, h)
     const dur = data.duration || 1
-    const end = endSec ?? dur
     const mid = h / 2
-    const barW = w / BUCKETS
-    for (let i = 0; i < BUCKETS; i++) {
+    const i0 = Math.floor((viewStart / dur) * BUCKETS)
+    const i1 = Math.ceil((viewEnd / dur) * BUCKETS)
+    const span = Math.max(1, i1 - i0)
+    const barW = w / span
+    for (let i = i0; i < i1; i++) {
       const t = (i / BUCKETS) * dur
       const inRegion = t >= startSec && t <= end
-      const amp = Math.max(1, data.peaks[i] * (h * 0.46))
-      ctx.fillStyle = inRegion ? color : 'rgba(120,120,138,0.45)'
-      ctx.fillRect(i * barW, mid - amp, Math.max(0.6, barW - 0.4), amp * 2)
+      const amp = Math.max(1, (data.peaks[i] ?? 0) * (h * 0.46))
+      ctx.fillStyle = inRegion ? color : 'rgba(130,130,150,0.5)'
+      ctx.fillRect((i - i0) * barW, mid - amp, Math.max(0.6, barW - 0.3), amp * 2)
     }
-    // Abspielkopf
-    if (playT != null) {
-      const x = (playT / dur) * w
+    if (playT != null && playT >= viewStart && playT <= viewEnd) {
+      const x = ((playT - viewStart) / viewDur) * w
       ctx.fillStyle = '#fff'
       ctx.fillRect(x - 0.5, 0, 1.5, h)
     }
-  }, [data, startSec, endSec, playT, color])
+  }, [data, startSec, endSec, playT, color, zoom, viewStart, viewDur, viewEnd, end])
 
   function timeFromClientX(clientX: number): number {
     const wrap = wrapRef.current
-    const dur = stateRef.current.duration
-    if (!wrap || dur <= 0) return 0
+    const st = ref.current
+    if (!wrap || st.duration <= 0) return 0
     const rect = wrap.getBoundingClientRect()
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-    return ratio * dur
+    return st.viewStart + clamp01((clientX - rect.left) / rect.width) * st.viewDur
   }
 
+  // Marker- und Pan-Drag (window -> löst auch außerhalb aus)
   useEffect(() => {
     const onMove = (e: PointerEvent): void => {
       if (!drag.current) return
-      const { duration, startSec: st, endSec: en } = stateRef.current
-      const end = en ?? duration
-      let t = timeFromClientX(e.clientX)
+      const st = ref.current
+      const e2 = st.endSec ?? st.duration
       if (drag.current === 'start') {
-        t = Math.max(0, Math.min(t, end - 0.05))
-        onChangeRef.current(t <= 0.05 ? 0 : t, en)
-      } else {
-        t = Math.max(st + 0.05, Math.min(t, duration))
-        onChangeRef.current(st, t >= duration - 0.15 ? null : t)
+        const t = Math.max(0, Math.min(timeFromClientX(e.clientX), e2 - 0.02))
+        onChangeRef.current(t <= 0.02 ? 0 : t, st.endSec)
+      } else if (drag.current === 'end') {
+        const t = Math.max(st.startSec + 0.02, Math.min(timeFromClientX(e.clientX), st.duration))
+        onChangeRef.current(st.startSec, t >= st.duration - 0.05 ? null : t)
+      } else if (drag.current === 'pan') {
+        const track = trackRef.current
+        if (!track || st.duration <= 0) return
+        const rect = track.getBoundingClientRect()
+        const center = clamp01((e.clientX - rect.left) / rect.width) * st.duration
+        setOffset(center - st.viewDur / 2)
       }
     }
     const onUp = (): void => {
@@ -168,6 +192,38 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
       window.removeEventListener('pointerup', onUp)
     }
   }, [])
+
+  // Mausrad zoomt (auf den Cursor zentriert) – nativer non-passive Listener.
+  useEffect(() => {
+    const wrap = wrapRef.current
+    if (!wrap) return
+    const onWheel = (e: WheelEvent): void => {
+      const st = ref.current
+      if (st.duration <= 0) return
+      e.preventDefault()
+      const rect = wrap.getBoundingClientRect()
+      const r = clamp01((e.clientX - rect.left) / rect.width)
+      const cursorT = st.viewStart + r * st.viewDur
+      setZoom((z) => {
+        const nz = Math.max(1, Math.min(64, z * (e.deltaY < 0 ? 1.3 : 1 / 1.3)))
+        const nViewDur = st.duration / nz
+        setOffset(Math.max(0, Math.min(cursorT - r * nViewDur, st.duration - nViewDur)))
+        return nz
+      })
+    }
+    wrap.addEventListener('wheel', onWheel, { passive: false })
+    return () => wrap.removeEventListener('wheel', onWheel)
+  }, [])
+
+  function zoomBy(factor: number): void {
+    const center = startSec // beim Knopf-Zoom auf den Start-Marker zentrieren
+    setZoom((z) => {
+      const nz = Math.max(1, Math.min(64, z * factor))
+      const nViewDur = duration / nz
+      setOffset(Math.max(0, Math.min(center - nViewDur / 2, duration - nViewDur)))
+      return nz
+    })
+  }
 
   function stopPreview(): void {
     if (audioRef.current) {
@@ -185,35 +241,37 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
     }
     if (!data) return
     setPlaying(true)
-    const end = endSec ?? data.duration
+    const stop = endSec ?? data.duration
     const el = new Audio(`${JINGLE_PROTOCOL}://library/${storedName}`)
     el.volume = volume
     el.currentTime = startSec
     const withSink = el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
     if (typeof withSink.setSinkId === 'function') withSink.setSinkId(outputDeviceId || 'default').catch(() => {})
     audioRef.current = el
-    const tick = (): void => {
+    el.addEventListener('timeupdate', () => {
       if (audioRef.current !== el) return
-      if (el.currentTime >= end) {
-        stopPreview()
-        return
-      }
-      setPlayT(el.currentTime)
-    }
-    el.addEventListener('timeupdate', tick)
+      if (el.currentTime >= stop) stopPreview()
+      else setPlayT(el.currentTime)
+    })
     el.addEventListener('ended', stopPreview)
-    void el.play().catch(() => stopPreview())
+    void el.play().catch(stopPreview)
   }
 
-  const dur = data?.duration ?? 0
-  const startPct = dur > 0 ? (startSec / dur) * 100 : 0
-  const endPct = dur > 0 ? ((endSec ?? dur) / dur) * 100 : 100
+  // Marker-Positionen im sichtbaren Fenster (%) bzw. außerhalb -> Griff ausblenden
+  const startInView = startSec >= viewStart && startSec <= viewEnd
+  const endInView = end >= viewStart && end <= viewEnd
+  const startPct = ((startSec - viewStart) / viewDur) * 100
+  const endPct = ((end - viewStart) / viewDur) * 100
+  const dimLeft = clamp01((startSec - viewStart) / viewDur) * 100
+  const dimRight = (1 - clamp01((end - viewStart) / viewDur)) * 100
+  const thumbW = (1 / zoom) * 100
+  const thumbLeft = duration > 0 ? (viewStart / duration) * 100 : 0
 
   return (
     <div>
       <div
         ref={wrapRef}
-        className="relative h-24 w-full overflow-hidden rounded-md border border-border bg-black/40 select-none"
+        className="relative h-36 w-full select-none overflow-hidden rounded-md border border-border bg-black/40"
       >
         {error ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -224,17 +282,29 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
         ) : (
           <>
             <canvas ref={canvasRef} className="block h-full w-full" />
-            {/* abgedunkelte Bereiche außerhalb der Region */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 bg-black/55" style={{ width: `${startPct}%` }} />
-            <div className="pointer-events-none absolute inset-y-0 right-0 bg-black/55" style={{ width: `${100 - endPct}%` }} />
-            {/* Marker-Griffe (breite, unsichtbare Trefferzone) */}
-            <Handle pct={startPct} color={color} onDown={() => (drag.current = 'start')} />
-            <Handle pct={endPct} color={color} onDown={() => (drag.current = 'end')} />
+            <div className="pointer-events-none absolute inset-y-0 left-0 bg-black/55" style={{ width: `${dimLeft}%` }} />
+            <div className="pointer-events-none absolute inset-y-0 right-0 bg-black/55" style={{ width: `${dimRight}%` }} />
+            {startInView && <Handle pct={startPct} color={color} onDown={() => (drag.current = 'start')} />}
+            {endInView && <Handle pct={endPct} color={color} onDown={() => (drag.current = 'end')} />}
           </>
         )}
       </div>
 
-      <div className="mt-1.5 flex items-center gap-2">
+      {/* Scroll-/Übersichtsleiste (nur wenn gezoomt) */}
+      {data && zoom > 1.01 && (
+        <div ref={trackRef} className="relative mt-1 h-2 w-full rounded-full bg-muted">
+          <div
+            onPointerDown={(e) => {
+              e.preventDefault()
+              drag.current = 'pan'
+            }}
+            className="absolute inset-y-0 cursor-grab rounded-full bg-primary/60 hover:bg-primary/80"
+            style={{ left: `${thumbLeft}%`, width: `${thumbW}%` }}
+          />
+        </div>
+      )}
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" disabled={!data} onClick={togglePreview}>
           {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
           {playing ? 'Stopp' : 'Vorschau'}
@@ -245,17 +315,25 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
           disabled={!data}
           onClick={() => {
             if (!data) return
-            const { start, end } = detectSilence(data.peaks, data.duration)
-            onChange(start <= 0.05 ? 0 : start, end >= data.duration - 0.15 ? null : end)
+            const { start, end: e } = detectSilence(data.peaks, data.duration)
+            onChange(start <= 0.02 ? 0 : start, e >= data.duration - 0.05 ? null : e)
           }}
           title="Stille am Anfang/Ende automatisch wegschneiden"
         >
           <Scissors className="size-4" /> Stille trimmen
         </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-7" disabled={!data || zoom <= 1.01} onClick={() => zoomBy(1 / 1.6)} title="Auszoomen">
+            <Minus className="size-4" />
+          </Button>
+          <span className="w-9 text-center text-xs tabular-nums text-muted-foreground">{zoom.toFixed(1)}×</span>
+          <Button variant="ghost" size="icon" className="size-7" disabled={!data} onClick={() => zoomBy(1.6)} title="Hineinzoomen">
+            <Plus className="size-4" />
+          </Button>
+        </div>
         <div className="flex-1" />
         <span className="text-xs tabular-nums text-muted-foreground">
-          {fmt(startSec)} – {fmt(endSec ?? dur)}
-          {dur > 0 ? ` (${fmt(dur)})` : ''}
+          {fmtMs(startSec)} – {fmtMs(end)}
         </span>
       </div>
     </div>
