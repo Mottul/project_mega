@@ -268,14 +268,17 @@ src/
   Schnellnachrichten) und **Vollbild-Anzeige** auf gewähltem Monitor – synchron zur Vorschau,
   da der main-Prozess autoritativ tickt. Alternativ **große Uhr mit Sekundenanzeige**.
 - **OSC-Steuerung** – frei belegbares **Steuerpult** für MadMapper & Co.: Kacheln vom Typ **Fader,
-  Taster, Schalter, XY-Pad und Farbe**, jede mit eigener **OSC-Adresse**. Wie der Jingle-Player mit
-  **Edit-/Live-Modus** (im Edit-Modus wählt der Klick eine Kachel und ihre Einstellungen – Adresse,
-  Bereich, Farbe – erscheinen im **Seiten-Panel**; im Live-Modus sendet die Kachel). Gesendet wird
-  über einen **UDP-Socket im main-Prozess** (`node:dgram`) mit **eigenem, abhängigkeitsfreiem
-  OSC-Codec**; **Host/Ports** sind einstellbar (MadMapper-Standard out 8000 / in 9000). Optional
-  **Feedback empfangen** (lauscht auf dem Eingangs-Port und **spiegelt** Werte zurück in passende
-  Kacheln) samt **OSC-Monitor** (ein-/ausgehende Nachrichten live). Die Oberfläche übersteht
-  App-Neustarts.
+  Taster, Schalter, XY-Pad und Farbe** in einem **Raster**, je mit eigener **OSC-Adresse** und per
+  **Eckgriff frei in der Größe ziehbar** (Spalten-/Zeilenspanne). Wie der Jingle-Player mit
+  **Sets** (mehrere gespeicherte Setups als Tabs in der Kopfzeile) und **Edit-/Live-Umschalter
+  rechts in der Kopfzeile**: im Edit-Modus wählt der Klick eine Kachel und ihre Einstellungen
+  erscheinen im **Seiten-Panel**, im Live-Modus sendet die Kachel. **Fader, XY-Pad und Farb-Regler
+  ziehen relativ** ab der aktuellen Position (springen nicht auf den Klickpunkt); die **Farb-Kachel**
+  zeigt alle Regler dauerhaft (Hue, R/G/B und **Pipette**/EyeDropper). Gesendet wird über einen **UDP-Socket im
+  main-Prozess** (`node:dgram`) mit **eigenem, abhängigkeitsfreiem OSC-Codec**; **Host/Ports** sind
+  einstellbar (MadMapper-Standard out 8000 / in 9000). Optional **Feedback empfangen** (lauscht auf
+  dem Eingangs-Port und **spiegelt** Werte zurück in passende Kacheln) samt **OSC-Monitor**. Sets und
+  Oberfläche überstehen App-Neustarts.
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
   (Throw Ratio / Objektivwahl), **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
   **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis),

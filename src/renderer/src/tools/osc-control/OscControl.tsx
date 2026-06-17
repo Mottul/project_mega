@@ -1,16 +1,27 @@
-// OSC-Steuerung: ein frei belegbares Steuerpult (Fader/Taster/Schalter/XY/Farbe),
-// das OSC an MadMapper & Co. sendet. Aufbau wie die übrigen Tools: großer
-// Arbeitsbereich (Mitte) + Inspector rechts (ToolShell). Zwei Modi wie der
-// Jingle-Player: „Bearbeiten“ (Kachel anklicken = auswählen) und „Live“
-// (Kachel bedienen = senden). Das Senden läuft über den main-Prozess (api.osc).
+// OSC-Steuerung: frei belegbares Steuerpult (Fader/Taster/Schalter/XY/Farbe),
+// das OSC an MadMapper & Co. sendet. Aufbau wie die übrigen Tools (ToolShell:
+// Arbeitsfläche + Inspector). In der Kopfzeile: SETS (gespeicherte Setups) links,
+// Edit-/Live-Umschalter rechts (wie im Jingle-Player). Die Kacheln liegen in
+// einem Raster und sind in der Größe ziehbar (Edit-Modus). Gesendet wird über
+// den main-Prozess (api.osc).
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject
+} from 'react'
 import {
   Activity,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
+  Music,
   Pencil,
+  Pipette,
   Play,
   Plus,
   Radio,
@@ -31,6 +42,7 @@ import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import {
   makeWidget,
+  MAX_CH,
   useOscSurface,
   WIDGET_COLORS,
   WIDGET_TYPE_LABEL,
@@ -38,10 +50,16 @@ import {
   type OscWidgetType
 } from './store'
 
+/** Höhe einer Rasterzeile (px) und Abstand zwischen den Kacheln (px). */
+const ROW_H = 56
+const GAP = 12
+
 /* ------------------------------- Hilfen --------------------------------- */
 
 const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)
 const clamp = (n: number, a: number, b: number): number => (n < a ? a : n > b ? b : n)
+const clampInt = (n: number, a: number, b: number): number =>
+  Math.min(b, Math.max(a, Math.round(Number.isFinite(n) ? n : a)))
 
 function rgb01ToHex(r: number, g: number, b: number): string {
   const h = (x: number): string => Math.round(clamp01(x) * 255).toString(16).padStart(2, '0')
@@ -52,6 +70,36 @@ function hexToRgb01(hex: string): { r: number; g: number; b: number } {
   if (!m) return { r: 0, g: 0, b: 0 }
   const n = parseInt(m[1], 16)
   return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 }
+}
+function rgb2hsv(r: number, g: number, b: number): { h: number; s: number; v: number } {
+  const mx = Math.max(r, g, b)
+  const mn = Math.min(r, g, b)
+  const d = mx - mn
+  let h = 0
+  if (d) {
+    if (mx === r) h = ((g - b) / d) % 6
+    else if (mx === g) h = (b - r) / d + 2
+    else h = (r - g) / d + 4
+    h *= 60
+    if (h < 0) h += 360
+  }
+  return { h, s: mx === 0 ? 0 : d / mx, v: mx }
+}
+function hsv2rgb(h: number, s: number, v: number): { r: number; g: number; b: number } {
+  h = ((h % 360) + 360) % 360
+  const c = v * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = v - c
+  let r = 0
+  let g = 0
+  let b = 0
+  if (h < 60) [r, g, b] = [c, x, 0]
+  else if (h < 120) [r, g, b] = [x, c, 0]
+  else if (h < 180) [r, g, b] = [0, c, x]
+  else if (h < 240) [r, g, b] = [0, x, c]
+  else if (h < 300) [r, g, b] = [x, 0, c]
+  else [r, g, b] = [c, 0, x]
+  return { r: r + m, g: g + m, b: b + m }
 }
 function argVal(a: OscArg): number | string | boolean {
   return a.type === 'T' ? true : a.type === 'F' ? false : a.value
@@ -75,6 +123,10 @@ function fmtArgs(args: (number | string | boolean)[]): string {
     .join('  ')
 }
 
+const HAS_EYEDROPPER = typeof window !== 'undefined' && 'EyeDropper' in window
+const HUE_GRADIENT =
+  'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)'
+
 interface LogEntry {
   id: number
   dir: 'out' | 'in'
@@ -89,14 +141,15 @@ type SendMany = (msgs: OscMessage[]) => void
 /* ------------------------------ Hauptansicht ---------------------------- */
 
 export function OscControl(): JSX.Element {
-  const widgets = useOscSurface((s) => s.widgets)
-  const columns = useOscSurface((s) => s.columns)
+  const sets = useOscSurface((s) => s.sets)
+  const currentSetId = useOscSurface((s) => s.currentSetId)
   const mode = useOscSurface((s) => s.mode)
   const setStore = useOscSurface((s) => s.set)
-  const addWidget = useOscSurface((s) => s.addWidget)
-  const removeWidget = useOscSurface((s) => s.removeWidget)
-  const moveWidget = useOscSurface((s) => s.moveWidget)
   const live = mode === 'live'
+
+  const set = sets.find((x) => x.id === currentSetId) ?? sets[0]
+  const widgets = set.widgets
+  const columns = set.columns
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [status, setStatus] = useState<OscStatus | null>(null)
@@ -104,13 +157,16 @@ export function OscControl(): JSX.Element {
   const [log, setLog] = useState<LogEntry[]>([])
   const logRef = useRef<LogEntry[]>([])
   const logSeq = useRef(0)
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  // Set-Wechsel -> Auswahl zurücksetzen.
+  useEffect(() => setSelectedId(null), [currentSetId])
 
   const pushLog = useCallback(
     (dir: 'out' | 'in', address: string, args: (number | string | boolean)[]) => {
       const now = Date.now()
       const cur = logRef.current
       const top = cur[0]
-      // schnelle Wiederholungen derselben Adresse (Fader) zu EINER Zeile bündeln
       if (top && top.dir === dir && top.address === address && now - top.at < 80) {
         logRef.current = [{ ...top, args, at: now }, ...cur.slice(1)]
       } else {
@@ -136,7 +192,6 @@ export function OscControl(): JSX.Element {
     [pushLog]
   )
 
-  // Konfiguration/Status laden + Feedback-/Statusabos.
   useEffect(() => {
     let alive = true
     void api.osc.config().then((c) => alive && setConfig(c))
@@ -156,48 +211,48 @@ export function OscControl(): JSX.Element {
   const selected = widgets.find((w) => w.id === selectedId) ?? null
 
   function onAdd(type: OscWidgetType): void {
-    const id = addWidget(type)
+    const id = useOscSurface.getState().addWidget(type)
     setSelectedId(id)
     if (mode !== 'edit') setStore({ mode: 'edit' })
-  }
-  function onTileClick(w: OscWidget): void {
-    if (!live) setSelectedId(w.id)
   }
 
   const statusDot = status ? (status.lastError ? 'bg-destructive' : 'bg-emerald-500') : 'bg-muted-foreground'
 
   const main = (
     <div className="flex h-full flex-col">
-      {/* Kopfzeile: Modusumschalter + Verbindungsstatus */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-3">
-        <div className="inline-flex overflow-hidden rounded-md border border-border">
-          <button
-            type="button"
-            onClick={() => setStore({ mode: 'edit' })}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors',
-              !live ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/60'
-            )}
+      {/* Kopfzeile: Sets links, Edit/Live rechts */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
+        <div className="flex flex-wrap items-center gap-1">
+          {sets.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => useOscSurface.getState().selectSet(b.id)}
+              className={cn(
+                'rounded-md border px-3 py-1.5 text-sm transition-colors',
+                b.id === set.id
+                  ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
+                  : 'border-border text-muted-foreground hover:border-primary/40'
+              )}
+            >
+              {b.name}
+            </button>
+          ))}
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Set hinzufügen"
+            onClick={() => useOscSurface.getState().addSet()}
           >
-            <Pencil className="size-4" /> Bearbeiten
-          </button>
-          <button
-            type="button"
-            onClick={() => setStore({ mode: 'live' })}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors',
-              live ? 'bg-emerald-600 text-white' : 'hover:bg-muted/60'
-            )}
-          >
-            <Play className="size-4" /> Live
-          </button>
+            <Plus className="size-4" />
+          </Button>
         </div>
+
+        <div className="flex-1" />
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className={cn('size-2.5 rounded-full', statusDot)} />
-          <span className="tabular-nums">
-            {status ? `${status.host}:${status.outPort}` : '–'}
-          </span>
+          <span className="tabular-nums">{status ? `${status.host}:${status.outPort}` : '–'}</span>
           {status?.listening && (
             <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs">
               <Radio className="size-3" /> {status.inPort}
@@ -205,9 +260,31 @@ export function OscControl(): JSX.Element {
           )}
         </div>
 
-        <span className="ml-auto text-xs text-muted-foreground">
-          {live ? 'Live – Kacheln senden OSC' : 'Bearbeiten – Kachel wählen, rechts einstellen'}
-        </span>
+        {/* Edit / Live */}
+        <div className="flex overflow-hidden rounded-md border border-border">
+          <button
+            type="button"
+            onClick={() => setStore({ mode: 'edit' })}
+            className={cn(
+              'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
+              !live ? 'bg-primary/15 font-semibold text-primary' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Pencil className="size-4" /> Edit
+          </button>
+          <button
+            type="button"
+            onClick={() => setStore({ mode: 'live' })}
+            className={cn(
+              'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
+              live
+                ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Play className="size-4" /> Live
+          </button>
+        </div>
       </div>
 
       {/* Steuerpult */}
@@ -218,8 +295,13 @@ export function OscControl(): JSX.Element {
           </Card>
         ) : (
           <div
-            className="grid gap-3"
-            style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+            ref={gridRef}
+            className="grid"
+            style={{
+              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+              gridAutoRows: `${ROW_H}px`,
+              gap: `${GAP}px`
+            }}
           >
             {widgets.map((w, i) => (
               <WidgetTile
@@ -229,12 +311,17 @@ export function OscControl(): JSX.Element {
                 selected={w.id === selectedId}
                 first={i === 0}
                 last={i === widgets.length - 1}
-                onClick={() => onTileClick(w)}
+                columns={columns}
+                gridRef={gridRef}
+                onClick={() => {
+                  if (!live) setSelectedId(w.id)
+                }}
                 onSend={send}
                 onSendMany={sendMany}
-                onMove={(dir) => moveWidget(w.id, dir)}
+                onMove={(dir) => useOscSurface.getState().moveWidget(w.id, dir)}
+                onResize={(cw, ch) => useOscSurface.getState().resizeWidget(w.id, cw, ch)}
                 onRemove={() => {
-                  removeWidget(w.id)
+                  useOscSurface.getState().removeWidget(w.id)
                   if (selectedId === w.id) setSelectedId(null)
                 }}
               />
@@ -253,14 +340,14 @@ export function OscControl(): JSX.Element {
             key={selected.id}
             w={selected}
             onRemove={() => {
-              removeWidget(selected.id)
+              useOscSurface.getState().removeWidget(selected.id)
               setSelectedId(null)
             }}
           />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Im Modus <span className="text-foreground">Bearbeiten</span> eine Kachel anklicken, um
-            Beschriftung, Farbe und OSC-Adresse zu ändern.
+            Im Modus <span className="text-foreground">Edit</span> eine Kachel anklicken, um
+            Beschriftung, Farbe und OSC-Adresse zu ändern. Größe per Eckgriff ziehen.
           </p>
         )}
       </PanelSection>
@@ -272,7 +359,7 @@ export function OscControl(): JSX.Element {
             value={columns}
             min={2}
             max={8}
-            onCommit={(v) => setStore({ columns: v })}
+            onCommit={(v) => useOscSurface.getState().setColumns(v)}
             className="h-8 w-20"
           />
         </label>
@@ -291,13 +378,28 @@ export function OscControl(): JSX.Element {
           size="sm"
           className="w-full text-muted-foreground"
           onClick={() => {
-            if (confirm('Oberfläche auf die Beispiel-Widgets zurücksetzen?')) {
+            if (confirm('Widgets dieses Sets auf die Beispiele zurücksetzen?')) {
               useOscSurface.getState().resetSurface()
               setSelectedId(null)
             }
           }}
         >
           <RotateCcw className="size-3.5" /> Beispiele laden
+        </Button>
+      </PanelSection>
+
+      <PanelSection id="set" title="Set" icon={Music}>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Name</span>
+          <Input value={set.name} onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)} />
+        </label>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => useOscSurface.getState().deleteSet(set.id)}
+        >
+          <Trash2 className="size-3.5" /> Set löschen
         </Button>
       </PanelSection>
 
@@ -331,7 +433,7 @@ function reflectFeedback(fb: OscFeedback): void {
   const num = typeof first === 'number' ? first : typeof first === 'boolean' ? (first ? 1 : 0) : null
   if (num == null) return
   const st = useOscSurface.getState()
-  for (const w of st.widgets) {
+  for (const w of st.currentSet().widgets) {
     if (w.type === 'fader' && w.address === fb.address) {
       const lo = Math.min(w.min, w.max)
       const hi = Math.max(w.min, w.max)
@@ -353,10 +455,13 @@ function WidgetTile({
   selected,
   first,
   last,
+  columns,
+  gridRef,
   onClick,
   onSend,
   onSendMany,
   onMove,
+  onResize,
   onRemove
 }: {
   w: OscWidget
@@ -364,17 +469,49 @@ function WidgetTile({
   selected: boolean
   first: boolean
   last: boolean
+  columns: number
+  gridRef: RefObject<HTMLDivElement>
   onClick: () => void
   onSend: Send
   onSendMany: SendMany
   onMove: (dir: -1 | 1) => void
+  onResize: (cw: number, ch: number) => void
   onRemove: () => void
 }): JSX.Element {
+  const tileRef = useRef<HTMLDivElement>(null)
+  const span = Math.min(w.cw, columns)
+
+  function startResize(e: ReactPointerEvent): void {
+    e.stopPropagation()
+    e.preventDefault()
+    const grid = gridRef.current
+    const tile = tileRef.current
+    if (!grid || !tile) return
+    const colStep = (grid.clientWidth + GAP) / columns
+    const rowStep = ROW_H + GAP
+    const rect = tile.getBoundingClientRect()
+    const left = rect.left
+    const top = rect.top
+    const move = (ev: PointerEvent): void => {
+      const cw = clampInt((ev.clientX - left + GAP) / colStep, 1, columns)
+      const ch = clampInt((ev.clientY - top + GAP) / rowStep, 1, MAX_CH)
+      onResize(cw, ch)
+    }
+    const up = (): void => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   return (
     <div
+      ref={tileRef}
       onClick={onClick}
+      style={{ gridColumn: `span ${span}`, gridRow: `span ${w.ch}` }}
       className={cn(
-        'group relative flex h-44 flex-col rounded-lg border bg-card p-3 transition-colors',
+        'group relative flex h-full min-h-0 flex-col rounded-lg border bg-card p-3 transition-colors',
         selected && !live ? 'border-foreground/60 ring-1 ring-foreground/30' : 'border-border',
         !live && 'cursor-pointer hover:border-foreground/40'
       )}
@@ -394,24 +531,40 @@ function WidgetTile({
         {w.type === 'color' && <ColorPad w={w} onSend={onSend} />}
       </div>
 
-      <div className="mt-1.5 truncate font-mono text-[10px] text-muted-foreground" title={w.address}>
-        {w.address}
-        {w.type === 'xy' && w.addressY ? `  ${w.addressY}` : ''}
-      </div>
+      {!live && (
+        <div className="mt-1.5 truncate pr-4 font-mono text-[10px] text-muted-foreground" title={w.address}>
+          {w.address}
+          {w.type === 'xy' && w.addressY ? `  ${w.addressY}` : ''}
+        </div>
+      )}
 
       {/* Bearbeiten-Overlay: verschieben / löschen */}
       {!live && (
-        <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <TileBtn title="Nach links" disabled={first} onClick={() => onMove(-1)}>
-            <ChevronLeft className="size-3.5" />
-          </TileBtn>
-          <TileBtn title="Nach rechts" disabled={last} onClick={() => onMove(1)}>
-            <ChevronRight className="size-3.5" />
-          </TileBtn>
-          <TileBtn title="Entfernen" onClick={onRemove}>
-            <Trash2 className="size-3.5" />
-          </TileBtn>
-        </div>
+        <>
+          <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <TileBtn title="Nach links" disabled={first} onClick={() => onMove(-1)}>
+              <ChevronLeft className="size-3.5" />
+            </TileBtn>
+            <TileBtn title="Nach rechts" disabled={last} onClick={() => onMove(1)}>
+              <ChevronRight className="size-3.5" />
+            </TileBtn>
+            <TileBtn title="Entfernen" onClick={onRemove}>
+              <Trash2 className="size-3.5" />
+            </TileBtn>
+          </div>
+          {/* Größengriff unten rechts */}
+          <div
+            onPointerDown={startResize}
+            title="Größe ziehen"
+            className="absolute bottom-0 right-0 flex size-4 cursor-nwse-resize items-end justify-end p-0.5 text-muted-foreground/60 hover:text-foreground"
+          >
+            <svg viewBox="0 0 6 6" className="size-2.5 fill-current">
+              <circle cx="5" cy="5" r="0.8" />
+              <circle cx="5" cy="2.5" r="0.8" />
+              <circle cx="2.5" cy="5" r="0.8" />
+            </svg>
+          </div>
+        </>
       )}
     </div>
   )
@@ -450,9 +603,11 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const raf = useRef(0)
   const pending = useRef<number | null>(null)
+  const start = useRef<{ py: number; v: number } | null>(null)
   const lo = Math.min(w.min, w.max)
   const hi = Math.max(w.min, w.max)
-  const norm = hi > lo ? clamp01((w.value - lo) / (hi - lo)) : 0
+  const span = hi - lo
+  const norm = span > 0 ? clamp01((w.value - lo) / span) : 0
 
   useEffect(() => () => cancelAnimationFrame(raf.current), [])
 
@@ -464,12 +619,14 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
     useOscSurface.getState().updateWidget(w.id, { value: v })
     onSend(fmsg(w.address, v))
   }
-  function setFromY(clientY: number): void {
+  // Relativ: ab dem Anfasspunkt ziehen (kein Sprung auf den Klickwert).
+  function drag(clientY: number): void {
     const el = ref.current
-    if (!el) return
+    const st = start.current
+    if (!el || !st) return
     const r = el.getBoundingClientRect()
-    const t = clamp01(1 - (clientY - r.top) / r.height)
-    pending.current = lo + t * (hi - lo)
+    const dNorm = -(clientY - st.py) / r.height
+    pending.current = clamp(st.v + dNorm * span, lo, hi)
     if (!raf.current) raf.current = requestAnimationFrame(flush)
   }
 
@@ -478,13 +635,16 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       ref={ref}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
-        setFromY(e.clientY)
+        start.current = { py: e.clientY, v: w.value }
       }}
       onPointerMove={(e) => {
-        if (e.buttons) setFromY(e.clientY)
+        if (e.buttons) drag(e.clientY)
       }}
-      onPointerUp={(e) => e.currentTarget.releasePointerCapture(e.pointerId)}
-      className="relative h-full w-full cursor-ns-resize overflow-hidden rounded-md bg-muted/50"
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+        start.current = null
+      }}
+      className="relative h-full w-full cursor-ns-resize touch-none overflow-hidden rounded-md bg-muted/50"
     >
       <div
         className="absolute inset-x-0 bottom-0"
@@ -513,11 +673,7 @@ function Toggle({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
         onSend(fmsg(w.address, next ? w.onValue : w.offValue))
       }}
       className="flex h-full w-full items-center justify-center rounded-md border text-sm font-semibold transition-colors"
-      style={{
-        borderColor: w.color,
-        background: on ? w.color : 'transparent',
-        color: on ? '#fff' : undefined
-      }}
+      style={{ borderColor: w.color, background: on ? w.color : 'transparent', color: on ? '#fff' : undefined }}
     >
       {on ? 'AN' : 'AUS'}
     </button>
@@ -552,11 +708,14 @@ function Momentary({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
 }
 
 /* ------------------------- Bedienelement: XY-Pad ------------------------ */
+// Relativ: der Klickpunkt verschiebt NICHT auf den Wert; gezogen wird ab der
+// aktuellen Position (Delta zum Anfasspunkt).
 
 function XYPad({ w, onSendMany }: { w: OscWidget; onSendMany: SendMany }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const raf = useRef(0)
   const pend = useRef<{ x: number; y: number } | null>(null)
+  const start = useRef<{ px: number; py: number; vx: number; vy: number } | null>(null)
 
   useEffect(() => () => cancelAnimationFrame(raf.current), [])
 
@@ -570,14 +729,14 @@ function XYPad({ w, onSendMany }: { w: OscWidget; onSendMany: SendMany }): JSX.E
     if (w.addressY) msgs.push(fmsg(w.addressY, y))
     onSendMany(msgs)
   }
-  function setFrom(clientX: number, clientY: number): void {
+  function drag(clientX: number, clientY: number): void {
     const el = ref.current
-    if (!el) return
+    const st = start.current
+    if (!el || !st) return
     const r = el.getBoundingClientRect()
-    pend.current = {
-      x: clamp01((clientX - r.left) / r.width),
-      y: clamp01(1 - (clientY - r.top) / r.height)
-    }
+    const dx = (clientX - st.px) / r.width
+    const dy = -(clientY - st.py) / r.height
+    pend.current = { x: clamp01(st.vx + dx), y: clamp01(st.vy + dy) }
     if (!raf.current) raf.current = requestAnimationFrame(flush)
   }
 
@@ -586,13 +745,16 @@ function XYPad({ w, onSendMany }: { w: OscWidget; onSendMany: SendMany }): JSX.E
       ref={ref}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
-        setFrom(e.clientX, e.clientY)
+        start.current = { px: e.clientX, py: e.clientY, vx: w.x, vy: w.y }
       }}
       onPointerMove={(e) => {
-        if (e.buttons) setFrom(e.clientX, e.clientY)
+        if (e.buttons) drag(e.clientX, e.clientY)
       }}
-      onPointerUp={(e) => e.currentTarget.releasePointerCapture(e.pointerId)}
-      className="relative h-full w-full cursor-crosshair overflow-hidden rounded-md bg-muted/50"
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+        start.current = null
+      }}
+      className="relative h-full w-full cursor-grab touch-none overflow-hidden rounded-md bg-muted/50 active:cursor-grabbing"
     >
       <div className="absolute inset-y-0" style={{ left: `${w.x * 100}%` }}>
         <div className="h-full w-px bg-foreground/25" />
@@ -609,35 +771,170 @@ function XYPad({ w, onSendMany }: { w: OscWidget; onSendMany: SendMany }): JSX.E
 }
 
 /* ------------------------- Bedienelement: Farbe ------------------------- */
+// Alle Parameter sind direkt sichtbar: Hue + R/G/B-Regler, Hex und Pipette.
 
 function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   const hex = rgb01ToHex(w.r, w.g, w.b)
+  const hsv = rgb2hsv(w.r, w.g, w.b)
+  const lum = 0.299 * w.r + 0.587 * w.g + 0.114 * w.b
+  const hueAccent = (() => {
+    const c = hsv2rgb(hsv.h, 1, 1)
+    return rgb01ToHex(c.r, c.g, c.b)
+  })()
+
+  function emit(r: number, g: number, b: number): void {
+    useOscSurface.getState().updateWidget(w.id, { r, g, b })
+    onSend({
+      address: w.address,
+      args: [
+        { type: 'f', value: r },
+        { type: 'f', value: g },
+        { type: 'f', value: b }
+      ]
+    })
+  }
+  function setHue(h: number): void {
+    const { r, g, b } = hsv2rgb(h, hsv.s, hsv.v)
+    emit(r, g, b)
+  }
+  async function pickColor(): Promise<void> {
+    const ED = (window as unknown as { EyeDropper?: new () => { open(): Promise<{ sRGBHex: string }> } })
+      .EyeDropper
+    if (!ED) return
+    try {
+      const res = await new ED().open()
+      const c = hexToRgb01(res.sRGBHex)
+      emit(c.r, c.g, c.b)
+    } catch {
+      // abgebrochen
+    }
+  }
+
   return (
-    <label
-      className="relative flex h-full w-full cursor-pointer items-end justify-center overflow-hidden rounded-md border border-white/15"
-      style={{ background: hex }}
+    <div className="flex h-full min-h-0 flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <div
+          className="flex h-7 flex-1 items-center justify-center rounded border border-white/15 font-mono text-[11px] uppercase"
+          style={{ background: hex, color: lum > 0.55 ? '#000' : '#fff' }}
+        >
+          {hex}
+        </div>
+        {HAS_EYEDROPPER && (
+          <button
+            type="button"
+            onClick={() => void pickColor()}
+            title="Pipette"
+            className="flex size-7 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          >
+            <Pipette className="size-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-2">
+        {/* Alle Regler greifen relativ (kein Sprung auf den Klickpunkt). */}
+        <ChannelRow
+          letter="H"
+          value={hsv.h / 360}
+          accent={hueAccent}
+          track={HUE_GRADIENT}
+          onChange={(v) => setHue(v * 360)}
+        />
+        <ChannelRow letter="R" value={w.r} accent="#ef4444" onChange={(v) => emit(v, w.g, w.b)} />
+        <ChannelRow letter="G" value={w.g} accent="#22c55e" onChange={(v) => emit(w.r, v, w.b)} />
+        <ChannelRow letter="B" value={w.b} accent="#3b82f6" onChange={(v) => emit(w.r, w.g, v)} />
+      </div>
+    </div>
+  )
+}
+
+function ChannelRow({
+  letter,
+  value,
+  accent,
+  track,
+  onChange
+}: {
+  letter: string
+  value: number
+  accent: string
+  track?: string
+  onChange: (v: number) => void
+}): JSX.Element {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="w-3 shrink-0 text-[10px] font-medium text-muted-foreground">{letter}</span>
+      <RelSlider value={value} accent={accent} track={track} onChange={onChange} />
+    </div>
+  )
+}
+
+// Horizontaler Regler mit RELATIVEM Greifen (wie Fader/XY): beim Antippen wird der
+// Anfasspunkt gemerkt und ab dort gezogen, statt auf den Klickwert zu springen.
+function RelSlider({
+  value,
+  onChange,
+  accent,
+  track
+}: {
+  value: number // 0..1
+  onChange: (v: number) => void
+  accent: string
+  track?: string // optionaler Track-Hintergrund (z.B. Hue-Verlauf)
+}): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  const raf = useRef(0)
+  const pending = useRef<number | null>(null)
+  const start = useRef<{ px: number; v: number } | null>(null)
+
+  useEffect(() => () => cancelAnimationFrame(raf.current), [])
+
+  function flush(): void {
+    raf.current = 0
+    if (pending.current == null) return
+    const v = pending.current
+    pending.current = null
+    onChange(v)
+  }
+  function drag(clientX: number): void {
+    const el = ref.current
+    const st = start.current
+    if (!el || !st) return
+    const r = el.getBoundingClientRect()
+    pending.current = clamp01(st.v + (clientX - st.px) / r.width)
+    if (!raf.current) raf.current = requestAnimationFrame(flush)
+  }
+  const pct = clamp01(value) * 100
+
+  return (
+    <div
+      ref={ref}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        start.current = { px: e.clientX, v: clamp01(value) }
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons) drag(e.clientX)
+      }}
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+        start.current = null
+      }}
+      className="relative h-4 w-full cursor-ew-resize touch-none overflow-hidden rounded"
+      style={track ? { background: track } : undefined}
     >
-      <input
-        type="color"
-        value={hex}
-        onChange={(e) => {
-          const { r, g, b } = hexToRgb01(e.target.value)
-          useOscSurface.getState().updateWidget(w.id, { r, g, b })
-          onSend({
-            address: w.address,
-            args: [
-              { type: 'f', value: r },
-              { type: 'f', value: g },
-              { type: 'f', value: b }
-            ]
-          })
-        }}
-        className="absolute inset-0 cursor-pointer opacity-0"
+      {!track && <div className="absolute inset-0 bg-muted/50" />}
+      {!track && (
+        <div
+          className="absolute inset-y-0 left-0"
+          style={{ width: `${pct}%`, background: accent, opacity: 0.45 }}
+        />
+      )}
+      <div
+        className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow"
+        style={{ left: `${pct}%`, background: accent }}
       />
-      <span className="mb-1 rounded bg-black/40 px-1.5 py-0.5 font-mono text-[11px] uppercase text-white">
-        {hex}
-      </span>
-    </label>
+    </div>
   )
 }
 
@@ -698,7 +995,6 @@ function WidgetEditor({ w, onRemove }: { w: OscWidget; onRemove: () => void }): 
           value={w.type}
           onChange={(e) => {
             const type = e.target.value as OscWidgetType
-            // sinnvolle Zweitadresse für XY ergänzen, sonst Adressen behalten
             const patch: Partial<OscWidget> = { type }
             if (type === 'xy' && !w.addressY) patch.addressY = makeWidget('xy').addressY
             update(w.id, patch)
@@ -754,6 +1050,15 @@ function WidgetEditor({ w, onRemove }: { w: OscWidget; onRemove: () => void }): 
           </Field>
         </div>
       )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Breite (Spalten)">
+          <NumberField value={w.cw} min={1} max={8} onCommit={(v) => update(w.id, { cw: v })} className="h-9" />
+        </Field>
+        <Field label="Höhe (Zeilen)">
+          <NumberField value={w.ch} min={1} max={MAX_CH} onCommit={(v) => update(w.id, { ch: v })} className="h-9" />
+        </Field>
+      </div>
 
       <div>
         <span className="mb-1.5 block text-xs text-muted-foreground">Farbe</span>
@@ -833,12 +1138,7 @@ function ConnectionPanel({
   return (
     <div className="space-y-3">
       <Field label="Host (MadMapper)">
-        <Input
-          value={host}
-          spellCheck={false}
-          placeholder="127.0.0.1"
-          onChange={(e) => setHost(e.target.value)}
-        />
+        <Input value={host} spellCheck={false} placeholder="127.0.0.1" onChange={(e) => setHost(e.target.value)} />
       </Field>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Port aus (OSC out)">
@@ -859,9 +1159,7 @@ function ConnectionPanel({
       </label>
 
       {status?.lastError && (
-        <p className="rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
-          {status.lastError}
-        </p>
+        <p className="rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">{status.lastError}</p>
       )}
 
       <div className="flex items-center gap-2">
@@ -881,8 +1179,7 @@ function ConnectionPanel({
         Gesendet: <span className="tabular-nums text-foreground">{status?.sentCount ?? 0}</span>
         {status?.listening && (
           <>
-            {' · '}Empfangen:{' '}
-            <span className="tabular-nums text-foreground">{status?.recvCount ?? 0}</span>
+            {' · '}Empfangen: <span className="tabular-nums text-foreground">{status?.recvCount ?? 0}</span>
           </>
         )}
       </p>
@@ -903,25 +1200,18 @@ function Monitor({ log, onClear }: { log: LogEntry[]; onClear: () => void }): JS
       </div>
       <div className="max-h-72 space-y-1 overflow-auto rounded-md border border-border bg-background/50 p-2">
         {log.length === 0 ? (
-          <p className="px-1 py-2 text-center text-xs text-muted-foreground">
-            Noch keine OSC-Aktivität.
-          </p>
+          <p className="px-1 py-2 text-center text-xs text-muted-foreground">Noch keine OSC-Aktivität.</p>
         ) : (
           log.map((e) => (
             <div key={e.id} className="flex items-baseline gap-2 font-mono text-[11px]">
               <SlidersHorizontal
-                className={cn(
-                  'size-3 shrink-0 translate-y-0.5',
-                  e.dir === 'out' ? 'text-primary' : 'text-emerald-500'
-                )}
+                className={cn('size-3 shrink-0 translate-y-0.5', e.dir === 'out' ? 'text-primary' : 'text-emerald-500')}
               />
               <span className="shrink-0 text-muted-foreground">{e.dir === 'out' ? '→' : '←'}</span>
               <span className="truncate text-foreground" title={e.address}>
                 {e.address}
               </span>
-              <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
-                {fmtArgs(e.args)}
-              </span>
+              <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{fmtArgs(e.args)}</span>
             </div>
           ))
         )}
