@@ -18,6 +18,10 @@ import type {
   ManualPatch,
   ManualSearchHit,
   MediaItem,
+  OscFeedback,
+  OscMessage,
+  OscSettings,
+  OscStatus,
   PatternConfig,
   PatternVideoProgress,
   PatternVideoRequest,
@@ -130,6 +134,14 @@ export const Channels = {
   jingleRemoteStart: 'jingle:remoteStart',
   jingleRemoteStop: 'jingle:remoteStop',
   jingleRemoteChanged: 'jingle:remoteChanged', // Event: RemoteStatus
+  // OSC-Steuerung (MadMapper & Co.)
+  oscSend: 'osc:send',
+  oscSendMany: 'osc:sendMany',
+  oscStatus: 'osc:status',
+  oscConfig: 'osc:config',
+  oscConfigSet: 'osc:configSet',
+  oscFeedback: 'osc:feedback', // Event: OscFeedback (main -> renderer)
+  oscStatusChanged: 'osc:statusChanged', // Event: OscStatus
   // YouTube-Downloader (yt-dlp)
   ytStatus: 'yt:status',
   ytUpdate: 'yt:update', // yt-dlp-Binary herunterladen/aktualisieren
@@ -292,6 +304,23 @@ export interface ToolboxApi {
     remoteStart(port: number): Promise<RemoteStatus>
     remoteStop(): Promise<RemoteStatus>
     onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
+  }
+
+  osc: {
+    /** Eine OSC-Nachricht an host:outPort senden. */
+    send(msg: OscMessage): Promise<void>
+    /** Mehrere Nachrichten senden (z.B. X+Y eines Pads). */
+    sendMany(msgs: OscMessage[]): Promise<void>
+    /** Aktueller Verbindungs-/Zählerstatus. */
+    status(): Promise<OscStatus>
+    /** Aktuelle OSC-Einstellungen (Host/Ports/Feedback). */
+    config(): Promise<OscSettings>
+    /** Einstellungen ändern (persistiert + bindet den Feedback-Socket neu). */
+    setConfig(patch: Partial<OscSettings>): Promise<OscStatus>
+    /** Eingehende OSC-Pakete (Feedback). Liefert eine Cleanup-Funktion. */
+    onFeedback(cb: (fb: OscFeedback) => void): () => void
+    /** Statusänderungen (Fehler, Feedback-Socket gebunden). Liefert Cleanup. */
+    onStatus(cb: (status: OscStatus) => void): () => void
   }
 
   youtube: {

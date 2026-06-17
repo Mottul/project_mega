@@ -516,6 +516,56 @@ export interface YtJob {
   createdAt: number
 }
 
+/* ---------------------------------- OSC --------------------------------- */
+// OSC-Steuerung (MadMapper & Co.): der main-Prozess hält einen UDP-Socket
+// (node:dgram), sendet OSC-Nachrichten an host:outPort und lauscht optional auf
+// inPort für Feedback. Der Renderer baut daraus eine Steueroberfläche
+// (Fader/Buttons/XY/Farbe). Bewusst abhängigkeitsfrei (eigener OSC-Codec).
+
+// Unterstützte OSC-Argumenttypen (Teilmenge von OSC 1.0, die wir senden).
+export type OscArg =
+  | { type: 'f'; value: number } // float32
+  | { type: 'i'; value: number } // int32
+  | { type: 's'; value: string } // String
+  | { type: 'T' } // true
+  | { type: 'F' } // false
+
+export interface OscMessage {
+  address: string // beginnt mit '/'
+  args: OscArg[]
+}
+
+export interface OscSettings {
+  host: string // Ziel-Host (MadMapper), z.B. '127.0.0.1'
+  outPort: number // OSC-Ausgang (MadMapper-Standard 8000)
+  inPort: number // OSC-Feedback-Eingang (MadMapper-Standard 9000)
+  feedbackEnabled: boolean // auf inPort lauschen?
+}
+
+export const DEFAULT_OSC_SETTINGS: OscSettings = {
+  host: '127.0.0.1',
+  outPort: 8000,
+  inPort: 9000,
+  feedbackEnabled: false
+}
+
+export interface OscStatus {
+  host: string
+  outPort: number
+  inPort: number
+  listening: boolean // Feedback-Socket gebunden?
+  lastError: string | null
+  sentCount: number
+  recvCount: number
+}
+
+/** Ein empfangenes OSC-Paket (main -> renderer: Monitor + Rückmeldung). */
+export interface OscFeedback {
+  address: string
+  args: (number | string | boolean)[]
+  at: number // epoch ms
+}
+
 /* ------------------------------- Settings ------------------------------- */
 
 export interface PatternPreset {
@@ -574,6 +624,7 @@ export interface AppSettings {
   patternPresets: PatternPreset[]
   theme: ThemeMode
   player: PlayerSettings
+  osc: OscSettings
   /** Kundenansicht: beim Start direkt in dieses Tool springen (gesperrt, ohne
    *  Zurück). null = normaler Start mit Übersicht. Exit per Strg+Shift+K. */
   kioskToolId: string | null
@@ -586,5 +637,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   patternPresets: [],
   theme: 'dark', // bisheriges Erscheinungsbild bleibt Standard
   player: DEFAULT_PLAYER_SETTINGS,
+  osc: DEFAULT_OSC_SETTINGS,
   kioskToolId: null
 }

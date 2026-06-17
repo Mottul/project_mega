@@ -10,6 +10,7 @@ import {
   registerMediaProtocol
 } from './ipc/registry'
 import { logLine } from './services/log'
+import { disposeOsc } from './services/osc/oscService'
 import { stopJingleRemote } from './services/jingleRemoteServer'
 import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
@@ -138,5 +139,6 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   stopRemote()
   stopJingleRemote()
+  disposeOsc()
   disposeTimer()
 })

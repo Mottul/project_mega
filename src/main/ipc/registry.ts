@@ -16,6 +16,7 @@ import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
 import { registerJingleHandlers } from './jingle.handlers'
 import { registerManualsHandlers } from './manuals.handlers'
+import { registerOscHandlers } from './osc.handlers'
 import { registerPatternHandlers } from './pattern.handlers'
 import { registerPlayerHandlers } from './player.handlers'
 import { registerTimerHandlers } from './timer.handlers'
@@ -195,6 +196,7 @@ export function registerIpcHandlers(): void {
   registerUtilHandlers()
   registerJingleHandlers()
   registerYoutubeHandlers()
+  registerOscHandlers()
 }
 
 /** Verbindet die Live-Job-Updates mit ALLEN Fenstern (Multi-Window: ein HAP-

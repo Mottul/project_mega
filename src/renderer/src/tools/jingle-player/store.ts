@@ -129,7 +129,15 @@ export const useJingles = create<JingleState>()(
           const banks = mapPads((pads) =>
             pads.map((p) =>
               p.id === padId
-                ? { ...p, storedName, originalName, label: p.label || originalName.replace(/\.[^.]+$/, '') }
+                ? {
+                    ...p,
+                    storedName,
+                    originalName,
+                    label: p.label || originalName.replace(/\.[^.]+$/, ''),
+                    // Marker gehören zur Datei -> bei neuem File auf vollen Bereich zurücksetzen.
+                    startSec: 0,
+                    endSec: null
+                  }
                 : p
             )
           )
@@ -147,10 +155,29 @@ export const useJingles = create<JingleState>()(
     },
     {
       name: 'jingle-player',
-      // currentBankId nach dem Laden auf eine existierende Bank setzen.
       onRehydrateStorage: () => (state) => {
-        if (state && !state.banks.some((b) => b.id === state.currentBankId)) {
+        if (!state) return
+        // currentBankId auf eine existierende Bank setzen.
+        if (!state.banks.some((b) => b.id === state.currentBankId)) {
           state.currentBankId = state.banks[0]?.id ?? ''
+        }
+        if (state.mode !== 'edit' && state.mode !== 'live') state.mode = 'edit'
+        // Pads aus älteren Versionen ergänzen (sonst sind z.B. startSec/endSec
+        // undefined -> NaN-Marker in der Wellenform).
+        for (const b of state.banks) {
+          b.pads = b.pads.map((p) => ({
+            id: p.id,
+            storedName: p.storedName ?? null,
+            originalName: p.originalName ?? null,
+            label: p.label ?? '',
+            color: p.color ?? PAD_COLORS[0],
+            volume: p.volume ?? 1,
+            loop: p.loop ?? false,
+            mode: p.mode ?? 'oneshot',
+            fadeMs: p.fadeMs ?? 400,
+            startSec: p.startSec ?? 0,
+            endSec: p.endSec ?? null
+          }))
         }
       }
     }

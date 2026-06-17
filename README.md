@@ -267,6 +267,15 @@ src/
   **±1-Minute-Korrektur live**, **Nachrichten an die Bühne** (mit Blink-Option und
   Schnellnachrichten) und **Vollbild-Anzeige** auf gewähltem Monitor – synchron zur Vorschau,
   da der main-Prozess autoritativ tickt. Alternativ **große Uhr mit Sekundenanzeige**.
+- **OSC-Steuerung** – frei belegbares **Steuerpult** für MadMapper & Co.: Kacheln vom Typ **Fader,
+  Taster, Schalter, XY-Pad und Farbe**, jede mit eigener **OSC-Adresse**. Wie der Jingle-Player mit
+  **Edit-/Live-Modus** (im Edit-Modus wählt der Klick eine Kachel und ihre Einstellungen – Adresse,
+  Bereich, Farbe – erscheinen im **Seiten-Panel**; im Live-Modus sendet die Kachel). Gesendet wird
+  über einen **UDP-Socket im main-Prozess** (`node:dgram`) mit **eigenem, abhängigkeitsfreiem
+  OSC-Codec**; **Host/Ports** sind einstellbar (MadMapper-Standard out 8000 / in 9000). Optional
+  **Feedback empfangen** (lauscht auf dem Eingangs-Port und **spiegelt** Werte zurück in passende
+  Kacheln) samt **OSC-Monitor** (ein-/ausgehende Nachrichten live). Die Oberfläche übersteht
+  App-Neustarts.
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
   (Throw Ratio / Objektivwahl), **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
   **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis),
@@ -281,8 +290,10 @@ src/
 
 ## Roadmap
 
-- **OSC-Steueroberfläche** (à la Open Stage Control) mit Fernsteuerung – v. a. für MadMapper
-  (eigene, bereits mit Claude erstellte Referenz wird beim Start der Umsetzung geliefert).
+- **OSC-Steuerung – Ausbaustufen**: Fernsteuerung per Handy/Tablet (eingebetteter Webserver wie beim
+  Jingle-Player), **Learn-Modus** (eingehende Adresse automatisch übernehmen), **MadMapper-Vorlagen**
+  (Surfaces/Medien/Cues), mehrere **Seiten/Bänke** und tool-übergreifende OSC-Trigger (z. B. aus
+  Jingle-/Timer-/Video-Player).
 - **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
   eingebacken).
 - **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der
