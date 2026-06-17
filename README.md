@@ -272,9 +272,9 @@ src/
   **Eckgriff frei in der Größe ziehbar** (Spalten-/Zeilenspanne). Wie der Jingle-Player mit
   **Sets** (mehrere gespeicherte Setups als Tabs in der Kopfzeile) und **Edit-/Live-Umschalter
   rechts in der Kopfzeile**: im Edit-Modus wählt der Klick eine Kachel und ihre Einstellungen
-  erscheinen im **Seiten-Panel**, im Live-Modus sendet die Kachel. Das **XY-Pad zieht relativ** ab
-  der aktuellen Position (springt nicht auf den Klickpunkt); die **Farb-Kachel** zeigt alle Regler
-  dauerhaft (Hue, R/G/B und **Pipette**/EyeDropper). Gesendet wird über einen **UDP-Socket im
+  erscheinen im **Seiten-Panel**, im Live-Modus sendet die Kachel. **Fader und XY-Pad ziehen
+  relativ** ab der aktuellen Position (springen nicht auf den Klickpunkt); die **Farb-Kachel** zeigt
+  alle Regler dauerhaft (Hue, R/G/B und **Pipette**/EyeDropper). Gesendet wird über einen **UDP-Socket im
   main-Prozess** (`node:dgram`) mit **eigenem, abhängigkeitsfreiem OSC-Codec**; **Host/Ports** sind
   einstellbar (MadMapper-Standard out 8000 / in 9000). Optional **Feedback empfangen** (lauscht auf
   dem Eingangs-Port und **spiegelt** Werte zurück in passende Kacheln) samt **OSC-Monitor**. Sets und

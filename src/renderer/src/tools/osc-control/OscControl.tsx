@@ -603,9 +603,11 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const raf = useRef(0)
   const pending = useRef<number | null>(null)
+  const start = useRef<{ py: number; v: number } | null>(null)
   const lo = Math.min(w.min, w.max)
   const hi = Math.max(w.min, w.max)
-  const norm = hi > lo ? clamp01((w.value - lo) / (hi - lo)) : 0
+  const span = hi - lo
+  const norm = span > 0 ? clamp01((w.value - lo) / span) : 0
 
   useEffect(() => () => cancelAnimationFrame(raf.current), [])
 
@@ -617,12 +619,14 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
     useOscSurface.getState().updateWidget(w.id, { value: v })
     onSend(fmsg(w.address, v))
   }
-  function setFromY(clientY: number): void {
+  // Relativ: ab dem Anfasspunkt ziehen (kein Sprung auf den Klickwert).
+  function drag(clientY: number): void {
     const el = ref.current
-    if (!el) return
+    const st = start.current
+    if (!el || !st) return
     const r = el.getBoundingClientRect()
-    const t = clamp01(1 - (clientY - r.top) / r.height)
-    pending.current = lo + t * (hi - lo)
+    const dNorm = -(clientY - st.py) / r.height
+    pending.current = clamp(st.v + dNorm * span, lo, hi)
     if (!raf.current) raf.current = requestAnimationFrame(flush)
   }
 
@@ -631,13 +635,16 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       ref={ref}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
-        setFromY(e.clientY)
+        start.current = { py: e.clientY, v: w.value }
       }}
       onPointerMove={(e) => {
-        if (e.buttons) setFromY(e.clientY)
+        if (e.buttons) drag(e.clientY)
       }}
-      onPointerUp={(e) => e.currentTarget.releasePointerCapture(e.pointerId)}
-      className="relative h-full w-full cursor-ns-resize overflow-hidden rounded-md bg-muted/50"
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+        start.current = null
+      }}
+      className="relative h-full w-full cursor-ns-resize touch-none overflow-hidden rounded-md bg-muted/50"
     >
       <div
         className="absolute inset-x-0 bottom-0"
