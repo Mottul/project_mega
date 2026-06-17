@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FolderOpen, Music, Pencil, Play, Plus, Settings2, Square, Trash2, Upload, Volume2, Wifi } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
+import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
@@ -266,6 +267,15 @@ export function JinglePlayer(): JSX.Element {
           <>Edit-Modus: Pad anklicken, um es rechts zu bearbeiten. Leeres Pad anklicken oder Datei darauf ziehen, um zu laden.</>
         )}
       </p>
+
+      {/* Ausschnitt-Editor in voller Breite unter dem Raster (wenn ein Pad gewählt ist) */}
+      {selected && (
+        <ExcerptEditor
+          pad={selected}
+          outputDeviceId={s.outputDeviceId}
+          onChange={(patch) => s.updatePad(selected.id, patch)}
+        />
+      )}
     </div>
   )
 
@@ -275,7 +285,6 @@ export function JinglePlayer(): JSX.Element {
         {selected ? (
           <PadSettings
             pad={selected}
-            outputDeviceId={s.outputDeviceId}
             onChange={(patch) => s.updatePad(selected.id, patch)}
             onPick={() => void pickFor(selected.id)}
             onClear={() => s.clearPad(selected.id)}
@@ -458,16 +467,72 @@ function PadTile({
   )
 }
 
-function PadSettings({
+// Ausschnitt-Editor (Wellenform + Marker) – volle Breite unter dem Pad-Raster.
+function ExcerptEditor({
   pad,
   outputDeviceId,
+  onChange
+}: {
+  pad: Pad
+  outputDeviceId: string
+  onChange: (patch: Partial<Pad>) => void
+}): JSX.Element {
+  return (
+    <Card className="p-4">
+      <div className="mb-2 flex flex-wrap items-center gap-3">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+          Ausschnitt{pad.label ? ` – ${pad.label}` : ''}
+        </h2>
+        <div className="flex-1" />
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Start
+          <MarkInput
+            value={pad.startSec}
+            placeholder="0:00.000"
+            className="h-8 w-28"
+            onCommit={(v) => onChange({ startSec: v ?? 0 })}
+          />
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Ende
+          <MarkInput
+            value={pad.endSec}
+            placeholder="bis Ende"
+            className="h-8 w-28"
+            onCommit={(v) => onChange({ endSec: v })}
+          />
+        </label>
+      </div>
+      {pad.storedName ? (
+        <Waveform
+          storedName={pad.storedName}
+          color={pad.color}
+          volume={pad.volume}
+          outputDeviceId={outputDeviceId}
+          startSec={pad.startSec}
+          endSec={pad.endSec}
+          onChange={(start, end) => onChange({ startSec: start, endSec: end })}
+        />
+      ) : (
+        <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+          Kein Jingle geladen. Im Panel rechts „Datei laden" wählen oder eine Datei aufs Pad ziehen.
+        </p>
+      )}
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        Marker ziehen für Start/Stopp · Mausrad zoomt · Ende leer = bis zum Dateiende.
+      </p>
+    </Card>
+  )
+}
+
+function PadSettings({
+  pad,
   onChange,
   onPick,
   onClear,
   onRemove
 }: {
   pad: Pad
-  outputDeviceId: string
   onChange: (patch: Partial<Pad>) => void
   onPick: () => void
   onClear: () => void
@@ -531,36 +596,6 @@ function PadSettings({
         </label>
       </div>
 
-      <div>
-        <span className="mb-1 block text-xs text-muted-foreground">Ausschnitt (Start/Stopp)</span>
-        {pad.storedName ? (
-          <Waveform
-            storedName={pad.storedName}
-            color={pad.color}
-            volume={pad.volume}
-            outputDeviceId={outputDeviceId}
-            startSec={pad.startSec}
-            endSec={pad.endSec}
-            onChange={(start, end) => onChange({ startSec: start, endSec: end })}
-          />
-        ) : (
-          <p className="rounded-md border border-dashed border-border px-3 py-3 text-center text-xs text-muted-foreground">
-            Kein Jingle geladen.
-          </p>
-        )}
-        <div className="mt-2 grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Start (mm:ss.ms)</span>
-            <MarkInput value={pad.startSec} placeholder="0:00.000" onCommit={(v) => onChange({ startSec: v ?? 0 })} />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Ende (mm:ss.ms)</span>
-            <MarkInput value={pad.endSec} placeholder="bis Ende" onCommit={(v) => onChange({ endSec: v })} />
-          </label>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">Marker ziehen, Mausrad zoomt. Ende leer = bis zum Dateiende.</p>
-      </div>
-
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={pad.loop} onChange={(e) => onChange({ loop: e.target.checked })} />
         Wiederholen (Loop)
@@ -608,11 +643,13 @@ function parseMark(text: string): number | null {
 function MarkInput({
   value,
   onCommit,
-  placeholder
+  placeholder,
+  className
 }: {
   value: number | null
   onCommit: (v: number | null) => void
   placeholder?: string
+  className?: string
 }): JSX.Element {
   const [text, setText] = useState(fmtMark(value))
   useEffect(() => setText(fmtMark(value)), [value])
@@ -626,6 +663,7 @@ function MarkInput({
       value={text}
       placeholder={placeholder}
       inputMode="numeric"
+      className={className}
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {

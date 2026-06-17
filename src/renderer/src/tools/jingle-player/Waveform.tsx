@@ -271,7 +271,7 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
     <div>
       <div
         ref={wrapRef}
-        className="relative h-36 w-full select-none overflow-hidden rounded-md border border-border bg-black/40"
+        className="relative h-44 w-full select-none overflow-hidden rounded-md border border-border bg-black/40"
       >
         {error ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
