@@ -17,6 +17,7 @@ import {
 import {
   Activity,
   LayoutGrid,
+  Monitor as MonitorIcon,
   Music,
   Pencil,
   Pipette,
@@ -24,9 +25,12 @@ import {
   Plus,
   Radio,
   RotateCcw,
+  RotateCw,
   Send,
   Settings2,
+  Smartphone,
   SlidersHorizontal,
+  Tablet,
   Trash2,
   Zap
 } from 'lucide-react'
@@ -54,6 +58,13 @@ import {
  *  fein -> Fader/Buttons lassen sich klein und trotzdem bedienbar legen. */
 const ROW_H = 38
 const GAP = 8
+
+/** Geräte-Vorschau: logische Auflösung (CSS-Pixel) gängiger Geräte, Hochformat. */
+type DeviceKey = 'off' | 'phone' | 'tablet'
+const DEVICES: Record<Exclude<DeviceKey, 'off'>, { w: number; h: number; label: string }> = {
+  phone: { w: 390, h: 844, label: 'Handy' },
+  tablet: { w: 834, h: 1112, label: 'Tablet' }
+}
 
 /* ------------------------------- Hilfen --------------------------------- */
 
@@ -153,6 +164,8 @@ export function OscControl(): JSX.Element {
   const columns = set.columns
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [device, setDevice] = useState<DeviceKey>('off')
+  const [landscape, setLandscape] = useState(false)
   const [status, setStatus] = useState<OscStatus | null>(null)
   const [config, setConfig] = useState<OscSettings | null>(null)
   const [log, setLog] = useState<LogEntry[]>([])
@@ -211,6 +224,12 @@ export function OscControl(): JSX.Element {
 
   const selected = widgets.find((w) => w.id === selectedId) ?? null
 
+  // Geräte-Vorschau (Stufe 2): die Fläche in einem Handy-/Tablet-Rahmen zeigen.
+  const previewing = device !== 'off'
+  const dim = device === 'off' ? null : DEVICES[device]
+  const frameW = dim ? (landscape ? dim.h : dim.w) : 0
+  const frameH = dim ? (landscape ? dim.w : dim.h) : 0
+
   // Raster-Höhe: so hoch wie das unterste Widget; im Edit-Modus etwas mehr
   // (Platz zum Hineinziehen) und mindestens ein paar Zeilen.
   const maxBottom = widgets.reduce((m, w) => Math.max(m, w.gy + w.ch), 0)
@@ -266,6 +285,24 @@ export function OscControl(): JSX.Element {
           )}
         </div>
 
+        {/* Geräte-Vorschau */}
+        <div className="flex overflow-hidden rounded-md border border-border">
+          <DeviceBtn active={!previewing} title="Normale Ansicht" onClick={() => setDevice('off')}>
+            <MonitorIcon className="size-4" />
+          </DeviceBtn>
+          <DeviceBtn active={device === 'phone'} title="Handy-Vorschau" onClick={() => setDevice('phone')}>
+            <Smartphone className="size-4" />
+          </DeviceBtn>
+          <DeviceBtn active={device === 'tablet'} title="Tablet-Vorschau" onClick={() => setDevice('tablet')}>
+            <Tablet className="size-4" />
+          </DeviceBtn>
+        </div>
+        {previewing && (
+          <Button variant="ghost" size="icon" title="Hoch-/Querformat" onClick={() => setLandscape((v) => !v)}>
+            <RotateCw className="size-4" />
+          </Button>
+        )}
+
         {/* Edit / Live */}
         <div className="flex overflow-hidden rounded-md border border-border">
           <button
@@ -295,7 +332,15 @@ export function OscControl(): JSX.Element {
 
       {/* Steuerpult */}
       <div className="min-h-0 flex-1 overflow-auto p-5">
-        {widgets.length === 0 ? (
+        {previewing ? (
+          <DeviceFrame w={frameW} h={frameH}>
+            {widgets.length === 0 ? (
+              <p className="p-8 text-center text-sm text-muted-foreground">Noch keine Bedienelemente.</p>
+            ) : (
+              <PreviewSurface columns={columns} widgets={widgets} onSend={send} onSendMany={sendMany} />
+            )}
+          </DeviceFrame>
+        ) : widgets.length === 0 ? (
           <Card className="flex h-40 items-center justify-center p-6 text-center text-sm text-muted-foreground">
             Noch keine Bedienelemente. Rechts unter „Oberfläche“ ein Widget hinzufügen.
           </Card>
@@ -491,6 +536,7 @@ function WidgetTile({
   onRemove: () => void
 }): JSX.Element {
   const tileRef = useRef<HTMLDivElement>(null)
+  const [dragging, setDragging] = useState(false)
   const gx = Math.min(Math.max(0, w.gx), columns - 1)
   const cw = Math.min(w.cw, columns - gx)
   // Sehr flach (1 Zeile): Beschriftung weglassen, damit der Regler nicht
@@ -511,6 +557,7 @@ function WidgetTile({
     const sgy = w.gy
     const spx = e.clientX
     const spy = e.clientY
+    setDragging(true)
     const move = (ev: PointerEvent): void => {
       const ngx = clampInt(sgx + (ev.clientX - spx) / colStep, 0, columns - cw)
       const ngy = Math.max(0, Math.round(sgy + (ev.clientY - spy) / rowStep))
@@ -519,6 +566,8 @@ function WidgetTile({
     const up = (): void => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      setDragging(false)
+      useOscSurface.getState().settleWidget(w.id) // Überlappung auflösen
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -543,6 +592,7 @@ function WidgetTile({
     const up = (): void => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      useOscSurface.getState().settleWidget(w.id) // Überlappung auflösen
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
@@ -559,7 +609,8 @@ function WidgetTile({
         'group relative z-10 flex h-full min-h-0 flex-col rounded-lg border bg-card transition-colors',
         compact ? 'p-1' : 'p-2',
         selected && !live ? 'border-foreground/60 ring-1 ring-foreground/30' : 'border-border',
-        !live && 'cursor-move hover:border-foreground/40'
+        !live && 'cursor-move hover:border-foreground/40',
+        dragging && 'z-20 opacity-80 shadow-lg'
       )}
     >
       {!compact && (
@@ -638,6 +689,106 @@ function TileBtn({
     >
       {children}
     </button>
+  )
+}
+
+/* ------------------------- Geräte-Vorschau ------------------------------ */
+
+function DeviceBtn({
+  active,
+  title,
+  onClick,
+  children
+}: {
+  active: boolean
+  title: string
+  onClick: () => void
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      className={cn(
+        'flex items-center px-2.5 py-1.5 transition-colors',
+        active ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+// Geräterahmen, der seinen Inhalt (Fläche in Originalauflösung) auf die
+// verfügbare Größe herunterskaliert.
+function DeviceFrame({ w, h, children }: { w: number; h: number; children: ReactNode }): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const update = (): void => {
+      const availW = el.clientWidth - 24
+      const availH = el.clientHeight - 24
+      setScale(Math.max(0.2, Math.min(1, availW / (w + 24), availH / (h + 24))))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [w, h])
+  return (
+    <div ref={ref} className="flex h-full w-full items-center justify-center">
+      <div style={{ transform: `scale(${scale})` }} className="origin-center">
+        <div className="rounded-[2.6rem] border-[12px] border-neutral-800 bg-neutral-800 shadow-2xl">
+          <div style={{ width: w, height: h }} className="overflow-auto rounded-[1.6rem] bg-background p-3">
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Fläche live (interaktiv) in der Vorschau – ohne Edit-Werkzeuge.
+function PreviewSurface({
+  columns,
+  widgets,
+  onSend,
+  onSendMany
+}: {
+  columns: number
+  widgets: OscWidget[]
+  onSend: Send
+  onSendMany: SendMany
+}): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  return (
+    <div
+      ref={ref}
+      className="grid"
+      style={{
+        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        gridAutoRows: `${ROW_H}px`,
+        gap: `${GAP}px`
+      }}
+    >
+      {widgets.map((w) => (
+        <WidgetTile
+          key={w.id}
+          w={w}
+          live
+          selected={false}
+          columns={columns}
+          gridRef={ref}
+          onSelect={() => {}}
+          onSend={onSend}
+          onSendMany={onSendMany}
+          onRemove={() => {}}
+        />
+      ))}
+    </div>
   )
 }
 
