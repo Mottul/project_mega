@@ -12,6 +12,7 @@ import {
 import { logLine } from './services/log'
 import { disposeOsc } from './services/osc/oscService'
 import { stopJingleRemote } from './services/jingleRemoteServer'
+import { stopOscRemote } from './services/oscRemoteServer'
 import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
 import { stopRemote } from './services/player/remoteServer'
@@ -139,6 +140,7 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   stopRemote()
   stopJingleRemote()
+  stopOscRemote()
   disposeOsc()
   disposeTimer()
 })

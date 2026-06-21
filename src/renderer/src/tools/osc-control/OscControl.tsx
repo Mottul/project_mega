@@ -32,9 +32,18 @@ import {
   SlidersHorizontal,
   Tablet,
   Trash2,
+  Wifi,
   Zap
 } from 'lucide-react'
-import type { OscArg, OscFeedback, OscMessage, OscSettings, OscStatus } from '@shared/types'
+import type {
+  OscArg,
+  OscFeedback,
+  OscMessage,
+  OscRemoteSnapshot,
+  OscSettings,
+  OscStatus,
+  RemoteStatus
+} from '@shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -42,6 +51,7 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
+import { QrCode } from '../video-player/QrCode'
 import {
   makeWidget,
   MAX_CH,
@@ -166,6 +176,8 @@ export function OscControl(): JSX.Element {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [device, setDevice] = useState<DeviceKey>('off')
   const [landscape, setLandscape] = useState(false)
+  const [remote, setRemote] = useState<RemoteStatus | null>(null)
+  const [remotePort, setRemotePort] = useState(8091)
   const [status, setStatus] = useState<OscStatus | null>(null)
   const [config, setConfig] = useState<OscSettings | null>(null)
   const [log, setLog] = useState<LogEntry[]>([])
@@ -221,6 +233,74 @@ export function OscControl(): JSX.Element {
     }
   }, [pushLog])
 
+  // Fernsteuerung: Status beobachten + Steuerbefehle vom Handy/Tablet anwenden
+  // (Live-Wert aktualisieren UND OSC senden – wie eine lokale Bedienung).
+  useEffect(() => {
+    void api.osc.remoteStatus().then(setRemote)
+    const offChanged = api.osc.onRemoteChanged(setRemote)
+    const offCmd = api.osc.onRemoteCommand((cmd) => {
+      const st = useOscSurface.getState()
+      const w = st.currentSet().widgets.find((x) => x.id === cmd.id)
+      if (!w) return
+      if (cmd.kind === 'fader') {
+        st.updateWidget(w.id, { value: cmd.value })
+        send(fmsg(w.address, cmd.value))
+      } else if (cmd.kind === 'toggle') {
+        st.updateWidget(w.id, { value: cmd.on ? 1 : 0 })
+        send(fmsg(w.address, cmd.on ? w.onValue : w.offValue))
+      } else if (cmd.kind === 'button') {
+        send(fmsg(w.address, cmd.down ? w.onValue : w.offValue))
+      } else if (cmd.kind === 'xy') {
+        st.updateWidget(w.id, { x: cmd.x, y: cmd.y })
+        const msgs: OscMessage[] = [fmsg(w.address, cmd.x)]
+        if (w.addressY) msgs.push(fmsg(w.addressY, cmd.y))
+        sendMany(msgs)
+      } else if (cmd.kind === 'color') {
+        st.updateWidget(w.id, { r: cmd.r, g: cmd.g, b: cmd.b })
+        send({
+          address: w.address,
+          args: [
+            { type: 'f', value: cmd.r },
+            { type: 'f', value: cmd.g },
+            { type: 'f', value: cmd.b }
+          ]
+        })
+      }
+    })
+    return () => {
+      offChanged()
+      offCmd()
+    }
+  }, [send, sendMany])
+
+  // Schnappschuss der Oberfläche an den Fernsteuer-Server – gedrosselt, da sich
+  // Werte beim Ziehen schnell ändern.
+  const pubRef = useRef<{ t: number; timer: ReturnType<typeof setTimeout> | null }>({ t: 0, timer: null })
+  useEffect(() => {
+    const p = pubRef.current
+    const run = (): void => {
+      p.t = Date.now()
+      p.timer = null
+      publishSnapshot()
+    }
+    const dt = Date.now() - p.t
+    if (dt >= 150) run()
+    else if (!p.timer) p.timer = setTimeout(run, 150 - dt)
+  }, [set, columns, widgets])
+
+  // Beim Schließen des Tabs ausstehende Veröffentlichung abbrechen und dem
+  // Server „getrennt" melden.
+  useEffect(() => {
+    return () => {
+      const p = pubRef.current
+      if (p.timer) {
+        clearTimeout(p.timer)
+        p.timer = null
+      }
+      void api.osc.publish({ connected: false, setName: '', columns: 24, widgets: [] })
+    }
+  }, [])
+
   const selected = widgets.find((w) => w.id === selectedId) ?? null
 
   // Geräte-Vorschau (Stufe 2): die Fläche in einem Handy-/Tablet-Rahmen zeigen.
@@ -232,6 +312,49 @@ export function OscControl(): JSX.Element {
   function removeWidget(id: string): void {
     useOscSurface.getState().removeWidget(id)
     if (selectedId === id) setSelectedId(null)
+  }
+
+  function publishSnapshot(): void {
+    const cs = useOscSurface.getState().currentSet()
+    const snap: OscRemoteSnapshot = {
+      connected: true,
+      setName: cs.name,
+      columns: cs.columns,
+      widgets: cs.widgets.map((w) => ({
+        id: w.id,
+        type: w.type,
+        label: w.label,
+        color: w.color,
+        address: w.address,
+        addressY: w.addressY,
+        min: w.min,
+        max: w.max,
+        gx: w.gx,
+        gy: w.gy,
+        cw: w.cw,
+        ch: w.ch,
+        value: w.value,
+        x: w.x,
+        y: w.y,
+        r: w.r,
+        g: w.g,
+        b: w.b
+      }))
+    }
+    void api.osc.publish(snap)
+  }
+
+  async function toggleRemote(): Promise<void> {
+    if (remote?.running) {
+      setRemote(await api.osc.remoteStop())
+    } else {
+      try {
+        setRemote(await api.osc.remoteStart(remotePort))
+        publishSnapshot() // dem Server sofort den aktuellen Stand geben
+      } catch {
+        // Port belegt o.ä. – Status bleibt unverändert
+      }
+    }
   }
 
   function onAdd(type: OscWidgetType): void {
@@ -451,6 +574,55 @@ export function OscControl(): JSX.Element {
         right={<span className={cn('size-2.5 rounded-full', statusDot)} />}
       >
         <ConnectionPanel config={config} status={status} onApplied={(st) => setStatus(st)} onSend={send} />
+      </PanelSection>
+
+      <PanelSection
+        id="osc-remote"
+        title="Fernsteuerung"
+        icon={Wifi}
+        right={
+          <span className={cn('size-2.5 rounded-full', remote?.running ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Handy/Tablet im selben WLAN bedient diese Oberfläche (ohne Passwort). Dieses Fenster muss
+          offen bleiben.
+        </p>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            Port
+            <Input
+              type="number"
+              value={remotePort}
+              onChange={(e) => setRemotePort(Number(e.target.value) || 8091)}
+              disabled={remote?.running}
+              className="h-8 w-24"
+            />
+          </label>
+          <Button
+            variant={remote?.running ? 'outline' : 'default'}
+            size="sm"
+            className="ml-auto"
+            onClick={() => void toggleRemote()}
+          >
+            <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
+          </Button>
+        </div>
+        {remote?.running && remote.urls[0] && (
+          <div className="flex items-start gap-3 rounded-md border border-border p-2">
+            <div className="shrink-0 rounded bg-white p-1">
+              <QrCode text={remote.urls[0]} size={96} />
+            </div>
+            <div className="min-w-0 text-xs">
+              <p className="mb-1 text-muted-foreground">Im Browser öffnen (QR scannen oder eintippen):</p>
+              {remote.urls.map((u) => (
+                <div key={u} className="truncate font-mono text-foreground">
+                  {u}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </PanelSection>
 
       <PanelSection id="monitor" title="OSC-Monitor" icon={Activity} defaultOpen={false}>
