@@ -483,7 +483,7 @@ export type JingleRemoteCommand = { type: 'trigger'; padId: string } | { type: '
 // Schnappschuss der OSC-Oberfläche für die Handy-/Tablet-Seite und die
 // Steuerbefehle, die von dort zurückkommen (Renderer wendet sie an + sendet OSC).
 
-export type OscRemoteWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color'
+export type OscRemoteWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter'
 
 /** Serialisierbares Widget für die mobile Seite (Teilmenge des Renderer-Widgets). */
 export interface OscRemoteWidget {
@@ -506,6 +506,9 @@ export interface OscRemoteWidget {
   g: number
   b: number
   a: number
+  align: 'left' | 'center' | 'right' // Label-Ausrichtung
+  meterLevel: number // Anzeige/Meter: Füllstand 0..1 (vom Rechner berechnet)
+  meterText: string // Anzeige/Meter: angezeigter Text
 }
 
 export interface OscRemoteSnapshot {

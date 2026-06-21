@@ -40,6 +40,11 @@ header b{font-size:16px}
 .cslider{position:relative;flex:1;height:16px;border-radius:5px;background:var(--muted);overflow:hidden;touch-action:none}
 .cfill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.18)}
 .cthumb{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:#fff;transform:translate(-50%,-50%)}
+.lblview{display:flex;height:100%;width:100%;align-items:center;font-weight:600;line-height:1.1;overflow:hidden;word-break:break-word}
+.meter{flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.mval{text-align:center;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.mbar{height:8px;border-radius:9999px;background:var(--muted);overflow:hidden}
+.mfill{height:100%;border-radius:9999px;transition:width .15s}
 </style>
 </head>
 <body>
@@ -137,6 +142,23 @@ function makeColor(w,body){
   paintSw();body.appendChild(wrap);
   updaters[w.id]=function(nw){if(activeId===w.id)return;r=nw.r;g=nw.g;b=nw.b;a=(nw.a==null?1:nw.a);rr.paint(r);rg.paint(g);rb.paint(b);ra.paint(a);paintSw();};
 }
+function alignJustify(al){return al==='left'?'flex-start':al==='right'?'flex-end':'center';}
+function makeLabel(w,body){
+  var el=document.createElement('div');el.className='lblview';
+  function paint(nw){el.textContent=nw.label||'Überschrift';el.style.color=nw.color;el.style.justifyContent=alignJustify(nw.align);el.style.textAlign=(nw.align||'center');el.style.fontSize=Math.min(10+nw.ch*6,42)+'px';}
+  paint(w);body.appendChild(el);
+  updaters[w.id]=paint;
+}
+function makeMeter(w,body){
+  var wrap=document.createElement('div');wrap.className='meter';
+  var val=document.createElement('div');val.className='mval';
+  var bar=document.createElement('div');bar.className='mbar';
+  var fill=document.createElement('div');fill.className='mfill';
+  bar.appendChild(fill);wrap.appendChild(val);wrap.appendChild(bar);body.appendChild(wrap);
+  function paint(nw){val.textContent=nw.meterText||'';val.style.color=nw.color;fill.style.background=nw.color;fill.style.width=(clamp01(nw.meterLevel||0)*100)+'%';}
+  paint(w);
+  updaters[w.id]=paint;
+}
 
 function build(){
   var grid=document.getElementById('grid');grid.innerHTML='';updaters={};
@@ -147,13 +169,15 @@ function build(){
     var gx=Math.min(Math.max(0,w.gx),cols-1),cw=Math.min(w.cw,cols-gx);
     var tile=document.createElement('div');tile.className='tile';
     tile.style.gridColumn=(gx+1)+' / span '+cw;tile.style.gridRow=(w.gy+1)+' / span '+w.ch;
-    if(w.ch>=2){var lab=document.createElement('div');lab.className='lab';lab.innerHTML='<span class="dot" style="background:'+esc(w.color)+'"></span>'+esc(w.label||'');tile.appendChild(lab);}
+    if(w.ch>=2&&w.type!=='label'){var lab=document.createElement('div');lab.className='lab';lab.innerHTML='<span class="dot" style="background:'+esc(w.color)+'"></span>'+esc(w.label||'');tile.appendChild(lab);}
     var bd=document.createElement('div');bd.className='body';tile.appendChild(bd);
     if(w.type==='fader')makeFader(w,bd);
     else if(w.type==='toggle')makeToggle(w,bd);
     else if(w.type==='button')makeButton(w,bd);
     else if(w.type==='xy')makeXY(w,bd);
     else if(w.type==='color')makeColor(w,bd);
+    else if(w.type==='label')makeLabel(w,bd);
+    else if(w.type==='meter')makeMeter(w,bd);
     grid.appendChild(tile);
   });
 }

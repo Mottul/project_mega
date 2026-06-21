@@ -8,7 +8,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type OscWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color'
+export type OscWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter'
 
 export interface OscWidget {
   id: string
@@ -33,6 +33,8 @@ export interface OscWidget {
   g: number
   b: number
   a: number // Farbe Alpha 0..1
+  align: 'left' | 'center' | 'right' // nur Label: Textausrichtung
+  source: 'osc' | 'video' // nur Anzeige/Meter: Wertquelle (OSC-Feedback oder Video-Restzeit)
 }
 
 export interface OscSet {
@@ -61,7 +63,9 @@ export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
   button: 'Taster',
   toggle: 'Schalter',
   xy: 'XY-Pad',
-  color: 'Farbe'
+  color: 'Farbe',
+  label: 'Label',
+  meter: 'Anzeige'
 }
 
 // Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
@@ -70,7 +74,9 @@ const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
   button: { cw: 4, ch: 2 },
   toggle: { cw: 4, ch: 2 },
   xy: { cw: 8, ch: 5 },
-  color: { cw: 8, ch: 6 }
+  color: { cw: 8, ch: 6 },
+  label: { cw: 10, ch: 2 },
+  meter: { cw: 6, ch: 3 }
 }
 
 // Mindestgröße je Typ -> Regler bleiben bedienbar (Pads behalten Fläche, ein
@@ -80,7 +86,9 @@ export const WIDGET_MIN: Record<OscWidgetType, { cw: number; ch: number }> = {
   button: { cw: 1, ch: 1 },
   toggle: { cw: 1, ch: 1 },
   xy: { cw: 4, ch: 3 },
-  color: { cw: 5, ch: 4 }
+  color: { cw: 5, ch: 4 },
+  label: { cw: 2, ch: 1 },
+  meter: { cw: 3, ch: 2 }
 }
 
 let seq = 0
@@ -192,11 +200,21 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     r: 0.2,
     g: 0.6,
     b: 1,
-    a: 1
+    a: 1,
+    align: 'center',
+    source: 'osc'
   }
   if (type === 'xy') {
     base.address = '/megatoolbox/x'
     base.addressY = '/megatoolbox/y'
+  }
+  if (type === 'label') {
+    base.address = ''
+    base.label = 'Überschrift'
+  }
+  if (type === 'meter') {
+    base.label = 'Anzeige'
+    base.address = '/megatoolbox/level'
   }
   return base
 }
@@ -204,7 +222,7 @@ export function makeWidget(type: OscWidgetType): OscWidget {
 /** Felder eines (evtl. alten) Widgets vervollständigen + Größen begrenzen. */
 function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   const type: OscWidgetType =
-    w && ['fader', 'button', 'toggle', 'xy', 'color'].includes(w.type as string)
+    w && ['fader', 'button', 'toggle', 'xy', 'color', 'label', 'meter'].includes(w.type as string)
       ? (w.type as OscWidgetType)
       : 'fader'
   const def = makeWidget(type)
