@@ -16,8 +16,6 @@ import {
 } from 'react'
 import {
   Activity,
-  ChevronLeft,
-  ChevronRight,
   LayoutGrid,
   Music,
   Pencil,
@@ -43,16 +41,19 @@ import { cn } from '@renderer/lib/utils'
 import {
   makeWidget,
   MAX_CH,
+  MAX_COLS,
   useOscSurface,
   WIDGET_COLORS,
+  WIDGET_MIN,
   WIDGET_TYPE_LABEL,
   type OscWidget,
   type OscWidgetType
 } from './store'
 
-/** Höhe einer Rasterzeile (px) und Abstand zwischen den Kacheln (px). */
-const ROW_H = 56
-const GAP = 12
+/** Höhe einer Rasterzeile (px) und Abstand zwischen den Kacheln (px). Bewusst
+ *  fein -> Fader/Buttons lassen sich klein und trotzdem bedienbar legen. */
+const ROW_H = 38
+const GAP = 8
 
 /* ------------------------------- Hilfen --------------------------------- */
 
@@ -210,6 +211,11 @@ export function OscControl(): JSX.Element {
 
   const selected = widgets.find((w) => w.id === selectedId) ?? null
 
+  // Raster-Höhe: so hoch wie das unterste Widget; im Edit-Modus etwas mehr
+  // (Platz zum Hineinziehen) und mindestens ein paar Zeilen.
+  const maxBottom = widgets.reduce((m, w) => Math.max(m, w.gy + w.ch), 0)
+  const rows = live ? Math.max(maxBottom, 1) : Math.max(maxBottom + 3, 10)
+
   function onAdd(type: OscWidgetType): void {
     const id = useOscSurface.getState().addWidget(type)
     setSelectedId(id)
@@ -303,23 +309,18 @@ export function OscControl(): JSX.Element {
               gap: `${GAP}px`
             }}
           >
-            {widgets.map((w, i) => (
+            {!live && <GridBackdrop columns={columns} rows={rows} />}
+            {widgets.map((w) => (
               <WidgetTile
                 key={w.id}
                 w={w}
                 live={live}
                 selected={w.id === selectedId}
-                first={i === 0}
-                last={i === widgets.length - 1}
                 columns={columns}
                 gridRef={gridRef}
-                onClick={() => {
-                  if (!live) setSelectedId(w.id)
-                }}
+                onSelect={() => setSelectedId(w.id)}
                 onSend={send}
                 onSendMany={sendMany}
-                onMove={(dir) => useOscSurface.getState().moveWidget(w.id, dir)}
-                onResize={(cw, ch) => useOscSurface.getState().resizeWidget(w.id, cw, ch)}
                 onRemove={() => {
                   useOscSurface.getState().removeWidget(w.id)
                   if (selectedId === w.id) setSelectedId(null)
@@ -339,6 +340,7 @@ export function OscControl(): JSX.Element {
           <WidgetEditor
             key={selected.id}
             w={selected}
+            columns={columns}
             onRemove={() => {
               useOscSurface.getState().removeWidget(selected.id)
               setSelectedId(null)
@@ -357,8 +359,8 @@ export function OscControl(): JSX.Element {
           <span className="text-sm">Spalten</span>
           <NumberField
             value={columns}
-            min={2}
-            max={8}
+            min={4}
+            max={MAX_COLS}
             onCommit={(v) => useOscSurface.getState().setColumns(v)}
             className="h-8 w-20"
           />
@@ -449,37 +451,78 @@ function reflectFeedback(fb: OscFeedback): void {
 
 /* ------------------------------- Kachel --------------------------------- */
 
+// Schwach sichtbares Raster im Edit-Modus (Zellen als nicht-interaktive Kacheln
+// hinter den Widgets) -> man sieht, wo gerastert wird.
+function GridBackdrop({ columns, rows }: { columns: number; rows: number }): JSX.Element {
+  const cells: JSX.Element[] = []
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
+      cells.push(
+        <div
+          key={`${x}-${y}`}
+          style={{ gridColumn: `${x + 1}`, gridRow: `${y + 1}` }}
+          className="pointer-events-none rounded-[3px] border border-dashed border-border/40"
+        />
+      )
+    }
+  }
+  return <>{cells}</>
+}
+
 function WidgetTile({
   w,
   live,
   selected,
-  first,
-  last,
   columns,
   gridRef,
-  onClick,
+  onSelect,
   onSend,
   onSendMany,
-  onMove,
-  onResize,
   onRemove
 }: {
   w: OscWidget
   live: boolean
   selected: boolean
-  first: boolean
-  last: boolean
   columns: number
   gridRef: RefObject<HTMLDivElement>
-  onClick: () => void
+  onSelect: () => void
   onSend: Send
   onSendMany: SendMany
-  onMove: (dir: -1 | 1) => void
-  onResize: (cw: number, ch: number) => void
   onRemove: () => void
 }): JSX.Element {
   const tileRef = useRef<HTMLDivElement>(null)
-  const span = Math.min(w.cw, columns)
+  const gx = Math.min(Math.max(0, w.gx), columns - 1)
+  const cw = Math.min(w.cw, columns - gx)
+  // Sehr flach (1 Zeile): Beschriftung weglassen, damit der Regler nicht
+  // verschwindet -> ein 1×1-Taster zeigt weiterhin einen Taster.
+  const compact = w.ch <= 1
+
+  // Kachel ziehen = im Raster verschieben. Griffe/Buttons sind data-no-drag und
+  // starten kein Verschieben.
+  function startDrag(e: ReactPointerEvent): void {
+    if (live) return
+    if ((e.target as HTMLElement).closest('[data-no-drag]')) return
+    onSelect()
+    const grid = gridRef.current
+    if (!grid) return
+    const colStep = (grid.clientWidth + GAP) / columns
+    const rowStep = ROW_H + GAP
+    const sgx = gx
+    const sgy = w.gy
+    const spx = e.clientX
+    const spy = e.clientY
+    const move = (ev: PointerEvent): void => {
+      const ngx = clampInt(sgx + (ev.clientX - spx) / colStep, 0, columns - cw)
+      const ngy = Math.max(0, Math.round(sgy + (ev.clientY - spy) / rowStep))
+      useOscSurface.getState().moveWidgetTo(w.id, ngx, ngy)
+    }
+    const up = (): void => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
 
   function startResize(e: ReactPointerEvent): void {
     e.stopPropagation()
@@ -493,9 +536,9 @@ function WidgetTile({
     const left = rect.left
     const top = rect.top
     const move = (ev: PointerEvent): void => {
-      const cw = clampInt((ev.clientX - left + GAP) / colStep, 1, columns)
-      const ch = clampInt((ev.clientY - top + GAP) / rowStep, 1, MAX_CH)
-      onResize(cw, ch)
+      const ncw = clampInt((ev.clientX - left + GAP) / colStep, 1, columns - gx)
+      const nch = clampInt((ev.clientY - top + GAP) / rowStep, 1, MAX_CH)
+      useOscSurface.getState().resizeWidget(w.id, ncw, nch)
     }
     const up = (): void => {
       window.removeEventListener('pointermove', move)
@@ -505,23 +548,28 @@ function WidgetTile({
     window.addEventListener('pointerup', up)
   }
 
+  const showAddr = !live && w.ch >= 2
+
   return (
     <div
       ref={tileRef}
-      onClick={onClick}
-      style={{ gridColumn: `span ${span}`, gridRow: `span ${w.ch}` }}
+      onPointerDown={startDrag}
+      style={{ gridColumn: `${gx + 1} / span ${cw}`, gridRow: `${w.gy + 1} / span ${w.ch}` }}
       className={cn(
-        'group relative flex h-full min-h-0 flex-col rounded-lg border bg-card p-3 transition-colors',
+        'group relative z-10 flex h-full min-h-0 flex-col rounded-lg border bg-card transition-colors',
+        compact ? 'p-1' : 'p-2',
         selected && !live ? 'border-foreground/60 ring-1 ring-foreground/30' : 'border-border',
-        !live && 'cursor-pointer hover:border-foreground/40'
+        !live && 'cursor-move hover:border-foreground/40'
       )}
     >
-      <div className="mb-2 flex items-center gap-1.5">
-        <span className="size-2.5 shrink-0 rounded-full" style={{ background: w.color }} />
-        <span className="truncate text-sm font-medium" title={w.label}>
-          {w.label || '—'}
-        </span>
-      </div>
+      {!compact && (
+        <div className="mb-1 flex items-center gap-1.5">
+          <span className="size-2 shrink-0 rounded-full" style={{ background: w.color }} />
+          <span className="truncate text-xs font-medium" title={w.label}>
+            {w.label || '—'}
+          </span>
+        </div>
+      )}
 
       <div className={cn('min-h-0 flex-1', !live && 'pointer-events-none')}>
         {w.type === 'fader' && <Fader w={w} onSend={onSend} />}
@@ -531,29 +579,25 @@ function WidgetTile({
         {w.type === 'color' && <ColorPad w={w} onSend={onSend} />}
       </div>
 
-      {!live && (
-        <div className="mt-1.5 truncate pr-4 font-mono text-[10px] text-muted-foreground" title={w.address}>
+      {showAddr && (
+        <div className="mt-1 truncate pr-4 font-mono text-[10px] text-muted-foreground" title={w.address}>
           {w.address}
           {w.type === 'xy' && w.addressY ? `  ${w.addressY}` : ''}
         </div>
       )}
 
-      {/* Bearbeiten-Overlay: verschieben / löschen */}
       {!live && (
         <>
-          <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <TileBtn title="Nach links" disabled={first} onClick={() => onMove(-1)}>
-              <ChevronLeft className="size-3.5" />
-            </TileBtn>
-            <TileBtn title="Nach rechts" disabled={last} onClick={() => onMove(1)}>
-              <ChevronRight className="size-3.5" />
-            </TileBtn>
+          <div
+            data-no-drag
+            className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100"
+          >
             <TileBtn title="Entfernen" onClick={onRemove}>
               <Trash2 className="size-3.5" />
             </TileBtn>
           </div>
-          {/* Größengriff unten rechts */}
           <div
+            data-no-drag
             onPointerDown={startResize}
             title="Größe ziehen"
             className="absolute bottom-0 right-0 flex size-4 cursor-nwse-resize items-end justify-end p-0.5 text-muted-foreground/60 hover:text-foreground"
@@ -982,8 +1026,17 @@ function DecimalField({
   )
 }
 
-function WidgetEditor({ w, onRemove }: { w: OscWidget; onRemove: () => void }): JSX.Element {
+function WidgetEditor({
+  w,
+  columns,
+  onRemove
+}: {
+  w: OscWidget
+  columns: number
+  onRemove: () => void
+}): JSX.Element {
   const update = useOscSurface((s) => s.updateWidget)
+  const min = WIDGET_MIN[w.type]
   return (
     <div className="space-y-3">
       <Field label="Beschriftung">
@@ -1053,10 +1106,10 @@ function WidgetEditor({ w, onRemove }: { w: OscWidget; onRemove: () => void }): 
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Breite (Spalten)">
-          <NumberField value={w.cw} min={1} max={8} onCommit={(v) => update(w.id, { cw: v })} className="h-9" />
+          <NumberField value={w.cw} min={min.cw} max={columns} onCommit={(v) => update(w.id, { cw: v })} className="h-9" />
         </Field>
         <Field label="Höhe (Zeilen)">
-          <NumberField value={w.ch} min={1} max={MAX_CH} onCommit={(v) => update(w.id, { ch: v })} className="h-9" />
+          <NumberField value={w.ch} min={min.ch} max={MAX_CH} onCommit={(v) => update(w.id, { ch: v })} className="h-9" />
         </Field>
       </div>
 

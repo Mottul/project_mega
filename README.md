@@ -268,8 +268,9 @@ src/
   Schnellnachrichten) und **Vollbild-Anzeige** auf gewähltem Monitor – synchron zur Vorschau,
   da der main-Prozess autoritativ tickt. Alternativ **große Uhr mit Sekundenanzeige**.
 - **OSC-Steuerung** – frei belegbares **Steuerpult** für MadMapper & Co.: Kacheln vom Typ **Fader,
-  Taster, Schalter, XY-Pad und Farbe** in einem **Raster**, je mit eigener **OSC-Adresse** und per
-  **Eckgriff frei in der Größe ziehbar** (Spalten-/Zeilenspanne). Wie der Jingle-Player mit
+  Taster, Schalter, XY-Pad und Farbe** auf einem **feinen, im Edit-Modus sichtbaren Raster** – per
+  Drag **frei positionierbar** und **per Eckgriff in der Größe** veränderbar (mit **Mindestgrößen je
+  Typ**, damit Regler/Pads nicht verschwinden), je mit eigener **OSC-Adresse**. Wie der Jingle-Player mit
   **Sets** (mehrere gespeicherte Setups als Tabs in der Kopfzeile) und **Edit-/Live-Umschalter
   rechts in der Kopfzeile**: im Edit-Modus wählt der Klick eine Kachel und ihre Einstellungen
   erscheinen im **Seiten-Panel**, im Live-Modus sendet die Kachel. **Fader, XY-Pad und Farb-Regler
