@@ -1,8 +1,9 @@
 // Zustand der OSC-Steuerung (zustand/persist): mehrere SETS (gespeicherte
 // Setups, wie die Bänke im Jingle-Player). Jedes Set hat ein RASTER, in dem die
 // Widgets (Fader/Button/Toggle/XY/Farbe) frei positioniert sind (gx/gy = Zelle,
-// cw/ch = Spanne). Jedes Widget kennt seine OSC-Adresse(n). Gesendet wird über
-// api.osc (main-Prozess). Live-Werte werden mitgespeichert.
+// cw/ch = Spanne) und sich nicht überlappen. Jedes Widget kennt seine
+// OSC-Adresse(n). Gesendet wird über api.osc (main-Prozess). Live-Werte werden
+// mitgespeichert.
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -42,10 +43,11 @@ export interface OscSet {
 
 export type OscMode = 'edit' | 'live'
 
-/** Rastergrenzen. Feiner als zuvor (Default 12 Spalten) -> z.B. Fader = 1/4. */
+/** Rastergrenzen. Fein (Default 24 Spalten) -> Fader/Buttons lassen sich klein
+ *  und trotzdem bedienbar legen, Positionen in feinen Schritten. */
 export const MIN_COLS = 4
-export const MAX_COLS = 24
-export const DEFAULT_COLS = 12
+export const MAX_COLS = 48
+export const DEFAULT_COLS = 24
 export const MAX_CH = 16
 
 export const WIDGET_COLORS = [
@@ -61,23 +63,23 @@ export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
   color: 'Farbe'
 }
 
-// Standard-Rastergröße je Widget-Typ (Zellen).
+// Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
 const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
-  fader: { cw: 3, ch: 6 },
-  button: { cw: 2, ch: 2 },
-  toggle: { cw: 2, ch: 2 },
-  xy: { cw: 4, ch: 5 },
-  color: { cw: 4, ch: 6 }
+  fader: { cw: 6, ch: 6 },
+  button: { cw: 4, ch: 2 },
+  toggle: { cw: 4, ch: 2 },
+  xy: { cw: 8, ch: 5 },
+  color: { cw: 8, ch: 6 }
 }
 
 // Mindestgröße je Typ -> Regler bleiben bedienbar (Pads behalten Fläche, ein
-// Button schrumpft nicht auf null).
+// Taster schrumpft nicht auf null).
 export const WIDGET_MIN: Record<OscWidgetType, { cw: number; ch: number }> = {
   fader: { cw: 1, ch: 2 },
   button: { cw: 1, ch: 1 },
   toggle: { cw: 1, ch: 1 },
-  xy: { cw: 3, ch: 3 },
-  color: { cw: 3, ch: 4 }
+  xy: { cw: 4, ch: 3 },
+  color: { cw: 5, ch: 4 }
 }
 
 let seq = 0
@@ -93,6 +95,77 @@ function clampInt(n: number, lo: number, hi: number): number {
   if (!Number.isFinite(n)) return lo
   return Math.min(hi, Math.max(lo, Math.round(n)))
 }
+
+/* --------------------------- Raster-Belegung ---------------------------- */
+
+function addOcc(occ: Set<string>, gx: number, gy: number, cw: number, ch: number): void {
+  for (let y = gy; y < gy + ch; y++) for (let x = gx; x < gx + cw; x++) occ.add(`${x},${y}`)
+}
+function fitsAt(occ: Set<string>, gx: number, gy: number, cw: number, ch: number): boolean {
+  if (gx < 0 || gy < 0) return false
+  for (let y = gy; y < gy + ch; y++) for (let x = gx; x < gx + cw; x++) if (occ.has(`${x},${y}`)) return false
+  return true
+}
+/** Belegte Zellen aller Widgets (optional eines ausgenommen). */
+function occupancyOf(ws: OscWidget[], cols: number, exceptId?: string): Set<string> {
+  const occ = new Set<string>()
+  for (const w of ws) {
+    if (w.id === exceptId || w.gx < 0 || w.gy < 0) continue
+    addOcc(occ, w.gx, w.gy, Math.min(w.cw, cols), w.ch)
+  }
+  return occ
+}
+/** Nächstgelegene freie Position für cw×ch (von prefGx/prefGy aus gemessen). */
+function nearestFree(
+  occ: Set<string>,
+  cols: number,
+  rowsLimit: number,
+  cw: number,
+  ch: number,
+  prefGx: number,
+  prefGy: number
+): { gx: number; gy: number } {
+  const w = Math.min(Math.max(1, cw), cols)
+  let best = { gx: 0, gy: 0 }
+  let bestD = Infinity
+  for (let gy = 0; gy <= rowsLimit; gy++) {
+    for (let gx = 0; gx <= cols - w; gx++) {
+      if (!fitsAt(occ, gx, gy, w, ch)) continue
+      const d = (gx - prefGx) ** 2 + (gy - prefGy) ** 2
+      if (d < bestD) {
+        bestD = d
+        best = { gx, gy }
+      }
+    }
+  }
+  return best
+}
+/** Widgets mit gx<0 ins Raster einpassen (erste freie Position, Lesereihenfolge). */
+function placeMissing(ws: OscWidget[], cols: number): void {
+  const occ = occupancyOf(ws, cols)
+  for (const w of ws) {
+    if (w.gx >= 0 && w.gy >= 0) continue
+    const cw = Math.min(w.cw, cols)
+    let placed = false
+    for (let gy = 0; !placed && gy < 4000; gy++) {
+      for (let gx = 0; gx <= cols - cw; gx++) {
+        if (fitsAt(occ, gx, gy, cw, w.ch)) {
+          w.gx = gx
+          w.gy = gy
+          addOcc(occ, gx, gy, cw, w.ch)
+          placed = true
+          break
+        }
+      }
+    }
+    if (!placed) {
+      w.gx = 0
+      w.gy = 0
+    }
+  }
+}
+
+/* ------------------------------- Widgets -------------------------------- */
 
 /** Vollständiges Widget mit sinnvoller Vorbelegung je Typ. */
 export function makeWidget(type: OscWidgetType): OscWidget {
@@ -142,40 +215,7 @@ function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   return merged
 }
 
-/** Widgets mit gx<0 ins Raster einpassen (erste freie Position, lesereihenfolge). */
-function placeMissing(ws: OscWidget[], cols: number): void {
-  const occ = new Set<string>()
-  const mark = (gx: number, gy: number, cw: number, ch: number): void => {
-    for (let y = gy; y < gy + ch; y++) for (let x = gx; x < gx + cw; x++) occ.add(`${x},${y}`)
-  }
-  const fits = (gx: number, gy: number, cw: number, ch: number): boolean => {
-    for (let y = gy; y < gy + ch; y++) for (let x = gx; x < gx + cw; x++) if (occ.has(`${x},${y}`)) return false
-    return true
-  }
-  for (const w of ws) if (w.gx >= 0 && w.gy >= 0) mark(w.gx, w.gy, Math.min(w.cw, cols), w.ch)
-  for (const w of ws) {
-    if (w.gx >= 0 && w.gy >= 0) continue
-    const cw = Math.min(w.cw, cols)
-    let placed = false
-    for (let gy = 0; !placed && gy < 2000; gy++) {
-      for (let gx = 0; gx <= cols - cw; gx++) {
-        if (fits(gx, gy, cw, w.ch)) {
-          w.gx = gx
-          w.gy = gy
-          mark(gx, gy, cw, w.ch)
-          placed = true
-          break
-        }
-      }
-    }
-    if (!placed) {
-      w.gx = 0
-      w.gy = 0
-    }
-  }
-}
-
-/** Beispiel-Widgets – je ein Typ (Positionen werden vom Aufrufer gesetzt). */
+/** Beispiel-Widgets – je ein Typ (Positionen setzt der Aufrufer per placeMissing). */
 function seedWidgets(): OscWidget[] {
   const fader = makeWidget('fader')
   fader.label = 'Opacity'
@@ -231,6 +271,7 @@ interface OscStoreState {
   removeWidget: (id: string) => void
   moveWidgetTo: (id: string, gx: number, gy: number) => void
   resizeWidget: (id: string, cw: number, ch: number) => void
+  settleWidget: (id: string) => void
   resetSurface: () => void
 }
 
@@ -320,6 +361,23 @@ export const useOscSurface = create<OscStoreState>()(
               })
             )
           }),
+        // Nach dem Ziehen/Resizen Überlappung auflösen: liegt das Widget auf
+        // einem anderen, rückt es auf die nächste freie Stelle.
+        settleWidget: (id) =>
+          set({
+            sets: mapWidgets((ws) => {
+              const me = ws.find((w) => w.id === id)
+              if (!me || me.gx < 0) return ws
+              const cols = get().currentSet().columns
+              const occ = occupancyOf(ws, cols, id)
+              const cw = Math.min(me.cw, cols)
+              if (fitsAt(occ, me.gx, me.gy, cw, me.ch)) return ws
+              const rowsLimit =
+                ws.reduce((m, w) => (w.id === id ? m : Math.max(m, w.gy + w.ch)), 0) + me.ch + 1
+              const pos = nearestFree(occ, cols, rowsLimit, cw, me.ch, me.gx, me.gy)
+              return ws.map((w) => (w.id === id ? { ...w, gx: pos.gx, gy: pos.gy } : w))
+            })
+          }),
         resetSurface: () =>
           set({
             sets: patchSet((s) => {
@@ -332,7 +390,7 @@ export const useOscSurface = create<OscStoreState>()(
     },
     {
       name: 'osc-control',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         let p = persisted as Record<string, unknown>
         // v0 -> v1: einzelne Oberfläche { widgets, columns, mode } -> Sets
@@ -345,8 +403,8 @@ export const useOscSurface = create<OscStoreState>()(
           }
           p = { sets: [set], currentSetId: set.id, mode: p.mode === 'live' ? 'live' : 'edit' }
         }
-        // v1 -> v2: feineres Raster + Rasterpositionen. Inhalte (Adresse/Farbe/…)
-        // bleiben; nur die Geometrie wird auf die neuen Defaults gesetzt.
+        // <2: altes Modell ohne Rasterpositionen -> Geometrie auf aktuelle
+        // Defaults setzen + platzieren (Inhalte bleiben).
         if (version < 2 && Array.isArray(p.sets)) {
           for (const s of p.sets as OscSet[]) {
             s.columns = DEFAULT_COLS
@@ -360,6 +418,21 @@ export const useOscSurface = create<OscStoreState>()(
               return nw
             })
             placeMissing(s.widgets, s.columns)
+          }
+        }
+        // v2 -> v3: feineres Raster. Vorhandenes 12-Spalten-Layout wird
+        // verdoppelt (Spalten, gx, cw) -> gleiches Aussehen, feinere Schritte.
+        if (version === 2 && Array.isArray(p.sets)) {
+          for (const s of p.sets as OscSet[]) {
+            const cols = clampInt((s.columns ?? DEFAULT_COLS / 2) * 2, MIN_COLS, MAX_COLS)
+            s.columns = cols
+            s.widgets = (s.widgets ?? []).map((w) => {
+              const raw = { ...(w as OscWidget) }
+              if (Number.isFinite(raw.gx) && raw.gx >= 0) raw.gx = raw.gx * 2
+              if (Number.isFinite(raw.cw)) raw.cw = raw.cw * 2
+              return normalizeWidget(raw)
+            })
+            placeMissing(s.widgets, cols)
           }
         }
         return p as unknown
