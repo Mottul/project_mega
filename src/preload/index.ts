@@ -124,7 +124,13 @@ const api: ToolboxApi = {
     config: () => ipcRenderer.invoke(Channels.oscConfig),
     setConfig: (patch) => ipcRenderer.invoke(Channels.oscConfigSet, patch),
     onFeedback: (cb) => subscribe(Channels.oscFeedback, (fb) => cb(fb as never)),
-    onStatus: (cb) => subscribe(Channels.oscStatusChanged, (s) => cb(s as never))
+    onStatus: (cb) => subscribe(Channels.oscStatusChanged, (s) => cb(s as never)),
+    publish: (snapshot) => ipcRenderer.invoke(Channels.oscPublish, snapshot),
+    onRemoteCommand: (cb) => subscribe(Channels.oscRemoteCommand, (c) => cb(c as never)),
+    remoteStatus: () => ipcRenderer.invoke(Channels.oscRemoteStatus),
+    remoteStart: (port) => ipcRenderer.invoke(Channels.oscRemoteStart, port),
+    remoteStop: () => ipcRenderer.invoke(Channels.oscRemoteStop),
+    onRemoteChanged: (cb) => subscribe(Channels.oscRemoteChanged, (s) => cb(s as never))
   },
 
   youtube: {

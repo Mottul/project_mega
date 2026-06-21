@@ -32,9 +32,18 @@ import {
   SlidersHorizontal,
   Tablet,
   Trash2,
+  Wifi,
   Zap
 } from 'lucide-react'
-import type { OscArg, OscFeedback, OscMessage, OscSettings, OscStatus } from '@shared/types'
+import type {
+  OscArg,
+  OscFeedback,
+  OscMessage,
+  OscRemoteSnapshot,
+  OscSettings,
+  OscStatus,
+  RemoteStatus
+} from '@shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -42,6 +51,7 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
+import { QrCode } from '../video-player/QrCode'
 import {
   makeWidget,
   MAX_CH,
@@ -166,12 +176,13 @@ export function OscControl(): JSX.Element {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [device, setDevice] = useState<DeviceKey>('off')
   const [landscape, setLandscape] = useState(false)
+  const [remote, setRemote] = useState<RemoteStatus | null>(null)
+  const [remotePort, setRemotePort] = useState(8091)
   const [status, setStatus] = useState<OscStatus | null>(null)
   const [config, setConfig] = useState<OscSettings | null>(null)
   const [log, setLog] = useState<LogEntry[]>([])
   const logRef = useRef<LogEntry[]>([])
   const logSeq = useRef(0)
-  const gridRef = useRef<HTMLDivElement>(null)
 
   // Set-Wechsel -> Auswahl zurücksetzen.
   useEffect(() => setSelectedId(null), [currentSetId])
@@ -222,6 +233,74 @@ export function OscControl(): JSX.Element {
     }
   }, [pushLog])
 
+  // Fernsteuerung: Status beobachten + Steuerbefehle vom Handy/Tablet anwenden
+  // (Live-Wert aktualisieren UND OSC senden – wie eine lokale Bedienung).
+  useEffect(() => {
+    void api.osc.remoteStatus().then(setRemote)
+    const offChanged = api.osc.onRemoteChanged(setRemote)
+    const offCmd = api.osc.onRemoteCommand((cmd) => {
+      const st = useOscSurface.getState()
+      const w = st.currentSet().widgets.find((x) => x.id === cmd.id)
+      if (!w) return
+      if (cmd.kind === 'fader') {
+        st.updateWidget(w.id, { value: cmd.value })
+        send(fmsg(w.address, cmd.value))
+      } else if (cmd.kind === 'toggle') {
+        st.updateWidget(w.id, { value: cmd.on ? 1 : 0 })
+        send(fmsg(w.address, cmd.on ? w.onValue : w.offValue))
+      } else if (cmd.kind === 'button') {
+        send(fmsg(w.address, cmd.down ? w.onValue : w.offValue))
+      } else if (cmd.kind === 'xy') {
+        st.updateWidget(w.id, { x: cmd.x, y: cmd.y })
+        const msgs: OscMessage[] = [fmsg(w.address, cmd.x)]
+        if (w.addressY) msgs.push(fmsg(w.addressY, cmd.y))
+        sendMany(msgs)
+      } else if (cmd.kind === 'color') {
+        st.updateWidget(w.id, { r: cmd.r, g: cmd.g, b: cmd.b })
+        send({
+          address: w.address,
+          args: [
+            { type: 'f', value: cmd.r },
+            { type: 'f', value: cmd.g },
+            { type: 'f', value: cmd.b }
+          ]
+        })
+      }
+    })
+    return () => {
+      offChanged()
+      offCmd()
+    }
+  }, [send, sendMany])
+
+  // Schnappschuss der Oberfläche an den Fernsteuer-Server – gedrosselt, da sich
+  // Werte beim Ziehen schnell ändern.
+  const pubRef = useRef<{ t: number; timer: ReturnType<typeof setTimeout> | null }>({ t: 0, timer: null })
+  useEffect(() => {
+    const p = pubRef.current
+    const run = (): void => {
+      p.t = Date.now()
+      p.timer = null
+      publishSnapshot()
+    }
+    const dt = Date.now() - p.t
+    if (dt >= 150) run()
+    else if (!p.timer) p.timer = setTimeout(run, 150 - dt)
+  }, [set, columns, widgets])
+
+  // Beim Schließen des Tabs ausstehende Veröffentlichung abbrechen und dem
+  // Server „getrennt" melden.
+  useEffect(() => {
+    return () => {
+      const p = pubRef.current
+      if (p.timer) {
+        clearTimeout(p.timer)
+        p.timer = null
+      }
+      void api.osc.publish({ connected: false, setName: '', columns: 24, widgets: [] })
+    }
+  }, [])
+
   const selected = widgets.find((w) => w.id === selectedId) ?? null
 
   // Geräte-Vorschau (Stufe 2): die Fläche in einem Handy-/Tablet-Rahmen zeigen.
@@ -230,10 +309,53 @@ export function OscControl(): JSX.Element {
   const frameW = dim ? (landscape ? dim.h : dim.w) : 0
   const frameH = dim ? (landscape ? dim.w : dim.h) : 0
 
-  // Raster-Höhe: so hoch wie das unterste Widget; im Edit-Modus etwas mehr
-  // (Platz zum Hineinziehen) und mindestens ein paar Zeilen.
-  const maxBottom = widgets.reduce((m, w) => Math.max(m, w.gy + w.ch), 0)
-  const rows = live ? Math.max(maxBottom, 1) : Math.max(maxBottom + 3, 10)
+  function removeWidget(id: string): void {
+    useOscSurface.getState().removeWidget(id)
+    if (selectedId === id) setSelectedId(null)
+  }
+
+  function publishSnapshot(): void {
+    const cs = useOscSurface.getState().currentSet()
+    const snap: OscRemoteSnapshot = {
+      connected: true,
+      setName: cs.name,
+      columns: cs.columns,
+      widgets: cs.widgets.map((w) => ({
+        id: w.id,
+        type: w.type,
+        label: w.label,
+        color: w.color,
+        address: w.address,
+        addressY: w.addressY,
+        min: w.min,
+        max: w.max,
+        gx: w.gx,
+        gy: w.gy,
+        cw: w.cw,
+        ch: w.ch,
+        value: w.value,
+        x: w.x,
+        y: w.y,
+        r: w.r,
+        g: w.g,
+        b: w.b
+      }))
+    }
+    void api.osc.publish(snap)
+  }
+
+  async function toggleRemote(): Promise<void> {
+    if (remote?.running) {
+      setRemote(await api.osc.remoteStop())
+    } else {
+      try {
+        setRemote(await api.osc.remoteStart(remotePort))
+        publishSnapshot() // dem Server sofort den aktuellen Stand geben
+      } catch {
+        // Port belegt o.ä. – Status bleibt unverändert
+      }
+    }
+  }
 
   function onAdd(type: OscWidgetType): void {
     const id = useOscSurface.getState().addWidget(type)
@@ -330,49 +452,44 @@ export function OscControl(): JSX.Element {
         </div>
       </div>
 
-      {/* Steuerpult */}
+      {/* Steuerpult – normal oder im Geräterahmen (Vorschau ist auch im
+          Edit-Modus bearbeitbar). */}
       <div className="min-h-0 flex-1 overflow-auto p-5">
         {previewing ? (
           <DeviceFrame w={frameW} h={frameH}>
-            {widgets.length === 0 ? (
-              <p className="p-8 text-center text-sm text-muted-foreground">Noch keine Bedienelemente.</p>
-            ) : (
-              <PreviewSurface columns={columns} widgets={widgets} onSend={send} onSendMany={sendMany} />
-            )}
+            {(scale) =>
+              widgets.length === 0 ? (
+                <p className="p-8 text-center text-sm text-muted-foreground">Noch keine Bedienelemente.</p>
+              ) : (
+                <SurfaceGrid
+                  columns={columns}
+                  widgets={widgets}
+                  live={live}
+                  scale={scale}
+                  selectedId={selectedId}
+                  onSelect={setSelectedId}
+                  onRemove={removeWidget}
+                  onSend={send}
+                  onSendMany={sendMany}
+                />
+              )
+            }
           </DeviceFrame>
         ) : widgets.length === 0 ? (
           <Card className="flex h-40 items-center justify-center p-6 text-center text-sm text-muted-foreground">
             Noch keine Bedienelemente. Rechts unter „Oberfläche“ ein Widget hinzufügen.
           </Card>
         ) : (
-          <div
-            ref={gridRef}
-            className="grid"
-            style={{
-              gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-              gridAutoRows: `${ROW_H}px`,
-              gap: `${GAP}px`
-            }}
-          >
-            {!live && <GridBackdrop columns={columns} rows={rows} />}
-            {widgets.map((w) => (
-              <WidgetTile
-                key={w.id}
-                w={w}
-                live={live}
-                selected={w.id === selectedId}
-                columns={columns}
-                gridRef={gridRef}
-                onSelect={() => setSelectedId(w.id)}
-                onSend={send}
-                onSendMany={sendMany}
-                onRemove={() => {
-                  useOscSurface.getState().removeWidget(w.id)
-                  if (selectedId === w.id) setSelectedId(null)
-                }}
-              />
-            ))}
-          </div>
+          <SurfaceGrid
+            columns={columns}
+            widgets={widgets}
+            live={live}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onRemove={removeWidget}
+            onSend={send}
+            onSendMany={sendMany}
+          />
         )}
       </div>
     </div>
@@ -459,6 +576,55 @@ export function OscControl(): JSX.Element {
         <ConnectionPanel config={config} status={status} onApplied={(st) => setStatus(st)} onSend={send} />
       </PanelSection>
 
+      <PanelSection
+        id="osc-remote"
+        title="Fernsteuerung"
+        icon={Wifi}
+        right={
+          <span className={cn('size-2.5 rounded-full', remote?.running ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Handy/Tablet im selben WLAN bedient diese Oberfläche (ohne Passwort). Dieses Fenster muss
+          offen bleiben.
+        </p>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-sm">
+            Port
+            <Input
+              type="number"
+              value={remotePort}
+              onChange={(e) => setRemotePort(Number(e.target.value) || 8091)}
+              disabled={remote?.running}
+              className="h-8 w-24"
+            />
+          </label>
+          <Button
+            variant={remote?.running ? 'outline' : 'default'}
+            size="sm"
+            className="ml-auto"
+            onClick={() => void toggleRemote()}
+          >
+            <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
+          </Button>
+        </div>
+        {remote?.running && remote.urls[0] && (
+          <div className="flex items-start gap-3 rounded-md border border-border p-2">
+            <div className="shrink-0 rounded bg-white p-1">
+              <QrCode text={remote.urls[0]} size={96} />
+            </div>
+            <div className="min-w-0 text-xs">
+              <p className="mb-1 text-muted-foreground">Im Browser öffnen (QR scannen oder eintippen):</p>
+              {remote.urls.map((u) => (
+                <div key={u} className="truncate font-mono text-foreground">
+                  {u}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </PanelSection>
+
       <PanelSection id="monitor" title="OSC-Monitor" icon={Activity} defaultOpen={false}>
         <Monitor
           log={log}
@@ -520,6 +686,7 @@ function WidgetTile({
   selected,
   columns,
   gridRef,
+  scale = 1,
   onSelect,
   onSend,
   onSendMany,
@@ -530,6 +697,7 @@ function WidgetTile({
   selected: boolean
   columns: number
   gridRef: RefObject<HTMLDivElement>
+  scale?: number
   onSelect: () => void
   onSend: Send
   onSendMany: SendMany
@@ -559,8 +727,10 @@ function WidgetTile({
     const spy = e.clientY
     setDragging(true)
     const move = (ev: PointerEvent): void => {
-      const ngx = clampInt(sgx + (ev.clientX - spx) / colStep, 0, columns - cw)
-      const ngy = Math.max(0, Math.round(sgy + (ev.clientY - spy) / rowStep))
+      // In der skalierten Geräte-Vorschau zeigt der Zeiger Bildschirm-Pixel ->
+      // durch scale teilen, um Layout-Pixel zu erhalten.
+      const ngx = clampInt(sgx + (ev.clientX - spx) / scale / colStep, 0, columns - cw)
+      const ngy = Math.max(0, Math.round(sgy + (ev.clientY - spy) / scale / rowStep))
       useOscSurface.getState().moveWidgetTo(w.id, ngx, ngy)
     }
     const up = (): void => {
@@ -585,8 +755,8 @@ function WidgetTile({
     const left = rect.left
     const top = rect.top
     const move = (ev: PointerEvent): void => {
-      const ncw = clampInt((ev.clientX - left + GAP) / colStep, 1, columns - gx)
-      const nch = clampInt((ev.clientY - top + GAP) / rowStep, 1, MAX_CH)
+      const ncw = clampInt(((ev.clientX - left) / scale + GAP) / colStep, 1, columns - gx)
+      const nch = clampInt(((ev.clientY - top) / scale + GAP) / rowStep, 1, MAX_CH)
       useOscSurface.getState().resizeWidget(w.id, ncw, nch)
     }
     const up = (): void => {
@@ -721,8 +891,17 @@ function DeviceBtn({
 }
 
 // Geräterahmen, der seinen Inhalt (Fläche in Originalauflösung) auf die
-// verfügbare Größe herunterskaliert.
-function DeviceFrame({ w, h, children }: { w: number; h: number; children: ReactNode }): JSX.Element {
+// verfügbare Größe herunterskaliert. Reicht den Skalierungsfaktor an die Kinder
+// weiter, damit das Ziehen in der Vorschau rastergenau bleibt.
+function DeviceFrame({
+  w,
+  h,
+  children
+}: {
+  w: number
+  h: number
+  children: (scale: number) => ReactNode
+}): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   useEffect(() => {
@@ -743,7 +922,7 @@ function DeviceFrame({ w, h, children }: { w: number; h: number; children: React
       <div style={{ transform: `scale(${scale})` }} className="origin-center">
         <div className="rounded-[2.6rem] border-[12px] border-neutral-800 bg-neutral-800 shadow-2xl">
           <div style={{ width: w, height: h }} className="overflow-auto rounded-[1.6rem] bg-background p-3">
-            {children}
+            {children(scale)}
           </div>
         </div>
       </div>
@@ -751,22 +930,36 @@ function DeviceFrame({ w, h, children }: { w: number; h: number; children: React
   )
 }
 
-// Fläche live (interaktiv) in der Vorschau – ohne Edit-Werkzeuge.
-function PreviewSurface({
+// Das Raster mit allen Kacheln. Wird sowohl normal als auch in der
+// Geräte-Vorschau verwendet; `scale` macht das Ziehen im skalierten Rahmen
+// korrekt, `live` entscheidet über Bedienen (true) bzw. Bearbeiten (false).
+function SurfaceGrid({
   columns,
   widgets,
+  live,
+  scale = 1,
+  selectedId,
+  onSelect,
+  onRemove,
   onSend,
   onSendMany
 }: {
   columns: number
   widgets: OscWidget[]
+  live: boolean
+  scale?: number
+  selectedId: string | null
+  onSelect: (id: string) => void
+  onRemove: (id: string) => void
   onSend: Send
   onSendMany: SendMany
 }): JSX.Element {
-  const ref = useRef<HTMLDivElement>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const maxBottom = widgets.reduce((m, w) => Math.max(m, w.gy + w.ch), 0)
+  const rows = live ? Math.max(maxBottom, 1) : Math.max(maxBottom + 3, 10)
   return (
     <div
-      ref={ref}
+      ref={gridRef}
       className="grid"
       style={{
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
@@ -774,18 +967,20 @@ function PreviewSurface({
         gap: `${GAP}px`
       }}
     >
+      {!live && <GridBackdrop columns={columns} rows={rows} />}
       {widgets.map((w) => (
         <WidgetTile
           key={w.id}
           w={w}
-          live
-          selected={false}
+          live={live}
+          selected={w.id === selectedId}
           columns={columns}
-          gridRef={ref}
-          onSelect={() => {}}
+          gridRef={gridRef}
+          scale={scale}
+          onSelect={() => onSelect(w.id)}
           onSend={onSend}
           onSendMany={onSendMany}
-          onRemove={() => {}}
+          onRemove={() => onRemove(w.id)}
         />
       ))}
     </div>

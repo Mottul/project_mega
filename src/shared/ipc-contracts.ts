@@ -20,6 +20,8 @@ import type {
   MediaItem,
   OscFeedback,
   OscMessage,
+  OscRemoteCommand,
+  OscRemoteSnapshot,
   OscSettings,
   OscStatus,
   PatternConfig,
@@ -142,6 +144,12 @@ export const Channels = {
   oscConfigSet: 'osc:configSet',
   oscFeedback: 'osc:feedback', // Event: OscFeedback (main -> renderer)
   oscStatusChanged: 'osc:statusChanged', // Event: OscStatus
+  oscPublish: 'osc:publish', // Renderer -> main: Schnappschuss der Oberfläche
+  oscRemoteCommand: 'osc:remoteCommand', // main -> Renderer: Steuerbefehl vom Handy
+  oscRemoteStatus: 'osc:remoteStatus',
+  oscRemoteStart: 'osc:remoteStart',
+  oscRemoteStop: 'osc:remoteStop',
+  oscRemoteChanged: 'osc:remoteChanged', // Event: RemoteStatus
   // YouTube-Downloader (yt-dlp)
   ytStatus: 'yt:status',
   ytUpdate: 'yt:update', // yt-dlp-Binary herunterladen/aktualisieren
@@ -321,6 +329,18 @@ export interface ToolboxApi {
     onFeedback(cb: (fb: OscFeedback) => void): () => void
     /** Statusänderungen (Fehler, Feedback-Socket gebunden). Liefert Cleanup. */
     onStatus(cb: (status: OscStatus) => void): () => void
+    /** Schnappschuss der Oberfläche an den Fernsteuer-Server. */
+    publish(snapshot: OscRemoteSnapshot): Promise<void>
+    /** Steuerbefehle vom Handy/Tablet. Liefert Cleanup. */
+    onRemoteCommand(cb: (cmd: OscRemoteCommand) => void): () => void
+    /** Aktueller Status des Fernsteuer-Servers. */
+    remoteStatus(): Promise<RemoteStatus>
+    /** Fernsteuer-Server (eingebetteter Webserver) starten. */
+    remoteStart(port: number): Promise<RemoteStatus>
+    /** Fernsteuer-Server stoppen. */
+    remoteStop(): Promise<RemoteStatus>
+    /** Statusänderungen des Fernsteuer-Servers. Liefert Cleanup. */
+    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
   }
 
   youtube: {

@@ -479,6 +479,48 @@ export interface JingleRemoteSnapshot {
 
 export type JingleRemoteCommand = { type: 'trigger'; padId: string } | { type: 'stopAll' }
 
+/* --------------------------- OSC-Fernsteuerung -------------------------- */
+// Schnappschuss der OSC-Oberfläche für die Handy-/Tablet-Seite und die
+// Steuerbefehle, die von dort zurückkommen (Renderer wendet sie an + sendet OSC).
+
+export type OscRemoteWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color'
+
+/** Serialisierbares Widget für die mobile Seite (Teilmenge des Renderer-Widgets). */
+export interface OscRemoteWidget {
+  id: string
+  type: OscRemoteWidgetType
+  label: string
+  color: string
+  address: string
+  addressY: string
+  min: number
+  max: number
+  gx: number
+  gy: number
+  cw: number
+  ch: number
+  value: number
+  x: number
+  y: number
+  r: number
+  g: number
+  b: number
+}
+
+export interface OscRemoteSnapshot {
+  connected: boolean // ist ein OSC-Steuerung-Tab offen?
+  setName: string
+  columns: number
+  widgets: OscRemoteWidget[]
+}
+
+export type OscRemoteCommand =
+  | { kind: 'fader'; id: string; value: number }
+  | { kind: 'toggle'; id: string; on: boolean }
+  | { kind: 'button'; id: string; down: boolean }
+  | { kind: 'xy'; id: string; x: number; y: number }
+  | { kind: 'color'; id: string; r: number; g: number; b: number }
+
 /* --------------------------- YouTube-Download --------------------------- */
 // yt-dlp-Wrapper. Binary wird (falls nicht gefunden) nach userData/bin geladen
 // und per Knopf aktualisiert; ffmpeg fürs Muxen kommt aus dem Bundle.

@@ -280,8 +280,10 @@ src/
   zeigt alle Regler dauerhaft (Hue, R/G/B und **Pipette**/EyeDropper). Gesendet wird über einen **UDP-Socket im
   main-Prozess** (`node:dgram`) mit **eigenem, abhängigkeitsfreiem OSC-Codec**; **Host/Ports** sind
   einstellbar (MadMapper-Standard out 8000 / in 9000). Optional **Feedback empfangen** (lauscht auf
-  dem Eingangs-Port und **spiegelt** Werte zurück in passende Kacheln) samt **OSC-Monitor**. Sets und
-  Oberfläche überstehen App-Neustarts.
+  dem Eingangs-Port und **spiegelt** Werte zurück in passende Kacheln) samt **OSC-Monitor**.
+  **Fernsteuerung per Handy/Tablet**: ein eingebetteter Webserver (nur im LAN, ohne Passwort, wie beim
+  Jingle-Player) zeigt dieselbe Oberfläche im Browser – Tippen/Ziehen dort löst den **OSC-Versand am
+  Rechner** aus (QR-Code zum Öffnen). Sets und Oberfläche überstehen App-Neustarts.
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
   (Throw Ratio / Objektivwahl), **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
   **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis),
@@ -296,10 +298,9 @@ src/
 
 ## Roadmap
 
-- **OSC-Steuerung – Ausbaustufen**: Fernsteuerung per Handy/Tablet (eingebetteter Webserver wie beim
-  Jingle-Player), **Learn-Modus** (eingehende Adresse automatisch übernehmen), **MadMapper-Vorlagen**
-  (Surfaces/Medien/Cues), mehrere **Seiten/Bänke** und tool-übergreifende OSC-Trigger (z. B. aus
-  Jingle-/Timer-/Video-Player).
+- **OSC-Steuerung – Ausbaustufen**: **Learn-Modus** (eingehende Adresse automatisch übernehmen),
+  **MadMapper-Vorlagen** (Surfaces/Medien/Cues), weitere Widgets (Auswahl/1-aus-n, Taster-Bank,
+  Anzeige/Meter) und tool-übergreifende OSC-Trigger (z. B. aus Jingle-/Timer-/Video-Player).
 - **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
   eingebacken).
 - **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der
