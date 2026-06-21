@@ -88,7 +88,14 @@ function parseCommand(body: string): OscRemoteCommand | null {
     case 'xy':
       return { kind: 'xy', id: c.id, x: num(c.x), y: num(c.y) }
     case 'color':
-      return { kind: 'color', id: c.id, r: num(c.r), g: num(c.g), b: num(c.b) }
+      return {
+        kind: 'color',
+        id: c.id,
+        r: num(c.r),
+        g: num(c.g),
+        b: num(c.b),
+        a: typeof c.a === 'number' ? num(c.a) : 1
+      }
     default:
       return null
   }

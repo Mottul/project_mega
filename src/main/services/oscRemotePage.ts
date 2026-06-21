@@ -37,7 +37,9 @@ header b{font-size:16px}
 .color .swatch{height:22px;border-radius:5px;border:1px solid rgba(255,255,255,.15)}
 .crow{display:flex;align-items:center;gap:7px}
 .crow span{width:12px;font-size:11px;color:var(--dim)}
-.crow input{flex:1}
+.cslider{position:relative;flex:1;height:16px;border-radius:5px;background:var(--muted);overflow:hidden;touch-action:none}
+.cfill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.18)}
+.cthumb{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:#fff;transform:translate(-50%,-50%)}
 </style>
 </head>
 <body>
@@ -46,6 +48,7 @@ header b{font-size:16px}
 <div id="grid"></div>
 <script>
 var ROWH=38,GAP=8;
+var CHECKER='repeating-conic-gradient(#0006 0% 25%, #fff3 0% 50%) 50% / 10px 10px';
 var state={connected:false,setName:'',columns:24,widgets:[]};
 var sig='',updaters={},activeId=null;
 
@@ -106,23 +109,33 @@ function makeXY(w,body){
 function makeColor(w,body){
   var wrap=document.createElement('div');wrap.className='color';
   var sw=document.createElement('div');sw.className='swatch';wrap.appendChild(sw);
-  var r=w.r,g=w.g,b=w.b;
-  function paintSw(){sw.style.background='rgb('+((r*255)|0)+','+((g*255)|0)+','+((b*255)|0)+')';}
-  function row(letter,get,set){
-    var el=document.createElement('label');el.className='crow';
+  var r=w.r,g=w.g,b=w.b,a=(w.a==null?1:w.a);
+  function cmd(){return {kind:'color',id:w.id,r:r,g:g,b:b,a:a};}
+  function paintSw(){var c='rgba('+((r*255)|0)+','+((g*255)|0)+','+((b*255)|0)+','+a+')';sw.style.background='linear-gradient('+c+','+c+'),'+CHECKER;}
+  // Horizontaler Kanalregler mit RELATIVEM Greifen (wie Fader/XY auf dem Desktop).
+  function relRow(letter,get,set){
+    var el=document.createElement('div');el.className='crow';
     var lab=document.createElement('span');lab.textContent=letter;
-    var inp=document.createElement('input');inp.type='range';inp.min='0';inp.max='1';inp.step='0.01';inp.value=get();
-    inp.addEventListener('pointerdown',function(){activeId=w.id;});
-    inp.addEventListener('input',function(){set(parseFloat(inp.value));paintSw();postCmd({kind:'color',id:w.id,r:r,g:g,b:b});});
-    inp.addEventListener('change',function(){activeId=null;postNow({kind:'color',id:w.id,r:r,g:g,b:b});});
-    el.appendChild(lab);el.appendChild(inp);return {el:el,inp:inp};
+    var sl=document.createElement('div');sl.className='cslider';
+    var fill=document.createElement('div');fill.className='cfill';
+    var thumb=document.createElement('div');thumb.className='cthumb';
+    sl.appendChild(fill);sl.appendChild(thumb);el.appendChild(lab);el.appendChild(sl);
+    var st=null;
+    function paint(v){var p=clamp01(v)*100;fill.style.width=p+'%';thumb.style.left=p+'%';}
+    paint(get());
+    sl.addEventListener('pointerdown',function(e){sl.setPointerCapture(e.pointerId);activeId=w.id;st={px:e.clientX,v:get()};});
+    sl.addEventListener('pointermove',function(e){if(!st)return;var rc=sl.getBoundingClientRect();var v=clamp01(st.v+(e.clientX-st.px)/rc.width);set(v);paint(v);paintSw();postCmd(cmd());});
+    function up(e){if(e&&e.pointerId!=null){try{sl.releasePointerCapture(e.pointerId);}catch(_){}}st=null;activeId=null;postNow(cmd());}
+    sl.addEventListener('pointerup',up);sl.addEventListener('pointercancel',function(){st=null;activeId=null;});
+    return {el:el,paint:paint};
   }
-  var rr=row('R',function(){return r;},function(v){r=v;});
-  var rg=row('G',function(){return g;},function(v){g=v;});
-  var rb=row('B',function(){return b;},function(v){b=v;});
-  wrap.appendChild(rr.el);wrap.appendChild(rg.el);wrap.appendChild(rb.el);
+  var rr=relRow('R',function(){return r;},function(v){r=v;});
+  var rg=relRow('G',function(){return g;},function(v){g=v;});
+  var rb=relRow('B',function(){return b;},function(v){b=v;});
+  var ra=relRow('A',function(){return a;},function(v){a=v;});
+  wrap.appendChild(rr.el);wrap.appendChild(rg.el);wrap.appendChild(rb.el);wrap.appendChild(ra.el);
   paintSw();body.appendChild(wrap);
-  updaters[w.id]=function(nw){if(activeId===w.id)return;r=nw.r;g=nw.g;b=nw.b;rr.inp.value=r;rg.inp.value=g;rb.inp.value=b;paintSw();};
+  updaters[w.id]=function(nw){if(activeId===w.id)return;r=nw.r;g=nw.g;b=nw.b;a=(nw.a==null?1:nw.a);rr.paint(r);rg.paint(g);rb.paint(b);ra.paint(a);paintSw();};
 }
 
 function build(){

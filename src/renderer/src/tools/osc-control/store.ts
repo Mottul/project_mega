@@ -32,6 +32,7 @@ export interface OscWidget {
   r: number // Farbe 0..1
   g: number
   b: number
+  a: number // Farbe Alpha 0..1
 }
 
 export interface OscSet {
@@ -190,7 +191,8 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     y: 0.5,
     r: 0.2,
     g: 0.6,
-    b: 1
+    b: 1,
+    a: 1
   }
   if (type === 'xy') {
     base.address = '/megatoolbox/x'

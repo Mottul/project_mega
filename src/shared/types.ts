@@ -505,6 +505,7 @@ export interface OscRemoteWidget {
   r: number
   g: number
   b: number
+  a: number
 }
 
 export interface OscRemoteSnapshot {
@@ -519,7 +520,7 @@ export type OscRemoteCommand =
   | { kind: 'toggle'; id: string; on: boolean }
   | { kind: 'button'; id: string; down: boolean }
   | { kind: 'xy'; id: string; x: number; y: number }
-  | { kind: 'color'; id: string; r: number; g: number; b: number }
+  | { kind: 'color'; id: string; r: number; g: number; b: number; a: number }
 
 /* --------------------------- YouTube-Download --------------------------- */
 // yt-dlp-Wrapper. Binary wird (falls nicht gefunden) nach userData/bin geladen
