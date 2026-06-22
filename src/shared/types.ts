@@ -516,6 +516,8 @@ export interface OscRemoteSnapshot {
   setName: string
   columns: number
   widgets: OscRemoteWidget[]
+  sets: { id: string; name: string }[] // alle Sets – für die Umschaltleiste am Handy
+  currentSetId: string // aktives Set
 }
 
 export type OscRemoteCommand =
@@ -524,6 +526,7 @@ export type OscRemoteCommand =
   | { kind: 'button'; id: string; down: boolean }
   | { kind: 'xy'; id: string; x: number; y: number }
   | { kind: 'color'; id: string; r: number; g: number; b: number; a: number }
+  | { kind: 'selectSet'; id: string } // Handy/Tablet wechselt das aktive Set
 
 /* --------------------------- YouTube-Download --------------------------- */
 // yt-dlp-Wrapper. Binary wird (falls nicht gefunden) nach userData/bin geladen

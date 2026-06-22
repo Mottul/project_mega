@@ -14,7 +14,14 @@ import { OSC_MOBILE_PAGE } from './oscRemotePage'
 let server: Server | null = null
 let currentPort = 8091
 const clients = new Set<ServerResponse>()
-let snapshot: OscRemoteSnapshot = { connected: false, setName: '', columns: 24, widgets: [] }
+let snapshot: OscRemoteSnapshot = {
+  connected: false,
+  setName: '',
+  columns: 24,
+  widgets: [],
+  sets: [],
+  currentSetId: ''
+}
 let commandSink: (cmd: OscRemoteCommand) => void = () => {}
 
 export function setOscCommandSink(sink: (cmd: OscRemoteCommand) => void): void {
@@ -96,6 +103,8 @@ function parseCommand(body: string): OscRemoteCommand | null {
         b: num(c.b),
         a: typeof c.a === 'number' ? num(c.a) : 1
       }
+    case 'selectSet':
+      return { kind: 'selectSet', id: c.id }
     default:
       return null
   }

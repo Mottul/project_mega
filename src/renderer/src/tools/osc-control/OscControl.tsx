@@ -20,7 +20,6 @@ import {
   Activity,
   LayoutGrid,
   Monitor as MonitorIcon,
-  Music,
   Pencil,
   Pipette,
   Play,
@@ -265,6 +264,12 @@ export function OscControl(): JSX.Element {
     const offChanged = api.osc.onRemoteChanged(setRemote)
     const offCmd = api.osc.onRemoteCommand((cmd) => {
       const st = useOscSurface.getState()
+      // Set-Wechsel vom Handy: kein Widget-Bezug -> vor der Widget-Suche behandeln.
+      // Der Publish-Effekt schickt danach automatisch den neuen Schnappschuss.
+      if (cmd.kind === 'selectSet') {
+        if (st.sets.some((s) => s.id === cmd.id)) st.selectSet(cmd.id)
+        return
+      }
       const w = st.currentSet().widgets.find((x) => x.id === cmd.id)
       if (!w) return
       if (cmd.kind === 'fader') {
@@ -312,7 +317,9 @@ export function OscControl(): JSX.Element {
     const dt = Date.now() - p.t
     if (dt >= 150) run()
     else if (!p.timer) p.timer = setTimeout(run, 150 - dt)
-  }, [set, columns, widgets, video])
+    // `sets` als Dep -> auch Umbenennen/Hinzufügen/Löschen anderer Sets erneuert
+    // die Umschaltleiste am Handy.
+  }, [set, sets, columns, widgets, video])
 
   // Beim Schließen des Tabs ausstehende Veröffentlichung abbrechen und dem
   // Server „getrennt" melden.
@@ -323,7 +330,14 @@ export function OscControl(): JSX.Element {
         clearTimeout(p.timer)
         p.timer = null
       }
-      void api.osc.publish({ connected: false, setName: '', columns: 24, widgets: [] })
+      void api.osc.publish({
+        connected: false,
+        setName: '',
+        columns: 24,
+        widgets: [],
+        sets: [],
+        currentSetId: ''
+      })
     }
   }, [])
 
@@ -382,11 +396,14 @@ export function OscControl(): JSX.Element {
   }
 
   function publishSnapshot(): void {
-    const cs = useOscSurface.getState().currentSet()
+    const store = useOscSurface.getState()
+    const cs = store.currentSet()
     const snap: OscRemoteSnapshot = {
       connected: true,
       setName: cs.name,
       columns: cs.columns,
+      sets: store.sets.map((s) => ({ id: s.id, name: s.name })),
+      currentSetId: cs.id,
       widgets: cs.widgets.map((w) => {
         const m = w.type === 'meter' ? meterReadout(w, video) : { level: 0, text: '' }
         return {
@@ -592,7 +609,13 @@ export function OscControl(): JSX.Element {
         )}
       </PanelSection>
 
-      <PanelSection id="surface" title="Oberfläche" icon={LayoutGrid}>
+      {/* Set & Raster: alle Eigenschaften des aktiven Sets an einer Stelle
+          (Name, Spaltenraster, Widget-Palette, Beispiele, Löschen). */}
+      <PanelSection id="set" title="Set & Raster" icon={LayoutGrid}>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Name</span>
+          <Input value={set.name} onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)} />
+        </label>
         <label className="flex items-center justify-between gap-3">
           <span className="text-sm">Spalten</span>
           <NumberField
@@ -613,34 +636,29 @@ export function OscControl(): JSX.Element {
             ))}
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full text-muted-foreground"
-          onClick={() => {
-            if (confirm('Widgets dieses Sets auf die Beispiele zurücksetzen?')) {
-              useOscSurface.getState().resetSurface()
-              setSelectedId(null)
-            }
-          }}
-        >
-          <RotateCcw className="size-3.5" /> Beispiele laden
-        </Button>
-      </PanelSection>
-
-      <PanelSection id="set" title="Set" icon={Music}>
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Name</span>
-          <Input value={set.name} onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)} />
-        </label>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => useOscSurface.getState().deleteSet(set.id)}
-        >
-          <Trash2 className="size-3.5" /> Set löschen
-        </Button>
+        <div className="flex gap-2 border-t border-border pt-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 text-muted-foreground"
+            onClick={() => {
+              if (confirm('Widgets dieses Sets auf die Beispiele zurücksetzen?')) {
+                useOscSurface.getState().resetSurface()
+                setSelectedId(null)
+              }
+            }}
+          >
+            <RotateCcw className="size-3.5" /> Beispiele
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => useOscSurface.getState().deleteSet(set.id)}
+          >
+            <Trash2 className="size-3.5" /> Löschen
+          </Button>
+        </div>
       </PanelSection>
 
       <PanelSection
