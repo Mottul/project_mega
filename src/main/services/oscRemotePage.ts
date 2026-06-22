@@ -12,12 +12,17 @@ export const OSC_MOBILE_PAGE = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>OSC-Steuerung</title>
 <style>
-:root{--bg:#0f0f12;--card:#1b1b20;--border:#2c2c34;--muted:#26262e;--text:#e8e8ec;--dim:#8a8a99}
+:root{--bg:#0f0f12;--card:#1b1b20;--border:#2c2c34;--muted:#26262e;--text:#e8e8ec;--dim:#8a8a99;--accent:#3b82f6}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif;overscroll-behavior:none}
-header{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--border)}
+.hrow{display:flex;align-items:center;gap:9px;padding:10px 14px}
 header b{font-size:16px}
 #setName{color:var(--dim);font-size:13px}
+#sets{display:flex;gap:6px;overflow-x:auto;padding:0 14px 9px;-webkit-overflow-scrolling:touch}
+#sets:empty{display:none}
+.settab{flex:0 0 auto;border:1px solid var(--border);background:var(--card);color:var(--dim);padding:6px 13px;border-radius:8px;font-size:13px;font-weight:600;white-space:nowrap;touch-action:manipulation}
+.settab.on{border-color:var(--accent);background:rgba(59,130,246,.15);color:var(--text)}
 #dot{width:9px;height:9px;border-radius:50%;background:#ef4444;display:inline-block}
 #dot.ok{background:#34d399}
 #warn{display:none;margin:10px 14px;padding:10px 12px;border-radius:8px;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);color:#eab308;font-size:13px}
@@ -48,14 +53,14 @@ header b{font-size:16px}
 </style>
 </head>
 <body>
-<header><span id="dot"></span><b>OSC</b><span id="setName"></span></header>
+<header><div class="hrow"><span id="dot"></span><b>OSC</b><span id="setName"></span></div><div id="sets"></div></header>
 <div id="warn">OSC-Steuerung ist nicht geöffnet. Auf dem Rechner das Werkzeug „OSC-Steuerung" öffnen und die Fernsteuerung aktiv lassen.</div>
 <div id="grid"></div>
 <script>
 var ROWH=38,GAP=8;
 var CHECKER='repeating-conic-gradient(#0006 0% 25%, #fff3 0% 50%) 50% / 10px 10px';
-var state={connected:false,setName:'',columns:24,widgets:[]};
-var sig='',updaters={},activeId=null;
+var state={connected:false,setName:'',columns:24,widgets:[],sets:[],currentSetId:''};
+var sig='',ssig='',updaters={},activeId=null;
 
 var lastSent=0,pendingCmd=null,timer=null;
 function postNow(cmd){fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cmd)}).catch(function(){});lastSent=Date.now();}
@@ -182,11 +187,36 @@ function build(){
   });
 }
 
+// Signatur der Set-Liste (+ aktives Set) -> Tab-Leiste nur neu bauen, wenn sich
+// Sets/Namen/Auswahl ändern, nicht bei jedem Wert-Update.
+function setsSig(s){return (s.sets||[]).map(function(t){return t.id+'~'+t.name;}).join('|')+'#'+(s.currentSetId||'');}
+function buildSets(){
+  var box=document.getElementById('sets');box.innerHTML='';
+  var sets=state.sets||[];
+  if(sets.length<2)return; // ein einziges Set -> keine Leiste (Name steht im Kopf)
+  sets.forEach(function(t){
+    var b=document.createElement('button');
+    b.className='settab'+(t.id===state.currentSetId?' on':'');
+    b.textContent=t.name||'Set';
+    b.addEventListener('click',function(){
+      if(t.id===state.currentSetId)return;
+      // sofortiges Feedback; der Rechner bestätigt mit dem nächsten Schnappschuss
+      state.currentSetId=t.id;
+      Array.prototype.forEach.call(box.children,function(c){c.classList.remove('on');});
+      b.classList.add('on');
+      postNow({kind:'selectSet',id:t.id});
+    });
+    box.appendChild(b);
+  });
+}
+
 function apply(s){
   state=s;
   document.getElementById('setName').textContent=s.setName||'';
   document.getElementById('dot').className=s.connected?'ok':'';
   document.getElementById('warn').style.display=s.connected?'none':'block';
+  var ss=setsSig(s);
+  if(ss!==ssig){ssig=ss;buildSets();}
   var ns=layoutSig(s);
   if(ns!==sig){sig=ns;build();}
   else{s.widgets.forEach(function(w){var u=updaters[w.id];if(u)u(w);});}
