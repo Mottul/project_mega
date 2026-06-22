@@ -6,7 +6,9 @@
 // den main-Prozess (api.osc).
 
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -149,6 +151,28 @@ const HAS_EYEDROPPER = typeof window !== 'undefined' && 'EyeDropper' in window
 const HUE_GRADIENT =
   'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)'
 
+// Restzeit eines laufenden Videos (für die Anzeige/Meter-Quelle „Video"). Wird
+// von OscControl aus dem Video-Player gespeist und von den Meter-Kacheln gelesen.
+interface VideoInfo {
+  playing: boolean
+  remainingSec: number | null
+  durationSec: number
+}
+const VideoCtx = createContext<VideoInfo>({ playing: false, remainingSec: null, durationSec: 0 })
+
+/** Sekunden als m:ss bzw. h:mm:ss. */
+function fmtClock(totalSec: number): string {
+  const s = Math.max(0, Math.round(totalSec))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  const mm = h > 0 ? String(m).padStart(2, '0') : String(m)
+  return `${h > 0 ? `${h}:` : ''}${mm}:${String(sec).padStart(2, '0')}`
+}
+// Schachbrett-Hintergrund (zeigt Transparenz hinter dem Alpha-Regler).
+const CHECKER =
+  'repeating-conic-gradient(#0006 0% 25%, #fff3 0% 50%) 50% / 10px 10px'
+
 interface LogEntry {
   id: number
   dir: 'out' | 'in'
@@ -178,6 +202,7 @@ export function OscControl(): JSX.Element {
   const [landscape, setLandscape] = useState(false)
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8091)
+  const [video, setVideo] = useState<VideoInfo>({ playing: false, remainingSec: null, durationSec: 0 })
   const [status, setStatus] = useState<OscStatus | null>(null)
   const [config, setConfig] = useState<OscSettings | null>(null)
   const [log, setLog] = useState<LogEntry[]>([])
@@ -256,13 +281,14 @@ export function OscControl(): JSX.Element {
         if (w.addressY) msgs.push(fmsg(w.addressY, cmd.y))
         sendMany(msgs)
       } else if (cmd.kind === 'color') {
-        st.updateWidget(w.id, { r: cmd.r, g: cmd.g, b: cmd.b })
+        st.updateWidget(w.id, { r: cmd.r, g: cmd.g, b: cmd.b, a: cmd.a })
         send({
           address: w.address,
           args: [
             { type: 'f', value: cmd.r },
             { type: 'f', value: cmd.g },
-            { type: 'f', value: cmd.b }
+            { type: 'f', value: cmd.b },
+            { type: 'f', value: cmd.a }
           ]
         })
       }
@@ -286,7 +312,7 @@ export function OscControl(): JSX.Element {
     const dt = Date.now() - p.t
     if (dt >= 150) run()
     else if (!p.timer) p.timer = setTimeout(run, 150 - dt)
-  }, [set, columns, widgets])
+  }, [set, columns, widgets, video])
 
   // Beim Schließen des Tabs ausstehende Veröffentlichung abbrechen und dem
   // Server „getrennt" melden.
@@ -298,6 +324,47 @@ export function OscControl(): JSX.Element {
         p.timer = null
       }
       void api.osc.publish({ connected: false, setName: '', columns: 24, widgets: [] })
+    }
+  }, [])
+
+  // Restzeit des laufenden Videos beobachten (Quelle „Video" der Anzeige/Meter).
+  // Bewusst grob: nur bei ganzzahliger Sekundenänderung neu rendern.
+  useEffect(() => {
+    let playing = false
+    let dur = 0
+    let pos = 0
+    const apply = (): void => {
+      const remaining = playing && dur > 0 ? Math.max(0, Math.round(dur - pos)) : null
+      setVideo((prev) =>
+        prev.playing === playing && prev.remainingSec === remaining && prev.durationSec === dur
+          ? prev
+          : { playing, remainingSec: remaining, durationSec: dur }
+      )
+    }
+    void api.player
+      .getState()
+      .then((s) => {
+        if (!s) return
+        playing = s.playing
+        dur = s.durationSec
+        pos = s.positionSec
+        apply()
+      })
+      .catch(() => {})
+    const offState = api.player.onState((s) => {
+      playing = s.playing
+      dur = s.durationSec
+      pos = s.positionSec
+      apply()
+    })
+    const offTick = api.player.onTick((t) => {
+      dur = t.durationSec
+      pos = t.positionSec
+      apply()
+    })
+    return () => {
+      offState()
+      offTick()
     }
   }, [])
 
@@ -320,26 +387,33 @@ export function OscControl(): JSX.Element {
       connected: true,
       setName: cs.name,
       columns: cs.columns,
-      widgets: cs.widgets.map((w) => ({
-        id: w.id,
-        type: w.type,
-        label: w.label,
-        color: w.color,
-        address: w.address,
-        addressY: w.addressY,
-        min: w.min,
-        max: w.max,
-        gx: w.gx,
-        gy: w.gy,
-        cw: w.cw,
-        ch: w.ch,
-        value: w.value,
-        x: w.x,
-        y: w.y,
-        r: w.r,
-        g: w.g,
-        b: w.b
-      }))
+      widgets: cs.widgets.map((w) => {
+        const m = w.type === 'meter' ? meterReadout(w, video) : { level: 0, text: '' }
+        return {
+          id: w.id,
+          type: w.type,
+          label: w.label,
+          color: w.color,
+          address: w.address,
+          addressY: w.addressY,
+          min: w.min,
+          max: w.max,
+          gx: w.gx,
+          gy: w.gy,
+          cw: w.cw,
+          ch: w.ch,
+          value: w.value,
+          x: w.x,
+          y: w.y,
+          r: w.r,
+          g: w.g,
+          b: w.b,
+          a: w.a,
+          align: w.align,
+          meterLevel: m.level,
+          meterText: m.text
+        }
+      })
     }
     void api.osc.publish(snap)
   }
@@ -366,6 +440,7 @@ export function OscControl(): JSX.Element {
   const statusDot = status ? (status.lastError ? 'bg-destructive' : 'bg-emerald-500') : 'bg-muted-foreground'
 
   const main = (
+    <VideoCtx.Provider value={video}>
     <div className="flex h-full flex-col">
       {/* Kopfzeile: Sets links, Edit/Live rechts */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
@@ -493,6 +568,7 @@ export function OscControl(): JSX.Element {
         )}
       </div>
     </div>
+    </VideoCtx.Provider>
   )
 
   const aside = (
@@ -642,11 +718,24 @@ export function OscControl(): JSX.Element {
 
 /** Eingehendes Feedback in passende Widgets spiegeln (ohne erneut zu senden). */
 function reflectFeedback(fb: OscFeedback): void {
-  const first = fb.args[0]
-  const num = typeof first === 'number' ? first : typeof first === 'boolean' ? (first ? 1 : 0) : null
-  if (num == null) return
+  const toNum = (a: string | number | boolean | undefined): number | null =>
+    typeof a === 'number' ? a : typeof a === 'boolean' ? (a ? 1 : 0) : null
+  const num = toNum(fb.args[0])
   const st = useOscSurface.getState()
   for (const w of st.currentSet().widgets) {
+    if (w.type === 'color' && w.address === fb.address && num != null) {
+      // r,g,b(,a) aus den ersten Argumenten – fehlende Kanäle bleiben unverändert.
+      const patch: Partial<OscWidget> = { r: clamp01(num) }
+      const g = toNum(fb.args[1])
+      const b = toNum(fb.args[2])
+      const a = toNum(fb.args[3])
+      if (g != null) patch.g = clamp01(g)
+      if (b != null) patch.b = clamp01(b)
+      if (a != null) patch.a = clamp01(a)
+      st.updateWidget(w.id, patch)
+      continue
+    }
+    if (num == null) continue
     if (w.type === 'fader' && w.address === fb.address) {
       const lo = Math.min(w.min, w.max)
       const hi = Math.max(w.min, w.max)
@@ -656,6 +745,8 @@ function reflectFeedback(fb: OscFeedback): void {
     } else if (w.type === 'xy') {
       if (w.address === fb.address) st.updateWidget(w.id, { x: clamp01(num) })
       if (w.addressY === fb.address) st.updateWidget(w.id, { y: clamp01(num) })
+    } else if (w.type === 'meter' && w.source === 'osc' && w.address === fb.address) {
+      st.updateWidget(w.id, { value: num })
     }
   }
 }
@@ -768,7 +859,8 @@ function WidgetTile({
     window.addEventListener('pointerup', up)
   }
 
-  const showAddr = !live && w.ch >= 2
+  const showAddr =
+    !live && w.ch >= 2 && w.type !== 'label' && !(w.type === 'meter' && w.source === 'video')
 
   return (
     <div
@@ -783,7 +875,7 @@ function WidgetTile({
         dragging && 'z-20 opacity-80 shadow-lg'
       )}
     >
-      {!compact && (
+      {!compact && w.type !== 'label' && (
         <div className="mb-1 flex items-center gap-1.5">
           <span className="size-2 shrink-0 rounded-full" style={{ background: w.color }} />
           <span className="truncate text-xs font-medium" title={w.label}>
@@ -798,6 +890,8 @@ function WidgetTile({
         {w.type === 'button' && <Momentary w={w} onSend={onSend} />}
         {w.type === 'xy' && <XYPad w={w} onSendMany={onSendMany} />}
         {w.type === 'color' && <ColorPad w={w} onSend={onSend} />}
+        {w.type === 'label' && <LabelView w={w} />}
+        {w.type === 'meter' && <Meter w={w} />}
       </div>
 
       {showAddr && (
@@ -1167,25 +1261,27 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   const hex = rgb01ToHex(w.r, w.g, w.b)
   const hsv = rgb2hsv(w.r, w.g, w.b)
   const lum = 0.299 * w.r + 0.587 * w.g + 0.114 * w.b
+  const rgba = `rgba(${Math.round(w.r * 255)}, ${Math.round(w.g * 255)}, ${Math.round(w.b * 255)}, ${w.a})`
   const hueAccent = (() => {
     const c = hsv2rgb(hsv.h, 1, 1)
     return rgb01ToHex(c.r, c.g, c.b)
   })()
 
-  function emit(r: number, g: number, b: number): void {
-    useOscSurface.getState().updateWidget(w.id, { r, g, b })
+  function emit(r: number, g: number, b: number, a: number): void {
+    useOscSurface.getState().updateWidget(w.id, { r, g, b, a })
     onSend({
       address: w.address,
       args: [
         { type: 'f', value: r },
         { type: 'f', value: g },
-        { type: 'f', value: b }
+        { type: 'f', value: b },
+        { type: 'f', value: a }
       ]
     })
   }
   function setHue(h: number): void {
     const { r, g, b } = hsv2rgb(h, hsv.s, hsv.v)
-    emit(r, g, b)
+    emit(r, g, b, w.a)
   }
   async function pickColor(): Promise<void> {
     const ED = (window as unknown as { EyeDropper?: new () => { open(): Promise<{ sRGBHex: string }> } })
@@ -1194,7 +1290,7 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
     try {
       const res = await new ED().open()
       const c = hexToRgb01(res.sRGBHex)
-      emit(c.r, c.g, c.b)
+      emit(c.r, c.g, c.b, w.a)
     } catch {
       // abgebrochen
     }
@@ -1205,7 +1301,7 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       <div className="flex items-center gap-1.5">
         <div
           className="flex h-7 flex-1 items-center justify-center rounded border border-white/15 font-mono text-[11px] uppercase"
-          style={{ background: hex, color: lum > 0.55 ? '#000' : '#fff' }}
+          style={{ background: `linear-gradient(${rgba}, ${rgba}), ${CHECKER}`, color: lum > 0.55 ? '#000' : '#fff' }}
         >
           {hex}
         </div>
@@ -1230,9 +1326,16 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
           track={HUE_GRADIENT}
           onChange={(v) => setHue(v * 360)}
         />
-        <ChannelRow letter="R" value={w.r} accent="#ef4444" onChange={(v) => emit(v, w.g, w.b)} />
-        <ChannelRow letter="G" value={w.g} accent="#22c55e" onChange={(v) => emit(w.r, v, w.b)} />
-        <ChannelRow letter="B" value={w.b} accent="#3b82f6" onChange={(v) => emit(w.r, w.g, v)} />
+        <ChannelRow letter="R" value={w.r} accent="#ef4444" onChange={(v) => emit(v, w.g, w.b, w.a)} />
+        <ChannelRow letter="G" value={w.g} accent="#22c55e" onChange={(v) => emit(w.r, v, w.b, w.a)} />
+        <ChannelRow letter="B" value={w.b} accent="#3b82f6" onChange={(v) => emit(w.r, w.g, v, w.a)} />
+        <ChannelRow
+          letter="A"
+          value={w.a}
+          accent="#cbd5e1"
+          track={`linear-gradient(to right, transparent, ${hex}), ${CHECKER}`}
+          onChange={(v) => emit(w.r, w.g, w.b, v)}
+        />
       </div>
     </div>
   )
@@ -1328,6 +1431,63 @@ function RelSlider({
   )
 }
 
+/* ------------------------- Anzeige: Label ------------------------------- */
+// Reine Beschriftung/Überschrift (kein OSC). Textgröße wächst mit der Kachelhöhe.
+
+function LabelView({ w }: { w: OscWidget }): JSX.Element {
+  const align =
+    w.align === 'left'
+      ? 'items-start text-left'
+      : w.align === 'right'
+        ? 'items-end text-right'
+        : 'items-center text-center'
+  return (
+    <div className={cn('flex h-full w-full flex-col justify-center', align)}>
+      <span
+        className="font-semibold leading-tight"
+        style={{ color: w.color, fontSize: Math.min(10 + w.ch * 6, 42) }}
+      >
+        {w.label || 'Überschrift'}
+      </span>
+    </div>
+  )
+}
+
+/* ------------------------- Anzeige: Meter ------------------------------- */
+// Zeigt einen Wert als Balken + Zahl. Quelle: eingehendes OSC-Feedback (Adresse)
+// oder die Restzeit des laufenden Videos aus dem Video-Player.
+
+function meterReadout(w: OscWidget, video: VideoInfo): { level: number; text: string } {
+  if (w.source === 'video') {
+    if (video.remainingSec == null) return { level: 0, text: '–:––' }
+    const level = video.durationSec > 0 ? clamp01(video.remainingSec / video.durationSec) : 0
+    return { level, text: fmtClock(video.remainingSec) }
+  }
+  const lo = Math.min(w.min, w.max)
+  const hi = Math.max(w.min, w.max)
+  const level = hi > lo ? clamp01((w.value - lo) / (hi - lo)) : 0
+  const text = Number.isInteger(w.value) ? String(w.value) : w.value.toFixed(2)
+  return { level, text }
+}
+
+function Meter({ w }: { w: OscWidget }): JSX.Element {
+  const video = useContext(VideoCtx)
+  const { level, text } = meterReadout(w, video)
+  return (
+    <div className="flex h-full w-full flex-col justify-center gap-1.5">
+      <div className="text-center text-lg font-semibold tabular-nums leading-none" style={{ color: w.color }}>
+        {text}
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full transition-[width] duration-150"
+          style={{ width: `${level * 100}%`, background: w.color }}
+        />
+      </div>
+    </div>
+  )
+}
+
 /* ------------------------- Inspector: Widget ---------------------------- */
 
 function Field({ label, children }: { label: string; children: ReactNode }): JSX.Element {
@@ -1385,7 +1545,7 @@ function WidgetEditor({
   const min = WIDGET_MIN[w.type]
   return (
     <div className="space-y-3">
-      <Field label="Beschriftung">
+      <Field label={w.type === 'label' ? 'Text' : 'Beschriftung'}>
         <Input value={w.label} onChange={(e) => update(w.id, { label: e.target.value })} />
       </Field>
 
@@ -1408,14 +1568,29 @@ function WidgetEditor({
         </select>
       </Field>
 
-      <Field label={w.type === 'xy' ? 'OSC-Adresse (X)' : 'OSC-Adresse'}>
-        <Input
-          value={w.address}
-          spellCheck={false}
-          className="font-mono text-xs"
-          onChange={(e) => update(w.id, { address: e.target.value })}
-        />
-      </Field>
+      {w.type === 'meter' && (
+        <Field label="Quelle">
+          <select
+            value={w.source}
+            onChange={(e) => update(w.id, { source: e.target.value as 'osc' | 'video' })}
+            className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+          >
+            <option value="osc">OSC-Feedback (Adresse)</option>
+            <option value="video">Video-Restzeit</option>
+          </select>
+        </Field>
+      )}
+
+      {w.type !== 'label' && !(w.type === 'meter' && w.source === 'video') && (
+        <Field label={w.type === 'xy' ? 'OSC-Adresse (X)' : 'OSC-Adresse'}>
+          <Input
+            value={w.address}
+            spellCheck={false}
+            className="font-mono text-xs"
+            onChange={(e) => update(w.id, { address: e.target.value })}
+          />
+        </Field>
+      )}
 
       {w.type === 'xy' && (
         <Field label="OSC-Adresse (Y)">
@@ -1428,7 +1603,29 @@ function WidgetEditor({
         </Field>
       )}
 
-      {w.type === 'fader' && (
+      {w.type === 'label' && (
+        <Field label="Ausrichtung">
+          <div className="flex gap-1">
+            {(['left', 'center', 'right'] as const).map((a) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => update(w.id, { align: a })}
+                className={cn(
+                  'h-9 flex-1 rounded-md border text-sm',
+                  w.align === a
+                    ? 'border-foreground bg-primary/10 text-foreground'
+                    : 'border-border text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {a === 'left' ? 'Links' : a === 'center' ? 'Mitte' : 'Rechts'}
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
+
+      {(w.type === 'fader' || (w.type === 'meter' && w.source === 'osc')) && (
         <div className="grid grid-cols-2 gap-2">
           <Field label="Min">
             <DecimalField value={w.min} onCommit={(v) => update(w.id, { min: v })} />

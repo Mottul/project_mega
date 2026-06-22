@@ -483,7 +483,7 @@ export type JingleRemoteCommand = { type: 'trigger'; padId: string } | { type: '
 // Schnappschuss der OSC-Oberfläche für die Handy-/Tablet-Seite und die
 // Steuerbefehle, die von dort zurückkommen (Renderer wendet sie an + sendet OSC).
 
-export type OscRemoteWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color'
+export type OscRemoteWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter'
 
 /** Serialisierbares Widget für die mobile Seite (Teilmenge des Renderer-Widgets). */
 export interface OscRemoteWidget {
@@ -505,6 +505,10 @@ export interface OscRemoteWidget {
   r: number
   g: number
   b: number
+  a: number
+  align: 'left' | 'center' | 'right' // Label-Ausrichtung
+  meterLevel: number // Anzeige/Meter: Füllstand 0..1 (vom Rechner berechnet)
+  meterText: string // Anzeige/Meter: angezeigter Text
 }
 
 export interface OscRemoteSnapshot {
@@ -519,7 +523,7 @@ export type OscRemoteCommand =
   | { kind: 'toggle'; id: string; on: boolean }
   | { kind: 'button'; id: string; down: boolean }
   | { kind: 'xy'; id: string; x: number; y: number }
-  | { kind: 'color'; id: string; r: number; g: number; b: number }
+  | { kind: 'color'; id: string; r: number; g: number; b: number; a: number }
 
 /* --------------------------- YouTube-Download --------------------------- */
 // yt-dlp-Wrapper. Binary wird (falls nicht gefunden) nach userData/bin geladen
