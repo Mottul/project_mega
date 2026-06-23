@@ -268,7 +268,8 @@ src/
   Schnellnachrichten) und **Vollbild-Anzeige** auf gewähltem Monitor – synchron zur Vorschau,
   da der main-Prozess autoritativ tickt. Alternativ **große Uhr mit Sekundenanzeige**.
 - **OSC-Steuerung** – frei belegbares **Steuerpult** für MadMapper & Co.: Kacheln vom Typ **Fader,
-  Taster, Schalter, XY-Pad und Farbe** auf einem **feinen, im Edit-Modus sichtbaren Raster** – per
+  Taster, Schalter, XY-Pad, Farbe, Anzeige/Meter, Label sowie Auswahl (1-aus-n) und Taster-Bank**
+  auf einem **feinen, im Edit-Modus sichtbaren Raster** – per
   Drag **frei positionierbar** (Kacheln **überlappen nicht**: beim Loslassen rückt eine Kachel auf die
   nächste freie Stelle) und **per Eckgriff in der Größe** veränderbar (mit **Mindestgrößen je
   Typ**, damit Regler/Pads nicht verschwinden), je mit eigener **OSC-Adresse**. Eine **Geräte-Vorschau**
@@ -280,10 +281,12 @@ src/
   zeigt alle Regler dauerhaft (Hue, R/G/B und **Pipette**/EyeDropper). Gesendet wird über einen **UDP-Socket im
   main-Prozess** (`node:dgram`) mit **eigenem, abhängigkeitsfreiem OSC-Codec**; **Host/Ports** sind
   einstellbar (MadMapper-Standard out 8000 / in 9000). Optional **Feedback empfangen** (lauscht auf
-  dem Eingangs-Port und **spiegelt** Werte zurück in passende Kacheln) samt **OSC-Monitor**.
+  dem Eingangs-Port und **spiegelt** Werte zurück in passende Kacheln) samt **OSC-Monitor** und
+  **Learn-Modus** (die nächste eingehende Adresse wird ins gewählte Widget übernommen).
   **Fernsteuerung per Handy/Tablet**: ein eingebetteter Webserver (nur im LAN, ohne Passwort, wie beim
   Jingle-Player) zeigt dieselbe Oberfläche im Browser – Tippen/Ziehen dort löst den **OSC-Versand am
-  Rechner** aus (QR-Code zum Öffnen). Sets und Oberfläche überstehen App-Neustarts.
+  Rechner** aus (QR-Code zum Öffnen); **Sets lassen sich auch am Handy/Tablet umschalten**. Sets und
+  Oberfläche überstehen App-Neustarts.
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
   (Throw Ratio / Objektivwahl), **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
   **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis),
@@ -298,9 +301,9 @@ src/
 
 ## Roadmap
 
-- **OSC-Steuerung – Ausbaustufen**: **Learn-Modus** (eingehende Adresse automatisch übernehmen),
-  **MadMapper-Vorlagen** (Surfaces/Medien/Cues), weitere Widgets (Auswahl/1-aus-n, Taster-Bank,
-  Anzeige/Meter) und tool-übergreifende OSC-Trigger (z. B. aus Jingle-/Timer-/Video-Player).
+- **OSC-Steuerung – Ausbaustufen**: **MadMapper-Vorlagen** (Surfaces/Medien/Cues) und
+  **tool-übergreifende OSC-Trigger** (z. B. aus Jingle-/Timer-/Video-Player). _(Erledigt: Learn-Modus,
+  Widgets Auswahl/1-aus-n + Taster-Bank + Anzeige/Meter + Label, Set-Wechsel am Handy.)_
 - **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
   eingebacken).
 - **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der
@@ -310,5 +313,13 @@ src/
   (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem Dip-Schalter-Rechner.
 - Kleinere Event-Rechner: **Edge-Blend** (Beamer-Softedge), **Video-Datenrate/Dateigröße**,
   **Funkfrequenz-Planer**, **Sonnenstand/Dämmerung** für Open-Air.
+- **Verbesserungen bestehender Tools**: **Audio-Test-Töne** im Testbildgenerator (Sinus/Rosa/Sweep,
+  Kanal-ID), **Loudness-Normalisierung (EBU R128)** beim Einbacken im Video-Player, **Ducking +
+  MIDI-Pads** im Jingle-Player, **OCR** für gescannte PDFs in der Manuals-Bibliothek,
+  **Prozessor-Presets** (Novastar/Brompton) im LED-Wall-Konfigurator.
+- **Neue Rechner (klein)**: **IP-/Subnetz-Rechner** (Dante/NDI/AV-over-IP), **Gel-/Farbfilter-
+  Konverter** (Lee↔Rosco↔RGB), **Spannungsabfall/Kabelquerschnitt** (an die Stromlast angedockt).
+- **Technische Hygiene**: **Unit-Tests** (Vitest) für die Rechenkerne (LED-Wall-Mathe, Timecode,
+  OSC-Codec, Packlisten-Ableitung) und eine **Mini-CI** (Typecheck + Build je Push).
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).
