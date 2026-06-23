@@ -8,38 +8,22 @@
 // einschaltbare Komfortfunktion fürs lokale Netz. Standardmäßig AUS.
 
 import { createReadStream, createWriteStream, mkdirSync, statSync } from 'node:fs'
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { networkInterfaces } from 'node:os'
+import { type IncomingMessage, type ServerResponse } from 'node:http'
 import { extname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { app } from 'electron'
 import type { PlayerCommand, PlayerState, PlayerTick, RemoteStatus } from '@shared/types'
 import { logLine } from '../log'
 import { getSettings } from '../store'
+import { createRemoteHost, readBody, sendJsonRaw } from '../remoteHttp'
 import { ALLOWED_MEDIA_EXT, convertManager } from './convertManager'
 import { listMedia, resolveMediaFile } from './mediaLibrary'
 import { applyCommand, getPlayerState } from './playerState'
 import { MOBILE_PAGE } from './remotePage'
 
-let server: Server | null = null
-let currentPort = 8088
-const clients = new Set<ServerResponse>()
+const host = createRemoteHost('remote', 8088)
 
-function lanUrls(port: number): string[] {
-  const out: string[] = []
-  const ifaces = networkInterfaces()
-  for (const name of Object.keys(ifaces)) {
-    for (const ni of ifaces[name] ?? []) {
-      if (ni.family === 'IPv4' && !ni.internal) out.push(`http://${ni.address}:${port}`)
-    }
-  }
-  if (out.length === 0) out.push(`http://localhost:${port}`)
-  return out
-}
-
-export function getRemoteStatus(): RemoteStatus {
-  return { running: server !== null, port: currentPort, urls: server ? lanUrls(currentPort) : [] }
-}
+export const getRemoteStatus = host.status
 
 // media://library/<x> -> /media/<x>, damit das Tablet die Dateien per HTTP lädt.
 function rewriteJson(value: unknown): string {
@@ -72,23 +56,6 @@ function mediaType(path: string): string {
     default:
       return 'application/octet-stream'
   }
-}
-
-function sendJson(res: ServerResponse, json: string): void {
-  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-  res.end(json)
-}
-
-function readBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve) => {
-    let data = ''
-    req.on('data', (c) => {
-      data += c
-      if (data.length > 1_000_000) data = data.slice(0, 1_000_000) // simpler Schutz
-    })
-    req.on('end', () => resolve(data))
-    req.on('error', () => resolve(''))
-  })
 }
 
 function uploadsDir(): string {
@@ -131,7 +98,7 @@ function receiveUpload(req: IncomingMessage, res: ServerResponse): void {
         fitMode: p.defaultFit,
         wall: { width: p.wallWidth, height: p.wallHeight }
       })
-      sendJson(res, '{"ok":true}')
+      sendJsonRaw(res, '{"ok":true}')
     } catch (e) {
       logLine('[remote] Upload-Konvertierung fehlgeschlagen:', e instanceof Error ? e.message : String(e))
       res.writeHead(500, { 'Content-Type': 'application/json' })
@@ -183,20 +150,6 @@ function serveMedia(req: IncomingMessage, res: ServerResponse, name: string): vo
   createReadStream(abs).pipe(res)
 }
 
-function openSse(req: IncomingMessage, res: ServerResponse): void {
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    Connection: 'keep-alive'
-  })
-  res.write('retry: 2000\n\n')
-  res.write(`data: ${JSON.stringify({ type: 'state', payload: JSON.parse(rewriteJson(stateForRemote())) })}\n\n`)
-  clients.add(res)
-  req.on('close', () => {
-    clients.delete(res)
-  })
-}
-
 function handle(req: IncomingMessage, res: ServerResponse): void {
   const url = new URL(req.url ?? '/', 'http://localhost')
   const path = url.pathname
@@ -206,18 +159,20 @@ function handle(req: IncomingMessage, res: ServerResponse): void {
     res.end(MOBILE_PAGE)
     return
   }
-  if (path === '/api/state') return sendJson(res, rewriteJson(stateForRemote()))
-  if (path === '/api/library') return sendJson(res, rewriteJson(listMedia()))
-  if (path === '/api/events') return openSse(req, res)
+  if (path === '/api/state') return sendJsonRaw(res, rewriteJson(stateForRemote()))
+  if (path === '/api/library') return sendJsonRaw(res, rewriteJson(listMedia()))
+  if (path === '/api/events') {
+    return host.openSse(req, res, () => JSON.parse(rewriteJson(stateForRemote())))
+  }
   if (path === '/api/command' && req.method === 'POST') {
-    void readBody(req).then((body) => {
+    void readBody(req, 1_000_000).then((body) => {
       try {
         const cmd = JSON.parse(body) as PlayerCommand
         if (cmd && typeof cmd.type === 'string') applyCommand(cmd)
       } catch {
         // ungültige Befehle ignorieren
       }
-      sendJson(res, '{"ok":true}')
+      sendJsonRaw(res, '{"ok":true}')
     })
     return
   }
@@ -229,61 +184,21 @@ function handle(req: IncomingMessage, res: ServerResponse): void {
   res.end('not found')
 }
 
-function broadcast(type: string, payload: unknown): void {
-  if (clients.size === 0) return
-  const data = `data: ${JSON.stringify({ type, payload })}\n\n`
-  for (const res of clients) {
-    try {
-      res.write(data)
-    } catch {
-      // tote Verbindung -> beim nächsten close entfernt
-    }
-  }
-}
-
 export function pushRemoteState(state: PlayerState): void {
-  if (!server) return
-  broadcast('state', JSON.parse(rewriteJson(stateForRemote(state))))
+  if (!host.isRunning()) return
+  host.broadcast('state', JSON.parse(rewriteJson(stateForRemote(state))))
 }
 export function pushRemoteTick(tick: PlayerTick): void {
-  if (!server) return
-  broadcast('tick', tick)
+  if (!host.isRunning()) return
+  host.broadcast('tick', tick)
 }
 export function pushRemoteLibrary(): void {
-  if (!server) return
-  broadcast('library', null)
+  if (!host.isRunning()) return
+  host.broadcast('library', null)
 }
 
 export function startRemote(port: number): Promise<RemoteStatus> {
-  return new Promise((resolve, reject) => {
-    stopRemote()
-    currentPort = Math.max(1, Math.min(65535, Math.round(port)))
-    const s = createServer(handle)
-    s.on('error', (err) => {
-      server = null
-      logLine('[remote] Serverfehler:', err.message)
-      reject(err)
-    })
-    s.listen(currentPort, '0.0.0.0', () => {
-      server = s
-      logLine('[remote] läuft auf', lanUrls(currentPort).join(', '))
-      resolve(getRemoteStatus())
-    })
-  })
+  return host.start(port, handle)
 }
 
-export function stopRemote(): void {
-  for (const res of clients) {
-    try {
-      res.end()
-    } catch {
-      // ignorieren
-    }
-  }
-  clients.clear()
-  if (server) {
-    server.close()
-    server = null
-    logLine('[remote] gestoppt')
-  }
-}
+export const stopRemote = host.stop
