@@ -483,7 +483,16 @@ export type JingleRemoteCommand = { type: 'trigger'; padId: string } | { type: '
 // Schnappschuss der OSC-Oberfläche für die Handy-/Tablet-Seite und die
 // Steuerbefehle, die von dort zurückkommen (Renderer wendet sie an + sendet OSC).
 
-export type OscRemoteWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter'
+export type OscRemoteWidgetType =
+  | 'fader'
+  | 'button'
+  | 'toggle'
+  | 'xy'
+  | 'color'
+  | 'label'
+  | 'meter'
+  | 'select'
+  | 'bank'
 
 /** Serialisierbares Widget für die mobile Seite (Teilmenge des Renderer-Widgets). */
 export interface OscRemoteWidget {
@@ -509,6 +518,7 @@ export interface OscRemoteWidget {
   align: 'left' | 'center' | 'right' // Label-Ausrichtung
   meterLevel: number // Anzeige/Meter: Füllstand 0..1 (vom Rechner berechnet)
   meterText: string // Anzeige/Meter: angezeigter Text
+  items: { label: string; address: string; value: number }[] // Auswahl/Taster-Bank
 }
 
 export interface OscRemoteSnapshot {
@@ -527,6 +537,8 @@ export type OscRemoteCommand =
   | { kind: 'xy'; id: string; x: number; y: number }
   | { kind: 'color'; id: string; r: number; g: number; b: number; a: number }
   | { kind: 'selectSet'; id: string } // Handy/Tablet wechselt das aktive Set
+  | { kind: 'select'; id: string; index: number } // Auswahl-Kachel: Option gewählt
+  | { kind: 'bankButton'; id: string; index: number; down: boolean } // Taster-Bank
 
 /* --------------------------- YouTube-Download --------------------------- */
 // yt-dlp-Wrapper. Binary wird (falls nicht gefunden) nach userData/bin geladen

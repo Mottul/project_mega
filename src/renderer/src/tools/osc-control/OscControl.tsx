@@ -61,6 +61,7 @@ import {
   WIDGET_COLORS,
   WIDGET_MIN,
   WIDGET_TYPE_LABEL,
+  type OscItem,
   type OscWidget,
   type OscWidgetType
 } from './store'
@@ -207,9 +208,17 @@ export function OscControl(): JSX.Element {
   const [log, setLog] = useState<LogEntry[]>([])
   const logRef = useRef<LogEntry[]>([])
   const logSeq = useRef(0)
+  // Learn: ID des Widgets, das die nächste eingehende OSC-Adresse übernimmt.
+  const [learnId, setLearnId] = useState<string | null>(null)
+  const learnRef = useRef<string | null>(null)
+  useEffect(() => {
+    learnRef.current = learnId
+  }, [learnId])
 
   // Set-Wechsel -> Auswahl zurücksetzen.
   useEffect(() => setSelectedId(null), [currentSetId])
+  // Auswahl-/Set-Wechsel -> Learn beenden.
+  useEffect(() => setLearnId(null), [selectedId, currentSetId])
 
   const pushLog = useCallback(
     (dir: 'out' | 'in', address: string, args: (number | string | boolean)[]) => {
@@ -248,6 +257,12 @@ export function OscControl(): JSX.Element {
     const offStatus = api.osc.onStatus((st) => setStatus(st))
     const offFeedback = api.osc.onFeedback((fb) => {
       pushLog('in', fb.address, fb.args)
+      // Learn-Modus: die nächste eingehende Adresse ins gewählte Widget übernehmen.
+      if (learnRef.current) {
+        useOscSurface.getState().updateWidget(learnRef.current, { address: fb.address })
+        setLearnId(null)
+        return
+      }
       reflectFeedback(fb)
     })
     return () => {
@@ -296,6 +311,15 @@ export function OscControl(): JSX.Element {
             { type: 'f', value: cmd.a }
           ]
         })
+      } else if (cmd.kind === 'select') {
+        const it = w.items[cmd.index]
+        if (it) {
+          st.updateWidget(w.id, { value: cmd.index })
+          send(fmsg(it.address || w.address, it.value))
+        }
+      } else if (cmd.kind === 'bankButton') {
+        const it = w.items[cmd.index]
+        if (it) send(fmsg(it.address || w.address, cmd.down ? w.onValue : w.offValue))
       }
     })
     return () => {
@@ -428,7 +452,8 @@ export function OscControl(): JSX.Element {
           a: w.a,
           align: w.align,
           meterLevel: m.level,
-          meterText: m.text
+          meterText: m.text,
+          items: w.items.map((it) => ({ label: it.label, address: it.address, value: it.value }))
         }
       })
     }
@@ -596,6 +621,9 @@ export function OscControl(): JSX.Element {
             key={selected.id}
             w={selected}
             columns={columns}
+            learning={learnId === selected.id}
+            canLearn={!!status?.listening}
+            onToggleLearn={() => setLearnId((id) => (id === selected.id ? null : selected.id))}
             onRemove={() => {
               useOscSurface.getState().removeWidget(selected.id)
               setSelectedId(null)
@@ -765,6 +793,10 @@ function reflectFeedback(fb: OscFeedback): void {
       if (w.addressY === fb.address) st.updateWidget(w.id, { y: clamp01(num) })
     } else if (w.type === 'meter' && w.source === 'osc' && w.address === fb.address) {
       st.updateWidget(w.id, { value: num })
+    } else if (w.type === 'select') {
+      // Option, deren Adresse+Wert zum Feedback passt -> als aktiv markieren.
+      const idx = w.items.findIndex((it) => (it.address || w.address) === fb.address && it.value === num)
+      if (idx >= 0) st.updateWidget(w.id, { value: idx })
     }
   }
 }
@@ -878,7 +910,12 @@ function WidgetTile({
   }
 
   const showAddr =
-    !live && w.ch >= 2 && w.type !== 'label' && !(w.type === 'meter' && w.source === 'video')
+    !live &&
+    w.ch >= 2 &&
+    w.type !== 'label' &&
+    w.type !== 'select' &&
+    w.type !== 'bank' &&
+    !(w.type === 'meter' && w.source === 'video')
 
   return (
     <div
@@ -910,6 +947,8 @@ function WidgetTile({
         {w.type === 'color' && <ColorPad w={w} onSend={onSend} />}
         {w.type === 'label' && <LabelView w={w} />}
         {w.type === 'meter' && <Meter w={w} />}
+        {w.type === 'select' && <SelectPad w={w} onSend={onSend} />}
+        {w.type === 'bank' && <ButtonBank w={w} onSend={onSend} />}
       </div>
 
       {showAddr && (
@@ -1205,6 +1244,97 @@ function Momentary({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       style={{ borderColor: w.color, background: pressed ? w.color : 'transparent' }}
     >
       <Zap className="size-7" style={{ color: pressed ? '#fff' : w.color }} />
+    </button>
+  )
+}
+
+/* ------------------------- Bedienelement: Auswahl ----------------------- */
+
+// 1-aus-n: Tippen sendet die Adresse der Option (Fallback: Widget-Adresse) mit
+// ihrem Wert; die zuletzt gewählte Option bleibt markiert (value = Index).
+function SelectPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
+  const sel = Math.round(w.value)
+  return (
+    <div className="grid h-full w-full gap-1" style={{ gridAutoRows: '1fr' }}>
+      {w.items.map((it, i) => {
+        const active = i === sel
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => {
+              useOscSurface.getState().updateWidget(w.id, { value: i })
+              onSend(fmsg(it.address || w.address, it.value))
+            }}
+            className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border px-1 text-sm font-medium transition-colors"
+            style={{
+              borderColor: w.color,
+              background: active ? w.color : 'transparent',
+              color: active ? '#fff' : undefined
+            }}
+          >
+            <span className="truncate">{it.label || `Option ${i + 1}`}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ------------------------- Bedienelement: Taster-Bank ------------------- */
+
+// Mehrere Momenttaster in einer Kachel; jeder feuert seine eigene Adresse
+// (Fallback: Widget-Adresse) mit „an“ beim Drücken, „aus“ beim Loslassen.
+function ButtonBank({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
+  const cols = Math.min(Math.max(1, w.items.length), 4)
+  return (
+    <div
+      className="grid h-full w-full gap-1"
+      style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr' }}
+    >
+      {w.items.map((it, i) => (
+        <BankButton key={i} w={w} item={it} index={i} onSend={onSend} />
+      ))}
+    </div>
+  )
+}
+
+function BankButton({
+  w,
+  item,
+  index,
+  onSend
+}: {
+  w: OscWidget
+  item: OscItem
+  index: number
+  onSend: Send
+}): JSX.Element {
+  const [pressed, setPressed] = useState(false)
+  const addr = item.address || w.address
+  function release(): void {
+    if (!pressed) return
+    setPressed(false)
+    onSend(fmsg(addr, w.offValue))
+  }
+  return (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        setPressed(true)
+        onSend(fmsg(addr, w.onValue))
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border px-1 text-sm font-semibold transition-transform active:scale-[0.98]"
+      style={{
+        borderColor: w.color,
+        background: pressed ? w.color : 'transparent',
+        color: pressed ? '#fff' : w.color
+      }}
+    >
+      <span className="truncate">{item.label || index + 1}</span>
     </button>
   )
 }
@@ -1550,13 +1680,84 @@ function DecimalField({
   )
 }
 
+/** Editor für die Einträge einer Auswahl-/Taster-Bank-Kachel (Label + Wert bzw.
+ *  Label + Adresse, hinzufügen/entfernen). */
+function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
+  const update = useOscSurface((s) => s.updateWidget)
+  const isSelect = w.type === 'select'
+  const items = w.items
+  const setItem = (i: number, patch: Partial<OscItem>): void =>
+    update(w.id, { items: items.map((it, j) => (j === i ? { ...it, ...patch } : it)) })
+  const add = (): void =>
+    update(w.id, {
+      items: [
+        ...items,
+        isSelect
+          ? { label: String.fromCharCode(65 + (items.length % 26)), address: '', value: items.length }
+          : {
+              label: String(items.length + 1),
+              address: `/megatoolbox/btn/${items.length + 1}`,
+              value: 1
+            }
+      ]
+    })
+  const remove = (i: number): void => update(w.id, { items: items.filter((_, j) => j !== i) })
+  return (
+    <div className="space-y-2">
+      <span className="block text-xs text-muted-foreground">{isSelect ? 'Optionen' : 'Taster'}</span>
+      {items.map((it, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <Input
+            value={it.label}
+            placeholder="Label"
+            className="h-8 w-0 flex-1"
+            onChange={(e) => setItem(i, { label: e.target.value })}
+          />
+          {isSelect ? (
+            <DecimalField
+              value={it.value}
+              onCommit={(v) => setItem(i, { value: v })}
+              className="h-8 w-16"
+            />
+          ) : (
+            <Input
+              value={it.address}
+              spellCheck={false}
+              placeholder="/adresse"
+              className="h-8 w-0 flex-1 font-mono text-xs"
+              onChange={(e) => setItem(i, { address: e.target.value })}
+            />
+          )}
+          <button
+            type="button"
+            title="Eintrag entfernen"
+            onClick={() => remove(i)}
+            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      ))}
+      <Button variant="outline" size="sm" className="w-full" onClick={add}>
+        <Plus className="size-3.5" /> {isSelect ? 'Option' : 'Taster'} hinzufügen
+      </Button>
+    </div>
+  )
+}
+
 function WidgetEditor({
   w,
   columns,
+  learning,
+  canLearn,
+  onToggleLearn,
   onRemove
 }: {
   w: OscWidget
   columns: number
+  learning: boolean
+  canLearn: boolean
+  onToggleLearn: () => void
   onRemove: () => void
 }): JSX.Element {
   const update = useOscSurface((s) => s.updateWidget)
@@ -1574,6 +1775,9 @@ function WidgetEditor({
             const type = e.target.value as OscWidgetType
             const patch: Partial<OscWidget> = { type }
             if (type === 'xy' && !w.addressY) patch.addressY = makeWidget('xy').addressY
+            // Auswahl/Taster-Bank brauchen Einträge -> Beispiele setzen, falls leer.
+            if ((type === 'select' || type === 'bank') && w.items.length === 0)
+              patch.items = makeWidget(type).items
             update(w.id, patch)
           }}
           className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
@@ -1600,13 +1804,42 @@ function WidgetEditor({
       )}
 
       {w.type !== 'label' && !(w.type === 'meter' && w.source === 'video') && (
-        <Field label={w.type === 'xy' ? 'OSC-Adresse (X)' : 'OSC-Adresse'}>
-          <Input
-            value={w.address}
-            spellCheck={false}
-            className="font-mono text-xs"
-            onChange={(e) => update(w.id, { address: e.target.value })}
-          />
+        <Field
+          label={
+            w.type === 'xy'
+              ? 'OSC-Adresse (X)'
+              : w.type === 'select' || w.type === 'bank'
+                ? 'OSC-Adresse (Standard)'
+                : 'OSC-Adresse'
+          }
+        >
+          <div className="flex gap-1.5">
+            <Input
+              value={w.address}
+              spellCheck={false}
+              className="flex-1 font-mono text-xs"
+              onChange={(e) => update(w.id, { address: e.target.value })}
+            />
+            <button
+              type="button"
+              onClick={onToggleLearn}
+              disabled={!canLearn && !learning}
+              title={
+                canLearn || learning
+                  ? 'OSC-Adresse lernen: die nächste eingehende Adresse übernehmen'
+                  : 'Erst Feedback-Empfang aktivieren (siehe Verbindung)'
+              }
+              className={cn(
+                'flex h-9 shrink-0 items-center gap-1 rounded-md border px-2 text-xs transition-colors',
+                learning
+                  ? 'animate-pulse border-emerald-500 text-emerald-500'
+                  : 'border-border text-muted-foreground hover:text-foreground disabled:opacity-40'
+              )}
+            >
+              <Radio className="size-4" />
+              {learning ? 'lernt…' : 'Learn'}
+            </button>
+          </div>
         </Field>
       )}
 
@@ -1643,6 +1876,8 @@ function WidgetEditor({
         </Field>
       )}
 
+      {(w.type === 'select' || w.type === 'bank') && <ItemsEditor w={w} />}
+
       {(w.type === 'fader' || (w.type === 'meter' && w.source === 'osc')) && (
         <div className="grid grid-cols-2 gap-2">
           <Field label="Min">
@@ -1654,7 +1889,7 @@ function WidgetEditor({
         </div>
       )}
 
-      {(w.type === 'button' || w.type === 'toggle') && (
+      {(w.type === 'button' || w.type === 'toggle' || w.type === 'bank') && (
         <div className="grid grid-cols-2 gap-2">
           <Field label="Wert „an“">
             <DecimalField value={w.onValue} onCommit={(v) => update(w.id, { onValue: v })} />
