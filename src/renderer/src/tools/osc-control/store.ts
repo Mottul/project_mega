@@ -8,7 +8,23 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type OscWidgetType = 'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter'
+export type OscWidgetType =
+  | 'fader'
+  | 'button'
+  | 'toggle'
+  | 'xy'
+  | 'color'
+  | 'label'
+  | 'meter'
+  | 'select'
+  | 'bank'
+
+/** Eintrag einer Auswahl-/Taster-Bank-Kachel. */
+export interface OscItem {
+  label: string
+  address: string // leer = Adresse des Widgets verwenden
+  value: number // nur Auswahl: bei Wahl gesendeter Wert
+}
 
 export interface OscWidget {
   id: string
@@ -35,6 +51,7 @@ export interface OscWidget {
   a: number // Farbe Alpha 0..1
   align: 'left' | 'center' | 'right' // nur Label: Textausrichtung
   source: 'osc' | 'video' // nur Anzeige/Meter: Wertquelle (OSC-Feedback oder Video-Restzeit)
+  items: OscItem[] // nur Auswahl/Taster-Bank: Optionen bzw. Taster (value = Index bei Auswahl)
 }
 
 export interface OscSet {
@@ -65,7 +82,9 @@ export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
   xy: 'XY-Pad',
   color: 'Farbe',
   label: 'Label',
-  meter: 'Anzeige'
+  meter: 'Anzeige',
+  select: 'Auswahl',
+  bank: 'Taster-Bank'
 }
 
 // Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
@@ -76,7 +95,9 @@ const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
   xy: { cw: 8, ch: 5 },
   color: { cw: 8, ch: 6 },
   label: { cw: 10, ch: 2 },
-  meter: { cw: 6, ch: 3 }
+  meter: { cw: 6, ch: 3 },
+  select: { cw: 6, ch: 6 },
+  bank: { cw: 8, ch: 4 }
 }
 
 // Mindestgröße je Typ -> Regler bleiben bedienbar (Pads behalten Fläche, ein
@@ -88,7 +109,9 @@ export const WIDGET_MIN: Record<OscWidgetType, { cw: number; ch: number }> = {
   xy: { cw: 4, ch: 3 },
   color: { cw: 5, ch: 4 },
   label: { cw: 2, ch: 1 },
-  meter: { cw: 3, ch: 2 }
+  meter: { cw: 3, ch: 2 },
+  select: { cw: 3, ch: 2 },
+  bank: { cw: 3, ch: 2 }
 }
 
 let seq = 0
@@ -202,7 +225,8 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     b: 1,
     a: 1,
     align: 'center',
-    source: 'osc'
+    source: 'osc',
+    items: []
   }
   if (type === 'xy') {
     base.address = '/megatoolbox/x'
@@ -216,17 +240,52 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     base.label = 'Anzeige'
     base.address = '/megatoolbox/level'
   }
+  if (type === 'select') {
+    base.label = 'Auswahl'
+    base.address = '/megatoolbox/select'
+    base.items = [
+      { label: 'A', address: '', value: 0 },
+      { label: 'B', address: '', value: 1 },
+      { label: 'C', address: '', value: 2 }
+    ]
+  }
+  if (type === 'bank') {
+    base.label = 'Taster-Bank'
+    base.address = ''
+    base.items = [
+      { label: '1', address: '/megatoolbox/btn/1', value: 1 },
+      { label: '2', address: '/megatoolbox/btn/2', value: 1 },
+      { label: '3', address: '/megatoolbox/btn/3', value: 1 }
+    ]
+  }
   return base
+}
+
+/** Items eines (evtl. alten) Widgets säubern. */
+function normalizeItems(raw: unknown): OscItem[] {
+  if (!Array.isArray(raw)) return []
+  return raw.slice(0, 64).map((it) => {
+    const o = (it ?? {}) as Record<string, unknown>
+    return {
+      label: typeof o.label === 'string' ? o.label : '',
+      address: typeof o.address === 'string' ? o.address : '',
+      value: typeof o.value === 'number' && Number.isFinite(o.value) ? o.value : 0
+    }
+  })
 }
 
 /** Felder eines (evtl. alten) Widgets vervollständigen + Größen begrenzen. */
 function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   const type: OscWidgetType =
-    w && ['fader', 'button', 'toggle', 'xy', 'color', 'label', 'meter'].includes(w.type as string)
+    w &&
+    ['fader', 'button', 'toggle', 'xy', 'color', 'label', 'meter', 'select', 'bank'].includes(
+      w.type as string
+    )
       ? (w.type as OscWidgetType)
       : 'fader'
   const def = makeWidget(type)
   const merged = { ...def, ...w, type, id: w?.id ?? def.id }
+  merged.items = w?.items ? normalizeItems(w.items) : def.items
   const min = WIDGET_MIN[type]
   merged.cw = clampInt(merged.cw, min.cw, MAX_COLS)
   merged.ch = clampInt(merged.ch, min.ch, MAX_CH)
