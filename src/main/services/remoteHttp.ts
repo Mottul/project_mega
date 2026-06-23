@@ -17,13 +17,24 @@ import { networkInterfaces } from 'node:os'
 import type { RemoteStatus } from '@shared/types'
 import { logLine } from './log'
 
-/** Alle IPv4-LAN-Adressen als http://host:port (Fallback localhost). */
+/** 169.254.x.x = automatische Link-Local-Adresse (APIPA): wird vergeben, wenn
+ *  eine (oft virtuelle oder getrennte) Schnittstelle keine DHCP-Adresse bekommt.
+ *  Vom WLAN aus nicht erreichbar -> in den Remote-URLs nicht anzeigen. */
+function isLinkLocal(addr: string): boolean {
+  return addr.startsWith('169.254.')
+}
+
+/** Erreichbare IPv4-LAN-Adressen als http://host:port (Fallback localhost).
+ *  Link-Local-/APIPA-Adressen (169.254.x.x) werden übersprungen – sie tauchen an
+ *  getrennten/virtuellen Adaptern auf und sind vom Handy nicht erreichbar. */
 export function lanUrls(port: number): string[] {
   const out: string[] = []
   const ifaces = networkInterfaces()
   for (const name of Object.keys(ifaces)) {
     for (const ni of ifaces[name] ?? []) {
-      if (ni.family === 'IPv4' && !ni.internal) out.push(`http://${ni.address}:${port}`)
+      if (ni.family === 'IPv4' && !ni.internal && !isLinkLocal(ni.address)) {
+        out.push(`http://${ni.address}:${port}`)
+      }
     }
   }
   if (out.length === 0) out.push(`http://localhost:${port}`)
