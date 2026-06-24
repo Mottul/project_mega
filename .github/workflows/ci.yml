@@ -23,5 +23,6 @@ jobs:
       # damit der Build exakt wie lokal läuft.
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run typecheck:test
       - run: npm test
       - run: npm run build
