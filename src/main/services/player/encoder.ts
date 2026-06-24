@@ -182,10 +182,17 @@ export function buildVideoArgs(opts: {
   height: number
   hasAudio: boolean
   blur?: { strength: number; darken: number }
+  loudnorm?: { i: number; tp: number; lra: number }
 }): string[] {
   const pf = encoderPixFmt(opts.encoder)
   const vf = buildFitFilter(opts.fit, opts.width, opts.height, pf, opts.blur)
-  const audio = opts.hasAudio ? ['-c:a', 'aac', '-b:a', '192k'] : ['-an']
+  // Loudness-Filter (-af) nur bei vorhandener Audiospur; betrifft nur den Audio-
+  // stream (kollidiert nicht mit -vf) und greift NIE im copy-Zweig (kann nicht filtern).
+  const af =
+    opts.hasAudio && opts.loudnorm
+      ? ['-af', `loudnorm=I=${opts.loudnorm.i}:TP=${opts.loudnorm.tp}:LRA=${opts.loudnorm.lra}`]
+      : []
+  const audio = opts.hasAudio ? [...af, '-c:a', 'aac', '-b:a', '192k'] : ['-an']
   return [
     '-hide_banner',
     '-i', opts.input,

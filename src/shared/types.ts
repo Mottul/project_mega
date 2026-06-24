@@ -651,6 +651,13 @@ export interface PlayerSettings {
   // importierte/neu konvertierte Medien.
   blurStrength: number
   blurDarken: number
+  // Loudness-Normalisierung (EBU R128 / ffmpeg loudnorm) beim Einbacken: gleicht
+  // unterschiedlich laute Clips auf ein Ziel an. Standard AUS (ändert bestehende
+  // Medien nicht). Zielwerte: Integrated LUFS, True Peak (dBTP), Range (LU).
+  loudnormEnabled: boolean
+  loudnormI: number
+  loudnormTp: number
+  loudnormLra: number
   remoteEnabled: boolean
   remotePort: number
   savedPlaylists: SavedPlaylist[]
@@ -670,6 +677,10 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   encoder: 'auto',
   blurStrength: 50,
   blurDarken: 0,
+  loudnormEnabled: false,
+  loudnormI: -16,
+  loudnormTp: -1.5,
+  loudnormLra: 11,
   remoteEnabled: false,
   remotePort: 8088,
   savedPlaylists: []

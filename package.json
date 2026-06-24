@@ -17,6 +17,8 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "ff:fetch": "node scripts/download-ffmpeg.mjs",
     "rebuild:native": "node scripts/rebuild-native.mjs",
     "electron:bin": "node scripts/fetch-electron-bin.mjs",
@@ -48,6 +50,7 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
     "vite": "^7.3.3",
+    "vitest": "4.1.9",
     "zustand": "^5.0.2"
   }
 }

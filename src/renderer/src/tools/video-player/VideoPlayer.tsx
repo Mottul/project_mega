@@ -118,6 +118,8 @@ export function VideoPlayer(): JSX.Element {
   const [encoder, setEncoder] = useState('auto')
   const [blurStrength, setBlurStrength] = useState(50)
   const [blurDarken, setBlurDarken] = useState(0)
+  const [loudnorm, setLoudnorm] = useState(false)
+  const [loudnormI, setLoudnormI] = useState(-16)
   const [displayId, setDisplayId] = useState<number | null>(null)
 
   // Live gezogene Position (während des Scrubbens) und die committe Zielposition,
@@ -175,6 +177,8 @@ export function VideoPlayer(): JSX.Element {
       setEncoder(s.player.encoder)
       setBlurStrength(s.player.blurStrength ?? 50)
       setBlurDarken(s.player.blurDarken ?? 0)
+      setLoudnorm(s.player.loudnormEnabled ?? false)
+      setLoudnormI(s.player.loudnormI ?? -16)
       setRemotePort(s.player.remotePort)
       setSaved(s.player.savedPlaylists ?? [])
       if (s.player.outputDisplayId != null) setDisplayId(s.player.outputDisplayId)
@@ -262,6 +266,8 @@ export function VideoPlayer(): JSX.Element {
       encoder: string
       blurStrength: number
       blurDarken: number
+      loudnormEnabled: boolean
+      loudnormI: number
     }>
   ): Promise<void> {
     const s = await api.getSettings()
@@ -540,6 +546,45 @@ export function VideoPlayer(): JSX.Element {
               </select>
               <span className="text-xs text-muted-foreground">Konvertierung nach H.264/MP4 (GPU, falls verfügbar).</span>
             </label>
+            )}
+
+            {!locked && (
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={loudnorm}
+                  onChange={(e) => {
+                    setLoudnorm(e.target.checked)
+                    void persistPlayer({ loudnormEnabled: e.target.checked })
+                  }}
+                  className="size-4"
+                />
+                <span className="text-sm font-medium">Lautheit angleichen (EBU R128)</span>
+              </label>
+              {loudnorm && (
+                <label className="flex items-center justify-between gap-2 pl-6">
+                  <span className="text-xs text-muted-foreground">Ziel-Lautheit</span>
+                  <select
+                    className={`${selectClass} h-8 w-auto`}
+                    value={loudnormI}
+                    onChange={(e) => {
+                      const v = Number(e.target.value)
+                      setLoudnormI(v)
+                      void persistPlayer({ loudnormI: v })
+                    }}
+                  >
+                    <option value={-23}>−23 LUFS (Broadcast)</option>
+                    <option value={-16}>−16 LUFS (Streaming)</option>
+                    <option value={-14}>−14 LUFS (laut)</option>
+                  </select>
+                </label>
+              )}
+              <span className="text-xs text-muted-foreground">
+                Gleicht beim Einbacken unterschiedlich laute Clips an – wirkt auf neu importierte/neu
+                konvertierte Medien (mit Tonspur).
+              </span>
+            </div>
             )}
           </PanelSection>
 

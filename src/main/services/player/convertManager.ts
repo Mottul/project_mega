@@ -151,6 +151,13 @@ function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): 
   )
 }
 
+/** Aktive Loudness-Normalisierung aus den Einstellungen (undefined = aus). */
+function currentLoudnorm(): { i: number; tp: number; lra: number } | undefined {
+  const p = getSettings().player
+  if (!p.loudnormEnabled) return undefined
+  return { i: p.loudnormI ?? -16, tp: p.loudnormTp ?? -1.5, lra: p.loudnormLra ?? 11 }
+}
+
 /** Aktuelle Blur-Fill-Parameter aus den Einstellungen (global). */
 function currentBlur(): { blurStrength: number; blurDarken: number } {
   const p = getSettings().player
@@ -314,13 +321,15 @@ class ConvertManager {
       const thumbPath = mediaFilePath(thumbName)
 
       const blur = { strength: spec.blurStrength, darken: spec.blurDarken }
+      const loudnorm = currentLoudnorm()
       if (kind === 'image') {
         this.update(job, { status: 'converting' })
         await this.spawnFf(job, buildImageArgs({
           input: job.sourcePath, output, fit: spec.fit, width: spec.width, height: spec.height, blur
         }), null)
-      } else if (canStreamCopy(kind, info, spec.width, spec.height)) {
-        // Schon passend -> nur kopieren, kein Re-Encode.
+      } else if (canStreamCopy(kind, info, spec.width, spec.height) && !(loudnorm && info.hasAudio)) {
+        // Schon passend -> nur kopieren, kein Re-Encode. (Bei aktiver Loudness +
+        // Audiospur NICHT kopieren, da -c:a copy nicht filtern kann.)
         this.update(job, { status: 'converting', encoder: 'copy' })
         await this.spawnFf(job, buildCopyArgs({
           input: job.sourcePath, output, hasAudio: info.hasAudio
@@ -330,7 +339,7 @@ class ConvertManager {
         this.update(job, { status: 'converting', encoder })
         await this.spawnFf(job, buildVideoArgs({
           input: job.sourcePath, output, encoder, fit: spec.fit,
-          width: spec.width, height: spec.height, hasAudio: info.hasAudio, blur
+          width: spec.width, height: spec.height, hasAudio: info.hasAudio, blur, loudnorm
         }), info.durationSec)
       }
       if (this.isCanceled(job)) return
@@ -422,12 +431,13 @@ class ConvertManager {
       if (kind !== 'image' && !info.hasVideo) throw new Error('Keine Videospur gefunden')
 
       const blur = { strength: spec.blurStrength, darken: spec.blurDarken }
+      const loudnorm = currentLoudnorm()
       if (kind === 'image') {
         this.update(job, { status: 'converting' })
         await this.spawnFf(job, buildImageArgs({
           input: job.sourcePath, output: tmpStored, fit: spec.fit, width: spec.width, height: spec.height, blur
         }), null)
-      } else if (canStreamCopy(kind, info, spec.width, spec.height)) {
+      } else if (canStreamCopy(kind, info, spec.width, spec.height) && !(loudnorm && info.hasAudio)) {
         this.update(job, { status: 'converting', encoder: 'copy' })
         await this.spawnFf(job, buildCopyArgs({
           input: job.sourcePath, output: tmpStored, hasAudio: info.hasAudio
@@ -437,7 +447,7 @@ class ConvertManager {
         this.update(job, { status: 'converting', encoder })
         await this.spawnFf(job, buildVideoArgs({
           input: job.sourcePath, output: tmpStored, encoder, fit: spec.fit,
-          width: spec.width, height: spec.height, hasAudio: info.hasAudio, blur
+          width: spec.width, height: spec.height, hasAudio: info.hasAudio, blur, loudnorm
         }), info.durationSec)
       }
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
@@ -601,7 +611,10 @@ class ConvertManager {
     if (!info.hasVideo) throw new Error('Keine Videospur in der Idle-Datei gefunden')
     const encoder = await resolveEncoder(p.encoder)
     await this.spawnRaw(
-      buildVideoArgs({ input: sourcePath, output, encoder, fit, width, height, hasAudio: info.hasAudio, blur })
+      buildVideoArgs({
+        input: sourcePath, output, encoder, fit, width, height,
+        hasAudio: info.hasAudio, blur, loudnorm: currentLoudnorm()
+      })
     )
     return { storedName, kind: 'video' }
   }

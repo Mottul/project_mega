@@ -205,7 +205,9 @@ src/
 
 - **Fundament** – electron-vite (main/preload/renderer), sichere Fenster-Defaults, typisierte
   IPC-Brücke, Tool-Modulsystem, Launcher mit Suche, Gold-Akzent (#ffce2c) auf kühlem Dark-Theme,
-  App-Icon, **0 npm-Vulnerabilities**, schlanker Install ohne Compiler (Prebuilds).
+  App-Icon, **0 npm-Vulnerabilities in den Laufzeit-Abhängigkeiten**, schlanker Install ohne Compiler
+  (Prebuilds). **Unit-Tests (Vitest)** für die Rechenkerne und eine **Mini-CI** (Typecheck + Tests +
+  Build je Push, Node 20/22).
 - **HAP-Konverter** – Batch nach HAP/HAP Q/HAP Alpha, gebündeltes ffmpeg, Parallel + Kompressor,
   Auto-Padding auf ×4-Maße. End-to-end getestet.
 - **Manuals-Bibliothek** – PDF-Import (SHA-256-Dedup), FTS5-Volltextsuche mit aufklappbaren
@@ -229,7 +231,8 @@ src/
   **Fernsteuerung per Tablet/Handy** über einen eingebetteten, dependency-freien Webserver
   (mobile Steuerseite + Live-Sync via SSE, LAN, einschaltbar, mit **QR-Code**). Dazu
   **gespeicherte Playlists** (als Tabs), **Idle-/Fallback-Testbild** auf der Ausgabe (nutzt den
-  vorhandenen Generator) und **Batch-Reconvert** bei Auflösungswechsel. Adaptiert den bestehenden
+  vorhandenen Generator), **Batch-Reconvert** bei Auflösungswechsel und optionale **Lautheits-
+  Angleichung (EBU R128 / ffmpeg loudnorm)** beim Einbacken. Adaptiert den bestehenden
   „LED Wall Player V4" (Python/mpv) in die Electron/React-Suite – nutzt das
   Multi-Monitor-Ausgabefenster und das gebündelte ffmpeg.
 - **LED-Wall-Konfigurator** – Wandgröße + Modultyp (Bestand: 496-2,0 / uS2+ / rX3ioBF) ->
@@ -319,12 +322,10 @@ src/
 - Kleinere Event-Rechner: **Edge-Blend** (Beamer-Softedge), **Video-Datenrate/Dateigröße**,
   **Funkfrequenz-Planer**, **Sonnenstand/Dämmerung** für Open-Air.
 - **Verbesserungen bestehender Tools**: **Audio-Test-Töne** im Testbildgenerator (Sinus/Rosa/Sweep,
-  Kanal-ID), **Loudness-Normalisierung (EBU R128)** beim Einbacken im Video-Player, **Ducking +
-  MIDI-Pads** im Jingle-Player, **OCR** für gescannte PDFs in der Manuals-Bibliothek,
-  **Prozessor-Presets** (Novastar/Brompton) im LED-Wall-Konfigurator.
+  Kanal-ID), **Ducking + MIDI-Pads** im Jingle-Player, **OCR** für gescannte PDFs in der
+  Manuals-Bibliothek, **Prozessor-Presets** (Novastar/Brompton) im LED-Wall-Konfigurator.
+  _(Erledigt: Loudness-Normalisierung EBU R128 beim Einbacken im Video-Player.)_
 - **Neue Rechner (klein)**: **IP-/Subnetz-Rechner** (Dante/NDI/AV-over-IP), **Gel-/Farbfilter-
   Konverter** (Lee↔Rosco↔RGB), **Spannungsabfall/Kabelquerschnitt** (an die Stromlast angedockt).
-- **Technische Hygiene**: **Unit-Tests** (Vitest) für die Rechenkerne (LED-Wall-Mathe, Timecode,
-  OSC-Codec, Packlisten-Ableitung) und eine **Mini-CI** (Typecheck + Build je Push).
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).

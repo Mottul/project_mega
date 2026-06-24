@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { CalcPage, NumField, Readout, SectionCard, SelectField, fmt, parseNum } from '../_calc/ui'
+import { angleOfView, diag, equiv35, fovAtDistance, framingLabel } from './optics'
 
 // Kameraobjektiv-Rechner: aus Brennweite, Sensor, optionalem Telekonverter
 // („Doppler") und Entfernung wird der Bildausschnitt berechnet und visualisiert –
 // wie viel einer Person bei maximalem Zoom ins Bild passt. Lochkamera-Näherung
 // (Sichtfeld = Entfernung · Sensormaß ÷ Brennweite); dieselbe Dreiecks-Mathematik
-// wie der Throw-Ratio-Rechner, nur kameraseitig.
-
-const FULL_FRAME_DIAG = Math.sqrt(36 * 36 + 24 * 24) // 43,27 mm – Bezug fürs KB-Äquivalent
+// wie der Throw-Ratio-Rechner, nur kameraseitig. Die Optik-Formeln liegen in optics.ts.
 
 const SENSORS: { key: string; label: string; w: number; h: number }[] = [
   { key: 'ff', label: 'Vollformat (Kleinbild)', w: 36, h: 24 },
@@ -25,22 +24,6 @@ const TELECONV: { key: string; label: string; f: number }[] = [
   { key: '1.7', label: '1.7× Telekonverter', f: 1.7 },
   { key: '2', label: '2× Telekonverter (Doppler)', f: 2 }
 ]
-
-/** Bildwinkel (Grad) für ein Sensormaß und eine Brennweite. */
-function aov(sensorMm: number, focalMm: number): number {
-  return (2 * Math.atan(sensorMm / (2 * focalMm)) * 180) / Math.PI
-}
-
-// Bezeichnung des Bildausschnitts danach, wie viele Personenhöhen der Rahmen hoch ist.
-function framing(r: number): string {
-  if (r >= 1.25) return 'Totale (ganze Person + Luft)'
-  if (r >= 1.0) return 'Ganzkörper'
-  if (r >= 0.75) return 'Amerikanisch (ab Knie)'
-  if (r >= 0.55) return 'Halbnah (ab Hüfte)'
-  if (r >= 0.35) return 'Halbnah/Nah (ab Brust)'
-  if (r >= 0.18) return 'Großaufnahme (Kopf & Schultern)'
-  return 'Detail (Gesicht)'
-}
 
 export function CameraLens(): JSX.Element {
   const [sensorKey, setSensorKey] = useState('ff')
@@ -68,19 +51,20 @@ export function CameraLens(): JSX.Element {
   const person = parseNum(personRaw)
 
   const focalEff = focal != null && focal > 0 ? focal * tc : null
-  const sensorDiag =
-    sensorW != null && sensorH != null ? Math.sqrt(sensorW * sensorW + sensorH * sensorH) : null
+  const sensorDiag = sensorW != null && sensorH != null ? diag(sensorW, sensorH) : null
   const equiv =
-    focalEff != null && sensorDiag != null && sensorDiag > 0
-      ? focalEff * (FULL_FRAME_DIAG / sensorDiag)
-      : null
-  const aovH = sensorW != null && sensorW > 0 && focalEff != null ? aov(sensorW, focalEff) : null
-  const aovV = sensorH != null && sensorH > 0 && focalEff != null ? aov(sensorH, focalEff) : null
+    focalEff != null && sensorDiag != null && sensorDiag > 0 ? equiv35(focalEff, sensorDiag) : null
+  const aovH = sensorW != null && sensorW > 0 && focalEff != null ? angleOfView(sensorW, focalEff) : null
+  const aovV = sensorH != null && sensorH > 0 && focalEff != null ? angleOfView(sensorH, focalEff) : null
 
   const fovW =
-    dist != null && dist > 0 && sensorW != null && focalEff != null ? (dist * sensorW) / focalEff : null
+    dist != null && dist > 0 && sensorW != null && focalEff != null
+      ? fovAtDistance(dist, sensorW, focalEff)
+      : null
   const fovH =
-    dist != null && dist > 0 && sensorH != null && focalEff != null ? (dist * sensorH) / focalEff : null
+    dist != null && dist > 0 && sensorH != null && focalEff != null
+      ? fovAtDistance(dist, sensorH, focalEff)
+      : null
 
   // Rahmenhöhe gemessen in Personenhöhen (>=1 -> ganze Person passt).
   const ratio = fovH != null && person != null && person > 0 ? fovH / person : null
@@ -147,7 +131,7 @@ export function CameraLens(): JSX.Element {
           unit="m (B×H)"
         />
         <Readout
-          label={ratio != null ? framing(ratio) : 'Bildausschnitt'}
+          label={ratio != null ? framingLabel(ratio) : 'Bildausschnitt'}
           value={visiblePct != null ? fmt(visiblePct, 0) : ''}
           unit="% der Körperhöhe im Bild"
           accent
