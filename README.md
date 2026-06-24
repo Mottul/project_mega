@@ -288,7 +288,9 @@ src/
   Rechner** aus (QR-Code zum Öffnen); **Sets lassen sich auch am Handy/Tablet umschalten**. Sets und
   Oberfläche überstehen App-Neustarts.
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
-  (Throw Ratio / Objektivwahl), **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
+  (Throw Ratio / Objektivwahl), **Kameraobjektiv** (Bildausschnitt bei Personen aus
+  Brennweite/Sensor/Telekonverter, mit Visualisierung des sichtbaren Anteils),
+  **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
   **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis),
   **Audio-Delay & SPL** (Laufzeit aus Distanz, Pegelabfall über Entfernung), **Rigging-Last**
   (Auflagerkräfte einer Traverse auf 2 Punkten + Bridle-Strangkräfte nach Anschlagwinkel, mit
@@ -301,9 +303,12 @@ src/
 
 ## Roadmap
 
-- **OSC-Steuerung – Ausbaustufen**: **MadMapper-Vorlagen** (Surfaces/Medien/Cues) und
-  **tool-übergreifende OSC-Trigger** (z. B. aus Jingle-/Timer-/Video-Player). _(Erledigt: Learn-Modus,
-  Widgets Auswahl/1-aus-n + Taster-Bank + Anzeige/Meter + Label, Set-Wechsel am Handy.)_
+- **OSC-Steuerung – Ausbaustufen**: **MadMapper-Vorlagen** (Surfaces/Medien/Cues),
+  **tool-übergreifende OSC-Trigger** (z. B. aus Jingle-/Timer-/Video-Player) und **„Restzeit aus
+  OSC-Position"** – ein Anzeige-Kachel-Modus, der aus der eingehenden MadMapper-Position (0–1) und
+  einer eingetragenen Clip-Dauer die verbleibende Zeit als **mm:ss** berechnet und auf einem Monitor
+  zeigt (MadMapper liefert nur die Position, keine Restzeit). _(Erledigt: Learn-Modus, Widgets
+  Auswahl/1-aus-n + Taster-Bank + Anzeige/Meter + Label, Set-Wechsel am Handy.)_
 - **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
   eingebacken).
 - **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der

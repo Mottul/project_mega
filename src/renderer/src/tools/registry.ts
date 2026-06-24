@@ -1,4 +1,5 @@
 import { audioDelayTool } from './audio-delay'
+import { cameraLensTool } from './camera-lens'
 import { circleCalcTool } from './circle-calc'
 import { dmxAddressTool } from './dmx-address'
 import { hapConverterTool } from './hap-converter'
@@ -32,6 +33,7 @@ export const tools: ToolModule[] = [
   packingListTool,
   circleCalcTool,
   throwRatioTool,
+  cameraLensTool,
   projectorLumenTool,
   dmxAddressTool,
   powerLoadTool,
