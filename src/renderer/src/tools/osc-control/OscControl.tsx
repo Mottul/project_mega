@@ -341,7 +341,8 @@ export function OscControl(): JSX.Element {
         st.updateWidget(w.id, { value: cmd.value })
         send(fmsg(w.address, cmd.value))
       } else if (cmd.kind === 'knobStep') {
-        send(fmsg(w.address, cmd.delta))
+        // Handy sendet nur die Richtung (±1 je Rastung); Schrittweite = onValue.
+        send(fmsg(w.address, cmd.delta * (Math.abs(w.onValue) || 1)))
       }
     })
     return () => {
@@ -1272,7 +1273,8 @@ function Knob({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       if (detents !== 0) {
         st.acc = acc - detents * 0.05
         st.py = clientY
-        onSend(fmsg(w.address, detents > 0 ? step : -step))
+        const d = detents > 0 ? step : -step
+        for (let i = 0; i < Math.abs(detents); i++) onSend(fmsg(w.address, d))
       }
     } else {
       const v = clamp(st.v + dNorm * span, lo, hi)

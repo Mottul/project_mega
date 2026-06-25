@@ -294,9 +294,15 @@ export function makeWidget(type: OscWidgetType): OscWidget {
  *  schon auf der Fläche liegt ( /…/fader -> /…/fader-2, Label „Fader 2"). Das
  *  erste seiner Art behält die saubere Default-Adresse. */
 function numberWidget(w: OscWidget, existing: OscWidget[]): void {
-  const sameType = existing.filter((x) => x.type === w.type).length
-  if (sameType === 0) return
-  const n = sameType + 1
+  const same = existing.filter((x) => x.type === w.type)
+  if (same.length === 0) return
+  // Ab (Anzahl+1) hochzählen, bis Adresse UND Label frei sind – so kollidiert es
+  // auch nach dem Löschen eines Widgets nicht (Bank/Label haben leere Adresse,
+  // daher zählt dort das Label).
+  const addrs = new Set(existing.map((x) => x.address))
+  const labels = new Set(existing.map((x) => x.label))
+  let n = same.length + 1
+  while ((w.address && addrs.has(`${w.address}-${n}`)) || labels.has(`${w.label} ${n}`)) n++
   if (w.address) w.address = `${w.address}-${n}`
   if (w.addressY) w.addressY = `${w.addressY}-${n}`
   w.label = `${w.label} ${n}`
