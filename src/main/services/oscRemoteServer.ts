@@ -51,8 +51,12 @@ function parseCommand(body: string): OscRemoteCommand | null {
       return { kind: 'selectSet', id: c.id }
     case 'select':
       return { kind: 'select', id: c.id, index: Math.max(0, Math.round(num(c.index))) }
-    case 'bankButton':
-      return { kind: 'bankButton', id: c.id, index: Math.max(0, Math.round(num(c.index))), down: !!c.down }
+    case 'bank':
+      return { kind: 'bank', id: c.id, index: Math.max(0, Math.round(num(c.index))), value: num(c.value) }
+    case 'knob':
+      return { kind: 'knob', id: c.id, value: num(c.value) }
+    case 'knobStep':
+      return { kind: 'knobStep', id: c.id, delta: num(c.delta) }
     default:
       return null
   }

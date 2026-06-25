@@ -54,6 +54,7 @@ import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { QrCode } from '../video-player/QrCode'
 import {
+  BANK_MODE_LABEL,
   makeWidget,
   MAX_CH,
   MAX_COLS,
@@ -61,6 +62,7 @@ import {
   WIDGET_COLORS,
   WIDGET_MIN,
   WIDGET_TYPE_LABEL,
+  type BankMode,
   type OscItem,
   type OscWidget,
   type OscWidgetType
@@ -317,9 +319,29 @@ export function OscControl(): JSX.Element {
           st.updateWidget(w.id, { value: cmd.index })
           send(fmsg(it.address || w.address, it.value))
         }
-      } else if (cmd.kind === 'bankButton') {
+      } else if (cmd.kind === 'bank') {
         const it = w.items[cmd.index]
-        if (it) send(fmsg(it.address || w.address, cmd.down ? w.onValue : w.offValue))
+        if (!it) return
+        const addr = it.address || w.address
+        const setItem = (value: number): void =>
+          st.updateWidget(w.id, {
+            items: w.items.map((x, i) => (i === cmd.index ? { ...x, value } : x))
+          })
+        if (w.bankMode === 'knob') {
+          setItem(cmd.value)
+          send(fmsg(addr, cmd.value))
+        } else if (w.bankMode === 'toggle') {
+          const on = cmd.value >= 0.5
+          setItem(on ? 1 : 0)
+          send(fmsg(addr, on ? w.onValue : w.offValue))
+        } else {
+          send(fmsg(addr, cmd.value >= 0.5 ? w.onValue : w.offValue))
+        }
+      } else if (cmd.kind === 'knob') {
+        st.updateWidget(w.id, { value: cmd.value })
+        send(fmsg(w.address, cmd.value))
+      } else if (cmd.kind === 'knobStep') {
+        send(fmsg(w.address, cmd.delta))
       }
     })
     return () => {
@@ -453,7 +475,11 @@ export function OscControl(): JSX.Element {
           align: w.align,
           meterLevel: m.level,
           meterText: m.text,
-          items: w.items.map((it) => ({ label: it.label, address: it.address, value: it.value }))
+          items: w.items.map((it) => ({ label: it.label, address: it.address, value: it.value })),
+          orient: w.orient,
+          cols: w.cols,
+          bankMode: w.bankMode,
+          endless: w.endless
         }
       })
     }
@@ -782,7 +808,7 @@ function reflectFeedback(fb: OscFeedback): void {
       continue
     }
     if (num == null) continue
-    if (w.type === 'fader' && w.address === fb.address) {
+    if ((w.type === 'fader' || (w.type === 'knob' && !w.endless)) && w.address === fb.address) {
       const lo = Math.min(w.min, w.max)
       const hi = Math.max(w.min, w.max)
       st.updateWidget(w.id, { value: clamp(num, lo, hi) })
@@ -941,6 +967,7 @@ function WidgetTile({
 
       <div className={cn('min-h-0 flex-1', !live && 'pointer-events-none')}>
         {w.type === 'fader' && <Fader w={w} onSend={onSend} />}
+        {w.type === 'knob' && <Knob w={w} onSend={onSend} />}
         {w.type === 'toggle' && <Toggle w={w} onSend={onSend} />}
         {w.type === 'button' && <Momentary w={w} onSend={onSend} />}
         {w.type === 'xy' && <XYPad w={w} onSendMany={onSendMany} />}
@@ -948,7 +975,7 @@ function WidgetTile({
         {w.type === 'label' && <LabelView w={w} />}
         {w.type === 'meter' && <Meter w={w} />}
         {w.type === 'select' && <SelectPad w={w} onSend={onSend} />}
-        {w.type === 'bank' && <ButtonBank w={w} onSend={onSend} />}
+        {w.type === 'bank' && <BankGrid w={w} onSend={onSend} />}
       </div>
 
       {showAddr && (
@@ -1144,7 +1171,8 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const raf = useRef(0)
   const pending = useRef<number | null>(null)
-  const start = useRef<{ py: number; v: number } | null>(null)
+  const start = useRef<{ p: number; v: number } | null>(null)
+  const horiz = w.orient === 'h'
   const lo = Math.min(w.min, w.max)
   const hi = Math.max(w.min, w.max)
   const span = hi - lo
@@ -1161,12 +1189,12 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
     onSend(fmsg(w.address, v))
   }
   // Relativ: ab dem Anfasspunkt ziehen (kein Sprung auf den Klickwert).
-  function drag(clientY: number): void {
+  function drag(client: number): void {
     const el = ref.current
     const st = start.current
     if (!el || !st) return
     const r = el.getBoundingClientRect()
-    const dNorm = -(clientY - st.py) / r.height
+    const dNorm = horiz ? (client - st.p) / r.width : -(client - st.p) / r.height
     pending.current = clamp(st.v + dNorm * span, lo, hi)
     if (!raf.current) raf.current = requestAnimationFrame(flush)
   }
@@ -1176,7 +1204,89 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       ref={ref}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
-        start.current = { py: e.clientY, v: w.value }
+        start.current = { p: horiz ? e.clientX : e.clientY, v: w.value }
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons) drag(horiz ? e.clientX : e.clientY)
+      }}
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+        start.current = null
+      }}
+      className={cn(
+        'relative h-full w-full touch-none overflow-hidden rounded-md bg-muted/50',
+        horiz ? 'cursor-ew-resize' : 'cursor-ns-resize'
+      )}
+    >
+      {horiz ? (
+        <>
+          <div
+            className="absolute inset-y-0 left-0"
+            style={{ width: `${norm * 100}%`, background: w.color, opacity: 0.85 }}
+          />
+          <div className="absolute inset-y-0" style={{ left: `${norm * 100}%` }}>
+            <div className="h-full w-0.5 bg-foreground/80" />
+          </div>
+        </>
+      ) : (
+        <>
+          <div
+            className="absolute inset-x-0 bottom-0"
+            style={{ height: `${norm * 100}%`, background: w.color, opacity: 0.85 }}
+          />
+          <div className="absolute inset-x-0" style={{ bottom: `${norm * 100}%` }}>
+            <div className="h-0.5 w-full bg-foreground/80" />
+          </div>
+        </>
+      )}
+      <span className="absolute inset-x-0 bottom-1 text-center text-[11px] tabular-nums text-foreground/90">
+        {w.value.toFixed(2)}
+      </span>
+    </div>
+  )
+}
+
+/* ------------------------- Bedienelement: Knopf ------------------------- */
+
+// Drehknopf/Poti: vertikal ziehen ändert den Wert. Absolut (min..max) oder als
+// Endlos-Encoder (sendet relative Schritte = onValue je „Rastung").
+function Knob({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
+  const lo = Math.min(w.min, w.max)
+  const hi = Math.max(w.min, w.max)
+  const span = hi - lo || 1
+  const norm = w.endless ? 0.5 : clamp01((w.value - lo) / span)
+  const start = useRef<{ py: number; v: number; acc: number } | null>(null)
+  const step = Math.abs(w.onValue) || 1
+  // Zifferblatt: 270°-Bogen von -135° bis +135°.
+  const ang = -135 + norm * 270
+  const dialRef = useRef<SVGSVGElement>(null)
+
+  function drag(clientY: number): void {
+    const st = start.current
+    if (!st) return
+    const dNorm = -(clientY - st.py) / 140 // 140 px = ganzer Bereich
+    if (w.endless) {
+      // relative Schritte beim Überschreiten je 1/20 des Bereichs
+      const acc = st.acc + dNorm
+      const detents = Math.trunc(acc / 0.05)
+      if (detents !== 0) {
+        st.acc = acc - detents * 0.05
+        st.py = clientY
+        onSend(fmsg(w.address, detents > 0 ? step : -step))
+      }
+    } else {
+      const v = clamp(st.v + dNorm * span, lo, hi)
+      useOscSurface.getState().updateWidget(w.id, { value: v })
+      onSend(fmsg(w.address, v))
+    }
+  }
+
+  return (
+    <div
+      className="flex h-full w-full touch-none items-center justify-center"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        start.current = { py: e.clientY, v: w.value, acc: 0 }
       }}
       onPointerMove={(e) => {
         if (e.buttons) drag(e.clientY)
@@ -1185,18 +1295,25 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
         e.currentTarget.releasePointerCapture(e.pointerId)
         start.current = null
       }}
-      className="relative h-full w-full cursor-ns-resize touch-none overflow-hidden rounded-md bg-muted/50"
     >
-      <div
-        className="absolute inset-x-0 bottom-0"
-        style={{ height: `${norm * 100}%`, background: w.color, opacity: 0.85 }}
-      />
-      <div className="absolute inset-x-0" style={{ bottom: `${norm * 100}%` }}>
-        <div className="h-0.5 w-full bg-foreground/80" />
-      </div>
-      <span className="absolute inset-x-0 bottom-1 text-center text-[11px] tabular-nums text-foreground/90">
-        {w.value.toFixed(2)}
-      </span>
+      <svg ref={dialRef} viewBox="0 0 100 100" className="h-full max-h-full w-auto cursor-ns-resize">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" className="text-muted-foreground/25" strokeWidth="3" />
+        <circle cx="50" cy="50" r="32" fill="none" stroke={w.color} strokeWidth="2.5" opacity="0.7" />
+        <line
+          x1="50"
+          y1="50"
+          x2={50 + 34 * Math.cos(((ang - 90) * Math.PI) / 180)}
+          y2={50 + 34 * Math.sin(((ang - 90) * Math.PI) / 180)}
+          stroke={w.color}
+          strokeWidth="4"
+          strokeLinecap="round"
+        />
+        {!w.endless && (
+          <text x="50" y="92" textAnchor="middle" className="fill-foreground/80" style={{ fontSize: 13 }}>
+            {w.value.toFixed(2)}
+          </text>
+        )}
+      </svg>
     </div>
   )
 }
@@ -1254,8 +1371,12 @@ function Momentary({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
 // ihrem Wert; die zuletzt gewählte Option bleibt markiert (value = Index).
 function SelectPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   const sel = Math.round(w.value)
+  const cols = w.cols >= 1 ? w.cols : 1
   return (
-    <div className="grid h-full w-full gap-1" style={{ gridAutoRows: '1fr' }}>
+    <div
+      className="grid h-full w-full gap-1"
+      style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr' }}
+    >
       {w.items.map((it, i) => {
         const active = i === sel
         return (
@@ -1281,20 +1402,122 @@ function SelectPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   )
 }
 
-/* ------------------------- Bedienelement: Taster-Bank ------------------- */
+/* ------------------------- Bedienelement: Bank -------------------------- */
 
-// Mehrere Momenttaster in einer Kachel; jeder feuert seine eigene Adresse
-// (Fallback: Widget-Adresse) mit „an“ beim Drücken, „aus“ beim Loslassen.
-function ButtonBank({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
-  const cols = Math.min(Math.max(1, w.items.length), 4)
+// Raster gleichartiger Felder; je nach bankMode Taster (momentan), Schalter
+// (rastend) oder Drehknopf. Spalten frei wählbar (cols), Zeilen folgen aus der
+// Anzahl. Jedes Feld feuert seine eigene Adresse (Fallback: Widget-Adresse).
+function BankGrid({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
+  const cols = w.cols >= 1 ? w.cols : Math.min(Math.max(1, w.items.length), 4)
   return (
     <div
       className="grid h-full w-full gap-1"
       style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr' }}
     >
       {w.items.map((it, i) => (
-        <BankButton key={i} w={w} item={it} index={i} onSend={onSend} />
+        <BankCell key={i} w={w} item={it} index={i} onSend={onSend} />
       ))}
+    </div>
+  )
+}
+
+function BankCell({
+  w,
+  item,
+  index,
+  onSend
+}: {
+  w: OscWidget
+  item: OscItem
+  index: number
+  onSend: Send
+}): JSX.Element {
+  const addr = item.address || w.address
+  const setItem = (value: number): void =>
+    useOscSurface.getState().updateWidget(w.id, {
+      items: w.items.map((x, i) => (i === index ? { ...x, value } : x))
+    })
+
+  if (w.bankMode === 'toggle') {
+    const on = item.value >= 0.5
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          const next = on ? 0 : 1
+          setItem(next)
+          onSend(fmsg(addr, next ? w.onValue : w.offValue))
+        }}
+        className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border px-1 text-sm font-semibold transition-colors"
+        style={{ borderColor: w.color, background: on ? w.color : 'transparent', color: on ? '#fff' : w.color }}
+      >
+        <span className="truncate">{item.label || index + 1}</span>
+      </button>
+    )
+  }
+
+  if (w.bankMode === 'knob') {
+    return <BankKnob w={w} item={item} index={index} onSend={onSend} />
+  }
+
+  return <BankButton w={w} item={item} index={index} onSend={onSend} />
+}
+
+function BankKnob({
+  w,
+  item,
+  index,
+  onSend
+}: {
+  w: OscWidget
+  item: OscItem
+  index: number
+  onSend: Send
+}): JSX.Element {
+  const lo = Math.min(w.min, w.max)
+  const hi = Math.max(w.min, w.max)
+  const span = hi - lo || 1
+  const norm = clamp01((item.value - lo) / span)
+  const ang = -135 + norm * 270
+  const addr = item.address || w.address
+  const start = useRef<{ py: number; v: number } | null>(null)
+  function drag(clientY: number): void {
+    const st = start.current
+    if (!st) return
+    const v = clamp(st.v + (-(clientY - st.py) / 140) * span, lo, hi)
+    useOscSurface.getState().updateWidget(w.id, {
+      items: w.items.map((x, i) => (i === index ? { ...x, value: v } : x))
+    })
+    onSend(fmsg(addr, v))
+  }
+  return (
+    <div
+      className="flex min-h-0 touch-none flex-col items-center justify-center"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        start.current = { py: e.clientY, v: item.value }
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons) drag(e.clientY)
+      }}
+      onPointerUp={(e) => {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+        start.current = null
+      }}
+    >
+      <svg viewBox="0 0 100 100" className="min-h-0 w-auto flex-1 cursor-ns-resize">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" className="text-muted-foreground/25" strokeWidth="4" />
+        <line
+          x1="50"
+          y1="50"
+          x2={50 + 34 * Math.cos(((ang - 90) * Math.PI) / 180)}
+          y2={50 + 34 * Math.sin(((ang - 90) * Math.PI) / 180)}
+          stroke={w.color}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+      </svg>
+      {item.label && <span className="max-w-full truncate text-[10px] text-muted-foreground">{item.label}</span>}
     </div>
   )
 }
@@ -1745,6 +1968,37 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
   )
 }
 
+/** Kompakte Umschaltleiste (gleich breite Knöpfe nebeneinander). */
+function Segmented<T extends string>({
+  value,
+  options,
+  onChange
+}: {
+  value: T
+  options: [T, string][]
+  onChange: (v: T) => void
+}): JSX.Element {
+  return (
+    <div className="flex gap-1">
+      {options.map(([v, lbl]) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          className={cn(
+            'h-9 flex-1 rounded-md border text-sm transition-colors',
+            value === v
+              ? 'border-foreground bg-primary/10 text-foreground'
+              : 'border-border text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {lbl}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function WidgetEditor({
   w,
   columns,
@@ -1762,33 +2016,42 @@ function WidgetEditor({
 }): JSX.Element {
   const update = useOscSurface((s) => s.updateWidget)
   const min = WIDGET_MIN[w.type]
+  const hasRange =
+    w.type === 'fader' ||
+    (w.type === 'knob' && !w.endless) ||
+    (w.type === 'meter' && w.source === 'osc') ||
+    (w.type === 'bank' && w.bankMode === 'knob')
+  const hasOnOff =
+    w.type === 'button' || w.type === 'toggle' || (w.type === 'bank' && w.bankMode !== 'knob')
   return (
-    <div className="space-y-3">
-      <Field label={w.type === 'label' ? 'Text' : 'Beschriftung'}>
-        <Input value={w.label} onChange={(e) => update(w.id, { label: e.target.value })} />
-      </Field>
-
-      <Field label="Typ">
-        <select
-          value={w.type}
-          onChange={(e) => {
-            const type = e.target.value as OscWidgetType
-            const patch: Partial<OscWidget> = { type }
-            if (type === 'xy' && !w.addressY) patch.addressY = makeWidget('xy').addressY
-            // Auswahl/Taster-Bank brauchen Einträge -> Beispiele setzen, falls leer.
-            if ((type === 'select' || type === 'bank') && w.items.length === 0)
-              patch.items = makeWidget(type).items
-            update(w.id, patch)
-          }}
-          className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
-        >
-          {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
-            <option key={t} value={t}>
-              {WIDGET_TYPE_LABEL[t]}
-            </option>
-          ))}
-        </select>
-      </Field>
+    <div className="space-y-2.5">
+      {/* Name + Typ in einer Zeile -> kürzeres Panel */}
+      <div className="grid grid-cols-2 gap-2">
+        <Field label={w.type === 'label' ? 'Text' : 'Name'}>
+          <Input className="h-9" value={w.label} onChange={(e) => update(w.id, { label: e.target.value })} />
+        </Field>
+        <Field label="Typ">
+          <select
+            value={w.type}
+            onChange={(e) => {
+              const type = e.target.value as OscWidgetType
+              const patch: Partial<OscWidget> = { type }
+              if (type === 'xy' && !w.addressY) patch.addressY = makeWidget('xy').addressY
+              // Auswahl/Bank brauchen Einträge -> Beispiele setzen, falls leer.
+              if ((type === 'select' || type === 'bank') && w.items.length === 0)
+                patch.items = makeWidget(type).items
+              update(w.id, patch)
+            }}
+            className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+          >
+            {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
+              <option key={t} value={t}>
+                {WIDGET_TYPE_LABEL[t]}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
 
       {w.type === 'meter' && (
         <Field label="Quelle">
@@ -1856,29 +2119,71 @@ function WidgetEditor({
 
       {w.type === 'label' && (
         <Field label="Ausrichtung">
-          <div className="flex gap-1">
-            {(['left', 'center', 'right'] as const).map((a) => (
-              <button
-                key={a}
-                type="button"
-                onClick={() => update(w.id, { align: a })}
-                className={cn(
-                  'h-9 flex-1 rounded-md border text-sm',
-                  w.align === a
-                    ? 'border-foreground bg-primary/10 text-foreground'
-                    : 'border-border text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {a === 'left' ? 'Links' : a === 'center' ? 'Mitte' : 'Rechts'}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            value={w.align}
+            options={[
+              ['left', 'Links'],
+              ['center', 'Mitte'],
+              ['right', 'Rechts']
+            ]}
+            onChange={(a) => update(w.id, { align: a })}
+          />
+        </Field>
+      )}
+
+      {w.type === 'fader' && (
+        <Field label="Ausrichtung">
+          <Segmented
+            value={w.orient}
+            options={[
+              ['v', 'Vertikal'],
+              ['h', 'Horizontal']
+            ]}
+            onChange={(o) => update(w.id, { orient: o })}
+          />
+        </Field>
+      )}
+
+      {w.type === 'knob' && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={w.endless}
+            onChange={(e) => update(w.id, { endless: e.target.checked })}
+            className="size-4"
+          />
+          Endlos-Encoder (relative Schritte)
+        </label>
+      )}
+
+      {w.type === 'bank' && (
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Modus">
+            <Segmented
+              value={w.bankMode}
+              options={[
+                ['momentary', 'Taster'],
+                ['toggle', 'Schalter'],
+                ['knob', 'Knopf']
+              ]}
+              onChange={(m) => update(w.id, { bankMode: m })}
+            />
+          </Field>
+          <Field label="Spalten">
+            <NumberField value={w.cols} min={1} max={12} onCommit={(v) => update(w.id, { cols: v })} className="h-9" />
+          </Field>
+        </div>
+      )}
+
+      {w.type === 'select' && (
+        <Field label="Spalten">
+          <NumberField value={w.cols} min={1} max={12} onCommit={(v) => update(w.id, { cols: v })} className="h-9" />
         </Field>
       )}
 
       {(w.type === 'select' || w.type === 'bank') && <ItemsEditor w={w} />}
 
-      {(w.type === 'fader' || (w.type === 'meter' && w.source === 'osc')) && (
+      {hasRange && (
         <div className="grid grid-cols-2 gap-2">
           <Field label="Min">
             <DecimalField value={w.min} onCommit={(v) => update(w.id, { min: v })} />
@@ -1889,7 +2194,13 @@ function WidgetEditor({
         </div>
       )}
 
-      {(w.type === 'button' || w.type === 'toggle' || w.type === 'bank') && (
+      {w.type === 'knob' && w.endless && (
+        <Field label="Schrittweite (je Rastung)">
+          <DecimalField value={w.onValue} onCommit={(v) => update(w.id, { onValue: v })} />
+        </Field>
+      )}
+
+      {hasOnOff && (
         <div className="grid grid-cols-2 gap-2">
           <Field label="Wert „an“">
             <DecimalField value={w.onValue} onCommit={(v) => update(w.id, { onValue: v })} />

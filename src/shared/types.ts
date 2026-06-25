@@ -493,6 +493,7 @@ export type OscRemoteWidgetType =
   | 'meter'
   | 'select'
   | 'bank'
+  | 'knob'
 
 /** Serialisierbares Widget für die mobile Seite (Teilmenge des Renderer-Widgets). */
 export interface OscRemoteWidget {
@@ -518,7 +519,11 @@ export interface OscRemoteWidget {
   align: 'left' | 'center' | 'right' // Label-Ausrichtung
   meterLevel: number // Anzeige/Meter: Füllstand 0..1 (vom Rechner berechnet)
   meterText: string // Anzeige/Meter: angezeigter Text
-  items: { label: string; address: string; value: number }[] // Auswahl/Taster-Bank
+  items: { label: string; address: string; value: number }[] // Auswahl/Bank
+  orient: 'h' | 'v' // Fader/Farbe: Ausrichtung der Regler
+  cols: number // Auswahl/Bank: Spalten (0 = automatisch)
+  bankMode: 'momentary' | 'toggle' | 'knob' // Bank: Verhalten der Felder
+  endless: boolean // Knopf: Endlos-Encoder (relative Schritte)
 }
 
 export interface OscRemoteSnapshot {
@@ -538,7 +543,9 @@ export type OscRemoteCommand =
   | { kind: 'color'; id: string; r: number; g: number; b: number; a: number }
   | { kind: 'selectSet'; id: string } // Handy/Tablet wechselt das aktive Set
   | { kind: 'select'; id: string; index: number } // Auswahl-Kachel: Option gewählt
-  | { kind: 'bankButton'; id: string; index: number; down: boolean } // Taster-Bank
+  | { kind: 'bank'; id: string; index: number; value: number } // Bank-Feld (value je Modus)
+  | { kind: 'knob'; id: string; value: number } // Knopf absolut (min..max)
+  | { kind: 'knobStep'; id: string; delta: number } // Endlos-Encoder: relativer Schritt
 
 /* --------------------------- YouTube-Download --------------------------- */
 // yt-dlp-Wrapper. Binary wird (falls nicht gefunden) nach userData/bin geladen
