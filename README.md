@@ -270,12 +270,14 @@ src/
   **±1-Minute-Korrektur live**, **Nachrichten an die Bühne** (mit Blink-Option und
   Schnellnachrichten) und **Vollbild-Anzeige** auf gewähltem Monitor – synchron zur Vorschau,
   da der main-Prozess autoritativ tickt. Alternativ **große Uhr mit Sekundenanzeige**.
-- **OSC-Steuerung** – frei belegbares **Steuerpult** für MadMapper & Co.: Kacheln vom Typ **Fader,
-  Taster, Schalter, XY-Pad, Farbe, Anzeige/Meter, Label sowie Auswahl (1-aus-n) und Taster-Bank**
-  auf einem **feinen, im Edit-Modus sichtbaren Raster** – per
+- **OSC-Steuerung** – frei belegbares **Steuerpult** für MadMapper & Co.: Kacheln vom Typ **Fader**
+  (horizontal/vertikal), **Knopf** (Poti oder Endlos-Encoder), **Taster, Schalter, XY-Pad, Farbe,
+  Anzeige/Meter, Label, Auswahl (1-aus-n)** und **Bank** (umschaltbar Taster/Schalter/Knopf, Spalten
+  einstellbar) auf einem **feinen, im Edit-Modus sichtbaren Raster** – per
   Drag **frei positionierbar** (Kacheln **überlappen nicht**: beim Loslassen rückt eine Kachel auf die
   nächste freie Stelle) und **per Eckgriff in der Größe** veränderbar (mit **Mindestgrößen je
-  Typ**, damit Regler/Pads nicht verschwinden), je mit eigener **OSC-Adresse**. Eine **Geräte-Vorschau**
+  Typ**, damit Regler/Pads nicht verschwinden), je mit eigener **OSC-Adresse** (gleiche Typen werden
+  beim Hinzufügen automatisch durchnummeriert). Eine **Geräte-Vorschau**
   (Handy/Tablet, dreh­bar) zeigt die Fläche im **Geräterahmen**. Wie der Jingle-Player mit
   **Sets** (mehrere gespeicherte Setups als Tabs in der Kopfzeile) und **Edit-/Live-Umschalter
   rechts in der Kopfzeile**: im Edit-Modus wählt der Klick eine Kachel und ihre Einstellungen
@@ -311,7 +313,12 @@ src/
   OSC-Position"** – ein Anzeige-Kachel-Modus, der aus der eingehenden MadMapper-Position (0–1) und
   einer eingetragenen Clip-Dauer die verbleibende Zeit als **mm:ss** berechnet und auf einem Monitor
   zeigt (MadMapper liefert nur die Position, keine Restzeit). _(Erledigt: Learn-Modus, Widgets
-  Auswahl/1-aus-n + Taster-Bank + Anzeige/Meter + Label, Set-Wechsel am Handy.)_
+  Auswahl/1-aus-n + Bank Taster/Schalter/Knopf + Knopf/Endlos-Encoder + Anzeige/Meter + Label,
+  Fader-Ausrichtung, Raster-Spalten, Auto-Nummerierung, Handy-Hue, Set-Wechsel am Handy.)_
+- **Weitere OSC-Bedienelemente** (vorgemerkt): **Auto-Center-Fader/Wippe** (federt nach dem Loslassen
+  in die Mitte – Jog/PTZ/Speed), **Tap-Tempo/BPM** (aus mehreren Taps ein Tempo mitteln),
+  **Set-Wechsel-Button** (per Tipp ein anderes Set aktivieren) und **Farb-Regler horizontal/vertikal**
+  umstellbar.
 - **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
   eingebacken).
 - **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der
