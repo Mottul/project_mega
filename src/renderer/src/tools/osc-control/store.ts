@@ -18,12 +18,18 @@ export type OscWidgetType =
   | 'meter'
   | 'select'
   | 'bank'
+  | 'knob'
 
-/** Eintrag einer Auswahl-/Taster-Bank-Kachel. */
+/** Verhalten der Felder einer Bank-Kachel. */
+export type BankMode = 'momentary' | 'toggle' | 'knob'
+
+/** Eintrag einer Auswahl-/Bank-Kachel. `value` ist der gespeicherte Live-Wert des
+ *  Eintrags (Auswahl: zu sendender Wert; Bank-Schalter: An/Aus 0/1; Bank-Knopf:
+ *  Reglerwert min..max). */
 export interface OscItem {
   label: string
   address: string // leer = Adresse des Widgets verwenden
-  value: number // nur Auswahl: bei Wahl gesendeter Wert
+  value: number
 }
 
 export interface OscWidget {
@@ -51,7 +57,11 @@ export interface OscWidget {
   a: number // Farbe Alpha 0..1
   align: 'left' | 'center' | 'right' // nur Label: Textausrichtung
   source: 'osc' | 'video' // nur Anzeige/Meter: Wertquelle (OSC-Feedback oder Video-Restzeit)
-  items: OscItem[] // nur Auswahl/Taster-Bank: Optionen bzw. Taster (value = Index bei Auswahl)
+  items: OscItem[] // nur Auswahl/Bank: Optionen bzw. Felder
+  orient: 'h' | 'v' // Fader/Farbe: Ausrichtung der Regler
+  cols: number // Auswahl/Bank: Spalten im Raster (Zeilen folgen aus der Anzahl; 0 = automatisch)
+  bankMode: BankMode // Bank: Verhalten der Felder (Taster/Schalter/Knopf)
+  endless: boolean // Knopf: Endlos-Encoder (sendet relative Schritte statt Absolutwert)
 }
 
 export interface OscSet {
@@ -84,7 +94,14 @@ export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
   label: 'Label',
   meter: 'Anzeige',
   select: 'Auswahl',
-  bank: 'Taster-Bank'
+  bank: 'Bank',
+  knob: 'Knopf'
+}
+
+export const BANK_MODE_LABEL: Record<BankMode, string> = {
+  momentary: 'Taster',
+  toggle: 'Schalter',
+  knob: 'Knopf'
 }
 
 // Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
@@ -97,7 +114,8 @@ const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
   label: { cw: 10, ch: 2 },
   meter: { cw: 6, ch: 3 },
   select: { cw: 6, ch: 6 },
-  bank: { cw: 8, ch: 4 }
+  bank: { cw: 8, ch: 4 },
+  knob: { cw: 5, ch: 6 }
 }
 
 // Mindestgröße je Typ -> Regler bleiben bedienbar (Pads behalten Fläche, ein
@@ -111,7 +129,8 @@ export const WIDGET_MIN: Record<OscWidgetType, { cw: number; ch: number }> = {
   label: { cw: 2, ch: 1 },
   meter: { cw: 3, ch: 2 },
   select: { cw: 3, ch: 2 },
-  bank: { cw: 3, ch: 2 }
+  bank: { cw: 3, ch: 2 },
+  knob: { cw: 3, ch: 3 }
 }
 
 let seq = 0
@@ -226,7 +245,11 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     a: 1,
     align: 'center',
     source: 'osc',
-    items: []
+    items: [],
+    orient: 'v',
+    cols: 1,
+    bankMode: 'momentary',
+    endless: false
   }
   if (type === 'xy') {
     base.address = '/megatoolbox/x'
@@ -240,6 +263,11 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     base.label = 'Anzeige'
     base.address = '/megatoolbox/level'
   }
+  if (type === 'knob') {
+    base.label = 'Knopf'
+    base.address = '/megatoolbox/knob'
+    base.value = 0.5
+  }
   if (type === 'select') {
     base.label = 'Auswahl'
     base.address = '/megatoolbox/select'
@@ -250,15 +278,37 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     ]
   }
   if (type === 'bank') {
-    base.label = 'Taster-Bank'
+    base.label = 'Bank'
     base.address = ''
+    base.cols = 3
     base.items = [
-      { label: '1', address: '/megatoolbox/btn/1', value: 1 },
-      { label: '2', address: '/megatoolbox/btn/2', value: 1 },
-      { label: '3', address: '/megatoolbox/btn/3', value: 1 }
+      { label: '1', address: '/megatoolbox/btn/1', value: 0 },
+      { label: '2', address: '/megatoolbox/btn/2', value: 0 },
+      { label: '3', address: '/megatoolbox/btn/3', value: 0 }
     ]
   }
   return base
+}
+
+/** Adresse/Label eines NEU hinzugefügten Widgets durchnummerieren, wenn der Typ
+ *  schon auf der Fläche liegt ( /…/fader -> /…/fader-2, Label „Fader 2"). Das
+ *  erste seiner Art behält die saubere Default-Adresse. */
+function numberWidget(w: OscWidget, existing: OscWidget[]): void {
+  const same = existing.filter((x) => x.type === w.type)
+  if (same.length === 0) return
+  // Ab (Anzahl+1) hochzählen, bis Adresse UND Label frei sind – so kollidiert es
+  // auch nach dem Löschen eines Widgets nicht (Bank/Label haben leere Adresse,
+  // daher zählt dort das Label).
+  const addrs = new Set(existing.map((x) => x.address))
+  const labels = new Set(existing.map((x) => x.label))
+  let n = same.length + 1
+  while ((w.address && addrs.has(`${w.address}-${n}`)) || labels.has(`${w.label} ${n}`)) n++
+  if (w.address) w.address = `${w.address}-${n}`
+  if (w.addressY) w.addressY = `${w.addressY}-${n}`
+  w.label = `${w.label} ${n}`
+  if (w.items.length) {
+    w.items = w.items.map((it) => ({ ...it, address: it.address ? `${it.address}-${n}` : it.address }))
+  }
 }
 
 /** Items eines (evtl. alten) Widgets säubern. */
@@ -278,7 +328,7 @@ function normalizeItems(raw: unknown): OscItem[] {
 function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   const type: OscWidgetType =
     w &&
-    ['fader', 'button', 'toggle', 'xy', 'color', 'label', 'meter', 'select', 'bank'].includes(
+    ['fader', 'button', 'toggle', 'xy', 'color', 'label', 'meter', 'select', 'bank', 'knob'].includes(
       w.type as string
     )
       ? (w.type as OscWidgetType)
@@ -286,6 +336,13 @@ function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   const def = makeWidget(type)
   const merged = { ...def, ...w, type, id: w?.id ?? def.id }
   merged.items = w?.items ? normalizeItems(w.items) : def.items
+  merged.orient = w?.orient === 'h' || w?.orient === 'v' ? w.orient : def.orient
+  merged.bankMode = ['momentary', 'toggle', 'knob'].includes(w?.bankMode as string)
+    ? (w!.bankMode as BankMode)
+    : def.bankMode
+  merged.cols =
+    Number.isFinite(w?.cols) && (w!.cols as number) >= 0 ? Math.round(w!.cols as number) : def.cols
+  merged.endless = typeof w?.endless === 'boolean' ? w.endless : def.endless
   const min = WIDGET_MIN[type]
   merged.cw = clampInt(merged.cw, min.cw, MAX_COLS)
   merged.ch = clampInt(merged.ch, min.ch, MAX_CH)
@@ -402,6 +459,7 @@ export const useOscSurface = create<OscStoreState>()(
         addWidget: (type) => {
           const w = makeWidget(type)
           const ws = get().currentSet().widgets
+          numberWidget(w, ws) // Adresse/Label durchnummerieren, wenn Typ schon da
           // unter alles setzen -> kein Überlappen beim Hinzufügen
           w.gx = 0
           w.gy = ws.reduce((m, x) => Math.max(m, x.gy + x.ch), 0)
