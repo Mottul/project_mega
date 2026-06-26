@@ -133,6 +133,15 @@ const api: ToolboxApi = {
     onRemoteChanged: (cb) => subscribe(Channels.oscRemoteChanged, (s) => cb(s as never))
   },
 
+  novastar: {
+    connect: (host, port) => ipcRenderer.invoke(Channels.novastarConnect, host, port),
+    disconnect: () => ipcRenderer.invoke(Channels.novastarDisconnect),
+    status: () => ipcRenderer.invoke(Channels.novastarStatus),
+    onStatus: (cb) => subscribe(Channels.novastarStatusChanged, (s) => cb(s as never)),
+    brightness: (reg, pct) => ipcRenderer.invoke(Channels.novastarBrightness, reg, pct),
+    raw: (hex, addChecksum) => ipcRenderer.invoke(Channels.novastarRaw, hex, addChecksum)
+  },
+
   youtube: {
     status: () => ipcRenderer.invoke(Channels.ytStatus),
     updateTool: () => ipcRenderer.invoke(Channels.ytUpdate),

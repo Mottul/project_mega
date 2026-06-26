@@ -634,6 +634,18 @@ export interface OscFeedback {
   at: number // epoch ms
 }
 
+/* --------------------------- NovaStar (LED-Prozessor) -------------------- */
+// Steuerung eines NovaStar-Prozessors (NovaPro UHD Jr & Co.) über TCP 5200
+// (eigener, abhängigkeitsfreier Paket-Codec). Stand: v0, Befehls-Bytes am Gerät
+// zu bestätigen.
+
+export interface NovastarStatus {
+  connected: boolean
+  host: string
+  port: number
+  lastError: string | null
+}
+
 /* ------------------------------- Settings ------------------------------- */
 
 export interface PatternPreset {

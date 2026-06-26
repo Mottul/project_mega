@@ -19,6 +19,7 @@ import type {
   ManualSearchHit,
   MediaItem,
   OscFeedback,
+  NovastarStatus,
   OscMessage,
   OscRemoteCommand,
   OscRemoteSnapshot,
@@ -150,6 +151,13 @@ export const Channels = {
   oscRemoteStart: 'osc:remoteStart',
   oscRemoteStop: 'osc:remoteStop',
   oscRemoteChanged: 'osc:remoteChanged', // Event: RemoteStatus
+  // NovaStar-Prozessor (TCP 5200)
+  novastarConnect: 'novastar:connect',
+  novastarDisconnect: 'novastar:disconnect',
+  novastarStatus: 'novastar:status',
+  novastarStatusChanged: 'novastar:statusChanged', // Event: NovastarStatus
+  novastarBrightness: 'novastar:brightness',
+  novastarRaw: 'novastar:raw',
   // YouTube-Downloader (yt-dlp)
   ytStatus: 'yt:status',
   ytUpdate: 'yt:update', // yt-dlp-Binary herunterladen/aktualisieren
@@ -341,6 +349,21 @@ export interface ToolboxApi {
     remoteStop(): Promise<RemoteStatus>
     /** Statusänderungen des Fernsteuer-Servers. Liefert Cleanup. */
     onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
+  }
+
+  novastar: {
+    /** Mit einem NovaStar-Prozessor verbinden (TCP, Standard-Port 5200). */
+    connect(host: string, port: number): Promise<NovastarStatus>
+    /** Verbindung trennen. */
+    disconnect(): Promise<NovastarStatus>
+    /** Aktueller Verbindungsstatus. */
+    status(): Promise<NovastarStatus>
+    /** Statusänderungen. Liefert Cleanup. */
+    onStatus(cb: (s: NovastarStatus) => void): () => void
+    /** Bild-Helligkeit setzen (Register, Prozent 0..100). */
+    brightness(reg: number, pct: number): Promise<void>
+    /** Roh-Befehl als Hex senden; addChecksum ergänzt Prüfsumme automatisch. */
+    raw(hex: string, addChecksum: boolean): Promise<void>
   }
 
   youtube: {
