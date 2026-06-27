@@ -1,6 +1,6 @@
 // Curving-Planung für das uS2+-Modul (0–45° je Modul in 2,5°-Schritten):
 //  Vollkreis   – Tabelle aller sauberen Kreise, einzeln auswählbar + Vorschau
-//  Kreissegment– größter Bogen, der in Sehne × Stichhöhe passt (Sehne = Wandbreite)
+//  Kreissegment– größtes Segment, das auf eine Bühne max. Breite × Tiefe passt
 //  Builder     – freie Folge gerader/gebogener Abschnitte (konvex/konkav)
 //  Squircle    – Rechteck mit runden 90°-Ecken (Breite = Wandbreite)
 // Die hier gewählte/ermittelte Größe wird über computeCurve überall übernommen.
@@ -186,23 +186,28 @@ function SegmentMode(): JSX.Element {
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Größtes Kreissegment, das auf eine Bühne dieser Breite × Tiefe passt. Maßgeblich ist die
+        belegte Grundfläche – über den Halbkreis hinaus begrenzt nicht mehr die Sehne, sondern die
+        Breite/Tiefe (≈ Durchmesser).
+      </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <LField label="Sehne / max. Breite (= Wandbreite)" unit="m" value={s.widthM} onChange={(v) => s.set({ widthM: v })} />
-        <LField label="Stichhöhe / max. Tiefe" unit="m" value={s.segSag} onChange={(v) => s.set({ segSag: v })} />
+        <LField label="max. Bühnenbreite (= Wandbreite)" unit="m" value={s.widthM} onChange={(v) => s.set({ widthM: v })} />
+        <LField label="max. Bühnentiefe" unit="m" value={s.segSag} onChange={(v) => s.set({ segSag: v })} />
       </div>
       {!arc ? (
         <p className="text-sm text-muted-foreground">Keine passende Konfiguration gefunden.</p>
       ) : (
         <>
           <div className="grid gap-2 sm:grid-cols-2">
-            <Readout label="Radius" value={fmt(arc.r, 3)} unit="m" accent />
+            <Readout label="Belegte Fläche (B×T)" value={`${fmt(c.footprintW, 2)} × ${fmt(c.footprintD, 2)} m`} accent />
             <Readout label="Module" value={`${arc.mods}`} unit="Stk." accent />
+            <Readout label="Radius" value={fmt(arc.r, 3)} unit="m" />
             <Readout label="Bogenlänge" value={fmt(arc.arcLen, 3)} unit="m" />
             <Readout label="Gesamtwinkel" value={fmt(arc.dist.achieved, 1)} unit="°" />
-            <Readout label="Erreichte Sehne (Breite)" value={fmt(arc.ca, 3)} unit="m" />
-            <Readout label="Erreichte Tiefe (Stich)" value={fmt(arc.sa, 3)} unit="m" />
-            <Readout label="Belegte Fläche (B×T)" value={`${fmt(c.footprintW, 2)} × ${fmt(c.footprintD, 2)} m`} />
             <Readout label="Gewicht/Reihe" value={fmt(arc.mods * US2_WEIGHT, 1)} unit="kg" />
+            <Readout label="Sehne (Endpunkt-Abstand)" value={fmt(arc.ca, 3)} unit="m" />
+            <Readout label="Stichhöhe (max. Auslenkung)" value={fmt(arc.sa, 3)} unit="m" />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
@@ -218,7 +223,13 @@ function SegmentMode(): JSX.Element {
               In Segment-Builder übernehmen →
             </button>
           </div>
-          <TopDownSvg angles={arc.dist.angles} showChord chordHorizontal chordLabel={arc.ca} sagLabel={arc.sa} />
+          <TopDownSvg
+            angles={arc.dist.angles}
+            chordHorizontal
+            {...(arc.dist.achieved <= 180
+              ? { showChord: true, chordLabel: arc.ca, sagLabel: arc.sa }
+              : {})}
+          />
         </>
       )}
     </div>
