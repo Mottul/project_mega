@@ -292,6 +292,12 @@ src/
   Jingle-Player) zeigt dieselbe Oberfläche im Browser – Tippen/Ziehen dort löst den **OSC-Versand am
   Rechner** aus (QR-Code zum Öffnen); **Sets lassen sich auch am Handy/Tablet umschalten**. Sets und
   Oberfläche überstehen App-Neustarts.
+- **NovaStar-Steuerung** (Vorabversion) – steuert einen **NovaStar-Prozessor** (NovaPro UHD Jr & Co.)
+  über **TCP 5200** mit eigenem, abhängigkeitsfreiem **Paket-Codec** (Header 0x55AA + Prüfsumme).
+  **Helligkeit** und **Fade-to-Black** als zeitgesteuerte Helligkeits-Rampe (es gibt keinen echten
+  Blackout-Befehl), plus **Roh-Befehl-Sender** und editierbares Register zum Verifizieren der exakten
+  Frames am Gerät. _(v0: Transport/Framing/FTB gesichert; Befehls-Bytes am echten NovaPro zu
+  bestätigen.)_
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
   (Throw Ratio / Objektivwahl), **Kameraobjektiv** (Bildausschnitt bei Personen aus
   Brennweite/Sensor/Telekonverter, mit Visualisierung des sichtbaren Anteils),
@@ -319,6 +325,9 @@ src/
   in die Mitte – Jog/PTZ/Speed), **Tap-Tempo/BPM** (aus mehreren Taps ein Tempo mitteln),
   **Set-Wechsel-Button** (per Tipp ein anderes Set aktivieren) und **Farb-Regler horizontal/vertikal**
   umstellbar.
+- **NovaStar-Steuerung – Ausbau**: Befehls-Bytes am echten **NovaPro UHD Jr** bestätigen, dann
+  **Preset-Abruf**, **Testbild** und **Display-Mode** ergänzen (Befehlssatz aus dem offenen
+  Companion-Modul `novastar-controller`); optional weitere Modelle (VX-Serie, MCTRL).
 - **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
   eingebacken).
 - **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der
