@@ -8,6 +8,23 @@ import type { PackItem } from './store'
 
 type DerivedItem = Omit<PackItem, 'id' | 'checked'>
 
+/** Zerlegt eine Stack-Höhe (m) in 1-m- und 0,75-m-Leitertraversen-Stücke –
+ *  kleinste Gesamtlänge, die die Höhe erreicht (Gleichstand: wenige Stücke). */
+function ladderPieces(h: number): { ones: number; quarters: number } {
+  if (!Number.isFinite(h) || h <= 0) return { ones: 0, quarters: 0 }
+  let best: { ones: number; quarters: number; over: number } | null = null
+  for (let a = 0; a <= Math.ceil(h) + 1; a++) {
+    const b = Math.max(0, Math.ceil((h - a) / 0.75))
+    const total = a + 0.75 * b
+    if (total + 1e-9 < h) continue
+    const over = total - h
+    if (!best || over < best.over - 1e-9 || (Math.abs(over - best.over) < 1e-9 && a + b < best.ones + best.quarters)) {
+      best = { ones: a, quarters: b, over }
+    }
+  }
+  return best ? { ones: best.ones, quarters: best.quarters } : { ones: Math.ceil(h), quarters: 0 }
+}
+
 function chainStats(grid: number[][]): { chains: number; jumpers: number } {
   const counts = new Map<number, number>()
   for (const row of grid) for (const v of row) if (v >= 0) counts.set(v, (counts.get(v) ?? 0) + 1)
@@ -32,6 +49,13 @@ export function deriveFromLedWall(): DerivedItem[] {
 
   if (s.buildMode === 'stacked') {
     items.push({ category: cat, name: 'Ground-Stack-Fuß (LSU)', qty: d.baseUnits, unit: 'Stk.', note: '' })
+    // Leitertraversen je Base bis zur Wandhöhe (1 m + 0,75 m kombiniert).
+    const lp = ladderPieces(parseFloat(d.actualH))
+    const ladderNote = `Stack-Höhe ~${d.actualH} m × ${d.baseUnits} Bases`
+    if (lp.ones > 0)
+      items.push({ category: cat, name: 'Leitertraverse 1 m', qty: lp.ones * d.baseUnits, unit: 'Stk.', note: ladderNote })
+    if (lp.quarters > 0)
+      items.push({ category: cat, name: 'Leitertraverse 0,75 m', qty: lp.quarters * d.baseUnits, unit: 'Stk.', note: ladderNote })
     items.push({
       category: cat,
       name: 'Ballast',

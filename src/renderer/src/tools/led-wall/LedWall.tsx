@@ -3,20 +3,46 @@
 // und (uS2+) die Curving-Planung. Export als PDF-Projektdoku.
 
 import { useEffect, useMemo } from 'react'
-import { FileDown } from 'lucide-react'
+import { ClipboardList, FileDown } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { api } from '@renderer/lib/api'
+import { deriveFromLedWall } from '../packing-list/derive'
+import { usePacking } from '../packing-list/store'
 import { Readout, fmt } from '../_calc/ui'
 import { CableGrid } from './CableGrid'
 import { computeWall } from './compute'
 import { Curving } from './Curving'
 import { CURVE_MODE_LABELS } from './curve'
 import { MODULES, PWR_COLORS, SIG_COLORS } from './data'
+import { type Fit169 } from './math'
 import { exportLedWallPdf } from './print'
 import { useLedWall, type BuildMode } from './store'
 import { topDownMarkup } from './topdown'
 import { LField } from './ui'
+
+/** Schematischer 16:9-Plot: Wand (Rahmen) mit zentrierter 16:9-Nutzfläche und
+ *  den Letterbox-/Pillarbox-Balken (links/rechts bzw. oben/unten). */
+function Fit169Plot({ rx, ry, fit }: { rx: number; ry: number; fit: Fit169 }): JSX.Element | null {
+  if (!rx || !ry || fit.match || !fit.side) return null
+  const cw = fit.cw ?? rx
+  const ch = fit.ch ?? ry
+  const bx = fit.side === 'lr' ? (fit.barPx ?? 0) : 0
+  const by = fit.side === 'tb' ? (fit.barPx ?? 0) : 0
+  return (
+    <svg
+      viewBox={`0 0 ${rx} ${ry}`}
+      preserveAspectRatio="xMidYMid meet"
+      className="block max-h-28 w-full rounded border border-border bg-muted/40"
+    >
+      <rect x={bx} y={by} width={cw} height={ch} className="fill-primary/25 stroke-primary" strokeWidth={Math.max(2, rx / 150)} />
+      <text x={rx / 2} y={ry / 2} textAnchor="middle" dominantBaseline="central" className="fill-primary font-semibold" style={{ fontSize: Math.max(12, ry / 9) }}>
+        16:9
+      </text>
+    </svg>
+  )
+}
 
 function SectionTitle({ children }: { children: string }): JSX.Element {
   return <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{children}</h2>
@@ -110,6 +136,17 @@ export function LedWall(): JSX.Element {
                   </button>
                 ))}
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                title="Material in die Packliste übernehmen und in neuem Fenster öffnen"
+                onClick={() => {
+                  usePacking.getState().mergeItems(deriveFromLedWall())
+                  void api.openToolWindow('packing-list')
+                }}
+              >
+                <ClipboardList className="size-4" /> Packliste
+              </Button>
               <Button size="sm" onClick={doExport}>
                 <FileDown className="size-4" /> PDF exportieren
               </Button>
@@ -242,6 +279,7 @@ export function LedWall(): JSX.Element {
                   </p>
                 </div>
               ) : null}
+              {d.fit169 && !d.fit169.match && <Fit169Plot rx={d.resX} ry={d.resY} fit={d.fit169} />}
               <Readout label="Pixelpitch" value={String(d.mod.pitch)} unit="mm" />
               <Readout label="Module" value={String(d.total)} unit="Stk." />
             </div>
@@ -253,7 +291,11 @@ export function LedWall(): JSX.Element {
               <Readout label="Gewicht" value={fmt(parseFloat(d.weightKg), 1)} unit="kg" accent />
               <Readout label="Tiefe" value={String(d.mod.dimD)} unit="mm" />
               <Readout label="Schutzart" value={d.mod.ip} />
-              <Readout label="Helligkeit" value={String(d.mod.brightness)} unit="nit" />
+              <Readout
+                label="Helligkeit"
+                value={d.mod.brightnessMax ? `${d.mod.brightness} (max ${d.mod.brightnessMax})` : String(d.mod.brightness)}
+                unit="nit"
+              />
               <Readout label="Kontrast" value={`> ${d.mod.contrast}`} />
               <Readout label="Refresh" value={`≥ ${d.mod.refresh}`} unit="Hz" />
             </div>

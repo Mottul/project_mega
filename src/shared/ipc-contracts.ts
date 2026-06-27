@@ -157,6 +157,9 @@ export const Channels = {
   novastarStatus: 'novastar:status',
   novastarStatusChanged: 'novastar:statusChanged', // Event: NovastarStatus
   novastarBrightness: 'novastar:brightness',
+  novastarBlackout: 'novastar:blackout',
+  novastarFreeze: 'novastar:freeze',
+  novastarPreset: 'novastar:preset',
   novastarRaw: 'novastar:raw',
   // YouTube-Downloader (yt-dlp)
   ytStatus: 'yt:status',
@@ -360,8 +363,14 @@ export interface ToolboxApi {
     status(): Promise<NovastarStatus>
     /** Statusänderungen. Liefert Cleanup. */
     onStatus(cb: (s: NovastarStatus) => void): () => void
-    /** Bild-Helligkeit setzen (Register, Prozent 0..100). */
-    brightness(reg: number, pct: number): Promise<void>
+    /** Bild-Helligkeit setzen (Prozent 0..100). */
+    brightness(pct: number): Promise<void>
+    /** Empfangskarten schwarz schalten (echter Blackout) / zurück auf Normalbild. */
+    blackout(on: boolean): Promise<void>
+    /** Bild einfrieren / auftauen. */
+    freeze(on: boolean): Promise<void>
+    /** Preset/Szene 1..26 abrufen. */
+    preset(n: number): Promise<void>
     /** Roh-Befehl als Hex senden; addChecksum ergänzt Prüfsumme automatisch. */
     raw(hex: string, addChecksum: boolean): Promise<void>
   }

@@ -96,16 +96,29 @@ describe('measureFootprint (Grundfläche der Draufsicht)', () => {
   })
 })
 
-describe('calcArc (Kreissegment aus Sehne+Stichhöhe, bleibt INNERHALB der Vorgaben)', () => {
-  it('Sehne 4 m / Stich 1 m: passendes Segment, gebaute Form im Toleranzband', () => {
+describe('calcArc (größtes Segment, das auf Bühne max. Breite × Tiefe passt)', () => {
+  const eps = 0.001
+  it('4 × 1 m (flach): substanzielles Segment, Grundfläche bleibt in der Bühne', () => {
     const r = calcArc(4, 1)
     expect(r).not.toBeNull()
     if (!r) return
-    expect(r.mods).toBe(9)
+    expect(r.mods).toBeGreaterThanOrEqual(8)
     expect(r.arcLen).toBeCloseTo(r.mods * MODULE_W, 10)
-    // Kerngarantie: die ECHTE gebaute Form überschreitet die Vorgabe nur um die Toleranz.
-    expect(r.ca).toBeLessThanOrEqual(4 + 0.001)
-    expect(r.sa).toBeLessThanOrEqual(1 + 0.001)
+    // Kerngarantie: die ECHTE belegte Grundfläche passt auf die Bühne.
+    const fp = measureFootprint(r.dist.angles, { chordHorizontal: true })
+    expect(fp.width).toBeLessThanOrEqual(4 + eps)
+    expect(fp.depth).toBeLessThanOrEqual(1 + eps)
+  })
+  it('über den Halbkreis (2,5 × 2,5 m): Sehne ist NICHT mehr die begrenzende Breite', () => {
+    const r = calcArc(2.5, 2.5)
+    expect(r).not.toBeNull()
+    if (!r) return
+    expect(r.totalDeg).toBeGreaterThan(180)
+    const fp = measureFootprint(r.dist.angles, { chordHorizontal: true })
+    expect(fp.width).toBeLessThanOrEqual(2.5 + eps)
+    expect(fp.depth).toBeLessThanOrEqual(2.5 + eps)
+    // die geometrische Sehne ist deutlich kleiner als die belegte Breite.
+    expect(r.ca).toBeLessThan(fp.width)
   })
   it('ungültige Vorgaben → null', () => {
     expect(calcArc(0, 1)).toBeNull()

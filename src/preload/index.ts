@@ -138,7 +138,10 @@ const api: ToolboxApi = {
     disconnect: () => ipcRenderer.invoke(Channels.novastarDisconnect),
     status: () => ipcRenderer.invoke(Channels.novastarStatus),
     onStatus: (cb) => subscribe(Channels.novastarStatusChanged, (s) => cb(s as never)),
-    brightness: (reg, pct) => ipcRenderer.invoke(Channels.novastarBrightness, reg, pct),
+    brightness: (pct) => ipcRenderer.invoke(Channels.novastarBrightness, pct),
+    blackout: (on) => ipcRenderer.invoke(Channels.novastarBlackout, on),
+    freeze: (on) => ipcRenderer.invoke(Channels.novastarFreeze, on),
+    preset: (n) => ipcRenderer.invoke(Channels.novastarPreset, n),
     raw: (hex, addChecksum) => ipcRenderer.invoke(Channels.novastarRaw, hex, addChecksum)
   },
 

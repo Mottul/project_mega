@@ -39,7 +39,6 @@ export function calc169(rx: number, ry: number): Fit169 | null {
 }
 
 const deg2rad = (d: number): number => (d * Math.PI) / 180
-const rad2deg = (r: number): number => (r * 180) / Math.PI
 
 export interface AngleDistribution {
   angles: number[]
@@ -202,34 +201,45 @@ export interface ArcResult {
   arcLen: number
   mods: number
   dist: AngleDistribution
-  ca: number // erreichte Sehne
-  sa: number // erreichte Stichhöhe
+  ca: number // geometrische Sehne der gebauten Form
+  sa: number // geometrische Stichhöhe der gebauten Form
 }
 
-/** Kreissegment aus Sehne + Stichhöhe – sucht den größten Bogen, der INNERHALB
- *  der Vorgaben bleibt (2,5°-Raster, max. 45°/Modul, 0,5 m Modulbreite). */
-export function calcArc(chord: number, sag: number): ArcResult | null {
-  if (chord <= 0 || sag <= 0) return null
-  const rIdeal = (chord * chord) / (8 * sag) + sag / 2
-  const thetaIdeal = 2 * Math.atan2(chord / 2, rIdeal - sag)
-  const arcLenIdeal = rIdeal * thetaIdeal
-  const nIdeal = Math.max(1, Math.round(arcLenIdeal / MODULE_W))
-  for (let n = nIdeal + 2; n >= 1; n--) {
-    const maxTd = Math.min(n * 45, Math.ceil(rad2deg(thetaIdeal) / 2.5) * 2.5 + 10)
-    for (let td = maxTd; td >= 2.5; td -= 2.5) {
+/** Kreissegment, das auf eine Bühne der Größe maxWidth × maxDepth passt.
+ *  Liefert den GRÖSSTEN Bogen (meiste Module), dessen tatsächliche Grundfläche
+ *  (Draufsicht-Bounding-Box in Aufstell-Lage, inkl. Modultiefe) noch in die Bühne
+ *  passt. Anders als eine reine Sehne/Stich-Prüfung bleibt das auch über den
+ *  Halbkreis hinaus korrekt: dort begrenzt nicht mehr die Sehne, sondern die
+ *  Breite/Tiefe der belegten Fläche (≈ Durchmesser). 2,5°-Raster, max. 45°/Modul,
+ *  0,5 m Modulbreite. ca/sa = geometrische Sehne/Stichhöhe der gebauten Form. */
+export function calcArc(maxWidth: number, maxDepth: number): ArcResult | null {
+  if (maxWidth <= 0 || maxDepth <= 0) return null
+  const eps = 0.001
+  // Obergrenze der Modulzahl: längster Bogen, der überhaupt in W×T passen kann
+  // (grobe Schranke; nach unten wird iteriert, harter Deckel gegen Extremwerte).
+  const nMax = Math.min(400, Math.max(1, Math.ceil((maxWidth + Math.PI * maxDepth) / MODULE_W) + 3))
+  for (let n = nMax; n >= 1; n--) {
+    const L = n * MODULE_W
+    const tdCap = Math.min(n * 45, 360)
+    let found: { td: number; dist: AngleDistribution; r: number } | null = null
+    for (let td = 0; td <= tdCap + eps; td += 2.5) {
       const tr = deg2rad(td)
-      const r = (n * MODULE_W) / tr
-      const ca = 2 * r * Math.sin(tr / 2)
-      const sa = r * (1 - Math.cos(tr / 2))
-      // grobe Vorauswahl ueber die Idealkreis-Form (spart Geometrieberechnung) ...
-      if (ca > chord + 0.1 || sa > sag + 0.1) continue
-      // ... entschieden wird aber an der ECHTEN Form: die 2,5°-Verteilung (hoehere
-      // Winkel mittig) baut minimal anders als der Idealkreis.
+      const r = td < eps ? Infinity : L / tr
+      // Sehne als billige Untergrenze der Grundflächenbreite (Breite ≥ |Sehne|):
+      // klar zu breite Bögen ohne Geometrieberechnung überspringen (mit Spielraum
+      // für die Diskretisierung, damit nie ein echter Treffer verworfen wird).
+      const chordLB = td < eps ? L : 2 * r * Math.abs(Math.sin(tr / 2))
+      if (chordLB > maxWidth + 0.2) continue
       const dist = distributeAngles(td, n)
-      const measured = measureArc(computeModuleShapes(dist.angles))
-      if (measured.chord <= chord + 0.001 && measured.sag <= sag + 0.001) {
-        return { r, totalDeg: td, arcLen: n * MODULE_W, mods: n, dist, ca: measured.chord, sa: measured.sag }
+      const fp = measureFootprint(dist.angles, { chordHorizontal: true })
+      if (fp.width <= maxWidth + eps && fp.depth <= maxDepth + eps) {
+        found = { td, dist, r }
+        break // sanftester (kleinster) passender Bogen
       }
+    }
+    if (found) {
+      const m = measureArc(computeModuleShapes(found.dist.angles))
+      return { r: found.r, totalDeg: found.td, arcLen: L, mods: n, dist: found.dist, ca: m.chord, sa: m.sag }
     }
   }
   return null
