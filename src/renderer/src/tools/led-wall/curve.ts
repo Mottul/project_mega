@@ -69,8 +69,6 @@ export function computeCurve(p: CurveParams): CurveComputed {
   }
 
   if (p.curveMode === 'segment') {
-    // widthM/segSag = max. Bühnenbreite/-tiefe; calcArc sucht das größte Segment,
-    // dessen echte Grundfläche darauf passt (auch über den Halbkreis hinaus).
     const arc = p.widthM != null && p.segSag != null ? calcArc(p.widthM, p.segSag) : null
     const angles = arc ? arc.dist.angles : []
     // In Aufstell-Lage (Sehne waagrecht) messen – wie die Draufsicht gezeichnet wird.
