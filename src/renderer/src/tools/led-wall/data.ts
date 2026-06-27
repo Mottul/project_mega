@@ -5,7 +5,8 @@
 export interface LedModule {
   name: string
   pitch: number // Pixelpitch in mm
-  brightness: number // nit
+  brightness: number // nit (typischer Wert)
+  brightnessMax?: number // nit (max. mit Spezial-Konfiguration)
   weight: number // kg pro Modul
   powerTyp: number // W typisch
   powerMax: number // W max
@@ -29,7 +30,8 @@ export const MODULES: Record<string, LedModule> = {
   '496-2,0': {
     name: '496-2,0',
     pitch: 2.06,
-    brightness: 1200,
+    brightness: 800,
+    brightnessMax: 1000,
     weight: 7.5,
     powerTyp: 80,
     powerMax: 180,

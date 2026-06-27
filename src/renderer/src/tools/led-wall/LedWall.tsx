@@ -253,7 +253,11 @@ export function LedWall(): JSX.Element {
               <Readout label="Gewicht" value={fmt(parseFloat(d.weightKg), 1)} unit="kg" accent />
               <Readout label="Tiefe" value={String(d.mod.dimD)} unit="mm" />
               <Readout label="Schutzart" value={d.mod.ip} />
-              <Readout label="Helligkeit" value={String(d.mod.brightness)} unit="nit" />
+              <Readout
+                label="Helligkeit"
+                value={d.mod.brightnessMax ? `${d.mod.brightness} (max ${d.mod.brightnessMax})` : String(d.mod.brightness)}
+                unit="nit"
+              />
               <Readout label="Kontrast" value={`> ${d.mod.contrast}`} />
               <Readout label="Refresh" value={`≥ ${d.mod.refresh}`} unit="Hz" />
             </div>

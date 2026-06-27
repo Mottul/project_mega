@@ -113,7 +113,7 @@ th{background:#f7f7f7;font-weight:600;width:44%}
 <tr><th>Gewicht</th><td>${d.weightKg} kg</td></tr>
 <tr><th>Leistung (typ.)</th><td>${d.powerTypW} W (${d.ampsTyp} A)</td></tr>
 <tr><th>Leistung (max.)</th><td>${d.powerMaxW} W (${d.ampsMax} A)</td></tr>
-<tr><th>Helligkeit</th><td>${d.mod.brightness} nit</td></tr>
+<tr><th>Helligkeit</th><td>${d.mod.brightnessMax ? `${d.mod.brightness} (max ${d.mod.brightnessMax})` : d.mod.brightness} nit</td></tr>
 <tr><th>Kontrast</th><td>&gt; ${d.mod.contrast}</td></tr>
 <tr><th>Tiefe</th><td>${d.mod.dimD} mm</td></tr></table>`
   if (d.buildMode === 'stacked')

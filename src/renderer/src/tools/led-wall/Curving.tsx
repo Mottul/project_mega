@@ -5,6 +5,8 @@
 //  Squircle    – Rechteck mit runden 90°-Ecken (Breite = Wandbreite)
 // Die hier gewählte/ermittelte Größe wird über computeCurve überall übernommen.
 
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Card } from '@renderer/components/ui/card'
 import { Readout, fmt, parseNum } from '../_calc/ui'
 import { CURVE_MODE_LABELS, computeCurve } from './curve'
@@ -12,7 +14,7 @@ import { CIRCLE_TABLE, MODULES, MODULE_W } from './data'
 import { distributeAngles, type BuilderSegment } from './math'
 import { useLedWall, type CurveMode } from './store'
 import { TopDownSvg } from './TopDownSvg'
-import { LField } from './ui'
+import { LField, NumCommit } from './ui'
 
 const US2_WEIGHT = MODULES['uS2+'].weight
 const MODE_LABELS = CURVE_MODE_LABELS
@@ -40,35 +42,63 @@ function AnglePills({ angles }: { angles: number[] }): JSX.Element {
 
 export function Curving(): JSX.Element {
   const s = useLedWall()
+  const [open, setOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('led-wall:curving-open') !== '0'
+    } catch {
+      return true
+    }
+  })
+  function toggle(): void {
+    setOpen((o) => {
+      const next = !o
+      try {
+        localStorage.setItem('led-wall:curving-open', next ? '1' : '0')
+      } catch {
+        /* localStorage nicht verfügbar */
+      }
+      return next
+    })
+  }
 
   return (
     <Card className="p-5">
-      <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-        Curving (uS2+) — 0° bis 45° in 2,5°-Schritten
-      </h2>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {(Object.keys(MODE_LABELS) as CurveMode[]).map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => s.set({ curveMode: m })}
-            className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
-              s.curveMode === m
-                ? 'border-primary/60 bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
-            }`}
-          >
-            {MODE_LABELS[m]}
-          </button>
-        ))}
-      </div>
+      <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2 text-left">
+        <ChevronDown
+          className={`size-4 shrink-0 text-muted-foreground transition-transform ${!open ? '-rotate-90' : ''}`}
+        />
+        <h2 className="flex-1 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+          Curving (uS2+) — 0° bis 45° in 2,5°-Schritten
+        </h2>
+      </button>
 
-      <div className="mt-4">
-        {s.curveMode === 'circle' && <CircleMode />}
-        {s.curveMode === 'segment' && <SegmentMode />}
-        {s.curveMode === 'builder' && <BuilderMode />}
-        {s.curveMode === 'squircle' && <SquircleMode />}
-      </div>
+      {open && (
+        <>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {(Object.keys(MODE_LABELS) as CurveMode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => s.set({ curveMode: m })}
+                className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  s.curveMode === m
+                    ? 'border-primary/60 bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                }`}
+              >
+                {MODE_LABELS[m]}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-4">
+            {s.curveMode === 'circle' && <CircleMode />}
+            {s.curveMode === 'segment' && <SegmentMode />}
+            {s.curveMode === 'builder' && <BuilderMode />}
+            {s.curveMode === 'squircle' && <SquircleMode />}
+          </div>
+        </>
+      )}
     </Card>
   )
 }
@@ -242,27 +272,25 @@ function BuilderMode(): JSX.Element {
             </button>
             <label className="ml-1 flex items-center gap-1 text-[10px] text-muted-foreground">
               Mod:
-              <input
-                type="number"
+              <NumCommit
+                value={seg.count}
                 min={1}
                 max={50}
-                value={seg.count}
-                onChange={(e) => update(i, { count: Math.max(1, parseInt(e.target.value) || 1) })}
-                className="h-7 w-14 rounded border border-border bg-input/40 px-1.5 text-xs text-foreground"
+                integer
+                onCommit={(v) => update(i, { count: v })}
+                className="h-7 w-14 px-1.5 text-xs"
               />
             </label>
             {seg.type === 'curved' && (
               <>
                 <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
                   Winkel:
-                  <input
-                    type="number"
+                  <NumCommit
+                    value={seg.angle ?? 0}
                     min={2.5}
-                    max={360}
-                    step={2.5}
-                    value={seg.angle}
-                    onChange={(e) => update(i, { angle: Math.max(2.5, parseFloat(e.target.value) || 2.5) })}
-                    className="h-7 w-16 rounded border border-border bg-input/40 px-1.5 text-xs text-foreground"
+                    max={seg.count * 45}
+                    onCommit={(v) => update(i, { angle: v })}
+                    className="h-7 w-16 px-1.5 text-xs"
                   />
                   °
                 </label>
@@ -339,14 +367,10 @@ function SquircleMode(): JSX.Element {
       <div className="grid gap-3 sm:grid-cols-3">
         <LField label="Breite (= Wandbreite)" unit="m" value={s.widthM} onChange={(v) => s.set({ widthM: v })} />
         <LField label="Tiefe" unit="m" value={s.sqD} onChange={(v) => s.set({ sqD: v })} />
-        <LField
-          label="Module/Ecke"
-          value={String(s.sqCorner)}
-          number
-          min={2}
-          max={36}
-          onChange={(v) => s.set({ sqCorner: Math.max(2, parseInt(v) || 2) })}
-        />
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Module/Ecke</span>
+          <NumCommit value={s.sqCorner} min={2} max={36} integer onCommit={(v) => s.set({ sqCorner: v })} />
+        </label>
       </div>
       {!c.feasible && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
