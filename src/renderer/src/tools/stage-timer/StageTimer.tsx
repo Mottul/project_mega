@@ -191,7 +191,7 @@ export function StageTimer(): JSX.Element {
   const segs = state.segments
 
   return (
-    <div className={toolPageClass('5xl')}>
+    <div className={toolPageClass('full')}>
       <div className="grid gap-4 lg:grid-cols-[1fr,340px]">
         {/* Vorschau + Transport */}
         <div className="space-y-4">

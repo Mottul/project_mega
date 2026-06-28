@@ -96,7 +96,7 @@ export function YoutubeDownloader(): JSX.Element {
   const active = jobs.some((j) => j.status === 'running' || j.status === 'queued')
 
   return (
-    <div className={toolPageClass('3xl')}>
+    <div className={toolPageClass('full')}>
       {/* yt-dlp-Status */}
       <Card className="flex flex-wrap items-center gap-3 p-4">
         {status == null ? (

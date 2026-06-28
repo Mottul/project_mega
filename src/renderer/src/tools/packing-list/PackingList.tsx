@@ -31,7 +31,7 @@ export function PackingList(): JSX.Element {
   const openCount = s.items.filter((i) => !i.checked).length
 
   return (
-    <div className={toolPageClass('3xl')}>
+    <div className={toolPageClass('full')}>
       <Card className="flex flex-wrap items-center gap-2 p-4">
         <Input
           className="h-9 max-w-xs flex-1"

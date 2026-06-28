@@ -109,7 +109,7 @@ export function LedWall(): JSX.Element {
   }
 
   return (
-    <div className={toolPageClass('5xl')}>
+    <div className={toolPageClass('full')}>
       {/* Projekt + Wandgröße */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">
