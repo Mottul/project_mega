@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Loader2, MonitorSmartphone } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
+import { AccentPicker } from '@renderer/components/AccentPicker'
 import { api } from '@renderer/lib/api'
 import { findTool } from '@renderer/tools/registry'
 import { KioskContext } from './kiosk'
@@ -77,6 +78,7 @@ export function ToolHost(): JSX.Element {
             >
               <MonitorSmartphone className="size-4" />
             </Button>
+            <AccentPicker />
             <ThemeToggle />
           </>
         )}

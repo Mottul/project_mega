@@ -708,12 +708,16 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
 /** Farbschema der Oberfläche. 'system' folgt der OS-Einstellung. */
 export type ThemeMode = 'system' | 'light' | 'dark'
 
+/** Markenakzent (Primärfarbe) der Oberfläche. 'gold' = bisherige Marke. */
+export type AccentId = 'gold' | 'amber' | 'teal' | 'blue' | 'violet' | 'pink' | 'green'
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
   lastImportDir: string | null
   patternPresets: PatternPreset[]
   theme: ThemeMode
+  accent: AccentId
   player: PlayerSettings
   osc: OscSettings
   /** Kundenansicht: beim Start direkt in dieses Tool springen (gesperrt, ohne
@@ -727,6 +731,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastImportDir: null,
   patternPresets: [],
   theme: 'dark', // bisheriges Erscheinungsbild bleibt Standard
+  accent: 'gold', // Gold-Marke bleibt Standard
   player: DEFAULT_PLAYER_SETTINGS,
   osc: DEFAULT_OSC_SETTINGS,
   kioskToolId: null
