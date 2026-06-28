@@ -195,7 +195,9 @@ export function StageTimer(): JSX.Element {
       <div className="grid gap-4 lg:grid-cols-[1fr,340px]">
         {/* Vorschau + Transport */}
         <div className="space-y-4">
-          <Card className="overflow-hidden p-0">
+          {/* Vorschau bewusst gedeckelt – auf großen Fenstern soll sie nicht den
+              halben Bildschirm füllen (das Vollbild-Ausgabefenster ist eh separat). */}
+          <Card className="mx-auto w-full max-w-lg overflow-hidden p-0">
             <div className="relative aspect-video w-full">
               <TimerDisplay state={state} remainingSec={remaining} />
             </div>
