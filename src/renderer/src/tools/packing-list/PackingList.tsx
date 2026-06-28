@@ -52,7 +52,7 @@ export function PackingList(): JSX.Element {
         </Button>
       </Card>
 
-      <div className="space-y-4">
+      <div className="grid items-start gap-4 xl:grid-cols-2">
         {groups.map(([cat, items]) => (
           <Card key={cat} className="overflow-hidden">
             <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2">
