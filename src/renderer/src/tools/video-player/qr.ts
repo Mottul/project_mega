@@ -112,7 +112,9 @@ function placeFinder(g: Grid, r: number, c: number): void {
       const cc = c + j
       if (rr < 0 || rr >= g.size || cc < 0 || cc >= g.size) continue
       const inRing = i >= 0 && i <= 6 && j >= 0 && j <= 6
-      const dark = inRing && (i === 0 || i === 6 || j === 0 || j === 6 || (i >= 2 && i <= 4 && j >= 2 && j <= 4))
+      const dark =
+        inRing &&
+        (i === 0 || i === 6 || j === 0 || j === 6 || (i >= 2 && i <= 4 && j >= 2 && j <= 4))
       setFn(g, rr, cc, dark ? 1 : 0)
     }
   }
@@ -142,7 +144,11 @@ function buildFunctionPatterns(g: Grid, spec: VersionSpec): void {
   const c = spec.centers
   for (const r of c) {
     for (const col of c) {
-      if ((r === 6 && col === 6) || (r === 6 && col === c[c.length - 1]) || (r === c[c.length - 1] && col === 6))
+      if (
+        (r === 6 && col === 6) ||
+        (r === 6 && col === c[c.length - 1]) ||
+        (r === c[c.length - 1] && col === 6)
+      )
         continue
       placeAlignment(g, r, col)
     }
@@ -182,14 +188,22 @@ function placeData(g: Grid, bits: number[]): void {
 
 function maskFn(mask: number, r: number, c: number): boolean {
   switch (mask) {
-    case 0: return (r + c) % 2 === 0
-    case 1: return r % 2 === 0
-    case 2: return c % 3 === 0
-    case 3: return (r + c) % 3 === 0
-    case 4: return (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0
-    case 5: return ((r * c) % 2) + ((r * c) % 3) === 0
-    case 6: return (((r * c) % 2) + ((r * c) % 3)) % 2 === 0
-    default: return (((r + c) % 2) + ((r * c) % 3)) % 2 === 0
+    case 0:
+      return (r + c) % 2 === 0
+    case 1:
+      return r % 2 === 0
+    case 2:
+      return c % 3 === 0
+    case 3:
+      return (r + c) % 3 === 0
+    case 4:
+      return (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0
+    case 5:
+      return ((r * c) % 2) + ((r * c) % 3) === 0
+    case 6:
+      return (((r * c) % 2) + ((r * c) % 3)) % 2 === 0
+    default:
+      return (((r + c) % 2) + ((r * c) % 3)) % 2 === 0
   }
 }
 

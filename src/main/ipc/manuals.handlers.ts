@@ -14,9 +14,7 @@ import {
 
 export function registerManualsHandlers(): void {
   ipcMain.handle(Channels.manualsImport, (e, paths: string[]) =>
-    importManuals(paths, (p: ImportProgress) =>
-      e.sender.send(Channels.manualsImportProgress, p)
-    )
+    importManuals(paths, (p: ImportProgress) => e.sender.send(Channels.manualsImportProgress, p))
   )
   ipcMain.handle(Channels.manualsList, (_e, query?: string) => listManuals(query))
   ipcMain.handle(Channels.manualsSearch, (_e, query: string) => searchManuals(query))

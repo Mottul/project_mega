@@ -16,7 +16,9 @@ export function fmtTimer(totalSec: number): string {
 
 /** Uhrzeit "HH:MM:SS" (mit Sekunden). */
 export function fmtClock(d: Date): string {
-  return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':')
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map((n) => String(n).padStart(2, '0'))
+    .join(':')
 }
 
 /** "5" (Minuten), "5:30", "1:05:00" -> Sekunden; ungültig -> null. */

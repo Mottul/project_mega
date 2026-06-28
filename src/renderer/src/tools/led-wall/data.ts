@@ -108,8 +108,42 @@ export const BALLAST: { h: number; kg: number }[] = [
 ]
 
 /** Kettenfarben Signal / Strom (kontraststark auf hell und dunkel). */
-export const SIG_COLORS = ['#4ecdc4', '#ffce2e', '#a78bfa', '#ff6b6b', '#34d399', '#f472b6', '#60a5fa', '#fb923c', '#e879f9', '#2dd4bf', '#fbbf24', '#c084fc', '#38bdf8', '#f87171', '#a3e635', '#818cf8']
-export const PWR_COLORS = ['#ff6b6b', '#fb923c', '#ffce2e', '#34d399', '#4ecdc4', '#60a5fa', '#a78bfa', '#f472b6', '#e879f9', '#2dd4bf', '#fbbf24', '#c084fc', '#38bdf8', '#f87171', '#a3e635', '#818cf8']
+export const SIG_COLORS = [
+  '#4ecdc4',
+  '#ffce2e',
+  '#a78bfa',
+  '#ff6b6b',
+  '#34d399',
+  '#f472b6',
+  '#60a5fa',
+  '#fb923c',
+  '#e879f9',
+  '#2dd4bf',
+  '#fbbf24',
+  '#c084fc',
+  '#38bdf8',
+  '#f87171',
+  '#a3e635',
+  '#818cf8'
+]
+export const PWR_COLORS = [
+  '#ff6b6b',
+  '#fb923c',
+  '#ffce2e',
+  '#34d399',
+  '#4ecdc4',
+  '#60a5fa',
+  '#a78bfa',
+  '#f472b6',
+  '#e879f9',
+  '#2dd4bf',
+  '#fbbf24',
+  '#c084fc',
+  '#38bdf8',
+  '#f87171',
+  '#a3e635',
+  '#818cf8'
+]
 
 /** Mögliche uS2+-Vollkreise (gleicher Winkel je Modul, 0,5 m Modulbreite). */
 export const CIRCLE_TABLE: { angle: number; mods: number; circ: number; r: number }[] = [

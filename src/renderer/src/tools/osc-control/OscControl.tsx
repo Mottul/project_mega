@@ -88,7 +88,10 @@ const clampInt = (n: number, a: number, b: number): number =>
   Math.min(b, Math.max(a, Math.round(Number.isFinite(n) ? n : a)))
 
 function rgb01ToHex(r: number, g: number, b: number): string {
-  const h = (x: number): string => Math.round(clamp01(x) * 255).toString(16).padStart(2, '0')
+  const h = (x: number): string =>
+    Math.round(clamp01(x) * 255)
+      .toString(16)
+      .padStart(2, '0')
   return `#${h(r)}${h(g)}${h(b)}`
 }
 function hexToRgb01(hex: string): { r: number; g: number; b: number } {
@@ -172,8 +175,7 @@ function fmtClock(totalSec: number): string {
   return `${h > 0 ? `${h}:` : ''}${mm}:${String(sec).padStart(2, '0')}`
 }
 // Schachbrett-Hintergrund (zeigt Transparenz hinter dem Alpha-Regler).
-const CHECKER =
-  'repeating-conic-gradient(#0006 0% 25%, #fff3 0% 50%) 50% / 10px 10px'
+const CHECKER = 'repeating-conic-gradient(#0006 0% 25%, #fff3 0% 50%) 50% / 10px 10px'
 
 interface LogEntry {
   id: number
@@ -204,7 +206,11 @@ export function OscControl(): JSX.Element {
   const [landscape, setLandscape] = useState(false)
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8091)
-  const [video, setVideo] = useState<VideoInfo>({ playing: false, remainingSec: null, durationSec: 0 })
+  const [video, setVideo] = useState<VideoInfo>({
+    playing: false,
+    remainingSec: null,
+    durationSec: 0
+  })
   const [status, setStatus] = useState<OscStatus | null>(null)
   const [config, setConfig] = useState<OscSettings | null>(null)
   const [log, setLog] = useState<LogEntry[]>([])
@@ -230,7 +236,10 @@ export function OscControl(): JSX.Element {
       if (top && top.dir === dir && top.address === address && now - top.at < 80) {
         logRef.current = [{ ...top, args, at: now }, ...cur.slice(1)]
       } else {
-        logRef.current = [{ id: logSeq.current++, dir, address, args, at: now }, ...cur].slice(0, 60)
+        logRef.current = [{ id: logSeq.current++, dir, address, args, at: now }, ...cur].slice(
+          0,
+          60
+        )
       }
       setLog(logRef.current)
     },
@@ -353,7 +362,10 @@ export function OscControl(): JSX.Element {
 
   // Schnappschuss der Oberfläche an den Fernsteuer-Server – gedrosselt, da sich
   // Werte beim Ziehen schnell ändern.
-  const pubRef = useRef<{ t: number; timer: ReturnType<typeof setTimeout> | null }>({ t: 0, timer: null })
+  const pubRef = useRef<{ t: number; timer: ReturnType<typeof setTimeout> | null }>({
+    t: 0,
+    timer: null
+  })
   useEffect(() => {
     const p = pubRef.current
     const run = (): void => {
@@ -506,137 +518,164 @@ export function OscControl(): JSX.Element {
     if (mode !== 'edit') setStore({ mode: 'edit' })
   }
 
-  const statusDot = status ? (status.lastError ? 'bg-destructive' : 'bg-emerald-500') : 'bg-muted-foreground'
+  const statusDot = status
+    ? status.lastError
+      ? 'bg-destructive'
+      : 'bg-emerald-500'
+    : 'bg-muted-foreground'
 
   const main = (
     <VideoCtx.Provider value={video}>
-    <div className="flex h-full flex-col">
-      {/* Kopfzeile: Sets links, Edit/Live rechts */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
-        <div className="flex flex-wrap items-center gap-1">
-          {sets.map((b) => (
+      <div className="flex h-full flex-col">
+        {/* Kopfzeile: Sets links, Edit/Live rechts */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
+          <div className="flex flex-wrap items-center gap-1">
+            {sets.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => useOscSurface.getState().selectSet(b.id)}
+                className={cn(
+                  'rounded-md border px-3 py-1.5 text-sm transition-colors',
+                  b.id === set.id
+                    ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
+                    : 'border-border text-muted-foreground hover:border-primary/40'
+                )}
+              >
+                {b.name}
+              </button>
+            ))}
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Set hinzufügen"
+              onClick={() => useOscSurface.getState().addSet()}
+            >
+              <Plus className="size-4" />
+            </Button>
+          </div>
+
+          <div className="flex-1" />
+
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className={cn('size-2.5 rounded-full', statusDot)} />
+            <span className="tabular-nums">
+              {status ? `${status.host}:${status.outPort}` : '–'}
+            </span>
+            {status?.listening && (
+              <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs">
+                <Radio className="size-3" /> {status.inPort}
+              </span>
+            )}
+          </div>
+
+          {/* Geräte-Vorschau */}
+          <div className="flex overflow-hidden rounded-md border border-border">
+            <DeviceBtn
+              active={!previewing}
+              title="Normale Ansicht"
+              onClick={() => setDevice('off')}
+            >
+              <MonitorIcon className="size-4" />
+            </DeviceBtn>
+            <DeviceBtn
+              active={device === 'phone'}
+              title="Handy-Vorschau"
+              onClick={() => setDevice('phone')}
+            >
+              <Smartphone className="size-4" />
+            </DeviceBtn>
+            <DeviceBtn
+              active={device === 'tablet'}
+              title="Tablet-Vorschau"
+              onClick={() => setDevice('tablet')}
+            >
+              <Tablet className="size-4" />
+            </DeviceBtn>
+          </div>
+          {previewing && (
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Hoch-/Querformat"
+              onClick={() => setLandscape((v) => !v)}
+            >
+              <RotateCw className="size-4" />
+            </Button>
+          )}
+
+          {/* Edit / Live */}
+          <div className="flex overflow-hidden rounded-md border border-border">
             <button
-              key={b.id}
               type="button"
-              onClick={() => useOscSurface.getState().selectSet(b.id)}
+              onClick={() => setStore({ mode: 'edit' })}
               className={cn(
-                'rounded-md border px-3 py-1.5 text-sm transition-colors',
-                b.id === set.id
-                  ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/40'
+                'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
+                !live
+                  ? 'bg-primary/15 font-semibold text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              {b.name}
+              <Pencil className="size-4" /> Edit
             </button>
-          ))}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Set hinzufügen"
-            onClick={() => useOscSurface.getState().addSet()}
-          >
-            <Plus className="size-4" />
-          </Button>
+            <button
+              type="button"
+              onClick={() => setStore({ mode: 'live' })}
+              className={cn(
+                'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
+                live
+                  ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Play className="size-4" /> Live
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className={cn('size-2.5 rounded-full', statusDot)} />
-          <span className="tabular-nums">{status ? `${status.host}:${status.outPort}` : '–'}</span>
-          {status?.listening && (
-            <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs">
-              <Radio className="size-3" /> {status.inPort}
-            </span>
+        {/* Steuerpult – normal oder im Geräterahmen (Vorschau ist auch im
+          Edit-Modus bearbeitbar). */}
+        <div className="min-h-0 flex-1 overflow-auto p-5">
+          {previewing ? (
+            <DeviceFrame w={frameW} h={frameH}>
+              {(scale) =>
+                widgets.length === 0 ? (
+                  <p className="p-8 text-center text-sm text-muted-foreground">
+                    Noch keine Bedienelemente.
+                  </p>
+                ) : (
+                  <SurfaceGrid
+                    columns={columns}
+                    widgets={widgets}
+                    live={live}
+                    scale={scale}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    onRemove={removeWidget}
+                    onSend={send}
+                    onSendMany={sendMany}
+                  />
+                )
+              }
+            </DeviceFrame>
+          ) : widgets.length === 0 ? (
+            <Card className="flex h-40 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+              Noch keine Bedienelemente. Rechts unter „Oberfläche“ ein Widget hinzufügen.
+            </Card>
+          ) : (
+            <SurfaceGrid
+              columns={columns}
+              widgets={widgets}
+              live={live}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onRemove={removeWidget}
+              onSend={send}
+              onSendMany={sendMany}
+            />
           )}
         </div>
-
-        {/* Geräte-Vorschau */}
-        <div className="flex overflow-hidden rounded-md border border-border">
-          <DeviceBtn active={!previewing} title="Normale Ansicht" onClick={() => setDevice('off')}>
-            <MonitorIcon className="size-4" />
-          </DeviceBtn>
-          <DeviceBtn active={device === 'phone'} title="Handy-Vorschau" onClick={() => setDevice('phone')}>
-            <Smartphone className="size-4" />
-          </DeviceBtn>
-          <DeviceBtn active={device === 'tablet'} title="Tablet-Vorschau" onClick={() => setDevice('tablet')}>
-            <Tablet className="size-4" />
-          </DeviceBtn>
-        </div>
-        {previewing && (
-          <Button variant="ghost" size="icon" title="Hoch-/Querformat" onClick={() => setLandscape((v) => !v)}>
-            <RotateCw className="size-4" />
-          </Button>
-        )}
-
-        {/* Edit / Live */}
-        <div className="flex overflow-hidden rounded-md border border-border">
-          <button
-            type="button"
-            onClick={() => setStore({ mode: 'edit' })}
-            className={cn(
-              'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
-              !live ? 'bg-primary/15 font-semibold text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Pencil className="size-4" /> Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => setStore({ mode: 'live' })}
-            className={cn(
-              'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
-              live
-                ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Play className="size-4" /> Live
-          </button>
-        </div>
       </div>
-
-      {/* Steuerpult – normal oder im Geräterahmen (Vorschau ist auch im
-          Edit-Modus bearbeitbar). */}
-      <div className="min-h-0 flex-1 overflow-auto p-5">
-        {previewing ? (
-          <DeviceFrame w={frameW} h={frameH}>
-            {(scale) =>
-              widgets.length === 0 ? (
-                <p className="p-8 text-center text-sm text-muted-foreground">Noch keine Bedienelemente.</p>
-              ) : (
-                <SurfaceGrid
-                  columns={columns}
-                  widgets={widgets}
-                  live={live}
-                  scale={scale}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  onRemove={removeWidget}
-                  onSend={send}
-                  onSendMany={sendMany}
-                />
-              )
-            }
-          </DeviceFrame>
-        ) : widgets.length === 0 ? (
-          <Card className="flex h-40 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-            Noch keine Bedienelemente. Rechts unter „Oberfläche“ ein Widget hinzufügen.
-          </Card>
-        ) : (
-          <SurfaceGrid
-            columns={columns}
-            widgets={widgets}
-            live={live}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onRemove={removeWidget}
-            onSend={send}
-            onSendMany={sendMany}
-          />
-        )}
-      </div>
-    </div>
     </VideoCtx.Provider>
   )
 
@@ -669,7 +708,10 @@ export function OscControl(): JSX.Element {
       <PanelSection id="set" title="Set & Raster" icon={LayoutGrid}>
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Name</span>
-          <Input value={set.name} onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)} />
+          <Input
+            value={set.name}
+            onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)}
+          />
         </label>
         <label className="flex items-center justify-between gap-3">
           <span className="text-sm">Spalten</span>
@@ -722,7 +764,12 @@ export function OscControl(): JSX.Element {
         icon={Radio}
         right={<span className={cn('size-2.5 rounded-full', statusDot)} />}
       >
-        <ConnectionPanel config={config} status={status} onApplied={(st) => setStatus(st)} onSend={send} />
+        <ConnectionPanel
+          config={config}
+          status={status}
+          onApplied={(st) => setStatus(st)}
+          onSend={send}
+        />
       </PanelSection>
 
       <PanelSection
@@ -730,7 +777,12 @@ export function OscControl(): JSX.Element {
         title="Fernsteuerung"
         icon={Wifi}
         right={
-          <span className={cn('size-2.5 rounded-full', remote?.running ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+          <span
+            className={cn(
+              'size-2.5 rounded-full',
+              remote?.running ? 'bg-emerald-500' : 'bg-muted-foreground'
+            )}
+          />
         }
       >
         <p className="text-sm text-muted-foreground">
@@ -763,7 +815,9 @@ export function OscControl(): JSX.Element {
               <QrCode text={remote.urls[0]} size={96} />
             </div>
             <div className="min-w-0 text-xs">
-              <p className="mb-1 text-muted-foreground">Im Browser öffnen (QR scannen oder eintippen):</p>
+              <p className="mb-1 text-muted-foreground">
+                Im Browser öffnen (QR scannen oder eintippen):
+              </p>
               {remote.urls.map((u) => (
                 <div key={u} className="truncate font-mono text-foreground">
                   {u}
@@ -822,7 +876,9 @@ function reflectFeedback(fb: OscFeedback): void {
       st.updateWidget(w.id, { value: num })
     } else if (w.type === 'select') {
       // Option, deren Adresse+Wert zum Feedback passt -> als aktiv markieren.
-      const idx = w.items.findIndex((it) => (it.address || w.address) === fb.address && it.value === num)
+      const idx = w.items.findIndex(
+        (it) => (it.address || w.address) === fb.address && it.value === num
+      )
       if (idx >= 0) st.updateWidget(w.id, { value: idx })
     }
   }
@@ -980,7 +1036,10 @@ function WidgetTile({
       </div>
 
       {showAddr && (
-        <div className="mt-1 truncate pr-4 font-mono text-[10px] text-muted-foreground" title={w.address}>
+        <div
+          className="mt-1 truncate pr-4 font-mono text-[10px] text-muted-foreground"
+          title={w.address}
+        >
           {w.address}
           {w.type === 'xy' && w.addressY ? `  ${w.addressY}` : ''}
         </div>
@@ -1100,7 +1159,10 @@ function DeviceFrame({
     <div ref={ref} className="flex h-full w-full items-center justify-center">
       <div style={{ transform: `scale(${scale})` }} className="origin-center">
         <div className="rounded-[2.6rem] border-[12px] border-neutral-800 bg-neutral-800 shadow-2xl">
-          <div style={{ width: w, height: h }} className="overflow-auto rounded-[1.6rem] bg-background p-3">
+          <div
+            style={{ width: w, height: h }}
+            className="overflow-auto rounded-[1.6rem] bg-background p-3"
+          >
             {children(scale)}
           </div>
         </div>
@@ -1298,9 +1360,29 @@ function Knob({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
         start.current = null
       }}
     >
-      <svg ref={dialRef} viewBox="0 0 100 100" className="h-full max-h-full w-auto cursor-ns-resize">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" className="text-muted-foreground/25" strokeWidth="3" />
-        <circle cx="50" cy="50" r="32" fill="none" stroke={w.color} strokeWidth="2.5" opacity="0.7" />
+      <svg
+        ref={dialRef}
+        viewBox="0 0 100 100"
+        className="h-full max-h-full w-auto cursor-ns-resize"
+      >
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="none"
+          stroke="currentColor"
+          className="text-muted-foreground/25"
+          strokeWidth="3"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="32"
+          fill="none"
+          stroke={w.color}
+          strokeWidth="2.5"
+          opacity="0.7"
+        />
         <line
           x1="50"
           y1="50"
@@ -1311,7 +1393,13 @@ function Knob({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
           strokeLinecap="round"
         />
         {!w.endless && (
-          <text x="50" y="92" textAnchor="middle" className="fill-foreground/80" style={{ fontSize: 13 }}>
+          <text
+            x="50"
+            y="92"
+            textAnchor="middle"
+            className="fill-foreground/80"
+            style={{ fontSize: 13 }}
+          >
             {w.value.toFixed(2)}
           </text>
         )}
@@ -1333,7 +1421,11 @@ function Toggle({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
         onSend(fmsg(w.address, next ? w.onValue : w.offValue))
       }}
       className="flex h-full w-full items-center justify-center rounded-md border text-sm font-semibold transition-colors"
-      style={{ borderColor: w.color, background: on ? w.color : 'transparent', color: on ? '#fff' : undefined }}
+      style={{
+        borderColor: w.color,
+        background: on ? w.color : 'transparent',
+        color: on ? '#fff' : undefined
+      }}
     >
       {on ? 'AN' : 'AUS'}
     </button>
@@ -1451,7 +1543,11 @@ function BankCell({
           onSend(fmsg(addr, next ? w.onValue : w.offValue))
         }}
         className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border px-1 text-sm font-semibold transition-colors"
-        style={{ borderColor: w.color, background: on ? w.color : 'transparent', color: on ? '#fff' : w.color }}
+        style={{
+          borderColor: w.color,
+          background: on ? w.color : 'transparent',
+          color: on ? '#fff' : w.color
+        }}
       >
         <span className="truncate">{item.label || index + 1}</span>
       </button>
@@ -1508,7 +1604,15 @@ function BankKnob({
       }}
     >
       <svg viewBox="0 0 100 100" className="min-h-0 w-auto flex-1 cursor-ns-resize">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" className="text-muted-foreground/25" strokeWidth="4" />
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="none"
+          stroke="currentColor"
+          className="text-muted-foreground/25"
+          strokeWidth="4"
+        />
         <line
           x1="50"
           y1="50"
@@ -1519,7 +1623,9 @@ function BankKnob({
           strokeLinecap="round"
         />
       </svg>
-      {item.label && <span className="max-w-full truncate text-[10px] text-muted-foreground">{item.label}</span>}
+      {item.label && (
+        <span className="max-w-full truncate text-[10px] text-muted-foreground">{item.label}</span>
+      )}
     </div>
   )
 }
@@ -1657,8 +1763,9 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
     emit(r, g, b, w.a)
   }
   async function pickColor(): Promise<void> {
-    const ED = (window as unknown as { EyeDropper?: new () => { open(): Promise<{ sRGBHex: string }> } })
-      .EyeDropper
+    const ED = (
+      window as unknown as { EyeDropper?: new () => { open(): Promise<{ sRGBHex: string }> } }
+    ).EyeDropper
     if (!ED) return
     try {
       const res = await new ED().open()
@@ -1674,7 +1781,10 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       <div className="flex items-center gap-1.5">
         <div
           className="flex h-7 flex-1 items-center justify-center rounded border border-white/15 font-mono text-[11px] uppercase"
-          style={{ background: `linear-gradient(${rgba}, ${rgba}), ${CHECKER}`, color: lum > 0.55 ? '#000' : '#fff' }}
+          style={{
+            background: `linear-gradient(${rgba}, ${rgba}), ${CHECKER}`,
+            color: lum > 0.55 ? '#000' : '#fff'
+          }}
         >
           {hex}
         </div>
@@ -1699,9 +1809,24 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
           track={HUE_GRADIENT}
           onChange={(v) => setHue(v * 360)}
         />
-        <ChannelRow letter="R" value={w.r} accent="#ef4444" onChange={(v) => emit(v, w.g, w.b, w.a)} />
-        <ChannelRow letter="G" value={w.g} accent="#22c55e" onChange={(v) => emit(w.r, v, w.b, w.a)} />
-        <ChannelRow letter="B" value={w.b} accent="#3b82f6" onChange={(v) => emit(w.r, w.g, v, w.a)} />
+        <ChannelRow
+          letter="R"
+          value={w.r}
+          accent="#ef4444"
+          onChange={(v) => emit(v, w.g, w.b, w.a)}
+        />
+        <ChannelRow
+          letter="G"
+          value={w.g}
+          accent="#22c55e"
+          onChange={(v) => emit(w.r, v, w.b, w.a)}
+        />
+        <ChannelRow
+          letter="B"
+          value={w.b}
+          accent="#3b82f6"
+          onChange={(v) => emit(w.r, w.g, v, w.a)}
+        />
         <ChannelRow
           letter="A"
           value={w.a}
@@ -1848,7 +1973,10 @@ function Meter({ w }: { w: OscWidget }): JSX.Element {
   const { level, text } = meterReadout(w, video)
   return (
     <div className="flex h-full w-full flex-col justify-center gap-1.5">
-      <div className="text-center text-lg font-semibold tabular-nums leading-none" style={{ color: w.color }}>
+      <div
+        className="text-center text-lg font-semibold tabular-nums leading-none"
+        style={{ color: w.color }}
+      >
         {text}
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -1918,7 +2046,11 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
       items: [
         ...items,
         isSelect
-          ? { label: String.fromCharCode(65 + (items.length % 26)), address: '', value: items.length }
+          ? {
+              label: String.fromCharCode(65 + (items.length % 26)),
+              address: '',
+              value: items.length
+            }
           : {
               label: String(items.length + 1),
               address: `/megatoolbox/btn/${items.length + 1}`,
@@ -1929,7 +2061,9 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
   const remove = (i: number): void => update(w.id, { items: items.filter((_, j) => j !== i) })
   return (
     <div className="space-y-2">
-      <span className="block text-xs text-muted-foreground">{isSelect ? 'Optionen' : 'Taster'}</span>
+      <span className="block text-xs text-muted-foreground">
+        {isSelect ? 'Optionen' : 'Taster'}
+      </span>
       {items.map((it, i) => (
         <div key={i} className="flex items-center gap-1.5">
           <Input
@@ -2030,7 +2164,11 @@ function WidgetEditor({
       {/* Name + Typ in einer Zeile -> kürzeres Panel */}
       <div className="grid grid-cols-2 gap-2">
         <Field label={w.type === 'label' ? 'Text' : 'Name'}>
-          <Input className="h-9" value={w.label} onChange={(e) => update(w.id, { label: e.target.value })} />
+          <Input
+            className="h-9"
+            value={w.label}
+            onChange={(e) => update(w.id, { label: e.target.value })}
+          />
         </Field>
         <Field label="Typ">
           <select
@@ -2172,14 +2310,26 @@ function WidgetEditor({
             />
           </Field>
           <Field label="Spalten">
-            <NumberField value={w.cols} min={1} max={12} onCommit={(v) => update(w.id, { cols: v })} className="h-9" />
+            <NumberField
+              value={w.cols}
+              min={1}
+              max={12}
+              onCommit={(v) => update(w.id, { cols: v })}
+              className="h-9"
+            />
           </Field>
         </div>
       )}
 
       {w.type === 'select' && (
         <Field label="Spalten">
-          <NumberField value={w.cols} min={1} max={12} onCommit={(v) => update(w.id, { cols: v })} className="h-9" />
+          <NumberField
+            value={w.cols}
+            min={1}
+            max={12}
+            onCommit={(v) => update(w.id, { cols: v })}
+            className="h-9"
+          />
         </Field>
       )}
 
@@ -2215,10 +2365,22 @@ function WidgetEditor({
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Breite (Spalten)">
-          <NumberField value={w.cw} min={min.cw} max={columns} onCommit={(v) => update(w.id, { cw: v })} className="h-9" />
+          <NumberField
+            value={w.cw}
+            min={min.cw}
+            max={columns}
+            onCommit={(v) => update(w.id, { cw: v })}
+            className="h-9"
+          />
         </Field>
         <Field label="Höhe (Zeilen)">
-          <NumberField value={w.ch} min={min.ch} max={MAX_CH} onCommit={(v) => update(w.id, { ch: v })} className="h-9" />
+          <NumberField
+            value={w.ch}
+            min={min.ch}
+            max={MAX_CH}
+            onCommit={(v) => update(w.id, { ch: v })}
+            className="h-9"
+          />
         </Field>
       </div>
 
@@ -2300,7 +2462,12 @@ function ConnectionPanel({
   return (
     <div className="space-y-3">
       <Field label="Host (MadMapper)">
-        <Input value={host} spellCheck={false} placeholder="127.0.0.1" onChange={(e) => setHost(e.target.value)} />
+        <Input
+          value={host}
+          spellCheck={false}
+          placeholder="127.0.0.1"
+          onChange={(e) => setHost(e.target.value)}
+        />
       </Field>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Port aus (OSC out)">
@@ -2321,7 +2488,9 @@ function ConnectionPanel({
       </label>
 
       {status?.lastError && (
-        <p className="rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">{status.lastError}</p>
+        <p className="rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
+          {status.lastError}
+        </p>
       )}
 
       <div className="flex items-center gap-2">
@@ -2341,7 +2510,8 @@ function ConnectionPanel({
         Gesendet: <span className="tabular-nums text-foreground">{status?.sentCount ?? 0}</span>
         {status?.listening && (
           <>
-            {' · '}Empfangen: <span className="tabular-nums text-foreground">{status?.recvCount ?? 0}</span>
+            {' · '}Empfangen:{' '}
+            <span className="tabular-nums text-foreground">{status?.recvCount ?? 0}</span>
           </>
         )}
       </p>
@@ -2362,18 +2532,25 @@ function Monitor({ log, onClear }: { log: LogEntry[]; onClear: () => void }): JS
       </div>
       <div className="max-h-72 space-y-1 overflow-auto rounded-md border border-border bg-background/50 p-2">
         {log.length === 0 ? (
-          <p className="px-1 py-2 text-center text-xs text-muted-foreground">Noch keine OSC-Aktivität.</p>
+          <p className="px-1 py-2 text-center text-xs text-muted-foreground">
+            Noch keine OSC-Aktivität.
+          </p>
         ) : (
           log.map((e) => (
             <div key={e.id} className="flex items-baseline gap-2 font-mono text-[11px]">
               <SlidersHorizontal
-                className={cn('size-3 shrink-0 translate-y-0.5', e.dir === 'out' ? 'text-primary' : 'text-emerald-500')}
+                className={cn(
+                  'size-3 shrink-0 translate-y-0.5',
+                  e.dir === 'out' ? 'text-primary' : 'text-emerald-500'
+                )}
               />
               <span className="shrink-0 text-muted-foreground">{e.dir === 'out' ? '→' : '←'}</span>
               <span className="truncate text-foreground" title={e.address}>
                 {e.address}
               </span>
-              <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{fmtArgs(e.args)}</span>
+              <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
+                {fmtArgs(e.args)}
+              </span>
             </div>
           ))
         )}

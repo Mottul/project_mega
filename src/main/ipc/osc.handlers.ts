@@ -1,6 +1,11 @@
 import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
-import { DEFAULT_OSC_SETTINGS, type OscMessage, type OscRemoteSnapshot, type OscSettings } from '@shared/types'
+import {
+  DEFAULT_OSC_SETTINGS,
+  type OscMessage,
+  type OscRemoteSnapshot,
+  type OscSettings
+} from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { getSettings } from '../services/store'
 import { initOsc, oscSend, oscSetConfig, oscStatus } from '../services/osc/oscService'

@@ -61,7 +61,8 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
   const barColor = phase === 'ok' ? '#22c55e' : phase === 'warn' ? '#eab308' : '#ef4444'
 
   // Schriftgröße aus Containermaß + Textlänge (Vorschau und Vollbild identisch).
-  const mainText = state.displayMode === 'clock' ? fmtClock(now) : seg ? fmtTimer(remainingSec) : '--:--'
+  const mainText =
+    state.displayMode === 'clock' ? fmtClock(now) : seg ? fmtTimer(remainingSec) : '--:--'
   const mainFs = Math.min((w / Math.max(4, mainText.length)) * 1.55, h * 0.42)
   const smallFs = Math.max(11, Math.min(w / 30, h / 14))
 
@@ -89,7 +90,12 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
             {mainText}
           </div>
           <div className="mt-[2%] text-neutral-400" style={{ fontSize: smallFs * 1.3 }}>
-            {now.toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            {now.toLocaleDateString('de-AT', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            })}
           </div>
         </div>
       ) : (
@@ -100,7 +106,10 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
               {seg ? (
                 <>
                   {seg.speaker && (
-                    <span className="truncate text-neutral-400" style={{ fontSize: smallFs * 0.95 }}>
+                    <span
+                      className="truncate text-neutral-400"
+                      style={{ fontSize: smallFs * 0.95 }}
+                    >
                       {seg.speaker}
                     </span>
                   )}
@@ -168,7 +177,10 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
             animation: state.message.flash ? 'timer-flash 0.8s steps(1) infinite' : undefined
           }}
         >
-          <span className="font-bold text-black" style={{ fontSize: Math.max(14, Math.min(w / 18, h / 7)) }}>
+          <span
+            className="font-bold text-black"
+            style={{ fontSize: Math.max(14, Math.min(w / 18, h / 7)) }}
+          >
             {state.message.text}
           </span>
         </div>

@@ -18,8 +18,8 @@ npmRebuild: false
 asar: true
 # native Module + ESM-only Pakete duerfen nicht ins asar-Archiv (sonst Laufzeitfehler)
 asarUnpack:
-  - "**/node_modules/better-sqlite3/**"
-  - "**/node_modules/pdfjs-dist/**"
+  - '**/node_modules/better-sqlite3/**'
+  - '**/node_modules/pdfjs-dist/**'
 
 # Pro Zielplattform wird nur das passende ffmpeg-Verzeichnis als Ressource mitgenommen.
 # ${os} -> "mac" | "win" | "linux" (siehe scripts/download-ffmpeg.mjs fuer die Ablage).
@@ -27,7 +27,7 @@ extraResources:
   - from: resources/ffmpeg/${os}
     to: ffmpeg
     filter:
-      - "**/*"
+      - '**/*'
   # Icon zur Laufzeit erreichbar machen (BrowserWindow.icon -> Taskleiste/Fenster).
   - from: build/icon.png
     to: icon.png

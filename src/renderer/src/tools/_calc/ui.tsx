@@ -96,7 +96,11 @@ export function SelectField({
   return (
     <label className="flex items-center gap-3">
       <span className="w-44 shrink-0 text-sm text-muted-foreground">{label}</span>
-      <select className={`${selectClass} flex-1`} value={value} onChange={(e) => onChange(e.target.value)}>
+      <select
+        className={`${selectClass} flex-1`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
         {children}
       </select>
     </label>

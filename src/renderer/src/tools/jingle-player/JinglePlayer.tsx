@@ -4,7 +4,19 @@
 // Ausgabegerät; Bänke als Sets, Solo-Modus, großer Fade-All-Stopp, Fernsteuerung.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FolderOpen, Music, Pencil, Play, Plus, Settings2, Square, Trash2, Upload, Volume2, Wifi } from 'lucide-react'
+import {
+  FolderOpen,
+  Music,
+  Pencil,
+  Play,
+  Plus,
+  Settings2,
+  Square,
+  Trash2,
+  Upload,
+  Volume2,
+  Wifi
+} from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -18,7 +30,10 @@ import { Waveform } from './Waveform'
 import { HOTKEYS, PAD_COLORS, useJingles, type Pad } from './store'
 
 const AUDIO_FILTER = [
-  { name: 'Audio', extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'flac', 'aif', 'aiff'] }
+  {
+    name: 'Audio',
+    extensions: ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'flac', 'aif', 'aiff']
+  }
 ]
 
 export function JinglePlayer(): JSX.Element {
@@ -71,7 +86,13 @@ export function JinglePlayer(): JSX.Element {
 
   useEffect(() => {
     return () => {
-      void api.jingles.publish({ connected: false, bankName: '', columns: 4, pads: [], playing: [] })
+      void api.jingles.publish({
+        connected: false,
+        bankName: '',
+        columns: 4,
+        pads: [],
+        playing: []
+      })
     }
   }, [])
 
@@ -162,7 +183,7 @@ export function JinglePlayer(): JSX.Element {
     else setSelectedPadId(pad.id)
   }
 
-  const selected = selectedPadId ? bank.pads.find((p) => p.id === selectedPadId) ?? null : null
+  const selected = selectedPadId ? (bank.pads.find((p) => p.id === selectedPadId) ?? null) : null
 
   const main = (
     <div className="space-y-4 p-6">
@@ -194,7 +215,9 @@ export function JinglePlayer(): JSX.Element {
             type="button"
             onClick={() => s.set({ mode: 'edit' })}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm transition-colors ${
-              !live ? 'bg-primary/15 font-semibold text-primary' : 'text-muted-foreground hover:text-foreground'
+              !live
+                ? 'bg-primary/15 font-semibold text-primary'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <Pencil className="size-4" /> Edit
@@ -203,7 +226,9 @@ export function JinglePlayer(): JSX.Element {
             type="button"
             onClick={() => s.set({ mode: 'live' })}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm transition-colors ${
-              live ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700' : 'text-muted-foreground hover:text-foreground'
+              live
+                ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <Play className="size-4" /> Live
@@ -222,7 +247,11 @@ export function JinglePlayer(): JSX.Element {
           ))}
         </select>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <input type="checkbox" checked={s.soloMode} onChange={(e) => s.set({ soloMode: e.target.checked })} />
+          <input
+            type="checkbox"
+            checked={s.soloMode}
+            onChange={(e) => s.set({ soloMode: e.target.checked })}
+          />
           Solo
         </label>
         <Button variant="destructive" size="sm" onClick={() => engine.stopAll()}>
@@ -231,7 +260,10 @@ export function JinglePlayer(): JSX.Element {
       </div>
 
       {/* Pad-Raster */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${s.columns}, minmax(0, 1fr))` }}>
+      <div
+        className="grid gap-3"
+        style={{ gridTemplateColumns: `repeat(${s.columns}, minmax(0, 1fr))` }}
+      >
         {bank.pads.map((pad, i) => (
           <PadTile
             key={pad.id}
@@ -260,11 +292,14 @@ export function JinglePlayer(): JSX.Element {
       <p className="text-xs text-muted-foreground">
         {live ? (
           <>
-            Klick oder Tasten {HOTKEYS.slice(0, Math.min(bank.pads.length, 9)).join(' ')}… spielen die Pads,{' '}
-            <kbd className="rounded border border-border px-1">Esc</kbd> faded alles aus.
+            Klick oder Tasten {HOTKEYS.slice(0, Math.min(bank.pads.length, 9)).join(' ')}… spielen
+            die Pads, <kbd className="rounded border border-border px-1">Esc</kbd> faded alles aus.
           </>
         ) : (
-          <>Edit-Modus: Pad anklicken, um es rechts zu bearbeiten. Leeres Pad anklicken oder Datei darauf ziehen, um zu laden.</>
+          <>
+            Edit-Modus: Pad anklicken, um es rechts zu bearbeiten. Leeres Pad anklicken oder Datei
+            darauf ziehen, um zu laden.
+          </>
         )}
       </p>
 
@@ -295,7 +330,9 @@ export function JinglePlayer(): JSX.Element {
           />
         ) : (
           <p className="text-xs text-muted-foreground">
-            {live ? 'In den Edit-Modus wechseln und ein Pad anklicken.' : 'Ein Pad anklicken, um es hier zu bearbeiten.'}
+            {live
+              ? 'In den Edit-Modus wechseln und ein Pad anklicken.'
+              : 'Ein Pad anklicken, um es hier zu bearbeiten.'}
           </p>
         )}
       </PanelSection>
@@ -334,7 +371,8 @@ export function JinglePlayer(): JSX.Element {
         }
       >
         <p className="text-xs text-muted-foreground">
-          Handy/Tablet im selben WLAN steuert die Pads (ohne Passwort). Dieses Fenster muss offen bleiben.
+          Handy/Tablet im selben WLAN steuert die Pads (ohne Passwort). Dieses Fenster muss offen
+          bleiben.
         </p>
         <div className="flex items-center gap-2">
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -347,7 +385,11 @@ export function JinglePlayer(): JSX.Element {
               disabled={remote?.running}
             />
           </label>
-          <Button variant={remote?.running ? 'outline' : 'default'} size="sm" onClick={() => void toggleRemote()}>
+          <Button
+            variant={remote?.running ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => void toggleRemote()}
+          >
             <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
           </Button>
         </div>
@@ -405,7 +447,13 @@ function PadTile({
 }): JSX.Element {
   const [over, setOver] = useState(false)
   const empty = !pad.storedName
-  const ring = over ? 'border-primary' : selected && !live ? 'border-foreground/70' : playing ? '' : 'border-transparent'
+  const ring = over
+    ? 'border-primary'
+    : selected && !live
+      ? 'border-foreground/70'
+      : playing
+        ? ''
+        : 'border-transparent'
 
   return (
     <div
@@ -420,10 +468,16 @@ function PadTile({
         if (e.dataTransfer.files.length) onDrop(e.dataTransfer.files)
       }}
       className={`relative min-h-[104px] overflow-hidden rounded-lg border-2 transition-colors ${ring}`}
-      style={{ background: empty ? undefined : `${pad.color}22`, borderColor: playing ? pad.color : undefined }}
+      style={{
+        background: empty ? undefined : `${pad.color}22`,
+        borderColor: playing ? pad.color : undefined
+      }}
     >
       {playing && (
-        <div className="absolute inset-x-0 top-0 h-1 transition-[width]" style={{ width: `${progress * 100}%`, background: pad.color }} />
+        <div
+          className="absolute inset-x-0 top-0 h-1 transition-[width]"
+          style={{ width: `${progress * 100}%`, background: pad.color }}
+        />
       )}
       {empty ? (
         <button
@@ -435,9 +489,16 @@ function PadTile({
           <span className="text-xs">Laden / hierher ziehen</span>
         </button>
       ) : (
-        <button type="button" onClick={onClick} className="flex size-full min-h-[104px] flex-col justify-between p-3 text-left">
+        <button
+          type="button"
+          onClick={onClick}
+          className="flex size-full min-h-[104px] flex-col justify-between p-3 text-left"
+        >
           <div className="flex items-start justify-between gap-2">
-            <span className="flex size-6 items-center justify-center rounded text-xs font-bold text-black" style={{ background: pad.color }}>
+            <span
+              className="flex size-6 items-center justify-center rounded text-xs font-bold text-black"
+              style={{ background: pad.color }}
+            >
               {hotkey?.toUpperCase() ?? <Music className="size-3.5" />}
             </span>
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
@@ -579,14 +640,22 @@ function PadSettings({
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Modus</span>
-          <select className={selectClass} value={pad.mode} onChange={(e) => onChange({ mode: e.target.value as Pad['mode'] })}>
+          <select
+            className={selectClass}
+            value={pad.mode}
+            onChange={(e) => onChange({ mode: e.target.value as Pad['mode'] })}
+          >
             <option value="oneshot">One-Shot</option>
             <option value="toggle">Toggle</option>
           </select>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Fade-Out</span>
-          <select className={selectClass} value={pad.fadeMs} onChange={(e) => onChange({ fadeMs: Number(e.target.value) })}>
+          <select
+            className={selectClass}
+            value={pad.fadeMs}
+            onChange={(e) => onChange({ fadeMs: Number(e.target.value) })}
+          >
             <option value={0}>Hart (0 ms)</option>
             <option value={200}>200 ms</option>
             <option value={400}>400 ms</option>
@@ -597,7 +666,11 @@ function PadSettings({
       </div>
 
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={pad.loop} onChange={(e) => onChange({ loop: e.target.checked })} />
+        <input
+          type="checkbox"
+          checked={pad.loop}
+          onChange={(e) => onChange({ loop: e.target.checked })}
+        />
         Wiederholen (Loop)
       </label>
 
@@ -611,7 +684,12 @@ function PadSettings({
           </Button>
         )}
         <div className="flex-1" />
-        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={onRemove}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive hover:text-destructive"
+          onClick={onRemove}
+        >
           <Trash2 className="size-4" /> Pad
         </Button>
       </div>

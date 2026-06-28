@@ -20,7 +20,7 @@ export function DmxAddress(): JSX.Element {
 
   function toggle(i: number): void {
     const base = value ?? 0
-    setAddr(((base ^ (1 << i)) + 1))
+    setAddr((base ^ (1 << i)) + 1)
   }
 
   const bits = Array.from({ length: SWITCHES }, (_, i) => (value != null ? (value >> i) & 1 : 0))
@@ -78,8 +78,8 @@ export function DmxAddress(): JSX.Element {
           <Readout label="Binär (Schalter 9→1)" value={addr != null ? binary : ''} />
         </div>
         <p className="text-xs text-muted-foreground">
-          Schalter ON = oben. Manche Geräte haben einen 10. Schalter für Sonderfunktionen
-          (z. B. Display/Modus) – der zählt hier nicht zur Adresse.
+          Schalter ON = oben. Manche Geräte haben einen 10. Schalter für Sonderfunktionen (z. B.
+          Display/Modus) – der zählt hier nicht zur Adresse.
         </p>
       </SectionCard>
     </CalcPage>

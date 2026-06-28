@@ -8,7 +8,10 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-export async function exportPackingPdf(projectName: string, items: PackItem[]): Promise<string | null> {
+export async function exportPackingPdf(
+  projectName: string,
+  items: PackItem[]
+): Promise<string | null> {
   const dt = new Date().toLocaleDateString('de-AT')
   const cats = [...new Set(items.map((i) => i.category))]
 

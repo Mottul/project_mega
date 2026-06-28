@@ -59,7 +59,13 @@ export function ProjectorLumen(): JSX.Element {
       </SectionCard>
 
       <SectionCard title="Vorhandener Beamer" desc="Optional: reicht das Gerät, das verfügbar ist?">
-        <NumField label="Beamer-Lichtstrom" unit="lm" value={haveRaw} onChange={setHaveRaw} placeholder="z.B. 6500" />
+        <NumField
+          label="Beamer-Lichtstrom"
+          unit="lm"
+          value={haveRaw}
+          onChange={setHaveRaw}
+          placeholder="z.B. 6500"
+        />
         <div className="grid gap-2 sm:grid-cols-2">
           <Readout label="Erreichte Helligkeit" value={fmt(achievedLux, 0)} unit="lx" />
           <Readout

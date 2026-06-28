@@ -5,7 +5,8 @@ import type { ToolModule } from '../types'
 export const riggingTool: ToolModule = {
   id: 'rigging',
   name: 'Rigging-Last',
-  description: 'Auflagerkräfte einer Traverse (2 Punkte) und Strangkräfte im Bridle nach Anschlagwinkel.',
+  description:
+    'Auflagerkräfte einer Traverse (2 Punkte) und Strangkräfte im Bridle nach Anschlagwinkel.',
   icon: Anchor,
   category: 'rigging',
   keywords: [

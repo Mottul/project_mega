@@ -5,7 +5,12 @@
 
 import dgram from 'node:dgram'
 import { Channels } from '@shared/ipc-contracts'
-import { DEFAULT_OSC_SETTINGS, type OscMessage, type OscSettings, type OscStatus } from '@shared/types'
+import {
+  DEFAULT_OSC_SETTINGS,
+  type OscMessage,
+  type OscSettings,
+  type OscStatus
+} from '@shared/types'
 import { broadcast } from '../broadcast'
 import { logLine } from '../log'
 import { getSettings, setSettings } from '../store'

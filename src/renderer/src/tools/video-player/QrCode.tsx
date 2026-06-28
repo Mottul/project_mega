@@ -13,7 +13,9 @@ export function QrCode({ text, size = 150 }: { text: string; size?: number }): J
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
       if (matrix[r][c]) {
-        rects.push(<rect key={`${r}-${c}`} x={c + quiet} y={r + quiet} width={1} height={1} fill="#000" />)
+        rects.push(
+          <rect key={`${r}-${c}`} x={c + quiet} y={r + quiet} width={1} height={1} fill="#000" />
+        )
       }
     }
   }

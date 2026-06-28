@@ -8,6 +8,17 @@ export const dmxAddressTool: ToolModule = {
   description: 'DMX-Startadresse in Dip-Schalter umrechnen und zurück (Binär, 9 Schalter, 1–512).',
   icon: ToggleRight,
   category: 'control',
-  keywords: ['dmx', 'dip', 'dipswitch', 'dip-schalter', 'adresse', 'binär', 'binary', 'licht', 'lighting', '512'],
+  keywords: [
+    'dmx',
+    'dip',
+    'dipswitch',
+    'dip-schalter',
+    'adresse',
+    'binär',
+    'binary',
+    'licht',
+    'lighting',
+    '512'
+  ],
   component: lazy(() => import('./DmxAddress').then((m) => ({ default: m.DmxAddress })))
 }

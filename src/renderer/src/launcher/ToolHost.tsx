@@ -58,7 +58,11 @@ export function ToolHost(): JSX.Element {
         )}
         <Icon className="size-5 text-primary" />
         <h1 className="font-semibold">{tool.name}</h1>
-        {kiosk && <span className="text-xs text-muted-foreground">Kundenansicht · Strg+Shift+K zum Verlassen</span>}
+        {kiosk && (
+          <span className="text-xs text-muted-foreground">
+            Kundenansicht · Strg+Shift+K zum Verlassen
+          </span>
+        )}
         <div className="flex-1" />
         {!kiosk && (
           <>

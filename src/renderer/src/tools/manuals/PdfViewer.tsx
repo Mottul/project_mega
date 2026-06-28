@@ -106,7 +106,10 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
   // Beim Oeffnen aus einem Suchtreffer zur Zielseite springen
   useEffect(() => {
     if (!doc || initialPage <= 1) return
-    const t = setTimeout(() => pageEls.current[initialPage - 1]?.scrollIntoView({ block: 'start' }), 120)
+    const t = setTimeout(
+      () => pageEls.current[initialPage - 1]?.scrollIntoView({ block: 'start' }),
+      120
+    )
     return () => clearTimeout(t)
   }, [doc, initialPage])
 
@@ -187,7 +190,11 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
       const next = Math.min(5, Math.max(0.2, +(effScaleRef.current * factor).toFixed(3)))
       // Diagnose: in den DevTools (F12) sichtbar -> Handler feuert + neuer Massstab
       // eslint-disable-next-line no-console
-      console.debug('[pdf-zoom]', { from: effScaleRef.current, to: next, anchorY: anchorYRef.current })
+      console.debug('[pdf-zoom]', {
+        from: effScaleRef.current,
+        to: next,
+        anchorY: anchorYRef.current
+      })
       effScaleRef.current = next
       setFit('custom')
       setCustomScale(next)
@@ -331,14 +338,19 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
         </div>
       )}
 
-      <div ref={setRootEl} className="relative flex-1 overflow-auto bg-zinc-900/60 light:bg-zinc-200/70">
+      <div
+        ref={setRootEl}
+        className="relative flex-1 overflow-auto bg-zinc-900/60 light:bg-zinc-200/70"
+      >
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         )}
         {error ? (
-          <p className="p-6 text-center text-sm text-red-400">PDF konnte nicht geladen werden: {error}</p>
+          <p className="p-6 text-center text-sm text-red-400">
+            PDF konnte nicht geladen werden: {error}
+          </p>
         ) : (
           doc && (
             <div className="flex flex-col items-center gap-4 p-4">

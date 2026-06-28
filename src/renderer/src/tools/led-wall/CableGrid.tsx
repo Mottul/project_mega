@@ -13,7 +13,16 @@ interface Props {
   onReset: () => void
 }
 
-export function CableGrid({ grid, colors, prefix, activeChain, onChain, onCell, onLine, onReset }: Props): JSX.Element {
+export function CableGrid({
+  grid,
+  colors,
+  prefix,
+  activeChain,
+  onChain,
+  onCell,
+  onLine,
+  onReset
+}: Props): JSX.Element {
   const rows = grid.length
   const cols = grid[0]?.length ?? 0
   const used = new Set<number>()
@@ -117,19 +126,24 @@ export function CableGrid({ grid, colors, prefix, activeChain, onChain, onCell, 
 
       {used.size > 0 && (
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-          {[...used].sort((a, b) => a - b).map((ci) => {
-            const count = grid.flat().filter((v) => v === ci).length
-            return (
-              <span key={ci} className="flex items-center gap-1.5 text-xs">
-                <span className="size-2.5 rounded-sm" style={{ background: colors[ci % colors.length] }} />
-                <span className="font-semibold">
-                  {prefix}
-                  {ci + 1}
+          {[...used]
+            .sort((a, b) => a - b)
+            .map((ci) => {
+              const count = grid.flat().filter((v) => v === ci).length
+              return (
+                <span key={ci} className="flex items-center gap-1.5 text-xs">
+                  <span
+                    className="size-2.5 rounded-sm"
+                    style={{ background: colors[ci % colors.length] }}
+                  />
+                  <span className="font-semibold">
+                    {prefix}
+                    {ci + 1}
+                  </span>
+                  <span className="text-muted-foreground">({count} Mod.)</span>
                 </span>
-                <span className="text-muted-foreground">({count} Mod.)</span>
-              </span>
-            )
-          })}
+              )
+            })}
         </div>
       )}
     </div>

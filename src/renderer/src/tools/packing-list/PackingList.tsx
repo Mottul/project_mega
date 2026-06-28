@@ -97,7 +97,12 @@ export function PackingList(): JSX.Element {
         </Button>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground">{openCount} offen</span>
-        <Button variant="ghost" size="sm" disabled={s.items.every((i) => !i.checked)} onClick={() => s.clearChecked()}>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={s.items.every((i) => !i.checked)}
+          onClick={() => s.clearChecked()}
+        >
           <Check className="size-4" /> Abgehakte entfernen
         </Button>
         <Button variant="ghost" size="sm" disabled={s.items.length === 0} onClick={() => s.reset()}>
@@ -201,7 +206,9 @@ function Row({ item, categories }: { item: PackItem; categories: string[] }): JS
               {c}
             </option>
           ))}
-          {!categories.includes(item.category) && <option value={item.category}>{item.category}</option>}
+          {!categories.includes(item.category) && (
+            <option value={item.category}>{item.category}</option>
+          )}
         </select>
         <Input
           value={item.note}

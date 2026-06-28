@@ -5,7 +5,8 @@ import type { ToolModule } from '../types'
 export const powerLoadTool: ToolModule = {
   id: 'power-load',
   name: 'Stromlast & Absicherung',
-  description: 'Leistung ↔ Strom (1∼/3∼) und wie viele Geräte auf einen 16/32/63-A-Stromkreis passen.',
+  description:
+    'Leistung ↔ Strom (1∼/3∼) und wie viele Geräte auf einen 16/32/63-A-Stromkreis passen.',
   icon: Zap,
   category: 'rigging',
   keywords: [

@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, SectionCard, SelectField, fmt, parseNum, trimNum } from '../_calc/ui'
+import {
+  CalcPage,
+  NumField,
+  Readout,
+  SectionCard,
+  SelectField,
+  fmt,
+  parseNum,
+  trimNum
+} from '../_calc/ui'
 
 // Projektionsverhältnis (Throw Ratio = Abstand ÷ Bildbreite). Hilft beim Wählen
 // des passenden Objektivs: oben die Leinwandmaße (Seitenverhältnis + ein Maß),
@@ -110,7 +119,10 @@ export function ThrowRatio(): JSX.Element {
 
   return (
     <CalcPage>
-      <SectionCard title="Leinwand" desc="Seitenverhältnis wählen und ein Maß eingeben – die übrigen folgen.">
+      <SectionCard
+        title="Leinwand"
+        desc="Seitenverhältnis wählen und ein Maß eingeben – die übrigen folgen."
+      >
         <SelectField label="Seitenverhältnis" value={aspectKey} onChange={setAspectKey}>
           {ASPECTS.map((a) => (
             <option key={a.key} value={a.key}>

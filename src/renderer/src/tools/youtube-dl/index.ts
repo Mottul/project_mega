@@ -8,6 +8,19 @@ export const youtubeDlTool: ToolModule = {
   description: 'Videos/Audio per yt-dlp herunterladen (MP4/MP3/M4A), mit Auflösungswahl und Queue.',
   icon: Youtube,
   category: 'media',
-  keywords: ['youtube', 'download', 'yt-dlp', 'ytdlp', 'video', 'audio', 'mp3', 'mp4', 'clip', 'herunterladen'],
-  component: lazy(() => import('./YoutubeDownloader').then((m) => ({ default: m.YoutubeDownloader })))
+  keywords: [
+    'youtube',
+    'download',
+    'yt-dlp',
+    'ytdlp',
+    'video',
+    'audio',
+    'mp3',
+    'mp4',
+    'clip',
+    'herunterladen'
+  ],
+  component: lazy(() =>
+    import('./YoutubeDownloader').then((m) => ({ default: m.YoutubeDownloader }))
+  )
 }

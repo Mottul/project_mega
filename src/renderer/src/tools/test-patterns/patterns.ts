@@ -59,7 +59,16 @@ const SOLID_HEX: Record<SolidColor, string> = {
 
 // Farbbalken (von links): Weiß, Gelb, Cyan, Grün, Magenta, Rot, Blau
 const BARS_75 = ['#c0c0c0', '#c0c000', '#00c0c0', '#00c000', '#c000c0', '#c00000', '#0000c0']
-const BARS_EBU = ['#ffffff', '#ffff00', '#00ffff', '#00ff00', '#ff00ff', '#ff0000', '#0000ff', '#000000']
+const BARS_EBU = [
+  '#ffffff',
+  '#ffff00',
+  '#00ffff',
+  '#00ff00',
+  '#ff00ff',
+  '#ff0000',
+  '#0000ff',
+  '#000000'
+]
 
 function fill(ctx: Ctx, w: number, h: number, color: string): void {
   ctx.fillStyle = color

@@ -198,9 +198,9 @@ export function getMedia(id: string): MediaItem | null {
 }
 
 export function deleteMedia(id: string): void {
-  const row = getDb().prepare('SELECT stored_name, thumb_name FROM media_items WHERE id = ?').get(id) as
-    | { stored_name: string; thumb_name: string | null }
-    | undefined
+  const row = getDb()
+    .prepare('SELECT stored_name, thumb_name FROM media_items WHERE id = ?')
+    .get(id) as { stored_name: string; thumb_name: string | null } | undefined
   if (!row) return
   getDb().prepare('DELETE FROM media_items WHERE id = ?').run(id)
   for (const name of [row.stored_name, row.thumb_name]) {
@@ -216,9 +216,10 @@ export function deleteMedia(id: string): void {
 
 /** Löscht die komplette Bibliothek (DB-Einträge + Dateien). */
 export function clearLibrary(): void {
-  const rows = getDb()
-    .prepare('SELECT stored_name, thumb_name FROM media_items')
-    .all() as { stored_name: string; thumb_name: string | null }[]
+  const rows = getDb().prepare('SELECT stored_name, thumb_name FROM media_items').all() as {
+    stored_name: string
+    thumb_name: string | null
+  }[]
   getDb().prepare('DELETE FROM media_items').run()
   for (const r of rows) {
     for (const name of [r.stored_name, r.thumb_name]) {

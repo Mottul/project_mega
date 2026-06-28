@@ -8,8 +8,19 @@ import { buildHapArgs, computeChunks, hapOutputPath } from './hapEncoder'
 import { probe } from './probe'
 
 const VIDEO_EXT = new Set([
-  '.mov', '.mp4', '.mxf', '.avi', '.mkv', '.m4v',
-  '.mpg', '.mpeg', '.wmv', '.mts', '.m2ts', '.ts', '.webm'
+  '.mov',
+  '.mp4',
+  '.mxf',
+  '.avi',
+  '.mkv',
+  '.m4v',
+  '.mpg',
+  '.mpeg',
+  '.wmv',
+  '.mts',
+  '.m2ts',
+  '.ts',
+  '.webm'
 ])
 
 type Sink = (job: HapJob) => void
@@ -145,7 +156,13 @@ class JobManager {
 
   private spawnEncode(job: HapJob, durationSec: number | null): Promise<void> {
     return new Promise((resolve) => {
-      const args = buildHapArgs(job.inputPath, job.outputPath, job.format, job.chunks ?? 1, job.compressor)
+      const args = buildHapArgs(
+        job.inputPath,
+        job.outputPath,
+        job.format,
+        job.chunks ?? 1,
+        job.compressor
+      )
       const proc = spawn(ffmpegBinPath('ffmpeg'), args, { windowsHide: true })
       this.procs.set(job.id, proc)
 

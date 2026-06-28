@@ -24,13 +24,48 @@ interface Accent {
 // Werte je Akzent für dunkel + hell (hell etwas kräftiger/dunkler, damit der
 // Akzent auf weißem Grund lesbar bleibt – analog zur Gold-Marke in main.css).
 export const ACCENTS: Accent[] = [
-  { id: 'gold', label: 'Gold', dark: { p: '46 100% 59%', pf: '240 8% 8%' }, light: { p: '41 96% 44%', pf: '40 45% 11%' } },
-  { id: 'amber', label: 'Bernstein', dark: { p: '32 100% 55%', pf: '30 45% 8%' }, light: { p: '28 92% 45%', pf: '30 45% 10%' } },
-  { id: 'teal', label: 'Türkis', dark: { p: '172 80% 45%', pf: '180 60% 6%' }, light: { p: '174 84% 30%', pf: '0 0% 100%' } },
-  { id: 'blue', label: 'Blau', dark: { p: '213 94% 62%', pf: '214 80% 10%' }, light: { p: '221 83% 50%', pf: '0 0% 100%' } },
-  { id: 'violet', label: 'Violett', dark: { p: '258 92% 68%', pf: '258 60% 10%' }, light: { p: '262 83% 55%', pf: '0 0% 100%' } },
-  { id: 'pink', label: 'Pink', dark: { p: '330 90% 64%', pf: '330 60% 10%' }, light: { p: '333 80% 50%', pf: '0 0% 100%' } },
-  { id: 'green', label: 'Grün', dark: { p: '142 70% 48%', pf: '144 60% 7%' }, light: { p: '142 72% 33%', pf: '0 0% 100%' } }
+  {
+    id: 'gold',
+    label: 'Gold',
+    dark: { p: '46 100% 59%', pf: '240 8% 8%' },
+    light: { p: '41 96% 44%', pf: '40 45% 11%' }
+  },
+  {
+    id: 'amber',
+    label: 'Bernstein',
+    dark: { p: '32 100% 55%', pf: '30 45% 8%' },
+    light: { p: '28 92% 45%', pf: '30 45% 10%' }
+  },
+  {
+    id: 'teal',
+    label: 'Türkis',
+    dark: { p: '172 80% 45%', pf: '180 60% 6%' },
+    light: { p: '174 84% 30%', pf: '0 0% 100%' }
+  },
+  {
+    id: 'blue',
+    label: 'Blau',
+    dark: { p: '213 94% 62%', pf: '214 80% 10%' },
+    light: { p: '221 83% 50%', pf: '0 0% 100%' }
+  },
+  {
+    id: 'violet',
+    label: 'Violett',
+    dark: { p: '258 92% 68%', pf: '258 60% 10%' },
+    light: { p: '262 83% 55%', pf: '0 0% 100%' }
+  },
+  {
+    id: 'pink',
+    label: 'Pink',
+    dark: { p: '330 90% 64%', pf: '330 60% 10%' },
+    light: { p: '333 80% 50%', pf: '0 0% 100%' }
+  },
+  {
+    id: 'green',
+    label: 'Grün',
+    dark: { p: '142 70% 48%', pf: '144 60% 7%' },
+    light: { p: '142 72% 33%', pf: '0 0% 100%' }
+  }
 ]
 
 const STORAGE_KEY = 'av-accent'

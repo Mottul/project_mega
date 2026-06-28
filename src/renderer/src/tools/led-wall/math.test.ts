@@ -62,7 +62,10 @@ describe('distributeAngles (2,5°-Raster, Bump mittig)', () => {
     expect(distributeAngles(55, 4)).toEqual({ angles: [12.5, 15, 15, 12.5], achieved: 55 })
   })
   it('Vollkreis 360° auf 8 Module → je 45°', () => {
-    expect(distributeAngles(360, 8)).toEqual({ angles: [45, 45, 45, 45, 45, 45, 45, 45], achieved: 360 })
+    expect(distributeAngles(360, 8)).toEqual({
+      angles: [45, 45, 45, 45, 45, 45, 45, 45],
+      achieved: 360
+    })
   })
   it('0° oder 0 Module → keine Biegung', () => {
     expect(distributeAngles(0, 4)).toEqual({ angles: [0, 0, 0, 0], achieved: 0 })

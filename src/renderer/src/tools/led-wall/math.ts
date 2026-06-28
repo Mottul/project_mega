@@ -143,7 +143,8 @@ export interface ArcMeasure {
  *  Rotation („Erreichte Höhe“ zu groß angezeigt) – hier korrekt: Punkt um
  *  −chordAngle drehen, dann ist |y| der Abstand zur Sehne. */
 export function measureArc(shapes: ModuleShape[]): ArcMeasure {
-  if (!shapes.length) return { chord: 0, sag: 0, first: { x: 0, y: 0 }, last: { x: 0, y: 0 }, chordAngle: 0 }
+  if (!shapes.length)
+    return { chord: 0, sag: 0, first: { x: 0, y: 0 }, last: { x: 0, y: 0 }, chordAngle: 0 }
   const first = shapes[0].frontPts[0]
   const lastShape = shapes[shapes.length - 1]
   const last = lastShape.frontPts[lastShape.frontPts.length - 1]
@@ -228,7 +229,15 @@ export function calcArc(chord: number, sag: number): ArcResult | null {
       const dist = distributeAngles(td, n)
       const measured = measureArc(computeModuleShapes(dist.angles))
       if (measured.chord <= chord + 0.001 && measured.sag <= sag + 0.001) {
-        return { r, totalDeg: td, arcLen: n * MODULE_W, mods: n, dist, ca: measured.chord, sa: measured.sag }
+        return {
+          r,
+          totalDeg: td,
+          arcLen: n * MODULE_W,
+          mods: n,
+          dist,
+          ca: measured.chord,
+          sa: measured.sag
+        }
       }
     }
   }

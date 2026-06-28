@@ -63,7 +63,12 @@ export function Curving(): JSX.Element {
 
   return (
     <Card className="p-5">
-      <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2 text-left">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 text-left"
+      >
         <ChevronDown
           className={`size-4 shrink-0 text-muted-foreground transition-transform ${!open ? '-rotate-90' : ''}`}
         />
@@ -187,8 +192,18 @@ function SegmentMode(): JSX.Element {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <LField label="Sehne / max. Breite (= Wandbreite)" unit="m" value={s.widthM} onChange={(v) => s.set({ widthM: v })} />
-        <LField label="Stichhöhe / max. Tiefe" unit="m" value={s.segSag} onChange={(v) => s.set({ segSag: v })} />
+        <LField
+          label="Sehne / max. Breite (= Wandbreite)"
+          unit="m"
+          value={s.widthM}
+          onChange={(v) => s.set({ widthM: v })}
+        />
+        <LField
+          label="Stichhöhe / max. Tiefe"
+          unit="m"
+          value={s.segSag}
+          onChange={(v) => s.set({ segSag: v })}
+        />
       </div>
       {!arc ? (
         <p className="text-sm text-muted-foreground">Keine passende Konfiguration gefunden.</p>
@@ -201,12 +216,17 @@ function SegmentMode(): JSX.Element {
             <Readout label="Gesamtwinkel" value={fmt(arc.dist.achieved, 1)} unit="°" />
             <Readout label="Erreichte Sehne (Breite)" value={fmt(arc.ca, 3)} unit="m" />
             <Readout label="Erreichte Tiefe (Stich)" value={fmt(arc.sa, 3)} unit="m" />
-            <Readout label="Belegte Fläche (B×T)" value={`${fmt(c.footprintW, 2)} × ${fmt(c.footprintD, 2)} m`} />
+            <Readout
+              label="Belegte Fläche (B×T)"
+              value={`${fmt(c.footprintW, 2)} × ${fmt(c.footprintD, 2)} m`}
+            />
             <Readout label="Gewicht/Reihe" value={fmt(arc.mods * US2_WEIGHT, 1)} unit="kg" />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="mb-1 text-xs text-muted-foreground">Winkelverteilung (höhere Winkel zur Mitte):</p>
+              <p className="mb-1 text-xs text-muted-foreground">
+                Winkelverteilung (höhere Winkel zur Mitte):
+              </p>
               <AnglePills angles={arc.dist.angles} />
             </div>
             <button
@@ -218,7 +238,13 @@ function SegmentMode(): JSX.Element {
               In Segment-Builder übernehmen →
             </button>
           </div>
-          <TopDownSvg angles={arc.dist.angles} showChord chordHorizontal chordLabel={arc.ca} sagLabel={arc.sa} />
+          <TopDownSvg
+            angles={arc.dist.angles}
+            showChord
+            chordHorizontal
+            chordLabel={arc.ca}
+            sagLabel={arc.sa}
+          />
         </>
       )}
     </div>
@@ -229,7 +255,9 @@ function BuilderMode(): JSX.Element {
   const s = useLedWall()
 
   function update(i: number, patch: Partial<BuilderSegment>): void {
-    const next = s.builderSegs.map((seg, j) => (j === i ? ({ ...seg, ...patch } as BuilderSegment) : seg))
+    const next = s.builderSegs.map((seg, j) =>
+      j === i ? ({ ...seg, ...patch } as BuilderSegment) : seg
+    )
     s.set({ builderSegs: next })
   }
 
@@ -248,12 +276,16 @@ function BuilderMode(): JSX.Element {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Gerade und gebogene Abschnitte definieren – die Winkel werden automatisch in 2,5°-Schritten verteilt.
-        Tipp: Ein Kreissegment lässt sich oben mit „In Segment-Builder übernehmen" als Startpunkt holen.
+        Gerade und gebogene Abschnitte definieren – die Winkel werden automatisch in 2,5°-Schritten
+        verteilt. Tipp: Ein Kreissegment lässt sich oben mit „In Segment-Builder übernehmen" als
+        Startpunkt holen.
       </p>
       <div className="space-y-1.5">
         {s.builderSegs.map((seg, i) => (
-          <div key={i} className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/20 p-2">
+          <div
+            key={i}
+            className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/20 p-2"
+          >
             <button
               type="button"
               onClick={() => update(i, { type: 'straight' })}
@@ -264,7 +296,12 @@ function BuilderMode(): JSX.Element {
             <button
               type="button"
               onClick={() =>
-                update(i, seg.type === 'curved' ? { type: 'curved' } : { type: 'curved', angle: 30, dir: 'convex' })
+                update(
+                  i,
+                  seg.type === 'curved'
+                    ? { type: 'curved' }
+                    : { type: 'curved', angle: 30, dir: 'convex' }
+                )
               }
               className={`rounded border px-2 py-1 text-xs ${seg.type === 'curved' ? 'border-primary/60 bg-primary/10 font-semibold text-primary' : 'border-border text-muted-foreground'}`}
             >
@@ -334,7 +371,11 @@ function BuilderMode(): JSX.Element {
       <div className="grid gap-2 sm:grid-cols-2">
         <Readout label="Module gesamt" value={`${c.mods}`} unit="Stk." accent />
         <Readout label="Gesamtwinkel" value={fmt(totalAngle, 1)} unit="°" />
-        <Readout label="Belegte Fläche (B×T)" value={`${fmt(c.footprintW, 2)} × ${fmt(c.footprintD, 2)} m`} accent />
+        <Readout
+          label="Belegte Fläche (B×T)"
+          value={`${fmt(c.footprintW, 2)} × ${fmt(c.footprintD, 2)} m`}
+          accent
+        />
         <Readout label="Gewicht/Reihe" value={fmt(c.mods * US2_WEIGHT, 1)} unit="kg" />
       </div>
       {angles.some((a) => a !== 0) && (
@@ -365,11 +406,22 @@ function SquircleMode(): JSX.Element {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">
-        <LField label="Breite (= Wandbreite)" unit="m" value={s.widthM} onChange={(v) => s.set({ widthM: v })} />
+        <LField
+          label="Breite (= Wandbreite)"
+          unit="m"
+          value={s.widthM}
+          onChange={(v) => s.set({ widthM: v })}
+        />
         <LField label="Tiefe" unit="m" value={s.sqD} onChange={(v) => s.set({ sqD: v })} />
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Module/Ecke</span>
-          <NumCommit value={s.sqCorner} min={2} max={36} integer onCommit={(v) => s.set({ sqCorner: v })} />
+          <NumCommit
+            value={s.sqCorner}
+            min={2}
+            max={36}
+            integer
+            onCommit={(v) => s.set({ sqCorner: v })}
+          />
         </label>
       </div>
       {!c.feasible && (
@@ -380,9 +432,19 @@ function SquircleMode(): JSX.Element {
       <div className="grid gap-2 sm:grid-cols-2">
         <Readout label="Module gesamt" value={`${sq.totalMods}`} unit="Stk." accent />
         <Readout label="Eckradius" value={fmt(sq.cornerR, 3)} unit="m" accent />
-        <Readout label="Gerade Breite" value={`${sq.straightW} Mod. (${(sq.straightW * MODULE_W).toFixed(1)} m)`} />
-        <Readout label="Gerade Tiefe" value={`${sq.straightD} Mod. (${(sq.straightD * MODULE_W).toFixed(1)} m)`} />
-        <Readout label="Belegte Fläche (B×T)" value={`${fmt(c.footprintW, 2)} × ${fmt(c.footprintD, 2)} m`} accent />
+        <Readout
+          label="Gerade Breite"
+          value={`${sq.straightW} Mod. (${(sq.straightW * MODULE_W).toFixed(1)} m)`}
+        />
+        <Readout
+          label="Gerade Tiefe"
+          value={`${sq.straightD} Mod. (${(sq.straightD * MODULE_W).toFixed(1)} m)`}
+        />
+        <Readout
+          label="Belegte Fläche (B×T)"
+          value={`${fmt(c.footprintW, 2)} × ${fmt(c.footprintD, 2)} m`}
+          accent
+        />
         <Readout label="Gewicht/Reihe" value={fmt(sq.totalMods * US2_WEIGHT, 1)} unit="kg" />
       </div>
       <div>

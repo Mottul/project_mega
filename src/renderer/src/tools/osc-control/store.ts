@@ -81,8 +81,16 @@ export const DEFAULT_COLS = 24
 export const MAX_CH = 16
 
 export const WIDGET_COLORS = [
-  '#64748b', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
-  '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e'
+  '#64748b',
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#14b8a6',
+  '#3b82f6',
+  '#8b5cf6',
+  '#ec4899',
+  '#f43f5e'
 ]
 
 export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
@@ -154,7 +162,8 @@ function addOcc(occ: Set<string>, gx: number, gy: number, cw: number, ch: number
 }
 function fitsAt(occ: Set<string>, gx: number, gy: number, cw: number, ch: number): boolean {
   if (gx < 0 || gy < 0) return false
-  for (let y = gy; y < gy + ch; y++) for (let x = gx; x < gx + cw; x++) if (occ.has(`${x},${y}`)) return false
+  for (let y = gy; y < gy + ch; y++)
+    for (let x = gx; x < gx + cw; x++) if (occ.has(`${x},${y}`)) return false
   return true
 }
 /** Belegte Zellen aller Widgets (optional eines ausgenommen). */
@@ -307,7 +316,10 @@ function numberWidget(w: OscWidget, existing: OscWidget[]): void {
   if (w.addressY) w.addressY = `${w.addressY}-${n}`
   w.label = `${w.label} ${n}`
   if (w.items.length) {
-    w.items = w.items.map((it) => ({ ...it, address: it.address ? `${it.address}-${n}` : it.address }))
+    w.items = w.items.map((it) => ({
+      ...it,
+      address: it.address ? `${it.address}-${n}` : it.address
+    }))
   }
 }
 
@@ -328,9 +340,18 @@ function normalizeItems(raw: unknown): OscItem[] {
 function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   const type: OscWidgetType =
     w &&
-    ['fader', 'button', 'toggle', 'xy', 'color', 'label', 'meter', 'select', 'bank', 'knob'].includes(
-      w.type as string
-    )
+    [
+      'fader',
+      'button',
+      'toggle',
+      'xy',
+      'color',
+      'label',
+      'meter',
+      'select',
+      'bank',
+      'knob'
+    ].includes(w.type as string)
       ? (w.type as OscWidgetType)
       : 'fader'
   const def = makeWidget(type)
@@ -484,7 +505,9 @@ export const useOscSurface = create<OscStoreState>()(
           set({
             sets: mapWidgets((ws) =>
               ws.map((w) =>
-                w.id === id ? { ...w, gx: Math.max(0, Math.round(gx)), gy: Math.max(0, Math.round(gy)) } : w
+                w.id === id
+                  ? { ...w, gx: Math.max(0, Math.round(gx)), gy: Math.max(0, Math.round(gy)) }
+                  : w
               )
             )
           }),
@@ -494,7 +517,11 @@ export const useOscSurface = create<OscStoreState>()(
               ws.map((w) => {
                 if (w.id !== id) return w
                 const min = WIDGET_MIN[w.type]
-                return { ...w, cw: clampInt(cw, min.cw, MAX_COLS), ch: clampInt(ch, min.ch, MAX_CH) }
+                return {
+                  ...w,
+                  cw: clampInt(cw, min.cw, MAX_COLS),
+                  ch: clampInt(ch, min.ch, MAX_CH)
+                }
               })
             )
           }),

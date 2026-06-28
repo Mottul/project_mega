@@ -37,8 +37,22 @@ function Fit169Plot({ rx, ry, fit }: { rx: number; ry: number; fit: Fit169 }): J
       preserveAspectRatio="xMidYMid meet"
       className="block max-h-28 w-full rounded border border-border bg-muted/40"
     >
-      <rect x={bx} y={by} width={cw} height={ch} className="fill-primary/25 stroke-primary" strokeWidth={Math.max(2, rx / 150)} />
-      <text x={rx / 2} y={ry / 2} textAnchor="middle" dominantBaseline="central" className="fill-primary font-semibold" style={{ fontSize: Math.max(12, ry / 9) }}>
+      <rect
+        x={bx}
+        y={by}
+        width={cw}
+        height={ch}
+        className="fill-primary/25 stroke-primary"
+        strokeWidth={Math.max(2, rx / 150)}
+      />
+      <text
+        x={rx / 2}
+        y={ry / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-primary font-semibold"
+        style={{ fontSize: Math.max(12, ry / 9) }}
+      >
         16:9
       </text>
     </svg>
@@ -46,7 +60,9 @@ function Fit169Plot({ rx, ry, fit }: { rx: number; ry: number; fit: Fit169 }): J
 }
 
 function SectionTitle({ children }: { children: string }): JSX.Element {
-  return <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{children}</h2>
+  return (
+    <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{children}</h2>
+  )
 }
 
 export function LedWall(): JSX.Element {
@@ -65,7 +81,17 @@ export function LedWall(): JSX.Element {
         sqCorner: s.sqCorner,
         selectedCircle: s.selectedCircle
       }),
-    [s.moduleKey, s.widthM, s.heightM, s.curveMode, s.segSag, s.builderSegs, s.sqD, s.sqCorner, s.selectedCircle]
+    [
+      s.moduleKey,
+      s.widthM,
+      s.heightM,
+      s.curveMode,
+      s.segSag,
+      s.builderSegs,
+      s.sqD,
+      s.sqCorner,
+      s.selectedCircle
+    ]
   )
 
   // Verkabelungs-Grids an die Modulzahl anpassen (Zuordnungen bleiben erhalten).
@@ -116,7 +142,10 @@ export function LedWall(): JSX.Element {
           <div className="flex items-start justify-between gap-3">
             <SectionTitle>Projekt</SectionTitle>
             <div className="flex items-center gap-1.5">
-              <div className="flex overflow-hidden rounded-md border border-border" title="Seitenformat der PDF-Doku">
+              <div
+                className="flex overflow-hidden rounded-md border border-border"
+                title="Seitenformat der PDF-Doku"
+              >
                 {(
                   [
                     [false, 'Hoch'],
@@ -178,21 +207,35 @@ export function LedWall(): JSX.Element {
           <div className="mt-3 space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               {widthEditable ? (
-                <LField label="Breite" unit="m" value={s.widthM} onChange={(v) => s.set({ widthM: v })} />
+                <LField
+                  label="Breite"
+                  unit="m"
+                  value={s.widthM}
+                  onChange={(v) => s.set({ widthM: v })}
+                />
               ) : (
                 <div>
-                  <span className="mb-1 block text-xs text-muted-foreground">Breite (aus Curving)</span>
+                  <span className="mb-1 block text-xs text-muted-foreground">
+                    Breite (aus Curving)
+                  </span>
                   <div className="flex h-9 items-center rounded-md border border-primary/30 bg-primary/[0.07] px-3 text-sm font-semibold text-primary">
                     {d.actualW} m
                   </div>
                 </div>
               )}
-              <LField label="Höhe" unit="m" value={s.heightM} onChange={(v) => s.set({ heightM: v })} />
+              <LField
+                label="Höhe"
+                unit="m"
+                value={s.heightM}
+                onChange={(v) => s.set({ heightM: v })}
+              />
             </div>
             {curve && (
               <p className="text-xs text-muted-foreground">
-                Form: <span className="font-medium text-foreground">{CURVE_MODE_LABELS[curve.mode]}</span> ·{' '}
-                {curve.mods} Module/Reihe · belegt {fmt(curve.footprintW, 2)} × {fmt(curve.footprintD, 2)} m
+                Form:{' '}
+                <span className="font-medium text-foreground">{CURVE_MODE_LABELS[curve.mode]}</span>{' '}
+                · {curve.mods} Module/Reihe · belegt {fmt(curve.footprintW, 2)} ×{' '}
+                {fmt(curve.footprintD, 2)} m
               </p>
             )}
             <div className="flex gap-2">
@@ -217,7 +260,10 @@ export function LedWall(): JSX.Element {
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              Tatsächlich: <span className="font-medium text-foreground">{d.actualW} × {d.actualH} m</span>{' '}
+              Tatsächlich:{' '}
+              <span className="font-medium text-foreground">
+                {d.actualW} × {d.actualH} m
+              </span>{' '}
               ({d.cols}×{d.rows} = {d.total} Module)
             </p>
           </div>
@@ -246,7 +292,11 @@ export function LedWall(): JSX.Element {
               <div className="text-xs text-muted-foreground">
                 {m.resX}×{m.resY} px · {m.dimW}×{m.dimH} mm
               </div>
-              {m.canCurve && <div className="mt-1 text-[10px] font-semibold text-primary">Curving 0–{m.maxAngle}°</div>}
+              {m.canCurve && (
+                <div className="mt-1 text-[10px] font-semibold text-primary">
+                  Curving 0–{m.maxAngle}°
+                </div>
+              )}
             </button>
           ))}
         </div>
@@ -276,7 +326,8 @@ export function LedWall(): JSX.Element {
                   <p className="font-semibold text-primary">16:9-Content</p>
                   <p className="mt-0.5 text-muted-foreground">
                     <span className="font-medium text-foreground">{d.fit169.barPx} px</span> Rand{' '}
-                    {d.fit169.side === 'lr' ? 'links/rechts' : 'oben/unten'} · Nutzfläche {d.fit169.cw}×{d.fit169.ch} px
+                    {d.fit169.side === 'lr' ? 'links/rechts' : 'oben/unten'} · Nutzfläche{' '}
+                    {d.fit169.cw}×{d.fit169.ch} px
                   </p>
                 </div>
               ) : null}
@@ -294,7 +345,11 @@ export function LedWall(): JSX.Element {
               <Readout label="Schutzart" value={d.mod.ip} />
               <Readout
                 label="Helligkeit"
-                value={d.mod.brightnessMax ? `${d.mod.brightness} (max ${d.mod.brightnessMax})` : String(d.mod.brightness)}
+                value={
+                  d.mod.brightnessMax
+                    ? `${d.mod.brightness} (max ${d.mod.brightnessMax})`
+                    : String(d.mod.brightness)
+                }
                 unit="nit"
               />
               <Readout label="Kontrast" value={`> ${d.mod.contrast}`} />
@@ -314,20 +369,34 @@ export function LedWall(): JSX.Element {
           </Card>
 
           <Card className="p-5">
-            <SectionTitle>{s.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend'}</SectionTitle>
+            <SectionTitle>
+              {s.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend'}
+            </SectionTitle>
             <div className="mt-3 space-y-2">
               {s.buildMode === 'stacked' ? (
                 <>
                   <Readout label="Standfüße" value={String(d.baseUnits)} unit="Stk." />
                   <Readout label="Ballast/Fuß" value={String(d.ballastPerBase)} unit="kg" />
-                  <Readout label="Ballast gesamt" value={fmt(d.totalBallast, 0)} unit="kg" big accent />
+                  <Readout
+                    label="Ballast gesamt"
+                    value={fmt(d.totalBallast, 0)}
+                    unit="kg"
+                    big
+                    accent
+                  />
                   <p className="text-[10px] text-muted-foreground">
                     1 LSU-Fuß pro lfd. Meter Bildbreite ({d.actualW} m → {d.baseUnits} Bases)
                   </p>
                 </>
               ) : (
                 <>
-                  <Readout label="Gewicht an Traverse" value={fmt(parseFloat(d.weightKg), 1)} unit="kg" big accent />
+                  <Readout
+                    label="Gewicht an Traverse"
+                    value={fmt(parseFloat(d.weightKg), 1)}
+                    unit="kg"
+                    big
+                    accent
+                  />
                   <p className="text-[10px] text-muted-foreground">
                     Rigging-Punkte und Traverse je nach Situation planen.
                   </p>

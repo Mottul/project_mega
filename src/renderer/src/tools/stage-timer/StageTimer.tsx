@@ -45,7 +45,9 @@ function cmd(c: TimerCommand): void {
 }
 
 function SectionTitle({ children }: { children: string }): JSX.Element {
-  return <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{children}</h2>
+  return (
+    <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{children}</h2>
+  )
 }
 
 /** mm:ss-Eingabe, geparst beim Verlassen/Enter (erlaubt auch "5" = 5 Minuten). */
@@ -202,19 +204,26 @@ export function StageTimer(): JSX.Element {
               <select
                 className={selectClass}
                 value={state.displayMode}
-                onChange={(e) => cmd({ type: 'setDisplayMode', mode: e.target.value as 'timer' | 'clock' })}
+                onChange={(e) =>
+                  cmd({ type: 'setDisplayMode', mode: e.target.value as 'timer' | 'clock' })
+                }
               >
                 <option value="timer">Timer (Restzeit)</option>
                 <option value="clock">Uhr (mit Sekunden)</option>
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">Wenn die Zeit abgelaufen ist</span>
+              <span className="mb-1 block text-xs text-muted-foreground">
+                Wenn die Zeit abgelaufen ist
+              </span>
               <select
                 className={selectClass}
                 value={state.endBehavior}
                 onChange={(e) =>
-                  cmd({ type: 'setEndBehavior', behavior: e.target.value as StageTimerState['endBehavior'] })
+                  cmd({
+                    type: 'setEndBehavior',
+                    behavior: e.target.value as StageTimerState['endBehavior']
+                  })
                 }
               >
                 <option value="overtime">Überziehung zählen (rot blinkend)</option>
@@ -227,14 +236,18 @@ export function StageTimer(): JSX.Element {
                 <span className="mb-1 block text-xs text-muted-foreground">Gelb ab Rest</span>
                 <DurationInput
                   seconds={state.warnSec}
-                  onCommit={(sec) => cmd({ type: 'setThresholds', warnSec: sec, alertSec: state.alertSec })}
+                  onCommit={(sec) =>
+                    cmd({ type: 'setThresholds', warnSec: sec, alertSec: state.alertSec })
+                  }
                 />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs text-muted-foreground">Rot ab Rest</span>
                 <DurationInput
                   seconds={state.alertSec}
-                  onCommit={(sec) => cmd({ type: 'setThresholds', warnSec: state.warnSec, alertSec: sec })}
+                  onCommit={(sec) =>
+                    cmd({ type: 'setThresholds', warnSec: state.warnSec, alertSec: sec })
+                  }
                 />
               </label>
             </div>
@@ -261,7 +274,11 @@ export function StageTimer(): JSX.Element {
               ))}
             </select>
             {state.outputOpen ? (
-              <Button variant="outline" className="w-full" onClick={() => void api.timer.closeOutput()}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => void api.timer.closeOutput()}
+              >
                 <X className="size-4" /> Vollbild schließen
               </Button>
             ) : (
@@ -291,10 +308,20 @@ export function StageTimer(): JSX.Element {
 
             <Card className="p-4">
               <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => cmd({ type: 'prev' })} disabled={state.current <= 0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => cmd({ type: 'prev' })}
+                  disabled={state.current <= 0}
+                >
                   <ChevronsLeft className="size-4" /> Voriger
                 </Button>
-                <Button size="default" className="min-w-28" onClick={() => cmd({ type: 'toggle' })} disabled={segs.length === 0}>
+                <Button
+                  size="default"
+                  className="min-w-28"
+                  onClick={() => cmd({ type: 'toggle' })}
+                  disabled={segs.length === 0}
+                >
                   {state.running ? <Pause className="size-4" /> : <Play className="size-4" />}
                   {state.running ? 'Pause' : 'Start'}
                 </Button>
@@ -307,14 +334,29 @@ export function StageTimer(): JSX.Element {
                   Nächster <ChevronsRight className="size-4" />
                 </Button>
                 <span className="mx-1 h-6 w-px bg-border" />
-                <Button variant="outline" size="sm" onClick={() => cmd({ type: 'adjust', deltaSec: -60 })} disabled={state.current < 0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => cmd({ type: 'adjust', deltaSec: -60 })}
+                  disabled={state.current < 0}
+                >
                   −1 min
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => cmd({ type: 'adjust', deltaSec: 60 })} disabled={state.current < 0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => cmd({ type: 'adjust', deltaSec: 60 })}
+                  disabled={state.current < 0}
+                >
                   +1 min
                 </Button>
                 <span className="mx-1 h-6 w-px bg-border" />
-                <Button variant="ghost" size="sm" onClick={() => cmd({ type: 'reset' })} disabled={state.current < 0}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => cmd({ type: 'reset' })}
+                  disabled={state.current < 0}
+                >
                   <RotateCcw className="size-4" /> Abschnitt
                 </Button>
                 <Button
@@ -344,7 +386,10 @@ export function StageTimer(): JSX.Element {
                   }}
                 />
                 <Button
-                  onClick={() => msgText.trim() && cmd({ type: 'message', text: msgText.trim(), flash: msgFlash })}
+                  onClick={() =>
+                    msgText.trim() &&
+                    cmd({ type: 'message', text: msgText.trim(), flash: msgFlash })
+                  }
                   disabled={!msgText.trim()}
                 >
                   <MessageSquare className="size-4" /> Senden
@@ -357,7 +402,11 @@ export function StageTimer(): JSX.Element {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <input type="checkbox" checked={msgFlash} onChange={(e) => setMsgFlash(e.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={msgFlash}
+                    onChange={(e) => setMsgFlash(e.target.checked)}
+                  />
                   blinkend
                 </label>
                 <span className="h-4 w-px bg-border" />
@@ -402,18 +451,24 @@ export function StageTimer(): JSX.Element {
                     value={seg.speaker}
                     placeholder="Redner"
                     className="h-8 w-48 shrink-0 text-xs"
-                    onCommit={(v) => patchSegments(segs.map((x, j) => (j === i ? { ...x, speaker: v } : x)))}
+                    onCommit={(v) =>
+                      patchSegments(segs.map((x, j) => (j === i ? { ...x, speaker: v } : x)))
+                    }
                   />
                   <SegText
                     value={seg.title}
                     placeholder="Titel / Beitrag"
                     className="h-8 flex-1 text-sm font-medium"
-                    onCommit={(v) => patchSegments(segs.map((x, j) => (j === i ? { ...x, title: v } : x)))}
+                    onCommit={(v) =>
+                      patchSegments(segs.map((x, j) => (j === i ? { ...x, title: v } : x)))
+                    }
                   />
                   <DurationInput
                     seconds={seg.durationSec}
                     className="h-8 w-20 shrink-0 text-center text-sm"
-                    onCommit={(sec) => patchSegments(segs.map((x, j) => (j === i ? { ...x, durationSec: sec } : x)))}
+                    onCommit={(sec) =>
+                      patchSegments(segs.map((x, j) => (j === i ? { ...x, durationSec: sec } : x)))
+                    }
                   />
                   <div className="flex shrink-0 flex-col">
                     <button
@@ -459,7 +514,12 @@ export function StageTimer(): JSX.Element {
               onClick={() =>
                 patchSegments([
                   ...segs,
-                  { id: crypto.randomUUID(), speaker: `Redner ${segs.length + 1}`, title: '', durationSec: 600 }
+                  {
+                    id: crypto.randomUUID(),
+                    speaker: `Redner ${segs.length + 1}`,
+                    title: '',
+                    durationSec: 600
+                  }
                 ])
               }
             >
@@ -467,7 +527,8 @@ export function StageTimer(): JSX.Element {
             </Button>
             {segs.length === 0 && (
               <p className="mt-2 text-xs text-muted-foreground">
-                Abschnitte laufen nacheinander – z.B. „Begrüßung 5:00“, „Vortrag 20:00“, „Q&amp;A 10:00“.
+                Abschnitte laufen nacheinander – z.B. „Begrüßung 5:00“, „Vortrag 20:00“, „Q&amp;A
+                10:00“.
               </p>
             )}
           </Card>

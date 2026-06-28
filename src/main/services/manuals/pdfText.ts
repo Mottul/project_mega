@@ -61,7 +61,10 @@ function loadPdfjs(): Promise<any> {
           logLine('[pdfjs] geladen via file://', file)
           return mod
         } catch (e) {
-          logLine('[pdfjs] file://-import fehlgeschlagen:', e instanceof Error ? e.message : String(e))
+          logLine(
+            '[pdfjs] file://-import fehlgeschlagen:',
+            e instanceof Error ? e.message : String(e)
+          )
         }
       }
       // Fallback: Paket-Specifier (greift in Dev/Node)

@@ -42,10 +42,21 @@ export interface PrintData {
 }
 
 function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
 }
 
-function gridSvg(assign: number[][], colors: string[], prefix: string, cols: number, rows: number, px: number): string {
+function gridSvg(
+  assign: number[][],
+  colors: string[],
+  prefix: string,
+  cols: number,
+  rows: number,
+  px: number
+): string {
   const gap = 2
   const pad = 4
   const sw = cols * (px + gap) - gap + pad * 2

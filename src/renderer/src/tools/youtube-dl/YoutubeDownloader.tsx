@@ -117,8 +117,17 @@ export function YoutubeDownloader(): JSX.Element {
           </span>
         )}
         <div className="flex-1" />
-        <Button variant={status?.available ? 'outline' : 'default'} size="sm" disabled={updating} onClick={() => void updateTool()}>
-          {updating ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+        <Button
+          variant={status?.available ? 'outline' : 'default'}
+          size="sm"
+          disabled={updating}
+          onClick={() => void updateTool()}
+        >
+          {updating ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <RefreshCw className="size-4" />
+          )}
           {status?.available ? 'Aktualisieren' : 'yt-dlp herunterladen'}
         </Button>
       </Card>
@@ -170,7 +179,10 @@ export function YoutubeDownloader(): JSX.Element {
                 className={`${selectClass} w-auto`}
                 value={cfg.maxHeight ?? 'best'}
                 onChange={(e) =>
-                  setCfg((c) => ({ ...c, maxHeight: e.target.value === 'best' ? null : Number(e.target.value) }))
+                  setCfg((c) => ({
+                    ...c,
+                    maxHeight: e.target.value === 'best' ? null : Number(e.target.value)
+                  }))
                 }
               >
                 <option value="best">Beste</option>
@@ -184,16 +196,27 @@ export function YoutubeDownloader(): JSX.Element {
           <label className="block min-w-[200px] flex-1">
             <span className="mb-1 block text-xs text-muted-foreground">Zielordner</span>
             <div className="flex gap-2">
-              <Input readOnly value={cfg.outputDir} placeholder="Ordner wählen…" className="cursor-default" />
-              <Button variant="outline" size="icon" onClick={() => void pickDir()} title="Ordner wählen">
+              <Input
+                readOnly
+                value={cfg.outputDir}
+                placeholder="Ordner wählen…"
+                className="cursor-default"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => void pickDir()}
+                title="Ordner wählen"
+              >
                 <FolderOpen className="size-4" />
               </Button>
             </div>
           </label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Nur Inhalte herunterladen, für die du die Rechte/Erlaubnis hast (YouTube-Nutzungsbedingungen
-          beachten). yt-dlp regelmäßig aktualisieren, wenn Downloads scheitern.
+          Nur Inhalte herunterladen, für die du die Rechte/Erlaubnis hast
+          (YouTube-Nutzungsbedingungen beachten). yt-dlp regelmäßig aktualisieren, wenn Downloads
+          scheitern.
         </p>
       </Card>
 
@@ -201,7 +224,9 @@ export function YoutubeDownloader(): JSX.Element {
       {jobs.length > 0 && (
         <Card className="divide-y divide-border">
           <div className="flex items-center justify-between px-4 py-2">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">Downloads</h2>
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+              Downloads
+            </h2>
             <Button
               variant="ghost"
               size="sm"

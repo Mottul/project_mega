@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Bookmark, Film, Image as ImageIcon, LayoutGrid, MonitorPlay, MonitorX, Ratio } from 'lucide-react'
+import {
+  Bookmark,
+  Film,
+  Image as ImageIcon,
+  LayoutGrid,
+  MonitorPlay,
+  MonitorX,
+  Ratio
+} from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -227,12 +235,7 @@ export function TestPatterns(): JSX.Element {
                   </option>
                 ))}
               </select>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={deletePreset}
-                disabled={!selectedPreset}
-              >
+              <Button variant="ghost" size="sm" onClick={deletePreset} disabled={!selectedPreset}>
                 Löschen
               </Button>
             </div>
@@ -250,189 +253,205 @@ export function TestPatterns(): JSX.Element {
           </PanelSection>
 
           <PanelSection id="pattern" title="Testbild" icon={LayoutGrid}>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Testbild</span>
-            <select
-              className={selectClass}
-              value={config.pattern}
-              onChange={(e) => patch({ pattern: e.target.value as PatternConfig['pattern'] })}
-            >
-              {PATTERN_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {isSolid && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Farbe</span>
+              <span className="text-sm font-medium">Testbild</span>
               <select
                 className={selectClass}
-                value={config.solid}
-                onChange={(e) => patch({ solid: e.target.value as PatternConfig['solid'] })}
+                value={config.pattern}
+                onChange={(e) => patch({ pattern: e.target.value as PatternConfig['pattern'] })}
               >
-                {SOLID_OPTIONS.map((o) => (
+                {PATTERN_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
               </select>
             </label>
-          )}
 
-          {config.pattern === 'checkerboard' && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Zellgröße (px)</span>
-              <NumberField
-                value={config.gridSpacing}
-                min={2}
-                onCommit={(v) => patch({ gridSpacing: v })}
-              />
-            </label>
-          )}
-          {showScale && (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Modul-Unterteilung</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => patch({ gridScale: Math.max(0.25, config.gridScale / 2) })}
-                  disabled={config.gridScale <= 0.25}
-                >
-                  −
-                </Button>
-                <span className="min-w-8 text-center text-sm tabular-nums">×{config.gridScale}</span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-8"
-                  onClick={() => patch({ gridScale: Math.min(16, config.gridScale * 2) })}
-                  disabled={config.gridScale >= 16}
-                >
-                  +
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  {fmtCells(gridCells.x)} × {fmtCells(gridCells.y)} Module
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground">
-                Zellanzahl aus dem Seitenverhältnis ({mc.x}:{mc.y}); ×-Faktor verdoppelt.
-              </span>
-            </div>
-          )}
-
-          {isCycle && (
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Farben (Reihenfolge)</span>
-              <div className="flex flex-wrap gap-1.5">
-                {LOOP_COLOR_OPTIONS.map((o) => {
-                  const on = config.cycleColors.includes(o.hex)
-                  return (
-                    <button
-                      key={o.hex}
-                      type="button"
-                      onClick={() => toggleCycleColor(o.hex)}
-                      className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${
-                        on ? 'border-primary text-foreground' : 'border-border text-muted-foreground'
-                      }`}
-                    >
-                      <span
-                        className="size-3 rounded-sm border border-white/25"
-                        style={{ background: o.hex }}
-                      />
-                      {o.label}
-                    </button>
-                  )
-                })}
-              </div>
+            {isSolid && (
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Sek./Farbe</span>
+                <span className="text-sm font-medium">Farbe</span>
+                <select
+                  className={selectClass}
+                  value={config.solid}
+                  onChange={(e) => patch({ solid: e.target.value as PatternConfig['solid'] })}
+                >
+                  {SOLID_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {config.pattern === 'checkerboard' && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Zellgröße (px)</span>
                 <NumberField
-                  value={config.cycleSeconds}
-                  min={1}
-                  max={600}
-                  className="w-24"
-                  onCommit={(v) => patch({ cycleSeconds: v })}
+                  value={config.gridSpacing}
+                  min={2}
+                  onCommit={(v) => patch({ gridSpacing: v })}
                 />
               </label>
-            </div>
-          )}
-
-          {isScroll && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Scroll-Geschwindigkeit</span>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={0.1}
-                  max={6}
-                  step={0.1}
-                  value={config.scrollSpeed}
-                  onChange={(e) => patch({ scrollSpeed: Number(e.target.value) })}
-                  className="w-48"
-                />
-                <span className="min-w-12 text-sm tabular-nums">×{config.scrollSpeed.toFixed(1)}</span>
+            )}
+            {showScale && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Modul-Unterteilung</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => patch({ gridScale: Math.max(0.25, config.gridScale / 2) })}
+                    disabled={config.gridScale <= 0.25}
+                  >
+                    −
+                  </Button>
+                  <span className="min-w-8 text-center text-sm tabular-nums">
+                    ×{config.gridScale}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => patch({ gridScale: Math.min(16, config.gridScale * 2) })}
+                    disabled={config.gridScale >= 16}
+                  >
+                    +
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    {fmtCells(gridCells.x)} × {fmtCells(gridCells.y)} Module
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Zellanzahl aus dem Seitenverhältnis ({mc.x}:{mc.y}); ×-Faktor verdoppelt.
+                </span>
               </div>
-              <span className="text-xs text-muted-foreground">
-                Höher = schnellere Balken (Tearing/Judder deutlicher).
-              </span>
-            </label>
-          )}
+            )}
+
+            {isCycle && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Farben (Reihenfolge)</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {LOOP_COLOR_OPTIONS.map((o) => {
+                    const on = config.cycleColors.includes(o.hex)
+                    return (
+                      <button
+                        key={o.hex}
+                        type="button"
+                        onClick={() => toggleCycleColor(o.hex)}
+                        className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${
+                          on
+                            ? 'border-primary text-foreground'
+                            : 'border-border text-muted-foreground'
+                        }`}
+                      >
+                        <span
+                          className="size-3 rounded-sm border border-white/25"
+                          style={{ background: o.hex }}
+                        />
+                        {o.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium">Sek./Farbe</span>
+                  <NumberField
+                    value={config.cycleSeconds}
+                    min={1}
+                    max={600}
+                    className="w-24"
+                    onCommit={(v) => patch({ cycleSeconds: v })}
+                  />
+                </label>
+              </div>
+            )}
+
+            {isScroll && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Scroll-Geschwindigkeit</span>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={6}
+                    step={0.1}
+                    value={config.scrollSpeed}
+                    onChange={(e) => patch({ scrollSpeed: Number(e.target.value) })}
+                    className="w-48"
+                  />
+                  <span className="min-w-12 text-sm tabular-nums">
+                    ×{config.scrollSpeed.toFixed(1)}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Höher = schnellere Balken (Tearing/Judder deutlicher).
+                </span>
+              </label>
+            )}
           </PanelSection>
 
           <PanelSection id="res" title="Auflösung & Anzeige" icon={Ratio}>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Auflösung</span>
-            <div className="flex items-center gap-2">
-              <NumberField
-                value={config.width}
-                min={16}
-                max={16384}
-                onCommit={(v) => setRes(v, config.height)}
-              />
-              <span className="text-muted-foreground">×</span>
-              <NumberField
-                value={config.height}
-                min={16}
-                max={16384}
-                onCommit={(v) => setRes(config.width, v)}
-              />
-            </div>
-            <div className="mt-1 flex flex-wrap gap-1.5">
-              {RES_PRESETS.map((r) => (
-                <Button key={r.label} variant="outline" size="sm" onClick={() => setRes(r.w, r.h)}>
-                  {r.label}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Auflösung</span>
+              <div className="flex items-center gap-2">
+                <NumberField
+                  value={config.width}
+                  min={16}
+                  max={16384}
+                  onCommit={(v) => setRes(v, config.height)}
+                />
+                <span className="text-muted-foreground">×</span>
+                <NumberField
+                  value={config.height}
+                  min={16}
+                  max={16384}
+                  onCommit={(v) => setRes(config.width, v)}
+                />
+              </div>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {RES_PRESETS.map((r) => (
+                  <Button
+                    key={r.label}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRes(r.w, r.h)}
+                  >
+                    {r.label}
+                  </Button>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fromMonitor}
+                  disabled={displayId == null}
+                >
+                  von Monitor
                 </Button>
-              ))}
-              <Button variant="ghost" size="sm" onClick={fromMonitor} disabled={displayId == null}>
-                von Monitor
-              </Button>
+              </div>
             </div>
-          </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={config.showInfo}
-              onChange={(e) => patch({ showInfo: e.target.checked })}
-              className="size-4 accent-[hsl(var(--primary))]"
-            />
-            Auflösung/Label einblenden
-          </label>
-          {config.showInfo && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Label (optional)</span>
-              <Input
-                value={config.label}
-                placeholder="z.B. Bühne links"
-                onChange={(e) => patch({ label: e.target.value })}
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={config.showInfo}
+                onChange={(e) => patch({ showInfo: e.target.checked })}
+                className="size-4 accent-[hsl(var(--primary))]"
               />
+              Auflösung/Label einblenden
             </label>
-          )}
+            {config.showInfo && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Label (optional)</span>
+                <Input
+                  value={config.label}
+                  placeholder="z.B. Bühne links"
+                  onChange={(e) => patch({ label: e.target.value })}
+                />
+              </label>
+            )}
           </PanelSection>
         </>
       }
@@ -441,101 +460,109 @@ export function TestPatterns(): JSX.Element {
           <div>
             <PatternPreview config={config} />
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              Vorschau · Ausgabe & Export erfolgen in voller Auflösung ({config.width} × {config.height})
+              Vorschau · Ausgabe & Export erfolgen in voller Auflösung ({config.width} ×{' '}
+              {config.height})
             </p>
           </div>
 
-      {/* Ausgabe auf Monitor */}
-      <Card className="space-y-4 p-5">
-        <h2 className="font-medium">Vollbild-Ausgabe</h2>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-1 flex-col gap-1.5">
-            <span className="text-sm font-medium">Monitor</span>
-            <select
-              className={selectClass}
-              value={displayId ?? ''}
-              onChange={(e) => setDisplayId(Number(e.target.value))}
-            >
-              {displays.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button onClick={() => void showFullscreen()} disabled={displayId == null}>
-            <MonitorPlay className="size-4" /> {outputOpen ? 'Auf Monitor aktualisieren' : 'Vollbild anzeigen'}
-          </Button>
-          {outputOpen && (
-            <Button variant="outline" onClick={() => void closeFullscreen()}>
-              <MonitorX className="size-4" /> Schließen
-            </Button>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Das Testbild wird pixelgenau in der nativen Auflösung des Monitors angezeigt. Im
-          Ausgabefenster beendet <kbd className="rounded bg-muted px-1">Esc</kbd> die Anzeige.
-        </p>
-      </Card>
-
-      {/* Export */}
-      <Card className="space-y-4 p-5">
-        <h2 className="font-medium">Export</h2>
-        <div className="flex flex-wrap items-end gap-3">
-          <Button variant="secondary" onClick={() => void savePng()} disabled={busy !== null}>
-            <ImageIcon className="size-4" /> PNG speichern
-          </Button>
-          <div className="mx-2 h-9 w-px bg-border" />
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Video</span>
-            <select
-              className={selectClass}
-              value={vidFormat}
-              onChange={(e) => setVidFormat(e.target.value as PatternVideoFormat)}
-            >
-              <option value="mp4">MP4 (H.264)</option>
-              <option value="hap_q">HAP Q (.mov)</option>
-            </select>
-          </label>
-          {!isCycle && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Sekunden</span>
-              <NumberField
-                value={vidSeconds}
-                min={1}
-                max={3600}
-                className="w-24"
-                onCommit={setVidSeconds}
-              />
-            </label>
-          )}
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">fps</span>
-            <NumberField value={vidFps} min={1} max={60} className="w-20" onCommit={setVidFps} />
-          </label>
-          <Button onClick={() => void exportVideo()} disabled={busy !== null}>
-            <Film className="size-4" /> {isCycle ? 'Loop exportieren' : 'Video exportieren'}
-          </Button>
-        </div>
-
-        {isCycle && (
-          <p className="text-xs text-muted-foreground">
-            Pixelcheck-Loop: {config.cycleColors.length} Farben · Gesamtdauer{' '}
-            {config.cycleColors.length * config.cycleSeconds}s. Auch als „Vollbild anzeigen"
-            live am Monitor.
-          </p>
-        )}
-
-        {videoProgress !== null && (
-          <div>
-            <Progress value={videoProgress} />
-            <p className="mt-1 text-xs text-muted-foreground">
-              Video wird erzeugt … {Math.round(videoProgress * 100)}%
+          {/* Ausgabe auf Monitor */}
+          <Card className="space-y-4 p-5">
+            <h2 className="font-medium">Vollbild-Ausgabe</h2>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-1 flex-col gap-1.5">
+                <span className="text-sm font-medium">Monitor</span>
+                <select
+                  className={selectClass}
+                  value={displayId ?? ''}
+                  onChange={(e) => setDisplayId(Number(e.target.value))}
+                >
+                  {displays.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button onClick={() => void showFullscreen()} disabled={displayId == null}>
+                <MonitorPlay className="size-4" />{' '}
+                {outputOpen ? 'Auf Monitor aktualisieren' : 'Vollbild anzeigen'}
+              </Button>
+              {outputOpen && (
+                <Button variant="outline" onClick={() => void closeFullscreen()}>
+                  <MonitorX className="size-4" /> Schließen
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Das Testbild wird pixelgenau in der nativen Auflösung des Monitors angezeigt. Im
+              Ausgabefenster beendet <kbd className="rounded bg-muted px-1">Esc</kbd> die Anzeige.
             </p>
-          </div>
-        )}
-        {note && <p className="break-all text-xs text-muted-foreground">{note}</p>}
-      </Card>
+          </Card>
+
+          {/* Export */}
+          <Card className="space-y-4 p-5">
+            <h2 className="font-medium">Export</h2>
+            <div className="flex flex-wrap items-end gap-3">
+              <Button variant="secondary" onClick={() => void savePng()} disabled={busy !== null}>
+                <ImageIcon className="size-4" /> PNG speichern
+              </Button>
+              <div className="mx-2 h-9 w-px bg-border" />
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Video</span>
+                <select
+                  className={selectClass}
+                  value={vidFormat}
+                  onChange={(e) => setVidFormat(e.target.value as PatternVideoFormat)}
+                >
+                  <option value="mp4">MP4 (H.264)</option>
+                  <option value="hap_q">HAP Q (.mov)</option>
+                </select>
+              </label>
+              {!isCycle && (
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm font-medium">Sekunden</span>
+                  <NumberField
+                    value={vidSeconds}
+                    min={1}
+                    max={3600}
+                    className="w-24"
+                    onCommit={setVidSeconds}
+                  />
+                </label>
+              )}
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">fps</span>
+                <NumberField
+                  value={vidFps}
+                  min={1}
+                  max={60}
+                  className="w-20"
+                  onCommit={setVidFps}
+                />
+              </label>
+              <Button onClick={() => void exportVideo()} disabled={busy !== null}>
+                <Film className="size-4" /> {isCycle ? 'Loop exportieren' : 'Video exportieren'}
+              </Button>
+            </div>
+
+            {isCycle && (
+              <p className="text-xs text-muted-foreground">
+                Pixelcheck-Loop: {config.cycleColors.length} Farben · Gesamtdauer{' '}
+                {config.cycleColors.length * config.cycleSeconds}s. Auch als „Vollbild anzeigen"
+                live am Monitor.
+              </p>
+            )}
+
+            {videoProgress !== null && (
+              <div>
+                <Progress value={videoProgress} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Video wird erzeugt … {Math.round(videoProgress * 100)}%
+                </p>
+              </div>
+            )}
+            {note && <p className="break-all text-xs text-muted-foreground">{note}</p>}
+          </Card>
         </div>
       }
     />

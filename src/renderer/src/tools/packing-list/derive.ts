@@ -18,7 +18,11 @@ function ladderPieces(h: number): { ones: number; quarters: number } {
     const total = a + 0.75 * b
     if (total + 1e-9 < h) continue
     const over = total - h
-    if (!best || over < best.over - 1e-9 || (Math.abs(over - best.over) < 1e-9 && a + b < best.ones + best.quarters)) {
+    if (
+      !best ||
+      over < best.over - 1e-9 ||
+      (Math.abs(over - best.over) < 1e-9 && a + b < best.ones + best.quarters)
+    ) {
       best = { ones: a, quarters: b, over }
     }
   }
@@ -48,14 +52,32 @@ export function deriveFromLedWall(): DerivedItem[] {
   })
 
   if (s.buildMode === 'stacked') {
-    items.push({ category: cat, name: 'Ground-Stack-Fuß (LSU)', qty: d.baseUnits, unit: 'Stk.', note: '' })
+    items.push({
+      category: cat,
+      name: 'Ground-Stack-Fuß (LSU)',
+      qty: d.baseUnits,
+      unit: 'Stk.',
+      note: ''
+    })
     // Leitertraversen je Base bis zur Wandhöhe (1 m + 0,75 m kombiniert).
     const lp = ladderPieces(parseFloat(d.actualH))
     const ladderNote = `Stack-Höhe ~${d.actualH} m × ${d.baseUnits} Bases`
     if (lp.ones > 0)
-      items.push({ category: cat, name: 'Leitertraverse 1 m', qty: lp.ones * d.baseUnits, unit: 'Stk.', note: ladderNote })
+      items.push({
+        category: cat,
+        name: 'Leitertraverse 1 m',
+        qty: lp.ones * d.baseUnits,
+        unit: 'Stk.',
+        note: ladderNote
+      })
     if (lp.quarters > 0)
-      items.push({ category: cat, name: 'Leitertraverse 0,75 m', qty: lp.quarters * d.baseUnits, unit: 'Stk.', note: ladderNote })
+      items.push({
+        category: cat,
+        name: 'Leitertraverse 0,75 m',
+        qty: lp.quarters * d.baseUnits,
+        unit: 'Stk.',
+        note: ladderNote
+      })
     items.push({
       category: cat,
       name: 'Ballast',
@@ -82,15 +104,47 @@ export function deriveFromLedWall(): DerivedItem[] {
   const sig = chainStats(s.sig)
   const pwr = chainStats(s.pwr)
   if (sig.chains > 0) {
-    items.push({ category: cat, name: 'Datenleitung (Einspeisung/Kette)', qty: sig.chains, unit: 'Stk.', note: 'Processor → erste Kachel je Kette' })
-    if (sig.jumpers > 0) items.push({ category: cat, name: 'Daten-Brücke (Modul→Modul)', qty: sig.jumpers, unit: 'Stk.', note: '' })
+    items.push({
+      category: cat,
+      name: 'Datenleitung (Einspeisung/Kette)',
+      qty: sig.chains,
+      unit: 'Stk.',
+      note: 'Processor → erste Kachel je Kette'
+    })
+    if (sig.jumpers > 0)
+      items.push({
+        category: cat,
+        name: 'Daten-Brücke (Modul→Modul)',
+        qty: sig.jumpers,
+        unit: 'Stk.',
+        note: ''
+      })
   }
   if (pwr.chains > 0) {
-    items.push({ category: cat, name: 'Stromleitung (Einspeisung/Kette)', qty: pwr.chains, unit: 'Stk.', note: `${d.mod.connector}` })
-    if (pwr.jumpers > 0) items.push({ category: cat, name: 'Strom-Brücke (Modul→Modul)', qty: pwr.jumpers, unit: 'Stk.', note: '' })
+    items.push({
+      category: cat,
+      name: 'Stromleitung (Einspeisung/Kette)',
+      qty: pwr.chains,
+      unit: 'Stk.',
+      note: `${d.mod.connector}`
+    })
+    if (pwr.jumpers > 0)
+      items.push({
+        category: cat,
+        name: 'Strom-Brücke (Modul→Modul)',
+        qty: pwr.jumpers,
+        unit: 'Stk.',
+        note: ''
+      })
   }
   if (sig.chains === 0 && pwr.chains === 0) {
-    items.push({ category: cat, name: 'Daten-/Stromkabel', qty: 1, unit: 'Satz', note: 'Verkabelung im Konfigurator zeichnen für genaue Mengen' })
+    items.push({
+      category: cat,
+      name: 'Daten-/Stromkabel',
+      qty: 1,
+      unit: 'Satz',
+      note: 'Verkabelung im Konfigurator zeichnen für genaue Mengen'
+    })
   }
 
   return items

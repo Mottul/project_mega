@@ -29,12 +29,40 @@ export interface Bank {
 }
 
 export const PAD_COLORS = [
-  '#64748b', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
-  '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e'
+  '#64748b',
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#14b8a6',
+  '#3b82f6',
+  '#8b5cf6',
+  '#ec4899',
+  '#f43f5e'
 ]
 
 /** Tastenbelegung nach Pad-Position (oben links beginnend). */
-export const HOTKEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'q', 'w', 'e', 'r', 't', 'z', 'u', 'i', 'o', 'p']
+export const HOTKEYS = [
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  'q',
+  'w',
+  'e',
+  'r',
+  't',
+  'z',
+  'u',
+  'i',
+  'o',
+  'p'
+]
 
 function emptyPad(): Pad {
   return {
@@ -67,7 +95,9 @@ interface JingleState {
   mode: JingleMode // edit = anklicken wählt aus (Panel), live = anklicken spielt
 
   set: (
-    patch: Partial<Pick<JingleState, 'columns' | 'outputDeviceId' | 'soloMode' | 'currentBankId' | 'mode'>>
+    patch: Partial<
+      Pick<JingleState, 'columns' | 'outputDeviceId' | 'soloMode' | 'currentBankId' | 'mode'>
+    >
   ) => void
   currentBank: () => Bank
   addBank: () => void
@@ -110,7 +140,8 @@ export const useJingles = create<JingleState>()(
           const b = newBank(`Set ${get().banks.length + 1}`)
           set({ banks: [...get().banks, b], currentBankId: b.id })
         },
-        renameBank: (id, name) => set({ banks: get().banks.map((b) => (b.id === id ? { ...b, name } : b)) }),
+        renameBank: (id, name) =>
+          set({ banks: get().banks.map((b) => (b.id === id ? { ...b, name } : b)) }),
         deleteBank: (id) => {
           const rest = get().banks.filter((b) => b.id !== id)
           const banks = rest.length ? rest : [newBank('Set 1')]
@@ -124,7 +155,9 @@ export const useJingles = create<JingleState>()(
           cleanup(banks)
         },
         updatePad: (padId, patch) =>
-          set({ banks: mapPads((pads) => pads.map((p) => (p.id === padId ? { ...p, ...patch } : p))) }),
+          set({
+            banks: mapPads((pads) => pads.map((p) => (p.id === padId ? { ...p, ...patch } : p)))
+          }),
         assignJingle: (padId, storedName, originalName) => {
           const banks = mapPads((pads) =>
             pads.map((p) =>
@@ -146,7 +179,9 @@ export const useJingles = create<JingleState>()(
         },
         clearPad: (padId) => {
           const banks = mapPads((pads) =>
-            pads.map((p) => (p.id === padId ? { ...p, storedName: null, originalName: null, label: '' } : p))
+            pads.map((p) =>
+              p.id === padId ? { ...p, storedName: null, originalName: null, label: '' } : p
+            )
           )
           set({ banks })
           cleanup(banks)

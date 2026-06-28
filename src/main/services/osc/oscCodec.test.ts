@@ -10,7 +10,9 @@ const enc = (msg: OscMessage): number[] => [...encodeOsc(msg)]
 describe('encodeOsc – OSC-1.0 Byte-Layout (4-Byte-Alignment)', () => {
   it('Adresse ohne Args, Länge nicht durch 4 teilbar', () => {
     // '/ab' (3B) +1 Null = 4B; ',' +3 Null = 4B
-    expect(enc({ address: '/ab', args: [] })).toEqual([0x2f, 0x61, 0x62, 0x00, 0x2c, 0x00, 0x00, 0x00])
+    expect(enc({ address: '/ab', args: [] })).toEqual([
+      0x2f, 0x61, 0x62, 0x00, 0x2c, 0x00, 0x00, 0x00
+    ])
   })
   it('Adresslänge GENAU durch 4 teilbar erzwingt vollen 4-Byte-Null-Block', () => {
     expect(enc({ address: '/abc', args: [] })).toEqual([
@@ -54,24 +56,39 @@ describe('Roundtrips encode → decode', () => {
     ])
   })
   it('negativer int32 (Vorzeichen-Erhalt)', () => {
-    expect(dec(encodeOsc({ address: '/x', args: [{ type: 'i', value: -1 }] }))[0].args).toEqual([-1])
+    expect(dec(encodeOsc({ address: '/x', args: [{ type: 'i', value: -1 }] }))[0].args).toEqual([
+      -1
+    ])
   })
   it('String erhalten (inkl. Padding-Skip beim Lesen)', () => {
-    expect(dec(encodeOsc({ address: '/name', args: [{ type: 's', value: 'hello' }] }))[0].args).toEqual(['hello'])
+    expect(
+      dec(encodeOsc({ address: '/name', args: [{ type: 's', value: 'hello' }] }))[0].args
+    ).toEqual(['hello'])
   })
   it('leerer String roundtrippt zu ""', () => {
-    expect(dec(encodeOsc({ address: '/x', args: [{ type: 's', value: '' }] }))[0].args).toEqual([''])
+    expect(dec(encodeOsc({ address: '/x', args: [{ type: 's', value: '' }] }))[0].args).toEqual([
+      ''
+    ])
   })
   it('T/F → true/false', () => {
-    expect(dec(encodeOsc({ address: '/btn', args: [{ type: 'T' }, { type: 'F' }] }))[0].args).toEqual([true, false])
+    expect(
+      dec(encodeOsc({ address: '/btn', args: [{ type: 'T' }, { type: 'F' }] }))[0].args
+    ).toEqual([true, false])
   })
   it('float32-exakter Wert (0.5) bleibt exakt', () => {
-    expect(dec(encodeOsc({ address: '/x', args: [{ type: 'f', value: 0.5 }] }))[0].args[0]).toBe(0.5)
+    expect(dec(encodeOsc({ address: '/x', args: [{ type: 'f', value: 0.5 }] }))[0].args[0]).toBe(
+      0.5
+    )
   })
   it('gemischte Args behalten Reihenfolge; T (datenlos) stört Alignment nicht', () => {
     const msg: OscMessage = {
       address: '/m',
-      args: [{ type: 'i', value: 7 }, { type: 'T' }, { type: 'f', value: 0.5 }, { type: 's', value: 'ok' }]
+      args: [
+        { type: 'i', value: 7 },
+        { type: 'T' },
+        { type: 'f', value: 0.5 },
+        { type: 's', value: 'ok' }
+      ]
     }
     expect(dec(encodeOsc(msg))[0].args).toEqual([7, true, 0.5, 'ok'])
   })
@@ -79,15 +96,18 @@ describe('Roundtrips encode → decode', () => {
 
 describe('Codec-Eigenheiten (dokumentiertes Verhalten)', () => {
   it('float ist 32-bit: 0.1 → Math.fround(0.1), NICHT exakt 0.1', () => {
-    const v = dec(encodeOsc({ address: '/x', args: [{ type: 'f', value: 0.1 }] }))[0].args[0] as number
+    const v = dec(encodeOsc({ address: '/x', args: [{ type: 'f', value: 0.1 }] }))[0]
+      .args[0] as number
     expect(v).toBe(Math.fround(0.1))
     expect(v).not.toBe(0.1)
   })
-  it("int |0 schneidet Bruchwerte Richtung Null ab (3.9 → 3)", () => {
+  it('int |0 schneidet Bruchwerte Richtung Null ab (3.9 → 3)', () => {
     expect(dec(encodeOsc({ address: '/x', args: [{ type: 'i', value: 3.9 }] }))[0].args[0]).toBe(3)
   })
   it('nicht-finiter Float (Infinity) → 0', () => {
-    expect(dec(encodeOsc({ address: '/x', args: [{ type: 'f', value: Infinity }] }))[0].args[0]).toBe(0)
+    expect(
+      dec(encodeOsc({ address: '/x', args: [{ type: 'f', value: Infinity }] }))[0].args[0]
+    ).toBe(0)
   })
   it('Adresse ohne führenden / wird beim Encodieren präfigiert', () => {
     expect(dec(encodeOsc({ address: 'noSlash', args: [] }))[0].address).toBe('/noSlash')

@@ -45,7 +45,12 @@ export function registerManualProtocol(): void {
         }
       })
     } catch (err) {
-      logLine('[manual://] FEHLER url=', request.url, '->', err instanceof Error ? err.message : String(err))
+      logLine(
+        '[manual://] FEHLER url=',
+        request.url,
+        '->',
+        err instanceof Error ? err.message : String(err)
+      )
       return new Response('Error', { status: 500 })
     }
   })
@@ -125,7 +130,12 @@ export function registerMediaProtocol(): void {
         }
       })
     } catch (err) {
-      logLine('[media://] FEHLER url=', request.url, '->', err instanceof Error ? err.message : String(err))
+      logLine(
+        '[media://] FEHLER url=',
+        request.url,
+        '->',
+        err instanceof Error ? err.message : String(err)
+      )
       return new Response('Error', { status: 500 })
     }
   })
@@ -171,7 +181,12 @@ export function registerJingleProtocol(): void {
         headers: { 'Content-Type': ct, 'Content-Length': String(total), 'Accept-Ranges': 'bytes' }
       })
     } catch (err) {
-      logLine('[jingle://] FEHLER url=', request.url, '->', err instanceof Error ? err.message : String(err))
+      logLine(
+        '[jingle://] FEHLER url=',
+        request.url,
+        '->',
+        err instanceof Error ? err.message : String(err)
+      )
       return new Response('Error', { status: 500 })
     }
   })

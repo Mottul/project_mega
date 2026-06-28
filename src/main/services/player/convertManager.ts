@@ -34,8 +34,19 @@ import {
 const pexecFile = promisify(execFile)
 
 const VIDEO_EXT = new Set([
-  '.mov', '.mp4', '.mxf', '.avi', '.mkv', '.m4v',
-  '.mpg', '.mpeg', '.wmv', '.mts', '.m2ts', '.ts', '.webm'
+  '.mov',
+  '.mp4',
+  '.mxf',
+  '.avi',
+  '.mkv',
+  '.m4v',
+  '.mpg',
+  '.mpeg',
+  '.wmv',
+  '.mts',
+  '.m2ts',
+  '.ts',
+  '.webm'
 ])
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tif', '.tiff'])
 const MEDIA_EXT = new Set([...VIDEO_EXT, ...IMAGE_EXT, '.gif'])
@@ -102,13 +113,7 @@ function titleWithFit(base: string, fit: PlayerImportRequest['fitMode']): string
 }
 
 async function probeSource(path: string): Promise<ProbeInfo> {
-  const args = [
-    '-v', 'quiet',
-    '-print_format', 'json',
-    '-show_streams',
-    '-show_format',
-    path
-  ]
+  const args = ['-v', 'quiet', '-print_format', 'json', '-show_streams', '-show_format', path]
   const { stdout } = await pexecFile(ffmpegBinPath('ffprobe'), args, {
     maxBuffer: 16 * 1024 * 1024
   })
@@ -244,7 +249,14 @@ class ConvertManager {
 
   /** Vorhandene Bibliotheks-Medien neu auf die (neue) Wand-Auflösung konvertieren. */
   enqueueReconvert(
-    items: { sourcePath: string; title: string; fit: PlayerImportRequest['fitMode']; width: number; height: number; reconvertId: string }[]
+    items: {
+      sourcePath: string
+      title: string
+      fit: PlayerImportRequest['fitMode']
+      width: number
+      height: number
+      reconvertId: string
+    }[]
   ): { jobIds: string[] } {
     const jobIds: string[] = []
     for (const it of items) {
@@ -298,7 +310,13 @@ class ConvertManager {
     if (spec.reconvertId) return this.runReconvert(job, spec.reconvertId)
     try {
       const kind = job.kind ?? kindOf(job.sourcePath)
-      const convKey = convKeyFor(job.sourcePath, spec.fit, spec.width, spec.height, blurVariant(spec))
+      const convKey = convKeyFor(
+        job.sourcePath,
+        spec.fit,
+        spec.width,
+        spec.height,
+        blurVariant(spec)
+      )
 
       // Dedup: gleiche Quelle, gleicher Fit, gleiche Auflösung, gleicher Blur-Look.
       const existing = findByConvKey(convKey)
@@ -324,23 +342,52 @@ class ConvertManager {
       const loudnorm = currentLoudnorm()
       if (kind === 'image') {
         this.update(job, { status: 'converting' })
-        await this.spawnFf(job, buildImageArgs({
-          input: job.sourcePath, output, fit: spec.fit, width: spec.width, height: spec.height, blur
-        }), null)
-      } else if (canStreamCopy(kind, info, spec.width, spec.height) && !(loudnorm && info.hasAudio)) {
+        await this.spawnFf(
+          job,
+          buildImageArgs({
+            input: job.sourcePath,
+            output,
+            fit: spec.fit,
+            width: spec.width,
+            height: spec.height,
+            blur
+          }),
+          null
+        )
+      } else if (
+        canStreamCopy(kind, info, spec.width, spec.height) &&
+        !(loudnorm && info.hasAudio)
+      ) {
         // Schon passend -> nur kopieren, kein Re-Encode. (Bei aktiver Loudness +
         // Audiospur NICHT kopieren, da -c:a copy nicht filtern kann.)
         this.update(job, { status: 'converting', encoder: 'copy' })
-        await this.spawnFf(job, buildCopyArgs({
-          input: job.sourcePath, output, hasAudio: info.hasAudio
-        }), info.durationSec)
+        await this.spawnFf(
+          job,
+          buildCopyArgs({
+            input: job.sourcePath,
+            output,
+            hasAudio: info.hasAudio
+          }),
+          info.durationSec
+        )
       } else {
         const encoder = await resolveEncoder(getSettings().player.encoder)
         this.update(job, { status: 'converting', encoder })
-        await this.spawnFf(job, buildVideoArgs({
-          input: job.sourcePath, output, encoder, fit: spec.fit,
-          width: spec.width, height: spec.height, hasAudio: info.hasAudio, blur, loudnorm
-        }), info.durationSec)
+        await this.spawnFf(
+          job,
+          buildVideoArgs({
+            input: job.sourcePath,
+            output,
+            encoder,
+            fit: spec.fit,
+            width: spec.width,
+            height: spec.height,
+            hasAudio: info.hasAudio,
+            blur,
+            loudnorm
+          }),
+          info.durationSec
+        )
       }
       if (this.isCanceled(job)) return
 
@@ -351,15 +398,23 @@ class ConvertManager {
         const seek = Math.min(1, (info.durationSec ?? 1) * 0.1)
         // Aus dem AUFBEREITETEN Ergebnis (output) miniaturisieren -> das Thumbnail
         // zeigt den tatsächlichen Fit (Blur-Rand / Letterbox / Streckung).
-        await this.spawnFf(job, buildThumbArgs({
-          input: output,
-          output: thumbPath,
-          seekSec: seek,
-          isVideo: kind !== 'image'
-        }), null, true)
+        await this.spawnFf(
+          job,
+          buildThumbArgs({
+            input: output,
+            output: thumbPath,
+            seekSec: seek,
+            isVideo: kind !== 'image'
+          }),
+          null,
+          true
+        )
         thumbOk = existsSync(thumbPath)
       } catch (thumbErr) {
-        logLine('[player] Thumbnail fehlgeschlagen:', thumbErr instanceof Error ? thumbErr.message : String(thumbErr))
+        logLine(
+          '[player] Thumbnail fehlgeschlagen:',
+          thumbErr instanceof Error ? thumbErr.message : String(thumbErr)
+        )
       }
       if (this.isCanceled(job)) return
 
@@ -391,7 +446,10 @@ class ConvertManager {
       this.librarySink()
     } catch (err) {
       if (!this.isCanceled(job)) {
-        this.update(job, { status: 'error', error: err instanceof Error ? err.message : String(err) })
+        this.update(job, {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err)
+        })
       }
     }
   }
@@ -414,7 +472,13 @@ class ConvertManager {
     const ext = storedExtFor(job.kind ?? kindOf(job.sourcePath))
     try {
       const kind = job.kind ?? kindOf(job.sourcePath)
-      const convKey = convKeyFor(job.sourcePath, spec.fit, spec.width, spec.height, blurVariant(spec))
+      const convKey = convKeyFor(
+        job.sourcePath,
+        spec.fit,
+        spec.width,
+        spec.height,
+        blurVariant(spec)
+      )
       const collision = findByConvKey(convKey)
       if (collision && collision.id === id) {
         this.update(job, { status: 'done', progress: 1, kind, mediaId: id }) // bereits in dieser Auflösung
@@ -434,21 +498,50 @@ class ConvertManager {
       const loudnorm = currentLoudnorm()
       if (kind === 'image') {
         this.update(job, { status: 'converting' })
-        await this.spawnFf(job, buildImageArgs({
-          input: job.sourcePath, output: tmpStored, fit: spec.fit, width: spec.width, height: spec.height, blur
-        }), null)
-      } else if (canStreamCopy(kind, info, spec.width, spec.height) && !(loudnorm && info.hasAudio)) {
+        await this.spawnFf(
+          job,
+          buildImageArgs({
+            input: job.sourcePath,
+            output: tmpStored,
+            fit: spec.fit,
+            width: spec.width,
+            height: spec.height,
+            blur
+          }),
+          null
+        )
+      } else if (
+        canStreamCopy(kind, info, spec.width, spec.height) &&
+        !(loudnorm && info.hasAudio)
+      ) {
         this.update(job, { status: 'converting', encoder: 'copy' })
-        await this.spawnFf(job, buildCopyArgs({
-          input: job.sourcePath, output: tmpStored, hasAudio: info.hasAudio
-        }), info.durationSec)
+        await this.spawnFf(
+          job,
+          buildCopyArgs({
+            input: job.sourcePath,
+            output: tmpStored,
+            hasAudio: info.hasAudio
+          }),
+          info.durationSec
+        )
       } else {
         const encoder = await resolveEncoder(getSettings().player.encoder)
         this.update(job, { status: 'converting', encoder })
-        await this.spawnFf(job, buildVideoArgs({
-          input: job.sourcePath, output: tmpStored, encoder, fit: spec.fit,
-          width: spec.width, height: spec.height, hasAudio: info.hasAudio, blur, loudnorm
-        }), info.durationSec)
+        await this.spawnFf(
+          job,
+          buildVideoArgs({
+            input: job.sourcePath,
+            output: tmpStored,
+            encoder,
+            fit: spec.fit,
+            width: spec.width,
+            height: spec.height,
+            hasAudio: info.hasAudio,
+            blur,
+            loudnorm
+          }),
+          info.durationSec
+        )
       }
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
 
@@ -456,12 +549,23 @@ class ConvertManager {
       let thumbOk = false
       try {
         const seek = Math.min(1, (info.durationSec ?? 1) * 0.1)
-        await this.spawnFf(job, buildThumbArgs({
-          input: tmpStored, output: tmpThumb, seekSec: seek, isVideo: kind !== 'image'
-        }), null, true)
+        await this.spawnFf(
+          job,
+          buildThumbArgs({
+            input: tmpStored,
+            output: tmpThumb,
+            seekSec: seek,
+            isVideo: kind !== 'image'
+          }),
+          null,
+          true
+        )
         thumbOk = existsSync(tmpThumb)
       } catch (thumbErr) {
-        logLine('[player] Thumbnail (reconvert) fehlgeschlagen:', thumbErr instanceof Error ? thumbErr.message : String(thumbErr))
+        logLine(
+          '[player] Thumbnail (reconvert) fehlgeschlagen:',
+          thumbErr instanceof Error ? thumbErr.message : String(thumbErr)
+        )
       }
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
 
@@ -508,7 +612,10 @@ class ConvertManager {
     } catch (err) {
       this.cleanupReconvertTmp(id, ext)
       if (!this.isCanceled(job)) {
-        this.update(job, { status: 'error', error: err instanceof Error ? err.message : String(err) })
+        this.update(job, {
+          status: 'error',
+          error: err instanceof Error ? err.message : String(err)
+        })
       }
     }
   }
@@ -557,7 +664,12 @@ class ConvertManager {
         }
         if (code === 0) resolve()
         else if (silent) resolve()
-        else reject(new Error(`ffmpeg beendet mit Code ${code}. ${stderrTail.trim().split('\n').pop() ?? ''}`))
+        else
+          reject(
+            new Error(
+              `ffmpeg beendet mit Code ${code}. ${stderrTail.trim().split('\n').pop() ?? ''}`
+            )
+          )
       })
     })
   }
@@ -612,8 +724,15 @@ class ConvertManager {
     const encoder = await resolveEncoder(p.encoder)
     await this.spawnRaw(
       buildVideoArgs({
-        input: sourcePath, output, encoder, fit, width, height,
-        hasAudio: info.hasAudio, blur, loudnorm: currentLoudnorm()
+        input: sourcePath,
+        output,
+        encoder,
+        fit,
+        width,
+        height,
+        hasAudio: info.hasAudio,
+        blur,
+        loudnorm: currentLoudnorm()
       })
     )
     return { storedName, kind: 'video' }
@@ -631,7 +750,9 @@ class ConvertManager {
       proc.on('close', (code) =>
         code === 0
           ? resolve()
-          : reject(new Error(`ffmpeg beendet mit Code ${code}. ${tail.trim().split('\n').pop() ?? ''}`))
+          : reject(
+              new Error(`ffmpeg beendet mit Code ${code}. ${tail.trim().split('\n').pop() ?? ''}`)
+            )
       )
     })
   }

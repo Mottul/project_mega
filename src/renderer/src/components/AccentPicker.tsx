@@ -5,7 +5,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Palette } from 'lucide-react'
 import { Button } from './ui/button'
 import { api } from '@renderer/lib/api'
-import { ACCENTS, accentSwatch, applyAccent, persistAccent, storedAccent } from '@renderer/lib/accent'
+import {
+  ACCENTS,
+  accentSwatch,
+  applyAccent,
+  persistAccent,
+  storedAccent
+} from '@renderer/lib/accent'
 import type { AccentId } from '@shared/types'
 
 export function AccentPicker(): JSX.Element {

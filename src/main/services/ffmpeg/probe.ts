@@ -29,13 +29,7 @@ function parseFps(rate?: string): number | null {
 /** ffprobe -> Aufloesung, Dauer, fps, Codec. */
 export async function probe(path: string): Promise<ProbeResult> {
   const probePath = ffmpegBinPath('ffprobe')
-  const args = [
-    '-v', 'quiet',
-    '-print_format', 'json',
-    '-show_streams',
-    '-show_format',
-    path
-  ]
+  const args = ['-v', 'quiet', '-print_format', 'json', '-show_streams', '-show_format', path]
   const { stdout } = await pexecFile(probePath, args, { maxBuffer: 16 * 1024 * 1024 })
   const json = JSON.parse(stdout) as { streams?: FfStream[]; format?: FfFormat }
   const video = (json.streams ?? []).find((s) => s.codec_type === 'video')

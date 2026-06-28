@@ -42,8 +42,7 @@ const api: ToolboxApi = {
     bytes: (id) => ipcRenderer.invoke(Channels.manualsBytes, id),
     update: (id, patch) => ipcRenderer.invoke(Channels.manualsUpdate, id, patch),
     delete: (id) => ipcRenderer.invoke(Channels.manualsDelete, id),
-    onImportProgress: (cb) =>
-      subscribe(Channels.manualsImportProgress, (p) => cb(p as never))
+    onImportProgress: (cb) => subscribe(Channels.manualsImportProgress, (p) => cb(p as never))
   },
 
   screen: {
@@ -73,7 +72,8 @@ const api: ToolboxApi = {
     libraryList: () => ipcRenderer.invoke(Channels.playerLibraryList),
     libraryDelete: (id) => ipcRenderer.invoke(Channels.playerLibraryDelete, id),
     libraryClear: () => ipcRenderer.invoke(Channels.playerLibraryClear),
-    reconvert: (mediaIds, wall, fit) => ipcRenderer.invoke(Channels.playerReconvert, mediaIds, wall, fit),
+    reconvert: (mediaIds, wall, fit) =>
+      ipcRenderer.invoke(Channels.playerReconvert, mediaIds, wall, fit),
     pickIdleMedia: () => ipcRenderer.invoke(Channels.playerPickIdleMedia),
     mediaDir: () => ipcRenderer.invoke(Channels.playerMediaDir),
     onLibraryChanged: (cb) => subscribe(Channels.playerLibraryChanged, () => cb()),
