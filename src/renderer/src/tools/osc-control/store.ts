@@ -24,7 +24,7 @@ export type OscWidgetType =
 export type BankMode = 'momentary' | 'toggle' | 'knob'
 
 /** Eintrag einer Auswahl-/Bank-Kachel. `value` ist der gespeicherte Live-Wert des
- *  Eintrags (Auswahl: zu sendender Wert; Bank-Schalter: An/Aus 0/1; Bank-Knopf:
+ *  Eintrags (Auswahl: zu sendender Wert; Bank-Schalter: An/Aus 0/1; Bank-Poti:
  *  Reglerwert min..max). */
 export interface OscItem {
   label: string
@@ -60,8 +60,8 @@ export interface OscWidget {
   items: OscItem[] // nur Auswahl/Bank: Optionen bzw. Felder
   orient: 'h' | 'v' // Fader/Farbe: Ausrichtung der Regler
   cols: number // Auswahl/Bank: Spalten im Raster (Zeilen folgen aus der Anzahl; 0 = automatisch)
-  bankMode: BankMode // Bank: Verhalten der Felder (Taster/Schalter/Knopf)
-  endless: boolean // Knopf: Endlos-Encoder (sendet relative Schritte statt Absolutwert)
+  bankMode: BankMode // Bank: Verhalten der Felder (Taster/Schalter/Poti)
+  endless: boolean // Poti: Endlos-Encoder (sendet relative Schritte statt Absolutwert)
 }
 
 export interface OscSet {
@@ -103,18 +103,18 @@ export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
   meter: 'Anzeige',
   select: 'Auswahl',
   bank: 'Bank',
-  knob: 'Knopf'
+  knob: 'Poti'
 }
 
 export const BANK_MODE_LABEL: Record<BankMode, string> = {
   momentary: 'Taster',
   toggle: 'Schalter',
-  knob: 'Knopf'
+  knob: 'Poti'
 }
 
 // Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
 const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
-  fader: { cw: 6, ch: 6 },
+  fader: { cw: 3, ch: 6 },
   button: { cw: 4, ch: 2 },
   toggle: { cw: 4, ch: 2 },
   xy: { cw: 8, ch: 5 },
@@ -123,7 +123,7 @@ const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
   meter: { cw: 6, ch: 3 },
   select: { cw: 6, ch: 6 },
   bank: { cw: 8, ch: 4 },
-  knob: { cw: 5, ch: 6 }
+  knob: { cw: 4, ch: 4 }
 }
 
 // Mindestgröße je Typ -> Regler bleiben bedienbar (Pads behalten Fläche, ein
@@ -273,7 +273,7 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     base.address = '/megatoolbox/level'
   }
   if (type === 'knob') {
-    base.label = 'Knopf'
+    base.label = 'Poti'
     base.address = '/megatoolbox/knob'
     base.value = 0.5
   }
@@ -423,7 +423,7 @@ interface OscStoreState {
   deleteSet: (id: string) => void
   setColumns: (n: number) => void
 
-  addWidget: (type: OscWidgetType) => string
+  addWidget: (type: OscWidgetType, pos?: { gx: number; gy: number }) => string
   updateWidget: (id: string, patch: Partial<OscWidget>) => void
   removeWidget: (id: string) => void
   moveWidgetTo: (id: string, gx: number, gy: number) => void
@@ -477,14 +477,38 @@ export const useOscSurface = create<OscStoreState>()(
             })
           }),
 
-        addWidget: (type) => {
+        addWidget: (type, pos) => {
           const w = makeWidget(type)
+          const cols = get().currentSet().columns
           const ws = get().currentSet().widgets
           numberWidget(w, ws) // Adresse/Label durchnummerieren, wenn Typ schon da
-          // unter alles setzen -> kein Überlappen beim Hinzufügen
-          w.gx = 0
-          w.gy = ws.reduce((m, x) => Math.max(m, x.gy + x.ch), 0)
-          set({ sets: mapWidgets((arr) => [...arr, w]) })
+          const cw = Math.min(w.cw, cols)
+          if (pos) {
+            // an die angeklickte Zelle setzen; ist sie belegt, auf die
+            // nächstgelegene freie Stelle rücken (statt unter alles zu hängen).
+            const occ = occupancyOf(ws, cols)
+            let gx = Math.max(0, Math.min(Math.round(pos.gx), cols - cw))
+            let gy = Math.max(0, Math.round(pos.gy))
+            if (!fitsAt(occ, gx, gy, cw, w.ch)) {
+              const rowsLimit = ws.reduce((m, x) => Math.max(m, x.gy + x.ch), 0) + w.ch + 1
+              const free = nearestFree(occ, cols, rowsLimit, cw, w.ch, gx, gy)
+              gx = free.gx
+              gy = free.gy
+            }
+            w.gx = gx
+            w.gy = gy
+          } else {
+            // erste freie Stelle in Lesereihenfolge -> füllt seitlich, nicht nur unten
+            w.gx = -1
+            w.gy = -1
+          }
+          set({
+            sets: mapWidgets((arr) => {
+              const next = [...arr, w]
+              if (!pos) placeMissing(next, cols)
+              return next
+            })
+          })
           return w.id
         },
         updateWidget: (id, patch) =>

@@ -13,6 +13,7 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject
 } from 'react'
@@ -202,6 +203,10 @@ export function OscControl(): JSX.Element {
   const columns = set.columns
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Klick-zum-Einfügen: geklickte Zelle (gx/gy) + Bildschirmposition (x/y) des Pickers.
+  const [picker, setPicker] = useState<{ gx: number; gy: number; x: number; y: number } | null>(
+    null
+  )
   const [device, setDevice] = useState<DeviceKey>('off')
   const [landscape, setLandscape] = useState(false)
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
@@ -223,8 +228,15 @@ export function OscControl(): JSX.Element {
     learnRef.current = learnId
   }, [learnId])
 
-  // Set-Wechsel -> Auswahl zurücksetzen.
-  useEffect(() => setSelectedId(null), [currentSetId])
+  // Set-Wechsel -> Auswahl + Einfüge-Picker zurücksetzen.
+  useEffect(() => {
+    setSelectedId(null)
+    setPicker(null)
+  }, [currentSetId])
+  // Im Live-Modus keinen Einfüge-Picker offen lassen.
+  useEffect(() => {
+    if (mode === 'live') setPicker(null)
+  }, [mode])
   // Auswahl-/Set-Wechsel -> Learn beenden.
   useEffect(() => setLearnId(null), [selectedId, currentSetId])
 
@@ -512,8 +524,8 @@ export function OscControl(): JSX.Element {
     }
   }
 
-  function onAdd(type: OscWidgetType): void {
-    const id = useOscSurface.getState().addWidget(type)
+  function onAdd(type: OscWidgetType, pos?: { gx: number; gy: number }): void {
+    const id = useOscSurface.getState().addWidget(type, pos)
     setSelectedId(id)
     if (mode !== 'edit') setStore({ mode: 'edit' })
   }
@@ -639,7 +651,7 @@ export function OscControl(): JSX.Element {
           {previewing ? (
             <DeviceFrame w={frameW} h={frameH}>
               {(scale) =>
-                widgets.length === 0 ? (
+                widgets.length === 0 && live ? (
                   <p className="p-8 text-center text-sm text-muted-foreground">
                     Noch keine Bedienelemente.
                   </p>
@@ -654,27 +666,48 @@ export function OscControl(): JSX.Element {
                     onRemove={removeWidget}
                     onSend={send}
                     onSendMany={sendMany}
+                    onPlacePick={(gx, gy, x, y) => setPicker({ gx, gy, x, y })}
                   />
                 )
               }
             </DeviceFrame>
-          ) : widgets.length === 0 ? (
+          ) : widgets.length === 0 && live ? (
             <Card className="flex h-40 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              Noch keine Bedienelemente. Rechts unter „Oberfläche“ ein Widget hinzufügen.
+              Noch keine Bedienelemente.
             </Card>
           ) : (
-            <SurfaceGrid
-              columns={columns}
-              widgets={widgets}
-              live={live}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onRemove={removeWidget}
-              onSend={send}
-              onSendMany={sendMany}
-            />
+            <>
+              {widgets.length === 0 && (
+                <p className="mb-3 text-center text-sm text-muted-foreground">
+                  Leere Rasterfläche anklicken, um hier ein Widget einzufügen – oder rechts unter
+                  „Set &amp; Raster“.
+                </p>
+              )}
+              <SurfaceGrid
+                columns={columns}
+                widgets={widgets}
+                live={live}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onRemove={removeWidget}
+                onSend={send}
+                onSendMany={sendMany}
+                onPlacePick={(gx, gy, x, y) => setPicker({ gx, gy, x, y })}
+              />
+            </>
           )}
         </div>
+        {picker && !live && (
+          <WidgetPicker
+            x={picker.x}
+            y={picker.y}
+            onPick={(t) => {
+              onAdd(t, { gx: picker.gx, gy: picker.gy })
+              setPicker(null)
+            }}
+            onClose={() => setPicker(null)}
+          />
+        )}
       </div>
     </VideoCtx.Provider>
   )
@@ -724,7 +757,9 @@ export function OscControl(): JSX.Element {
           />
         </label>
         <div>
-          <span className="mb-1.5 block text-xs text-muted-foreground">Widget hinzufügen</span>
+          <span className="mb-1.5 block text-xs text-muted-foreground">
+            Widget hinzufügen (oder leere Fläche anklicken)
+          </span>
           <div className="grid grid-cols-2 gap-2">
             {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
               <Button key={t} variant="outline" size="sm" onClick={() => onAdd(t)}>
@@ -1183,7 +1218,8 @@ function SurfaceGrid({
   onSelect,
   onRemove,
   onSend,
-  onSendMany
+  onSendMany,
+  onPlacePick
 }: {
   columns: number
   widgets: OscWidget[]
@@ -1194,14 +1230,33 @@ function SurfaceGrid({
   onRemove: (id: string) => void
   onSend: Send
   onSendMany: SendMany
+  onPlacePick?: (gx: number, gy: number, clientX: number, clientY: number) => void
 }): JSX.Element {
   const gridRef = useRef<HTMLDivElement>(null)
   const maxBottom = widgets.reduce((m, w) => Math.max(m, w.gy + w.ch), 0)
   const rows = live ? Math.max(maxBottom, 1) : Math.max(maxBottom + 3, 10)
+
+  // Klick auf die leere Rasterfläche (nur Edit) -> Zelle bestimmen und den
+  // Widget-Picker dort öffnen (Klicks auf Kacheln blasen durch, werden ignoriert).
+  function handleEmptyClick(e: ReactMouseEvent<HTMLDivElement>): void {
+    const grid = gridRef.current
+    if (live || !onPlacePick || !grid || e.target !== grid) return
+    const rect = grid.getBoundingClientRect()
+    const colStep = (grid.clientWidth + GAP) / columns
+    const rowStep = ROW_H + GAP
+    const gx = Math.max(
+      0,
+      Math.min(columns - 1, Math.floor((e.clientX - rect.left) / scale / colStep))
+    )
+    const gy = Math.max(0, Math.floor((e.clientY - rect.top) / scale / rowStep))
+    onPlacePick(gx, gy, e.clientX, e.clientY)
+  }
+
   return (
     <div
       ref={gridRef}
-      className="grid"
+      onClick={handleEmptyClick}
+      className="grid select-none"
       style={{
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
         gridAutoRows: `${ROW_H}px`,
@@ -1224,6 +1279,61 @@ function SurfaceGrid({
           onRemove={() => onRemove(w.id)}
         />
       ))}
+    </div>
+  )
+}
+
+/** Klick-zum-Einfügen: kleine Palette am Klickpunkt; Auswahl fügt das Widget an
+ *  der angeklickten Zelle ein. Per fixed positioniert (außerhalb der skalierten
+ *  Geräte-Vorschau gerendert, daher Viewport-Koordinaten). */
+function WidgetPicker({
+  x,
+  y,
+  onPick,
+  onClose
+}: {
+  x: number
+  y: number
+  onPick: (t: OscWidgetType) => void
+  onClose: () => void
+}): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const onDown = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+  // am Klickpunkt verankern, aber im Viewport halten
+  const left = Math.max(8, Math.min(x, window.innerWidth - 220))
+  const top = Math.max(8, Math.min(y, window.innerHeight - 300))
+  return (
+    <div
+      ref={ref}
+      style={{ position: 'fixed', left, top, zIndex: 50 }}
+      className="w-52 select-none rounded-lg border border-border bg-card p-2 shadow-xl"
+    >
+      <p className="mb-1.5 px-1 text-xs text-muted-foreground">Widget hier einfügen</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onPick(t)}
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1.5 text-left text-xs hover:border-primary/50 hover:bg-muted/40"
+          >
+            <Plus className="size-3 shrink-0" /> {WIDGET_TYPE_LABEL[t]}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1309,7 +1419,7 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   )
 }
 
-/* ------------------------- Bedienelement: Knopf ------------------------- */
+/* -------------------------- Bedienelement: Poti ------------------------- */
 
 // Drehknopf/Poti: vertikal ziehen ändert den Wert. Absolut (min..max) oder als
 // Endlos-Encoder (sendet relative Schritte = onValue je „Rastung").
@@ -1778,29 +1888,28 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-1.5">
-      <div className="flex items-center gap-1.5">
-        <div
-          className="flex h-7 flex-1 items-center justify-center rounded border border-white/15 font-mono text-[11px] uppercase"
-          style={{
-            background: `linear-gradient(${rgba}, ${rgba}), ${CHECKER}`,
-            color: lum > 0.55 ? '#000' : '#fff'
-          }}
-        >
-          {hex}
-        </div>
+      {/* Farbanzeige füllt die verbleibende Widget-Höhe; Hex-Code mittig. */}
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center rounded border border-white/15 font-mono text-[11px] uppercase"
+        style={{
+          background: `linear-gradient(${rgba}, ${rgba}), ${CHECKER}`,
+          color: lum > 0.55 ? '#000' : '#fff'
+        }}
+      >
+        {hex}
         {HAS_EYEDROPPER && (
           <button
             type="button"
             onClick={() => void pickColor()}
             title="Pipette"
-            className="flex size-7 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            className="absolute right-1 top-1 flex size-6 items-center justify-center rounded border border-white/20 bg-background/70 text-foreground/80 hover:bg-background hover:text-foreground"
           >
-            <Pipette className="size-4" />
+            <Pipette className="size-3.5" />
           </button>
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2">
+      <div className="space-y-2">
         {/* Alle Regler greifen relativ (kein Sprung auf den Klickpunkt). */}
         <ChannelRow
           letter="H"
@@ -2304,7 +2413,7 @@ function WidgetEditor({
               options={[
                 ['momentary', 'Taster'],
                 ['toggle', 'Schalter'],
-                ['knob', 'Knopf']
+                ['knob', 'Poti']
               ]}
               onChange={(m) => update(w.id, { bankMode: m })}
             />
