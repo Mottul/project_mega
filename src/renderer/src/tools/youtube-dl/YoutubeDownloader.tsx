@@ -18,6 +18,7 @@ import { Input } from '@renderer/components/ui/input'
 import { api } from '@renderer/lib/api'
 import type { YtFormatId, YtJob, YtToolStatus } from '@shared/types'
 import { selectClass } from '../_calc/ui'
+import { toolPageClass } from '@renderer/lib/toolPage'
 
 const LS = 'youtube-dl-settings'
 
@@ -95,7 +96,7 @@ export function YoutubeDownloader(): JSX.Element {
   const active = jobs.some((j) => j.status === 'running' || j.status === 'queued')
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-6">
+    <div className={toolPageClass('3xl')}>
       {/* yt-dlp-Status */}
       <Card className="flex flex-wrap items-center gap-3 p-4">
         {status == null ? (

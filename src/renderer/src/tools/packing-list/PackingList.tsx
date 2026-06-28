@@ -10,6 +10,7 @@ import { Input } from '@renderer/components/ui/input'
 import { deriveFromLedWall } from './derive'
 import { exportPackingPdf } from './print'
 import { usePacking, type PackItem } from './store'
+import { toolPageClass } from '@renderer/lib/toolPage'
 
 export function PackingList(): JSX.Element {
   const s = usePacking()
@@ -30,7 +31,7 @@ export function PackingList(): JSX.Element {
   const openCount = s.items.filter((i) => !i.checked).length
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-6">
+    <div className={toolPageClass('3xl')}>
       <Card className="flex flex-wrap items-center gap-2 p-4">
         <Input
           className="h-9 max-w-xs flex-1"

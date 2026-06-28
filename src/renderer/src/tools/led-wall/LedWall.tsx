@@ -21,6 +21,7 @@ import { exportLedWallPdf } from './print'
 import { useLedWall, type BuildMode } from './store'
 import { topDownMarkup } from './topdown'
 import { LField } from './ui'
+import { toolPageClass } from '@renderer/lib/toolPage'
 
 /** Schematischer 16:9-Plot: Wand (Rahmen) mit zentrierter 16:9-Nutzfläche und
  *  den Letterbox-/Pillarbox-Balken (links/rechts bzw. oben/unten). */
@@ -108,7 +109,7 @@ export function LedWall(): JSX.Element {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-6">
+    <div className={toolPageClass('5xl')}>
       {/* Projekt + Wandgröße */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="p-5">

@@ -27,6 +27,7 @@ import type { DisplayInfo, StageTimerState, TimerCommand, TimerSegment } from '@
 import { selectClass } from '../_calc/ui'
 import { fmtTimer, parseDuration } from './format'
 import { TimerDisplay } from './TimerDisplay'
+import { toolPageClass } from '@renderer/lib/toolPage'
 
 const LS_KEY = 'stage-timer-setup'
 
@@ -190,7 +191,7 @@ export function StageTimer(): JSX.Element {
   const segs = state.segments
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-6">
+    <div className={toolPageClass('5xl')}>
       <div className="grid gap-4 lg:grid-cols-[1fr,340px]">
         {/* Vorschau + Transport */}
         <div className="space-y-4">
