@@ -19,6 +19,7 @@ import {
 } from 'react'
 import {
   Activity,
+  Copy,
   LayoutGrid,
   Monitor as MonitorIcon,
   Pencil,
@@ -26,7 +27,6 @@ import {
   Play,
   Plus,
   Radio,
-  RotateCcw,
   RotateCw,
   Send,
   Settings2,
@@ -62,6 +62,7 @@ import {
   useOscSurface,
   WIDGET_COLORS,
   WIDGET_MIN,
+  WIDGET_ORDER,
   WIDGET_TYPE_LABEL,
   type BankMode,
   type OscItem,
@@ -204,7 +205,9 @@ export function OscControl(): JSX.Element {
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // Klick-zum-Einfügen: geklickte Zelle (gx/gy) + Bildschirmposition (x/y) des Pickers.
-  const [picker, setPicker] = useState<{ gx: number; gy: number; x: number; y: number } | null>(
+  // gx/gy gesetzt = an dieser Zelle einfügen (Flächen-Klick); ohne = seitlich
+  // einreihen (Button „Widget hinzufügen“).
+  const [picker, setPicker] = useState<{ gx?: number; gy?: number; x: number; y: number } | null>(
     null
   )
   const [device, setDevice] = useState<DeviceKey>('off')
@@ -567,6 +570,25 @@ export function OscControl(): JSX.Element {
             </Button>
           </div>
 
+          {/* Aktives Set: Name + Spaltenraster direkt im Header. */}
+          <div className="h-5 w-px bg-border" />
+          <Input
+            value={set.name}
+            onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)}
+            placeholder="Set-Name"
+            className="h-8 w-36"
+          />
+          <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+            Spalten
+            <NumberField
+              value={columns}
+              min={4}
+              max={MAX_COLS}
+              onCommit={(v) => useOscSurface.getState().setColumns(v)}
+              className="h-8 w-16"
+            />
+          </label>
+
           <div className="flex-1" />
 
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -666,7 +688,7 @@ export function OscControl(): JSX.Element {
                     onRemove={removeWidget}
                     onSend={send}
                     onSendMany={sendMany}
-                    onPlacePick={(gx, gy, x, y) => setPicker({ gx, gy, x, y })}
+                    onPlacePick={(gx, gy, x, y) => setPicker((p) => (p ? null : { gx, gy, x, y }))}
                   />
                 )
               }
@@ -692,17 +714,22 @@ export function OscControl(): JSX.Element {
                 onRemove={removeWidget}
                 onSend={send}
                 onSendMany={sendMany}
-                onPlacePick={(gx, gy, x, y) => setPicker({ gx, gy, x, y })}
+                onPlacePick={(gx, gy, x, y) => setPicker((p) => (p ? null : { gx, gy, x, y }))}
               />
             </>
           )}
         </div>
-        {picker && !live && (
+        {picker && (
           <WidgetPicker
             x={picker.x}
             y={picker.y}
             onPick={(t) => {
-              onAdd(t, { gx: picker.gx, gy: picker.gy })
+              onAdd(
+                t,
+                picker.gx != null && picker.gy != null
+                  ? { gx: picker.gx, gy: picker.gy }
+                  : undefined
+              )
               setPicker(null)
             }}
             onClose={() => setPicker(null)}
@@ -714,6 +741,21 @@ export function OscControl(): JSX.Element {
 
   const aside = (
     <>
+      <div className="border-b border-border p-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-center"
+          onClick={(e) => {
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+            if (mode !== 'edit') setStore({ mode: 'edit' })
+            setPicker({ x: Math.max(8, r.left - 140), y: r.bottom + 4 })
+          }}
+        >
+          <Plus className="size-4" /> Widget hinzufügen
+        </Button>
+      </div>
+
       <PanelSection id="widget" title="Widget" icon={Settings2}>
         {selected ? (
           <WidgetEditor
@@ -723,6 +765,10 @@ export function OscControl(): JSX.Element {
             learning={learnId === selected.id}
             canLearn={!!status?.listening}
             onToggleLearn={() => setLearnId((id) => (id === selected.id ? null : selected.id))}
+            onDuplicate={() => {
+              const id = useOscSurface.getState().duplicateWidget(selected.id)
+              if (id) setSelectedId(id)
+            }}
             onRemove={() => {
               useOscSurface.getState().removeWidget(selected.id)
               setSelectedId(null)
@@ -736,61 +782,19 @@ export function OscControl(): JSX.Element {
         )}
       </PanelSection>
 
-      {/* Set & Raster: alle Eigenschaften des aktiven Sets an einer Stelle
-          (Name, Spaltenraster, Widget-Palette, Beispiele, Löschen). */}
-      <PanelSection id="set" title="Set & Raster" icon={LayoutGrid}>
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Name</span>
-          <Input
-            value={set.name}
-            onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)}
-          />
-        </label>
-        <label className="flex items-center justify-between gap-3">
-          <span className="text-sm">Spalten</span>
-          <NumberField
-            value={columns}
-            min={4}
-            max={MAX_COLS}
-            onCommit={(v) => useOscSurface.getState().setColumns(v)}
-            className="h-8 w-20"
-          />
-        </label>
-        <div>
-          <span className="mb-1.5 block text-xs text-muted-foreground">
-            Widget hinzufügen (oder leere Fläche anklicken)
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
-              <Button key={t} variant="outline" size="sm" onClick={() => onAdd(t)}>
-                <Plus className="size-3.5" /> {WIDGET_TYPE_LABEL[t]}
-              </Button>
-            ))}
-          </div>
-        </div>
-        <div className="flex gap-2 border-t border-border pt-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1 text-muted-foreground"
-            onClick={() => {
-              if (confirm('Widgets dieses Sets auf die Beispiele zurücksetzen?')) {
-                useOscSurface.getState().resetSurface()
-                setSelectedId(null)
-              }
-            }}
-          >
-            <RotateCcw className="size-3.5" /> Beispiele
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={() => useOscSurface.getState().deleteSet(set.id)}
-          >
-            <Trash2 className="size-3.5" /> Löschen
-          </Button>
-        </div>
+      {/* Set: Name + Spalten stehen jetzt im Header; hier nur noch Löschen. */}
+      <PanelSection id="set" title="Set" icon={LayoutGrid}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => {
+            if (confirm(`Set „${set.name}“ wirklich löschen?`))
+              useOscSurface.getState().deleteSet(set.id)
+          }}
+        >
+          <Trash2 className="size-3.5" /> Set löschen
+        </Button>
       </PanelSection>
 
       <PanelSection
@@ -1003,7 +1007,6 @@ function WidgetTile({
   }
 
   function startResize(e: ReactPointerEvent): void {
-    e.stopPropagation()
     e.preventDefault()
     const grid = gridRef.current
     const tile = tileRef.current
@@ -1233,14 +1236,24 @@ function SurfaceGrid({
   onPlacePick?: (gx: number, gy: number, clientX: number, clientY: number) => void
 }): JSX.Element {
   const gridRef = useRef<HTMLDivElement>(null)
+  // Merkt sich, wo ein Druck begann -> ein Klick nach Drag/Resize (Bewegung oder
+  // Start auf einer Kachel) öffnet NICHT den Picker.
+  const downRef = useRef<{ x: number; y: number; onGrid: boolean }>({ x: 0, y: 0, onGrid: false })
   const maxBottom = widgets.reduce((m, w) => Math.max(m, w.gy + w.ch), 0)
   const rows = live ? Math.max(maxBottom, 1) : Math.max(maxBottom + 3, 10)
 
+  function handleGridPointerDown(e: ReactPointerEvent<HTMLDivElement>): void {
+    downRef.current = { x: e.clientX, y: e.clientY, onGrid: e.target === gridRef.current }
+  }
+
   // Klick auf die leere Rasterfläche (nur Edit) -> Zelle bestimmen und den
-  // Widget-Picker dort öffnen (Klicks auf Kacheln blasen durch, werden ignoriert).
+  // Widget-Picker dort öffnen (Klicks auf/aus Kacheln werden ignoriert).
   function handleEmptyClick(e: ReactMouseEvent<HTMLDivElement>): void {
     const grid = gridRef.current
     if (live || !onPlacePick || !grid || e.target !== grid) return
+    const d = downRef.current
+    const moved = Math.abs(e.clientX - d.x) > 4 || Math.abs(e.clientY - d.y) > 4
+    if (!d.onGrid || moved) return
     const rect = grid.getBoundingClientRect()
     const colStep = (grid.clientWidth + GAP) / columns
     const rowStep = ROW_H + GAP
@@ -1255,6 +1268,7 @@ function SurfaceGrid({
   return (
     <div
       ref={gridRef}
+      onPointerDown={handleGridPointerDown}
       onClick={handleEmptyClick}
       className="grid select-none"
       style={{
@@ -1298,19 +1312,15 @@ function WidgetPicker({
   onClose: () => void
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
+  // Schließen erfolgt über Escape, Auswahl oder einen weiteren Klick auf die
+  // Arbeitsfläche (Toggle im Aufrufer) – kein eigener Outside-Click-Listener,
+  // damit der Flächen-Klick nicht sofort wieder einen neuen Picker öffnet.
   useEffect(() => {
-    const onDown = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
-    }
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
     }
-    window.addEventListener('mousedown', onDown)
     window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('mousedown', onDown)
-      window.removeEventListener('keydown', onKey)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   // am Klickpunkt verankern, aber im Viewport halten
   const left = Math.max(8, Math.min(x, window.innerWidth - 220))
@@ -1321,9 +1331,9 @@ function WidgetPicker({
       style={{ position: 'fixed', left, top, zIndex: 50 }}
       className="w-52 select-none rounded-lg border border-border bg-card p-2 shadow-xl"
     >
-      <p className="mb-1.5 px-1 text-xs text-muted-foreground">Widget hier einfügen</p>
+      <p className="mb-1.5 px-1 text-xs text-muted-foreground">Widget einfügen</p>
       <div className="grid grid-cols-2 gap-1.5">
-        {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
+        {WIDGET_ORDER.map((t) => (
           <button
             key={t}
             type="button"
@@ -2250,6 +2260,7 @@ function WidgetEditor({
   learning,
   canLearn,
   onToggleLearn,
+  onDuplicate,
   onRemove
 }: {
   w: OscWidget
@@ -2257,6 +2268,7 @@ function WidgetEditor({
   learning: boolean
   canLearn: boolean
   onToggleLearn: () => void
+  onDuplicate: () => void
   onRemove: () => void
 }): JSX.Element {
   const update = useOscSurface((s) => s.updateWidget)
@@ -2293,7 +2305,7 @@ function WidgetEditor({
             }}
             className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
           >
-            {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
+            {WIDGET_ORDER.map((t) => (
               <option key={t} value={t}>
                 {WIDGET_TYPE_LABEL[t]}
               </option>
@@ -2512,9 +2524,14 @@ function WidgetEditor({
         </div>
       </div>
 
-      <Button variant="ghost" size="sm" className="w-full text-destructive" onClick={onRemove}>
-        <Trash2 className="size-3.5" /> Widget entfernen
-      </Button>
+      <div className="flex gap-2 border-t border-border pt-2.5">
+        <Button variant="outline" size="sm" className="flex-1" onClick={onDuplicate}>
+          <Copy className="size-3.5" /> Duplizieren
+        </Button>
+        <Button variant="ghost" size="sm" className="flex-1 text-destructive" onClick={onRemove}>
+          <Trash2 className="size-3.5" /> Entfernen
+        </Button>
+      </div>
     </div>
   )
 }

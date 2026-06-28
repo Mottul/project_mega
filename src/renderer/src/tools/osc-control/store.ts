@@ -115,16 +115,30 @@ export const BANK_MODE_LABEL: Record<BankMode, string> = {
 // Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
 const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
   fader: { cw: 3, ch: 6 },
-  button: { cw: 4, ch: 2 },
-  toggle: { cw: 4, ch: 2 },
-  xy: { cw: 8, ch: 5 },
-  color: { cw: 8, ch: 6 },
-  label: { cw: 10, ch: 2 },
+  button: { cw: 3, ch: 2 },
+  toggle: { cw: 3, ch: 2 },
+  xy: { cw: 6, ch: 5 },
+  color: { cw: 6, ch: 6 },
+  label: { cw: 6, ch: 2 },
   meter: { cw: 6, ch: 3 },
-  select: { cw: 6, ch: 6 },
-  bank: { cw: 8, ch: 4 },
-  knob: { cw: 4, ch: 4 }
+  select: { cw: 3, ch: 6 },
+  bank: { cw: 6, ch: 4 },
+  knob: { cw: 3, ch: 4 }
 }
+
+/** Reihenfolge in der Widget-Palette (Hinzufügen). */
+export const WIDGET_ORDER: OscWidgetType[] = [
+  'fader',
+  'knob',
+  'toggle',
+  'button',
+  'bank',
+  'select',
+  'color',
+  'xy',
+  'label',
+  'meter'
+]
 
 // Mindestgröße je Typ -> Regler bleiben bedienbar (Pads behalten Fläche, ein
 // Taster schrumpft nicht auf null).
@@ -424,6 +438,7 @@ interface OscStoreState {
   setColumns: (n: number) => void
 
   addWidget: (type: OscWidgetType, pos?: { gx: number; gy: number }) => string
+  duplicateWidget: (id: string) => string | null
   updateWidget: (id: string, patch: Partial<OscWidget>) => void
   removeWidget: (id: string) => void
   moveWidgetTo: (id: string, gx: number, gy: number) => void
@@ -506,6 +521,39 @@ export const useOscSurface = create<OscStoreState>()(
             sets: mapWidgets((arr) => {
               const next = [...arr, w]
               if (!pos) placeMissing(next, cols)
+              return next
+            })
+          })
+          return w.id
+        },
+        duplicateWidget: (id) => {
+          const ws = get().currentSet().widgets
+          const src = ws.find((w) => w.id === id)
+          if (!src) return null
+          const cols = get().currentSet().columns
+          // Adressen weiterzählen (Label/Größe/Einstellungen bleiben gleich).
+          const addrs = new Set(ws.map((x) => x.address).filter(Boolean))
+          const bump = (a: string): string => {
+            if (!a) return a
+            const base = a.replace(/-\d+$/, '')
+            let n = 2
+            while (addrs.has(`${base}-${n}`)) n++
+            addrs.add(`${base}-${n}`)
+            return `${base}-${n}`
+          }
+          const w: OscWidget = {
+            ...src,
+            id: uid(),
+            address: bump(src.address),
+            addressY: bump(src.addressY),
+            items: src.items.map((it) => ({ ...it, address: bump(it.address) })),
+            gx: -1,
+            gy: -1
+          }
+          set({
+            sets: mapWidgets((arr) => {
+              const next = [...arr, w]
+              placeMissing(next, cols)
               return next
             })
           })
