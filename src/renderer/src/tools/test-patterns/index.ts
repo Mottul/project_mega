@@ -8,7 +8,7 @@ export const testPatternsTool: ToolModule = {
   description:
     'Testbilder für Beamer/LED-Wände/Displays – Vollbild auf gewähltem Monitor, PNG- und Video-Export.',
   icon: MonitorPlay,
-  category: 'media',
+  category: 'playback',
   keywords: [
     'testbild',
     'test pattern',

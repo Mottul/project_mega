@@ -8,7 +8,7 @@ export const videoPlayerTool: ToolModule = {
   description:
     'Playlist-Player für LED-Wände/Beamer – Medien auf Wand-Auflösung einbacken (Fit-Modi, GPU), Vollbild-Ausgabe, Play/Pause/Skip/Seek/Loop/Shuffle.',
   icon: PlaySquare,
-  category: 'media',
+  category: 'playback',
   keywords: [
     'player',
     'videoplayer',

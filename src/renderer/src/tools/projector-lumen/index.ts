@@ -7,7 +7,7 @@ export const projectorLumenTool: ToolModule = {
   name: 'Beamer-Lumen',
   description: 'Lumen-Bedarf aus Bildgröße und Umgebungslicht – und ob der vorhandene Beamer reicht.',
   icon: Lightbulb,
-  category: 'calc',
+  category: 'visual',
   keywords: ['beamer', 'projektor', 'lumen', 'ansi', 'helligkeit', 'lux', 'leinwand', 'gain', 'projektion'],
   component: lazy(() => import('./ProjectorLumen').then((m) => ({ default: m.ProjectorLumen })))
 }

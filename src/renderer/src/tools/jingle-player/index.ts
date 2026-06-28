@@ -7,7 +7,7 @@ export const jinglePlayerTool: ToolModule = {
   name: 'Jingle-Player',
   description: 'Kurze Audios auf belegbaren Pads (Auftrittsmusik/Stinger) – Hotkeys, Ausgabegerät, Fade.',
   icon: Music,
-  category: 'media',
+  category: 'playback',
   keywords: [
     'jingle',
     'soundboard',

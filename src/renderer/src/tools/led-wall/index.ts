@@ -8,7 +8,7 @@ export const ledWallTool: ToolModule = {
   description:
     'Wand planen: Auflösung, 16:9, Strom, Ballast, Signal-/Strom-Verkabelung, Curving (uS2+) – mit PDF-Doku.',
   icon: LayoutGrid,
-  category: 'calc',
+  category: 'visual',
   keywords: [
     'led',
     'ledwall',

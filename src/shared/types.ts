@@ -1,7 +1,7 @@
 // Gemeinsame Domain-Typen fuer main, preload und renderer.
 // Single source of truth -- nur hier werden Datenstrukturen definiert.
 
-export type ToolCategoryId = 'media' | 'calc' | 'database' | 'utility'
+export type ToolCategoryId = 'playback' | 'control' | 'visual' | 'media' | 'rigging' | 'calc'
 
 /* ----------------------------- ffmpeg / HAP ----------------------------- */
 

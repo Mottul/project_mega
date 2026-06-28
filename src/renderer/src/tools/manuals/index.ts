@@ -7,7 +7,7 @@ export const manualsTool: ToolModule = {
   name: 'Manuals-Bibliothek',
   description: 'Geräte-Handbücher importieren und per Volltextsuche offline durchsuchen.',
   icon: BookOpen,
-  category: 'database',
+  category: 'media',
   keywords: ['manual', 'handbuch', 'pdf', 'suche', 'bibliothek', 'doku', 'datenblatt'],
   component: lazy(() => import('./ManualsLibrary').then((m) => ({ default: m.ManualsLibrary })))
 }

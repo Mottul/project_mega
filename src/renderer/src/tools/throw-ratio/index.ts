@@ -7,7 +7,7 @@ export const throwRatioTool: ToolModule = {
   name: 'Projektionsverhältnis',
   description: 'Throw Ratio, Bildmaße und Projektionsabstand – das passende Beamer-Objektiv wählen.',
   icon: Projector,
-  category: 'calc',
+  category: 'visual',
   keywords: [
     'projektion',
     'throw ratio',

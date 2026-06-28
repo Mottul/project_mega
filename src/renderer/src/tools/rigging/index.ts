@@ -7,7 +7,7 @@ export const riggingTool: ToolModule = {
   name: 'Rigging-Last',
   description: 'Auflagerkräfte einer Traverse (2 Punkte) und Strangkräfte im Bridle nach Anschlagwinkel.',
   icon: Anchor,
-  category: 'calc',
+  category: 'rigging',
   keywords: [
     'rigging',
     'traverse',

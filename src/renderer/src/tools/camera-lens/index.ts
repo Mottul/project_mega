@@ -8,7 +8,7 @@ export const cameraLensTool: ToolModule = {
   description:
     'Brennweite, Sensor & Entfernung → Bildausschnitt: wie viel einer Person bei maximalem Zoom ins Bild passt.',
   icon: Camera,
-  category: 'calc',
+  category: 'visual',
   keywords: [
     'kamera',
     'objektiv',

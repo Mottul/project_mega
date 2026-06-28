@@ -10,7 +10,7 @@ import { CATEGORY_LABELS, type ToolModule } from '@renderer/tools/types'
 import type { ToolCategoryId } from '@shared/types'
 import { useToolActivity } from './useToolActivity'
 
-const CATEGORY_ORDER: ToolCategoryId[] = ['media', 'database', 'calc', 'utility']
+const CATEGORY_ORDER: ToolCategoryId[] = ['playback', 'control', 'visual', 'media', 'rigging', 'calc']
 
 function matches(tool: ToolModule, q: string): boolean {
   if (!q) return true

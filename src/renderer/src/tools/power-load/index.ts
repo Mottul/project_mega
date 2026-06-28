@@ -7,7 +7,7 @@ export const powerLoadTool: ToolModule = {
   name: 'Stromlast & Absicherung',
   description: 'Leistung ↔ Strom (1∼/3∼) und wie viele Geräte auf einen 16/32/63-A-Stromkreis passen.',
   icon: Zap,
-  category: 'calc',
+  category: 'rigging',
   keywords: [
     'strom',
     'leistung',

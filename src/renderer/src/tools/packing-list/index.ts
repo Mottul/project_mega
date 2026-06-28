@@ -7,7 +7,7 @@ export const packingListTool: ToolModule = {
   name: 'Packliste',
   description: 'Material-Checkliste mit Mengen – aus der LED-Wall-Konfiguration befüllbar, als PDF.',
   icon: ClipboardList,
-  category: 'utility',
+  category: 'rigging',
   keywords: ['packliste', 'checkliste', 'material', 'liste', 'verladung', 'case', 'inventar', 'pdf'],
   component: lazy(() => import('./PackingList').then((m) => ({ default: m.PackingList })))
 }

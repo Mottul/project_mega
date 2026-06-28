@@ -8,7 +8,7 @@ export const novastarTool: ToolModule = {
   description:
     'NovaPro UHD Jr & Co. über Netzwerk (TCP) steuern: Helligkeit, Fade-to-Black, Roh-Befehle. Vorabversion.',
   icon: Tv,
-  category: 'media',
+  category: 'control',
   keywords: [
     'novastar',
     'novapro',
