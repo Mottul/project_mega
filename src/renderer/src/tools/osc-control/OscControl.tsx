@@ -1346,6 +1346,8 @@ function SurfaceGrid({
   // Merkt sich, wo ein Druck begann -> ein Klick nach Drag/Resize (Bewegung oder
   // Start auf einer Kachel) öffnet NICHT den Picker.
   const downRef = useRef<{ x: number; y: number; onGrid: boolean }>({ x: 0, y: 0, onGrid: false })
+  // Zelle unter dem Cursor (nur leere Fläche, Edit) -> Hover-Hinweis „hier einfügen".
+  const [hoverCell, setHoverCell] = useState<{ gx: number; gy: number } | null>(null)
   const maxBottom = widgets.reduce((m, w) => Math.max(m, w.gy + w.ch), 0)
   const rows = live ? Math.max(maxBottom, 1) : Math.max(maxBottom + 3, 10)
 
@@ -1353,23 +1355,42 @@ function SurfaceGrid({
     downRef.current = { x: e.clientX, y: e.clientY, onGrid: e.target === gridRef.current }
   }
 
-  // Klick auf die leere Rasterfläche (nur Edit) -> Zelle bestimmen und den
-  // Widget-Picker dort öffnen (Klicks auf/aus Kacheln werden ignoriert).
+  /** Rasterzelle aus Bildschirmkoordinaten (berücksichtigt die Vorschau-Skalierung). */
+  function cellAt(clientX: number, clientY: number): { gx: number; gy: number } | null {
+    const grid = gridRef.current
+    if (!grid) return null
+    const rect = grid.getBoundingClientRect()
+    const colStep = (grid.clientWidth + GAP) / columns
+    const rowStep = ROW_H + GAP
+    const gx = Math.max(
+      0,
+      Math.min(columns - 1, Math.floor((clientX - rect.left) / scale / colStep))
+    )
+    const gy = Math.max(0, Math.floor((clientY - rect.top) / scale / rowStep))
+    return { gx, gy }
+  }
+
+  // Hover über leere Fläche -> Zelle hervorheben (Rahmen + Plus signalisiert „hier
+  // klicken zum Einfügen"). Über Kacheln/Live nichts.
+  function handleGridMove(e: ReactMouseEvent<HTMLDivElement>): void {
+    if (live || !onPlacePick || e.target !== gridRef.current) {
+      if (hoverCell) setHoverCell(null)
+      return
+    }
+    const c = cellAt(e.clientX, e.clientY)
+    if (c && (!hoverCell || hoverCell.gx !== c.gx || hoverCell.gy !== c.gy)) setHoverCell(c)
+  }
+
+  // Klick auf die leere Rasterfläche (nur Edit) -> Picker an der Zelle öffnen
+  // (Klicks auf/aus Kacheln oder nach Drag/Resize werden ignoriert).
   function handleEmptyClick(e: ReactMouseEvent<HTMLDivElement>): void {
     const grid = gridRef.current
     if (live || !onPlacePick || !grid || e.target !== grid) return
     const d = downRef.current
     const moved = Math.abs(e.clientX - d.x) > 4 || Math.abs(e.clientY - d.y) > 4
     if (!d.onGrid || moved) return
-    const rect = grid.getBoundingClientRect()
-    const colStep = (grid.clientWidth + GAP) / columns
-    const rowStep = ROW_H + GAP
-    const gx = Math.max(
-      0,
-      Math.min(columns - 1, Math.floor((e.clientX - rect.left) / scale / colStep))
-    )
-    const gy = Math.max(0, Math.floor((e.clientY - rect.top) / scale / rowStep))
-    onPlacePick(gx, gy, e.clientX, e.clientY)
+    const c = cellAt(e.clientX, e.clientY)
+    if (c) onPlacePick(c.gx, c.gy, e.clientX, e.clientY)
   }
 
   return (
@@ -1377,6 +1398,8 @@ function SurfaceGrid({
       ref={gridRef}
       onPointerDown={handleGridPointerDown}
       onClick={handleEmptyClick}
+      onMouseMove={handleGridMove}
+      onMouseLeave={() => setHoverCell(null)}
       className="grid select-none"
       style={{
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
@@ -1385,6 +1408,14 @@ function SurfaceGrid({
       }}
     >
       {!live && <GridBackdrop columns={columns} rows={rows} />}
+      {!live && hoverCell && (
+        <div
+          className="pointer-events-none z-0 flex items-center justify-center rounded-[4px] border-2 border-dashed border-primary/70 bg-primary/10 text-primary"
+          style={{ gridColumn: `${hoverCell.gx + 1}`, gridRow: `${hoverCell.gy + 1}` }}
+        >
+          <Plus className="size-4" />
+        </div>
+      )}
       {widgets.map((w) => (
         <WidgetTile
           key={w.id}
