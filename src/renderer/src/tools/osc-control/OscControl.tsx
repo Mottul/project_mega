@@ -32,6 +32,7 @@ import {
   Settings2,
   Smartphone,
   SlidersHorizontal,
+  Star,
   Tablet,
   Trash2,
   Wifi,
@@ -193,15 +194,21 @@ type SendMany = (msgs: OscMessage[]) => void
 /* ------------------------------ Hauptansicht ---------------------------- */
 
 export function OscControl(): JSX.Element {
-  const sets = useOscSurface((s) => s.sets)
-  const currentSetId = useOscSurface((s) => s.currentSetId)
+  const projects = useOscSurface((s) => s.projects)
+  const currentProjectId = useOscSurface((s) => s.currentProjectId)
+  const defaultProjectId = useOscSurface((s) => s.defaultProjectId)
   const mode = useOscSurface((s) => s.mode)
   const setStore = useOscSurface((s) => s.set)
   const live = mode === 'live'
 
+  const project = projects.find((p) => p.id === currentProjectId) ?? projects[0]
+  const sets = project.sets
+  const currentSetId = project.currentSetId
   const set = sets.find((x) => x.id === currentSetId) ?? sets[0]
   const widgets = set.widgets
   const columns = set.columns
+  const device = set.device
+  const landscape = set.landscape
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // Klick-zum-Einfügen: geklickte Zelle (gx/gy) + Bildschirmposition (x/y) des Pickers.
@@ -210,8 +217,6 @@ export function OscControl(): JSX.Element {
   const [picker, setPicker] = useState<{ gx?: number; gy?: number; x: number; y: number } | null>(
     null
   )
-  const [device, setDevice] = useState<DeviceKey>('off')
-  const [landscape, setLandscape] = useState(false)
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8091)
   const [video, setVideo] = useState<VideoInfo>({
@@ -308,7 +313,7 @@ export function OscControl(): JSX.Element {
       // Set-Wechsel vom Handy: kein Widget-Bezug -> vor der Widget-Suche behandeln.
       // Der Publish-Effekt schickt danach automatisch den neuen Schnappschuss.
       if (cmd.kind === 'selectSet') {
-        if (st.sets.some((s) => s.id === cmd.id)) st.selectSet(cmd.id)
+        if (st.currentProject().sets.some((s) => s.id === cmd.id)) st.selectSet(cmd.id)
         return
       }
       const w = st.currentSet().widgets.find((x) => x.id === cmd.id)
@@ -476,7 +481,7 @@ export function OscControl(): JSX.Element {
       connected: true,
       setName: cs.name,
       columns: cs.columns,
-      sets: store.sets.map((s) => ({ id: s.id, name: s.name })),
+      sets: store.currentProject().sets.map((s) => ({ id: s.id, name: s.name })),
       currentSetId: cs.id,
       widgets: cs.widgets.map((w) => {
         const m = w.type === 'meter' ? meterReadout(w, video) : { level: 0, text: '' }
@@ -542,128 +547,197 @@ export function OscControl(): JSX.Element {
   const main = (
     <VideoCtx.Provider value={video}>
       <div className="flex h-full flex-col">
-        {/* Kopfzeile: Sets links, Edit/Live rechts */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
-          <div className="flex flex-wrap items-center gap-1">
-            {sets.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => useOscSurface.getState().selectSet(b.id)}
-                className={cn(
-                  'rounded-md border px-3 py-1.5 text-sm transition-colors',
-                  b.id === set.id
-                    ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
-                    : 'border-border text-muted-foreground hover:border-primary/40'
-                )}
-              >
-                {b.name}
-              </button>
-            ))}
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Set hinzufügen"
-              onClick={() => useOscSurface.getState().addSet()}
-            >
-              <Plus className="size-4" />
-            </Button>
-          </div>
-
-          {/* Aktives Set: Name + Spaltenraster direkt im Header. */}
-          <div className="h-5 w-px bg-border" />
-          <Input
-            value={set.name}
-            onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)}
-            placeholder="Set-Name"
-            className="h-8 w-36"
-          />
-          <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
-            Spalten
-            <NumberField
-              value={columns}
-              min={4}
-              max={MAX_COLS}
-              onCommit={(v) => useOscSurface.getState().setColumns(v)}
-              className="h-8 w-16"
-            />
-          </label>
-
-          <div className="flex-1" />
-
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className={cn('size-2.5 rounded-full', statusDot)} />
-            <span className="tabular-nums">
-              {status ? `${status.host}:${status.outPort}` : '–'}
+        {/* Kopfzeile: Projekt-Zeile (Set-Sammlungen) + Set-Zeile darunter */}
+        <div className="border-b border-border px-5 py-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Projekt
             </span>
-            {status?.listening && (
-              <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs">
-                <Radio className="size-3" /> {status.inPort}
-              </span>
+            <div className="flex flex-wrap items-center gap-1">
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => useOscSurface.getState().selectProject(p.id)}
+                  className={cn(
+                    'flex items-center gap-1 rounded-md border px-2.5 py-1 text-sm transition-colors',
+                    p.id === project.id
+                      ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/40'
+                  )}
+                >
+                  {p.id === defaultProjectId && <Star className="size-3 fill-current opacity-70" />}
+                  {p.name || '—'}
+                </button>
+              ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Projekt hinzufügen (übernimmt das Default-Projekt, falls gesetzt)"
+                onClick={() => useOscSurface.getState().addProject()}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+            <div className="h-5 w-px bg-border" />
+            <Input
+              value={project.name}
+              onChange={(e) => useOscSurface.getState().renameProject(project.id, e.target.value)}
+              placeholder="Projekt-Titel"
+              title="Titel = erstes OSC-Adresssegment neuer Widgets (z. B. „mottl“ → /mottl/fader)"
+              className="h-8 w-40"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              title="Aktuelles Projekt als Default-Projekt speichern (Vorlage für neue Projekte)"
+              onClick={() => useOscSurface.getState().saveAsDefaultProject()}
+            >
+              <Star
+                className={cn(
+                  'size-3.5',
+                  defaultProjectId === project.id && 'fill-current text-primary'
+                )}
+              />{' '}
+              Default
+            </Button>
+            {projects.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Projekt löschen"
+                onClick={() => {
+                  if (confirm(`Projekt „${project.name}“ mit allen Sets löschen?`))
+                    useOscSurface.getState().deleteProject(project.id)
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
             )}
           </div>
 
-          {/* Geräte-Vorschau */}
-          <div className="flex overflow-hidden rounded-md border border-border">
-            <DeviceBtn
-              active={!previewing}
-              title="Normale Ansicht"
-              onClick={() => setDevice('off')}
-            >
-              <MonitorIcon className="size-4" />
-            </DeviceBtn>
-            <DeviceBtn
-              active={device === 'phone'}
-              title="Handy-Vorschau"
-              onClick={() => setDevice('phone')}
-            >
-              <Smartphone className="size-4" />
-            </DeviceBtn>
-            <DeviceBtn
-              active={device === 'tablet'}
-              title="Tablet-Vorschau"
-              onClick={() => setDevice('tablet')}
-            >
-              <Tablet className="size-4" />
-            </DeviceBtn>
-          </div>
-          {previewing && (
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Hoch-/Querformat"
-              onClick={() => setLandscape((v) => !v)}
-            >
-              <RotateCw className="size-4" />
-            </Button>
-          )}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1">
+              {sets.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => useOscSurface.getState().selectSet(b.id)}
+                  className={cn(
+                    'rounded-md border px-3 py-1.5 text-sm transition-colors',
+                    b.id === set.id
+                      ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/40'
+                  )}
+                >
+                  {b.name}
+                </button>
+              ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Set hinzufügen"
+                onClick={() => useOscSurface.getState().addSet()}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
 
-          {/* Edit / Live */}
-          <div className="flex overflow-hidden rounded-md border border-border">
-            <button
-              type="button"
-              onClick={() => setStore({ mode: 'edit' })}
-              className={cn(
-                'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
-                !live
-                  ? 'bg-primary/15 font-semibold text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+            {/* Aktives Set: Name + Spaltenraster direkt im Header. */}
+            <div className="h-5 w-px bg-border" />
+            <Input
+              value={set.name}
+              onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)}
+              placeholder="Set-Name"
+              className="h-8 w-36"
+            />
+            <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+              Spalten
+              <NumberField
+                value={columns}
+                min={4}
+                max={MAX_COLS}
+                onCommit={(v) => useOscSurface.getState().setColumns(v)}
+                className="h-8 w-16"
+              />
+            </label>
+
+            <div className="flex-1" />
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className={cn('size-2.5 rounded-full', statusDot)} />
+              <span className="tabular-nums">
+                {status ? `${status.host}:${status.outPort}` : '–'}
+              </span>
+              {status?.listening && (
+                <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs">
+                  <Radio className="size-3" /> {status.inPort}
+                </span>
               )}
-            >
-              <Pencil className="size-4" /> Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => setStore({ mode: 'live' })}
-              className={cn(
-                'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
-                live
-                  ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Play className="size-4" /> Live
-            </button>
+            </div>
+
+            {/* Geräte-Vorschau */}
+            <div className="flex overflow-hidden rounded-md border border-border">
+              <DeviceBtn
+                active={!previewing}
+                title="Normale Ansicht"
+                onClick={() => useOscSurface.getState().setDevice('off')}
+              >
+                <MonitorIcon className="size-4" />
+              </DeviceBtn>
+              <DeviceBtn
+                active={device === 'phone'}
+                title="Handy-Vorschau"
+                onClick={() => useOscSurface.getState().setDevice('phone')}
+              >
+                <Smartphone className="size-4" />
+              </DeviceBtn>
+              <DeviceBtn
+                active={device === 'tablet'}
+                title="Tablet-Vorschau"
+                onClick={() => useOscSurface.getState().setDevice('tablet')}
+              >
+                <Tablet className="size-4" />
+              </DeviceBtn>
+            </div>
+            {previewing && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Hoch-/Querformat"
+                onClick={() => useOscSurface.getState().setLandscape(!landscape)}
+              >
+                <RotateCw className="size-4" />
+              </Button>
+            )}
+
+            {/* Edit / Live */}
+            <div className="flex overflow-hidden rounded-md border border-border">
+              <button
+                type="button"
+                onClick={() => setStore({ mode: 'edit' })}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
+                  !live
+                    ? 'bg-primary/15 font-semibold text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Pencil className="size-4" /> Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setStore({ mode: 'live' })}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
+                  live
+                    ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Play className="size-4" /> Live
+              </button>
+            </div>
           </div>
         </div>
 
