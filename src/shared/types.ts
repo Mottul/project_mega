@@ -634,6 +634,15 @@ export interface OscFeedback {
   at: number // epoch ms
 }
 
+/** Eintrag des OSC-Aktivitäts-Logs (für den Monitor + das Monitor-Fenster). */
+export interface OscLogEntry {
+  id: number
+  dir: 'out' | 'in' // ausgehend (gesendet) / eingehend (Feedback)
+  address: string
+  args: (number | string | boolean)[]
+  at: number // epoch ms
+}
+
 /* --------------------------- NovaStar (LED-Prozessor) -------------------- */
 // Steuerung eines NovaStar-Prozessors (NovaPro UHD Jr & Co.) über TCP 5200
 // (eigener, abhängigkeitsfreier Paket-Codec). Stand: v0, Befehls-Bytes am Gerät

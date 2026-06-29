@@ -19,6 +19,7 @@ import type {
   ManualSearchHit,
   MediaItem,
   OscFeedback,
+  OscLogEntry,
   NovastarStatus,
   OscMessage,
   OscRemoteCommand,
@@ -151,6 +152,9 @@ export const Channels = {
   oscRemoteStart: 'osc:remoteStart',
   oscRemoteStop: 'osc:remoteStop',
   oscRemoteChanged: 'osc:remoteChanged', // Event: RemoteStatus
+  oscMonitorPublish: 'osc:monitorPublish', // Renderer -> main: aktuelles Log (für Monitor-Fenster)
+  oscMonitorLog: 'osc:monitorLog', // main -> Renderer: gespiegeltes Log (Monitor-Fenster)
+  windowOpenOscMonitor: 'window:openOscMonitor', // OSC-Monitor in eigenem Fenster öffnen
   // NovaStar-Prozessor (TCP 5200)
   novastarConnect: 'novastar:connect',
   novastarDisconnect: 'novastar:disconnect',
@@ -342,6 +346,12 @@ export interface ToolboxApi {
     onStatus(cb: (status: OscStatus) => void): () => void
     /** Schnappschuss der Oberfläche an den Fernsteuer-Server. */
     publish(snapshot: OscRemoteSnapshot): Promise<void>
+    /** OSC-Monitor in einem eigenen Fenster öffnen. */
+    openMonitor(): Promise<void>
+    /** Aktuelles Aktivitäts-Log an etwaige Monitor-Fenster spiegeln. */
+    publishMonitor(entries: OscLogEntry[]): Promise<void>
+    /** Gespiegeltes Log empfangen (im Monitor-Fenster). Liefert Cleanup. */
+    onMonitor(cb: (entries: OscLogEntry[]) => void): () => void
     /** Steuerbefehle vom Handy/Tablet. Liefert Cleanup. */
     onRemoteCommand(cb: (cmd: OscRemoteCommand) => void): () => void
     /** Aktueller Status des Fernsteuer-Servers. */

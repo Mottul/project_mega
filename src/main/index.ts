@@ -125,6 +125,9 @@ app.whenReady().then(() => {
   registerJingleProtocol()
   registerIpcHandlers()
   ipcMain.handle(Channels.windowOpenTool, (_e, id: string) => openToolWindow(id))
+  ipcMain.handle(Channels.windowOpenOscMonitor, () => {
+    createWindow({ hash: '/osc-monitor' })
+  })
   attachWindow(createWindow({ isMain: true }))
 
   app.on('activate', () => {

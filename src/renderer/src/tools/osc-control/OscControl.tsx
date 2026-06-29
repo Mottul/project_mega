@@ -20,6 +20,7 @@ import {
 import {
   Activity,
   Copy,
+  ExternalLink,
   LayoutGrid,
   Monitor as MonitorIcon,
   Pencil,
@@ -229,6 +230,11 @@ export function OscControl(): JSX.Element {
   const [log, setLog] = useState<LogEntry[]>([])
   const logRef = useRef<LogEntry[]>([])
   const logSeq = useRef(0)
+  // Gedrosselte Spiegelung des Logs an etwaige OSC-Monitor-Fenster.
+  const monPub = useRef<{ last: number; t: ReturnType<typeof setTimeout> | null }>({
+    last: 0,
+    t: null
+  })
   // Learn: ID des Widgets, das die nächste eingehende OSC-Adresse übernimmt.
   const [learnId, setLearnId] = useState<string | null>(null)
   const learnRef = useRef<string | null>(null)
@@ -262,9 +268,27 @@ export function OscControl(): JSX.Element {
         )
       }
       setLog(logRef.current)
+      // gedrosselt (~150 ms) an etwaige Monitor-Fenster spiegeln
+      const p = monPub.current
+      const flush = (): void => {
+        p.last = Date.now()
+        p.t = null
+        void api.osc.publishMonitor(logRef.current)
+      }
+      const since = now - p.last
+      if (since >= 150) flush()
+      else if (!p.t) p.t = setTimeout(flush, 150 - since)
     },
     []
   )
+
+  // Anstehende Monitor-Spiegelung beim Schließen aufräumen.
+  useEffect(() => {
+    const p = monPub.current
+    return () => {
+      if (p.t) clearTimeout(p.t)
+    }
+  }, [])
 
   const send = useCallback<Send>(
     (msg) => {
@@ -942,6 +966,15 @@ export function OscControl(): JSX.Element {
       </PanelSection>
 
       <PanelSection id="monitor" title="OSC-Monitor" icon={Activity} defaultOpen={false}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          title="OSC-Monitor in einem eigenen Fenster öffnen (spiegelt dieses Log)"
+          onClick={() => void api.osc.openMonitor()}
+        >
+          <ExternalLink className="size-3.5" /> Eigenes Fenster
+        </Button>
         <Monitor
           log={log}
           onClear={() => {
