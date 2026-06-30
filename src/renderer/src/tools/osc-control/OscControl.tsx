@@ -21,7 +21,6 @@ import {
   Activity,
   Copy,
   ExternalLink,
-  LayoutGrid,
   Monitor as MonitorIcon,
   Pencil,
   Pipette,
@@ -498,6 +497,11 @@ export function OscControl(): JSX.Element {
     if (selectedId === id) setSelectedId(null)
   }
 
+  function duplicateWidgetSel(id: string): void {
+    const nid = useOscSurface.getState().duplicateWidget(id)
+    if (nid) setSelectedId(nid)
+  }
+
   function publishSnapshot(): void {
     const store = useOscSurface.getState()
     const cs = store.currentSet()
@@ -640,7 +644,13 @@ export function OscControl(): JSX.Element {
             )}
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          {/* deutliche Trennung Projekt <-> Sets */}
+          <div className="-mx-5 my-2 h-px bg-border" />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Set
+            </span>
             <div className="flex flex-wrap items-center gap-1">
               {sets.map((b) => (
                 <button
@@ -685,6 +695,17 @@ export function OscControl(): JSX.Element {
                 className="h-8 w-16"
               />
             </label>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Set löschen"
+              onClick={() => {
+                if (confirm(`Set „${set.name}“ wirklich löschen?`))
+                  useOscSurface.getState().deleteSet(set.id)
+              }}
+            >
+              <Trash2 className="size-4" />
+            </Button>
 
             <div className="flex-1" />
 
@@ -783,6 +804,7 @@ export function OscControl(): JSX.Element {
                     scale={scale}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
+                    onDuplicate={duplicateWidgetSel}
                     onRemove={removeWidget}
                     onSend={send}
                     onSendMany={sendMany}
@@ -799,8 +821,8 @@ export function OscControl(): JSX.Element {
             <>
               {widgets.length === 0 && (
                 <p className="mb-3 text-center text-sm text-muted-foreground">
-                  Leere Rasterfläche anklicken, um hier ein Widget einzufügen – oder rechts unter
-                  „Set &amp; Raster“.
+                  Leere Rasterfläche anklicken, um hier ein Widget einzufügen – oder „Widget
+                  hinzufügen“ rechts.
                 </p>
               )}
               <SurfaceGrid
@@ -809,6 +831,7 @@ export function OscControl(): JSX.Element {
                 live={live}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
+                onDuplicate={duplicateWidgetSel}
                 onRemove={removeWidget}
                 onSend={send}
                 onSendMany={sendMany}
@@ -878,21 +901,6 @@ export function OscControl(): JSX.Element {
             Beschriftung, Farbe und OSC-Adresse zu ändern. Größe per Eckgriff ziehen.
           </p>
         )}
-      </PanelSection>
-
-      {/* Set: Name + Spalten stehen jetzt im Header; hier nur noch Löschen. */}
-      <PanelSection id="set" title="Set" icon={LayoutGrid}>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={() => {
-            if (confirm(`Set „${set.name}“ wirklich löschen?`))
-              useOscSurface.getState().deleteSet(set.id)
-          }}
-        >
-          <Trash2 className="size-3.5" /> Set löschen
-        </Button>
       </PanelSection>
 
       <PanelSection
@@ -1060,6 +1068,7 @@ function WidgetTile({
   onSelect,
   onSend,
   onSendMany,
+  onDuplicate,
   onRemove
 }: {
   w: OscWidget
@@ -1071,6 +1080,7 @@ function WidgetTile({
   onSelect: () => void
   onSend: Send
   onSendMany: SendMany
+  onDuplicate: () => void
   onRemove: () => void
 }): JSX.Element {
   const tileRef = useRef<HTMLDivElement>(null)
@@ -1194,8 +1204,11 @@ function WidgetTile({
         <>
           <div
             data-no-drag
-            className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100"
           >
+            <TileBtn title="Duplizieren" onClick={onDuplicate}>
+              <Copy className="size-3.5" />
+            </TileBtn>
             <TileBtn title="Entfernen" onClick={onRemove}>
               <Trash2 className="size-3.5" />
             </TileBtn>
@@ -1326,6 +1339,7 @@ function SurfaceGrid({
   scale = 1,
   selectedId,
   onSelect,
+  onDuplicate,
   onRemove,
   onSend,
   onSendMany,
@@ -1337,6 +1351,7 @@ function SurfaceGrid({
   scale?: number
   selectedId: string | null
   onSelect: (id: string) => void
+  onDuplicate: (id: string) => void
   onRemove: (id: string) => void
   onSend: Send
   onSendMany: SendMany
@@ -1428,6 +1443,7 @@ function SurfaceGrid({
           onSelect={() => onSelect(w.id)}
           onSend={onSend}
           onSendMany={onSendMany}
+          onDuplicate={() => onDuplicate(w.id)}
           onRemove={() => onRemove(w.id)}
         />
       ))}
@@ -2420,6 +2436,15 @@ function WidgetEditor({
     w.type === 'button' || w.type === 'toggle' || (w.type === 'bank' && w.bankMode !== 'knob')
   return (
     <div className="space-y-2.5">
+      {/* Schnellaktionen oben: Duplizieren + Entfernen */}
+      <div className="flex gap-2 border-b border-border pb-2.5">
+        <Button variant="outline" size="sm" className="flex-1" onClick={onDuplicate}>
+          <Copy className="size-3.5" /> Duplizieren
+        </Button>
+        <Button variant="ghost" size="sm" className="flex-1 text-destructive" onClick={onRemove}>
+          <Trash2 className="size-3.5" /> Entfernen
+        </Button>
+      </div>
       {/* Name + Typ in einer Zeile -> kürzeres Panel */}
       <div className="grid grid-cols-2 gap-2">
         <Field label={w.type === 'label' ? 'Text' : 'Name'}>
@@ -2660,15 +2685,6 @@ function WidgetEditor({
             />
           ))}
         </div>
-      </div>
-
-      <div className="flex gap-2 border-t border-border pt-2.5">
-        <Button variant="outline" size="sm" className="flex-1" onClick={onDuplicate}>
-          <Copy className="size-3.5" /> Duplizieren
-        </Button>
-        <Button variant="ghost" size="sm" className="flex-1 text-destructive" onClick={onRemove}>
-          <Trash2 className="size-3.5" /> Entfernen
-        </Button>
       </div>
     </div>
   )
