@@ -54,8 +54,10 @@ export function CameraLens(): JSX.Element {
   const sensorDiag = sensorW != null && sensorH != null ? diag(sensorW, sensorH) : null
   const equiv =
     focalEff != null && sensorDiag != null && sensorDiag > 0 ? equiv35(focalEff, sensorDiag) : null
-  const aovH = sensorW != null && sensorW > 0 && focalEff != null ? angleOfView(sensorW, focalEff) : null
-  const aovV = sensorH != null && sensorH > 0 && focalEff != null ? angleOfView(sensorH, focalEff) : null
+  const aovH =
+    sensorW != null && sensorW > 0 && focalEff != null ? angleOfView(sensorW, focalEff) : null
+  const aovV =
+    sensorH != null && sensorH > 0 && focalEff != null ? angleOfView(sensorH, focalEff) : null
 
   const fovW =
     dist != null && dist > 0 && sensorW != null && focalEff != null
@@ -102,7 +104,12 @@ export function CameraLens(): JSX.Element {
             setSensorKey('custom')
           }}
         />
-        <NumField label="Brennweite (max. Zoom)" unit="mm" value={focalRaw} onChange={setFocalRaw} />
+        <NumField
+          label="Brennweite (max. Zoom)"
+          unit="mm"
+          value={focalRaw}
+          onChange={setFocalRaw}
+        />
         <SelectField label="Telekonverter" value={tcKey} onChange={setTcKey}>
           {TELECONV.map((t) => (
             <option key={t.key} value={t.key}>
@@ -139,9 +146,9 @@ export function CameraLens(): JSX.Element {
         />
         <FramingView fovH={fovH} person={person} sensorW={sensorW} sensorH={sensorH} />
         <p className="pt-1 text-xs text-muted-foreground">
-          Näherung (Lochkamera): Sichtfeld = Entfernung × Sensormaß ÷ Brennweite. Beispiel: 200 mm auf
-          Vollformat in 25 m → ~3 m hohes Sichtfeld, die ganze Person passt locker; mit 2×-Doppler
-          (400 mm) bleiben ~1,5 m → etwa ab der Hüfte aufwärts.
+          Näherung (Lochkamera): Sichtfeld = Entfernung × Sensormaß ÷ Brennweite. Beispiel: 200 mm
+          auf Vollformat in 25 m → ~3 m hohes Sichtfeld, die ganze Person passt locker; mit
+          2×-Doppler (400 mm) bleiben ~1,5 m → etwa ab der Hüfte aufwärts.
         </p>
       </SectionCard>
     </CalcPage>
@@ -211,8 +218,20 @@ function FramingView({
         height={torsoBot - torsoTop}
         rx={torsoW * 0.28}
       />
-      <rect x={cx - legGap / 2 - legW} y={torsoBot - 4} width={legW} height={feetY - torsoBot + 4} rx={legW * 0.4} />
-      <rect x={cx + legGap / 2} y={torsoBot - 4} width={legW} height={feetY - torsoBot + 4} rx={legW * 0.4} />
+      <rect
+        x={cx - legGap / 2 - legW}
+        y={torsoBot - 4}
+        width={legW}
+        height={feetY - torsoBot + 4}
+        rx={legW * 0.4}
+      />
+      <rect
+        x={cx + legGap / 2}
+        y={torsoBot - 4}
+        width={legW}
+        height={feetY - torsoBot + 4}
+        rx={legW * 0.4}
+      />
     </g>
   )
 
@@ -224,13 +243,30 @@ function FramingView({
             <rect x={fx} y={fy} width={frameW} height={frameH} />
           </clipPath>
         </defs>
-        <line x1={cx - 64} y1={feetY} x2={cx + 64} y2={feetY} stroke="currentColor" strokeOpacity={0.45} strokeWidth={1} />
+        <line
+          x1={cx - 64}
+          y1={feetY}
+          x2={cx + 64}
+          y2={feetY}
+          stroke="currentColor"
+          strokeOpacity={0.45}
+          strokeWidth={1}
+        />
         {/* ganze Person gedämpft */}
         {personShapes('currentColor', 0.22)}
         {/* im Rahmen sichtbarer Teil in Akzentfarbe */}
         <g clipPath="url(#camframe)">{personShapes('#ffce2c', 1)}</g>
         {/* Kamerarahmen */}
-        <rect x={fx} y={fy} width={frameW} height={frameH} fill="none" stroke="#ffce2c" strokeWidth={2} rx={3} />
+        <rect
+          x={fx}
+          y={fy}
+          width={frameW}
+          height={frameH}
+          fill="none"
+          stroke="#ffce2c"
+          strokeWidth={2}
+          rx={3}
+        />
       </svg>
     </div>
   )

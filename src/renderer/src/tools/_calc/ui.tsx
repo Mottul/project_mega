@@ -6,13 +6,14 @@
 import type { ReactNode } from 'react'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { toolPageClass } from '@renderer/lib/toolPage'
 
 export const selectClass =
   'h-9 w-full rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
 
 /** Zentrierte Rechner-Seite (in den Tool-Host eingebettet, scrollbar). */
 export function CalcPage({ children }: { children: ReactNode }): JSX.Element {
-  return <div className="mx-auto max-w-2xl space-y-5 p-6">{children}</div>
+  return <div className={toolPageClass('2xl')}>{children}</div>
 }
 
 export function SectionCard({
@@ -95,7 +96,11 @@ export function SelectField({
   return (
     <label className="flex items-center gap-3">
       <span className="w-44 shrink-0 text-sm text-muted-foreground">{label}</span>
-      <select className={`${selectClass} flex-1`} value={value} onChange={(e) => onChange(e.target.value)}>
+      <select
+        className={`${selectClass} flex-1`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
         {children}
       </select>
     </label>

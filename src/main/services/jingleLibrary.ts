@@ -11,7 +11,17 @@ import type { JingleImportResult } from '@shared/types'
 
 const SAFE_NAME_RE = /^[a-zA-Z0-9._-]+$/
 const AUDIO_EXT = new Set([
-  '.mp3', '.wav', '.m4a', '.aac', '.ogg', '.oga', '.opus', '.flac', '.weba', '.aif', '.aiff'
+  '.mp3',
+  '.wav',
+  '.m4a',
+  '.aac',
+  '.ogg',
+  '.oga',
+  '.opus',
+  '.flac',
+  '.weba',
+  '.aif',
+  '.aiff'
 ])
 
 export function jingleDir(): string {

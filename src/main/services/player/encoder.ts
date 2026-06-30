@@ -17,7 +17,11 @@ function hardwareCandidates(): EncoderInfo[] {
   const nvenc: EncoderInfo = { id: 'h264_nvenc', label: 'NVIDIA NVENC (GPU)', hardware: true }
   const qsv: EncoderInfo = { id: 'h264_qsv', label: 'Intel Quick Sync (GPU)', hardware: true }
   const amf: EncoderInfo = { id: 'h264_amf', label: 'AMD AMF (GPU)', hardware: true }
-  const vt: EncoderInfo = { id: 'h264_videotoolbox', label: 'Apple VideoToolbox (GPU)', hardware: true }
+  const vt: EncoderInfo = {
+    id: 'h264_videotoolbox',
+    label: 'Apple VideoToolbox (GPU)',
+    hardware: true
+  }
   if (process.platform === 'darwin') return [vt]
   if (process.platform === 'win32') return [nvenc, amf, qsv]
   return [nvenc, qsv] // linux (VAAPI bewusst weggelassen -> braucht Geräte-Setup)
@@ -40,7 +44,18 @@ export function encoderOutputArgs(encoder: string): string[] {
     case 'h264_qsv':
       return ['-c:v', 'h264_qsv', '-global_quality', '23']
     case 'h264_amf':
-      return ['-c:v', 'h264_amf', '-quality', 'balanced', '-rc', 'cqp', '-qp_i', '22', '-qp_p', '22']
+      return [
+        '-c:v',
+        'h264_amf',
+        '-quality',
+        'balanced',
+        '-rc',
+        'cqp',
+        '-qp_i',
+        '22',
+        '-qp_p',
+        '22'
+      ]
     case 'h264_videotoolbox':
       return ['-c:v', 'h264_videotoolbox', '-q:v', '55']
     default:
@@ -61,12 +76,17 @@ function testEncode(encoder: string): Promise<boolean> {
   const pf = encoderPixFmt(encoder)
   const args = [
     '-hide_banner',
-    '-f', 'lavfi',
-    '-i', 'color=c=black:s=256x256:r=1',
-    '-frames:v', '1',
-    '-vf', `format=${pf}`,
+    '-f',
+    'lavfi',
+    '-i',
+    'color=c=black:s=256x256:r=1',
+    '-frames:v',
+    '1',
+    '-vf',
+    `format=${pf}`,
     ...encoderOutputArgs(encoder),
-    '-f', 'null',
+    '-f',
+    'null',
     '-'
   ]
   return runOk(args)
@@ -116,7 +136,12 @@ export async function detectEncoders(force = false): Promise<PlayerEncoderStatus
 
   const recommended = available[0]?.id ?? CPU_ENCODER.id
   cached = { ffmpegFound: true, version, available, recommended }
-  logLine('[player] Encoder verfügbar:', available.map((e) => e.id).join(', '), '-> empfohlen', recommended)
+  logLine(
+    '[player] Encoder verfügbar:',
+    available.map((e) => e.id).join(', '),
+    '-> empfohlen',
+    recommended
+  )
   return cached
 }
 
@@ -163,7 +188,8 @@ export function buildFitFilter(
   const strength = Math.max(0, Math.min(100, blur?.strength ?? 50))
   const radius = Math.max(1, Math.min(Math.round(minWH / 8), Math.round((minWH * strength) / 2000)))
   const dim = Math.max(0, Math.min(100, blur?.darken ?? 0)) / 100
-  const dimChain = dim > 0 ? `,drawbox=x=0:y=0:w=${W}:h=${H}:color=black@${dim.toFixed(3)}:t=fill` : ''
+  const dimChain =
+    dim > 0 ? `,drawbox=x=0:y=0:w=${W}:h=${H}:color=black@${dim.toFixed(3)}:t=fill` : ''
   return (
     `split=2[bg][fg];` +
     `[bg]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=${radius}:1${dimChain}[bgb];` +
@@ -195,12 +221,16 @@ export function buildVideoArgs(opts: {
   const audio = opts.hasAudio ? [...af, '-c:a', 'aac', '-b:a', '192k'] : ['-an']
   return [
     '-hide_banner',
-    '-i', opts.input,
-    '-vf', vf,
+    '-i',
+    opts.input,
+    '-vf',
+    vf,
     ...encoderOutputArgs(opts.encoder),
     ...audio,
-    '-movflags', '+faststart',
-    '-progress', 'pipe:1',
+    '-movflags',
+    '+faststart',
+    '-progress',
+    'pipe:1',
     '-nostats',
     '-y',
     opts.output
@@ -208,14 +238,21 @@ export function buildVideoArgs(opts: {
 }
 
 /** ffmpeg-Argumente: schon passendes Video nur in den Container kopieren (kein Re-Encode). */
-export function buildCopyArgs(opts: { input: string; output: string; hasAudio: boolean }): string[] {
+export function buildCopyArgs(opts: {
+  input: string
+  output: string
+  hasAudio: boolean
+}): string[] {
   const args = ['-hide_banner', '-i', opts.input, '-map', '0:v:0']
   if (opts.hasAudio) args.push('-map', '0:a:0?', '-c:a', 'copy')
   else args.push('-an')
   args.push(
-    '-c:v', 'copy',
-    '-movflags', '+faststart',
-    '-progress', 'pipe:1',
+    '-c:v',
+    'copy',
+    '-movflags',
+    '+faststart',
+    '-progress',
+    'pipe:1',
     '-nostats',
     '-y',
     opts.output
@@ -235,10 +272,14 @@ export function buildImageArgs(opts: {
   const vf = buildFitFilter(opts.fit, opts.width, opts.height, null, opts.blur)
   return [
     '-hide_banner',
-    '-i', opts.input,
-    '-vf', vf,
-    '-frames:v', '1',
-    '-q:v', '2',
+    '-i',
+    opts.input,
+    '-vf',
+    vf,
+    '-frames:v',
+    '1',
+    '-q:v',
+    '2',
     '-y',
     opts.output
   ]
@@ -255,10 +296,14 @@ export function buildThumbArgs(opts: {
   return [
     '-hide_banner',
     ...seek,
-    '-i', opts.input,
-    '-frames:v', '1',
-    '-vf', 'scale=480:-2',
-    '-q:v', '3',
+    '-i',
+    opts.input,
+    '-frames:v',
+    '1',
+    '-vf',
+    'scale=480:-2',
+    '-q:v',
+    '3',
     '-y',
     opts.output
   ]

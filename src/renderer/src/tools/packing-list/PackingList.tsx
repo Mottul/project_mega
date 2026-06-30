@@ -10,6 +10,7 @@ import { Input } from '@renderer/components/ui/input'
 import { deriveFromLedWall } from './derive'
 import { exportPackingPdf } from './print'
 import { usePacking, type PackItem } from './store'
+import { toolPageClass } from '@renderer/lib/toolPage'
 
 export function PackingList(): JSX.Element {
   const s = usePacking()
@@ -30,7 +31,7 @@ export function PackingList(): JSX.Element {
   const openCount = s.items.filter((i) => !i.checked).length
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-6">
+    <div className={toolPageClass('full')}>
       <Card className="flex flex-wrap items-center gap-2 p-4">
         <Input
           className="h-9 max-w-xs flex-1"
@@ -51,7 +52,7 @@ export function PackingList(): JSX.Element {
         </Button>
       </Card>
 
-      <div className="space-y-4">
+      <div className="grid items-start gap-4 xl:grid-cols-2">
         {groups.map(([cat, items]) => (
           <Card key={cat} className="overflow-hidden">
             <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-3 py-2">
@@ -96,7 +97,12 @@ export function PackingList(): JSX.Element {
         </Button>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground">{openCount} offen</span>
-        <Button variant="ghost" size="sm" disabled={s.items.every((i) => !i.checked)} onClick={() => s.clearChecked()}>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={s.items.every((i) => !i.checked)}
+          onClick={() => s.clearChecked()}
+        >
           <Check className="size-4" /> Abgehakte entfernen
         </Button>
         <Button variant="ghost" size="sm" disabled={s.items.length === 0} onClick={() => s.reset()}>
@@ -200,7 +206,9 @@ function Row({ item, categories }: { item: PackItem; categories: string[] }): JS
               {c}
             </option>
           ))}
-          {!categories.includes(item.category) && <option value={item.category}>{item.category}</option>}
+          {!categories.includes(item.category) && (
+            <option value={item.category}>{item.category}</option>
+          )}
         </select>
         <Input
           value={item.note}

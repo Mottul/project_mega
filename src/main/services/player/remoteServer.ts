@@ -76,7 +76,11 @@ function receiveUpload(req: IncomingMessage, res: ServerResponse): void {
     fname = rawName || 'upload'
   }
   // Pfadanteile/heikle Zeichen entfernen
-  fname = fname.replace(/[/\\]/g, '_').replace(/[^\w.\- ]+/g, '_').slice(0, 120) || 'upload'
+  fname =
+    fname
+      .replace(/[/\\]/g, '_')
+      .replace(/[^\w.\- ]+/g, '_')
+      .slice(0, 120) || 'upload'
   const ext = extname(fname).toLowerCase()
   if (!ALLOWED_MEDIA_EXT.has(ext)) {
     res.writeHead(415, { 'Content-Type': 'application/json' })
@@ -100,7 +104,10 @@ function receiveUpload(req: IncomingMessage, res: ServerResponse): void {
       })
       sendJsonRaw(res, '{"ok":true}')
     } catch (e) {
-      logLine('[remote] Upload-Konvertierung fehlgeschlagen:', e instanceof Error ? e.message : String(e))
+      logLine(
+        '[remote] Upload-Konvertierung fehlgeschlagen:',
+        e instanceof Error ? e.message : String(e)
+      )
       res.writeHead(500, { 'Content-Type': 'application/json' })
       res.end('{"ok":false}')
     }

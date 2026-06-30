@@ -103,7 +103,10 @@ export function resolveManualFile(relative: string): string | null {
 }
 
 /** Importiert PDFs in die verwaltete Bibliothek (Dedup per SHA-256, Text-Index). */
-export async function importManuals(paths: string[], onProgress: ProgressCb): Promise<ImportSummary> {
+export async function importManuals(
+  paths: string[],
+  onProgress: ProgressCb
+): Promise<ImportSummary> {
   const db = getDb()
   const files = collectPdfs(paths)
   const summary: ImportSummary = { imported: 0, skipped: 0, failed: [] }
@@ -202,9 +205,7 @@ export function listManuals(query?: string): ManualMeta[] {
   const db = getDb()
   const q = (query ?? '').trim()
   if (!q) {
-    const rows = db
-      .prepare('SELECT * FROM manuals ORDER BY added_at DESC')
-      .all() as ManualRow[]
+    const rows = db.prepare('SELECT * FROM manuals ORDER BY added_at DESC').all() as ManualRow[]
     return rows.map(rowToMeta)
   }
   const like = `%${q}%`
@@ -246,7 +247,10 @@ export function searchManuals(query: string): ManualSearchHit[] {
 }
 
 /** Volltextsuche INNERHALB eines Manuals (nutzt den vorhandenen FTS-Index). */
-export function searchInManual(manualId: number, query: string): { pageNo: number; snippet: string }[] {
+export function searchInManual(
+  manualId: number,
+  query: string
+): { pageNo: number; snippet: string }[] {
   const match = toMatchQuery(query)
   if (!match) return []
   const db = getDb()

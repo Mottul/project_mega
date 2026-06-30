@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Loader2, MonitorSmartphone } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
+import { AccentPicker } from '@renderer/components/AccentPicker'
 import { api } from '@renderer/lib/api'
 import { findTool } from '@renderer/tools/registry'
 import { KioskContext } from './kiosk'
@@ -57,7 +58,11 @@ export function ToolHost(): JSX.Element {
         )}
         <Icon className="size-5 text-primary" />
         <h1 className="font-semibold">{tool.name}</h1>
-        {kiosk && <span className="text-xs text-muted-foreground">Kundenansicht · Strg+Shift+K zum Verlassen</span>}
+        {kiosk && (
+          <span className="text-xs text-muted-foreground">
+            Kundenansicht · Strg+Shift+K zum Verlassen
+          </span>
+        )}
         <div className="flex-1" />
         {!kiosk && (
           <>
@@ -77,6 +82,7 @@ export function ToolHost(): JSX.Element {
             >
               <MonitorSmartphone className="size-4" />
             </Button>
+            <AccentPicker />
             <ThemeToggle />
           </>
         )}

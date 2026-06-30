@@ -8,7 +8,7 @@ export const oscControlTool: ToolModule = {
   description:
     'Frei belegbares Steuerpult (Fader/Taster/XY/Farbe), das OSC an MadMapper & Co. sendet – mit Feedback-Monitor.',
   icon: SlidersHorizontal,
-  category: 'media',
+  category: 'control',
   keywords: [
     'osc',
     'madmapper',

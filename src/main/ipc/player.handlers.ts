@@ -61,7 +61,9 @@ export function registerPlayerHandlers(): void {
 
   // Bibliothek & Konvertierung
   ipcMain.handle(Channels.playerEncoders, () => detectEncoders())
-  ipcMain.handle(Channels.playerImport, (_e, req: PlayerImportRequest) => convertManager.enqueue(req))
+  ipcMain.handle(Channels.playerImport, (_e, req: PlayerImportRequest) =>
+    convertManager.enqueue(req)
+  )
   ipcMain.handle(Channels.playerConvertList, () => convertManager.list())
   ipcMain.handle(Channels.playerConvertCancel, (_e, id: string) => convertManager.cancel(id))
   ipcMain.handle(Channels.playerConvertClear, () => convertManager.clearFinished())
@@ -83,7 +85,20 @@ export function registerPlayerHandlers(): void {
       filters: [
         {
           name: 'Bilder & Videos',
-          extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v']
+          extensions: [
+            'jpg',
+            'jpeg',
+            'png',
+            'webp',
+            'bmp',
+            'gif',
+            'mp4',
+            'mov',
+            'mkv',
+            'webm',
+            'avi',
+            'm4v'
+          ]
         }
       ]
     })
@@ -110,7 +125,12 @@ export function registerPlayerHandlers(): void {
   ipcMain.handle(Channels.playerMediaDir, () => mediaDir())
   ipcMain.handle(
     Channels.playerReconvert,
-    (_e, mediaIds: string[], wall: { width: number; height: number }, fit?: 'blur' | 'bars' | 'stretch') => {
+    (
+      _e,
+      mediaIds: string[],
+      wall: { width: number; height: number },
+      fit?: 'blur' | 'bars' | 'stretch'
+    ) => {
       const items: {
         sourcePath: string
         title: string
@@ -156,7 +176,9 @@ export function registerPlayerHandlers(): void {
   ipcMain.handle(Channels.playerRemoteStatus, () => getRemoteStatus())
   ipcMain.handle(Channels.playerRemoteStart, async (_e, port: number) => {
     const status = await startRemote(port)
-    setSettings({ player: { ...getSettings().player, remoteEnabled: true, remotePort: status.port } })
+    setSettings({
+      player: { ...getSettings().player, remoteEnabled: true, remotePort: status.port }
+    })
     broadcast(Channels.playerRemoteChanged, status)
     return status
   })

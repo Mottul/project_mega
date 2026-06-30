@@ -79,12 +79,21 @@ export function Rigging(): JSX.Element {
       >
         <NumField label="Last" unit="kg" value={bLoadRaw} onChange={setBLoadRaw} />
         <NumField label="Höhe (vertikal)" unit="m" value={heightRaw} onChange={setHeightRaw} />
-        <NumField label="Abstand der Anschlagpunkte" unit="m" value={widthRaw} onChange={setWidthRaw} />
+        <NumField
+          label="Abstand der Anschlagpunkte"
+          unit="m"
+          value={widthRaw}
+          onChange={setWidthRaw}
+        />
         <div className="grid gap-2 sm:grid-cols-2">
           <Readout label="Kraft je Strang" value={fmt(legForce, 1)} unit="kg" big accent />
           <Readout label="Kraft je Strang" value={kn(legForce)} unit="kN" />
           <Readout label="Winkel zur Vertikalen" value={fmt(betaDeg, 1)} unit="°" />
-          <Readout label="Spreizwinkel gesamt" value={fmt(betaDeg != null ? betaDeg * 2 : null, 1)} unit="°" />
+          <Readout
+            label="Spreizwinkel gesamt"
+            value={fmt(betaDeg != null ? betaDeg * 2 : null, 1)}
+            unit="°"
+          />
           <Readout label="Lastfaktor (1/cos β)" value={fmt(factor, 2)} unit="×" />
           <Readout label="Stranglänge" value={fmt(legLen, 2)} unit="m" />
         </div>
@@ -96,8 +105,8 @@ export function Rigging(): JSX.Element {
         )}
         {level === 'rot' && (
           <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
-            ⚠ Winkel ≥ 60° zur Vertikalen – Strangkraft ≥ doppelte halbe Last (Faktor ≥ 2). So
-            nicht anschlagen!
+            ⚠ Winkel ≥ 60° zur Vertikalen – Strangkraft ≥ doppelte halbe Last (Faktor ≥ 2). So nicht
+            anschlagen!
           </p>
         )}
         <p className="pt-1 text-xs text-muted-foreground">

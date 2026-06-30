@@ -8,7 +8,13 @@ import type { JingleRemoteCommand, JingleRemoteSnapshot } from '@shared/types'
 import { createSnapshotServer } from './remoteHttp'
 import { JINGLE_MOBILE_PAGE } from './jingleRemotePage'
 
-const EMPTY: JingleRemoteSnapshot = { connected: false, bankName: '', columns: 4, pads: [], playing: [] }
+const EMPTY: JingleRemoteSnapshot = {
+  connected: false,
+  bankName: '',
+  columns: 4,
+  pads: [],
+  playing: []
+}
 
 /** Eingehende Befehle prüfen: nur Trigger/Stopp-Alle durchlassen. */
 function parseCommand(body: string): JingleRemoteCommand | null {

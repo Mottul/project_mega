@@ -25,10 +25,14 @@ export function registerNovastarHandlers(): void {
     setNovastarStatusSink((s) => broadcast(Channels.novastarStatusChanged, s))
   }
 
-  ipcMain.handle(Channels.novastarConnect, (_e, host: string, port: number) => novastarConnect(host, port))
+  ipcMain.handle(Channels.novastarConnect, (_e, host: string, port: number) =>
+    novastarConnect(host, port)
+  )
   ipcMain.handle(Channels.novastarDisconnect, () => novastarDisconnect())
   ipcMain.handle(Channels.novastarStatus, () => getNovastarStatus())
-  ipcMain.handle(Channels.novastarBrightness, (_e, pct: number) => novastarSend(brightnessPacket(pct)))
+  ipcMain.handle(Channels.novastarBrightness, (_e, pct: number) =>
+    novastarSend(brightnessPacket(pct))
+  )
   ipcMain.handle(Channels.novastarBlackout, (_e, on: boolean) => novastarSend(blackoutPacket(on)))
   ipcMain.handle(Channels.novastarFreeze, (_e, on: boolean) => novastarSend(freezePacket(on)))
   ipcMain.handle(Channels.novastarPreset, (_e, n: number) => novastarSend(presetPacket(n)))

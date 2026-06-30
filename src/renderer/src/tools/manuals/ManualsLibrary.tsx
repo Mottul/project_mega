@@ -20,12 +20,7 @@ import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
-import type {
-  ImportProgress,
-  ImportSummary,
-  ManualMeta,
-  ManualSearchHit
-} from '@shared/types'
+import type { ImportProgress, ImportSummary, ManualMeta, ManualSearchHit } from '@shared/types'
 import { PdfViewer } from './PdfViewer'
 
 interface ViewerState {
@@ -293,7 +288,12 @@ export function ManualsLibrary(): JSX.Element {
           <header className="flex items-center gap-3 border-b border-border px-4 py-2">
             <FileText className="size-4 text-primary" />
             <h2 className="flex-1 truncate font-medium">{viewer.title}</h2>
-            <Button variant="ghost" size="icon" onClick={() => setViewer(null)} aria-label="Schließen">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewer(null)}
+              aria-label="Schließen"
+            >
               <X className="size-4" />
             </Button>
           </header>

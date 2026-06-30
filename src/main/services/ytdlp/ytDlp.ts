@@ -185,7 +185,10 @@ class YtManager {
       const found = locateBinary()
       const req = this.params.get(job.id)!
       if (!found) {
-        this.update(job, { status: 'error', error: 'yt-dlp nicht gefunden – zuerst herunterladen.' })
+        this.update(job, {
+          status: 'error',
+          error: 'yt-dlp nicht gefunden – zuerst herunterladen.'
+        })
         resolve()
         return
       }

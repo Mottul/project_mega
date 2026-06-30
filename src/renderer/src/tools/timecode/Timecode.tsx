@@ -73,7 +73,9 @@ export function Timecode(): JSX.Element {
   const pB = parseTc(tcB, rate)
   const diffFrames = pA && pB ? tcToFrames(pB, rate) - tcToFrames(pA, rate) : null
   const diffTc =
-    diffFrames != null ? (diffFrames < 0 ? '−' : '') + formatTc(framesToTc(Math.abs(diffFrames), rate), rate) : ''
+    diffFrames != null
+      ? (diffFrames < 0 ? '−' : '') + formatTc(framesToTc(Math.abs(diffFrames), rate), rate)
+      : ''
 
   return (
     <CalcPage>
@@ -91,7 +93,11 @@ export function Timecode(): JSX.Element {
         <NumField label="Timecode" placeholder="hh:mm:ss:ff" {...bind('tc')} />
         <NumField label="Frames (gesamt)" {...bind('frames')} />
         <NumField label="Echtzeit" unit="s" {...bind('real')} />
-        <Readout label="Echtzeit (hh:mm:ss.ms)" value={frames != null ? formatRealtime(framesToSeconds(frames, rate)) : ''} accent />
+        <Readout
+          label="Echtzeit (hh:mm:ss.ms)"
+          value={frames != null ? formatRealtime(framesToSeconds(frames, rate)) : ''}
+          accent
+        />
         {driver === 'tc' && raw.trim() !== '' && frames == null && (
           <p className="text-xs text-destructive">
             Ungültiger Timecode – Format hh:mm:ss:ff, Frames &lt; {rate.nominal}.
@@ -105,9 +111,17 @@ export function Timecode(): JSX.Element {
         )}
       </SectionCard>
 
-      <SectionCard title="Dauer zwischen zwei Timecodes" desc="z.B. Clip-Länge aus In- und Out-Punkt (B − A).">
+      <SectionCard
+        title="Dauer zwischen zwei Timecodes"
+        desc="z.B. Clip-Länge aus In- und Out-Punkt (B − A)."
+      >
         <NumField label="Timecode A (In)" placeholder="hh:mm:ss:ff" value={tcA} onChange={setTcA} />
-        <NumField label="Timecode B (Out)" placeholder="hh:mm:ss:ff" value={tcB} onChange={setTcB} />
+        <NumField
+          label="Timecode B (Out)"
+          placeholder="hh:mm:ss:ff"
+          value={tcB}
+          onChange={setTcB}
+        />
         <div className="grid gap-2 sm:grid-cols-2">
           <Readout label="Dauer (Timecode)" value={diffTc} big accent />
           <Readout label="Frames" value={diffFrames != null ? fmt(diffFrames, 0) : ''} />

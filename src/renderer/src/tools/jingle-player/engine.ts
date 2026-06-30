@@ -86,35 +86,38 @@ export function useJingleEngine({ pads, outputDeviceId, soloMode }: EngineArgs):
   )
 
   // Pad -> Audio-Element (lädt bei Bedarf, hält das Element je storedName aktuell).
-  const ensure = useCallback((pad: Pad): AudioEntry | null => {
-    if (!pad.storedName) return null
-    let e = entries.current.get(pad.id)
-    if (e && e.storedName !== pad.storedName) {
-      e.el.pause()
-      entries.current.delete(pad.id)
-      e = undefined
-    }
-    if (!e) {
-      const el = new Audio(`${JINGLE_PROTOCOL}://library/${pad.storedName}`)
-      el.preload = 'auto'
-      setSink(el, sinkRef.current)
-      const entry: AudioEntry = { el, storedName: pad.storedName, fade: null }
-      const padId = pad.id // stabil; aktuellen Pad-Zustand stets über padsRef lesen
-      el.addEventListener('ended', () => {
-        const cur = padsRef.current.find((p) => p.id === padId)
-        // Region-Loop (Ausschnitt) per Hand; Vollfile-Loop läuft nativ (el.loop).
-        if (cur && cur.loop && (cur.startSec > 0 || cur.endSec != null)) regionEnd(padId)
-        else if (!el.loop) markPlaying(padId, false)
-      })
-      el.addEventListener('timeupdate', () => {
-        const cur = padsRef.current.find((p) => p.id === padId)
-        if (cur && cur.endSec != null && el.currentTime >= cur.endSec) regionEnd(padId)
-      })
-      entries.current.set(pad.id, entry)
-      e = entry
-    }
-    return e
-  }, [markPlaying, regionEnd])
+  const ensure = useCallback(
+    (pad: Pad): AudioEntry | null => {
+      if (!pad.storedName) return null
+      let e = entries.current.get(pad.id)
+      if (e && e.storedName !== pad.storedName) {
+        e.el.pause()
+        entries.current.delete(pad.id)
+        e = undefined
+      }
+      if (!e) {
+        const el = new Audio(`${JINGLE_PROTOCOL}://library/${pad.storedName}`)
+        el.preload = 'auto'
+        setSink(el, sinkRef.current)
+        const entry: AudioEntry = { el, storedName: pad.storedName, fade: null }
+        const padId = pad.id // stabil; aktuellen Pad-Zustand stets über padsRef lesen
+        el.addEventListener('ended', () => {
+          const cur = padsRef.current.find((p) => p.id === padId)
+          // Region-Loop (Ausschnitt) per Hand; Vollfile-Loop läuft nativ (el.loop).
+          if (cur && cur.loop && (cur.startSec > 0 || cur.endSec != null)) regionEnd(padId)
+          else if (!el.loop) markPlaying(padId, false)
+        })
+        el.addEventListener('timeupdate', () => {
+          const cur = padsRef.current.find((p) => p.id === padId)
+          if (cur && cur.endSec != null && el.currentTime >= cur.endSec) regionEnd(padId)
+        })
+        entries.current.set(pad.id, entry)
+        e = entry
+      }
+      return e
+    },
+    [markPlaying, regionEnd]
+  )
 
   const stop = useCallback(
     (padId: string): void => {
@@ -174,7 +177,10 @@ export function useJingleEngine({ pads, outputDeviceId, soloMode }: EngineArgs):
       e.el.loop = pad.loop && !hasRegion // bei Ausschnitt looped regionEnd von Hand
       e.el.volume = pad.volume
       e.el.currentTime = Math.max(0, pad.startSec || 0)
-      void e.el.play().then(() => markPlaying(padId, true)).catch(() => {})
+      void e.el
+        .play()
+        .then(() => markPlaying(padId, true))
+        .catch(() => {})
     },
     [ensure, stop, markPlaying]
   )
@@ -210,7 +216,8 @@ export function useJingleEngine({ pads, outputDeviceId, soloMode }: EngineArgs):
           const pad = padsRef.current.find((p) => p.id === id)
           const start = pad?.startSec || 0
           const end = pad?.endSec ?? e.el.duration
-          next[id] = end > start ? Math.min(1, Math.max(0, (e.el.currentTime - start) / (end - start))) : 0
+          next[id] =
+            end > start ? Math.min(1, Math.max(0, (e.el.currentTime - start) / (end - start))) : 0
         }
         setProgress(next)
       }

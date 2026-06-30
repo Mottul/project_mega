@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, SectionCard, SelectField, fmt, parseNum, trimNum } from '../_calc/ui'
+import {
+  CalcPage,
+  NumField,
+  Readout,
+  SectionCard,
+  SelectField,
+  fmt,
+  parseNum,
+  trimNum
+} from '../_calc/ui'
 
 // Stromlast & Absicherung. Einphasig: P = U·I·cosφ. Dreiphasig: P = √3·U·I·cosφ.
 // Unten: wie viele gleiche Geräte passen auf einen Stromkreis (mit Reserve)?
@@ -79,7 +88,10 @@ export function PowerLoad(): JSX.Element {
 
   return (
     <CalcPage>
-      <SectionCard title="Last" desc="Leistung und Strom umrechnen – ein Feld eingeben, das andere folgt.">
+      <SectionCard
+        title="Last"
+        desc="Leistung und Strom umrechnen – ein Feld eingeben, das andere folgt."
+      >
         <SelectField label="Anschluss" value={phase} onChange={(v) => switchPhase(v as '1' | '3')}>
           <option value="1">Einphasig (~230 V)</option>
           <option value="3">Dreiphasig (~400 V)</option>
@@ -108,7 +120,12 @@ export function PowerLoad(): JSX.Element {
         </SelectField>
         <div className="grid gap-2 sm:grid-cols-2">
           <Readout label="Strom je Gerät" value={fmt(iDev)} unit="A" />
-          <Readout label="max. Geräte" value={maxDevices != null ? String(maxDevices) : ''} big accent />
+          <Readout
+            label="max. Geräte"
+            value={maxDevices != null ? String(maxDevices) : ''}
+            big
+            accent
+          />
           <Readout label="Summe Leistung" value={fmt(sumP, 0)} unit="W" />
           <Readout label="Summe Strom" value={fmt(sumI)} unit="A" />
         </div>

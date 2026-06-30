@@ -5,9 +5,10 @@ import type { ToolModule } from '../types'
 export const jinglePlayerTool: ToolModule = {
   id: 'jingle-player',
   name: 'Jingle-Player',
-  description: 'Kurze Audios auf belegbaren Pads (Auftrittsmusik/Stinger) – Hotkeys, Ausgabegerät, Fade.',
+  description:
+    'Kurze Audios auf belegbaren Pads (Auftrittsmusik/Stinger) – Hotkeys, Ausgabegerät, Fade.',
   icon: Music,
-  category: 'media',
+  category: 'playback',
   keywords: [
     'jingle',
     'soundboard',

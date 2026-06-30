@@ -27,12 +27,24 @@ import type {
 } from '@shared/types'
 
 const VIDEO_EXTENSIONS = [
-  'mov', 'mp4', 'mxf', 'avi', 'mkv', 'm4v', 'mpg', 'mpeg', 'wmv', 'mts', 'm2ts', 'ts', 'webm'
+  'mov',
+  'mp4',
+  'mxf',
+  'avi',
+  'mkv',
+  'm4v',
+  'mpg',
+  'mpeg',
+  'wmv',
+  'mts',
+  'm2ts',
+  'ts',
+  'webm'
 ]
 
 // Sinnvolle Parallel-Stufen bis zur Kernzahl (ein einzelner HAP-Encode lastet die
 // CPU nicht voll aus -> mehrere gleichzeitig nutzen die Kerne besser).
-const CORES = Math.max(1, Math.min(8, (globalThis.navigator?.hardwareConcurrency ?? 4)))
+const CORES = Math.max(1, Math.min(8, globalThis.navigator?.hardwareConcurrency ?? 4))
 const CONCURRENCY_OPTIONS = [...new Set([1, 2, 4, 6, CORES])]
   .filter((n) => n >= 1 && n <= 8)
   .sort((a, b) => a - b)
@@ -106,8 +118,12 @@ export function HapConverter(): JSX.Element {
   const settledCount = jobList.filter(
     (j) => j.status === 'done' || j.status === 'error' || j.status === 'canceled'
   ).length
-  const activeCount = jobList.filter((j) => j.status === 'running' || j.status === 'queued' || j.status === 'probing').length
-  const hasFinished = jobList.some((j) => j.status === 'done' || j.status === 'error' || j.status === 'canceled')
+  const activeCount = jobList.filter(
+    (j) => j.status === 'running' || j.status === 'queued' || j.status === 'probing'
+  ).length
+  const hasFinished = jobList.some(
+    (j) => j.status === 'done' || j.status === 'error' || j.status === 'canceled'
+  )
 
   async function addFiles(): Promise<void> {
     const paths = await api.selectPaths({
@@ -266,7 +282,9 @@ export function HapConverter(): JSX.Element {
             <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
               <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400" />
               <div className="text-sm">
-                <p className="font-medium text-amber-300 light:text-amber-700">HAP-Encoder nicht verfügbar</p>
+                <p className="font-medium text-amber-300 light:text-amber-700">
+                  HAP-Encoder nicht verfügbar
+                </p>
                 <p className="mt-1 text-muted-foreground">
                   {check?.ffmpegFound
                     ? 'Das gebündelte ffmpeg kennt den HAP-Encoder nicht (libsnappy fehlt). Bitte ein HAP-fähiges ffmpeg über das Download-Skript bereitstellen.'
@@ -358,7 +376,10 @@ export function HapConverter(): JSX.Element {
             </div>
 
             {jobList.length > 0 && (
-              <Progress value={jobList.length ? settledCount / jobList.length : 0} className="mb-4" />
+              <Progress
+                value={jobList.length ? settledCount / jobList.length : 0}
+                className="mb-4"
+              />
             )}
 
             {jobList.length === 0 ? (
@@ -419,11 +440,7 @@ function JobRow({ job }: { job: HapJob }): JSX.Element {
         )}
       </div>
       {(job.status === 'running' || job.status === 'probing') && (
-        <Progress
-          value={job.progress}
-          indeterminate={job.status === 'probing'}
-          className="mt-2"
-        />
+        <Progress value={job.progress} indeterminate={job.status === 'probing'} className="mt-2" />
       )}
       {job.status === 'error' && job.error && (
         <p className="mt-2 text-xs text-red-400">{job.error}</p>

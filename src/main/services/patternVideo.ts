@@ -21,7 +21,8 @@ function runFfmpeg(
         const [key, value] = line.split('=')
         if (key === 'out_time_us') {
           const us = Number(value)
-          if (Number.isFinite(us)) onProgress(Math.min(0.99, Math.max(0, us / 1_000_000 / totalSec)))
+          if (Number.isFinite(us))
+            onProgress(Math.min(0.99, Math.max(0, us / 1_000_000 / totalSec)))
         }
       }
     })
@@ -31,7 +32,10 @@ function runFfmpeg(
     proc.on('error', reject)
     proc.on('close', (code) => {
       if (code === 0) resolve()
-      else reject(new Error(`ffmpeg beendet mit Code ${code}. ${stderrTail.trim().split('\n').pop() ?? ''}`))
+      else
+        reject(
+          new Error(`ffmpeg beendet mit Code ${code}. ${stderrTail.trim().split('\n').pop() ?? ''}`)
+        )
     })
   })
 }
@@ -56,12 +60,17 @@ export async function exportPatternVideo(
 
   const args = [
     '-hide_banner',
-    '-loop', '1',
-    '-i', pngPath,
-    '-t', String(dur),
-    '-r', String(fps),
+    '-loop',
+    '1',
+    '-i',
+    pngPath,
+    '-t',
+    String(dur),
+    '-r',
+    String(fps),
     ...codec,
-    '-progress', 'pipe:1',
+    '-progress',
+    'pipe:1',
     '-nostats',
     '-y',
     outputPath
@@ -110,11 +119,15 @@ export function exportColorLoop(
   const args = [
     '-hide_banner',
     ...inputs,
-    '-filter_complex', chain,
-    '-map', '[v]',
+    '-filter_complex',
+    chain,
+    '-map',
+    '[v]',
     ...codec,
-    '-r', String(fps),
-    '-progress', 'pipe:1',
+    '-r',
+    String(fps),
+    '-progress',
+    'pipe:1',
     '-nostats',
     '-y',
     outputPath

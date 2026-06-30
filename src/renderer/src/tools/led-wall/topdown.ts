@@ -75,8 +75,14 @@ export function topDownMarkup(angles: number[], opts: TopDownOptions = {}): stri
     const isCurved = Math.abs(s.angle) > 0
     const d =
       `M ${esc(s.frontPts[0].x)} ${esc(s.frontPts[0].y)}` +
-      s.frontPts.slice(1).map((p) => ` L ${esc(p.x)} ${esc(p.y)}`).join('') +
-      [...s.backPts].reverse().map((p) => ` L ${esc(p.x)} ${esc(p.y)}`).join('') +
+      s.frontPts
+        .slice(1)
+        .map((p) => ` L ${esc(p.x)} ${esc(p.y)}`)
+        .join('') +
+      [...s.backPts]
+        .reverse()
+        .map((p) => ` L ${esc(p.x)} ${esc(p.y)}`)
+        .join('') +
       ' Z'
     parts.push(
       `<path d="${d}" fill="${isCurved ? 'rgba(234,179,8,0.16)' : 'rgba(20,184,166,0.12)'}" stroke="${isCurved ? GOLD : TEAL}" stroke-width="${esc(sw)}" stroke-linejoin="round"/>`

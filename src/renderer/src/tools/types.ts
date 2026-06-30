@@ -14,8 +14,10 @@ export interface ToolModule {
 }
 
 export const CATEGORY_LABELS: Record<ToolCategoryId, string> = {
-  media: 'Medien',
-  database: 'Datenbank',
-  calc: 'Rechner',
-  utility: 'Werkzeuge'
+  playback: 'Wiedergabe & Show',
+  control: 'Steuerung',
+  visual: 'Bild & Projektion',
+  media: 'Medien & Bibliothek',
+  rigging: 'Strom, Rigging & Aufbau',
+  calc: 'Rechner'
 }

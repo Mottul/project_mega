@@ -1,7 +1,7 @@
 // Gemeinsame Domain-Typen fuer main, preload und renderer.
 // Single source of truth -- nur hier werden Datenstrukturen definiert.
 
-export type ToolCategoryId = 'media' | 'calc' | 'database' | 'utility'
+export type ToolCategoryId = 'playback' | 'control' | 'visual' | 'media' | 'rigging' | 'calc'
 
 /* ----------------------------- ffmpeg / HAP ----------------------------- */
 
@@ -634,6 +634,15 @@ export interface OscFeedback {
   at: number // epoch ms
 }
 
+/** Eintrag des OSC-Aktivitäts-Logs (für den Monitor + das Monitor-Fenster). */
+export interface OscLogEntry {
+  id: number
+  dir: 'out' | 'in' // ausgehend (gesendet) / eingehend (Feedback)
+  address: string
+  args: (number | string | boolean)[]
+  at: number // epoch ms
+}
+
 /* --------------------------- NovaStar (LED-Prozessor) -------------------- */
 // Steuerung eines NovaStar-Prozessors (NovaPro UHD Jr & Co.) über TCP 5200
 // (eigener, abhängigkeitsfreier Paket-Codec). Stand: v0, Befehls-Bytes am Gerät
@@ -708,12 +717,16 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
 /** Farbschema der Oberfläche. 'system' folgt der OS-Einstellung. */
 export type ThemeMode = 'system' | 'light' | 'dark'
 
+/** Markenakzent (Primärfarbe) der Oberfläche. 'gold' = bisherige Marke. */
+export type AccentId = 'gold' | 'amber' | 'teal' | 'blue' | 'violet' | 'pink' | 'green'
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
   lastImportDir: string | null
   patternPresets: PatternPreset[]
   theme: ThemeMode
+  accent: AccentId
   player: PlayerSettings
   osc: OscSettings
   /** Kundenansicht: beim Start direkt in dieses Tool springen (gesperrt, ohne
@@ -727,6 +740,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastImportDir: null,
   patternPresets: [],
   theme: 'dark', // bisheriges Erscheinungsbild bleibt Standard
+  accent: 'gold', // Gold-Marke bleibt Standard
   player: DEFAULT_PLAYER_SETTINGS,
   osc: DEFAULT_OSC_SETTINGS,
   kioskToolId: null

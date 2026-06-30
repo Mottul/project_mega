@@ -3,6 +3,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { debouncedStorage } from '@renderer/lib/persistStorage'
 import { DEFAULT_MODULE_KEY } from './data'
 import { resizeGrid, type BuilderSegment } from './math'
 
@@ -83,8 +84,7 @@ export const useLedWall = create<LedWallState>()(
         const s = get()
         const chain = grid === 'sig' ? s.sigChain : s.pwrChain
         const next = s[grid].map((r) => [...r])
-        const cells =
-          kind === 'col' ? next.map((r) => r[index]) : (next[index] ?? [])
+        const cells = kind === 'col' ? next.map((r) => r[index]) : (next[index] ?? [])
         const allSet = cells.length > 0 && cells.every((v) => v === chain)
         if (kind === 'col') for (const r of next) r[index] = allSet ? -1 : chain
         else next[index] = next[index].map(() => (allSet ? -1 : chain))
@@ -99,6 +99,6 @@ export const useLedWall = create<LedWallState>()(
         } as Partial<LedWallState>)
       }
     }),
-    { name: 'led-wall-konfigurator' }
+    { name: 'led-wall-konfigurator', storage: debouncedStorage() }
   )
 )

@@ -4,6 +4,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { debouncedStorage } from '@renderer/lib/persistStorage'
 
 export interface PackItem {
   id: string
@@ -89,7 +90,10 @@ export const usePacking = create<PackState>()(
         const categories = s.categories.includes(cat) ? s.categories : [...s.categories, cat]
         set({
           categories,
-          items: [...s.items, { id: uid(), category: cat, name: '', qty: 1, unit: 'Stk.', checked: false, note: '' }]
+          items: [
+            ...s.items,
+            { id: uid(), category: cat, name: '', qty: 1, unit: 'Stk.', checked: false, note: '' }
+          ]
         })
       },
 
@@ -114,10 +118,14 @@ export const usePacking = create<PackState>()(
     }),
     {
       name: 'packing-list',
+      storage: debouncedStorage(),
       // Migration/Defensive: Kategorienliste muss alle Item-Kategorien enthalten.
       onRehydrateStorage: () => (state) => {
         if (!state) return
-        const cats = Array.isArray(state.categories) && state.categories.length ? [...state.categories] : ['Allgemein']
+        const cats =
+          Array.isArray(state.categories) && state.categories.length
+            ? [...state.categories]
+            : ['Allgemein']
         for (const it of state.items) if (!cats.includes(it.category)) cats.push(it.category)
         state.categories = cats
       }

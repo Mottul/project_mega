@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { applyTheme, storedThemeMode } from './lib/theme'
+import { applyAccent, storedAccent } from './lib/accent'
 import './assets/main.css'
 
 // Gespeichertes Theme SYNCHRON vor dem ersten Rendern setzen -> kein Flackern.
@@ -11,6 +12,7 @@ import './assets/main.css'
 const hash = window.location.hash
 const isOutputWindow = hash.startsWith('#/output') || hash.startsWith('#/player-output')
 applyTheme(isOutputWindow ? 'dark' : storedThemeMode())
+applyAccent(storedAccent())
 
 const container = document.getElementById('root')
 if (!container) throw new Error('#root nicht gefunden')

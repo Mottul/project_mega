@@ -7,24 +7,16 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { debouncedStorage } from '@renderer/lib/persistStorage'
 
 export type OscWidgetType =
-  | 'fader'
-  | 'button'
-  | 'toggle'
-  | 'xy'
-  | 'color'
-  | 'label'
-  | 'meter'
-  | 'select'
-  | 'bank'
-  | 'knob'
+  'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter' | 'select' | 'bank' | 'knob'
 
 /** Verhalten der Felder einer Bank-Kachel. */
 export type BankMode = 'momentary' | 'toggle' | 'knob'
 
 /** Eintrag einer Auswahl-/Bank-Kachel. `value` ist der gespeicherte Live-Wert des
- *  Eintrags (Auswahl: zu sendender Wert; Bank-Schalter: An/Aus 0/1; Bank-Knopf:
+ *  Eintrags (Auswahl: zu sendender Wert; Bank-Schalter: An/Aus 0/1; Bank-Poti:
  *  Reglerwert min..max). */
 export interface OscItem {
   label: string
@@ -60,15 +52,29 @@ export interface OscWidget {
   items: OscItem[] // nur Auswahl/Bank: Optionen bzw. Felder
   orient: 'h' | 'v' // Fader/Farbe: Ausrichtung der Regler
   cols: number // Auswahl/Bank: Spalten im Raster (Zeilen folgen aus der Anzahl; 0 = automatisch)
-  bankMode: BankMode // Bank: Verhalten der Felder (Taster/Schalter/Knopf)
-  endless: boolean // Knopf: Endlos-Encoder (sendet relative Schritte statt Absolutwert)
+  bankMode: BankMode // Bank: Verhalten der Felder (Taster/Schalter/Poti)
+  endless: boolean // Poti: Endlos-Encoder (sendet relative Schritte statt Absolutwert)
 }
+
+/** Vorschau-Anzeige eines Sets (gemerkt je Set). */
+export type OscDevice = 'off' | 'phone' | 'tablet'
 
 export interface OscSet {
   id: string
   name: string
   columns: number
   widgets: OscWidget[]
+  device: OscDevice // gemerkte Vorschau-Anzeige (Desktop/Handy/Tablet)
+  landscape: boolean // gemerkte Ausrichtung der Vorschau
+}
+
+/** Ein Projekt bündelt mehrere Sets. Der Projekt-Titel ist das erste
+ *  OSC-Adresssegment neu angelegter Widgets (Titel „mottl“ -> /mottl/fader). */
+export interface OscProject {
+  id: string
+  name: string
+  sets: OscSet[]
+  currentSetId: string
 }
 
 export type OscMode = 'edit' | 'live'
@@ -81,8 +87,16 @@ export const DEFAULT_COLS = 24
 export const MAX_CH = 16
 
 export const WIDGET_COLORS = [
-  '#64748b', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
-  '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e'
+  '#64748b',
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#14b8a6',
+  '#3b82f6',
+  '#8b5cf6',
+  '#ec4899',
+  '#f43f5e'
 ]
 
 export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
@@ -95,28 +109,42 @@ export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
   meter: 'Anzeige',
   select: 'Auswahl',
   bank: 'Bank',
-  knob: 'Knopf'
+  knob: 'Poti'
 }
 
 export const BANK_MODE_LABEL: Record<BankMode, string> = {
   momentary: 'Taster',
   toggle: 'Schalter',
-  knob: 'Knopf'
+  knob: 'Poti'
 }
 
 // Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
 const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
-  fader: { cw: 6, ch: 6 },
-  button: { cw: 4, ch: 2 },
-  toggle: { cw: 4, ch: 2 },
-  xy: { cw: 8, ch: 5 },
-  color: { cw: 8, ch: 6 },
-  label: { cw: 10, ch: 2 },
+  fader: { cw: 3, ch: 6 },
+  button: { cw: 3, ch: 2 },
+  toggle: { cw: 3, ch: 2 },
+  xy: { cw: 6, ch: 5 },
+  color: { cw: 6, ch: 6 },
+  label: { cw: 6, ch: 2 },
   meter: { cw: 6, ch: 3 },
-  select: { cw: 6, ch: 6 },
-  bank: { cw: 8, ch: 4 },
-  knob: { cw: 5, ch: 6 }
+  select: { cw: 3, ch: 6 },
+  bank: { cw: 6, ch: 4 },
+  knob: { cw: 3, ch: 4 }
 }
+
+/** Reihenfolge in der Widget-Palette (Hinzufügen). */
+export const WIDGET_ORDER: OscWidgetType[] = [
+  'fader',
+  'knob',
+  'toggle',
+  'button',
+  'bank',
+  'select',
+  'color',
+  'xy',
+  'label',
+  'meter'
+]
 
 // Mindestgröße je Typ -> Regler bleiben bedienbar (Pads behalten Fläche, ein
 // Taster schrumpft nicht auf null).
@@ -154,7 +182,8 @@ function addOcc(occ: Set<string>, gx: number, gy: number, cw: number, ch: number
 }
 function fitsAt(occ: Set<string>, gx: number, gy: number, cw: number, ch: number): boolean {
   if (gx < 0 || gy < 0) return false
-  for (let y = gy; y < gy + ch; y++) for (let x = gx; x < gx + cw; x++) if (occ.has(`${x},${y}`)) return false
+  for (let y = gy; y < gy + ch; y++)
+    for (let x = gx; x < gx + cw; x++) if (occ.has(`${x},${y}`)) return false
   return true
 }
 /** Belegte Zellen aller Widgets (optional eines ausgenommen). */
@@ -218,15 +247,29 @@ function placeMissing(ws: OscWidget[], cols: number): void {
 
 /* ------------------------------- Widgets -------------------------------- */
 
-/** Vollständiges Widget mit sinnvoller Vorbelegung je Typ. */
-export function makeWidget(type: OscWidgetType): OscWidget {
+const DEFAULT_TITLE = 'megatoolbox'
+
+/** Projekt-Titel -> erstes OSC-Adresssegment (klein, ohne Sonderzeichen). */
+export function oscSlug(title: string): string {
+  const s = (title || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return s || DEFAULT_TITLE
+}
+
+/** Vollständiges Widget mit sinnvoller Vorbelegung je Typ. `title` liefert das
+ *  erste Adresssegment (Projekt-Titel). */
+export function makeWidget(type: OscWidgetType, title: string = DEFAULT_TITLE): OscWidget {
   const size = DEFAULT_SIZE[type]
+  const slug = oscSlug(title)
   const base: OscWidget = {
     id: uid(),
     type,
     label: WIDGET_TYPE_LABEL[type],
     color: WIDGET_COLORS[6],
-    address: `/megatoolbox/${type}`,
+    address: `/${slug}/${type}`,
     addressY: '',
     min: 0,
     max: 1,
@@ -252,8 +295,8 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     endless: false
   }
   if (type === 'xy') {
-    base.address = '/megatoolbox/x'
-    base.addressY = '/megatoolbox/y'
+    base.address = `/${slug}/x`
+    base.addressY = `/${slug}/y`
   }
   if (type === 'label') {
     base.address = ''
@@ -261,16 +304,16 @@ export function makeWidget(type: OscWidgetType): OscWidget {
   }
   if (type === 'meter') {
     base.label = 'Anzeige'
-    base.address = '/megatoolbox/level'
+    base.address = `/${slug}/level`
   }
   if (type === 'knob') {
-    base.label = 'Knopf'
-    base.address = '/megatoolbox/knob'
+    base.label = 'Poti'
+    base.address = `/${slug}/knob`
     base.value = 0.5
   }
   if (type === 'select') {
     base.label = 'Auswahl'
-    base.address = '/megatoolbox/select'
+    base.address = `/${slug}/select`
     base.items = [
       { label: 'A', address: '', value: 0 },
       { label: 'B', address: '', value: 1 },
@@ -282,9 +325,9 @@ export function makeWidget(type: OscWidgetType): OscWidget {
     base.address = ''
     base.cols = 3
     base.items = [
-      { label: '1', address: '/megatoolbox/btn/1', value: 0 },
-      { label: '2', address: '/megatoolbox/btn/2', value: 0 },
-      { label: '3', address: '/megatoolbox/btn/3', value: 0 }
+      { label: '1', address: `/${slug}/btn/1`, value: 0 },
+      { label: '2', address: `/${slug}/btn/2`, value: 0 },
+      { label: '3', address: `/${slug}/btn/3`, value: 0 }
     ]
   }
   return base
@@ -307,7 +350,10 @@ function numberWidget(w: OscWidget, existing: OscWidget[]): void {
   if (w.addressY) w.addressY = `${w.addressY}-${n}`
   w.label = `${w.label} ${n}`
   if (w.items.length) {
-    w.items = w.items.map((it) => ({ ...it, address: it.address ? `${it.address}-${n}` : it.address }))
+    w.items = w.items.map((it) => ({
+      ...it,
+      address: it.address ? `${it.address}-${n}` : it.address
+    }))
   }
 }
 
@@ -328,9 +374,18 @@ function normalizeItems(raw: unknown): OscItem[] {
 function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   const type: OscWidgetType =
     w &&
-    ['fader', 'button', 'toggle', 'xy', 'color', 'label', 'meter', 'select', 'bank', 'knob'].includes(
-      w.type as string
-    )
+    [
+      'fader',
+      'button',
+      'toggle',
+      'xy',
+      'color',
+      'label',
+      'meter',
+      'select',
+      'bank',
+      'knob'
+    ].includes(w.type as string)
       ? (w.type as OscWidgetType)
       : 'fader'
   const def = makeWidget(type)
@@ -381,70 +436,150 @@ function seedWidgets(): OscWidget[] {
 }
 
 function emptySet(name: string): OscSet {
-  return { id: uid(), name, columns: DEFAULT_COLS, widgets: [] }
+  return { id: uid(), name, columns: DEFAULT_COLS, widgets: [], device: 'off', landscape: false }
 }
 function seededSet(name: string): OscSet {
   const widgets = seedWidgets()
   placeMissing(widgets, DEFAULT_COLS)
-  return { id: uid(), name, columns: DEFAULT_COLS, widgets }
+  return { id: uid(), name, columns: DEFAULT_COLS, widgets, device: 'off', landscape: false }
+}
+
+function emptyProject(name: string): OscProject {
+  const s = emptySet('Set 1')
+  return { id: uid(), name, sets: [s], currentSetId: s.id }
+}
+function seededProject(name: string): OscProject {
+  const s = seededSet('Set 1')
+  return { id: uid(), name, sets: [s], currentSetId: s.id }
+}
+/** Tiefe Kopie der Sets mit neuen IDs (für „neues Projekt aus Default-Projekt"). */
+function cloneSets(src: OscSet[]): OscSet[] {
+  return src.map((s) => ({
+    ...s,
+    id: uid(),
+    widgets: s.widgets.map((w) => ({ ...w, id: uid(), items: w.items.map((it) => ({ ...it })) }))
+  }))
 }
 
 interface OscStoreState {
-  sets: OscSet[]
-  currentSetId: string
+  projects: OscProject[]
+  currentProjectId: string
+  defaultProjectId: string | null
   mode: OscMode
 
+  currentProject: () => OscProject
   currentSet: () => OscSet
   set: (patch: Partial<Pick<OscStoreState, 'mode'>>) => void
+
+  // Projekte (Set-Sammlungen)
+  selectProject: (id: string) => void
+  addProject: () => void
+  renameProject: (id: string, name: string) => void
+  deleteProject: (id: string) => void
+  saveAsDefaultProject: () => void
+
+  // Sets im aktiven Projekt
   selectSet: (id: string) => void
   addSet: () => void
   renameSet: (id: string, name: string) => void
   deleteSet: (id: string) => void
   setColumns: (n: number) => void
+  setDevice: (device: OscDevice) => void
+  setLandscape: (landscape: boolean) => void
 
-  addWidget: (type: OscWidgetType) => string
+  addWidget: (type: OscWidgetType, pos?: { gx: number; gy: number }) => string
+  duplicateWidget: (id: string) => string | null
   updateWidget: (id: string, patch: Partial<OscWidget>) => void
   removeWidget: (id: string) => void
   moveWidgetTo: (id: string, gx: number, gy: number) => void
   resizeWidget: (id: string, cw: number, ch: number) => void
   settleWidget: (id: string) => void
-  resetSurface: () => void
 }
 
 export const useOscSurface = create<OscStoreState>()(
   persist(
     (set, get) => {
-      const mapWidgets = (fn: (ws: OscWidget[]) => OscWidget[]): OscSet[] =>
-        get().sets.map((s) => (s.id === get().currentSetId ? { ...s, widgets: fn(s.widgets) } : s))
-      const patchSet = (fn: (s: OscSet) => OscSet): OscSet[] =>
-        get().sets.map((s) => (s.id === get().currentSetId ? fn(s) : s))
-      const initial = seededSet('Set 1')
+      // Helfer: stets auf das aktive Projekt bzw. dessen aktives Set wirken.
+      const proj = (): OscProject => {
+        const s = get()
+        return s.projects.find((p) => p.id === s.currentProjectId) ?? s.projects[0]
+      }
+      const mapProj = (fn: (p: OscProject) => OscProject): OscProject[] =>
+        get().projects.map((p) => (p.id === get().currentProjectId ? fn(p) : p))
+      const mapSets = (fn: (sets: OscSet[]) => OscSet[]): OscProject[] =>
+        mapProj((p) => ({ ...p, sets: fn(p.sets) }))
+      const mapWidgets = (fn: (ws: OscWidget[]) => OscWidget[]): OscProject[] =>
+        mapSets((sets) =>
+          sets.map((s) => (s.id === proj().currentSetId ? { ...s, widgets: fn(s.widgets) } : s))
+        )
+      const patchSet = (fn: (s: OscSet) => OscSet): OscProject[] =>
+        mapSets((sets) => sets.map((s) => (s.id === proj().currentSetId ? fn(s) : s)))
+      const initial = seededProject('Projekt 1')
 
       return {
-        sets: [initial],
-        currentSetId: initial.id,
+        projects: [initial],
+        currentProjectId: initial.id,
+        defaultProjectId: null,
         mode: 'edit',
 
+        currentProject: () => proj(),
         currentSet: () => {
-          const s = get()
-          return s.sets.find((x) => x.id === s.currentSetId) ?? s.sets[0]
+          const p = proj()
+          return p.sets.find((s) => s.id === p.currentSetId) ?? p.sets[0]
         },
         set: (patch) => set(patch),
-        selectSet: (id) => set({ currentSetId: id }),
+
+        // ---- Projekte ----
+        selectProject: (id) => {
+          if (get().projects.some((p) => p.id === id)) set({ currentProjectId: id })
+        },
+        addProject: () => {
+          const def = get().projects.find((p) => p.id === get().defaultProjectId)
+          const name = `Projekt ${get().projects.length + 1}`
+          let np: OscProject
+          if (def) {
+            const sets = cloneSets(def.sets)
+            np = { id: uid(), name, sets, currentSetId: sets[0].id }
+          } else {
+            np = emptyProject(name)
+          }
+          set({ projects: [...get().projects, np], currentProjectId: np.id })
+        },
+        renameProject: (id, name) =>
+          set({ projects: get().projects.map((p) => (p.id === id ? { ...p, name } : p)) }),
+        deleteProject: (id) => {
+          const rest = get().projects.filter((p) => p.id !== id)
+          const projects = rest.length ? rest : [seededProject('Projekt 1')]
+          const defaultProjectId = get().defaultProjectId === id ? null : get().defaultProjectId
+          const currentProjectId = projects.some((p) => p.id === get().currentProjectId)
+            ? get().currentProjectId
+            : projects[0].id
+          set({ projects, currentProjectId, defaultProjectId })
+        },
+        saveAsDefaultProject: () => set({ defaultProjectId: get().currentProjectId }),
+
+        // ---- Sets im aktiven Projekt ----
+        selectSet: (id) => set({ projects: mapProj((p) => ({ ...p, currentSetId: id })) }),
         addSet: () => {
-          const s = emptySet(`Set ${get().sets.length + 1}`)
-          set({ sets: [...get().sets, s], currentSetId: s.id })
+          const s = emptySet(`Set ${proj().sets.length + 1}`)
+          set({ projects: mapProj((p) => ({ ...p, sets: [...p.sets, s], currentSetId: s.id })) })
         },
         renameSet: (id, name) =>
-          set({ sets: get().sets.map((s) => (s.id === id ? { ...s, name } : s)) }),
-        deleteSet: (id) => {
-          const rest = get().sets.filter((s) => s.id !== id)
-          const sets = rest.length ? rest : [seededSet('Set 1')]
-          set({ sets, currentSetId: sets[0].id })
-        },
+          set({ projects: mapSets((sets) => sets.map((s) => (s.id === id ? { ...s, name } : s))) }),
+        deleteSet: (id) =>
+          set({
+            projects: mapProj((p) => {
+              const rest = p.sets.filter((s) => s.id !== id)
+              const sets = rest.length ? rest : [emptySet('Set 1')]
+              const currentSetId = sets.some((s) => s.id === p.currentSetId)
+                ? p.currentSetId
+                : sets[0].id
+              return { ...p, sets, currentSetId }
+            })
+          }),
         setColumns: (n) =>
           set({
-            sets: patchSet((s) => {
+            projects: patchSet((s) => {
               const cols = clampInt(n, MIN_COLS, MAX_COLS)
               // Widgets, die jetzt aus dem Raster ragen, hineinschieben.
               const widgets = s.widgets.map((w) => {
@@ -455,20 +590,79 @@ export const useOscSurface = create<OscStoreState>()(
               return { ...s, columns: cols, widgets }
             })
           }),
+        setDevice: (device) => set({ projects: patchSet((s) => ({ ...s, device })) }),
+        setLandscape: (landscape) => set({ projects: patchSet((s) => ({ ...s, landscape })) }),
 
-        addWidget: (type) => {
-          const w = makeWidget(type)
+        addWidget: (type, pos) => {
+          const w = makeWidget(type, proj().name)
+          const cols = get().currentSet().columns
           const ws = get().currentSet().widgets
           numberWidget(w, ws) // Adresse/Label durchnummerieren, wenn Typ schon da
-          // unter alles setzen -> kein Überlappen beim Hinzufügen
-          w.gx = 0
-          w.gy = ws.reduce((m, x) => Math.max(m, x.gy + x.ch), 0)
-          set({ sets: mapWidgets((arr) => [...arr, w]) })
+          const cw = Math.min(w.cw, cols)
+          if (pos) {
+            // an die angeklickte Zelle setzen; ist sie belegt, auf die
+            // nächstgelegene freie Stelle rücken (statt unter alles zu hängen).
+            const occ = occupancyOf(ws, cols)
+            let gx = Math.max(0, Math.min(Math.round(pos.gx), cols - cw))
+            let gy = Math.max(0, Math.round(pos.gy))
+            if (!fitsAt(occ, gx, gy, cw, w.ch)) {
+              const rowsLimit = ws.reduce((m, x) => Math.max(m, x.gy + x.ch), 0) + w.ch + 1
+              const free = nearestFree(occ, cols, rowsLimit, cw, w.ch, gx, gy)
+              gx = free.gx
+              gy = free.gy
+            }
+            w.gx = gx
+            w.gy = gy
+          } else {
+            // erste freie Stelle in Lesereihenfolge -> füllt seitlich, nicht nur unten
+            w.gx = -1
+            w.gy = -1
+          }
+          set({
+            projects: mapWidgets((arr) => {
+              const next = [...arr, w]
+              if (!pos) placeMissing(next, cols)
+              return next
+            })
+          })
+          return w.id
+        },
+        duplicateWidget: (id) => {
+          const ws = get().currentSet().widgets
+          const src = ws.find((w) => w.id === id)
+          if (!src) return null
+          const cols = get().currentSet().columns
+          // Adressen weiterzählen (Label/Größe/Einstellungen bleiben gleich).
+          const addrs = new Set(ws.map((x) => x.address).filter(Boolean))
+          const bump = (a: string): string => {
+            if (!a) return a
+            const base = a.replace(/-\d+$/, '')
+            let n = 2
+            while (addrs.has(`${base}-${n}`)) n++
+            addrs.add(`${base}-${n}`)
+            return `${base}-${n}`
+          }
+          const w: OscWidget = {
+            ...src,
+            id: uid(),
+            address: bump(src.address),
+            addressY: bump(src.addressY),
+            items: src.items.map((it) => ({ ...it, address: bump(it.address) })),
+            gx: -1,
+            gy: -1
+          }
+          set({
+            projects: mapWidgets((arr) => {
+              const next = [...arr, w]
+              placeMissing(next, cols)
+              return next
+            })
+          })
           return w.id
         },
         updateWidget: (id, patch) =>
           set({
-            sets: mapWidgets((ws) =>
+            projects: mapWidgets((ws) =>
               ws.map((w) => {
                 if (w.id !== id) return w
                 const next = { ...w, ...patch }
@@ -479,22 +673,28 @@ export const useOscSurface = create<OscStoreState>()(
               })
             )
           }),
-        removeWidget: (id) => set({ sets: mapWidgets((ws) => ws.filter((w) => w.id !== id)) }),
+        removeWidget: (id) => set({ projects: mapWidgets((ws) => ws.filter((w) => w.id !== id)) }),
         moveWidgetTo: (id, gx, gy) =>
           set({
-            sets: mapWidgets((ws) =>
+            projects: mapWidgets((ws) =>
               ws.map((w) =>
-                w.id === id ? { ...w, gx: Math.max(0, Math.round(gx)), gy: Math.max(0, Math.round(gy)) } : w
+                w.id === id
+                  ? { ...w, gx: Math.max(0, Math.round(gx)), gy: Math.max(0, Math.round(gy)) }
+                  : w
               )
             )
           }),
         resizeWidget: (id, cw, ch) =>
           set({
-            sets: mapWidgets((ws) =>
+            projects: mapWidgets((ws) =>
               ws.map((w) => {
                 if (w.id !== id) return w
                 const min = WIDGET_MIN[w.type]
-                return { ...w, cw: clampInt(cw, min.cw, MAX_COLS), ch: clampInt(ch, min.ch, MAX_CH) }
+                return {
+                  ...w,
+                  cw: clampInt(cw, min.cw, MAX_COLS),
+                  ch: clampInt(ch, min.ch, MAX_CH)
+                }
               })
             )
           }),
@@ -502,7 +702,7 @@ export const useOscSurface = create<OscStoreState>()(
         // einem anderen, rückt es auf die nächste freie Stelle.
         settleWidget: (id) =>
           set({
-            sets: mapWidgets((ws) => {
+            projects: mapWidgets((ws) => {
               const me = ws.find((w) => w.id === id)
               if (!me || me.gx < 0) return ws
               const cols = get().currentSet().columns
@@ -514,25 +714,18 @@ export const useOscSurface = create<OscStoreState>()(
               const pos = nearestFree(occ, cols, rowsLimit, cw, me.ch, me.gx, me.gy)
               return ws.map((w) => (w.id === id ? { ...w, gx: pos.gx, gy: pos.gy } : w))
             })
-          }),
-        resetSurface: () =>
-          set({
-            sets: patchSet((s) => {
-              const widgets = seedWidgets()
-              placeMissing(widgets, s.columns)
-              return { ...s, widgets }
-            })
           })
       }
     },
     {
       name: 'osc-control',
-      version: 3,
+      version: 4,
+      storage: debouncedStorage(),
       migrate: (persisted, version) => {
         let p = persisted as Record<string, unknown>
         // v0 -> v1: einzelne Oberfläche { widgets, columns, mode } -> Sets
         if (version < 1 && Array.isArray(p.widgets)) {
-          const set: OscSet = {
+          const set = {
             id: uid(),
             name: 'Set 1',
             columns: DEFAULT_COLS,
@@ -572,24 +765,56 @@ export const useOscSurface = create<OscStoreState>()(
             placeMissing(s.widgets, cols)
           }
         }
+        // <=3 -> 4: flache Sets in ein Projekt „Projekt 1" wickeln; Geräte-/
+        // Ausrichtungs-Felder pro Set ergänzen.
+        if (!Array.isArray(p.projects) && Array.isArray(p.sets)) {
+          const sets = (p.sets as OscSet[]).map((s) => ({
+            ...s,
+            device: (s as OscSet).device ?? 'off',
+            landscape: (s as OscSet).landscape ?? false
+          }))
+          const currentSetId =
+            typeof p.currentSetId === 'string' ? (p.currentSetId as string) : sets[0]?.id
+          const project: OscProject = { id: uid(), name: 'Projekt 1', sets, currentSetId }
+          p = {
+            projects: [project],
+            currentProjectId: project.id,
+            defaultProjectId: null,
+            mode: p.mode === 'live' ? 'live' : 'edit'
+          }
+        }
         return p as unknown
       },
       onRehydrateStorage: () => (state) => {
         if (!state) return
         if (state.mode !== 'edit' && state.mode !== 'live') state.mode = 'edit'
-        if (!Array.isArray(state.sets) || state.sets.length === 0) {
-          const s = seededSet('Set 1')
-          state.sets = [s]
-          state.currentSetId = s.id
+        if (!Array.isArray(state.projects) || state.projects.length === 0) {
+          const np = seededProject('Projekt 1')
+          state.projects = [np]
+          state.currentProjectId = np.id
+          state.defaultProjectId = null
           return
         }
-        for (const s of state.sets) {
-          s.columns = clampInt(s.columns, MIN_COLS, MAX_COLS)
-          s.widgets = (s.widgets ?? []).map(normalizeWidget)
-          placeMissing(s.widgets, s.columns)
+        for (const proj of state.projects) {
+          if (!Array.isArray(proj.sets) || proj.sets.length === 0) proj.sets = [emptySet('Set 1')]
+          for (const s of proj.sets) {
+            s.columns = clampInt(s.columns, MIN_COLS, MAX_COLS)
+            s.device = s.device === 'phone' || s.device === 'tablet' ? s.device : 'off'
+            s.landscape = !!s.landscape
+            s.widgets = (s.widgets ?? []).map(normalizeWidget)
+            placeMissing(s.widgets, s.columns)
+          }
+          if (!proj.sets.some((s) => s.id === proj.currentSetId))
+            proj.currentSetId = proj.sets[0].id
         }
-        if (!state.sets.some((s) => s.id === state.currentSetId)) {
-          state.currentSetId = state.sets[0].id
+        if (!state.projects.some((p) => p.id === state.currentProjectId)) {
+          state.currentProjectId = state.projects[0].id
+        }
+        if (
+          state.defaultProjectId &&
+          !state.projects.some((p) => p.id === state.defaultProjectId)
+        ) {
+          state.defaultProjectId = null
         }
       }
     }

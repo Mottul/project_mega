@@ -40,7 +40,9 @@ function resolvePrebuildBin(fromDir) {
 
 const version = pkgVersion('electron')
 if (!version) {
-  console.log('[rebuild-native] electron nicht gefunden — ueberspringe (vermutlich CI/ohne devDeps).')
+  console.log(
+    '[rebuild-native] electron nicht gefunden — ueberspringe (vermutlich CI/ohne devDeps).'
+  )
   process.exit(0)
 }
 
@@ -72,7 +74,9 @@ for (const mod of NATIVE_MODULES) {
   )
   if (r.error || r.status !== 0) {
     failed = true
-    console.error(`[rebuild-native] ${mod}: Prebuild-Download fehlgeschlagen (Code ${r.status ?? r.error?.code}).`)
+    console.error(
+      `[rebuild-native] ${mod}: Prebuild-Download fehlgeschlagen (Code ${r.status ?? r.error?.code}).`
+    )
   }
 }
 

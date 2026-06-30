@@ -53,7 +53,12 @@ function normalizeShuffleNext(): void {
     return
   }
   const n = state.playlist.length
-  if (n <= 1 || state.shuffleNext < 0 || state.shuffleNext >= n || state.shuffleNext === state.index) {
+  if (
+    n <= 1 ||
+    state.shuffleNext < 0 ||
+    state.shuffleNext >= n ||
+    state.shuffleNext === state.index
+  ) {
     state.shuffleNext = rollShuffleNext(state)
   }
 }
@@ -64,7 +69,9 @@ function emitState(): void {
 }
 
 function currentId(): string | null {
-  return state.index >= 0 && state.index < state.playlist.length ? state.playlist[state.index].id : null
+  return state.index >= 0 && state.index < state.playlist.length
+    ? state.playlist[state.index].id
+    : null
 }
 
 // Index neu auf das Medium mit gegebener id setzen (nach Reorder/Remove), sonst clampen.
@@ -73,14 +80,16 @@ function reindexTo(id: string | null): void {
     const i = state.playlist.findIndex((m) => m.id === id)
     state.index = i >= 0 ? i : Math.min(state.index, state.playlist.length - 1)
   } else {
-    state.index = state.playlist.length ? Math.min(Math.max(0, state.index), state.playlist.length - 1) : -1
+    state.index = state.playlist.length
+      ? Math.min(Math.max(0, state.index), state.playlist.length - 1)
+      : -1
   }
 }
 
 function goToIndex(i: number, play: boolean): void {
   state.index = i
   state.positionSec = 0
-  state.durationSec = i >= 0 ? state.playlist[i]?.durationSec ?? 0 : 0
+  state.durationSec = i >= 0 ? (state.playlist[i]?.durationSec ?? 0) : 0
   state.playing = i >= 0 ? play : false
   state.seekSeq++ // Ausgabefenster: neu laden + ggf. auf 0 setzen
 }
@@ -122,7 +131,10 @@ export function applyCommand(cmd: PlayerCommand): void {
     case 'add': {
       const items = cmd.mediaIds.map(getMedia).filter((m): m is MediaItem => m !== null)
       if (items.length === 0) break
-      const at = cmd.at == null ? state.playlist.length : Math.max(0, Math.min(cmd.at, state.playlist.length))
+      const at =
+        cmd.at == null
+          ? state.playlist.length
+          : Math.max(0, Math.min(cmd.at, state.playlist.length))
       const keepId = currentId()
       state.playlist.splice(at, 0, ...items)
       // Erstes Medium in eine leere Playlist -> sofort abspielen (kein manuelles Play nötig).
@@ -184,9 +196,14 @@ export function applyCommand(cmd: PlayerCommand): void {
       break
     case 'setTransition':
       state.transition = cmd.transition
-      if (cmd.transitionMs != null) state.transitionMs = Math.max(100, Math.min(5000, Math.round(cmd.transitionMs)))
+      if (cmd.transitionMs != null)
+        state.transitionMs = Math.max(100, Math.min(5000, Math.round(cmd.transitionMs)))
       setSettings({
-        player: { ...getSettings().player, transition: state.transition, transitionMs: state.transitionMs }
+        player: {
+          ...getSettings().player,
+          transition: state.transition,
+          transitionMs: state.transitionMs
+        }
       })
       break
     case 'setDefaultFit':
@@ -250,7 +267,9 @@ export function refreshPlaylist(): void {
   // nur wirklich neu broadcasten, wenn sich etwas geändert hat
   const changed =
     refreshed.length !== state.playlist.length ||
-    refreshed.some((m, i) => m !== state.playlist[i] && JSON.stringify(m) !== JSON.stringify(state.playlist[i]))
+    refreshed.some(
+      (m, i) => m !== state.playlist[i] && JSON.stringify(m) !== JSON.stringify(state.playlist[i])
+    )
   if (!changed) return
   state.playlist = refreshed
   reindexTo(keepId)

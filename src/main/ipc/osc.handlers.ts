@@ -1,6 +1,12 @@
 import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
-import { DEFAULT_OSC_SETTINGS, type OscMessage, type OscRemoteSnapshot, type OscSettings } from '@shared/types'
+import {
+  DEFAULT_OSC_SETTINGS,
+  type OscLogEntry,
+  type OscMessage,
+  type OscRemoteSnapshot,
+  type OscSettings
+} from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { getSettings } from '../services/store'
 import { initOsc, oscSend, oscSetConfig, oscStatus } from '../services/osc/oscService'
@@ -43,6 +49,11 @@ export function registerOscHandlers(): void {
     broadcast(Channels.oscRemoteChanged, status)
     return status
   })
+
+  // OSC-Monitor-Fenster: Aktivitäts-Log vom OSC-Tab an alle Fenster spiegeln.
+  ipcMain.handle(Channels.oscMonitorPublish, (_e, entries: OscLogEntry[]) =>
+    broadcast(Channels.oscMonitorLog, entries)
+  )
 
   // Feedback-Listener starten, wenn in den Settings aktiviert.
   initOsc()

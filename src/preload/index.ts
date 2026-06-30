@@ -42,8 +42,7 @@ const api: ToolboxApi = {
     bytes: (id) => ipcRenderer.invoke(Channels.manualsBytes, id),
     update: (id, patch) => ipcRenderer.invoke(Channels.manualsUpdate, id, patch),
     delete: (id) => ipcRenderer.invoke(Channels.manualsDelete, id),
-    onImportProgress: (cb) =>
-      subscribe(Channels.manualsImportProgress, (p) => cb(p as never))
+    onImportProgress: (cb) => subscribe(Channels.manualsImportProgress, (p) => cb(p as never))
   },
 
   screen: {
@@ -73,7 +72,8 @@ const api: ToolboxApi = {
     libraryList: () => ipcRenderer.invoke(Channels.playerLibraryList),
     libraryDelete: (id) => ipcRenderer.invoke(Channels.playerLibraryDelete, id),
     libraryClear: () => ipcRenderer.invoke(Channels.playerLibraryClear),
-    reconvert: (mediaIds, wall, fit) => ipcRenderer.invoke(Channels.playerReconvert, mediaIds, wall, fit),
+    reconvert: (mediaIds, wall, fit) =>
+      ipcRenderer.invoke(Channels.playerReconvert, mediaIds, wall, fit),
     pickIdleMedia: () => ipcRenderer.invoke(Channels.playerPickIdleMedia),
     mediaDir: () => ipcRenderer.invoke(Channels.playerMediaDir),
     onLibraryChanged: (cb) => subscribe(Channels.playerLibraryChanged, () => cb()),
@@ -126,6 +126,9 @@ const api: ToolboxApi = {
     onFeedback: (cb) => subscribe(Channels.oscFeedback, (fb) => cb(fb as never)),
     onStatus: (cb) => subscribe(Channels.oscStatusChanged, (s) => cb(s as never)),
     publish: (snapshot) => ipcRenderer.invoke(Channels.oscPublish, snapshot),
+    openMonitor: () => ipcRenderer.invoke(Channels.windowOpenOscMonitor),
+    publishMonitor: (entries) => ipcRenderer.invoke(Channels.oscMonitorPublish, entries),
+    onMonitor: (cb) => subscribe(Channels.oscMonitorLog, (l) => cb(l as never)),
     onRemoteCommand: (cb) => subscribe(Channels.oscRemoteCommand, (c) => cb(c as never)),
     remoteStatus: () => ipcRenderer.invoke(Channels.oscRemoteStatus),
     remoteStart: (port) => ipcRenderer.invoke(Channels.oscRemoteStart, port),

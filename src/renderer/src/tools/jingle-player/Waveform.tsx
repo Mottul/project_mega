@@ -16,12 +16,17 @@ const peakCache = new Map<string, { peaks: Float32Array; duration: number }>()
 async function loadPeaks(storedName: string): Promise<{ peaks: Float32Array; duration: number }> {
   const cached = peakCache.get(storedName)
   if (cached) return cached
-  const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  const Ctx =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
   const ac = new Ctx()
   try {
     const bytes = await api.jingles.bytes(storedName)
     if (!bytes) throw new Error('Datei nicht gefunden')
-    const arr = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+    const arr = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    ) as ArrayBuffer
     const audio = await ac.decodeAudioData(arr)
     const ch = audio.getChannelData(0)
     const peaks = new Float32Array(BUCKETS)
@@ -44,7 +49,11 @@ async function loadPeaks(storedName: string): Promise<{ peaks: Float32Array; dur
   }
 }
 
-function detectSilence(peaks: Float32Array, duration: number, threshold = 0.02): { start: number; end: number } {
+function detectSilence(
+  peaks: Float32Array,
+  duration: number,
+  threshold = 0.02
+): { start: number; end: number } {
   let s = 0
   let e = peaks.length - 1
   while (s < peaks.length && peaks[s] < threshold) s++
@@ -74,7 +83,15 @@ interface Props {
   onChange: (startSec: number, endSec: number | null) => void
 }
 
-export function Waveform({ storedName, color, volume, outputDeviceId, startSec, endSec, onChange }: Props): JSX.Element {
+export function Waveform({
+  storedName,
+  color,
+  volume,
+  outputDeviceId,
+  startSec,
+  endSec,
+  onChange
+}: Props): JSX.Element {
   const [data, setData] = useState<{ peaks: Float32Array; duration: number } | null>(null)
   const [error, setError] = useState(false)
   const [zoom, setZoom] = useState(1)
@@ -246,7 +263,8 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
     el.volume = volume
     el.currentTime = startSec
     const withSink = el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
-    if (typeof withSink.setSinkId === 'function') withSink.setSinkId(outputDeviceId || 'default').catch(() => {})
+    if (typeof withSink.setSinkId === 'function')
+      withSink.setSinkId(outputDeviceId || 'default').catch(() => {})
     audioRef.current = el
     el.addEventListener('timeupdate', () => {
       if (audioRef.current !== el) return
@@ -278,14 +296,26 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
             Waveform nicht verfügbar
           </div>
         ) : !data ? (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Lade Waveform…</div>
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+            Lade Waveform…
+          </div>
         ) : (
           <>
             <canvas ref={canvasRef} className="block h-full w-full" />
-            <div className="pointer-events-none absolute inset-y-0 left-0 bg-black/55" style={{ width: `${dimLeft}%` }} />
-            <div className="pointer-events-none absolute inset-y-0 right-0 bg-black/55" style={{ width: `${dimRight}%` }} />
-            {startInView && <Handle pct={startPct} color={color} onDown={() => (drag.current = 'start')} />}
-            {endInView && <Handle pct={endPct} color={color} onDown={() => (drag.current = 'end')} />}
+            <div
+              className="pointer-events-none absolute inset-y-0 left-0 bg-black/55"
+              style={{ width: `${dimLeft}%` }}
+            />
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 bg-black/55"
+              style={{ width: `${dimRight}%` }}
+            />
+            {startInView && (
+              <Handle pct={startPct} color={color} onDown={() => (drag.current = 'start')} />
+            )}
+            {endInView && (
+              <Handle pct={endPct} color={color} onDown={() => (drag.current = 'end')} />
+            )}
           </>
         )}
       </div>
@@ -323,11 +353,27 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
           <Scissors className="size-4" /> Stille trimmen
         </Button>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="size-7" disabled={!data || zoom <= 1.01} onClick={() => zoomBy(1 / 1.6)} title="Auszoomen">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            disabled={!data || zoom <= 1.01}
+            onClick={() => zoomBy(1 / 1.6)}
+            title="Auszoomen"
+          >
             <Minus className="size-4" />
           </Button>
-          <span className="w-9 text-center text-xs tabular-nums text-muted-foreground">{zoom.toFixed(1)}×</span>
-          <Button variant="ghost" size="icon" className="size-7" disabled={!data} onClick={() => zoomBy(1.6)} title="Hineinzoomen">
+          <span className="w-9 text-center text-xs tabular-nums text-muted-foreground">
+            {zoom.toFixed(1)}×
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            disabled={!data}
+            onClick={() => zoomBy(1.6)}
+            title="Hineinzoomen"
+          >
             <Plus className="size-4" />
           </Button>
         </div>
@@ -340,7 +386,15 @@ export function Waveform({ storedName, color, volume, outputDeviceId, startSec, 
   )
 }
 
-function Handle({ pct, color, onDown }: { pct: number; color: string; onDown: () => void }): JSX.Element {
+function Handle({
+  pct,
+  color,
+  onDown
+}: {
+  pct: number
+  color: string
+  onDown: () => void
+}): JSX.Element {
   return (
     <div
       onPointerDown={(e) => {

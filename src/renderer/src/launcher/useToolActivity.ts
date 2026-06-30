@@ -24,7 +24,10 @@ export function useToolActivity(): Record<string, ToolActivity> {
   useEffect(() => {
     const jobs = new Map<string, string>()
     const recompute = (): void =>
-      setHap([...jobs.values()].filter((s) => s === 'running' || s === 'queued' || s === 'probing').length)
+      setHap(
+        [...jobs.values()].filter((s) => s === 'running' || s === 'queued' || s === 'probing')
+          .length
+      )
     void api.hap.list().then((list) => {
       for (const j of list) jobs.set(j.id, j.status)
       recompute()
@@ -58,9 +61,11 @@ export function useToolActivity(): Record<string, ToolActivity> {
 
   // Video-Player
   useEffect(() => {
-    void api.player.getState().then((s) =>
-      setPlayer({ playing: s.playing, output: s.outputOpen, items: s.playlist.length })
-    )
+    void api.player
+      .getState()
+      .then((s) =>
+        setPlayer({ playing: s.playing, output: s.outputOpen, items: s.playlist.length })
+      )
     return api.player.onState((s) =>
       setPlayer({ playing: s.playing, output: s.outputOpen, items: s.playlist.length })
     )
@@ -70,7 +75,8 @@ export function useToolActivity(): Record<string, ToolActivity> {
   if (hap > 0) out['hap-converter'] = { count: hap, label: `konvertiert · ${hap}` }
   if (yt > 0) out['youtube-dl'] = { count: yt, label: `lädt · ${yt}` }
   if (timer) out['stage-timer'] = { count: 1, label: 'läuft' }
-  if (player.playing) out['video-player'] = { count: 1, label: player.output ? 'spielt · Ausgabe' : 'spielt' }
+  if (player.playing)
+    out['video-player'] = { count: 1, label: player.output ? 'spielt · Ausgabe' : 'spielt' }
   else if (player.output) out['video-player'] = { count: 1, label: 'Ausgabe offen' }
   return out
 }

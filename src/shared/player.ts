@@ -51,9 +51,7 @@ export function nextIndex(
 
 /** Würfelt den nächsten Shuffle-Index (≠ aktueller). Nur der main-Prozess ruft
  *  das auf; das Ergebnis wandert als `shuffleNext` in den Zustand. */
-export function rollShuffleNext(
-  state: Pick<PlayerState, 'playlist' | 'index' | 'loop'>
-): number {
+export function rollShuffleNext(state: Pick<PlayerState, 'playlist' | 'index' | 'loop'>): number {
   const n = state.playlist.length
   if (n === 0) return -1
   if (n === 1) return state.loop === 'all' ? 0 : -1

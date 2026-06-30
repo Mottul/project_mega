@@ -13,10 +13,22 @@ export interface TcRate {
 }
 
 export const TC_RATES: TcRate[] = [
-  { key: '23.976', label: '23,976 fps (24 ÷ 1,001)', nominal: 24, exact: 24000 / 1001, drop: false },
+  {
+    key: '23.976',
+    label: '23,976 fps (24 ÷ 1,001)',
+    nominal: 24,
+    exact: 24000 / 1001,
+    drop: false
+  },
   { key: '24', label: '24 fps (Film)', nominal: 24, exact: 24, drop: false },
   { key: '25', label: '25 fps (PAL/EBU)', nominal: 25, exact: 25, drop: false },
-  { key: '29.97df', label: '29,97 fps Drop-Frame (NTSC)', nominal: 30, exact: 30000 / 1001, drop: true },
+  {
+    key: '29.97df',
+    label: '29,97 fps Drop-Frame (NTSC)',
+    nominal: 30,
+    exact: 30000 / 1001,
+    drop: true
+  },
   { key: '29.97', label: '29,97 fps Non-Drop', nominal: 30, exact: 30000 / 1001, drop: false },
   { key: '30', label: '30 fps', nominal: 30, exact: 30, drop: false },
   { key: '50', label: '50 fps', nominal: 50, exact: 50, drop: false },
@@ -86,7 +98,11 @@ export function secondsToFrames(seconds: number, rate: TcRate): number {
  *  Trennzeichen : ; . erlaubt. null bei Unfug. */
 export function parseTc(input: string, rate: TcRate): TcParts | null {
   const groups = input.trim().split(/[:;.,]/)
-  if (groups.length === 0 || groups.length > 4 || groups.some((g) => g === '' || !/^\d{1,3}$/.test(g))) {
+  if (
+    groups.length === 0 ||
+    groups.length > 4 ||
+    groups.some((g) => g === '' || !/^\d{1,3}$/.test(g))
+  ) {
     return null
   }
   const nums = groups.map((g) => parseInt(g, 10))

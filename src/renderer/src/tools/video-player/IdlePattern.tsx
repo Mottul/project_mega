@@ -33,5 +33,10 @@ export function IdlePattern({ pattern }: { pattern: PatternId }): JSX.Element {
       window.removeEventListener('resize', onResize)
     }
   }, [pattern])
-  return <canvas ref={ref} style={{ width: '100%', height: '100%', display: 'block', background: '#000' }} />
+  return (
+    <canvas
+      ref={ref}
+      style={{ width: '100%', height: '100%', display: 'block', background: '#000' }}
+    />
+  )
 }

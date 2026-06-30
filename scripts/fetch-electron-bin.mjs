@@ -11,7 +11,14 @@
 // Idempotent: liegt die Binary schon vor, passiert nichts (npm install bleibt schnell).
 
 import { createRequire } from 'node:module'
-import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import https from 'node:https'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -75,7 +82,9 @@ function download(u, dest, redirects = 0) {
             const pct = Math.floor((got / total) * 100)
             if (pct >= lastPct + 10) {
               lastPct = pct
-              process.stdout.write(`\r[electron-bin]   ${pct}% (${(got / 1048576) | 0}/${(total / 1048576) | 0} MB)`)
+              process.stdout.write(
+                `\r[electron-bin]   ${pct}% (${(got / 1048576) | 0}/${(total / 1048576) | 0} MB)`
+              )
             }
           }
         })
@@ -121,6 +130,8 @@ async function main() {
 main().catch((err) => {
   console.error(`\n[electron-bin] Konnte Electron-Binary nicht installieren: ${err.message}`)
   console.error('  Erneut versuchen:  npm run electron:bin')
-  console.error('  Fehlt die exe nach dem Entpacken: Projektordner in den Virenscanner-Ausnahmen eintragen.')
+  console.error(
+    '  Fehlt die exe nach dem Entpacken: Projektordner in den Virenscanner-Ausnahmen eintragen.'
+  )
   process.exit(0) // npm install nicht hart scheitern lassen
 })

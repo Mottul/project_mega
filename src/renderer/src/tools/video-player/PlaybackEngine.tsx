@@ -26,7 +26,11 @@ interface EngineProps {
 // erst NACH der Überblendung (sonst blitzt es kurz auf).
 //
 // Der main-Prozess bleibt autoritativ; diese Engine meldet nur Position/Ende.
-export function PlaybackEngine({ objectFit = 'fill', debug = false, passive = false }: EngineProps): JSX.Element {
+export function PlaybackEngine({
+  objectFit = 'fill',
+  debug = false,
+  passive = false
+}: EngineProps): JSX.Element {
   const [state, setState] = useState<PlayerState>(EMPTY_PLAYER_STATE)
   const [active, setActive] = useState(0)
 
@@ -139,7 +143,12 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false, passive = fa
     }
   }
 
-  function startImageTimer(item: MediaItem, playing: boolean, durationSec: number, fresh: boolean): void {
+  function startImageTimer(
+    item: MediaItem,
+    playing: boolean,
+    durationSec: number,
+    fresh: boolean
+  ): void {
     if (fresh) {
       imageItemId.current = item.id
       imageElapsed.current = 0
@@ -236,12 +245,15 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false, passive = fa
       const old = a
       clearPauseTimer(old)
       fadeAudio(old, 0, xMs || 80)
-      pauseTimers.current[old] = setTimeout(() => {
-        pauseTimers.current[old] = null
-        if (old === activeRef.current) return // inzwischen wieder aktiv -> nicht anfassen
-        const vi = videoRefs.current[old]
-        if (vi && slotItems.current[old]?.kind !== 'image') vi.pause()
-      }, (xMs || 80) + 30)
+      pauseTimers.current[old] = setTimeout(
+        () => {
+          pauseTimers.current[old] = null
+          if (old === activeRef.current) return // inzwischen wieder aktiv -> nicht anfassen
+          const vi = videoRefs.current[old]
+          if (vi && slotItems.current[old]?.kind !== 'image') vi.pause()
+        },
+        (xMs || 80) + 30
+      )
       clearPauseTimer(targetSlot)
       setActiveSlot(targetSlot)
     }
@@ -336,12 +348,24 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false, passive = fa
             preload="auto"
             onEnded={() => onVideoEnded(i)}
             onTimeUpdate={() => onVideoTime(i)}
-            style={{ width: '100%', height: '100%', objectFit, display: 'none', background: '#000' }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit,
+              display: 'none',
+              background: '#000'
+            }}
           />
           <img
             ref={(el) => (imgRefs.current[i] = el)}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit, display: 'none', background: '#000' }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit,
+              display: 'none',
+              background: '#000'
+            }}
           />
         </div>
       ))}
@@ -356,13 +380,21 @@ export function PlaybackEngine({ objectFit = 'fill', debug = false, passive = fa
               loop
               muted
               playsInline
-              style={{ width: '100%', height: '100%', objectFit: objectFit === 'contain' ? 'contain' : 'cover' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: objectFit === 'contain' ? 'contain' : 'cover'
+              }}
             />
           ) : (
             <img
               key={state.idleMediaUrl}
               src={state.idleMediaUrl}
-              style={{ width: '100%', height: '100%', objectFit: objectFit === 'contain' ? 'contain' : 'cover' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: objectFit === 'contain' ? 'contain' : 'cover'
+              }}
             />
           )}
         </div>

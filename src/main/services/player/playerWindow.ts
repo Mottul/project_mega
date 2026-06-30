@@ -10,7 +10,8 @@ import { setOutputOpen } from './playerState'
 let win: BrowserWindow | null = null
 
 export function openPlayerOutput(displayId: number): void {
-  const display = screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay()
+  const display =
+    screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay()
   const b = display.bounds
 
   // Bestehendes Fenster schließen -> sauberer Monitorwechsel.

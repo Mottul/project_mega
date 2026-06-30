@@ -13,24 +13,26 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject
 } from 'react'
 import {
   Activity,
-  LayoutGrid,
+  Copy,
+  ExternalLink,
   Monitor as MonitorIcon,
   Pencil,
   Pipette,
   Play,
   Plus,
   Radio,
-  RotateCcw,
   RotateCw,
   Send,
   Settings2,
   Smartphone,
   SlidersHorizontal,
+  Star,
   Tablet,
   Trash2,
   Wifi,
@@ -61,6 +63,7 @@ import {
   useOscSurface,
   WIDGET_COLORS,
   WIDGET_MIN,
+  WIDGET_ORDER,
   WIDGET_TYPE_LABEL,
   type BankMode,
   type OscItem,
@@ -88,7 +91,10 @@ const clampInt = (n: number, a: number, b: number): number =>
   Math.min(b, Math.max(a, Math.round(Number.isFinite(n) ? n : a)))
 
 function rgb01ToHex(r: number, g: number, b: number): string {
-  const h = (x: number): string => Math.round(clamp01(x) * 255).toString(16).padStart(2, '0')
+  const h = (x: number): string =>
+    Math.round(clamp01(x) * 255)
+      .toString(16)
+      .padStart(2, '0')
   return `#${h(r)}${h(g)}${h(b)}`
 }
 function hexToRgb01(hex: string): { r: number; g: number; b: number } {
@@ -172,8 +178,7 @@ function fmtClock(totalSec: number): string {
   return `${h > 0 ? `${h}:` : ''}${mm}:${String(sec).padStart(2, '0')}`
 }
 // Schachbrett-Hintergrund (zeigt Transparenz hinter dem Alpha-Regler).
-const CHECKER =
-  'repeating-conic-gradient(#0006 0% 25%, #fff3 0% 50%) 50% / 10px 10px'
+const CHECKER = 'repeating-conic-gradient(#0006 0% 25%, #fff3 0% 50%) 50% / 10px 10px'
 
 interface LogEntry {
   id: number
@@ -189,27 +194,46 @@ type SendMany = (msgs: OscMessage[]) => void
 /* ------------------------------ Hauptansicht ---------------------------- */
 
 export function OscControl(): JSX.Element {
-  const sets = useOscSurface((s) => s.sets)
-  const currentSetId = useOscSurface((s) => s.currentSetId)
+  const projects = useOscSurface((s) => s.projects)
+  const currentProjectId = useOscSurface((s) => s.currentProjectId)
+  const defaultProjectId = useOscSurface((s) => s.defaultProjectId)
   const mode = useOscSurface((s) => s.mode)
   const setStore = useOscSurface((s) => s.set)
   const live = mode === 'live'
 
+  const project = projects.find((p) => p.id === currentProjectId) ?? projects[0]
+  const sets = project.sets
+  const currentSetId = project.currentSetId
   const set = sets.find((x) => x.id === currentSetId) ?? sets[0]
   const widgets = set.widgets
   const columns = set.columns
+  const device = set.device
+  const landscape = set.landscape
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [device, setDevice] = useState<DeviceKey>('off')
-  const [landscape, setLandscape] = useState(false)
+  // Klick-zum-Einfügen: geklickte Zelle (gx/gy) + Bildschirmposition (x/y) des Pickers.
+  // gx/gy gesetzt = an dieser Zelle einfügen (Flächen-Klick); ohne = seitlich
+  // einreihen (Button „Widget hinzufügen“).
+  const [picker, setPicker] = useState<{ gx?: number; gy?: number; x: number; y: number } | null>(
+    null
+  )
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8091)
-  const [video, setVideo] = useState<VideoInfo>({ playing: false, remainingSec: null, durationSec: 0 })
+  const [video, setVideo] = useState<VideoInfo>({
+    playing: false,
+    remainingSec: null,
+    durationSec: 0
+  })
   const [status, setStatus] = useState<OscStatus | null>(null)
   const [config, setConfig] = useState<OscSettings | null>(null)
   const [log, setLog] = useState<LogEntry[]>([])
   const logRef = useRef<LogEntry[]>([])
   const logSeq = useRef(0)
+  // Gedrosselte Spiegelung des Logs an etwaige OSC-Monitor-Fenster.
+  const monPub = useRef<{ last: number; t: ReturnType<typeof setTimeout> | null }>({
+    last: 0,
+    t: null
+  })
   // Learn: ID des Widgets, das die nächste eingehende OSC-Adresse übernimmt.
   const [learnId, setLearnId] = useState<string | null>(null)
   const learnRef = useRef<string | null>(null)
@@ -217,8 +241,15 @@ export function OscControl(): JSX.Element {
     learnRef.current = learnId
   }, [learnId])
 
-  // Set-Wechsel -> Auswahl zurücksetzen.
-  useEffect(() => setSelectedId(null), [currentSetId])
+  // Set-Wechsel -> Auswahl + Einfüge-Picker zurücksetzen.
+  useEffect(() => {
+    setSelectedId(null)
+    setPicker(null)
+  }, [currentSetId])
+  // Im Live-Modus keinen Einfüge-Picker offen lassen.
+  useEffect(() => {
+    if (mode === 'live') setPicker(null)
+  }, [mode])
   // Auswahl-/Set-Wechsel -> Learn beenden.
   useEffect(() => setLearnId(null), [selectedId, currentSetId])
 
@@ -230,12 +261,33 @@ export function OscControl(): JSX.Element {
       if (top && top.dir === dir && top.address === address && now - top.at < 80) {
         logRef.current = [{ ...top, args, at: now }, ...cur.slice(1)]
       } else {
-        logRef.current = [{ id: logSeq.current++, dir, address, args, at: now }, ...cur].slice(0, 60)
+        logRef.current = [{ id: logSeq.current++, dir, address, args, at: now }, ...cur].slice(
+          0,
+          60
+        )
       }
       setLog(logRef.current)
+      // gedrosselt (~150 ms) an etwaige Monitor-Fenster spiegeln
+      const p = monPub.current
+      const flush = (): void => {
+        p.last = Date.now()
+        p.t = null
+        void api.osc.publishMonitor(logRef.current)
+      }
+      const since = now - p.last
+      if (since >= 150) flush()
+      else if (!p.t) p.t = setTimeout(flush, 150 - since)
     },
     []
   )
+
+  // Anstehende Monitor-Spiegelung beim Schließen aufräumen.
+  useEffect(() => {
+    const p = monPub.current
+    return () => {
+      if (p.t) clearTimeout(p.t)
+    }
+  }, [])
 
   const send = useCallback<Send>(
     (msg) => {
@@ -284,7 +336,7 @@ export function OscControl(): JSX.Element {
       // Set-Wechsel vom Handy: kein Widget-Bezug -> vor der Widget-Suche behandeln.
       // Der Publish-Effekt schickt danach automatisch den neuen Schnappschuss.
       if (cmd.kind === 'selectSet') {
-        if (st.sets.some((s) => s.id === cmd.id)) st.selectSet(cmd.id)
+        if (st.currentProject().sets.some((s) => s.id === cmd.id)) st.selectSet(cmd.id)
         return
       }
       const w = st.currentSet().widgets.find((x) => x.id === cmd.id)
@@ -353,7 +405,10 @@ export function OscControl(): JSX.Element {
 
   // Schnappschuss der Oberfläche an den Fernsteuer-Server – gedrosselt, da sich
   // Werte beim Ziehen schnell ändern.
-  const pubRef = useRef<{ t: number; timer: ReturnType<typeof setTimeout> | null }>({ t: 0, timer: null })
+  const pubRef = useRef<{ t: number; timer: ReturnType<typeof setTimeout> | null }>({
+    t: 0,
+    timer: null
+  })
   useEffect(() => {
     const p = pubRef.current
     const run = (): void => {
@@ -442,6 +497,11 @@ export function OscControl(): JSX.Element {
     if (selectedId === id) setSelectedId(null)
   }
 
+  function duplicateWidgetSel(id: string): void {
+    const nid = useOscSurface.getState().duplicateWidget(id)
+    if (nid) setSelectedId(nid)
+  }
+
   function publishSnapshot(): void {
     const store = useOscSurface.getState()
     const cs = store.currentSet()
@@ -449,7 +509,7 @@ export function OscControl(): JSX.Element {
       connected: true,
       setName: cs.name,
       columns: cs.columns,
-      sets: store.sets.map((s) => ({ id: s.id, name: s.name })),
+      sets: store.currentProject().sets.map((s) => ({ id: s.id, name: s.name })),
       currentSetId: cs.id,
       widgets: cs.widgets.map((w) => {
         const m = w.type === 'meter' ? meterReadout(w, video) : { level: 0, text: '' }
@@ -500,148 +560,325 @@ export function OscControl(): JSX.Element {
     }
   }
 
-  function onAdd(type: OscWidgetType): void {
-    const id = useOscSurface.getState().addWidget(type)
+  function onAdd(type: OscWidgetType, pos?: { gx: number; gy: number }): void {
+    const id = useOscSurface.getState().addWidget(type, pos)
     setSelectedId(id)
     if (mode !== 'edit') setStore({ mode: 'edit' })
   }
 
-  const statusDot = status ? (status.lastError ? 'bg-destructive' : 'bg-emerald-500') : 'bg-muted-foreground'
+  const statusDot = status
+    ? status.lastError
+      ? 'bg-destructive'
+      : 'bg-emerald-500'
+    : 'bg-muted-foreground'
 
   const main = (
     <VideoCtx.Provider value={video}>
-    <div className="flex h-full flex-col">
-      {/* Kopfzeile: Sets links, Edit/Live rechts */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
-        <div className="flex flex-wrap items-center gap-1">
-          {sets.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() => useOscSurface.getState().selectSet(b.id)}
-              className={cn(
-                'rounded-md border px-3 py-1.5 text-sm transition-colors',
-                b.id === set.id
-                  ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
-                  : 'border-border text-muted-foreground hover:border-primary/40'
-              )}
+      <div className="flex h-full flex-col">
+        {/* Kopfzeile: Projekt-Zeile (Set-Sammlungen) + Set-Zeile darunter */}
+        <div className="border-b border-border px-5 py-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Projekt
+            </span>
+            <div className="flex flex-wrap items-center gap-1">
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => useOscSurface.getState().selectProject(p.id)}
+                  className={cn(
+                    'flex items-center gap-1 rounded-md border px-2.5 py-1 text-sm transition-colors',
+                    p.id === project.id
+                      ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/40'
+                  )}
+                >
+                  {p.id === defaultProjectId && <Star className="size-3 fill-current opacity-70" />}
+                  {p.name || '—'}
+                </button>
+              ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Projekt hinzufügen (übernimmt das Default-Projekt, falls gesetzt)"
+                onClick={() => useOscSurface.getState().addProject()}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+            <div className="h-5 w-px bg-border" />
+            <Input
+              value={project.name}
+              onChange={(e) => useOscSurface.getState().renameProject(project.id, e.target.value)}
+              placeholder="Projekt-Titel"
+              title="Titel = erstes OSC-Adresssegment neuer Widgets (z. B. „mottl“ → /mottl/fader)"
+              className="h-8 w-40"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              title="Aktuelles Projekt als Default-Projekt speichern (Vorlage für neue Projekte)"
+              onClick={() => useOscSurface.getState().saveAsDefaultProject()}
             >
-              {b.name}
-            </button>
-          ))}
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Set hinzufügen"
-            onClick={() => useOscSurface.getState().addSet()}
-          >
-            <Plus className="size-4" />
-          </Button>
+              <Star
+                className={cn(
+                  'size-3.5',
+                  defaultProjectId === project.id && 'fill-current text-primary'
+                )}
+              />{' '}
+              Default
+            </Button>
+            {projects.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Projekt löschen"
+                onClick={() => {
+                  if (confirm(`Projekt „${project.name}“ mit allen Sets löschen?`))
+                    useOscSurface.getState().deleteProject(project.id)
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* deutliche Trennung Projekt <-> Sets */}
+          <div className="-mx-5 my-2 h-px bg-border" />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Set
+            </span>
+            <div className="flex flex-wrap items-center gap-1">
+              {sets.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => useOscSurface.getState().selectSet(b.id)}
+                  className={cn(
+                    'rounded-md border px-3 py-1.5 text-sm transition-colors',
+                    b.id === set.id
+                      ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/40'
+                  )}
+                >
+                  {b.name}
+                </button>
+              ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Set hinzufügen"
+                onClick={() => useOscSurface.getState().addSet()}
+              >
+                <Plus className="size-4" />
+              </Button>
+            </div>
+
+            {/* Aktives Set: Name + Spaltenraster direkt im Header. */}
+            <div className="h-5 w-px bg-border" />
+            <Input
+              value={set.name}
+              onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)}
+              placeholder="Set-Name"
+              className="h-8 w-36"
+            />
+            <label className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
+              Spalten
+              <NumberField
+                value={columns}
+                min={4}
+                max={MAX_COLS}
+                onCommit={(v) => useOscSurface.getState().setColumns(v)}
+                className="h-8 w-16"
+              />
+            </label>
+            {sets.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Set löschen"
+                onClick={() => {
+                  if (confirm(`Set „${set.name}“ wirklich löschen?`))
+                    useOscSurface.getState().deleteSet(set.id)
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+
+            <div className="flex-1" />
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className={cn('size-2.5 rounded-full', statusDot)} />
+              <span className="tabular-nums">
+                {status ? `${status.host}:${status.outPort}` : '–'}
+              </span>
+              {status?.listening && (
+                <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs">
+                  <Radio className="size-3" /> {status.inPort}
+                </span>
+              )}
+            </div>
+
+            {/* Geräte-Vorschau */}
+            <div className="flex overflow-hidden rounded-md border border-border">
+              <DeviceBtn
+                active={!previewing}
+                title="Normale Ansicht"
+                onClick={() => useOscSurface.getState().setDevice('off')}
+              >
+                <MonitorIcon className="size-4" />
+              </DeviceBtn>
+              <DeviceBtn
+                active={device === 'phone'}
+                title="Handy-Vorschau"
+                onClick={() => useOscSurface.getState().setDevice('phone')}
+              >
+                <Smartphone className="size-4" />
+              </DeviceBtn>
+              <DeviceBtn
+                active={device === 'tablet'}
+                title="Tablet-Vorschau"
+                onClick={() => useOscSurface.getState().setDevice('tablet')}
+              >
+                <Tablet className="size-4" />
+              </DeviceBtn>
+            </div>
+            {previewing && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Hoch-/Querformat"
+                onClick={() => useOscSurface.getState().setLandscape(!landscape)}
+              >
+                <RotateCw className="size-4" />
+              </Button>
+            )}
+
+            {/* Edit / Live */}
+            <div className="flex overflow-hidden rounded-md border border-border">
+              <button
+                type="button"
+                onClick={() => setStore({ mode: 'edit' })}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
+                  !live
+                    ? 'bg-primary/15 font-semibold text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Pencil className="size-4" /> Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setStore({ mode: 'live' })}
+                className={cn(
+                  'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
+                  live
+                    ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Play className="size-4" /> Live
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className={cn('size-2.5 rounded-full', statusDot)} />
-          <span className="tabular-nums">{status ? `${status.host}:${status.outPort}` : '–'}</span>
-          {status?.listening && (
-            <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs">
-              <Radio className="size-3" /> {status.inPort}
-            </span>
+        {/* Steuerpult – normal oder im Geräterahmen (Vorschau ist auch im
+          Edit-Modus bearbeitbar). */}
+        <div className="min-h-0 flex-1 overflow-auto p-5">
+          {previewing ? (
+            <DeviceFrame w={frameW} h={frameH}>
+              {(scale) =>
+                widgets.length === 0 && live ? (
+                  <p className="p-8 text-center text-sm text-muted-foreground">
+                    Noch keine Bedienelemente.
+                  </p>
+                ) : (
+                  <SurfaceGrid
+                    columns={columns}
+                    widgets={widgets}
+                    live={live}
+                    scale={scale}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                    onDuplicate={duplicateWidgetSel}
+                    onRemove={removeWidget}
+                    onSend={send}
+                    onSendMany={sendMany}
+                    onPlacePick={(gx, gy, x, y) => setPicker((p) => (p ? null : { gx, gy, x, y }))}
+                  />
+                )
+              }
+            </DeviceFrame>
+          ) : widgets.length === 0 && live ? (
+            <Card className="flex h-40 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+              Noch keine Bedienelemente.
+            </Card>
+          ) : (
+            <>
+              {widgets.length === 0 && (
+                <p className="mb-3 text-center text-sm text-muted-foreground">
+                  Leere Rasterfläche anklicken, um hier ein Widget einzufügen – oder „Widget
+                  hinzufügen“ rechts.
+                </p>
+              )}
+              <SurfaceGrid
+                columns={columns}
+                widgets={widgets}
+                live={live}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onDuplicate={duplicateWidgetSel}
+                onRemove={removeWidget}
+                onSend={send}
+                onSendMany={sendMany}
+                onPlacePick={(gx, gy, x, y) => setPicker((p) => (p ? null : { gx, gy, x, y }))}
+              />
+            </>
           )}
         </div>
-
-        {/* Geräte-Vorschau */}
-        <div className="flex overflow-hidden rounded-md border border-border">
-          <DeviceBtn active={!previewing} title="Normale Ansicht" onClick={() => setDevice('off')}>
-            <MonitorIcon className="size-4" />
-          </DeviceBtn>
-          <DeviceBtn active={device === 'phone'} title="Handy-Vorschau" onClick={() => setDevice('phone')}>
-            <Smartphone className="size-4" />
-          </DeviceBtn>
-          <DeviceBtn active={device === 'tablet'} title="Tablet-Vorschau" onClick={() => setDevice('tablet')}>
-            <Tablet className="size-4" />
-          </DeviceBtn>
-        </div>
-        {previewing && (
-          <Button variant="ghost" size="icon" title="Hoch-/Querformat" onClick={() => setLandscape((v) => !v)}>
-            <RotateCw className="size-4" />
-          </Button>
-        )}
-
-        {/* Edit / Live */}
-        <div className="flex overflow-hidden rounded-md border border-border">
-          <button
-            type="button"
-            onClick={() => setStore({ mode: 'edit' })}
-            className={cn(
-              'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
-              !live ? 'bg-primary/15 font-semibold text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Pencil className="size-4" /> Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => setStore({ mode: 'live' })}
-            className={cn(
-              'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
-              live
-                ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Play className="size-4" /> Live
-          </button>
-        </div>
-      </div>
-
-      {/* Steuerpult – normal oder im Geräterahmen (Vorschau ist auch im
-          Edit-Modus bearbeitbar). */}
-      <div className="min-h-0 flex-1 overflow-auto p-5">
-        {previewing ? (
-          <DeviceFrame w={frameW} h={frameH}>
-            {(scale) =>
-              widgets.length === 0 ? (
-                <p className="p-8 text-center text-sm text-muted-foreground">Noch keine Bedienelemente.</p>
-              ) : (
-                <SurfaceGrid
-                  columns={columns}
-                  widgets={widgets}
-                  live={live}
-                  scale={scale}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                  onRemove={removeWidget}
-                  onSend={send}
-                  onSendMany={sendMany}
-                />
+        {picker && (
+          <WidgetPicker
+            x={picker.x}
+            y={picker.y}
+            onPick={(t) => {
+              onAdd(
+                t,
+                picker.gx != null && picker.gy != null
+                  ? { gx: picker.gx, gy: picker.gy }
+                  : undefined
               )
-            }
-          </DeviceFrame>
-        ) : widgets.length === 0 ? (
-          <Card className="flex h-40 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-            Noch keine Bedienelemente. Rechts unter „Oberfläche“ ein Widget hinzufügen.
-          </Card>
-        ) : (
-          <SurfaceGrid
-            columns={columns}
-            widgets={widgets}
-            live={live}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onRemove={removeWidget}
-            onSend={send}
-            onSendMany={sendMany}
+              setPicker(null)
+            }}
+            onClose={() => setPicker(null)}
           />
         )}
       </div>
-    </div>
     </VideoCtx.Provider>
   )
 
   const aside = (
     <>
+      <div className="border-b border-border p-3">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full justify-center"
+          onClick={(e) => {
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+            if (mode !== 'edit') setStore({ mode: 'edit' })
+            setPicker({ x: Math.max(8, r.left - 140), y: r.bottom + 4 })
+          }}
+        >
+          <Plus className="size-4" /> Widget hinzufügen
+        </Button>
+      </div>
+
       <PanelSection id="widget" title="Widget" icon={Settings2}>
         {selected ? (
           <WidgetEditor
@@ -651,6 +888,10 @@ export function OscControl(): JSX.Element {
             learning={learnId === selected.id}
             canLearn={!!status?.listening}
             onToggleLearn={() => setLearnId((id) => (id === selected.id ? null : selected.id))}
+            onDuplicate={() => {
+              const id = useOscSurface.getState().duplicateWidget(selected.id)
+              if (id) setSelectedId(id)
+            }}
             onRemove={() => {
               useOscSurface.getState().removeWidget(selected.id)
               setSelectedId(null)
@@ -664,65 +905,18 @@ export function OscControl(): JSX.Element {
         )}
       </PanelSection>
 
-      {/* Set & Raster: alle Eigenschaften des aktiven Sets an einer Stelle
-          (Name, Spaltenraster, Widget-Palette, Beispiele, Löschen). */}
-      <PanelSection id="set" title="Set & Raster" icon={LayoutGrid}>
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Name</span>
-          <Input value={set.name} onChange={(e) => useOscSurface.getState().renameSet(set.id, e.target.value)} />
-        </label>
-        <label className="flex items-center justify-between gap-3">
-          <span className="text-sm">Spalten</span>
-          <NumberField
-            value={columns}
-            min={4}
-            max={MAX_COLS}
-            onCommit={(v) => useOscSurface.getState().setColumns(v)}
-            className="h-8 w-20"
-          />
-        </label>
-        <div>
-          <span className="mb-1.5 block text-xs text-muted-foreground">Widget hinzufügen</span>
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
-              <Button key={t} variant="outline" size="sm" onClick={() => onAdd(t)}>
-                <Plus className="size-3.5" /> {WIDGET_TYPE_LABEL[t]}
-              </Button>
-            ))}
-          </div>
-        </div>
-        <div className="flex gap-2 border-t border-border pt-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1 text-muted-foreground"
-            onClick={() => {
-              if (confirm('Widgets dieses Sets auf die Beispiele zurücksetzen?')) {
-                useOscSurface.getState().resetSurface()
-                setSelectedId(null)
-              }
-            }}
-          >
-            <RotateCcw className="size-3.5" /> Beispiele
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={() => useOscSurface.getState().deleteSet(set.id)}
-          >
-            <Trash2 className="size-3.5" /> Löschen
-          </Button>
-        </div>
-      </PanelSection>
-
       <PanelSection
         id="connection"
         title="Verbindung"
         icon={Radio}
         right={<span className={cn('size-2.5 rounded-full', statusDot)} />}
       >
-        <ConnectionPanel config={config} status={status} onApplied={(st) => setStatus(st)} onSend={send} />
+        <ConnectionPanel
+          config={config}
+          status={status}
+          onApplied={(st) => setStatus(st)}
+          onSend={send}
+        />
       </PanelSection>
 
       <PanelSection
@@ -730,7 +924,12 @@ export function OscControl(): JSX.Element {
         title="Fernsteuerung"
         icon={Wifi}
         right={
-          <span className={cn('size-2.5 rounded-full', remote?.running ? 'bg-emerald-500' : 'bg-muted-foreground')} />
+          <span
+            className={cn(
+              'size-2.5 rounded-full',
+              remote?.running ? 'bg-emerald-500' : 'bg-muted-foreground'
+            )}
+          />
         }
       >
         <p className="text-sm text-muted-foreground">
@@ -763,7 +962,9 @@ export function OscControl(): JSX.Element {
               <QrCode text={remote.urls[0]} size={96} />
             </div>
             <div className="min-w-0 text-xs">
-              <p className="mb-1 text-muted-foreground">Im Browser öffnen (QR scannen oder eintippen):</p>
+              <p className="mb-1 text-muted-foreground">
+                Im Browser öffnen (QR scannen oder eintippen):
+              </p>
               {remote.urls.map((u) => (
                 <div key={u} className="truncate font-mono text-foreground">
                   {u}
@@ -775,6 +976,15 @@ export function OscControl(): JSX.Element {
       </PanelSection>
 
       <PanelSection id="monitor" title="OSC-Monitor" icon={Activity} defaultOpen={false}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          title="OSC-Monitor in einem eigenen Fenster öffnen (spiegelt dieses Log)"
+          onClick={() => void api.osc.openMonitor()}
+        >
+          <ExternalLink className="size-3.5" /> Eigenes Fenster
+        </Button>
         <Monitor
           log={log}
           onClear={() => {
@@ -822,7 +1032,9 @@ function reflectFeedback(fb: OscFeedback): void {
       st.updateWidget(w.id, { value: num })
     } else if (w.type === 'select') {
       // Option, deren Adresse+Wert zum Feedback passt -> als aktiv markieren.
-      const idx = w.items.findIndex((it) => (it.address || w.address) === fb.address && it.value === num)
+      const idx = w.items.findIndex(
+        (it) => (it.address || w.address) === fb.address && it.value === num
+      )
       if (idx >= 0) st.updateWidget(w.id, { value: idx })
     }
   }
@@ -858,6 +1070,7 @@ function WidgetTile({
   onSelect,
   onSend,
   onSendMany,
+  onDuplicate,
   onRemove
 }: {
   w: OscWidget
@@ -869,6 +1082,7 @@ function WidgetTile({
   onSelect: () => void
   onSend: Send
   onSendMany: SendMany
+  onDuplicate: () => void
   onRemove: () => void
 }): JSX.Element {
   const tileRef = useRef<HTMLDivElement>(null)
@@ -912,7 +1126,6 @@ function WidgetTile({
   }
 
   function startResize(e: ReactPointerEvent): void {
-    e.stopPropagation()
     e.preventDefault()
     const grid = gridRef.current
     const tile = tileRef.current
@@ -980,7 +1193,10 @@ function WidgetTile({
       </div>
 
       {showAddr && (
-        <div className="mt-1 truncate pr-4 font-mono text-[10px] text-muted-foreground" title={w.address}>
+        <div
+          className="mt-1 truncate pr-4 font-mono text-[10px] text-muted-foreground"
+          title={w.address}
+        >
           {w.address}
           {w.type === 'xy' && w.addressY ? `  ${w.addressY}` : ''}
         </div>
@@ -990,8 +1206,11 @@ function WidgetTile({
         <>
           <div
             data-no-drag
-            className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100"
+            className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100"
           >
+            <TileBtn title="Duplizieren" onClick={onDuplicate}>
+              <Copy className="size-3.5" />
+            </TileBtn>
             <TileBtn title="Entfernen" onClick={onRemove}>
               <Trash2 className="size-3.5" />
             </TileBtn>
@@ -1100,7 +1319,10 @@ function DeviceFrame({
     <div ref={ref} className="flex h-full w-full items-center justify-center">
       <div style={{ transform: `scale(${scale})` }} className="origin-center">
         <div className="rounded-[2.6rem] border-[12px] border-neutral-800 bg-neutral-800 shadow-2xl">
-          <div style={{ width: w, height: h }} className="overflow-auto rounded-[1.6rem] bg-background p-3">
+          <div
+            style={{ width: w, height: h }}
+            className="overflow-auto rounded-[1.6rem] bg-background p-3"
+          >
             {children(scale)}
           </div>
         </div>
@@ -1119,9 +1341,11 @@ function SurfaceGrid({
   scale = 1,
   selectedId,
   onSelect,
+  onDuplicate,
   onRemove,
   onSend,
-  onSendMany
+  onSendMany,
+  onPlacePick
 }: {
   columns: number
   widgets: OscWidget[]
@@ -1129,17 +1353,71 @@ function SurfaceGrid({
   scale?: number
   selectedId: string | null
   onSelect: (id: string) => void
+  onDuplicate: (id: string) => void
   onRemove: (id: string) => void
   onSend: Send
   onSendMany: SendMany
+  onPlacePick?: (gx: number, gy: number, clientX: number, clientY: number) => void
 }): JSX.Element {
   const gridRef = useRef<HTMLDivElement>(null)
+  // Merkt sich, wo ein Druck begann -> ein Klick nach Drag/Resize (Bewegung oder
+  // Start auf einer Kachel) öffnet NICHT den Picker.
+  const downRef = useRef<{ x: number; y: number; onGrid: boolean }>({ x: 0, y: 0, onGrid: false })
+  // Zelle unter dem Cursor (nur leere Fläche, Edit) -> Hover-Hinweis „hier einfügen".
+  const [hoverCell, setHoverCell] = useState<{ gx: number; gy: number } | null>(null)
   const maxBottom = widgets.reduce((m, w) => Math.max(m, w.gy + w.ch), 0)
   const rows = live ? Math.max(maxBottom, 1) : Math.max(maxBottom + 3, 10)
+
+  function handleGridPointerDown(e: ReactPointerEvent<HTMLDivElement>): void {
+    downRef.current = { x: e.clientX, y: e.clientY, onGrid: e.target === gridRef.current }
+  }
+
+  /** Rasterzelle aus Bildschirmkoordinaten (berücksichtigt die Vorschau-Skalierung). */
+  function cellAt(clientX: number, clientY: number): { gx: number; gy: number } | null {
+    const grid = gridRef.current
+    if (!grid) return null
+    const rect = grid.getBoundingClientRect()
+    const colStep = (grid.clientWidth + GAP) / columns
+    const rowStep = ROW_H + GAP
+    const gx = Math.max(
+      0,
+      Math.min(columns - 1, Math.floor((clientX - rect.left) / scale / colStep))
+    )
+    const gy = Math.max(0, Math.floor((clientY - rect.top) / scale / rowStep))
+    return { gx, gy }
+  }
+
+  // Hover über leere Fläche -> Zelle hervorheben (Rahmen + Plus signalisiert „hier
+  // klicken zum Einfügen"). Über Kacheln/Live nichts.
+  function handleGridMove(e: ReactMouseEvent<HTMLDivElement>): void {
+    if (live || !onPlacePick || e.target !== gridRef.current) {
+      if (hoverCell) setHoverCell(null)
+      return
+    }
+    const c = cellAt(e.clientX, e.clientY)
+    if (c && (!hoverCell || hoverCell.gx !== c.gx || hoverCell.gy !== c.gy)) setHoverCell(c)
+  }
+
+  // Klick auf die leere Rasterfläche (nur Edit) -> Picker an der Zelle öffnen
+  // (Klicks auf/aus Kacheln oder nach Drag/Resize werden ignoriert).
+  function handleEmptyClick(e: ReactMouseEvent<HTMLDivElement>): void {
+    const grid = gridRef.current
+    if (live || !onPlacePick || !grid || e.target !== grid) return
+    const d = downRef.current
+    const moved = Math.abs(e.clientX - d.x) > 4 || Math.abs(e.clientY - d.y) > 4
+    if (!d.onGrid || moved) return
+    const c = cellAt(e.clientX, e.clientY)
+    if (c) onPlacePick(c.gx, c.gy, e.clientX, e.clientY)
+  }
+
   return (
     <div
       ref={gridRef}
-      className="grid"
+      onPointerDown={handleGridPointerDown}
+      onClick={handleEmptyClick}
+      onMouseMove={handleGridMove}
+      onMouseLeave={() => setHoverCell(null)}
+      className="grid select-none"
       style={{
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
         gridAutoRows: `${ROW_H}px`,
@@ -1147,6 +1425,14 @@ function SurfaceGrid({
       }}
     >
       {!live && <GridBackdrop columns={columns} rows={rows} />}
+      {!live && hoverCell && (
+        <div
+          className="pointer-events-none z-0 flex items-center justify-center rounded-[4px] border-2 border-dashed border-primary/70 bg-primary/10 text-primary"
+          style={{ gridColumn: `${hoverCell.gx + 1}`, gridRow: `${hoverCell.gy + 1}` }}
+        >
+          <Plus className="size-4" />
+        </div>
+      )}
       {widgets.map((w) => (
         <WidgetTile
           key={w.id}
@@ -1159,9 +1445,61 @@ function SurfaceGrid({
           onSelect={() => onSelect(w.id)}
           onSend={onSend}
           onSendMany={onSendMany}
+          onDuplicate={() => onDuplicate(w.id)}
           onRemove={() => onRemove(w.id)}
         />
       ))}
+    </div>
+  )
+}
+
+/** Klick-zum-Einfügen: kleine Palette am Klickpunkt; Auswahl fügt das Widget an
+ *  der angeklickten Zelle ein. Per fixed positioniert (außerhalb der skalierten
+ *  Geräte-Vorschau gerendert, daher Viewport-Koordinaten). */
+function WidgetPicker({
+  x,
+  y,
+  onPick,
+  onClose
+}: {
+  x: number
+  y: number
+  onPick: (t: OscWidgetType) => void
+  onClose: () => void
+}): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  // Schließen erfolgt über Escape, Auswahl oder einen weiteren Klick auf die
+  // Arbeitsfläche (Toggle im Aufrufer) – kein eigener Outside-Click-Listener,
+  // damit der Flächen-Klick nicht sofort wieder einen neuen Picker öffnet.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  // am Klickpunkt verankern, aber im Viewport halten
+  const left = Math.max(8, Math.min(x, window.innerWidth - 220))
+  const top = Math.max(8, Math.min(y, window.innerHeight - 300))
+  return (
+    <div
+      ref={ref}
+      style={{ position: 'fixed', left, top, zIndex: 50 }}
+      className="w-52 select-none rounded-lg border border-border bg-card p-2 shadow-xl"
+    >
+      <p className="mb-1.5 px-1 text-xs text-muted-foreground">Widget einfügen</p>
+      <div className="grid grid-cols-2 gap-1.5">
+        {WIDGET_ORDER.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onPick(t)}
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1.5 text-left text-xs hover:border-primary/50 hover:bg-muted/40"
+          >
+            <Plus className="size-3 shrink-0" /> {WIDGET_TYPE_LABEL[t]}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1247,7 +1585,7 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
   )
 }
 
-/* ------------------------- Bedienelement: Knopf ------------------------- */
+/* -------------------------- Bedienelement: Poti ------------------------- */
 
 // Drehknopf/Poti: vertikal ziehen ändert den Wert. Absolut (min..max) oder als
 // Endlos-Encoder (sendet relative Schritte = onValue je „Rastung").
@@ -1298,9 +1636,29 @@ function Knob({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
         start.current = null
       }}
     >
-      <svg ref={dialRef} viewBox="0 0 100 100" className="h-full max-h-full w-auto cursor-ns-resize">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" className="text-muted-foreground/25" strokeWidth="3" />
-        <circle cx="50" cy="50" r="32" fill="none" stroke={w.color} strokeWidth="2.5" opacity="0.7" />
+      <svg
+        ref={dialRef}
+        viewBox="0 0 100 100"
+        className="h-full max-h-full w-auto cursor-ns-resize"
+      >
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="none"
+          stroke="currentColor"
+          className="text-muted-foreground/25"
+          strokeWidth="3"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="32"
+          fill="none"
+          stroke={w.color}
+          strokeWidth="2.5"
+          opacity="0.7"
+        />
         <line
           x1="50"
           y1="50"
@@ -1311,7 +1669,13 @@ function Knob({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
           strokeLinecap="round"
         />
         {!w.endless && (
-          <text x="50" y="92" textAnchor="middle" className="fill-foreground/80" style={{ fontSize: 13 }}>
+          <text
+            x="50"
+            y="92"
+            textAnchor="middle"
+            className="fill-foreground/80"
+            style={{ fontSize: 13 }}
+          >
             {w.value.toFixed(2)}
           </text>
         )}
@@ -1333,7 +1697,11 @@ function Toggle({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
         onSend(fmsg(w.address, next ? w.onValue : w.offValue))
       }}
       className="flex h-full w-full items-center justify-center rounded-md border text-sm font-semibold transition-colors"
-      style={{ borderColor: w.color, background: on ? w.color : 'transparent', color: on ? '#fff' : undefined }}
+      style={{
+        borderColor: w.color,
+        background: on ? w.color : 'transparent',
+        color: on ? '#fff' : undefined
+      }}
     >
       {on ? 'AN' : 'AUS'}
     </button>
@@ -1451,7 +1819,11 @@ function BankCell({
           onSend(fmsg(addr, next ? w.onValue : w.offValue))
         }}
         className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border px-1 text-sm font-semibold transition-colors"
-        style={{ borderColor: w.color, background: on ? w.color : 'transparent', color: on ? '#fff' : w.color }}
+        style={{
+          borderColor: w.color,
+          background: on ? w.color : 'transparent',
+          color: on ? '#fff' : w.color
+        }}
       >
         <span className="truncate">{item.label || index + 1}</span>
       </button>
@@ -1508,7 +1880,15 @@ function BankKnob({
       }}
     >
       <svg viewBox="0 0 100 100" className="min-h-0 w-auto flex-1 cursor-ns-resize">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" className="text-muted-foreground/25" strokeWidth="4" />
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="none"
+          stroke="currentColor"
+          className="text-muted-foreground/25"
+          strokeWidth="4"
+        />
         <line
           x1="50"
           y1="50"
@@ -1519,7 +1899,9 @@ function BankKnob({
           strokeLinecap="round"
         />
       </svg>
-      {item.label && <span className="max-w-full truncate text-[10px] text-muted-foreground">{item.label}</span>}
+      {item.label && (
+        <span className="max-w-full truncate text-[10px] text-muted-foreground">{item.label}</span>
+      )}
     </div>
   )
 }
@@ -1657,8 +2039,9 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
     emit(r, g, b, w.a)
   }
   async function pickColor(): Promise<void> {
-    const ED = (window as unknown as { EyeDropper?: new () => { open(): Promise<{ sRGBHex: string }> } })
-      .EyeDropper
+    const ED = (
+      window as unknown as { EyeDropper?: new () => { open(): Promise<{ sRGBHex: string }> } }
+    ).EyeDropper
     if (!ED) return
     try {
       const res = await new ED().open()
@@ -1671,26 +2054,28 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-1.5">
-      <div className="flex items-center gap-1.5">
-        <div
-          className="flex h-7 flex-1 items-center justify-center rounded border border-white/15 font-mono text-[11px] uppercase"
-          style={{ background: `linear-gradient(${rgba}, ${rgba}), ${CHECKER}`, color: lum > 0.55 ? '#000' : '#fff' }}
-        >
-          {hex}
-        </div>
+      {/* Farbanzeige füllt die verbleibende Widget-Höhe; Hex-Code mittig. */}
+      <div
+        className="relative flex min-h-0 flex-1 items-center justify-center rounded border border-white/15 font-mono text-[11px] uppercase"
+        style={{
+          background: `linear-gradient(${rgba}, ${rgba}), ${CHECKER}`,
+          color: lum > 0.55 ? '#000' : '#fff'
+        }}
+      >
+        {hex}
         {HAS_EYEDROPPER && (
           <button
             type="button"
             onClick={() => void pickColor()}
             title="Pipette"
-            className="flex size-7 items-center justify-center rounded border border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            className="absolute right-1 top-1 flex size-6 items-center justify-center rounded border border-white/20 bg-background/70 text-foreground/80 hover:bg-background hover:text-foreground"
           >
-            <Pipette className="size-4" />
+            <Pipette className="size-3.5" />
           </button>
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-2">
+      <div className="space-y-2">
         {/* Alle Regler greifen relativ (kein Sprung auf den Klickpunkt). */}
         <ChannelRow
           letter="H"
@@ -1699,9 +2084,24 @@ function ColorPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
           track={HUE_GRADIENT}
           onChange={(v) => setHue(v * 360)}
         />
-        <ChannelRow letter="R" value={w.r} accent="#ef4444" onChange={(v) => emit(v, w.g, w.b, w.a)} />
-        <ChannelRow letter="G" value={w.g} accent="#22c55e" onChange={(v) => emit(w.r, v, w.b, w.a)} />
-        <ChannelRow letter="B" value={w.b} accent="#3b82f6" onChange={(v) => emit(w.r, w.g, v, w.a)} />
+        <ChannelRow
+          letter="R"
+          value={w.r}
+          accent="#ef4444"
+          onChange={(v) => emit(v, w.g, w.b, w.a)}
+        />
+        <ChannelRow
+          letter="G"
+          value={w.g}
+          accent="#22c55e"
+          onChange={(v) => emit(w.r, v, w.b, w.a)}
+        />
+        <ChannelRow
+          letter="B"
+          value={w.b}
+          accent="#3b82f6"
+          onChange={(v) => emit(w.r, w.g, v, w.a)}
+        />
         <ChannelRow
           letter="A"
           value={w.a}
@@ -1848,7 +2248,10 @@ function Meter({ w }: { w: OscWidget }): JSX.Element {
   const { level, text } = meterReadout(w, video)
   return (
     <div className="flex h-full w-full flex-col justify-center gap-1.5">
-      <div className="text-center text-lg font-semibold tabular-nums leading-none" style={{ color: w.color }}>
+      <div
+        className="text-center text-lg font-semibold tabular-nums leading-none"
+        style={{ color: w.color }}
+      >
         {text}
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -1881,8 +2284,12 @@ function DecimalField({
   onCommit: (n: number) => void
   className?: string
 }): JSX.Element {
+  const ref = useRef<HTMLInputElement>(null)
   const [text, setText] = useState(String(value))
-  useEffect(() => setText(String(value)), [value])
+  // externen Wert nur übernehmen, wenn nicht fokussiert (sonst klemmt das Feld)
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setText(String(value))
+  }, [value])
   function commit(): void {
     const n = parseFloat(text.replace(',', '.'))
     if (Number.isFinite(n)) onCommit(n)
@@ -1890,6 +2297,7 @@ function DecimalField({
   }
   return (
     <Input
+      ref={ref}
       className={className}
       value={text}
       inputMode="decimal"
@@ -1918,7 +2326,11 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
       items: [
         ...items,
         isSelect
-          ? { label: String.fromCharCode(65 + (items.length % 26)), address: '', value: items.length }
+          ? {
+              label: String.fromCharCode(65 + (items.length % 26)),
+              address: '',
+              value: items.length
+            }
           : {
               label: String(items.length + 1),
               address: `/megatoolbox/btn/${items.length + 1}`,
@@ -1929,7 +2341,9 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
   const remove = (i: number): void => update(w.id, { items: items.filter((_, j) => j !== i) })
   return (
     <div className="space-y-2">
-      <span className="block text-xs text-muted-foreground">{isSelect ? 'Optionen' : 'Taster'}</span>
+      <span className="block text-xs text-muted-foreground">
+        {isSelect ? 'Optionen' : 'Taster'}
+      </span>
       {items.map((it, i) => (
         <div key={i} className="flex items-center gap-1.5">
           <Input
@@ -2007,6 +2421,7 @@ function WidgetEditor({
   learning,
   canLearn,
   onToggleLearn,
+  onDuplicate,
   onRemove
 }: {
   w: OscWidget
@@ -2014,6 +2429,7 @@ function WidgetEditor({
   learning: boolean
   canLearn: boolean
   onToggleLearn: () => void
+  onDuplicate: () => void
   onRemove: () => void
 }): JSX.Element {
   const update = useOscSurface((s) => s.updateWidget)
@@ -2027,10 +2443,23 @@ function WidgetEditor({
     w.type === 'button' || w.type === 'toggle' || (w.type === 'bank' && w.bankMode !== 'knob')
   return (
     <div className="space-y-2.5">
+      {/* Schnellaktionen oben: Duplizieren + Entfernen */}
+      <div className="flex gap-2 border-b border-border pb-2.5">
+        <Button variant="outline" size="sm" className="flex-1" onClick={onDuplicate}>
+          <Copy className="size-3.5" /> Duplizieren
+        </Button>
+        <Button variant="ghost" size="sm" className="flex-1 text-destructive" onClick={onRemove}>
+          <Trash2 className="size-3.5" /> Entfernen
+        </Button>
+      </div>
       {/* Name + Typ in einer Zeile -> kürzeres Panel */}
       <div className="grid grid-cols-2 gap-2">
         <Field label={w.type === 'label' ? 'Text' : 'Name'}>
-          <Input className="h-9" value={w.label} onChange={(e) => update(w.id, { label: e.target.value })} />
+          <Input
+            className="h-9"
+            value={w.label}
+            onChange={(e) => update(w.id, { label: e.target.value })}
+          />
         </Field>
         <Field label="Typ">
           <select
@@ -2046,7 +2475,7 @@ function WidgetEditor({
             }}
             className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
           >
-            {(Object.keys(WIDGET_TYPE_LABEL) as OscWidgetType[]).map((t) => (
+            {WIDGET_ORDER.map((t) => (
               <option key={t} value={t}>
                 {WIDGET_TYPE_LABEL[t]}
               </option>
@@ -2166,20 +2595,32 @@ function WidgetEditor({
               options={[
                 ['momentary', 'Taster'],
                 ['toggle', 'Schalter'],
-                ['knob', 'Knopf']
+                ['knob', 'Poti']
               ]}
               onChange={(m) => update(w.id, { bankMode: m })}
             />
           </Field>
           <Field label="Spalten">
-            <NumberField value={w.cols} min={1} max={12} onCommit={(v) => update(w.id, { cols: v })} className="h-9" />
+            <NumberField
+              value={w.cols}
+              min={1}
+              max={12}
+              onCommit={(v) => update(w.id, { cols: v })}
+              className="h-9"
+            />
           </Field>
         </div>
       )}
 
       {w.type === 'select' && (
         <Field label="Spalten">
-          <NumberField value={w.cols} min={1} max={12} onCommit={(v) => update(w.id, { cols: v })} className="h-9" />
+          <NumberField
+            value={w.cols}
+            min={1}
+            max={12}
+            onCommit={(v) => update(w.id, { cols: v })}
+            className="h-9"
+          />
         </Field>
       )}
 
@@ -2215,10 +2656,22 @@ function WidgetEditor({
 
       <div className="grid grid-cols-2 gap-2">
         <Field label="Breite (Spalten)">
-          <NumberField value={w.cw} min={min.cw} max={columns} onCommit={(v) => update(w.id, { cw: v })} className="h-9" />
+          <NumberField
+            value={w.cw}
+            min={min.cw}
+            max={columns}
+            onCommit={(v) => update(w.id, { cw: v })}
+            className="h-9"
+          />
         </Field>
         <Field label="Höhe (Zeilen)">
-          <NumberField value={w.ch} min={min.ch} max={MAX_CH} onCommit={(v) => update(w.id, { ch: v })} className="h-9" />
+          <NumberField
+            value={w.ch}
+            min={min.ch}
+            max={MAX_CH}
+            onCommit={(v) => update(w.id, { ch: v })}
+            className="h-9"
+          />
         </Field>
       </div>
 
@@ -2240,10 +2693,6 @@ function WidgetEditor({
           ))}
         </div>
       </div>
-
-      <Button variant="ghost" size="sm" className="w-full text-destructive" onClick={onRemove}>
-        <Trash2 className="size-3.5" /> Widget entfernen
-      </Button>
     </div>
   )
 }
@@ -2300,7 +2749,12 @@ function ConnectionPanel({
   return (
     <div className="space-y-3">
       <Field label="Host (MadMapper)">
-        <Input value={host} spellCheck={false} placeholder="127.0.0.1" onChange={(e) => setHost(e.target.value)} />
+        <Input
+          value={host}
+          spellCheck={false}
+          placeholder="127.0.0.1"
+          onChange={(e) => setHost(e.target.value)}
+        />
       </Field>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Port aus (OSC out)">
@@ -2321,7 +2775,9 @@ function ConnectionPanel({
       </label>
 
       {status?.lastError && (
-        <p className="rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">{status.lastError}</p>
+        <p className="rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
+          {status.lastError}
+        </p>
       )}
 
       <div className="flex items-center gap-2">
@@ -2341,7 +2797,8 @@ function ConnectionPanel({
         Gesendet: <span className="tabular-nums text-foreground">{status?.sentCount ?? 0}</span>
         {status?.listening && (
           <>
-            {' · '}Empfangen: <span className="tabular-nums text-foreground">{status?.recvCount ?? 0}</span>
+            {' · '}Empfangen:{' '}
+            <span className="tabular-nums text-foreground">{status?.recvCount ?? 0}</span>
           </>
         )}
       </p>
@@ -2362,18 +2819,25 @@ function Monitor({ log, onClear }: { log: LogEntry[]; onClear: () => void }): JS
       </div>
       <div className="max-h-72 space-y-1 overflow-auto rounded-md border border-border bg-background/50 p-2">
         {log.length === 0 ? (
-          <p className="px-1 py-2 text-center text-xs text-muted-foreground">Noch keine OSC-Aktivität.</p>
+          <p className="px-1 py-2 text-center text-xs text-muted-foreground">
+            Noch keine OSC-Aktivität.
+          </p>
         ) : (
           log.map((e) => (
             <div key={e.id} className="flex items-baseline gap-2 font-mono text-[11px]">
               <SlidersHorizontal
-                className={cn('size-3 shrink-0 translate-y-0.5', e.dir === 'out' ? 'text-primary' : 'text-emerald-500')}
+                className={cn(
+                  'size-3 shrink-0 translate-y-0.5',
+                  e.dir === 'out' ? 'text-primary' : 'text-emerald-500'
+                )}
               />
               <span className="shrink-0 text-muted-foreground">{e.dir === 'out' ? '→' : '←'}</span>
               <span className="truncate text-foreground" title={e.address}>
                 {e.address}
               </span>
-              <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{fmtArgs(e.args)}</span>
+              <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">
+                {fmtArgs(e.args)}
+              </span>
             </div>
           ))
         )}

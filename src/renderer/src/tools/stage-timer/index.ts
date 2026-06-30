@@ -8,7 +8,7 @@ export const stageTimerTool: ToolModule = {
   description:
     'Sprechzeit-Timer mit Abschnitten, Farbwarnung, Bühnen-Nachrichten und Vollbild-Anzeige – oder große Uhr mit Sekunden.',
   icon: Timer,
-  category: 'utility',
+  category: 'playback',
   keywords: [
     'timer',
     'sprechzeit',
