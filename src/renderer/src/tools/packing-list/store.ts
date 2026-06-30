@@ -4,6 +4,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { debouncedStorage } from '@renderer/lib/persistStorage'
 
 export interface PackItem {
   id: string
@@ -117,6 +118,7 @@ export const usePacking = create<PackState>()(
     }),
     {
       name: 'packing-list',
+      storage: debouncedStorage(),
       // Migration/Defensive: Kategorienliste muss alle Item-Kategorien enthalten.
       onRehydrateStorage: () => (state) => {
         if (!state) return

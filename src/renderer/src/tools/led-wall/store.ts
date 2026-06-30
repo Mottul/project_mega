@@ -3,6 +3,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { debouncedStorage } from '@renderer/lib/persistStorage'
 import { DEFAULT_MODULE_KEY } from './data'
 import { resizeGrid, type BuilderSegment } from './math'
 
@@ -98,6 +99,6 @@ export const useLedWall = create<LedWallState>()(
         } as Partial<LedWallState>)
       }
     }),
-    { name: 'led-wall-konfigurator' }
+    { name: 'led-wall-konfigurator', storage: debouncedStorage() }
   )
 )

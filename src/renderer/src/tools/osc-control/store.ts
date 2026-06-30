@@ -7,18 +7,10 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { debouncedStorage } from '@renderer/lib/persistStorage'
 
 export type OscWidgetType =
-  | 'fader'
-  | 'button'
-  | 'toggle'
-  | 'xy'
-  | 'color'
-  | 'label'
-  | 'meter'
-  | 'select'
-  | 'bank'
-  | 'knob'
+  'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter' | 'select' | 'bank' | 'knob'
 
 /** Verhalten der Felder einer Bank-Kachel. */
 export type BankMode = 'momentary' | 'toggle' | 'knob'
@@ -728,6 +720,7 @@ export const useOscSurface = create<OscStoreState>()(
     {
       name: 'osc-control',
       version: 4,
+      storage: debouncedStorage(),
       migrate: (persisted, version) => {
         let p = persisted as Record<string, unknown>
         // v0 -> v1: einzelne Oberfläche { widgets, columns, mode } -> Sets

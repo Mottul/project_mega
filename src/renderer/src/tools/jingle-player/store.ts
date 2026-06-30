@@ -4,6 +4,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { debouncedStorage } from '@renderer/lib/persistStorage'
 import { api } from '@renderer/lib/api'
 
 export type PadMode = 'oneshot' | 'toggle'
@@ -190,6 +191,7 @@ export const useJingles = create<JingleState>()(
     },
     {
       name: 'jingle-player',
+      storage: debouncedStorage(),
       onRehydrateStorage: () => (state) => {
         if (!state) return
         // currentBankId auf eine existierende Bank setzen.
