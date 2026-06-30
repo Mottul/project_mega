@@ -729,8 +729,12 @@ function MarkInput({
   placeholder?: string
   className?: string
 }): JSX.Element {
+  const ref = useRef<HTMLInputElement>(null)
   const [text, setText] = useState(fmtMark(value))
-  useEffect(() => setText(fmtMark(value)), [value])
+  // externen Wert nur übernehmen, wenn nicht fokussiert (sonst klemmt das Feld)
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setText(fmtMark(value))
+  }, [value])
   const commit = (): void => {
     const v = parseMark(text)
     onCommit(v)
@@ -738,6 +742,7 @@ function MarkInput({
   }
   return (
     <Input
+      ref={ref}
       value={text}
       placeholder={placeholder}
       inputMode="numeric"

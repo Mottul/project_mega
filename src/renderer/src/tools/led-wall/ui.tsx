@@ -2,7 +2,7 @@
 // Feld. Anders als das Rechner-NumField (Label links, feste Breite) bricht das
 // in engen Karten-Spalten nicht um.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Input } from '@renderer/components/ui/input'
 
 /** Zahlenfeld, das den Wert ERST bei Blur/Enter übernimmt (und dann clamped) –
@@ -23,8 +23,12 @@ export function NumCommit({
   integer?: boolean
   className?: string
 }): JSX.Element {
+  const ref = useRef<HTMLInputElement>(null)
   const [text, setText] = useState(String(value))
-  useEffect(() => setText(String(value)), [value])
+  // nur übernehmen, wenn nicht gerade hier getippt wird (sonst klemmt das Feld)
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setText(String(value))
+  }, [value])
   function commit(): void {
     let n = parseFloat(text.replace(',', '.'))
     if (!Number.isFinite(n)) {
@@ -39,6 +43,7 @@ export function NumCommit({
   }
   return (
     <Input
+      ref={ref}
       inputMode="decimal"
       value={text}
       onChange={(e) => setText(e.target.value)}

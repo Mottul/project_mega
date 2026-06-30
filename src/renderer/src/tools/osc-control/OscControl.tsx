@@ -2284,8 +2284,12 @@ function DecimalField({
   onCommit: (n: number) => void
   className?: string
 }): JSX.Element {
+  const ref = useRef<HTMLInputElement>(null)
   const [text, setText] = useState(String(value))
-  useEffect(() => setText(String(value)), [value])
+  // externen Wert nur übernehmen, wenn nicht fokussiert (sonst klemmt das Feld)
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setText(String(value))
+  }, [value])
   function commit(): void {
     const n = parseFloat(text.replace(',', '.'))
     if (Number.isFinite(n)) onCommit(n)
@@ -2293,6 +2297,7 @@ function DecimalField({
   }
   return (
     <Input
+      ref={ref}
       className={className}
       value={text}
       inputMode="decimal"

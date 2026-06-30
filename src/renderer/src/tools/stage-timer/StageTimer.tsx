@@ -60,8 +60,13 @@ function DurationInput({
   onCommit: (sec: number) => void
   className?: string
 }): JSX.Element {
+  const ref = useRef<HTMLInputElement>(null)
   const [text, setText] = useState(fmtTimer(seconds))
-  useEffect(() => setText(fmtTimer(seconds)), [seconds])
+  // nur übernehmen, wenn nicht fokussiert (sonst überschreibt ein Tick/Update
+  // die laufende Eingabe und das Feld klemmt)
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setText(fmtTimer(seconds))
+  }, [seconds])
   const commit = (): void => {
     const sec = parseDuration(text)
     if (sec != null) onCommit(sec)
@@ -69,6 +74,7 @@ function DurationInput({
   }
   return (
     <Input
+      ref={ref}
       value={text}
       inputMode="numeric"
       className={className}
