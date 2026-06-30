@@ -695,17 +695,19 @@ export function OscControl(): JSX.Element {
                 className="h-8 w-16"
               />
             </label>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Set löschen"
-              onClick={() => {
-                if (confirm(`Set „${set.name}“ wirklich löschen?`))
-                  useOscSurface.getState().deleteSet(set.id)
-              }}
-            >
-              <Trash2 className="size-4" />
-            </Button>
+            {sets.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Set löschen"
+                onClick={() => {
+                  if (confirm(`Set „${set.name}“ wirklich löschen?`))
+                    useOscSurface.getState().deleteSet(set.id)
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            )}
 
             <div className="flex-1" />
 
