@@ -8,6 +8,7 @@ import {
   FolderInput,
   FolderOpen,
   FolderSearch,
+  Gauge,
   Grid3x3,
   Image as ImageIcon,
   LayoutGrid,
@@ -157,6 +158,25 @@ export function VideoPlayer(): JSX.Element {
       const next = !v
       try {
         localStorage.setItem('player:previewLive', next ? '1' : '0')
+      } catch {
+        /* localStorage nicht verfügbar */
+      }
+      return next
+    })
+  }
+  // FPS-Anzeige über der Vorschau (an/aus, gemerkt).
+  const [showFps, setShowFps] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('player:showFps') === '1'
+    } catch {
+      return false
+    }
+  })
+  function toggleFps(): void {
+    setShowFps((v) => {
+      const next = !v
+      try {
+        localStorage.setItem('player:showFps', next ? '1' : '0')
       } catch {
         /* localStorage nicht verfügbar */
       }
@@ -1153,6 +1173,7 @@ export function VideoPlayer(): JSX.Element {
                     key={pstate.outputOpen ? 'mirror' : 'live'}
                     objectFit="contain"
                     passive={pstate.outputOpen}
+                    showFps={showFps}
                   />
                 ) : (
                   <>
@@ -1185,6 +1206,14 @@ export function VideoPlayer(): JSX.Element {
                       : 'Medien aus der Bibliothek hinzufügen (Doppelklick oder ziehen)'}
                   </p>
                 </div>
+                <Button
+                  variant={showFps ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={toggleFps}
+                  title="FPS-Anzeige (dargestellte Videobilder/s) über der Vorschau ein-/ausblenden"
+                >
+                  <Gauge className="size-4" /> FPS
+                </Button>
                 {pstate.outputOpen ? (
                   <Button
                     variant={previewLive ? 'secondary' : 'ghost'}
