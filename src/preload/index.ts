@@ -97,7 +97,11 @@ const api: ToolboxApi = {
     openOutput: (displayId) => ipcRenderer.invoke(Channels.timerOpenOutput, displayId),
     closeOutput: () => ipcRenderer.invoke(Channels.timerCloseOutput),
     onState: (cb) => subscribe(Channels.timerState, (s) => cb(s as never)),
-    onTick: (cb) => subscribe(Channels.timerTick, (t) => cb(t as never))
+    onTick: (cb) => subscribe(Channels.timerTick, (t) => cb(t as never)),
+    ndiStart: (config) => ipcRenderer.invoke(Channels.timerNdiStart, config),
+    ndiStop: () => ipcRenderer.invoke(Channels.timerNdiStop),
+    ndiStatus: () => ipcRenderer.invoke(Channels.timerNdiStatus),
+    onNdiChanged: (cb) => subscribe(Channels.timerNdiChanged, (s) => cb(s as never))
   },
 
   util: {

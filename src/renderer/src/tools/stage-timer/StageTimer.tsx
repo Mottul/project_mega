@@ -14,6 +14,7 @@ import {
   Pause,
   Play,
   Plus,
+  Radio,
   RotateCcw,
   Square,
   Trash2,
@@ -24,7 +25,15 @@ import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
-import type { DisplayInfo, StageTimerState, TimerCommand, TimerSegment } from '@shared/types'
+import {
+  DEFAULT_TIMER_NDI,
+  type DisplayInfo,
+  type StageTimerState,
+  type TimerCommand,
+  type TimerNdiConfig,
+  type TimerNdiStatus,
+  type TimerSegment
+} from '@shared/types'
 import { selectClass } from '../_calc/ui'
 import { fmtTimer, parseDuration } from './format'
 import { TimerDisplay } from './TimerDisplay'
@@ -120,6 +129,135 @@ function SegText({
         onCommit(e.target.value)
       }}
     />
+  )
+}
+
+const NDI_LS_KEY = 'stage-timer-ndi'
+const NDI_RESOLUTIONS: [number, number][] = [
+  [1920, 1080],
+  [1280, 720]
+]
+
+/** NDI-Ausgabe (experimentell): Timer-Anzeige als NDI-Quelle ins Netz senden.
+ *  Ohne installiertes NDI-Modul zeigt das Panel nur einen Hinweis. */
+function NdiPanel(): JSX.Element {
+  const [status, setStatus] = useState<TimerNdiStatus | null>(null)
+  const [cfg, setCfg] = useState<TimerNdiConfig>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(NDI_LS_KEY) ?? 'null') as TimerNdiConfig | null
+      if (saved && typeof saved.name === 'string') return { ...DEFAULT_TIMER_NDI, ...saved }
+    } catch {
+      /* defekter Eintrag -> Defaults */
+    }
+    return { ...DEFAULT_TIMER_NDI }
+  })
+
+  useEffect(() => {
+    void api.timer.ndiStatus().then(setStatus)
+    return api.timer.onNdiChanged(setStatus)
+  }, [])
+
+  // Frame-Zähler leben nur im main -> während des Sendens gelegentlich nachfragen.
+  useEffect(() => {
+    if (!status?.running) return
+    const t = setInterval(() => void api.timer.ndiStatus().then(setStatus), 2000)
+    return () => clearInterval(t)
+  }, [status?.running])
+
+  function patchCfg(patch: Partial<TimerNdiConfig>): void {
+    setCfg((prev) => {
+      const next = { ...prev, ...patch }
+      try {
+        localStorage.setItem(NDI_LS_KEY, JSON.stringify(next))
+      } catch {
+        /* localStorage nicht verfügbar */
+      }
+      return next
+    })
+  }
+
+  if (!status) return <p className="text-xs text-muted-foreground">Lade…</p>
+
+  if (!status.available) {
+    return (
+      <div className="space-y-2 text-xs text-muted-foreground">
+        <p>
+          NDI-Modul nicht verfügbar – die App läuft normal weiter. Zum Aktivieren das optionale
+          Binding installieren (siehe README, Abschnitt „NDI-Ausgabe“).
+        </p>
+        {status.error && <p className="break-words font-mono text-[10px]">{status.error}</p>}
+      </div>
+    )
+  }
+
+  const running = status.running
+  return (
+    <>
+      <label className="block">
+        <span className="mb-1 block text-xs text-muted-foreground">Quellenname im Netz</span>
+        <Input
+          value={cfg.name}
+          disabled={running}
+          onChange={(e) => patchCfg({ name: e.target.value })}
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Auflösung</span>
+          <select
+            className={selectClass}
+            disabled={running}
+            value={`${cfg.width}x${cfg.height}`}
+            onChange={(e) => {
+              const [w, h] = e.target.value.split('x').map(Number)
+              patchCfg({ width: w, height: h })
+            }}
+          >
+            {NDI_RESOLUTIONS.map(([w, h]) => (
+              <option key={`${w}x${h}`} value={`${w}x${h}`}>
+                {w} × {h}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Bildrate</span>
+          <select
+            className={selectClass}
+            disabled={running}
+            value={cfg.fps}
+            onChange={(e) => patchCfg({ fps: Number(e.target.value) })}
+          >
+            {[25, 30, 50].map((f) => (
+              <option key={f} value={f}>
+                {f} fps
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {running ? (
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => void api.timer.ndiStop().then(setStatus)}
+        >
+          <X className="size-4" /> NDI-Ausgabe stoppen
+        </Button>
+      ) : (
+        <Button className="w-full" onClick={() => void api.timer.ndiStart(cfg).then(setStatus)}>
+          <Radio className="size-4" /> NDI-Ausgabe starten
+        </Button>
+      )}
+      {running && (
+        <p className="text-xs text-muted-foreground">
+          Sendet als <span className="font-medium text-foreground">„{status.config.name}“</span> ·{' '}
+          {status.config.width}×{status.config.height}@{status.config.fps} ·{' '}
+          <span className="tabular-nums">{status.framesSent}</span> Frames
+        </p>
+      )}
+      {status.error && <p className="text-xs text-destructive">{status.error}</p>}
+    </>
   )
 }
 
@@ -299,6 +437,10 @@ export function StageTimer(): JSX.Element {
             <p className="text-xs text-muted-foreground">
               Esc im Ausgabefenster schließt es. Die Anzeige läuft synchron zur Vorschau.
             </p>
+          </PanelSection>
+
+          <PanelSection id="ndi" title="NDI-Ausgabe (Netzwerk)" defaultOpen={false}>
+            <NdiPanel />
           </PanelSection>
         </>
       }
