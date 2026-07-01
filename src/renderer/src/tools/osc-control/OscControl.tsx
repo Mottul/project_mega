@@ -61,6 +61,7 @@ import {
   makeWidget,
   MAX_CH,
   MAX_COLS,
+  MIN_COLS,
   useOscSurface,
   WIDGET_COLORS,
   WIDGET_MIN,
@@ -694,7 +695,7 @@ export function OscControl(): JSX.Element {
               Spalten
               <NumberField
                 value={columns}
-                min={4}
+                min={MIN_COLS}
                 max={MAX_COLS}
                 onCommit={(v) => useOscSurface.getState().setColumns(v)}
                 className="h-8 w-16"

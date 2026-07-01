@@ -112,12 +112,6 @@ export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
   knob: 'Poti'
 }
 
-export const BANK_MODE_LABEL: Record<BankMode, string> = {
-  momentary: 'Taster',
-  toggle: 'Schalter',
-  knob: 'Poti'
-}
-
 // Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
 const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
   fader: { cw: 3, ch: 6 },
@@ -250,7 +244,7 @@ function placeMissing(ws: OscWidget[], cols: number): void {
 const DEFAULT_TITLE = 'megatoolbox'
 
 /** Projekt-Titel -> erstes OSC-Adresssegment (klein, ohne Sonderzeichen). */
-export function oscSlug(title: string): string {
+function oscSlug(title: string): string {
   const s = (title || '')
     .trim()
     .toLowerCase()

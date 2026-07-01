@@ -71,7 +71,7 @@ export const ACCENTS: Accent[] = [
 const STORAGE_KEY = 'av-accent'
 const STYLE_ID = 'accent-vars'
 
-export function accentById(id: string): Accent {
+function accentById(id: string): Accent {
   return ACCENTS.find((a) => a.id === id) ?? ACCENTS[0]
 }
 
