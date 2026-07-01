@@ -54,6 +54,7 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
+import { useDraft } from '@renderer/lib/useDraft'
 import { QrCode } from '../video-player/QrCode'
 import {
   makeWidget,
@@ -2282,12 +2283,7 @@ function DecimalField({
   onCommit: (n: number) => void
   className?: string
 }): JSX.Element {
-  const ref = useRef<HTMLInputElement>(null)
-  const [text, setText] = useState(String(value))
-  // externen Wert nur übernehmen, wenn nicht fokussiert (sonst klemmt das Feld)
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setText(String(value))
-  }, [value])
+  const { ref, text, setText } = useDraft(String(value))
   function commit(): void {
     const n = parseFloat(text.replace(',', '.'))
     if (Number.isFinite(n)) onCommit(n)

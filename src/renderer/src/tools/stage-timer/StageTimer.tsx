@@ -25,6 +25,7 @@ import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { useDraft } from '@renderer/lib/useDraft'
 import {
   DEFAULT_TIMER_NDI,
   type DisplayInfo,
@@ -69,13 +70,7 @@ function DurationInput({
   onCommit: (sec: number) => void
   className?: string
 }): JSX.Element {
-  const ref = useRef<HTMLInputElement>(null)
-  const [text, setText] = useState(fmtTimer(seconds))
-  // nur übernehmen, wenn nicht fokussiert (sonst überschreibt ein Tick/Update
-  // die laufende Eingabe und das Feld klemmt)
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setText(fmtTimer(seconds))
-  }, [seconds])
+  const { ref, text, setText } = useDraft(fmtTimer(seconds))
   const commit = (): void => {
     const sec = parseDuration(text)
     if (sec != null) onCommit(sec)
@@ -113,11 +108,7 @@ function SegText({
   className?: string
   placeholder?: string
 }): JSX.Element {
-  const [text, setText] = useState(value)
-  const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setText(value)
-  }, [value])
+  const { ref, text, setText } = useDraft(value)
   return (
     <Input
       ref={ref}
