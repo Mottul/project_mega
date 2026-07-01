@@ -113,3 +113,63 @@ mark {
     background: #4c0a0a;
   }
 }
+
+/* LED-Wall-Konfigurator: responsives Bereichsraster. Über benannte Bereiche
+   werden DIESELBEN Karten je Breite anders angeordnet (statt DOM-Reihenfolge):
+   schmal = gestapelt, ab lg = ursprüngliche 2-Spalten-Darstellung, ab xl
+   (Vollbild) = drei Spalten (Projekt | Modultyp | Wandgröße; darunter die
+   Infos-Spalte links + 2-spaltig breite Verkabelung rechts, bei uS2+ zuvor das
+   Curving). */
+.ledwall-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'proj'
+    'wall'
+    'mod'
+    'info'
+    'cable';
+}
+.ledwall-grid.has-curving {
+  grid-template-areas:
+    'proj'
+    'wall'
+    'mod'
+    'curv'
+    'info'
+    'cable';
+}
+@media (min-width: 1024px) {
+  .ledwall-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'proj wall'
+      'mod  mod'
+      'info cable';
+  }
+  .ledwall-grid.has-curving {
+    grid-template-areas:
+      'proj wall'
+      'mod  mod'
+      'curv curv'
+      'info cable';
+  }
+}
+@media (min-width: 1280px) {
+  .ledwall-grid,
+  .ledwall-grid.has-curving {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .ledwall-grid {
+    grid-template-areas:
+      'proj mod   wall'
+      'info cable cable';
+  }
+  .ledwall-grid.has-curving {
+    grid-template-areas:
+      'proj mod   wall'
+      'info curv  curv'
+      'info cable cable';
+  }
+}
