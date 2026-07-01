@@ -281,8 +281,7 @@ export function getManual(id: number): ManualDetail {
 export function readManualBytes(id: number): Uint8Array {
   const db = getDb()
   const row = db.prepare('SELECT stored_path FROM manuals WHERE id = ?').get(id) as
-    | { stored_path: string }
-    | undefined
+    { stored_path: string } | undefined
   if (!row) throw new Error(`Manual ${id} nicht gefunden`)
   const abs = join(manualsDir(), row.stored_path)
   const buf = readFileSync(abs)
@@ -321,8 +320,7 @@ export function updateManual(id: number, patch: ManualPatch): ManualMeta {
 export function deleteManual(id: number): void {
   const db = getDb()
   const row = db.prepare('SELECT stored_path FROM manuals WHERE id = ?').get(id) as
-    | { stored_path: string }
-    | undefined
+    { stored_path: string } | undefined
   if (!row) return
   db.prepare('DELETE FROM manuals WHERE id = ?').run(id) // CASCADE -> manual_pages -> FTS-Trigger
   try {

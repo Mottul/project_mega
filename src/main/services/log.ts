@@ -37,6 +37,5 @@ export function logLine(...parts: unknown[]): void {
   } catch {
     /* ignore */
   }
-  // eslint-disable-next-line no-console
   console.log('[avtoolbox]', ...parts)
 }

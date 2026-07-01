@@ -94,8 +94,7 @@ export function convKeyFor(
 
 export function findByConvKey(convKey: string): MediaItem | null {
   const row = getDb().prepare('SELECT * FROM media_items WHERE conv_key = ?').get(convKey) as
-    | MediaRow
-    | undefined
+    MediaRow | undefined
   return row ? rowToItem(row) : null
 }
 
@@ -192,8 +191,7 @@ export function listMedia(): MediaItem[] {
 
 export function getMedia(id: string): MediaItem | null {
   const row = getDb().prepare('SELECT * FROM media_items WHERE id = ?').get(id) as
-    | MediaRow
-    | undefined
+    MediaRow | undefined
   return row ? rowToItem(row) : null
 }
 

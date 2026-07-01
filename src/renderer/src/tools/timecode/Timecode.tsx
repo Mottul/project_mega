@@ -28,7 +28,7 @@ export function Timecode(): JSX.Element {
   const rate = TC_RATES.find((r) => r.key === rateKey) ?? TC_RATES[2]
 
   // Quelle -> Framenummer (null = Eingabe ungültig)
-  let frames: number | null = null
+  let frames: number | null
   if (driver === 'tc') {
     const p = parseTc(raw, rate)
     frames = p ? tcToFrames(p, rate) : null

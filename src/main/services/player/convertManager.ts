@@ -22,7 +22,6 @@ import {
   convKeyFor,
   deleteMedia,
   findByConvKey,
-  getMedia,
   insertMedia,
   isGifExt,
   isImageExt,

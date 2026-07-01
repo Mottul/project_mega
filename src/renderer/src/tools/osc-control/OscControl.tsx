@@ -56,7 +56,6 @@ import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { QrCode } from '../video-player/QrCode'
 import {
-  BANK_MODE_LABEL,
   makeWidget,
   MAX_CH,
   MAX_COLS,
@@ -65,7 +64,6 @@ import {
   WIDGET_MIN,
   WIDGET_ORDER,
   WIDGET_TYPE_LABEL,
-  type BankMode,
   type OscItem,
   type OscWidget,
   type OscWidgetType
@@ -122,9 +120,9 @@ function hsv2rgb(h: number, s: number, v: number): { r: number; g: number; b: nu
   const c = v * s
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
   const m = v - c
-  let r = 0
-  let g = 0
-  let b = 0
+  let r: number
+  let g: number
+  let b: number
   if (h < 60) [r, g, b] = [c, x, 0]
   else if (h < 120) [r, g, b] = [x, c, 0]
   else if (h < 180) [r, g, b] = [0, c, x]
@@ -409,6 +407,50 @@ export function OscControl(): JSX.Element {
     t: 0,
     timer: null
   })
+  const publishSnapshot = useCallback((): void => {
+    const store = useOscSurface.getState()
+    const cs = store.currentSet()
+    const snap: OscRemoteSnapshot = {
+      connected: true,
+      setName: cs.name,
+      columns: cs.columns,
+      sets: store.currentProject().sets.map((s) => ({ id: s.id, name: s.name })),
+      currentSetId: cs.id,
+      widgets: cs.widgets.map((w) => {
+        const m = w.type === 'meter' ? meterReadout(w, video) : { level: 0, text: '' }
+        return {
+          id: w.id,
+          type: w.type,
+          label: w.label,
+          color: w.color,
+          address: w.address,
+          addressY: w.addressY,
+          min: w.min,
+          max: w.max,
+          gx: w.gx,
+          gy: w.gy,
+          cw: w.cw,
+          ch: w.ch,
+          value: w.value,
+          x: w.x,
+          y: w.y,
+          r: w.r,
+          g: w.g,
+          b: w.b,
+          a: w.a,
+          align: w.align,
+          meterLevel: m.level,
+          meterText: m.text,
+          items: w.items.map((it) => ({ label: it.label, address: it.address, value: it.value })),
+          orient: w.orient,
+          cols: w.cols,
+          bankMode: w.bankMode,
+          endless: w.endless
+        }
+      })
+    }
+    void api.osc.publish(snap)
+  }, [video])
   useEffect(() => {
     const p = pubRef.current
     const run = (): void => {
@@ -420,14 +462,15 @@ export function OscControl(): JSX.Element {
     if (dt >= 150) run()
     else if (!p.timer) p.timer = setTimeout(run, 150 - dt)
     // `sets` als Dep -> auch Umbenennen/Hinzufügen/Löschen anderer Sets erneuert
-    // die Umschaltleiste am Handy.
-  }, [set, sets, columns, widgets, video])
+    // die Umschaltleiste am Handy. `publishSnapshot` hängt an `video` (Meter).
+  }, [set, sets, columns, widgets, publishSnapshot])
 
   // Beim Schließen des Tabs ausstehende Veröffentlichung abbrechen und dem
-  // Server „getrennt" melden.
+  // Server „getrennt" melden. pubRef zeigt auf ein stabiles Objekt -> die
+  // Referenz beim Mount einzufangen ist korrekt.
   useEffect(() => {
+    const p = pubRef.current
     return () => {
-      const p = pubRef.current
       if (p.timer) {
         clearTimeout(p.timer)
         p.timer = null
@@ -500,51 +543,6 @@ export function OscControl(): JSX.Element {
   function duplicateWidgetSel(id: string): void {
     const nid = useOscSurface.getState().duplicateWidget(id)
     if (nid) setSelectedId(nid)
-  }
-
-  function publishSnapshot(): void {
-    const store = useOscSurface.getState()
-    const cs = store.currentSet()
-    const snap: OscRemoteSnapshot = {
-      connected: true,
-      setName: cs.name,
-      columns: cs.columns,
-      sets: store.currentProject().sets.map((s) => ({ id: s.id, name: s.name })),
-      currentSetId: cs.id,
-      widgets: cs.widgets.map((w) => {
-        const m = w.type === 'meter' ? meterReadout(w, video) : { level: 0, text: '' }
-        return {
-          id: w.id,
-          type: w.type,
-          label: w.label,
-          color: w.color,
-          address: w.address,
-          addressY: w.addressY,
-          min: w.min,
-          max: w.max,
-          gx: w.gx,
-          gy: w.gy,
-          cw: w.cw,
-          ch: w.ch,
-          value: w.value,
-          x: w.x,
-          y: w.y,
-          r: w.r,
-          g: w.g,
-          b: w.b,
-          a: w.a,
-          align: w.align,
-          meterLevel: m.level,
-          meterText: m.text,
-          items: w.items.map((it) => ({ label: it.label, address: it.address, value: it.value })),
-          orient: w.orient,
-          cols: w.cols,
-          bankMode: w.bankMode,
-          endless: w.endless
-        }
-      })
-    }
-    void api.osc.publish(snap)
   }
 
   async function toggleRemote(): Promise<void> {

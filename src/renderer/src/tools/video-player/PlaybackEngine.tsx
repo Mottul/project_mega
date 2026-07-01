@@ -231,7 +231,7 @@ export function PlaybackEngine({
 
     const a = activeRef.current
     const other = a ^ 1
-    let targetSlot = a
+    let targetSlot: number
     if (slotItems.current[a]?.id === curr.id) targetSlot = a
     else if (slotItems.current[other]?.id === curr.id) targetSlot = other
     else {
@@ -282,10 +282,14 @@ export function PlaybackEngine({
   }, [state])
 
   useEffect(() => {
+    // stabile Array-/Element-Referenzen einfangen (Einträge werden mutiert,
+    // die Arrays selbst nie ersetzt) -> Cleanup sieht die aktuellen Timer
     const videos = videoRefs.current
+    const ramps = rampTimers.current
+    const pauses = pauseTimers.current
     return () => {
-      rampTimers.current.forEach((t) => t && clearInterval(t))
-      pauseTimers.current.forEach((t) => t && clearTimeout(t))
+      ramps.forEach((t) => t && clearInterval(t))
+      pauses.forEach((t) => t && clearTimeout(t))
       if (preloadTimer.current) clearTimeout(preloadTimer.current)
       clearImageTimer()
       // Videos beim Unmount aktiv stoppen (z.B. Vorschau weicht dem Vollbild)

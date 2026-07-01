@@ -23,7 +23,7 @@ export const EMPTY_TIMER_STATE: StageTimerState = {
   outputOpen: false
 }
 
-let state: StageTimerState = { ...EMPTY_TIMER_STATE }
+const state: StageTimerState = { ...EMPTY_TIMER_STATE }
 let stateSink: StateSink = () => {}
 let tickSink: TickSink = () => {}
 let interval: ReturnType<typeof setInterval> | null = null
