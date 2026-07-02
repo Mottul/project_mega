@@ -88,16 +88,46 @@ function download(u, dest, redirects = 0) {
             }
           }
         })
+        // WICHTIG: Abbrüche des Response-Streams explizit behandeln. Ohne diese
+        // Handler löst der Promise bei einem Verbindungsabriss NIE auf -- der
+        // Event-Loop leert sich und Node beendet sich still mit Exit 0
+        // ("hing bei 99%", keine Meldung).
+        res.on('aborted', () =>
+          reject(new Error('Verbindung abgebrochen (Download unvollständig)'))
+        )
+        res.on('error', (err) => reject(new Error(`Download-Fehler: ${err.message}`)))
         const out = createWriteStream(dest)
         res.pipe(out)
         out.on('finish', () => {
           if (total) process.stdout.write('\n')
-          out.close(() => resolve())
+          out.close(() => {
+            // Vollständigkeit hart prüfen -- ein abgerissener Stream kann trotzdem
+            // ein 'finish' der Datei auslösen.
+            if (total && got !== total) {
+              reject(new Error(`Download unvollständig (${got} von ${total} Bytes)`))
+            } else resolve()
+          })
         })
         out.on('error', reject)
       })
       .on('error', reject)
   })
+}
+
+/** Download mit bis zu 3 Versuchen (transiente Netzfehler/Abbrüche). */
+async function downloadWithRetry(u, dest) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await download(u, dest)
+      return
+    } catch (err) {
+      rmSync(dest, { force: true })
+      if (attempt >= 3) throw err
+      console.warn(
+        `\n[electron-bin] Versuch ${attempt} fehlgeschlagen (${err.message}) -- neuer Versuch …`
+      )
+    }
+  }
 }
 
 async function main() {
@@ -108,7 +138,8 @@ async function main() {
   const zip = join(tmp, 'electron.zip')
   try {
     console.log(`[electron-bin] lade Electron ${version} (${platform}-${arch}) …`)
-    await download(url, zip)
+    await downloadWithRetry(url, zip)
+    console.log('[electron-bin] Download vollständig, entpacke …')
     rmSync(distPath, { recursive: true, force: true })
     mkdirSync(distPath, { recursive: true })
     await extract(zip, { dir: distPath })
@@ -133,5 +164,7 @@ main().catch((err) => {
   console.error(
     '  Fehlt die exe nach dem Entpacken: Projektordner in den Virenscanner-Ausnahmen eintragen.'
   )
-  process.exit(0) // npm install nicht hart scheitern lassen
+  // Als postinstall den npm-install nicht hart scheitern lassen; beim manuellen
+  // Aufruf (npm run electron:bin) den Fehler aber sichtbar machen (Exit 1).
+  process.exit(process.env.npm_lifecycle_event === 'postinstall' ? 0 : 1)
 })
