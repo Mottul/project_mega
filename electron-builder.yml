@@ -33,11 +33,20 @@ extraResources:
     to: icon.png
   # Optionales NDI-Binding (vendor/grandiose via `npm run ndi:setup`): landet als
   # echte Dateien unter resources/vendor/grandiose (kein asar -> native Module ok).
-  # Ohne Setup matcht der Filter nichts; `from: vendor` existiert immer (README).
+  # Bewusst ALLOWLIST statt grandiose/**: der Arbeitsbaum enthaelt .git, das
+  # komplette NDI-SDK (ndi/), Build-Zwischenprodukte und Setup-only-Deps --
+  # hunderte MB, die zur Laufzeit niemand braucht (index.js zieht nur `bindings`;
+  # die NDI-Runtime-DLL kopiert der Build nach build/Release). Ohne Setup matcht
+  # der Filter nichts; `from: vendor` existiert immer (README).
   - from: vendor
     to: vendor
     filter:
-      - 'grandiose/**'
+      - 'grandiose/package.json'
+      - 'grandiose/index.js'
+      - 'grandiose/LICENSE*'
+      - 'grandiose/build/Release/**'
+      - 'grandiose/node_modules/bindings/**'
+      - 'grandiose/node_modules/file-uri-to-path/**'
 
 win:
   target:

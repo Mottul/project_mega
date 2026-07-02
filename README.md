@@ -142,18 +142,22 @@ Icon-/Versions-Metadaten in der `.exe` (kosmetisch).
 Der Stage-Timer kann seine Anzeige als **NDI-Quelle** ins Netz senden (Panel
 „NDI-Ausgabe (Netzwerk)" im Timer). Das dafür nötige native Binding ist **bewusst
 keine reguläre Abhängigkeit** – ohne Modul läuft die App unverändert und das Panel
-zeigt „nicht verfügbar". Einmalige Einrichtung (Internet, git und C++-Build-Tools
-nötig – Windows: Visual Studio „Desktop development with C++"):
+zeigt „nicht verfügbar". Einmalige Einrichtung; Voraussetzungen: Internet, git,
+**Python 3** (python.org, „Add to PATH" anhaken – node-gyp braucht es) und
+C++-Build-Tools (Windows: Visual Studio „Desktop development with C++"):
 
 ```bash
-npm run ndi:setup
+npm run ndi:setup               # Neu-Bau erzwingen: npm run ndi:setup -- --force
 ```
 
 Das Script legt den sende-fähigen Fork `rse/grandiose` unter `vendor/grandiose` ab,
-lädt das NDI-SDK und kompiliert gegen die Electron-ABI der App. Danach App neu
-starten. `npm run package` nimmt `vendor/grandiose` automatisch mit
-(extraResources). Die NDI-Runtime-DLL wird beim Build neben das Binary kopiert –
-der Sender braucht keine separate NDI-Installation.
+lädt das NDI-SDK (und prüft das Ergebnis – der Upstream-Downloader meldet Fehler
+sonst nicht) und kompiliert gegen die Electron-ABI der App. Nach einem
+Electron-Upgrade genügt ein erneuter Lauf – die ABI-Abweichung wird erkannt und
+automatisch neu gebaut. Danach App neu starten. `npm run package` nimmt nur die
+Laufzeitdateien mit (Binary + NDI-DLL + `bindings`; nicht SDK/.git/Build-Reste).
+Die NDI-Runtime-DLL wird beim Build neben das Binary kopiert – der Sender braucht
+keine separate NDI-Installation.
 
 > **Warum kein `npm install github:rse/grandiose`?** Neuere npm-Versionen blockieren
 > Install-Scripts fremder Pakete (allow-scripts) – das Paket landet dann ohne
