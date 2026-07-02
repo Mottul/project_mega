@@ -14,3 +14,6 @@ package-lock.json
 
 # Doku separat halten (kein Code-Stil)
 *.md
+
+# Fremdcode (geklonte native Bindings)
+vendor/

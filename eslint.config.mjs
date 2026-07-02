@@ -17,6 +17,7 @@ export default tseslint.config(
       'build/**',
       'resources/**',
       'scripts/**',
+      'vendor/**',
       '*.config.js',
       '*.config.mjs'
     ]

@@ -6,17 +6,16 @@
 // Das NDI-Binding ist BEWUSST optional und wird erst zur Laufzeit geladen:
 // ohne Modul läuft die App unverändert, die UI zeigt "nicht verfügbar".
 //
-// Einrichtung auf dem Entwicklungsrechner (einmalig, Internet + Build-Tools):
-//   1) npm install --no-save github:rse/grandiose
-//      (sende-fähiger Fork; der Installer lädt das NDI-SDK und kompiliert)
-//   2) npx @electron/rebuild -f -o grandiose
-//      (gegen die Electron-ABI bauen; VS Build Tools / Xcode CLT nötig)
-//   3) Auf Empfängerseite muss die NDI-Laufzeit installiert sein (ndi.tv).
-// --no-save hält package.json/Lockfile reproduzierbar (Umgebungen ohne
-// GitHub-Zugang/Toolchain bleiben installierbar); electron-builder nimmt das
-// Modul über einen files-Glob mit, wenn es beim Packen vorhanden ist.
+// Einrichtung: `npm run ndi:setup` (siehe scripts/setup-ndi.mjs + README).
+// Das Binding liegt danach unter vendor/grandiose (NICHT in node_modules --
+// npm-Lifecycle-Scripts sind bei neueren npm-Versionen blockiert und
+// electron-builder packt undeklarierte node_modules nicht mit). Geladen wird
+// der Reihe nach: resources/vendor/grandiose (paketiert, via extraResources),
+// <App>/vendor/grandiose (Entwicklung), zuletzt ein regulär installiertes
+// 'grandiose'. Die NDI-Runtime-DLL kopiert der grandiose-Build selbst neben
+// das Binary (build/Release) -- der Sender braucht keine NDI-Installation.
 
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { Channels } from '@shared/ipc-contracts'
 import { DEFAULT_TIMER_NDI, type TimerNdiConfig, type TimerNdiStatus } from '@shared/types'
@@ -35,24 +34,33 @@ let grandiose: Grandiose | null = null
 let loadError: string | null = null
 let loadTried = false
 
-/** Binding erst bei Bedarf laden (nicht gebundelt; siehe electron.vite.config). */
+/** Binding erst bei Bedarf laden; Kandidaten-Pfade siehe Kopfkommentar. */
 function loadGrandiose(): Grandiose | null {
   if (loadTried) return grandiose
   loadTried = true
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('grandiose') as Grandiose
-    if (typeof mod.send !== 'function') {
-      loadError =
-        'Installiertes grandiose kann nicht senden – sende-fähigen Fork nutzen (github:rse/grandiose).'
-      return null
+  const candidates = [
+    join(process.resourcesPath ?? '', 'vendor', 'grandiose'), // paketierte App
+    join(app.getAppPath(), 'vendor', 'grandiose'), // Entwicklung (npm run ndi:setup)
+    'grandiose' // regulär installiertes Modul
+  ]
+  const errors: string[] = []
+  for (const candidate of candidates) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require(candidate) as Grandiose
+      if (typeof mod.send !== 'function') {
+        errors.push(`${candidate}: kann nicht senden (sende-fähigen Fork rse/grandiose nutzen)`)
+        continue
+      }
+      grandiose = mod
+      logLine('[timer-ndi] Binding geladen:', candidate)
+      return mod
+    } catch (err) {
+      errors.push(`${candidate}: ${err instanceof Error ? err.message : String(err)}`)
     }
-    grandiose = mod
-    return mod
-  } catch (err) {
-    loadError = `NDI-Modul nicht geladen: ${err instanceof Error ? err.message : String(err)}`
-    return null
   }
+  loadError = `NDI-Modul nicht geladen (npm run ndi:setup ausführen). ${errors.join(' | ')}`
+  return null
 }
 
 let win: BrowserWindow | null = null

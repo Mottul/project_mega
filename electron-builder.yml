@@ -9,9 +9,6 @@ directories:
 files:
   - out/**
   - package.json
-  # Optionales NDI-Binding (per `npm i --no-save github:rse/grandiose` installiert,
-  # steht nicht in dependencies): mitnehmen, WENN es beim Packen vorhanden ist.
-  - node_modules/grandiose/**
 
 # better-sqlite3 wird bereits per postinstall (scripts/rebuild-native.mjs) gegen die
 # Electron-ABI vorgebaut -> electron-builder muss/soll nicht selbst rebuilden
@@ -23,7 +20,6 @@ asar: true
 asarUnpack:
   - '**/node_modules/better-sqlite3/**'
   - '**/node_modules/pdfjs-dist/**'
-  - '**/node_modules/grandiose/**'
 
 # Pro Zielplattform wird nur das passende ffmpeg-Verzeichnis als Ressource mitgenommen.
 # ${os} -> "mac" | "win" | "linux" (siehe scripts/download-ffmpeg.mjs fuer die Ablage).
@@ -35,6 +31,22 @@ extraResources:
   # Icon zur Laufzeit erreichbar machen (BrowserWindow.icon -> Taskleiste/Fenster).
   - from: build/icon.png
     to: icon.png
+  # Optionales NDI-Binding (vendor/grandiose via `npm run ndi:setup`): landet als
+  # echte Dateien unter resources/vendor/grandiose (kein asar -> native Module ok).
+  # Bewusst ALLOWLIST statt grandiose/**: der Arbeitsbaum enthaelt .git, das
+  # komplette NDI-SDK (ndi/), Build-Zwischenprodukte und Setup-only-Deps --
+  # hunderte MB, die zur Laufzeit niemand braucht (index.js zieht nur `bindings`;
+  # die NDI-Runtime-DLL kopiert der Build nach build/Release). Ohne Setup matcht
+  # der Filter nichts; `from: vendor` existiert immer (README).
+  - from: vendor
+    to: vendor
+    filter:
+      - 'grandiose/package.json'
+      - 'grandiose/index.js'
+      - 'grandiose/LICENSE*'
+      - 'grandiose/build/Release/**'
+      - 'grandiose/node_modules/bindings/**'
+      - 'grandiose/node_modules/file-uri-to-path/**'
 
 win:
   target:
