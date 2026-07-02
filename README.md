@@ -142,22 +142,26 @@ Icon-/Versions-Metadaten in der `.exe` (kosmetisch).
 Der Stage-Timer kann seine Anzeige als **NDI-Quelle** ins Netz senden (Panel
 „NDI-Ausgabe (Netzwerk)" im Timer). Das dafür nötige native Binding ist **bewusst
 keine reguläre Abhängigkeit** – ohne Modul läuft die App unverändert und das Panel
-zeigt „nicht verfügbar". Einmalige Einrichtung auf dem Entwicklungsrechner
-(Internet + C++-Build-Tools nötig, z. B. VS „Desktop development with C++"):
+zeigt „nicht verfügbar". Einmalige Einrichtung (Internet, git und C++-Build-Tools
+nötig – Windows: Visual Studio „Desktop development with C++"):
 
 ```bash
-# 1) sende-fähigen grandiose-Fork holen (Installer lädt das NDI-SDK und kompiliert).
-#    --no-save hält package.json/Lockfile reproduzierbar!
-npm install --no-save github:rse/grandiose
-
-# 2) gegen die Electron-ABI bauen
-npx @electron/rebuild -f -o grandiose
+npm run ndi:setup
 ```
 
-Danach App neu starten. `npm run package` nimmt das Modul automatisch mit, wenn es in
-`node_modules` liegt (siehe `files`/`asarUnpack` in `electron-builder.yml`). Auf
-Empfänger-Rechnern muss die NDI-Laufzeit installiert sein (ndi.tv). Hinweis: NDI ist
-eine Marke von Vizrt/NewTek; SDK-Lizenzbedingungen beachten.
+Das Script legt den sende-fähigen Fork `rse/grandiose` unter `vendor/grandiose` ab,
+lädt das NDI-SDK und kompiliert gegen die Electron-ABI der App. Danach App neu
+starten. `npm run package` nimmt `vendor/grandiose` automatisch mit
+(extraResources). Die NDI-Runtime-DLL wird beim Build neben das Binary kopiert –
+der Sender braucht keine separate NDI-Installation.
+
+> **Warum kein `npm install github:rse/grandiose`?** Neuere npm-Versionen blockieren
+> Install-Scripts fremder Pakete (allow-scripts) – das Paket landet dann ohne
+> NDI-SDK und unkompiliert in `node_modules`, und electron-builder packt
+> undeklarierte Module nicht mit. Das Setup-Script führt die nötigen Schritte
+> deshalb explizit und kontrolliert aus.
+
+Hinweis: NDI ist eine Marke von Vizrt/NewTek; SDK-Lizenzbedingungen beachten.
 
 > `npm run ff:fetch` lädt ffmpeg nur, wenn es noch nicht in `resources/ffmpeg/<os>/` liegt
 > (mit `--force` erzwingbar) – wiederholte `npm run package`-Läufe sind dadurch schnell.

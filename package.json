@@ -24,6 +24,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
+    "ndi:setup": "node scripts/setup-ndi.mjs",
     "ff:fetch": "node scripts/download-ffmpeg.mjs",
     "rebuild:native": "node scripts/rebuild-native.mjs",
     "electron:bin": "node scripts/fetch-electron-bin.mjs",

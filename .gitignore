@@ -12,3 +12,4 @@ resources/ffmpeg/
 npm-debug.log*
 .DS_Store
 Thumbs.db
+vendor/grandiose/
