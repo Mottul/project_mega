@@ -121,8 +121,9 @@ function pushFrame(g: Grandiose, image: Electron.NativeImage): void {
     frameRateD: 1000,
     pictureAspectRatio: size.width / size.height,
     frameFormatType: g.FORMAT_TYPE_PROGRESSIVE ?? 1,
-    // 100ns-Timecode; 0,0 -> Empfänger/SDK setzen selbst fort
-    timecode: [0, 0] as [number, number],
+    // KEIN timecode-Feld: laut grandiose_send.cc optional, Default ist
+    // NDIlib_send_timecode_synthesize (SDK stempelt selbst). Wenn gesetzt,
+    // muss es number/bigint sein -- ein Array wird hart abgelehnt.
     lineStrideBytes: size.width * 4,
     fourCC: g.FOURCC_BGRA ?? g.FOURCC_BGRX ?? 0,
     data
