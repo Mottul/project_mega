@@ -18,6 +18,8 @@ import { closePlayerOutput } from './services/player/playerWindow'
 import { stopRemote } from './services/player/remoteServer'
 import { disposeTimer } from './services/stageTimer'
 import { closeTimerOutput } from './services/timerWindow'
+import { stopTimerNdi } from './services/timerNdi'
+import { stopPlayerNdi } from './services/playerNdi'
 
 const isDev = !app.isPackaged
 
@@ -137,6 +139,25 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// 'window-all-closed' feuert NICHT, solange unsichtbare Dienst-Fenster leben
+// (NDI-Offscreen-Spiegel von Timer/Player). Die dürfen die App aber nicht am
+// Leben halten: schließt das letzte SICHTBARE Fenster, wird beendet -- sonst
+// läuft der Prozess (und der NDI-Stream!) unsichtbar weiter.
+app.on('browser-window-created', (_e, win) => {
+  win.on('closed', () => {
+    if (process.platform === 'darwin') return
+    const anyVisible = BrowserWindow.getAllWindows().some((w) => !w.isDestroyed() && w.isVisible())
+    if (!anyVisible) app.quit()
+  })
+})
+
+// NDI-Sender stoppen, BEVOR die Fenster abgeräumt werden -> die Quelle
+// verschwindet sauber aus dem Netz (kein hängender Eintrag bei Empfängern).
+app.on('before-quit', () => {
+  stopTimerNdi(false)
+  stopPlayerNdi(false)
 })
 
 // Fernsteuerungs-Server + Timer-Intervall beim Beenden sauber schliessen.
