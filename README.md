@@ -137,6 +137,28 @@ auf Windows an macOS-Symlinks scheitert („Dem Client fehlt ein erforderliches 
 Zertifikat ist für den privaten Gebrauch nicht nötig; Kosten sind nur fehlende
 Icon-/Versions-Metadaten in der `.exe` (kosmetisch).
 
+## NDI-Ausgabe des Stage-Timers (experimentell, optional)
+
+Der Stage-Timer kann seine Anzeige als **NDI-Quelle** ins Netz senden (Panel
+„NDI-Ausgabe (Netzwerk)" im Timer). Das dafür nötige native Binding ist **bewusst
+keine reguläre Abhängigkeit** – ohne Modul läuft die App unverändert und das Panel
+zeigt „nicht verfügbar". Einmalige Einrichtung auf dem Entwicklungsrechner
+(Internet + C++-Build-Tools nötig, z. B. VS „Desktop development with C++"):
+
+```bash
+# 1) sende-fähigen grandiose-Fork holen (Installer lädt das NDI-SDK und kompiliert).
+#    --no-save hält package.json/Lockfile reproduzierbar!
+npm install --no-save github:rse/grandiose
+
+# 2) gegen die Electron-ABI bauen
+npx @electron/rebuild -f -o grandiose
+```
+
+Danach App neu starten. `npm run package` nimmt das Modul automatisch mit, wenn es in
+`node_modules` liegt (siehe `files`/`asarUnpack` in `electron-builder.yml`). Auf
+Empfänger-Rechnern muss die NDI-Laufzeit installiert sein (ndi.tv). Hinweis: NDI ist
+eine Marke von Vizrt/NewTek; SDK-Lizenzbedingungen beachten.
+
 > `npm run ff:fetch` lädt ffmpeg nur, wenn es noch nicht in `resources/ffmpeg/<os>/` liegt
 > (mit `--force` erzwingbar) – wiederholte `npm run package`-Läufe sind dadurch schnell.
 

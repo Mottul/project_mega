@@ -21,7 +21,7 @@ import { exportLedWallPdf } from './print'
 import { useLedWall, type BuildMode } from './store'
 import { topDownMarkup } from './topdown'
 import { LField } from './ui'
-import { toolPageClass } from '@renderer/lib/toolPage'
+import { cn } from '@renderer/lib/utils'
 
 /** Schematischer 16:9-Plot: Wand (Rahmen) mit zentrierter 16:9-Nutzfläche und
  *  den Letterbox-/Pillarbox-Balken (links/rechts bzw. oben/unten). */
@@ -31,30 +31,64 @@ function Fit169Plot({ rx, ry, fit }: { rx: number; ry: number; fit: Fit169 }): J
   const ch = fit.ch ?? ry
   const bx = fit.side === 'lr' ? (fit.barPx ?? 0) : 0
   const by = fit.side === 'tb' ? (fit.barPx ?? 0) : 0
+  const sw = Math.max(2, rx / 150)
   return (
     <svg
       viewBox={`0 0 ${rx} ${ry}`}
       preserveAspectRatio="xMidYMid meet"
-      className="block max-h-28 w-full rounded border border-border bg-muted/40"
+      className="block max-h-32 w-full rounded"
     >
+      <defs>
+        <pattern
+          id="ledwall-bars"
+          width="14"
+          height="14"
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)"
+        >
+          <rect width="14" height="14" fill="#000" />
+          <line
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="14"
+            stroke="#ffffff"
+            strokeOpacity="0.16"
+            strokeWidth="4"
+          />
+        </pattern>
+      </defs>
+      {/* LED-Wall = schwarze Fläche (schraffiert) -> die Balken sind schwarz */}
+      <rect x={0} y={0} width={rx} height={ry} fill="url(#ledwall-bars)" />
+      {/* 16:9-Inhalt: farbig hervorgehoben */}
       <rect
         x={bx}
         y={by}
         width={cw}
         height={ch}
-        className="fill-primary/25 stroke-primary"
-        strokeWidth={Math.max(2, rx / 150)}
+        className="fill-primary stroke-primary-foreground"
+        strokeWidth={sw}
       />
       <text
         x={rx / 2}
         y={ry / 2}
         textAnchor="middle"
         dominantBaseline="central"
-        className="fill-primary font-semibold"
-        style={{ fontSize: Math.max(12, ry / 9) }}
+        className="fill-primary-foreground font-bold"
+        style={{ fontSize: Math.max(13, Math.min(cw, ch) / 4) }}
       >
         16:9
       </text>
+      {/* Umriss der gesamten LED-Wall */}
+      <rect
+        x={sw / 2}
+        y={sw / 2}
+        width={rx - sw}
+        height={ry - sw}
+        fill="none"
+        className="stroke-foreground/60"
+        strokeWidth={sw}
+      />
     </svg>
   )
 }
@@ -104,6 +138,7 @@ export function LedWall(): JSX.Element {
   // Squircle) bzw. bei flachen Modulen. Bei Vollkreis/Builder ergibt sie sich.
   const curve = d.curve
   const widthEditable = !curve || curve.drivesWidth != null
+  const hasCurving = s.moduleKey === 'uS2+'
 
   function doExport(): void {
     const curveForPdf = curve
@@ -135,143 +170,142 @@ export function LedWall(): JSX.Element {
   }
 
   return (
-    <div className={toolPageClass('full')}>
-      {/* Projekt + Wandgröße */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-5">
-          <div className="flex items-start justify-between gap-3">
-            <SectionTitle>Projekt</SectionTitle>
-            <div className="flex items-center gap-1.5">
-              <div
-                className="flex overflow-hidden rounded-md border border-border"
-                title="Seitenformat der PDF-Doku"
-              >
-                {(
-                  [
-                    [false, 'Hoch'],
-                    [true, 'Quer']
-                  ] as [boolean, string][]
-                ).map(([landscape, label]) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => s.set({ pdfLandscape: landscape })}
-                    className={`px-2 py-1 text-xs transition-colors ${
-                      s.pdfLandscape === landscape
-                        ? 'bg-primary/15 font-semibold text-primary'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                title="Material in die Packliste übernehmen und in neuem Fenster öffnen"
-                onClick={() => {
-                  usePacking.getState().mergeItems(deriveFromLedWall())
-                  void api.openToolWindow('packing-list')
-                }}
-              >
-                <ClipboardList className="size-4" /> Packliste
-              </Button>
-              <Button size="sm" onClick={doExport}>
-                <FileDown className="size-4" /> PDF exportieren
-              </Button>
-            </div>
-          </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">Projektname</span>
-              <Input
-                value={s.projectName}
-                placeholder="z.B. Messe Frankfurt 2026"
-                onChange={(e) => s.set({ projectName: e.target.value })}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">Kunde</span>
-              <Input
-                value={s.customerName}
-                placeholder="z.B. Firma XY"
-                onChange={(e) => s.set({ customerName: e.target.value })}
-              />
-            </label>
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <SectionTitle>Wandgröße &amp; Aufbau</SectionTitle>
-          <div className="mt-3 space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {widthEditable ? (
-                <LField
-                  label="Breite"
-                  unit="m"
-                  value={s.widthM}
-                  onChange={(v) => s.set({ widthM: v })}
-                />
-              ) : (
-                <div>
-                  <span className="mb-1 block text-xs text-muted-foreground">
-                    Breite (aus Curving)
-                  </span>
-                  <div className="flex h-9 items-center rounded-md border border-primary/30 bg-primary/[0.07] px-3 text-sm font-semibold text-primary">
-                    {d.actualW} m
-                  </div>
-                </div>
-              )}
-              <LField
-                label="Höhe"
-                unit="m"
-                value={s.heightM}
-                onChange={(v) => s.set({ heightM: v })}
-              />
-            </div>
-            {curve && (
-              <p className="text-xs text-muted-foreground">
-                Form:{' '}
-                <span className="font-medium text-foreground">{CURVE_MODE_LABELS[curve.mode]}</span>{' '}
-                · {curve.mods} Module/Reihe · belegt {fmt(curve.footprintW, 2)} ×{' '}
-                {fmt(curve.footprintD, 2)} m
-              </p>
-            )}
-            <div className="flex gap-2">
+    <div className={cn('ledwall-grid p-6', hasCurving && 'has-curving')}>
+      {/* Projekt */}
+      <Card className="p-5" style={{ gridArea: 'proj' }}>
+        <div className="flex items-start justify-between gap-3">
+          <SectionTitle>Projekt</SectionTitle>
+          <div className="flex items-center gap-1.5">
+            <div
+              className="flex overflow-hidden rounded-md border border-border"
+              title="Seitenformat der PDF-Doku"
+            >
               {(
                 [
-                  ['stacked', 'Ground-Stack'],
-                  ['flying', 'Fliegend']
-                ] as [BuildMode, string][]
-              ).map(([mode, label]) => (
+                  [false, 'Hoch'],
+                  [true, 'Quer']
+                ] as [boolean, string][]
+              ).map(([landscape, label]) => (
                 <button
-                  key={mode}
+                  key={label}
                   type="button"
-                  onClick={() => s.set({ buildMode: mode })}
-                  className={`flex-1 rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                    s.buildMode === mode
-                      ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
-                      : 'border-border text-muted-foreground hover:border-primary/40'
+                  onClick={() => s.set({ pdfLandscape: landscape })}
+                  className={`px-2 py-1 text-xs transition-colors ${
+                    s.pdfLandscape === landscape
+                      ? 'bg-primary/15 font-semibold text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {label}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Tatsächlich:{' '}
-              <span className="font-medium text-foreground">
-                {d.actualW} × {d.actualH} m
-              </span>{' '}
-              ({d.cols}×{d.rows} = {d.total} Module)
-            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              title="Material in die Packliste übernehmen und in neuem Fenster öffnen"
+              onClick={() => {
+                usePacking.getState().mergeItems(deriveFromLedWall())
+                void api.openToolWindow('packing-list')
+              }}
+            >
+              <ClipboardList className="size-4" /> Packliste
+            </Button>
+            <Button size="sm" onClick={doExport}>
+              <FileDown className="size-4" /> PDF exportieren
+            </Button>
           </div>
-        </Card>
-      </div>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted-foreground">Projektname</span>
+            <Input
+              value={s.projectName}
+              placeholder="z.B. Messe Frankfurt 2026"
+              onChange={(e) => s.set({ projectName: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted-foreground">Kunde</span>
+            <Input
+              value={s.customerName}
+              placeholder="z.B. Firma XY"
+              onChange={(e) => s.set({ customerName: e.target.value })}
+            />
+          </label>
+        </div>
+      </Card>
+
+      {/* Wandgröße & Aufbau */}
+      <Card className="p-5" style={{ gridArea: 'wall' }}>
+        <SectionTitle>Wandgröße &amp; Aufbau</SectionTitle>
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {widthEditable ? (
+              <LField
+                label="Breite"
+                unit="m"
+                value={s.widthM}
+                onChange={(v) => s.set({ widthM: v })}
+              />
+            ) : (
+              <div>
+                <span className="mb-1 block text-xs text-muted-foreground">
+                  Breite (aus Curving)
+                </span>
+                <div className="flex h-9 items-center rounded-md border border-primary/30 bg-primary/[0.07] px-3 text-sm font-semibold text-primary">
+                  {d.actualW} m
+                </div>
+              </div>
+            )}
+            <LField
+              label="Höhe"
+              unit="m"
+              value={s.heightM}
+              onChange={(v) => s.set({ heightM: v })}
+            />
+          </div>
+          {curve && (
+            <p className="text-xs text-muted-foreground">
+              Form:{' '}
+              <span className="font-medium text-foreground">{CURVE_MODE_LABELS[curve.mode]}</span> ·{' '}
+              {curve.mods} Module/Reihe · belegt {fmt(curve.footprintW, 2)} ×{' '}
+              {fmt(curve.footprintD, 2)} m
+            </p>
+          )}
+          <div className="flex gap-2">
+            {(
+              [
+                ['stacked', 'Ground-Stack'],
+                ['flying', 'Fliegend']
+              ] as [BuildMode, string][]
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => s.set({ buildMode: mode })}
+                className={`flex-1 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                  s.buildMode === mode
+                    ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
+                    : 'border-border text-muted-foreground hover:border-primary/40'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Tatsächlich:{' '}
+            <span className="font-medium text-foreground">
+              {d.actualW} × {d.actualH} m
+            </span>{' '}
+            ({d.cols}×{d.rows} = {d.total} Module)
+          </p>
+        </div>
+      </Card>
 
       {/* Modultyp */}
-      <Card className="p-5">
+      <Card className="p-5" style={{ gridArea: 'mod' }}>
         <SectionTitle>Modultyp</SectionTitle>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           {Object.entries(MODULES).map(([key, m]) => (
@@ -302,142 +336,145 @@ export function LedWall(): JSX.Element {
         </div>
       </Card>
 
-      {/* Curving (nur uS2+) */}
-      {s.moduleKey === 'uS2+' && <Curving />}
+      {/* Curving (nur uS2+) – eigener Bereich */}
+      {hasCurving && (
+        <div style={{ gridArea: 'curv' }}>
+          <Curving />
+        </div>
+      )}
 
-      {/* Kennzahlen + Verkabelung */}
-      <div className="grid gap-4 lg:grid-cols-[280px,1fr]">
-        <div className="space-y-4">
-          <Card className="p-5">
-            <SectionTitle>Auflösung</SectionTitle>
-            <div className="mt-2 text-3xl font-bold tracking-tight">
-              {d.resX} × {d.resY}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Pixel ({d.ratioW}:{d.ratioH})
-            </p>
-            <div className="mt-3 space-y-2">
-              {d.fit169?.match ? (
-                <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-500">
-                  16:9-Content passt exakt
+      {/* Infos zur Wall (linke Spalte) */}
+      <div className="space-y-4" style={{ gridArea: 'info' }}>
+        <Card className="p-5">
+          <SectionTitle>Auflösung</SectionTitle>
+          <div className="mt-2 text-3xl font-bold tracking-tight">
+            {d.resX} × {d.resY}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Pixel ({d.ratioW}:{d.ratioH})
+          </p>
+          <div className="mt-3 space-y-2">
+            {d.fit169?.match ? (
+              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-500">
+                16:9-Content passt exakt
+              </p>
+            ) : d.fit169 ? (
+              <div className="rounded-md border border-primary/30 bg-primary/[0.08] px-3 py-2 text-xs">
+                <p className="font-semibold text-primary">16:9-Content</p>
+                <p className="mt-0.5 text-muted-foreground">
+                  <span className="font-medium text-foreground">{d.fit169.barPx} px</span> Rand{' '}
+                  {d.fit169.side === 'lr' ? 'links/rechts' : 'oben/unten'} · Nutzfläche{' '}
+                  {d.fit169.cw}×{d.fit169.ch} px
                 </p>
-              ) : d.fit169 ? (
-                <div className="rounded-md border border-primary/30 bg-primary/[0.08] px-3 py-2 text-xs">
-                  <p className="font-semibold text-primary">16:9-Content</p>
-                  <p className="mt-0.5 text-muted-foreground">
-                    <span className="font-medium text-foreground">{d.fit169.barPx} px</span> Rand{' '}
-                    {d.fit169.side === 'lr' ? 'links/rechts' : 'oben/unten'} · Nutzfläche{' '}
-                    {d.fit169.cw}×{d.fit169.ch} px
-                  </p>
-                </div>
-              ) : null}
-              {d.fit169 && !d.fit169.match && <Fit169Plot rx={d.resX} ry={d.resY} fit={d.fit169} />}
-              <Readout label="Pixelpitch" value={String(d.mod.pitch)} unit="mm" />
-              <Readout label="Module" value={String(d.total)} unit="Stk." />
-            </div>
-          </Card>
+              </div>
+            ) : null}
+            {d.fit169 && !d.fit169.match && <Fit169Plot rx={d.resX} ry={d.resY} fit={d.fit169} />}
+            <Readout label="Pixelpitch" value={String(d.mod.pitch)} unit="mm" />
+            <Readout label="Module" value={String(d.total)} unit="Stk." />
+          </div>
+        </Card>
 
-          <Card className="p-5">
-            <SectionTitle>Technische Daten</SectionTitle>
-            <div className="mt-3 space-y-2">
-              <Readout label="Gewicht" value={fmt(parseFloat(d.weightKg), 1)} unit="kg" accent />
-              <Readout label="Tiefe" value={String(d.mod.dimD)} unit="mm" />
-              <Readout label="Schutzart" value={d.mod.ip} />
-              <Readout
-                label="Helligkeit"
-                value={
-                  d.mod.brightnessMax
-                    ? `${d.mod.brightness} (max ${d.mod.brightnessMax})`
-                    : String(d.mod.brightness)
-                }
-                unit="nit"
-              />
-              <Readout label="Kontrast" value={`> ${d.mod.contrast}`} />
-              <Readout label="Refresh" value={`≥ ${d.mod.refresh}`} unit="Hz" />
-            </div>
-          </Card>
+        <Card className="p-5">
+          <SectionTitle>Technische Daten</SectionTitle>
+          <div className="mt-3 space-y-2">
+            <Readout label="Gewicht" value={fmt(parseFloat(d.weightKg), 1)} unit="kg" accent />
+            <Readout label="Tiefe" value={String(d.mod.dimD)} unit="mm" />
+            <Readout label="Schutzart" value={d.mod.ip} />
+            <Readout
+              label="Helligkeit"
+              value={
+                d.mod.brightnessMax
+                  ? `${d.mod.brightness} (max ${d.mod.brightnessMax})`
+                  : String(d.mod.brightness)
+              }
+              unit="nit"
+            />
+            <Readout label="Kontrast" value={`> ${d.mod.contrast}`} />
+            <Readout label="Refresh" value={`≥ ${d.mod.refresh}`} unit="Hz" />
+          </div>
+        </Card>
 
-          <Card className="p-5">
-            <SectionTitle>Strom</SectionTitle>
-            <div className="mt-3 space-y-2">
-              <Readout label="Typisch" value={fmt(d.powerTypW, 0)} unit="W" />
-              <Readout label="Maximal" value={fmt(d.powerMaxW, 0)} unit="W" accent />
-              <Readout label="Typisch" value={d.ampsTyp} unit="A" />
-              <Readout label="Maximal" value={d.ampsMax} unit="A" accent />
-            </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">{d.mod.connector}</p>
-          </Card>
+        <Card className="p-5">
+          <SectionTitle>
+            {s.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend'}
+          </SectionTitle>
+          <div className="mt-3 space-y-2">
+            {s.buildMode === 'stacked' ? (
+              <>
+                <Readout label="Standfüße" value={String(d.baseUnits)} unit="Stk." />
+                <Readout label="Ballast/Fuß" value={String(d.ballastPerBase)} unit="kg" />
+                <Readout
+                  label="Ballast gesamt"
+                  value={fmt(d.totalBallast, 0)}
+                  unit="kg"
+                  big
+                  accent
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  1 LSU-Fuß pro lfd. Meter Bildbreite ({d.actualW} m → {d.baseUnits} Bases)
+                </p>
+              </>
+            ) : (
+              <>
+                <Readout
+                  label="Gewicht an Traverse"
+                  value={fmt(parseFloat(d.weightKg), 1)}
+                  unit="kg"
+                  big
+                  accent
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Rigging-Punkte und Traverse je nach Situation planen.
+                </p>
+              </>
+            )}
+          </div>
+        </Card>
 
-          <Card className="p-5">
-            <SectionTitle>
-              {s.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend'}
-            </SectionTitle>
-            <div className="mt-3 space-y-2">
-              {s.buildMode === 'stacked' ? (
-                <>
-                  <Readout label="Standfüße" value={String(d.baseUnits)} unit="Stk." />
-                  <Readout label="Ballast/Fuß" value={String(d.ballastPerBase)} unit="kg" />
-                  <Readout
-                    label="Ballast gesamt"
-                    value={fmt(d.totalBallast, 0)}
-                    unit="kg"
-                    big
-                    accent
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    1 LSU-Fuß pro lfd. Meter Bildbreite ({d.actualW} m → {d.baseUnits} Bases)
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Readout
-                    label="Gewicht an Traverse"
-                    value={fmt(parseFloat(d.weightKg), 1)}
-                    unit="kg"
-                    big
-                    accent
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Rigging-Punkte und Traverse je nach Situation planen.
-                  </p>
-                </>
-              )}
-            </div>
-          </Card>
-        </div>
+        <Card className="p-5">
+          <SectionTitle>Strom</SectionTitle>
+          <div className="mt-3 space-y-2">
+            <Readout label="Typisch" value={fmt(d.powerTypW, 0)} unit="W" />
+            <Readout label="Maximal" value={fmt(d.powerMaxW, 0)} unit="W" accent />
+            <Readout label="Typisch" value={d.ampsTyp} unit="A" />
+            <Readout label="Maximal" value={d.ampsMax} unit="A" accent />
+          </div>
+          <p className="mt-2 text-[10px] text-muted-foreground">{d.mod.connector}</p>
+        </Card>
+      </div>
 
-        <div className="space-y-4">
-          <Card className="p-5">
-            <SectionTitle>{`Signalverkabelung — ${d.cols}×${d.rows}`}</SectionTitle>
-            <div className="mt-3">
-              <CableGrid
-                grid={s.sig}
-                colors={SIG_COLORS}
-                prefix="S"
-                activeChain={s.sigChain}
-                onChain={(c) => s.set({ sigChain: c })}
-                onCell={(r, c) => s.setCell('sig', r, c)}
-                onLine={(k, i) => s.fillLine('sig', k, i)}
-                onReset={() => s.resetGrid('sig')}
-              />
-            </div>
-          </Card>
-          <Card className="p-5">
-            <SectionTitle>{`Stromverkabelung — ${d.cols}×${d.rows}`}</SectionTitle>
-            <div className="mt-3">
-              <CableGrid
-                grid={s.pwr}
-                colors={PWR_COLORS}
-                prefix="P"
-                activeChain={s.pwrChain}
-                onChain={(c) => s.set({ pwrChain: c })}
-                onCell={(r, c) => s.setCell('pwr', r, c)}
-                onLine={(k, i) => s.fillLine('pwr', k, i)}
-                onReset={() => s.resetGrid('pwr')}
-              />
-            </div>
-          </Card>
-        </div>
+      {/* Verkabelung (rechte, 2-spaltig breite Spalte; bei uS2+ unter dem Curving) */}
+      <div className="space-y-4" style={{ gridArea: 'cable' }}>
+        <Card className="p-5">
+          <SectionTitle>{`Signalverkabelung — ${d.cols}×${d.rows}`}</SectionTitle>
+          <div className="mt-3">
+            <CableGrid
+              grid={s.sig}
+              colors={SIG_COLORS}
+              prefix="S"
+              activeChain={s.sigChain}
+              onChain={(c) => s.set({ sigChain: c })}
+              onCell={(r, c) => s.setCell('sig', r, c)}
+              onLine={(k, i) => s.fillLine('sig', k, i)}
+              onReset={() => s.resetGrid('sig')}
+            />
+          </div>
+        </Card>
+        <Card className="p-5">
+          <SectionTitle>{`Stromverkabelung — ${d.cols}×${d.rows}`}</SectionTitle>
+          <div className="mt-3">
+            <CableGrid
+              grid={s.pwr}
+              colors={PWR_COLORS}
+              prefix="P"
+              activeChain={s.pwrChain}
+              onChain={(c) => s.set({ pwrChain: c })}
+              onCell={(r, c) => s.setCell('pwr', r, c)}
+              onLine={(k, i) => s.fillLine('pwr', k, i)}
+              onReset={() => s.resetGrid('pwr')}
+            />
+          </div>
+        </Card>
       </div>
     </div>
   )

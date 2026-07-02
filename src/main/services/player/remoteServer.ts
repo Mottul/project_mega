@@ -69,7 +69,7 @@ function uploadsDir(): string {
 function receiveUpload(req: IncomingMessage, res: ServerResponse): void {
   const hdr = req.headers['x-filename']
   const rawName = Array.isArray(hdr) ? hdr[0] : hdr
-  let fname = 'upload'
+  let fname: string
   try {
     fname = decodeURIComponent(rawName || 'upload')
   } catch {

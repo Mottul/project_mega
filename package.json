@@ -22,6 +22,8 @@
     "test:watch": "vitest",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
     "ff:fetch": "node scripts/download-ffmpeg.mjs",
     "rebuild:native": "node scripts/rebuild-native.mjs",
     "electron:bin": "node scripts/fetch-electron-bin.mjs",
@@ -34,6 +36,7 @@
     "pdfjs-dist": "^4.10.38"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
@@ -44,6 +47,9 @@
     "clsx": "^2.1.1",
     "electron": "^40.10.2",
     "electron-vite": "^5.0.0",
+    "eslint": "10.6.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
     "lucide-react": "^0.469.0",
     "postcss": "^8.4.49",
     "prettier": "^3.8.1",
@@ -53,6 +59,7 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
+    "typescript-eslint": "8.62.1",
     "vite": "^7.3.3",
     "vitest": "4.1.9",
     "zustand": "^5.0.2"

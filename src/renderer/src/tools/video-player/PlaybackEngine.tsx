@@ -12,6 +12,8 @@ interface EngineProps {
    *  immer stumm). Für eine bewegte Vorschau NEBEN dem autoritativen
    *  Ausgabefenster – sonst gäbe es doppelte „ended"-Sprünge und doppelten Ton. */
   passive?: boolean
+  /** Kleine FPS-Anzeige (tatsächlich dargestellte Videobilder/s) oben rechts. */
+  showFps?: boolean
 }
 
 // Gemeinsame Wiedergabe-Engine. Zwei Ebenen (0/1), jede hält ein <video> ODER
@@ -29,10 +31,12 @@ interface EngineProps {
 export function PlaybackEngine({
   objectFit = 'fill',
   debug = false,
-  passive = false
+  passive = false,
+  showFps = false
 }: EngineProps): JSX.Element {
   const [state, setState] = useState<PlayerState>(EMPTY_PLAYER_STATE)
   const [active, setActive] = useState(0)
+  const [fps, setFps] = useState<number | null>(null)
 
   const stateRef = useRef<PlayerState>(EMPTY_PLAYER_STATE)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([null, null])
@@ -227,7 +231,7 @@ export function PlaybackEngine({
 
     const a = activeRef.current
     const other = a ^ 1
-    let targetSlot = a
+    let targetSlot: number
     if (slotItems.current[a]?.id === curr.id) targetSlot = a
     else if (slotItems.current[other]?.id === curr.id) targetSlot = other
     else {
@@ -278,10 +282,14 @@ export function PlaybackEngine({
   }, [state])
 
   useEffect(() => {
+    // stabile Array-/Element-Referenzen einfangen (Einträge werden mutiert,
+    // die Arrays selbst nie ersetzt) -> Cleanup sieht die aktuellen Timer
     const videos = videoRefs.current
+    const ramps = rampTimers.current
+    const pauses = pauseTimers.current
     return () => {
-      rampTimers.current.forEach((t) => t && clearInterval(t))
-      pauseTimers.current.forEach((t) => t && clearTimeout(t))
+      ramps.forEach((t) => t && clearInterval(t))
+      pauses.forEach((t) => t && clearTimeout(t))
       if (preloadTimer.current) clearTimeout(preloadTimer.current)
       clearImageTimer()
       // Videos beim Unmount aktiv stoppen (z.B. Vorschau weicht dem Vollbild)
@@ -325,6 +333,29 @@ export function PlaybackEngine({
     earlyEndedAt.current = s.seekSeq
     void api.player.command({ type: 'ended' })
   }
+
+  // FPS-Anzeige: tatsächlich dargestellte Videobilder/s des aktiven <video>
+  // (per getVideoPlaybackQuality gepollt). 0 = pausiert/Bild/kein Video.
+  useEffect(() => {
+    if (!showFps) {
+      setFps(null)
+      return
+    }
+    let prev = -1
+    const id = setInterval(() => {
+      const v = videoRefs.current[activeRef.current]
+      if (!v || v.paused || v.ended || typeof v.getVideoPlaybackQuality !== 'function') {
+        setFps(0)
+        prev = -1
+        return
+      }
+      const q = v.getVideoPlaybackQuality()
+      const shown = q.totalVideoFrames - q.droppedVideoFrames
+      if (prev >= 0) setFps(Math.max(0, shown - prev))
+      prev = shown
+    }, 1000)
+    return () => clearInterval(id)
+  }, [showFps])
 
   const curr = currentItem(state)
   const xDur = state.transition === 'crossfade' ? state.transitionMs : 0
@@ -405,6 +436,25 @@ export function PlaybackEngine({
         </div>
       )}
       {/* idlePattern 'off' -> bewusst nichts: reines Schwarz auf der Ausgabe (kein Text). */}
+
+      {showFps && fps != null && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            zIndex: 10,
+            background: 'rgba(0,0,0,0.55)',
+            color: '#fff',
+            font: '600 11px ui-monospace, monospace',
+            padding: '2px 6px',
+            borderRadius: 4,
+            pointerEvents: 'none'
+          }}
+        >
+          {fps} fps
+        </div>
+      )}
 
       {debug && (
         <div

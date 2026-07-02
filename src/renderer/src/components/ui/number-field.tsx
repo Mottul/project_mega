@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useDraft } from '@renderer/lib/useDraft'
 import { Input } from './input'
 
 interface NumberFieldProps {
@@ -24,15 +24,7 @@ export function NumberField({
   placeholder,
   'aria-label': ariaLabel
 }: NumberFieldProps): JSX.Element {
-  const ref = useRef<HTMLInputElement>(null)
-  const [text, setText] = useState(String(value))
-
-  // Externen Wert NUR übernehmen, wenn das Feld nicht gerade fokussiert ist –
-  // sonst überschreibt ein Hintergrund-Update die laufende Eingabe (das Feld
-  // „klemmt"/springt zurück, man kann scheinbar nichts mehr tippen).
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setText(String(value))
-  }, [value])
+  const { ref, text, setText } = useDraft(String(value))
 
   function commit(): void {
     if (text.trim() === '') {

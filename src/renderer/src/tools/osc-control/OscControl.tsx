@@ -7,6 +7,7 @@
 
 import {
   createContext,
+  memo,
   useCallback,
   useContext,
   useEffect,
@@ -54,18 +55,18 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
+import { useDraft } from '@renderer/lib/useDraft'
 import { QrCode } from '../video-player/QrCode'
 import {
-  BANK_MODE_LABEL,
   makeWidget,
   MAX_CH,
   MAX_COLS,
+  MIN_COLS,
   useOscSurface,
   WIDGET_COLORS,
   WIDGET_MIN,
   WIDGET_ORDER,
   WIDGET_TYPE_LABEL,
-  type BankMode,
   type OscItem,
   type OscWidget,
   type OscWidgetType
@@ -122,9 +123,9 @@ function hsv2rgb(h: number, s: number, v: number): { r: number; g: number; b: nu
   const c = v * s
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
   const m = v - c
-  let r = 0
-  let g = 0
-  let b = 0
+  let r: number
+  let g: number
+  let b: number
   if (h < 60) [r, g, b] = [c, x, 0]
   else if (h < 120) [r, g, b] = [x, c, 0]
   else if (h < 180) [r, g, b] = [0, c, x]
@@ -409,6 +410,50 @@ export function OscControl(): JSX.Element {
     t: 0,
     timer: null
   })
+  const publishSnapshot = useCallback((): void => {
+    const store = useOscSurface.getState()
+    const cs = store.currentSet()
+    const snap: OscRemoteSnapshot = {
+      connected: true,
+      setName: cs.name,
+      columns: cs.columns,
+      sets: store.currentProject().sets.map((s) => ({ id: s.id, name: s.name })),
+      currentSetId: cs.id,
+      widgets: cs.widgets.map((w) => {
+        const m = w.type === 'meter' ? meterReadout(w, video) : { level: 0, text: '' }
+        return {
+          id: w.id,
+          type: w.type,
+          label: w.label,
+          color: w.color,
+          address: w.address,
+          addressY: w.addressY,
+          min: w.min,
+          max: w.max,
+          gx: w.gx,
+          gy: w.gy,
+          cw: w.cw,
+          ch: w.ch,
+          value: w.value,
+          x: w.x,
+          y: w.y,
+          r: w.r,
+          g: w.g,
+          b: w.b,
+          a: w.a,
+          align: w.align,
+          meterLevel: m.level,
+          meterText: m.text,
+          items: w.items.map((it) => ({ label: it.label, address: it.address, value: it.value })),
+          orient: w.orient,
+          cols: w.cols,
+          bankMode: w.bankMode,
+          endless: w.endless
+        }
+      })
+    }
+    void api.osc.publish(snap)
+  }, [video])
   useEffect(() => {
     const p = pubRef.current
     const run = (): void => {
@@ -420,14 +465,15 @@ export function OscControl(): JSX.Element {
     if (dt >= 150) run()
     else if (!p.timer) p.timer = setTimeout(run, 150 - dt)
     // `sets` als Dep -> auch Umbenennen/Hinzufügen/Löschen anderer Sets erneuert
-    // die Umschaltleiste am Handy.
-  }, [set, sets, columns, widgets, video])
+    // die Umschaltleiste am Handy. `publishSnapshot` hängt an `video` (Meter).
+  }, [set, sets, columns, widgets, publishSnapshot])
 
   // Beim Schließen des Tabs ausstehende Veröffentlichung abbrechen und dem
-  // Server „getrennt" melden.
+  // Server „getrennt" melden. pubRef zeigt auf ein stabiles Objekt -> die
+  // Referenz beim Mount einzufangen ist korrekt.
   useEffect(() => {
+    const p = pubRef.current
     return () => {
-      const p = pubRef.current
       if (p.timer) {
         clearTimeout(p.timer)
         p.timer = null
@@ -492,60 +538,20 @@ export function OscControl(): JSX.Element {
   const frameW = dim ? (landscape ? dim.h : dim.w) : 0
   const frameH = dim ? (landscape ? dim.w : dim.h) : 0
 
-  function removeWidget(id: string): void {
+  // Stabile Kachel-Handler (Deps leer) -> React.memo der Kacheln greift.
+  const removeWidget = useCallback((id: string): void => {
     useOscSurface.getState().removeWidget(id)
-    if (selectedId === id) setSelectedId(null)
-  }
+    setSelectedId((cur) => (cur === id ? null : cur))
+  }, [])
 
-  function duplicateWidgetSel(id: string): void {
+  const duplicateWidgetSel = useCallback((id: string): void => {
     const nid = useOscSurface.getState().duplicateWidget(id)
     if (nid) setSelectedId(nid)
-  }
+  }, [])
 
-  function publishSnapshot(): void {
-    const store = useOscSurface.getState()
-    const cs = store.currentSet()
-    const snap: OscRemoteSnapshot = {
-      connected: true,
-      setName: cs.name,
-      columns: cs.columns,
-      sets: store.currentProject().sets.map((s) => ({ id: s.id, name: s.name })),
-      currentSetId: cs.id,
-      widgets: cs.widgets.map((w) => {
-        const m = w.type === 'meter' ? meterReadout(w, video) : { level: 0, text: '' }
-        return {
-          id: w.id,
-          type: w.type,
-          label: w.label,
-          color: w.color,
-          address: w.address,
-          addressY: w.addressY,
-          min: w.min,
-          max: w.max,
-          gx: w.gx,
-          gy: w.gy,
-          cw: w.cw,
-          ch: w.ch,
-          value: w.value,
-          x: w.x,
-          y: w.y,
-          r: w.r,
-          g: w.g,
-          b: w.b,
-          a: w.a,
-          align: w.align,
-          meterLevel: m.level,
-          meterText: m.text,
-          items: w.items.map((it) => ({ label: it.label, address: it.address, value: it.value })),
-          orient: w.orient,
-          cols: w.cols,
-          bankMode: w.bankMode,
-          endless: w.endless
-        }
-      })
-    }
-    void api.osc.publish(snap)
-  }
+  const placePick = useCallback((gx: number, gy: number, x: number, y: number): void => {
+    setPicker((p) => (p ? null : { gx, gy, x, y }))
+  }, [])
 
   async function toggleRemote(): Promise<void> {
     if (remote?.running) {
@@ -689,7 +695,7 @@ export function OscControl(): JSX.Element {
               Spalten
               <NumberField
                 value={columns}
-                min={4}
+                min={MIN_COLS}
                 max={MAX_COLS}
                 onCommit={(v) => useOscSurface.getState().setColumns(v)}
                 className="h-8 w-16"
@@ -810,7 +816,7 @@ export function OscControl(): JSX.Element {
                     onRemove={removeWidget}
                     onSend={send}
                     onSendMany={sendMany}
-                    onPlacePick={(gx, gy, x, y) => setPicker((p) => (p ? null : { gx, gy, x, y }))}
+                    onPlacePick={placePick}
                   />
                 )
               }
@@ -837,7 +843,7 @@ export function OscControl(): JSX.Element {
                 onRemove={removeWidget}
                 onSend={send}
                 onSendMany={sendMany}
-                onPlacePick={(gx, gy, x, y) => setPicker((p) => (p ? null : { gx, gy, x, y }))}
+                onPlacePick={placePick}
               />
             </>
           )}
@@ -1060,7 +1066,10 @@ function GridBackdrop({ columns, rows }: { columns: number; rows: number }): JSX
   return <>{cells}</>
 }
 
-function WidgetTile({
+// memo: OSC-Feedback/Log-Spam rendert sonst bei JEDER Nachricht ALLE Kacheln neu.
+// Der Store erhält die Identität unveränderter Widgets, die Callbacks sind
+// id-basiert und stabil -> nur tatsächlich betroffene Kacheln rendern.
+const WidgetTile = memo(function WidgetTile({
   w,
   live,
   selected,
@@ -1079,11 +1088,11 @@ function WidgetTile({
   columns: number
   gridRef: RefObject<HTMLDivElement>
   scale?: number
-  onSelect: () => void
+  onSelect: (id: string) => void
   onSend: Send
   onSendMany: SendMany
-  onDuplicate: () => void
-  onRemove: () => void
+  onDuplicate: (id: string) => void
+  onRemove: (id: string) => void
 }): JSX.Element {
   const tileRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -1098,7 +1107,7 @@ function WidgetTile({
   function startDrag(e: ReactPointerEvent): void {
     if (live) return
     if ((e.target as HTMLElement).closest('[data-no-drag]')) return
-    onSelect()
+    onSelect(w.id)
     const grid = gridRef.current
     if (!grid) return
     const colStep = (grid.clientWidth + GAP) / columns
@@ -1208,10 +1217,10 @@ function WidgetTile({
             data-no-drag
             className="absolute right-1 top-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100"
           >
-            <TileBtn title="Duplizieren" onClick={onDuplicate}>
+            <TileBtn title="Duplizieren" onClick={() => onDuplicate(w.id)}>
               <Copy className="size-3.5" />
             </TileBtn>
-            <TileBtn title="Entfernen" onClick={onRemove}>
+            <TileBtn title="Entfernen" onClick={() => onRemove(w.id)}>
               <Trash2 className="size-3.5" />
             </TileBtn>
           </div>
@@ -1231,7 +1240,7 @@ function WidgetTile({
       )}
     </div>
   )
-}
+})
 
 function TileBtn({
   title,
@@ -1334,7 +1343,8 @@ function DeviceFrame({
 // Das Raster mit allen Kacheln. Wird sowohl normal als auch in der
 // Geräte-Vorschau verwendet; `scale` macht das Ziehen im skalierten Rahmen
 // korrekt, `live` entscheidet über Bedienen (true) bzw. Bearbeiten (false).
-function SurfaceGrid({
+// memo: Log-/Status-Re-Renders des Elternteils ohne Widget-Änderung überspringen.
+const SurfaceGrid = memo(function SurfaceGrid({
   columns,
   widgets,
   live,
@@ -1442,16 +1452,16 @@ function SurfaceGrid({
           columns={columns}
           gridRef={gridRef}
           scale={scale}
-          onSelect={() => onSelect(w.id)}
+          onSelect={onSelect}
           onSend={onSend}
           onSendMany={onSendMany}
-          onDuplicate={() => onDuplicate(w.id)}
-          onRemove={() => onRemove(w.id)}
+          onDuplicate={onDuplicate}
+          onRemove={onRemove}
         />
       ))}
     </div>
   )
-}
+})
 
 /** Klick-zum-Einfügen: kleine Palette am Klickpunkt; Auswahl fügt das Widget an
  *  der angeklickten Zelle ein. Per fixed positioniert (außerhalb der skalierten
@@ -2284,12 +2294,7 @@ function DecimalField({
   onCommit: (n: number) => void
   className?: string
 }): JSX.Element {
-  const ref = useRef<HTMLInputElement>(null)
-  const [text, setText] = useState(String(value))
-  // externen Wert nur übernehmen, wenn nicht fokussiert (sonst klemmt das Feld)
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setText(String(value))
-  }, [value])
+  const { ref, text, setText } = useDraft(String(value))
   function commit(): void {
     const n = parseFloat(text.replace(',', '.'))
     if (Number.isFinite(n)) onCommit(n)

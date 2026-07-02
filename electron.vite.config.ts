@@ -9,6 +9,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        // Optionales NDI-Binding (bewusst NICHT in dependencies; wird zur Laufzeit
+        // per require probiert) -> nicht bundeln/auflösen, sonst bricht der Build.
+        external: ['grandiose']
+      }
+    },
     resolve: {
       alias: { '@shared': resolve('src/shared') }
     }

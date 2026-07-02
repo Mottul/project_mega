@@ -98,13 +98,7 @@ export interface InDocHit {
 }
 
 export type ImportPhase =
-  | 'hashing'
-  | 'copying'
-  | 'extracting'
-  | 'indexing'
-  | 'done'
-  | 'skipped'
-  | 'error'
+  'hashing' | 'copying' | 'extracting' | 'indexing' | 'done' | 'skipped' | 'error'
 
 export interface ImportProgress {
   phase: ImportPhase
@@ -141,16 +135,7 @@ export type PatternId =
   | 'timecode'
 
 export type SolidColor =
-  | 'white'
-  | 'black'
-  | 'red'
-  | 'green'
-  | 'blue'
-  | 'cyan'
-  | 'magenta'
-  | 'yellow'
-  | 'gray18'
-  | 'gray50'
+  'white' | 'black' | 'red' | 'green' | 'blue' | 'cyan' | 'magenta' | 'yellow' | 'gray18' | 'gray50'
 
 export interface PatternConfig {
   pattern: PatternId
@@ -262,13 +247,7 @@ export interface MediaItem {
 }
 
 export type ConvertStatus =
-  | 'queued'
-  | 'probing'
-  | 'converting'
-  | 'thumbnail'
-  | 'done'
-  | 'error'
-  | 'canceled'
+  'queued' | 'probing' | 'converting' | 'thumbnail' | 'done' | 'error' | 'canceled'
 
 export interface ConvertJob {
   id: string
@@ -440,6 +419,31 @@ export type TimerCommand =
   | { type: 'message'; text: string; flash: boolean }
   | { type: 'clearMessage' }
 
+/** NDI-Ausgabe des Stage-Timers (experimentell): ein unsichtbares Offscreen-
+ *  Fenster rendert die Timer-Anzeige und schickt die Frames als NDI-Quelle ins
+ *  Netz. Benötigt das optionale native Modul (rse/grandiose) + NDI-Laufzeit. */
+export interface TimerNdiConfig {
+  name: string // NDI-Quellenname im Netz
+  width: number
+  height: number
+  fps: number
+}
+
+export interface TimerNdiStatus {
+  available: boolean // NDI-Binding geladen und sendefähig?
+  running: boolean
+  config: TimerNdiConfig
+  framesSent: number
+  error: string | null // Grund bei available=false bzw. letzter Sendefehler
+}
+
+export const DEFAULT_TIMER_NDI: TimerNdiConfig = {
+  name: 'MegaToolBox Timer',
+  width: 1920,
+  height: 1080,
+  fps: 30
+}
+
 /* -------------------------------- Dialog -------------------------------- */
 
 export interface SelectPathsOptions {
@@ -484,16 +488,7 @@ export type JingleRemoteCommand = { type: 'trigger'; padId: string } | { type: '
 // Steuerbefehle, die von dort zurückkommen (Renderer wendet sie an + sendet OSC).
 
 export type OscRemoteWidgetType =
-  | 'fader'
-  | 'button'
-  | 'toggle'
-  | 'xy'
-  | 'color'
-  | 'label'
-  | 'meter'
-  | 'select'
-  | 'bank'
-  | 'knob'
+  'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter' | 'select' | 'bank' | 'knob'
 
 /** Serialisierbares Widget für die mobile Seite (Teilmenge des Renderer-Widgets). */
 export interface OscRemoteWidget {

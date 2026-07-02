@@ -2,7 +2,7 @@
 // gruppiert nach frei anlegbaren Kategorien. Befüllbar aus der LED-Wall-
 // Konfiguration, Export als PDF.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import { Check, FileDown, FolderPlus, LayoutGrid, Plus, RotateCcw, Trash2, X } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
@@ -11,6 +11,7 @@ import { deriveFromLedWall } from './derive'
 import { exportPackingPdf } from './print'
 import { usePacking, type PackItem } from './store'
 import { toolPageClass } from '@renderer/lib/toolPage'
+import { useDraft } from '@renderer/lib/useDraft'
 
 export function PackingList(): JSX.Element {
   const s = usePacking()
@@ -124,11 +125,7 @@ function CategoryName({
   onCommit: (v: string) => void
   className?: string
 }): JSX.Element {
-  const [text, setText] = useState(value)
-  const ref = useRef<HTMLInputElement>(null)
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setText(value)
-  }, [value])
+  const { ref, text, setText } = useDraft(value)
   const commit = (): void => {
     if (text.trim() && text.trim() !== value) onCommit(text.trim())
     else setText(value)

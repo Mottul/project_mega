@@ -40,6 +40,8 @@ import type {
   StageTimerState,
   StageTimerTick,
   TimerCommand,
+  TimerNdiConfig,
+  TimerNdiStatus,
   WallResolution,
   JingleImportResult,
   JingleRemoteCommand,
@@ -123,6 +125,10 @@ export const Channels = {
   timerCloseOutput: 'timer:closeOutput',
   timerState: 'timer:state', // Event: StageTimerState (main -> alle)
   timerTick: 'timer:tick', // Event: StageTimerTick (main -> alle, häufig)
+  timerNdiStart: 'timer:ndiStart',
+  timerNdiStop: 'timer:ndiStop',
+  timerNdiStatus: 'timer:ndiStatus',
+  timerNdiChanged: 'timer:ndiChanged', // Event: TimerNdiStatus
   // Fenster
   windowOpenTool: 'window:openTool', // Tool in eigenem Fenster öffnen
   // Werkzeuge
@@ -304,6 +310,11 @@ export interface ToolboxApi {
     closeOutput(): Promise<void>
     onState(cb: (state: StageTimerState) => void): () => void
     onTick(cb: (tick: StageTimerTick) => void): () => void
+    /** NDI-Ausgabe (experimentell): Timer-Anzeige als NDI-Quelle ins Netz senden. */
+    ndiStart(config: TimerNdiConfig): Promise<TimerNdiStatus>
+    ndiStop(): Promise<TimerNdiStatus>
+    ndiStatus(): Promise<TimerNdiStatus>
+    onNdiChanged(cb: (status: TimerNdiStatus) => void): () => void
   }
 
   util: {

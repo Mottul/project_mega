@@ -22,6 +22,7 @@ import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { useDraft } from '@renderer/lib/useDraft'
 import type { JingleRemoteSnapshot, RemoteStatus } from '@shared/types'
 import { selectClass } from '../_calc/ui'
 import { QrCode } from '../video-player/QrCode'
@@ -729,12 +730,7 @@ function MarkInput({
   placeholder?: string
   className?: string
 }): JSX.Element {
-  const ref = useRef<HTMLInputElement>(null)
-  const [text, setText] = useState(fmtMark(value))
-  // externen Wert nur übernehmen, wenn nicht fokussiert (sonst klemmt das Feld)
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setText(fmtMark(value))
-  }, [value])
+  const { ref, text, setText } = useDraft(fmtMark(value))
   const commit = (): void => {
     const v = parseMark(text)
     onCommit(v)

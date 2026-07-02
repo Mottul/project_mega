@@ -188,13 +188,6 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
       anchorYRef.current = e.clientY - rootEl.getBoundingClientRect().top
       const factor = e.deltaY < 0 ? 1.1 : 0.9
       const next = Math.min(5, Math.max(0.2, +(effScaleRef.current * factor).toFixed(3)))
-      // Diagnose: in den DevTools (F12) sichtbar -> Handler feuert + neuer Massstab
-      // eslint-disable-next-line no-console
-      console.debug('[pdf-zoom]', {
-        from: effScaleRef.current,
-        to: next,
-        anchorY: anchorYRef.current
-      })
       effScaleRef.current = next
       setFit('custom')
       setCustomScale(next)
