@@ -25,6 +25,7 @@ import { logLine } from './log'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Grandiose = {
   send(opts: { name: string; clockVideo?: boolean; clockAudio?: boolean }): Promise<any>
+  initialize?: () => unknown
   FOURCC_BGRA?: number
   FOURCC_BGRX?: number
   FORMAT_TYPE_PROGRESSIVE?: number
@@ -70,6 +71,7 @@ function loadGrandiose(): Grandiose | null {
       // Konstanten normalisieren: beim rohen Addon fehlen die JS-Wrapper-Werte.
       grandiose = {
         send: mod.send.bind(mod),
+        initialize: mod.initialize?.bind(mod),
         FOURCC_BGRA: mod.FOURCC_BGRA ?? fourcc('BGRA'),
         FOURCC_BGRX: mod.FOURCC_BGRX ?? fourcc('BGRX'),
         FORMAT_TYPE_PROGRESSIVE: mod.FORMAT_TYPE_PROGRESSIVE ?? 1
@@ -86,6 +88,10 @@ function loadGrandiose(): Grandiose | null {
 
 let win: BrowserWindow | null = null
 let sender: any = null
+// destroy() des Senders ist asynchron -> vor dem nächsten Erstellen abwarten,
+// sonst kollidiert Stop->Start (NDIlib_send_create kann fehlschlagen).
+let senderTeardown: Promise<void> | null = null
+let ndiInitialized = false
 let invalidateTimer: ReturnType<typeof setInterval> | null = null
 let sending = false // ein Send in Flight -> neue Frames verwerfen (kein Stau)
 let framesSent = 0
@@ -160,13 +166,37 @@ export async function startTimerNdi(cfg: TimerNdiConfig): Promise<TimerNdiStatus
   framesSent = 0
   lastError = null
 
+  // Ausstehendes destroy() eines vorherigen Senders erst abschließen lassen.
+  if (senderTeardown) {
+    await senderTeardown.catch(() => {})
+    senderTeardown = null
+  }
+  // NDI-Laufzeit einmalig initialisieren (offiziell vor der Nutzung vorgesehen).
+  if (!ndiInitialized && g.initialize) {
+    try {
+      await Promise.resolve(g.initialize())
+    } catch (err) {
+      logLine('[timer-ndi] initialize():', err instanceof Error ? err.message : String(err))
+    }
+    ndiInitialized = true
+  }
+
   try {
     sender = await g.send({ name: config.name, clockVideo: true, clockAudio: false })
-  } catch (err) {
-    lastError = `NDI-Sender nicht erstellt: ${err instanceof Error ? err.message : String(err)}`
-    logLine('[timer-ndi]', lastError)
-    emitStatus()
-    return getTimerNdiStatus()
+  } catch (firstErr) {
+    // Transiente Fehler (z.B. Teardown/Netzwerk gerade im Umbruch) einmal abfedern.
+    await new Promise((r) => setTimeout(r, 400))
+    try {
+      sender = await g.send({ name: config.name, clockVideo: true, clockAudio: false })
+    } catch {
+      const msg = firstErr instanceof Error ? firstErr.message : String(firstErr)
+      lastError =
+        `NDI-Sender nicht erstellt: ${msg} -- Hinweise: Windows-Firewall-Abfrage für die App ` +
+        `ZULASSEN (privates Netzwerk), aktive Netzwerkverbindung nötig, ggf. App neu starten.`
+      logLine('[timer-ndi]', lastError)
+      emitStatus()
+      return getTimerNdiStatus()
+    }
   }
 
   win = new BrowserWindow({
@@ -225,12 +255,17 @@ export function stopTimerNdi(emit = true): TimerNdiStatus {
     if (!w.isDestroyed()) w.destroy()
   }
   if (sender) {
+    const s = sender
+    sender = null
     try {
-      void sender.destroy?.()
+      // Promise merken -> der nächste Start wartet das Teardown ab.
+      senderTeardown = Promise.resolve(s.destroy?.()).then(
+        () => undefined,
+        () => undefined
+      )
     } catch {
       // Binding ohne destroy() -> GC übernimmt
     }
-    sender = null
   }
   sending = false
   if (emit) {
