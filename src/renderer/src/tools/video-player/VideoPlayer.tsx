@@ -19,6 +19,7 @@ import {
   Pause,
   Play,
   Plus,
+  Radio,
   Ratio,
   RefreshCw,
   Repeat,
@@ -38,23 +39,27 @@ import {
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
-import type {
-  ConvertJob,
-  DisplayInfo,
-  FitMode,
-  LoopMode,
-  MediaItem,
-  PatternId,
-  PlayerEncoderStatus,
-  PlayerState,
-  RemoteStatus,
-  SavedPlaylist,
-  TransitionMode
+import {
+  DEFAULT_PLAYER_NDI,
+  type PlayerNdiConfig,
+  type PlayerNdiStatus,
+  type ConvertJob,
+  type DisplayInfo,
+  type FitMode,
+  type LoopMode,
+  type MediaItem,
+  type PatternId,
+  type PlayerEncoderStatus,
+  type PlayerState,
+  type RemoteStatus,
+  type SavedPlaylist,
+  type TransitionMode
 } from '@shared/types'
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
@@ -694,6 +699,10 @@ export function VideoPlayer(): JSX.Element {
                 </Button>
               )}
             </div>
+          </PanelSection>
+
+          <PanelSection id="ndi" title="NDI-Ausgabe (Netzwerk)" icon={Radio} defaultOpen={false}>
+            <PlayerNdiPanel wallW={wallW} wallH={wallH} />
           </PanelSection>
 
           {!locked && (
@@ -1422,5 +1431,192 @@ export function VideoPlayer(): JSX.Element {
         </div>
       }
     />
+  )
+}
+
+/* --------------------------- NDI-Ausgabe (Panel) ------------------------- */
+
+type NdiMode = 'wall' | 'half' | 'hd1080' | 'hd720'
+const NDI_LS_KEY = 'player:ndi'
+
+// NDI mag gerade Maße; außerdem Untergrenze für sinnvolle Streams.
+function evenDim(n: number): number {
+  return Math.max(320, Math.round(n / 2) * 2)
+}
+
+function ndiConfigFor(
+  mode: NdiMode,
+  name: string,
+  fps: number,
+  audio: boolean,
+  wallW: number,
+  wallH: number
+): PlayerNdiConfig {
+  const base = { name: name.trim() || DEFAULT_PLAYER_NDI.name, fps, audio }
+  switch (mode) {
+    case 'half':
+      return { ...base, width: evenDim(wallW / 2), height: evenDim(wallH / 2), fit: 'fill' }
+    case 'hd1080':
+      return { ...base, width: 1920, height: 1080, fit: 'contain' }
+    case 'hd720':
+      return { ...base, width: 1280, height: 720, fit: 'contain' }
+    default:
+      return { ...base, width: evenDim(wallW), height: evenDim(wallH), fit: 'fill' }
+  }
+}
+
+/** NDI-Ausgabe des Players (experimentell): Wandbild (und optional Ton) als
+ *  NDI-Quelle ins Netz. Ohne installiertes NDI-Modul nur ein Hinweis. */
+function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX.Element {
+  const [status, setStatus] = useState<PlayerNdiStatus | null>(null)
+  const [prefs, setPrefs] = useState<{ name: string; mode: NdiMode; fps: number; audio: boolean }>(
+    () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(NDI_LS_KEY) ?? 'null')
+        if (saved && typeof saved.name === 'string') {
+          return {
+            name: saved.name,
+            mode: ['wall', 'half', 'hd1080', 'hd720'].includes(saved.mode) ? saved.mode : 'wall',
+            fps: [25, 30, 50].includes(saved.fps) ? saved.fps : 30,
+            audio: !!saved.audio
+          }
+        }
+      } catch {
+        /* defekter Eintrag -> Defaults */
+      }
+      return { name: DEFAULT_PLAYER_NDI.name, mode: 'wall', fps: 30, audio: true }
+    }
+  )
+
+  useEffect(() => {
+    void api.player.ndiStatus().then(setStatus)
+    return api.player.onNdiChanged(setStatus)
+  }, [])
+
+  // Frame-Zähler lebt im main -> während des Sendens gelegentlich nachfragen.
+  useEffect(() => {
+    if (!status?.running) return
+    const t = setInterval(() => void api.player.ndiStatus().then(setStatus), 2000)
+    return () => clearInterval(t)
+  }, [status?.running])
+
+  function patch(p: Partial<typeof prefs>): void {
+    setPrefs((prev) => {
+      const next = { ...prev, ...p }
+      try {
+        localStorage.setItem(NDI_LS_KEY, JSON.stringify(next))
+      } catch {
+        /* localStorage nicht verfügbar */
+      }
+      return next
+    })
+  }
+
+  if (!status) return <p className="text-xs text-muted-foreground">Lade…</p>
+  if (!status.available) {
+    return (
+      <div className="space-y-2 text-xs text-muted-foreground">
+        <p>
+          NDI-Modul nicht verfügbar – die App läuft normal weiter. Zum Aktivieren einmalig
+          <span className="font-mono"> npm run ndi:setup</span> ausführen (siehe README).
+        </p>
+        {status.error && <p className="break-words font-mono text-[10px]">{status.error}</p>}
+      </div>
+    )
+  }
+
+  const running = status.running
+  const modes: { value: NdiMode; label: string }[] = [
+    { value: 'wall', label: `Wand 1:1 (${evenDim(wallW)} × ${evenDim(wallH)})` },
+    { value: 'half', label: `Wand 50 % (${evenDim(wallW / 2)} × ${evenDim(wallH / 2)})` },
+    { value: 'hd1080', label: '1920 × 1080 (einbetten)' },
+    { value: 'hd720', label: '1280 × 720 (einbetten)' }
+  ]
+  return (
+    <>
+      <label className="block">
+        <span className="mb-1 block text-xs text-muted-foreground">Quellenname im Netz</span>
+        <Input
+          value={prefs.name}
+          disabled={running}
+          onChange={(e) => patch({ name: e.target.value })}
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Auflösung</span>
+          <select
+            className={`${selectClass} w-full`}
+            disabled={running}
+            value={prefs.mode}
+            onChange={(e) => patch({ mode: e.target.value as NdiMode })}
+          >
+            {modes.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs text-muted-foreground">Bildrate</span>
+          <select
+            className={`${selectClass} w-full`}
+            disabled={running}
+            value={prefs.fps}
+            onChange={(e) => patch({ fps: Number(e.target.value) })}
+          >
+            {[25, 30, 50].map((f) => (
+              <option key={f} value={f}>
+                {f} fps
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="size-4"
+          disabled={running}
+          checked={prefs.audio}
+          onChange={(e) => patch({ audio: e.target.checked })}
+        />
+        Audio mitsenden
+      </label>
+      <p className="text-[11px] text-muted-foreground">
+        Ton folgt Lautstärke/Stumm des Players. Volle Auflösung braucht Gigabit-LAN (~100–150 Mbit/s
+        bei 1080p30).
+      </p>
+      {running ? (
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => void api.player.ndiStop().then(setStatus)}
+        >
+          <X className="size-4" /> NDI-Ausgabe stoppen
+        </Button>
+      ) : (
+        <Button
+          className="w-full"
+          onClick={() =>
+            void api.player
+              .ndiStart(ndiConfigFor(prefs.mode, prefs.name, prefs.fps, prefs.audio, wallW, wallH))
+              .then(setStatus)
+          }
+        >
+          <Radio className="size-4" /> NDI-Ausgabe starten
+        </Button>
+      )}
+      {running && (
+        <p className="text-xs text-muted-foreground">
+          Sendet als <span className="font-medium text-foreground">„{status.config.name}“</span> ·{' '}
+          {status.config.width}×{status.config.height}@{status.config.fps}
+          {status.config.audio ? ' · mit Audio' : ''} ·{' '}
+          <span className="tabular-nums">{status.framesSent}</span> Frames
+        </p>
+      )}
+      {status.error && <p className="text-xs text-destructive">{status.error}</p>}
+    </>
   )
 }

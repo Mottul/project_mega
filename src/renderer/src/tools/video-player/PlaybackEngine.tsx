@@ -14,6 +14,10 @@ interface EngineProps {
   passive?: boolean
   /** Kleine FPS-Anzeige (tatsächlich dargestellte Videobilder/s) oben rechts. */
   showFps?: boolean
+  /** NDI-Audio-Tap: Wiedergabe-Ton per WebAudio abgreifen und als PCM an den
+   *  main-Prozess melden (api.player.ndiAudio). MediaElementSource koppelt die
+   *  Elemente dabei von den Lautsprechern ab -> kein doppelter Ton. */
+  audioTap?: boolean
 }
 
 // Gemeinsame Wiedergabe-Engine. Zwei Ebenen (0/1), jede hält ein <video> ODER
@@ -32,7 +36,8 @@ export function PlaybackEngine({
   objectFit = 'fill',
   debug = false,
   passive = false,
-  showFps = false
+  showFps = false,
+  audioTap = false
 }: EngineProps): JSX.Element {
   const [state, setState] = useState<PlayerState>(EMPTY_PLAYER_STATE)
   const [active, setActive] = useState(0)
@@ -183,7 +188,10 @@ export function PlaybackEngine({
     const v = videoRefs.current[slot]
     if (!v) return
     v.loop = state.loop === 'one' || (state.playlist.length === 1 && state.loop === 'all')
-    v.muted = passive || state.muted // Spiegel immer stumm (Ton kommt vom Ausgabefenster)
+    // Spiegel normalerweise stumm (Ton kommt vom Ausgabefenster). Mit Audio-Tap
+    // folgt der Spiegel dem Player-Mute: MediaElementSource koppelt ihn ohnehin
+    // von den Lautsprechern ab, der Ton fließt nur in den NDI-Tap.
+    v.muted = audioTap ? state.muted : passive || state.muted
     if (state.playing) {
       const start = swapped || isNew || !engaged.current.playing
       if (start) {
@@ -356,6 +364,44 @@ export function PlaybackEngine({
     }, 1000)
     return () => clearInterval(id)
   }, [showFps])
+
+  // NDI-Audio-Tap: beide Video-Ebenen in einen AudioWorklet leiten (planare
+  // Float32-Blöcke -> IPC -> NDI-Audioframes). Crossfades mischen sich dadurch
+  // automatisch korrekt. Der Graph endet in Gain(0) -> lokal bleibt es stumm.
+  useEffect(() => {
+    if (!audioTap) return
+    let cancelled = false
+    let ctx: AudioContext | null = null
+    const setup = async (): Promise<void> => {
+      ctx = new AudioContext({ sampleRate: 48000 })
+      // Worklet liegt als statisches Asset neben index.html (dev wie paketiert).
+      const url = new URL('ndi-audio-worklet.js', window.location.href.split('#')[0]).toString()
+      await ctx.audioWorklet.addModule(url)
+      if (cancelled || !ctx) return
+      const tap = new AudioWorkletNode(ctx, 'ndi-audio-tap', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [2]
+      })
+      const silent = ctx.createGain()
+      silent.gain.value = 0
+      tap.connect(silent)
+      silent.connect(ctx.destination)
+      tap.port.onmessage = (ev: MessageEvent<{ channels: Float32Array[] }>) => {
+        if (ctx) api.player.ndiAudio({ sampleRate: ctx.sampleRate, channels: ev.data.channels })
+      }
+      for (const v of videoRefs.current) {
+        if (v) ctx.createMediaElementSource(v).connect(tap)
+      }
+      void ctx.resume()
+    }
+    void setup()
+    return () => {
+      cancelled = true
+      void ctx?.close()
+      ctx = null
+    }
+  }, [audioTap])
 
   const curr = currentItem(state)
   const xDur = state.transition === 'crossfade' ? state.transitionMs : 0
