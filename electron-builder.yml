@@ -35,9 +35,12 @@ extraResources:
   # echte Dateien unter resources/vendor/grandiose (kein asar -> native Module ok).
   # Bewusst ALLOWLIST statt grandiose/**: der Arbeitsbaum enthaelt .git, das
   # komplette NDI-SDK (ndi/), Build-Zwischenprodukte und Setup-only-Deps --
-  # hunderte MB, die zur Laufzeit niemand braucht (index.js zieht nur `bindings`;
-  # die NDI-Runtime-DLL kopiert der Build nach build/Release). Ohne Setup matcht
-  # der Filter nichts; `from: vendor` existiert immer (README).
+  # hunderte MB, die zur Laufzeit niemand braucht. Es reicht build/Release
+  # (grandiose.node + NDI-DLL): der Loader laedt das Binary DIREKT, ohne
+  # grandioses node_modules (electron-builder kopiert node_modules in
+  # extraResources ohnehin nicht mit). index.js/package.json nur zur Doku,
+  # LICENSE fuer die Apache-2.0-Weitergabe. Ohne Setup matcht der Filter
+  # nichts; `from: vendor` existiert immer (README).
   - from: vendor
     to: vendor
     filter:
@@ -45,8 +48,6 @@ extraResources:
       - 'grandiose/index.js'
       - 'grandiose/LICENSE*'
       - 'grandiose/build/Release/**'
-      - 'grandiose/node_modules/bindings/**'
-      - 'grandiose/node_modules/file-uri-to-path/**'
 
 win:
   target:

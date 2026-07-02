@@ -34,29 +34,50 @@ let grandiose: Grandiose | null = null
 let loadError: string | null = null
 let loadTried = false
 
-/** Binding erst bei Bedarf laden; Kandidaten-Pfade siehe Kopfkommentar. */
+/** FourCC wie in grandiose/index.js -- die Konstanten leben dort im JS-Wrapper,
+ *  den wir beim Direkt-Laden des .node-Binaries bewusst umgehen. */
+function fourcc(s: string): number {
+  return (
+    s.charCodeAt(0) | (s.charCodeAt(1) << 8) | (s.charCodeAt(2) << 16) | (s.charCodeAt(3) << 24)
+  )
+}
+
+/** Binding erst bei Bedarf laden. Bevorzugt wird das .node-Binary DIREKT geladen
+ *  (build/Release/grandiose.node): so braucht die paketierte App grandioses
+ *  node_modules (bindings) nicht -- electron-builder kopiert node_modules in
+ *  extraResources nämlich nicht mit. Der Verzeichnis-/Paket-Require bleibt als
+ *  Fallback für ein regulär installiertes Modul. */
 function loadGrandiose(): Grandiose | null {
   if (loadTried) return grandiose
   loadTried = true
-  const candidates = [
-    join(process.resourcesPath ?? '', 'vendor', 'grandiose'), // paketierte App
-    join(app.getAppPath(), 'vendor', 'grandiose'), // Entwicklung (npm run ndi:setup)
-    'grandiose' // regulär installiertes Modul
+  const bases = [
+    join(process.resourcesPath ?? '', 'vendor', 'grandiose'), // paketierte App (extraResources)
+    join(app.getAppPath(), 'vendor', 'grandiose') // Entwicklung (npm run ndi:setup)
+  ]
+  const attempts = [
+    ...bases.flatMap((b) => [join(b, 'build', 'Release', 'grandiose.node'), b]),
+    'grandiose' // regulär installiertes Modul (node_modules)
   ]
   const errors: string[] = []
-  for (const candidate of candidates) {
+  for (const attempt of attempts) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require(candidate) as Grandiose
+      const mod = require(attempt) as Grandiose
       if (typeof mod.send !== 'function') {
-        errors.push(`${candidate}: kann nicht senden (sende-fähigen Fork rse/grandiose nutzen)`)
+        errors.push(`${attempt}: kann nicht senden (sende-fähigen Fork rse/grandiose nutzen)`)
         continue
       }
-      grandiose = mod
-      logLine('[timer-ndi] Binding geladen:', candidate)
-      return mod
+      // Konstanten normalisieren: beim rohen Addon fehlen die JS-Wrapper-Werte.
+      grandiose = {
+        send: mod.send.bind(mod),
+        FOURCC_BGRA: mod.FOURCC_BGRA ?? fourcc('BGRA'),
+        FOURCC_BGRX: mod.FOURCC_BGRX ?? fourcc('BGRX'),
+        FORMAT_TYPE_PROGRESSIVE: mod.FORMAT_TYPE_PROGRESSIVE ?? 1
+      }
+      logLine('[timer-ndi] Binding geladen:', attempt)
+      return grandiose
     } catch (err) {
-      errors.push(`${candidate}: ${err instanceof Error ? err.message : String(err)}`)
+      errors.push(`${attempt}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
   loadError = `NDI-Modul nicht geladen (npm run ndi:setup ausführen). ${errors.join(' | ')}`
