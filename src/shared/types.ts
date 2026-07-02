@@ -444,6 +444,42 @@ export const DEFAULT_TIMER_NDI: TimerNdiConfig = {
   fps: 30
 }
 
+/** NDI-Ausgabe des Video-Players (experimentell): ein Offscreen-Spiegel der
+ *  Wiedergabe sendet Bild (und optional Ton) als NDI-Quelle ins Netz. */
+export interface PlayerNdiConfig {
+  name: string
+  width: number
+  height: number
+  fps: number
+  /** fill = Wandbild 1:1 (gleiches Seitenverhältnis), contain = in die
+   *  Zielauflösung einbetten (schwarze Ränder bei anderem Seitenverhältnis). */
+  fit: 'fill' | 'contain'
+  audio: boolean
+}
+
+export interface PlayerNdiStatus {
+  available: boolean
+  running: boolean
+  config: PlayerNdiConfig
+  framesSent: number
+  error: string | null
+}
+
+export const DEFAULT_PLAYER_NDI: PlayerNdiConfig = {
+  name: 'MegaToolBox Player',
+  width: 1920,
+  height: 1080,
+  fps: 30,
+  fit: 'fill',
+  audio: true
+}
+
+/** PCM-Block des NDI-Audio-Taps (Renderer -> main): planare Float32-Kanäle. */
+export interface NdiAudioChunk {
+  sampleRate: number
+  channels: Float32Array[]
+}
+
 /* -------------------------------- Dialog -------------------------------- */
 
 export interface SelectPathsOptions {

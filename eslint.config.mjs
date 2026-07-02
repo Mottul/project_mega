@@ -18,6 +18,8 @@ export default tseslint.config(
       'resources/**',
       'scripts/**',
       'vendor/**',
+      // statische Assets (AudioWorklet läuft im Worklet-Scope mit eigenen Globals)
+      'src/renderer/public/**',
       '*.config.js',
       '*.config.mjs'
     ]

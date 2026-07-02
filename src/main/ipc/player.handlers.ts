@@ -23,6 +23,7 @@ import {
   setTickSink
 } from '../services/player/playerState'
 import { closePlayerOutput, openPlayerOutput } from '../services/player/playerWindow'
+import { getPlayerNdiStatus, startPlayerNdi, stopPlayerNdi } from '../services/playerNdi'
 import {
   getRemoteStatus,
   pushRemoteLibrary,
@@ -189,6 +190,12 @@ export function registerPlayerHandlers(): void {
     broadcast(Channels.playerRemoteChanged, status)
     return status
   })
+
+  // NDI-Ausgabe (experimentell; ohne optionales Binding meldet Status "nicht verfügbar").
+  // Der Audio-Kanal (playerNdiAudio) wird im Service selbst verdrahtet.
+  ipcMain.handle(Channels.playerNdiStart, (_e, cfg) => startPlayerNdi(cfg))
+  ipcMain.handle(Channels.playerNdiStop, () => stopPlayerNdi())
+  ipcMain.handle(Channels.playerNdiStatus, () => getPlayerNdiStatus())
 
   // Bei aktivierter Einstellung automatisch starten (best effort).
   const ps = getSettings().player
