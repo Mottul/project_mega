@@ -1585,8 +1585,8 @@ function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX
         Audio mitsenden
       </label>
       <p className="text-[11px] text-muted-foreground">
-        Ton folgt Lautstärke/Stumm des Players. Volle Auflösung braucht Gigabit-LAN (~100–150 Mbit/s
-        bei 1080p30).
+        Ton ist Pre-Fader (unabhängig von lokaler Lautstärke/Stumm). Volle Auflösung braucht
+        Gigabit-LAN (~100–150 Mbit/s bei 1080p30).
       </p>
       {running ? (
         <Button
@@ -1612,7 +1612,7 @@ function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX
         <p className="text-xs text-muted-foreground">
           Sendet als <span className="font-medium text-foreground">„{status.config.name}“</span> ·{' '}
           {status.config.width}×{status.config.height}@{status.config.fps}
-          {status.config.audio ? ' · mit Audio' : ''} ·{' '}
+          {status.config.audio ? ` · Audio: ${status.audioChunks} Blöcke` : ''} ·{' '}
           <span className="tabular-nums">{status.framesSent}</span> Frames
         </p>
       )}

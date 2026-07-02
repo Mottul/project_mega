@@ -3,6 +3,7 @@ import { api } from '@renderer/lib/api'
 import { currentItem, EMPTY_PLAYER_STATE, nextIndex } from '@shared/player'
 import type { MediaItem, PatternId, PlayerState } from '@shared/types'
 import { IdlePattern } from './IdlePattern'
+import { NDI_AUDIO_WORKLET_SRC } from './ndiAudioWorkletSource'
 
 interface EngineProps {
   /** 'fill' für die Wand (1:1 eingebacken), 'contain' für die kleine Vorschau. */
@@ -189,17 +190,19 @@ export function PlaybackEngine({
     if (!v) return
     v.loop = state.loop === 'one' || (state.playlist.length === 1 && state.loop === 'all')
     // Spiegel normalerweise stumm (Ton kommt vom Ausgabefenster). Mit Audio-Tap
-    // folgt der Spiegel dem Player-Mute: MediaElementSource koppelt ihn ohnehin
-    // von den Lautsprechern ab, der Ton fließt nur in den NDI-Tap.
-    v.muted = audioTap ? state.muted : passive || state.muted
+    // ist der NDI-Ton PRE-FADER: unabhängig von lokaler Lautstärke/Stumm --
+    // MediaElementSource koppelt den Spiegel ohnehin von den Lautsprechern ab,
+    // der Ton fließt ausschließlich in den NDI-Tap (Crossfades bleiben erhalten).
+    const vol = audioTap ? 1 : state.volume
+    v.muted = audioTap ? false : passive || state.muted
     if (state.playing) {
       const start = swapped || isNew || !engaged.current.playing
       if (start) {
-        v.volume = state.muted ? state.volume : 0
+        v.volume = v.muted ? vol : 0
         void v.play().catch(() => {})
-        fadeAudio(slot, state.volume, swapped ? xMs : 120)
+        fadeAudio(slot, vol, swapped ? xMs : 120)
       } else if (!rampTimers.current[slot]) {
-        v.volume = state.volume
+        v.volume = vol
       }
     } else if (engaged.current.playing || !v.paused) {
       fadeAudio(slot, 0, 100, () => v.pause())
@@ -368,15 +371,23 @@ export function PlaybackEngine({
   // NDI-Audio-Tap: beide Video-Ebenen in einen AudioWorklet leiten (planare
   // Float32-Blöcke -> IPC -> NDI-Audioframes). Crossfades mischen sich dadurch
   // automatisch korrekt. Der Graph endet in Gain(0) -> lokal bleibt es stumm.
+  // Fehler beim Aufbau werden an den main-Prozess gemeldet (sichtbar im Panel).
   useEffect(() => {
     if (!audioTap) return
     let cancelled = false
     let ctx: AudioContext | null = null
     const setup = async (): Promise<void> => {
       ctx = new AudioContext({ sampleRate: 48000 })
-      // Worklet liegt als statisches Asset neben index.html (dev wie paketiert).
-      const url = new URL('ndi-audio-worklet.js', window.location.href.split('#')[0]).toString()
-      await ctx.audioWorklet.addModule(url)
+      // Worklet als Blob-URL laden: funktioniert in dev UND paketiert (asar)
+      // identisch; CSP erlaubt blob: für script/worker.
+      const blobUrl = URL.createObjectURL(
+        new Blob([NDI_AUDIO_WORKLET_SRC], { type: 'text/javascript' })
+      )
+      try {
+        await ctx.audioWorklet.addModule(blobUrl)
+      } finally {
+        URL.revokeObjectURL(blobUrl)
+      }
       if (cancelled || !ctx) return
       const tap = new AudioWorkletNode(ctx, 'ndi-audio-tap', {
         numberOfInputs: 1,
@@ -393,9 +404,11 @@ export function PlaybackEngine({
       for (const v of videoRefs.current) {
         if (v) ctx.createMediaElementSource(v).connect(tap)
       }
-      void ctx.resume()
+      await ctx.resume()
     }
-    void setup()
+    setup().catch((err) => {
+      api.player.ndiTapError(err instanceof Error ? err.message : String(err))
+    })
     return () => {
       cancelled = true
       void ctx?.close()

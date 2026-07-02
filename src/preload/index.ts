@@ -94,7 +94,8 @@ const api: ToolboxApi = {
     ndiStatus: () => ipcRenderer.invoke(Channels.playerNdiStatus),
     onNdiChanged: (cb) => subscribe(Channels.playerNdiChanged, (s) => cb(s as never)),
     // fire-and-forget: PCM-Blöcke kommen ~30x/s, eine Antwort braucht niemand
-    ndiAudio: (chunk) => ipcRenderer.send(Channels.playerNdiAudio, chunk)
+    ndiAudio: (chunk) => ipcRenderer.send(Channels.playerNdiAudio, chunk),
+    ndiTapError: (message) => ipcRenderer.send(Channels.playerNdiTapError, message)
   },
 
   timer: {

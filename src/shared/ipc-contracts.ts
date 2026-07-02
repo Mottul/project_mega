@@ -137,6 +137,7 @@ export const Channels = {
   playerNdiStatus: 'player:ndiStatus',
   playerNdiChanged: 'player:ndiChanged', // Event: PlayerNdiStatus
   playerNdiAudio: 'player:ndiAudio', // Renderer (NDI-Spiegel) -> main: PCM-Blöcke
+  playerNdiTapError: 'player:ndiTapError', // Renderer (NDI-Spiegel) -> main: Audio-Tap-Fehler
   // Fenster
   windowOpenTool: 'window:openTool', // Tool in eigenem Fenster öffnen
   // Werkzeuge
@@ -314,6 +315,8 @@ export interface ToolboxApi {
     onNdiChanged(cb: (status: PlayerNdiStatus) => void): () => void
     /** Vom NDI-Spiegelfenster: PCM-Block des Audio-Taps (fire-and-forget). */
     ndiAudio(chunk: NdiAudioChunk): void
+    /** Vom NDI-Spiegelfenster: Fehler beim Aufbau des Audio-Taps melden. */
+    ndiTapError(message: string): void
   }
 
   timer: {

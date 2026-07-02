@@ -31,6 +31,7 @@ let invalidateTimer: ReturnType<typeof setInterval> | null = null
 let sendingVideo = false // ein Video-Send in Flight -> neue Frames verwerfen
 let audioBacklog = 0 // Audio seriell senden; bei Stau Blöcke verwerfen
 let framesSent = 0
+let audioChunks = 0
 let lastError: string | null = null
 let config: PlayerNdiConfig = { ...DEFAULT_PLAYER_NDI }
 
@@ -40,6 +41,7 @@ export function getPlayerNdiStatus(): PlayerNdiStatus {
     running: win != null,
     config,
     framesSent,
+    audioChunks,
     error: lastError ?? getNdiLoadError()
   }
 }
@@ -108,6 +110,9 @@ function pushAudio(g: Grandiose, chunk: NdiAudioChunk): void {
       data
     })
   )
+    .then(() => {
+      audioChunks++
+    })
     .catch((err: unknown) => {
       // Audio-Fehler nur loggen (einmal pro Start sichtbar im Panel reicht das Video-Feld)
       if (!lastError) {
@@ -131,6 +136,14 @@ function wireAudioIpc(): void {
     const g = loadGrandiose()
     if (g) pushAudio(g, chunk)
   })
+  // Fehler beim Aufbau des Audio-Taps (Worklet/WebAudio) sichtbar machen --
+  // sonst gäbe es nur "0 Audio-Blöcke" ohne Erklärung.
+  ipcMain.on(Channels.playerNdiTapError, (event, message: string) => {
+    if (!win || event.sender.id !== win.webContents.id) return
+    lastError = `Audio-Tap: ${String(message).slice(0, 400)}`
+    logLine('[player-ndi]', lastError)
+    emitStatus()
+  })
 }
 
 export async function startPlayerNdi(cfg: PlayerNdiConfig): Promise<PlayerNdiStatus> {
@@ -148,6 +161,7 @@ export async function startPlayerNdi(cfg: PlayerNdiConfig): Promise<PlayerNdiSta
     audio: !!cfg.audio
   }
   framesSent = 0
+  audioChunks = 0
   lastError = null
 
   if (senderTeardown) {

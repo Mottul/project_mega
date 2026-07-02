@@ -462,6 +462,9 @@ export interface PlayerNdiStatus {
   running: boolean
   config: PlayerNdiConfig
   framesSent: number
+  /** Anzahl der beim Sender angekommenen PCM-Blöcke -- 0 bei laufender
+   *  Wiedergabe deutet auf ein Problem im Audio-Tap des Spiegelfensters. */
+  audioChunks: number
   error: string | null
 }
 

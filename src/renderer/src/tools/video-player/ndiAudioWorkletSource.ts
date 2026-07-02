@@ -1,20 +1,24 @@
-// AudioWorklet des NDI-Audio-Taps: sammelt die 128-Frame-Quanten des
-// WebAudio-Graphen zu ~33-ms-Blöcken (planare Float32-Kanäle) und schickt sie
-// per MessagePort an den Renderer, der sie via IPC an den NDI-Sender im
-// main-Prozess weiterreicht. Der Prozessor reicht das Signal unverändert an
-// seinen Ausgang durch (der Graph endet in einem Gain(0) -> lokal stumm).
+// Quelltext des NDI-Audio-Tap-AudioWorklets als String: er wird zur Laufzeit
+// als Blob-URL geladen (CSP: script-src/worker-src erlauben blob:). Bewusst
+// KEINE separate .js-Datei: Assets aus public/ sind nicht importierbar, eine
+// Datei-URL müsste dev/paketiert (asar!) unterschiedlich aufgelöst werden --
+// der Blob-Weg funktioniert überall identisch.
+//
+// Der Prozessor sammelt die 128-Frame-Quanten zu ~33-ms-Blöcken (planare
+// Float32-Kanäle) und schickt sie per MessagePort raus; das Signal wird
+// unverändert durchgereicht (der Graph endet in Gain(0) -> lokal stumm).
+export const NDI_AUDIO_WORKLET_SRC = `
 class NdiAudioTap extends AudioWorkletProcessor {
   constructor() {
     super()
-    this.parts = null // Float32Array[][] je Kanal
+    this.parts = null
     this.frames = 0
-    this.TARGET = 1600 // ~33 ms bei 48 kHz -> ~30 IPC-Nachrichten/s
+    this.TARGET = 1600 // ~33 ms bei 48 kHz -> ~30 Nachrichten/s
   }
 
   process(inputs, outputs) {
     const input = inputs[0]
     if (input && input.length > 0 && input[0].length > 0) {
-      // durchreichen (Pass-Through), damit der Graph "gezogen" wird
       const output = outputs[0]
       for (let c = 0; c < output.length; c++) {
         const src = input[c] ?? input[0]
@@ -48,3 +52,4 @@ class NdiAudioTap extends AudioWorkletProcessor {
 }
 
 registerProcessor('ndi-audio-tap', NdiAudioTap)
+`
