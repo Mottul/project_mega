@@ -465,6 +465,8 @@ export interface PlayerNdiStatus {
   /** Anzahl der beim Sender angekommenen PCM-Blöcke -- 0 bei laufender
    *  Wiedergabe deutet auf ein Problem im Audio-Tap des Spiegelfensters. */
   audioChunks: number
+  /** Spitzenpegel des Taps (0..1, abklingend): 0 bei Blöcken = Stille (CORS/Tonspur). */
+  audioLevel: number
   error: string | null
 }
 

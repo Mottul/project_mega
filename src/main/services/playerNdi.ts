@@ -33,6 +33,8 @@ let audioBacklog = 0 // Audio seriell senden; bei Stau Blöcke verwerfen
 let framesSent = 0
 let audioChunks = 0
 let audioReceived = 0 // vom Spiegelfenster angekommene PCM-Blöcke (Diagnose)
+let audioLevel = 0 // Spitzenpegel (0..1, abklingend) -- unterscheidet Stille von Signal
+let silenceWarned = false
 let lastError: string | null = null
 let config: PlayerNdiConfig = { ...DEFAULT_PLAYER_NDI }
 
@@ -43,6 +45,7 @@ export function getPlayerNdiStatus(): PlayerNdiStatus {
     config,
     framesSent,
     audioChunks,
+    audioLevel,
     error: lastError ?? getNdiLoadError()
   }
 }
@@ -93,6 +96,23 @@ function pushAudio(g: Grandiose, chunk: NdiAudioChunk): void {
   if (!sender || !config.audio) return
   const channels = chunk.channels
   if (!channels.length || !channels[0]?.length) return
+  // Spitzenpegel messen: die entscheidende Diagnose, ob der Tap SIGNAL liefert
+  // oder nur Stille (z.B. CORS-tainted media -> WebAudio liefert Nullen).
+  let peak = 0
+  for (const ch of channels) {
+    for (let i = 0; i < ch.length; i++) {
+      const a = Math.abs(ch[i])
+      if (a > peak) peak = a
+    }
+  }
+  audioLevel = Math.max(peak, audioLevel * 0.85)
+  if (!silenceWarned && audioReceived > 90 && audioLevel < 0.0001) {
+    silenceWarned = true
+    logLine(
+      '[player-ndi] WARNUNG: Audio-Tap liefert nur Stille (Pegel 0) --',
+      'Medium ohne Tonspur? Sonst CORS-Kette prüfen (media://-Header + crossOrigin).'
+    )
+  }
   // Stau begrenzen: lieber einen Block verlieren als Latenz aufzubauen.
   if (audioBacklog > 8) return
   const noSamples = channels[0].length
@@ -179,6 +199,8 @@ export async function startPlayerNdi(cfg: PlayerNdiConfig): Promise<PlayerNdiSta
   framesSent = 0
   audioChunks = 0
   audioReceived = 0
+  audioLevel = 0
+  silenceWarned = false
   lastError = null
 
   if (senderTeardown) {
