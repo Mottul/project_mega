@@ -32,6 +32,7 @@ let sendingVideo = false // ein Video-Send in Flight -> neue Frames verwerfen
 let audioBacklog = 0 // Audio seriell senden; bei Stau Blöcke verwerfen
 let framesSent = 0
 let audioChunks = 0
+let audioReceived = 0 // vom Spiegelfenster angekommene PCM-Blöcke (Diagnose)
 let lastError: string | null = null
 let config: PlayerNdiConfig = { ...DEFAULT_PLAYER_NDI }
 
@@ -112,6 +113,8 @@ function pushAudio(g: Grandiose, chunk: NdiAudioChunk): void {
   )
     .then(() => {
       audioChunks++
+      // Diagnose-Anker: NDI-Sender hat den ersten Audioframe angenommen.
+      if (audioChunks === 1) logLine('[player-ndi] erster Audioframe an NDI gesendet')
     })
     .catch((err: unknown) => {
       // Audio-Fehler nur loggen (einmal pro Start sichtbar im Panel reicht das Video-Feld)
@@ -133,6 +136,19 @@ function wireAudioIpc(): void {
   ipcMain.on(Channels.playerNdiAudio, (event, chunk: NdiAudioChunk) => {
     // nur Blöcke aus UNSEREM Spiegelfenster akzeptieren
     if (!win || event.sender.id !== win.webContents.id) return
+    audioReceived++
+    if (audioReceived === 1) {
+      // Diagnose-Anker: Tap im Spiegelfenster liefert -> Renderer-Seite ok.
+      logLine(
+        '[player-ndi] erster PCM-Block empfangen:',
+        chunk.sampleRate,
+        'Hz,',
+        chunk.channels.length,
+        'Kanäle,',
+        chunk.channels[0]?.length ?? 0,
+        'Frames'
+      )
+    }
     const g = loadGrandiose()
     if (g) pushAudio(g, chunk)
   })
@@ -162,6 +178,7 @@ export async function startPlayerNdi(cfg: PlayerNdiConfig): Promise<PlayerNdiSta
   }
   framesSent = 0
   audioChunks = 0
+  audioReceived = 0
   lastError = null
 
   if (senderTeardown) {
@@ -249,17 +266,21 @@ export function stopPlayerNdi(emit = true): PlayerNdiStatus {
   if (sender) {
     const s = sender
     sender = null
-    try {
-      senderTeardown = Promise.resolve(s.destroy?.()).then(
-        () => undefined,
-        () => undefined
-      )
-    } catch {
-      // Binding ohne destroy() -> GC übernimmt
-    }
+    // WICHTIG: erst laufende Sends abklingen lassen, DANN zerstören. Ein
+    // NDIlib_send_destroy während asynchroner video()/audio()-Aufrufe ist ein
+    // Use-after-free im nativen Code -> harter Absturz der App beim Stoppen.
+    senderTeardown = (async () => {
+      const t0 = Date.now()
+      while ((sendingVideo || audioBacklog > 0) && Date.now() - t0 < 1500) {
+        await new Promise((r) => setTimeout(r, 25))
+      }
+      try {
+        await s.destroy?.()
+      } catch {
+        // Binding ohne destroy() -> GC übernimmt
+      }
+    })()
   }
-  sendingVideo = false
-  audioBacklog = 0
   if (emit) {
     logLine('[player-ndi] gestoppt')
     emitStatus()

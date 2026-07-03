@@ -146,8 +146,15 @@ app.on('window-all-closed', () => {
 // Leben halten: schließt das letzte SICHTBARE Fenster, wird beendet -- sonst
 // läuft der Prozess (und der NDI-Stream!) unsichtbar weiter.
 app.on('browser-window-created', (_e, win) => {
+  // Nur Fenster, die je SICHTBAR waren, stoßen die Beenden-Prüfung an: das
+  // Schließen eines versteckten Dienst-Fensters (z.B. NDI-Stopp) darf die App
+  // niemals beenden -- egal, was isVisible() der übrigen gerade meldet.
+  let wasVisible = win.isVisible()
+  win.on('show', () => {
+    wasVisible = true
+  })
   win.on('closed', () => {
-    if (process.platform === 'darwin') return
+    if (process.platform === 'darwin' || !wasVisible) return
     const anyVisible = BrowserWindow.getAllWindows().some((w) => !w.isDestroyed() && w.isVisible())
     if (!anyVisible) app.quit()
   })
