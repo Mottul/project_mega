@@ -368,6 +368,42 @@ export function PlaybackEngine({
     return () => clearInterval(id)
   }, [showFps])
 
+  // CORS-Modus des Audio-Taps mit Sicherheitsnetz: scheitert der CORS-Load der
+  // Medien (z.B. Scheme ohne corsEnabled -> schwarzes Bild), wird SOFORT ohne
+  // CORS neu geladen -- Video hat Vorrang, der Ton meldet sich sichtbar ab.
+  const [tapCors, setTapCors] = useState(audioTap)
+  function onTapVideoError(): void {
+    if (!audioTap || !tapCors) return
+    setTapCors(false)
+    api.player.ndiTapError(
+      'CORS-Load der Medien fehlgeschlagen -- Spiegel lädt ohne CORS neu ' +
+        '(Video läuft, Ton bleibt stumm). media://-corsEnabled/ACAO prüfen.'
+    )
+  }
+  useEffect(() => {
+    if (!audioTap || tapCors) return
+    // Nach dem Umschalten laden die Elemente ihre Quelle neu (Attribut wirkt
+    // erst beim nächsten Resource-Load); Position/Playback wiederherstellen.
+    for (const v of videoRefs.current) {
+      if (!v || !v.getAttribute('src')) continue
+      const pos = stateRef.current.positionSec
+      const playing = stateRef.current.playing
+      v.load()
+      v.addEventListener(
+        'loadedmetadata',
+        () => {
+          try {
+            v.currentTime = pos
+          } catch {
+            /* Position nicht setzbar -> Sync kommt mit dem nächsten Seek */
+          }
+          if (playing) void v.play().catch(() => {})
+        },
+        { once: true }
+      )
+    }
+  }, [tapCors, audioTap])
+
   // NDI-Audio-Tap: beide Video-Ebenen in einen AudioWorklet leiten (planare
   // Float32-Blöcke -> IPC -> NDI-Audioframes). Crossfades mischen sich dadurch
   // automatisch korrekt. Der Graph endet in Gain(0) -> lokal bleibt es stumm.
@@ -438,7 +474,8 @@ export function PlaybackEngine({
             preload="auto"
             // CORS-Modus nur im NDI-Spiegel: media:// ist cross-origin, und ohne
             // crossOrigin+ACAO-Header liefert MediaElementSource nur Stille.
-            crossOrigin={audioTap ? 'anonymous' : undefined}
+            crossOrigin={tapCors ? 'anonymous' : undefined}
+            onError={onTapVideoError}
             onEnded={() => onVideoEnded(i)}
             onTimeUpdate={() => onVideoTime(i)}
             style={{

@@ -32,7 +32,18 @@ protocol.registerSchemesAsPrivileged([
   },
   {
     scheme: MEDIA_PROTOCOL,
-    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
+    // corsEnabled: ohne dieses Privileg sind Custom-Schemes von CORS
+    // AUSGESCHLOSSEN -- ein <video crossOrigin="anonymous"> (NDI-Audio-Tap)
+    // scheitert dann trotz Access-Control-Allow-Origin-Header komplett
+    // (schwarzes Bild). Mit corsEnabled + ACAO-Header ist der Load sauber
+    // CORS-freigegeben und MediaElementSource liefert Ton statt Stille.
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true,
+      corsEnabled: true
+    }
   },
   {
     scheme: JINGLE_PROTOCOL,
