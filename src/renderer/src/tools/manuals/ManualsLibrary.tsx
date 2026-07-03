@@ -160,7 +160,12 @@ export function ManualsLibrary(): JSX.Element {
   }
 
   async function removeManual(m: ManualMeta): Promise<void> {
-    if (!window.confirm(`„${m.title}" wirklich aus der Bibliothek löschen?`)) return
+    const ok = await api.confirm({
+      message: `„${m.title}" wirklich aus der Bibliothek löschen?`,
+      confirmLabel: 'Löschen',
+      danger: true
+    })
+    if (!ok) return
     await api.manuals.delete(m.id)
     await refreshList()
   }

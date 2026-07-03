@@ -494,6 +494,27 @@ export interface SelectPathsOptions {
   directories?: boolean // true => Ordnerauswahl
 }
 
+/** Optionen für eine Ja/Nein-Rückfrage. Bewusst NICHT window.confirm(): das
+ *  blockierende JS-Dialog von Electron killt danach die Tastatureingabe in ALLEN
+ *  Textfeldern (bekannter Bug), bis das Fenster neu fokussiert wird. Diese
+ *  Rückfrage läuft als natives Dialogfenster im main-Prozess und lässt die
+ *  Tastatur unberührt. */
+export interface ConfirmOptions {
+  message: string // Hauptfrage
+  detail?: string // optionale Erläuterung darunter
+  confirmLabel?: string // Text des Bestätigen-Knopfs (Default „OK")
+  cancelLabel?: string // Text des Abbrechen-Knopfs (Default „Abbrechen")
+  danger?: boolean // true => Bestätigen als Warn-/Löschaktion markieren
+}
+
+/** Reine Hinweis-Meldung (ein OK-Knopf). Ersetzt window.alert() aus demselben
+ *  Grund wie ConfirmOptions window.confirm() ersetzt (Tastatur-Bug). */
+export interface NotifyOptions {
+  message: string // Hauptmeldung
+  detail?: string // optionale Erläuterung darunter
+  kind?: 'info' | 'warning' | 'error' // Symbol/Ton des Dialogs (Default „info")
+}
+
 /* ------------------------------- Jingles -------------------------------- */
 // Jingle-Player: kurze Audios (Auftrittsmusik/Stinger) auf belegbaren Pads.
 // Dateien werden nach userData/jingles kopiert und über jingle:// geladen; die
@@ -768,6 +789,10 @@ export interface AppSettings {
   /** Kundenansicht: beim Start direkt in dieses Tool springen (gesperrt, ohne
    *  Zurück). null = normaler Start mit Übersicht. Exit per Strg+Shift+K. */
   kioskToolId: string | null
+  /** Als Favorit markierte Werkzeuge (Tool-IDs) -> eigene Reihe oben im
+   *  Startbildschirm für schnellen Zugriff. Reihenfolge = Reihenfolge des
+   *  Markierens. */
+  favoriteToolIds: string[]
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -779,5 +804,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   accent: 'gold', // Gold-Marke bleibt Standard
   player: DEFAULT_PLAYER_SETTINGS,
   osc: DEFAULT_OSC_SETTINGS,
-  kioskToolId: null
+  kioskToolId: null,
+  favoriteToolIds: []
 }

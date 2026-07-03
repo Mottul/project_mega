@@ -62,6 +62,7 @@ import {
   MAX_CH,
   MAX_COLS,
   MIN_COLS,
+  oscSlug,
   useOscSurface,
   WIDGET_COLORS,
   WIDGET_MIN,
@@ -641,8 +642,15 @@ export function OscControl(): JSX.Element {
                 size="icon"
                 title="Projekt löschen"
                 onClick={() => {
-                  if (confirm(`Projekt „${project.name}“ mit allen Sets löschen?`))
-                    useOscSurface.getState().deleteProject(project.id)
+                  void api
+                    .confirm({
+                      message: `Projekt „${project.name}“ mit allen Sets löschen?`,
+                      confirmLabel: 'Löschen',
+                      danger: true
+                    })
+                    .then((ok) => {
+                      if (ok) useOscSurface.getState().deleteProject(project.id)
+                    })
                 }}
               >
                 <Trash2 className="size-4" />
@@ -707,8 +715,15 @@ export function OscControl(): JSX.Element {
                 size="icon"
                 title="Set löschen"
                 onClick={() => {
-                  if (confirm(`Set „${set.name}“ wirklich löschen?`))
-                    useOscSurface.getState().deleteSet(set.id)
+                  void api
+                    .confirm({
+                      message: `Set „${set.name}“ wirklich löschen?`,
+                      confirmLabel: 'Löschen',
+                      danger: true
+                    })
+                    .then((ok) => {
+                      if (ok) useOscSurface.getState().deleteSet(set.id)
+                    })
                 }}
               >
                 <Trash2 className="size-4" />
@@ -1022,6 +1037,16 @@ function reflectFeedback(fb: OscFeedback): void {
       if (b != null) patch.b = clamp01(b)
       if (a != null) patch.a = clamp01(a)
       st.updateWidget(w.id, patch)
+      continue
+    }
+    // Text-Anzeige: beliebige Argumente (auch Strings) übernehmen – z.B.
+    // Blendmodus oder Surface-Name von MadMapper. Muss VOR dem num-Guard stehen,
+    // da String-Feedback keinen numerischen Wert hat.
+    if (w.type === 'meter' && w.source === 'text' && w.address === fb.address) {
+      const text = fb.args
+        .map((a) => (typeof a === 'boolean' ? (a ? 'An' : 'Aus') : String(a)))
+        .join(' ')
+      st.updateWidget(w.id, { text })
       continue
     }
     if (num == null) continue
@@ -2246,6 +2271,8 @@ function meterReadout(w: OscWidget, video: VideoInfo): { level: number; text: st
     const level = video.durationSec > 0 ? clamp01(video.remainingSec / video.durationSec) : 0
     return { level, text: fmtClock(video.remainingSec) }
   }
+  // Text-Quelle: zuletzt empfangenen OSC-String zeigen (kein Balken).
+  if (w.source === 'text') return { level: 0, text: w.text || '–' }
   const lo = Math.min(w.min, w.max)
   const hi = Math.max(w.min, w.max)
   const level = hi > lo ? clamp01((w.value - lo) / (hi - lo)) : 0
@@ -2256,20 +2283,27 @@ function meterReadout(w: OscWidget, video: VideoInfo): { level: number; text: st
 function Meter({ w }: { w: OscWidget }): JSX.Element {
   const video = useContext(VideoCtx)
   const { level, text } = meterReadout(w, video)
+  // Text-Quelle: nur den String zeigen (umbrechend, kein Balken).
+  const isText = w.source === 'text'
   return (
     <div className="flex h-full w-full flex-col justify-center gap-1.5">
       <div
-        className="text-center text-lg font-semibold tabular-nums leading-none"
+        className={cn(
+          'text-center font-semibold leading-tight',
+          isText ? 'break-words text-base' : 'text-lg leading-none tabular-nums'
+        )}
         style={{ color: w.color }}
       >
         {text}
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full transition-[width] duration-150"
-          style={{ width: `${level * 100}%`, background: w.color }}
-        />
-      </div>
+      {!isText && (
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full transition-[width] duration-150"
+            style={{ width: `${level * 100}%`, background: w.color }}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -2322,6 +2356,9 @@ function DecimalField({
  *  Label + Adresse, hinzufügen/entfernen). */
 function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
   const update = useOscSurface((s) => s.updateWidget)
+  // Neues Taster-Item bekommt die Adresse mit AKTUELLEM Projekt-Titel als erstem
+  // Segment (nicht mehr hart „megatoolbox"). Titel „mottl" -> /mottl/btn/N.
+  const projectName = useOscSurface((s) => s.currentProject().name)
   const isSelect = w.type === 'select'
   const items = w.items
   const setItem = (i: number, patch: Partial<OscItem>): void =>
@@ -2338,7 +2375,7 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
             }
           : {
               label: String(items.length + 1),
-              address: `/megatoolbox/btn/${items.length + 1}`,
+              address: `/${oscSlug(projectName)}/btn/${items.length + 1}`,
               value: 1
             }
       ]
@@ -2493,10 +2530,11 @@ function WidgetEditor({
         <Field label="Quelle">
           <select
             value={w.source}
-            onChange={(e) => update(w.id, { source: e.target.value as 'osc' | 'video' })}
+            onChange={(e) => update(w.id, { source: e.target.value as 'osc' | 'video' | 'text' })}
             className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
           >
-            <option value="osc">OSC-Feedback (Adresse)</option>
+            <option value="osc">OSC-Feedback (Zahl)</option>
+            <option value="text">OSC-Text (String)</option>
             <option value="video">Video-Restzeit</option>
           </select>
         </Field>

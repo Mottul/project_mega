@@ -48,7 +48,11 @@ export interface OscWidget {
   b: number
   a: number // Farbe Alpha 0..1
   align: 'left' | 'center' | 'right' // nur Label: Textausrichtung
-  source: 'osc' | 'video' // nur Anzeige/Meter: Wertquelle (OSC-Feedback oder Video-Restzeit)
+  // nur Anzeige/Meter: Wertquelle. 'osc' = numerisches OSC-Feedback (Balken+Zahl),
+  // 'text' = OSC-String (z.B. Blendmodus/Surface-Name von MadMapper), 'video' =
+  // Restzeit des laufenden Videos.
+  source: 'osc' | 'video' | 'text'
+  text: string // nur Anzeige/Meter (source='text'): zuletzt empfangener String
   items: OscItem[] // nur Auswahl/Bank: Optionen bzw. Felder
   orient: 'h' | 'v' // Fader/Farbe: Ausrichtung der Regler
   cols: number // Auswahl/Bank: Spalten im Raster (Zeilen folgen aus der Anzahl; 0 = automatisch)
@@ -244,7 +248,7 @@ function placeMissing(ws: OscWidget[], cols: number): void {
 const DEFAULT_TITLE = 'megatoolbox'
 
 /** Projekt-Titel -> erstes OSC-Adresssegment (klein, ohne Sonderzeichen). */
-function oscSlug(title: string): string {
+export function oscSlug(title: string): string {
   const s = (title || '')
     .trim()
     .toLowerCase()
@@ -282,6 +286,7 @@ export function makeWidget(type: OscWidgetType, title: string = DEFAULT_TITLE): 
     a: 1,
     align: 'center',
     source: 'osc',
+    text: '',
     items: [],
     orient: 'v',
     cols: 1,
@@ -385,6 +390,9 @@ function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   const def = makeWidget(type)
   const merged = { ...def, ...w, type, id: w?.id ?? def.id }
   merged.items = w?.items ? normalizeItems(w.items) : def.items
+  merged.source =
+    w?.source === 'video' || w?.source === 'text' || w?.source === 'osc' ? w.source : def.source
+  merged.text = typeof w?.text === 'string' ? w.text : def.text
   merged.orient = w?.orient === 'h' || w?.orient === 'v' ? w.orient : def.orient
   merged.bankMode = ['momentary', 'toggle', 'knob'].includes(w?.bankMode as string)
     ? (w!.bankMode as BankMode)
