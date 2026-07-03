@@ -436,6 +436,9 @@ export function PlaybackEngine({
             ref={(el) => (videoRefs.current[i] = el)}
             playsInline
             preload="auto"
+            // CORS-Modus nur im NDI-Spiegel: media:// ist cross-origin, und ohne
+            // crossOrigin+ACAO-Header liefert MediaElementSource nur Stille.
+            crossOrigin={audioTap ? 'anonymous' : undefined}
             onEnded={() => onVideoEnded(i)}
             onTimeUpdate={() => onVideoTime(i)}
             style={{

@@ -115,7 +115,11 @@ export function registerMediaProtocol(): void {
             'Content-Type': ct,
             'Content-Length': String(end - start + 1),
             'Content-Range': `bytes ${start}-${end}/${total}`,
-            'Accept-Ranges': 'bytes'
+            'Accept-Ranges': 'bytes',
+            // CORS: media:// ist aus Sicht der Fenster (file://) cross-origin.
+            // Ohne diesen Header liefert ein cross-origin <video> in WebAudio
+            // (MediaElementSource, NDI-Audio-Tap) lautlos NUR STILLE.
+            'Access-Control-Allow-Origin': '*'
           }
         })
       }
@@ -126,7 +130,8 @@ export function registerMediaProtocol(): void {
         headers: {
           'Content-Type': ct,
           'Content-Length': String(total),
-          'Accept-Ranges': 'bytes'
+          'Accept-Ranges': 'bytes',
+          'Access-Control-Allow-Origin': '*'
         }
       })
     } catch (err) {

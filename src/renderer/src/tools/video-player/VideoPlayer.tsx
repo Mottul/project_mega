@@ -1612,8 +1612,10 @@ function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX
         <p className="text-xs text-muted-foreground">
           Sendet als <span className="font-medium text-foreground">„{status.config.name}“</span> ·{' '}
           {status.config.width}×{status.config.height}@{status.config.fps}
-          {status.config.audio ? ` · Audio: ${status.audioChunks} Blöcke` : ''} ·{' '}
-          <span className="tabular-nums">{status.framesSent}</span> Frames
+          {status.config.audio
+            ? ` · Audio: ${status.audioChunks} Blöcke, Pegel ${Math.round(status.audioLevel * 100)} %`
+            : ''}{' '}
+          · <span className="tabular-nums">{status.framesSent}</span> Frames
         </p>
       )}
       {status.error && <p className="text-xs text-destructive">{status.error}</p>}

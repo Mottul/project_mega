@@ -184,17 +184,20 @@ export function stopTimerNdi(emit = true): TimerNdiStatus {
   if (sender) {
     const s = sender
     sender = null
-    try {
-      // Promise merken -> der nächste Start wartet das Teardown ab.
-      senderTeardown = Promise.resolve(s.destroy?.()).then(
-        () => undefined,
-        () => undefined
-      )
-    } catch {
-      // Binding ohne destroy() -> GC übernimmt
-    }
+    // Erst laufende Sends abklingen lassen, DANN zerstören: destroy während
+    // eines asynchronen video()-Aufrufs ist ein Use-after-free (Absturz).
+    senderTeardown = (async () => {
+      const t0 = Date.now()
+      while (sending && Date.now() - t0 < 1500) {
+        await new Promise((r) => setTimeout(r, 25))
+      }
+      try {
+        await s.destroy?.()
+      } catch {
+        // Binding ohne destroy() -> GC übernimmt
+      }
+    })()
   }
-  sending = false
   if (emit) {
     logLine('[timer-ndi] gestoppt')
     emitStatus()
