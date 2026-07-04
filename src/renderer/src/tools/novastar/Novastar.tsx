@@ -94,7 +94,7 @@ export function Novastar(): JSX.Element {
           <span
             className={cn(
               'flex items-center gap-1.5 text-xs',
-              connected ? 'text-emerald-500' : 'text-muted-foreground'
+              connected ? 'text-emerald-400 light:text-emerald-700' : 'text-muted-foreground'
             )}
           >
             <span

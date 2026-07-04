@@ -280,9 +280,9 @@ export function HapConverter(): JSX.Element {
         <div className="mx-auto max-w-3xl space-y-6 p-6">
           {hapUnavailable && (
             <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
-              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400" />
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400 light:text-amber-700" />
               <div className="text-sm">
-                <p className="font-medium text-amber-300 light:text-amber-700">
+                <p className="font-medium text-amber-400 light:text-amber-700">
                   HAP-Encoder nicht verfügbar
                 </p>
                 <p className="mt-1 text-muted-foreground">
@@ -443,7 +443,7 @@ function JobRow({ job }: { job: HapJob }): JSX.Element {
         <Progress value={job.progress} indeterminate={job.status === 'probing'} className="mt-2" />
       )}
       {job.status === 'error' && job.error && (
-        <p className="mt-2 text-xs text-red-400">{job.error}</p>
+        <p className="mt-2 text-xs text-destructive">{job.error}</p>
       )}
     </div>
   )

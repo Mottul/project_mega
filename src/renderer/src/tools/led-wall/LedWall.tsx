@@ -355,7 +355,7 @@ export function LedWall(): JSX.Element {
           </p>
           <div className="mt-3 space-y-2">
             {d.fit169?.match ? (
-              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-500">
+              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 light:text-emerald-700">
                 16:9-Content passt exakt
               </p>
             ) : d.fit169 ? (

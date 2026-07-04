@@ -341,7 +341,7 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
           </div>
         )}
         {error ? (
-          <p className="p-6 text-center text-sm text-red-400">
+          <p className="p-6 text-center text-sm text-destructive">
             PDF konnte nicht geladen werden: {error}
           </p>
         ) : (
@@ -454,7 +454,7 @@ function PdfPage({
     >
       {!rendered && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <Loader2 className="size-5 animate-spin text-zinc-400" />
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </div>
       )}
       <canvas ref={canvasRef} className="block" style={{ width: '100%', height: '100%' }} />

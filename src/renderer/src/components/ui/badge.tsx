@@ -13,17 +13,28 @@ const tones: Record<BadgeTone, string> = {
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: BadgeTone
+  /** Führender, pulsierender Punkt in der Ton-Farbe – für „aktiv/läuft"-Indikatoren. */
+  dot?: boolean
 }
 
-export function Badge({ className, tone = 'neutral', ...props }: BadgeProps): JSX.Element {
+export function Badge({
+  className,
+  tone = 'neutral',
+  dot = false,
+  children,
+  ...props
+}: BadgeProps): JSX.Element {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
         tones[tone],
         className
       )}
       {...props}
-    />
+    >
+      {dot && <span className="size-1.5 animate-pulse rounded-full bg-current" />}
+      {children}
+    </span>
   )
 }
