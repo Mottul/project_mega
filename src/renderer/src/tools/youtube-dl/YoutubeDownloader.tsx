@@ -105,7 +105,7 @@ export function YoutubeDownloader(): JSX.Element {
           </span>
         ) : status.available ? (
           <span className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="size-4 text-emerald-500 light:text-emerald-700" />
+            <CheckCircle2 className="size-4 text-emerald-400 light:text-emerald-700" />
             yt-dlp <span className="font-mono text-xs text-muted-foreground">{status.version}</span>
             <span className="text-xs text-muted-foreground">
               ({status.location === 'managed' ? 'verwaltet' : 'System-PATH'})
@@ -113,7 +113,7 @@ export function YoutubeDownloader(): JSX.Element {
           </span>
         ) : (
           <span className="flex items-center gap-2 text-sm">
-            <AlertTriangle className="size-4 text-amber-500 light:text-amber-700" /> yt-dlp nicht
+            <AlertTriangle className="size-4 text-amber-400 light:text-amber-700" /> yt-dlp nicht
             gefunden
           </span>
         )}
@@ -139,7 +139,7 @@ export function YoutubeDownloader(): JSX.Element {
         </p>
       )}
       {status && !status.ffmpeg && (
-        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 light:text-amber-700">
+        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 light:text-amber-700">
           ffmpeg nicht gefunden – Zusammenführen von Bild/Ton kann fehlschlagen.
         </p>
       )}

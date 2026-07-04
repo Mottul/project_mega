@@ -2569,7 +2569,7 @@ function WidgetEditor({
               className={cn(
                 'flex h-9 shrink-0 items-center gap-1 rounded-md border px-2 text-xs transition-colors',
                 learning
-                  ? 'animate-pulse border-emerald-500 text-emerald-500 light:text-emerald-700'
+                  ? 'animate-pulse border-emerald-500 text-emerald-400 light:text-emerald-700'
                   : 'border-border text-muted-foreground hover:text-foreground disabled:opacity-40'
               )}
             >
@@ -2871,7 +2871,7 @@ function Monitor({ log, onClear }: { log: LogEntry[]; onClear: () => void }): JS
               <SlidersHorizontal
                 className={cn(
                   'size-3 shrink-0 translate-y-0.5',
-                  e.dir === 'out' ? 'text-primary' : 'text-emerald-500 light:text-emerald-700'
+                  e.dir === 'out' ? 'text-primary' : 'text-emerald-400 light:text-emerald-700'
                 )}
               />
               <span className="shrink-0 text-muted-foreground">{e.dir === 'out' ? '→' : '←'}</span>

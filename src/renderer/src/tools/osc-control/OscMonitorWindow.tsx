@@ -63,7 +63,7 @@ export function OscMonitorWindow(): JSX.Element {
                 {e.dir === 'out' ? (
                   <ArrowUpRight className="size-3.5 shrink-0 translate-y-0.5 text-primary" />
                 ) : (
-                  <ArrowDownLeft className="size-3.5 shrink-0 translate-y-0.5 text-emerald-500 light:text-emerald-700" />
+                  <ArrowDownLeft className="size-3.5 shrink-0 translate-y-0.5 text-emerald-400 light:text-emerald-700" />
                 )}
                 <span className="truncate text-foreground" title={e.address}>
                   {e.address}
