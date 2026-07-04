@@ -105,7 +105,7 @@ export function YoutubeDownloader(): JSX.Element {
           </span>
         ) : status.available ? (
           <span className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="size-4 text-emerald-500" />
+            <CheckCircle2 className="size-4 text-emerald-500 light:text-emerald-700" />
             yt-dlp <span className="font-mono text-xs text-muted-foreground">{status.version}</span>
             <span className="text-xs text-muted-foreground">
               ({status.location === 'managed' ? 'verwaltet' : 'System-PATH'})
@@ -113,7 +113,8 @@ export function YoutubeDownloader(): JSX.Element {
           </span>
         ) : (
           <span className="flex items-center gap-2 text-sm">
-            <AlertTriangle className="size-4 text-amber-500" /> yt-dlp nicht gefunden
+            <AlertTriangle className="size-4 text-amber-500 light:text-amber-700" /> yt-dlp nicht
+            gefunden
           </span>
         )}
         <div className="flex-1" />

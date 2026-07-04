@@ -60,7 +60,7 @@ export function PackingList(): JSX.Element {
               <CategoryName
                 value={cat}
                 onCommit={(v) => s.renameCategory(cat, v)}
-                className="h-7 max-w-[260px] flex-1 text-[12px] font-bold uppercase tracking-wide text-primary"
+                className="h-7 max-w-[260px] flex-1 text-xs font-bold uppercase tracking-wide text-primary"
               />
               <span className="text-xs text-muted-foreground">{items.length}</span>
               <div className="flex-1" />

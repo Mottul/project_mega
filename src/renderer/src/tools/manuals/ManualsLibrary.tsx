@@ -455,7 +455,7 @@ function LibraryList({
             size="icon"
             onClick={() => onDelete(m)}
             aria-label="Löschen"
-            className="text-muted-foreground hover:text-red-400"
+            className="text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="size-4" />
           </Button>
