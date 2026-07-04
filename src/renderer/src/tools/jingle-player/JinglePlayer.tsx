@@ -17,6 +17,7 @@ import {
   Volume2,
   Wifi
 } from 'lucide-react'
+import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -363,13 +364,7 @@ export function JinglePlayer(): JSX.Element {
         title="Fernsteuerung"
         icon={Wifi}
         defaultOpen={false}
-        right={
-          remote?.running ? (
-            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-400 light:text-emerald-700">
-              an
-            </span>
-          ) : undefined
-        }
+        right={remote?.running ? <Badge tone="success">an</Badge> : undefined}
       >
         <p className="text-xs text-muted-foreground">
           Handy/Tablet im selben WLAN steuert die Pads (ohne Passwort). Dieses Fenster muss offen

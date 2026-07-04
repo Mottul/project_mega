@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ExternalLink, Search, Star } from 'lucide-react'
+import { Badge } from '@renderer/components/ui/badge'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
@@ -96,10 +97,9 @@ function ToolCard({
           <div className="flex items-center gap-1.5 pr-6">
             <h3 className="truncate text-sm font-medium">{tool.name}</h3>
             {activity && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 light:text-emerald-700">
-                <span className="size-1.5 animate-pulse rounded-full bg-emerald-400" />
+              <Badge tone="success" dot className="shrink-0">
                 {activity.label}
-              </span>
+              </Badge>
             )}
           </div>
           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{tool.description}</p>
