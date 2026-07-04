@@ -80,7 +80,7 @@ export function CableGrid({
                 type="button"
                 title={`Spalte ${c + 1}`}
                 onClick={() => onLine('col', c)}
-                className="mb-0.5 flex items-center justify-center rounded-sm border border-dashed border-border text-[9px] text-muted-foreground hover:border-primary hover:text-foreground"
+                className="mb-0.5 flex items-center justify-center rounded-sm border border-dashed border-border text-[10px] text-muted-foreground hover:border-primary hover:text-foreground"
                 style={{ width: cell, height: hdr }}
               >
                 S{c + 1}
@@ -93,7 +93,7 @@ export function CableGrid({
                 type="button"
                 title={`Zeile ${r + 1}`}
                 onClick={() => onLine('row', r)}
-                className="mb-0.5 flex shrink-0 items-center justify-center rounded-sm border border-dashed border-border text-[9px] text-muted-foreground hover:border-primary hover:text-foreground"
+                className="mb-0.5 flex shrink-0 items-center justify-center rounded-sm border border-dashed border-border text-[10px] text-muted-foreground hover:border-primary hover:text-foreground"
                 style={{ width: hdr, height: cell }}
               >
                 Z{r + 1}

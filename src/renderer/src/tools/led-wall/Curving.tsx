@@ -26,10 +26,10 @@ function AnglePills({ angles }: { angles: number[] }): JSX.Element {
         const abs = Math.abs(a)
         const cls =
           abs === 0
-            ? 'border-teal-500/30 bg-teal-500/10 text-teal-500'
+            ? 'border-teal-500/30 bg-teal-500/10 text-teal-500 light:text-teal-700'
             : a > 0
               ? 'border-primary/30 bg-primary/10 text-primary'
-              : 'border-violet-500/30 bg-violet-500/10 text-violet-500'
+              : 'border-violet-500/30 bg-violet-500/10 text-violet-500 light:text-violet-700'
         return (
           <span key={i} className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${cls}`}>
             {abs}°{a < 0 ? ' ↺' : ''}
@@ -341,7 +341,7 @@ function BuilderMode(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => update(i, { dir: 'concave' })}
-                  className={`rounded border px-2 py-1 text-[10px] ${seg.dir === 'concave' ? 'border-violet-500/60 bg-violet-500/10 font-semibold text-violet-500' : 'border-border text-muted-foreground'}`}
+                  className={`rounded border px-2 py-1 text-[10px] ${seg.dir === 'concave' ? 'border-violet-500/60 bg-violet-500/10 font-semibold text-violet-500 light:text-violet-700' : 'border-border text-muted-foreground'}`}
                 >
                   Konkav
                 </button>
