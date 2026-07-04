@@ -72,6 +72,7 @@ import {
   type OscWidget,
   type OscWidgetType
 } from './store'
+import { labelForValue } from './mapping'
 
 /** Höhe einer Rasterzeile (px) und Abstand zwischen den Kacheln (px). Bewusst
  *  fein -> Fader/Buttons lassen sich klein und trotzdem bedienbar legen. */
@@ -1041,11 +1042,15 @@ function reflectFeedback(fb: OscFeedback): void {
     }
     // Text-Anzeige: beliebige Argumente (auch Strings) übernehmen – z.B.
     // Blendmodus oder Surface-Name von MadMapper. Muss VOR dem num-Guard stehen,
-    // da String-Feedback keinen numerischen Wert hat.
+    // da String-Feedback keinen numerischen Wert hat. Kommt eine ZAHL und sind
+    // Wert→Text-Zuordnungen gepflegt, wird der passende Name gezeigt (MadMapper
+    // sendet für Enums nur Zahlen, keinen Klartext).
     if (w.type === 'meter' && w.source === 'text' && w.address === fb.address) {
-      const text = fb.args
-        .map((a) => (typeof a === 'boolean' ? (a ? 'An' : 'Aus') : String(a)))
-        .join(' ')
+      const first = fb.args[0]
+      const text =
+        typeof first === 'number' && w.items.length > 0
+          ? labelForValue(first, w.items)
+          : fb.args.map((a) => (typeof a === 'boolean' ? (a ? 'An' : 'Aus') : String(a))).join(' ')
       st.updateWidget(w.id, { text })
       continue
     }
@@ -2426,6 +2431,53 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
   )
 }
 
+/** Wert→Text-Zuordnungen einer Text-Anzeige. MadMapper sendet für Enums
+ *  (Blendmodus, Surface …) nur Zahlen; hier ordnet man jedem beobachteten Wert
+ *  einen Namen zu. Die Zahlen liest man am besten im OSC-Monitor ab. */
+function TextMeterMappings({ w }: { w: OscWidget }): JSX.Element {
+  const update = useOscSurface((s) => s.updateWidget)
+  const items = w.items
+  const setItem = (i: number, patch: Partial<OscItem>): void =>
+    update(w.id, { items: items.map((it, j) => (j === i ? { ...it, ...patch } : it)) })
+  const add = (): void =>
+    update(w.id, { items: [...items, { label: '', address: '', value: items.length }] })
+  const remove = (i: number): void => update(w.id, { items: items.filter((_, j) => j !== i) })
+  return (
+    <div className="space-y-2">
+      <span className="block text-xs text-muted-foreground">
+        Wert → Text (leer = Rohwert zeigen; Zahlen im OSC-Monitor ablesen)
+      </span>
+      {items.map((it, i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <DecimalField
+            value={it.value}
+            onCommit={(v) => setItem(i, { value: v })}
+            className="h-8 w-20"
+          />
+          <span className="shrink-0 text-muted-foreground">→</span>
+          <Input
+            value={it.label}
+            placeholder="Text"
+            className="h-8 w-0 flex-1"
+            onChange={(e) => setItem(i, { label: e.target.value })}
+          />
+          <button
+            type="button"
+            title="Zuordnung entfernen"
+            onClick={() => remove(i)}
+            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      ))}
+      <Button variant="outline" size="sm" className="w-full" onClick={add}>
+        <Plus className="size-3.5" /> Zuordnung
+      </Button>
+    </div>
+  )
+}
+
 /** Kompakte Umschaltleiste (gleich breite Knöpfe nebeneinander). */
 function Segmented<T extends string>({
   value,
@@ -2668,6 +2720,8 @@ function WidgetEditor({
       )}
 
       {(w.type === 'select' || w.type === 'bank') && <ItemsEditor w={w} />}
+
+      {w.type === 'meter' && w.source === 'text' && <TextMeterMappings w={w} />}
 
       {hasRange && (
         <div className="grid grid-cols-2 gap-2">
