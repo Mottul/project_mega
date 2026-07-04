@@ -4,6 +4,8 @@
 import type {
   AppSettings,
   ColorLoopRequest,
+  ConfirmOptions,
+  NotifyOptions,
   ConvertJob,
   DisplayInfo,
   FitMode,
@@ -58,6 +60,8 @@ import type {
 export const Channels = {
   // Dialog & Shell
   dialogSelect: 'dialog:select',
+  dialogConfirm: 'dialog:confirm',
+  dialogNotify: 'dialog:notify',
   shellOpenPath: 'shell:openPath',
   shellShowItem: 'shell:showItemInFolder',
   // Settings / App
@@ -205,6 +209,12 @@ export const JINGLE_PROTOCOL = 'jingle'
 /** Die komplette, getypte Bruecke window.api. */
 export interface ToolboxApi {
   selectPaths(options: SelectPathsOptions): Promise<string[]>
+  /** Native Ja/Nein-Rückfrage (main-Prozess). Ersetzt window.confirm(), das
+   *  danach die Tastatureingabe in Textfeldern lahmlegt. true = bestätigt. */
+  confirm(options: ConfirmOptions): Promise<boolean>
+  /** Native Hinweis-Meldung (main-Prozess). Ersetzt window.alert() (gleicher
+   *  Tastatur-Bug). */
+  notify(options: NotifyOptions): Promise<void>
   openPath(target: string): Promise<void>
   showItemInFolder(target: string): Promise<void>
   getSettings(): Promise<AppSettings>

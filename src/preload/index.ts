@@ -10,6 +10,8 @@ function subscribe(channel: string, cb: (...args: unknown[]) => void): () => voi
 
 const api: ToolboxApi = {
   selectPaths: (options) => ipcRenderer.invoke(Channels.dialogSelect, options),
+  confirm: (options) => ipcRenderer.invoke(Channels.dialogConfirm, options),
+  notify: (options) => ipcRenderer.invoke(Channels.dialogNotify, options),
   openPath: (target) => ipcRenderer.invoke(Channels.shellOpenPath, target),
   showItemInFolder: (target) => ipcRenderer.invoke(Channels.shellShowItem, target),
   getSettings: () => ipcRenderer.invoke(Channels.settingsGet),

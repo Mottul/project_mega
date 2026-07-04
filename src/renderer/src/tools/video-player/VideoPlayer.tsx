@@ -395,9 +395,11 @@ export function VideoPlayer(): JSX.Element {
       try {
         setRemote(await api.player.remoteStart(remotePort))
       } catch (e) {
-        alert(
-          `Fernsteuerung konnte nicht starten (Port ${remotePort} belegt?).\n${e instanceof Error ? e.message : ''}`
-        )
+        void api.notify({
+          message: `Fernsteuerung konnte nicht starten (Port ${remotePort} belegt?).`,
+          detail: e instanceof Error ? e.message : undefined,
+          kind: 'error'
+        })
       }
   }
 
@@ -434,7 +436,11 @@ export function VideoPlayer(): JSX.Element {
       const r = await api.player.pickIdleMedia()
       if (r) await cmd({ type: 'setIdleMedia', url: r.url, kind: r.kind })
     } catch (e) {
-      alert(`Idle-Medium konnte nicht aufbereitet werden.\n${e instanceof Error ? e.message : ''}`)
+      void api.notify({
+        message: 'Idle-Medium konnte nicht aufbereitet werden.',
+        detail: e instanceof Error ? e.message : undefined,
+        kind: 'error'
+      })
     }
   }
 
@@ -447,9 +453,10 @@ export function VideoPlayer(): JSX.Element {
       { width: wallW, height: wallH }
     )
     if (res.skipped > 0)
-      alert(
-        `${res.skipped} Medium/Medien ohne bekannte Originalquelle übersprungen (vor diesem Update importiert).`
-      )
+      void api.notify({
+        message: `${res.skipped} Medium/Medien ohne bekannte Originalquelle übersprungen (vor diesem Update importiert).`,
+        kind: 'warning'
+      })
   }
 
   const ffmpegMissing = enc && !enc.ffmpegFound
@@ -1082,12 +1089,16 @@ export function VideoPlayer(): JSX.Element {
                     size="sm"
                     className="text-red-400 hover:text-red-300"
                     onClick={() => {
-                      if (
-                        confirm(
-                          'Gesamte Bibliothek löschen? Die konvertierten Dateien werden entfernt.'
-                        )
-                      )
-                        void api.player.libraryClear()
+                      void api
+                        .confirm({
+                          message: 'Gesamte Bibliothek löschen?',
+                          detail: 'Die konvertierten Dateien werden entfernt.',
+                          confirmLabel: 'Leeren',
+                          danger: true
+                        })
+                        .then((ok) => {
+                          if (ok) void api.player.libraryClear()
+                        })
                     }}
                   >
                     <Eraser className="size-4" /> Leeren
