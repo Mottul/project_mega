@@ -5,6 +5,7 @@ import { Badge } from '@renderer/components/ui/badge'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
+import { DensityToggle } from '@renderer/components/DensityToggle'
 import { AccentPicker } from '@renderer/components/AccentPicker'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
@@ -157,6 +158,7 @@ export function Launcher(): JSX.Element {
           </div>
           <div className="flex items-center gap-1">
             <AccentPicker />
+            <DensityToggle />
             <ThemeToggle />
           </div>
         </div>

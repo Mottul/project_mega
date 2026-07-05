@@ -777,6 +777,10 @@ export type ThemeMode = 'system' | 'light' | 'dark'
 /** Markenakzent (Primärfarbe) der Oberfläche. 'gold' = bisherige Marke. */
 export type AccentId = 'gold' | 'amber' | 'teal' | 'blue' | 'violet' | 'pink' | 'green'
 
+/** UI-Dichte. 'compact' verkleinert die Wurzel-Schriftgröße -> alle rem-basierten
+ *  Maße (Höhen, Abstände, Text) schrumpfen proportional -> mehr passt aufs Bild. */
+export type UiDensity = 'normal' | 'compact'
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
@@ -793,6 +797,8 @@ export interface AppSettings {
    *  Startbildschirm für schnellen Zugriff. Reihenfolge = Reihenfolge des
    *  Markierens. */
   favoriteToolIds: string[]
+  /** UI-Dichte (Normal/Kompakt) der Bedienoberfläche. */
+  uiDensity: UiDensity
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -805,5 +811,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   player: DEFAULT_PLAYER_SETTINGS,
   osc: DEFAULT_OSC_SETTINGS,
   kioskToolId: null,
-  favoriteToolIds: []
+  favoriteToolIds: [],
+  uiDensity: 'normal'
 }
