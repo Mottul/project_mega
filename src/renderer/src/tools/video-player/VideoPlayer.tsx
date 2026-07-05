@@ -260,6 +260,11 @@ export function VideoPlayer(): JSX.Element {
 
   const cmd = api.player.command
 
+  // Aktuelle Wiedergabewerte für die Tastatursteuerung -> der Handler unten liest
+  // sie über die Ref, statt bei jedem Tick neu zu binden.
+  const kbRef = useRef({ position, duration, seekable, volume: pstate.volume, muted: pstate.muted })
+  kbRef.current = { position, duration, seekable, volume: pstate.volume, muted: pstate.muted }
+
   // Suche committen: einmalig (idempotent über scrubRef). Hält die Zielposition,
   // bis der Tick sie erreicht -> kein Zurückspringen.
   function commitSeek(): void {
@@ -301,6 +306,74 @@ export function VideoPlayer(): JSX.Element {
     setSeekTarget(null)
     scrubRef.current = null
   }, [pstate.index])
+
+  // Tastatursteuerung: aktiv, solange der Player-Tab offen ist -- außer man tippt
+  // gerade in einem Eingabefeld oder hält eine Modifiertaste (App-Kürzel). Steuert
+  // die Wiedergabe über den main-Prozess (autoritativ, spiegelt in alle Fenster).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      const t = e.target as HTMLElement | null
+      const tag = t?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t?.isContentEditable) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const { position, duration, seekable, volume, muted } = kbRef.current
+      const seek = (v: number): void => {
+        if (seekable) {
+          void api.player.command({ type: 'seek', positionSec: Math.max(0, Math.min(v, duration)) })
+        }
+      }
+      switch (e.key) {
+        case ' ':
+        case 'k':
+        case 'K':
+          e.preventDefault()
+          void api.player.command({ type: 'toggle' })
+          break
+        case 'ArrowLeft':
+          e.preventDefault()
+          seek(position - 5)
+          break
+        case 'ArrowRight':
+          e.preventDefault()
+          seek(position + 5)
+          break
+        case 'j':
+        case 'J':
+          seek(position - 10)
+          break
+        case 'l':
+        case 'L':
+          seek(position + 10)
+          break
+        case 'p':
+        case 'P':
+          void api.player.command({ type: 'prev' })
+          break
+        case 'n':
+        case 'N':
+          void api.player.command({ type: 'next' })
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          void api.player.command({ type: 'setVolume', volume: Math.min(1, volume + 0.05) })
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          void api.player.command({ type: 'setVolume', volume: Math.max(0, volume - 0.05) })
+          break
+        case 'm':
+        case 'M':
+          void api.player.command({ type: 'setMuted', muted: !muted })
+          break
+        case 'Home':
+          e.preventDefault()
+          seek(0)
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   async function persistPlayer(
     patch: Partial<{
@@ -1301,6 +1374,11 @@ export function VideoPlayer(): JSX.Element {
                   <SkipForward className="size-5" />
                 </Button>
               </div>
+
+              {/* Tastatur-Kürzel (aktiv, wenn kein Textfeld fokussiert ist) */}
+              <p className="mb-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+                Leertaste Play/Pause · ←/→ 5 s · J/L 10 s · P/N Titel · ↑/↓ Lautstärke · M Stumm
+              </p>
 
               {/* Modi */}
               <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
