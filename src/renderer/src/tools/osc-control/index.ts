@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { SlidersHorizontal } from 'lucide-react'
+import { SlidersVertical } from 'lucide-react'
 import type { ToolModule } from '../types'
 
 export const oscControlTool: ToolModule = {
@@ -7,7 +7,7 @@ export const oscControlTool: ToolModule = {
   name: 'OSC-Steuerung',
   description:
     'Frei belegbares Steuerpult (Fader/Taster/XY/Farbe), das OSC an MadMapper & Co. sendet – mit Feedback-Monitor.',
-  icon: SlidersHorizontal,
+  icon: SlidersVertical,
   category: 'control',
   keywords: [
     'osc',

@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { Zap } from 'lucide-react'
+import { PlugZap } from 'lucide-react'
 import type { ToolModule } from '../types'
 
 export const powerLoadTool: ToolModule = {
@@ -7,7 +7,7 @@ export const powerLoadTool: ToolModule = {
   name: 'Stromlast & Absicherung',
   description:
     'Leistung ↔ Strom (1∼/3∼) und wie viele Geräte auf einen 16/32/63-A-Stromkreis passen.',
-  icon: Zap,
+  icon: PlugZap,
   category: 'rigging',
   keywords: [
     'strom',

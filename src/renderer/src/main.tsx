@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { applyTheme, storedThemeMode } from './lib/theme'
 import { applyAccent, storedAccent } from './lib/accent'
+import { applyDensity, storedDensity } from './lib/density'
 import './assets/main.css'
 
 // Gespeichertes Theme SYNCHRON vor dem ersten Rendern setzen -> kein Flackern.
@@ -13,6 +14,9 @@ const hash = window.location.hash
 const isOutputWindow = hash.startsWith('#/output') || hash.startsWith('#/player-output')
 applyTheme(isOutputWindow ? 'dark' : storedThemeMode())
 applyAccent(storedAccent())
+// Vollbild-Ausgaben bleiben in Normaldichte -- ihre Größen kommen aus px/vw und
+// die Kompakt-Schriftgröße würde dort nichts bringen.
+applyDensity(isOutputWindow ? 'normal' : storedDensity())
 
 const container = document.getElementById('root')
 if (!container) throw new Error('#root nicht gefunden')

@@ -1,12 +1,12 @@
 import { lazy } from 'react'
-import { FileVideo } from 'lucide-react'
+import { FileCog } from 'lucide-react'
 import type { ToolModule } from '../types'
 
 export const hapConverterTool: ToolModule = {
   id: 'hap-converter',
   name: 'HAP-Konverter',
   description: 'Videos im Batch nach HAP / HAP Q / HAP Alpha konvertieren (z.B. für MadMapper).',
-  icon: FileVideo,
+  icon: FileCog,
   category: 'media',
   keywords: [
     'hap',

@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { LayoutGrid } from 'lucide-react'
+import { Grid3x3 } from 'lucide-react'
 import type { ToolModule } from '../types'
 
 export const ledWallTool: ToolModule = {
@@ -7,7 +7,7 @@ export const ledWallTool: ToolModule = {
   name: 'LED-Wall-Konfigurator',
   description:
     'Wand planen: Auflösung, 16:9, Strom, Ballast, Signal-/Strom-Verkabelung, Curving (uS2+) – mit PDF-Doku.',
-  icon: LayoutGrid,
+  icon: Grid3x3,
   category: 'visual',
   keywords: [
     'led',

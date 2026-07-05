@@ -93,6 +93,13 @@ mark {
   padding: 0 1px;
 }
 
+/* Kompaktmodus: Wurzel-Schriftgröße verkleinern. Tailwind rechnet Höhen/Abstände/
+   Schrift in rem, daher schrumpft die gesamte Oberfläche proportional (~88 %).
+   Nur die normale App-Oberfläche; Vollbild-Ausgaben booten ohne diese Klasse. */
+:root.ui-compact {
+  font-size: 14px;
+}
+
 /* „Bewegung reduzieren" (Betriebssystem-Einstellung) achten: Dauer-Animationen
    wie Lade-Spinner oder pulsierende Status-Punkte anhalten. Der Timer-Alarm
    (Blinken bei Überziehung/Nachricht) läuft über eigene Inline-Animationen und

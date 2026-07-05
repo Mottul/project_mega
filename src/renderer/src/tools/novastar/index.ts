@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { Tv } from 'lucide-react'
+import { MonitorCog } from 'lucide-react'
 import type { ToolModule } from '../types'
 
 export const novastarTool: ToolModule = {
@@ -7,7 +7,7 @@ export const novastarTool: ToolModule = {
   name: 'NovaStar-Steuerung',
   description:
     'NovaPro UHD Jr & Co. über Netzwerk (TCP) steuern: Helligkeit, Fade-to-Black, Roh-Befehle. Vorabversion.',
-  icon: Tv,
+  icon: MonitorCog,
   category: 'control',
   keywords: [
     'novastar',

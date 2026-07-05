@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { Anchor } from 'lucide-react'
+import { Weight } from 'lucide-react'
 import type { ToolModule } from '../types'
 
 export const riggingTool: ToolModule = {
@@ -7,7 +7,7 @@ export const riggingTool: ToolModule = {
   name: 'Rigging-Last',
   description:
     'Auflagerkräfte einer Traverse (2 Punkte) und Strangkräfte im Bridle nach Anschlagwinkel.',
-  icon: Anchor,
+  icon: Weight,
   category: 'rigging',
   keywords: [
     'rigging',

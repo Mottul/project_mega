@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { ClipboardList } from 'lucide-react'
+import { ListChecks } from 'lucide-react'
 import type { ToolModule } from '../types'
 
 export const packingListTool: ToolModule = {
@@ -7,7 +7,7 @@ export const packingListTool: ToolModule = {
   name: 'Packliste',
   description:
     'Material-Checkliste mit Mengen – aus der LED-Wall-Konfiguration befüllbar, als PDF.',
-  icon: ClipboardList,
+  icon: ListChecks,
   category: 'rigging',
   keywords: [
     'packliste',
