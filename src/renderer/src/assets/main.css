@@ -93,6 +93,19 @@ mark {
   padding: 0 1px;
 }
 
+/* „Bewegung reduzieren" (Betriebssystem-Einstellung) achten: Dauer-Animationen
+   wie Lade-Spinner oder pulsierende Status-Punkte anhalten. Der Timer-Alarm
+   (Blinken bei Überziehung/Nachricht) läuft über eigene Inline-Animationen und
+   bleibt bewusst erhalten -- er ist ein funktionaler Bühnen-Hinweis, kein Deko. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin,
+  .animate-pulse,
+  .animate-ping,
+  .animate-bounce {
+    animation: none !important;
+  }
+}
+
 /* Stage-Timer: hartes Blinken (steps) ist auf der Bühne besser lesbar als ein
    weicher Fade -- einmal fuer Nachrichten, einmal fuer den Ueberziehungs-Alarm. */
 @keyframes timer-flash {

@@ -520,6 +520,7 @@ export function PlaybackEngine({
             <img
               key={state.idleMediaUrl}
               src={state.idleMediaUrl}
+              alt=""
               style={{
                 width: '100%',
                 height: '100%',
