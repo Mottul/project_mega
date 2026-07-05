@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { MonitorPlay } from 'lucide-react'
+import { Grid2x2 } from 'lucide-react'
 import type { ToolModule } from '../types'
 
 export const testPatternsTool: ToolModule = {
@@ -7,7 +7,7 @@ export const testPatternsTool: ToolModule = {
   name: 'Testbildgenerator',
   description:
     'Testbilder für Beamer/LED-Wände/Displays – Vollbild auf gewähltem Monitor, PNG- und Video-Export.',
-  icon: MonitorPlay,
+  icon: Grid2x2,
   category: 'playback',
   keywords: [
     'testbild',
