@@ -26,6 +26,10 @@ export const MOBILE_PAGE = `<!doctype html>
   #dot.on { background:#22c55e; }
   .times { display:flex; justify-content:space-between; font-size:12px; color:var(--sub); margin-top:4px; }
   input[type=range]{ width:100%; accent-color:var(--gold); height:28px; }
+  .volrow { display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .volrow input[type=range]{ flex:1 1 auto; width:auto; }
+  .volic { color:var(--sub); flex:0 0 auto; display:inline-flex; align-items:center; }
+  #volpct { min-width:3.4em; text-align:right; font-size:13px; color:var(--sub); font-variant-numeric:tabular-nums; }
   .transport { justify-content:center; gap:14px; margin:14px 0 4px; }
   button { font:inherit; color:var(--fg); background:var(--muted); border:1px solid #3f3f46;
     border-radius:10px; padding:12px 14px; min-height:46px; cursor:pointer; }
@@ -95,6 +99,11 @@ export const MOBILE_PAGE = `<!doctype html>
       <button id="shuffle"></button>
       <button id="mute"></button>
     </div>
+    <div class="volrow">
+      <span id="volic" class="volic"></span>
+      <input id="vol" type="range" min="0" max="100" value="100" aria-label="Lautstärke" />
+      <span id="volpct">100 %</span>
+    </div>
   </div>
 
   <div id="plwrap" style="display:none">
@@ -155,7 +164,7 @@ export const MOBILE_PAGE = `<!doctype html>
 
 <script>
 (function(){
-  var state=null, lib=[], seeking=false;
+  var state=null, lib=[], seeking=false, volSeeking=false, volLast=0;
   var dragging=false, dragEl=null, dragFrom=-1;
   var libView='list';
   try{ var lv=localStorage.getItem('av-libview'); if(lv==='grid'||lv==='list') libView=lv; }catch(_e){}
@@ -200,6 +209,14 @@ export const MOBILE_PAGE = `<!doctype html>
     loopBtn.className = state.loop!=='none' ? 'on' : '';
     var shBtn=el('shuffle'); shBtn.innerHTML = svg(IC.shuffle,18)+'<span>Zufall</span>'; shBtn.className = state.shuffle ? 'on' : '';
     var muteBtn=el('mute'); muteBtn.innerHTML = svg(state.muted?IC.volx:IC.vol,18)+'<span>'+(state.muted?'Stumm':'Ton')+'</span>'; muteBtn.className = state.muted ? '' : 'on';
+    // Lautstärke-Regler: zeigt den hörbaren Pegel (0 bei Stumm). Nicht überschreiben,
+    // während der Nutzer gerade zieht.
+    if(!volSeeking){
+      var vmuted=!!state.muted, veff=vmuted?0:(typeof state.volume==='number'?state.volume:1);
+      var vp=Math.round(veff*100);
+      el('vol').value=vp; el('volpct').textContent=vp+' %';
+      el('volic').innerHTML=svg((vmuted||veff===0)?IC.volx:IC.vol,18);
+    }
     // Übergang + Überblendzeit
     el('tr-cut').className = state.transition==='crossfade' ? '' : 'on';
     el('tr-xf').className = state.transition==='crossfade' ? 'on' : '';
@@ -292,6 +309,19 @@ export const MOBILE_PAGE = `<!doctype html>
   var seek=el('seek');
   seek.addEventListener('input',function(){ seeking=true; el('pos').textContent=fmt(+seek.value); });
   seek.addEventListener('change',function(){ api({type:'seek',positionSec:+seek.value}); seeking=false; });
+
+  // Lautstärke: live (gedrosselt) beim Ziehen, endgültig beim Loslassen. Ziehen
+  // hebt Stumm auf, damit der Pegel auch hörbar wird.
+  var vol=el('vol');
+  function sendVol(v){ api({type:'setVolume',volume:v}); if(state&&state.muted&&v>0) api({type:'setMuted',muted:false}); }
+  vol.addEventListener('input',function(){
+    volSeeking=true;
+    var v=+vol.value;
+    el('volpct').textContent=v+' %';
+    el('volic').innerHTML=svg(v===0?IC.volx:IC.vol,18);
+    var now=Date.now(); if(now-volLast>140){ volLast=now; sendVol(v/100); }
+  });
+  vol.addEventListener('change',function(){ sendVol(+vol.value/100); volSeeking=false; });
 
   el('playlist').addEventListener('click',function(e){
     if(e.target.closest('[data-drag]')) return; // Griff -> kein Sprung
