@@ -66,6 +66,17 @@ export const MOBILE_PAGE = `<!doctype html>
   .chip .n { color:var(--sub); font-size:12px; margin-left:7px; }
   .setcard { display:flex; flex-direction:column; gap:14px; }
   .setlabel { font-size:12px; color:var(--sub); margin-bottom:6px; }
+  .setpanel { margin-bottom:14px; }
+  .setpanel > summary { cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px;
+    font-size:14px; font-weight:600; color:var(--sub); padding:11px 12px;
+    background:var(--card); border:1px solid var(--muted); border-radius:12px; }
+  .setpanel > summary::-webkit-details-marker { display:none; }
+  .setpanel[open] > summary { border-radius:12px 12px 0 0; }
+  .setpanel .caret { width:0; height:0; border-left:6px solid currentColor;
+    border-top:5px solid transparent; border-bottom:5px solid transparent; transition:transform .15s; }
+  .setpanel[open] .caret { transform:rotate(90deg); }
+  .setpanel .setcard { border-radius:0 0 12px 12px; border-top:none; }
+  @media (prefers-reduced-motion: reduce){ .setpanel .caret { transition:none; } }
   .modes.two { grid-template-columns:1fr 1fr; margin-top:0; }
   .modes.three { grid-template-columns:1fr 1fr 1fr; margin-top:0; }
   .stepper { display:flex; align-items:center; gap:8px; }
@@ -79,6 +90,41 @@ export const MOBILE_PAGE = `<!doctype html>
 </style>
 </head>
 <body>
+  <details class="setpanel">
+    <summary><span class="caret"></span>Einstellungen</summary>
+    <div class="card setcard">
+      <div>
+        <div class="setlabel">Verarbeitung (neue Uploads)</div>
+        <div class="modes three">
+          <button id="fit-blur">Blur</button>
+          <button id="fit-bars">Letterbox</button>
+          <button id="fit-stretch">Strecken</button>
+        </div>
+      </div>
+      <div>
+        <div class="setlabel">Übergang</div>
+        <div class="modes two">
+          <button id="tr-cut">Schnitt</button>
+          <button id="tr-xf">Überblenden</button>
+        </div>
+        <div id="xfrow" class="stepper" style="margin-top:10px;display:none">
+          <span class="setlabel" style="margin:0;flex:1">Überblendzeit</span>
+          <button id="xf-dec" aria-label="kürzer">−</button>
+          <span id="xf-val" class="v">0.5s</span>
+          <button id="xf-inc" aria-label="länger">+</button>
+        </div>
+      </div>
+      <div>
+        <div class="setlabel">Bild-Standzeit</div>
+        <div class="stepper">
+          <button id="dur-dec" aria-label="weniger">−</button>
+          <span id="dur-val" class="v">10s</span>
+          <button id="dur-inc" aria-label="mehr">+</button>
+        </div>
+      </div>
+    </div>
+  </details>
+
   <div class="card">
     <div class="row head">
       <div style="min-width:0">
@@ -109,39 +155,6 @@ export const MOBILE_PAGE = `<!doctype html>
   <div id="plwrap" style="display:none">
     <h3>Playlists</h3>
     <div id="playlists" class="chips"></div>
-  </div>
-
-  <h3>Einstellungen</h3>
-  <div class="card setcard">
-    <div>
-      <div class="setlabel">Verarbeitung (neue Uploads)</div>
-      <div class="modes three">
-        <button id="fit-blur">Blur</button>
-        <button id="fit-bars">Letterbox</button>
-        <button id="fit-stretch">Strecken</button>
-      </div>
-    </div>
-    <div>
-      <div class="setlabel">Übergang</div>
-      <div class="modes two">
-        <button id="tr-cut">Schnitt</button>
-        <button id="tr-xf">Überblenden</button>
-      </div>
-      <div id="xfrow" class="stepper" style="margin-top:10px;display:none">
-        <span class="setlabel" style="margin:0;flex:1">Überblendzeit</span>
-        <button id="xf-dec" aria-label="kürzer">−</button>
-        <span id="xf-val" class="v">0.5s</span>
-        <button id="xf-inc" aria-label="länger">+</button>
-      </div>
-    </div>
-    <div>
-      <div class="setlabel">Bild-Standzeit</div>
-      <div class="stepper">
-        <button id="dur-dec" aria-label="weniger">−</button>
-        <span id="dur-val" class="v">10s</span>
-        <button id="dur-inc" aria-label="mehr">+</button>
-      </div>
-    </div>
   </div>
 
   <h3>Playlist</h3>
