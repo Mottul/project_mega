@@ -11,7 +11,9 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
+    "predev": "node scripts/fetch-electron-bin.mjs",
     "dev": "electron-vite dev",
+    "prestart": "node scripts/fetch-electron-bin.mjs",
     "start": "electron-vite preview",
     "build": "npm run typecheck && electron-vite build",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
