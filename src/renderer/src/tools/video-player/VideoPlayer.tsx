@@ -31,6 +31,7 @@ import {
   SlidersHorizontal,
   Smartphone,
   Trash2,
+  Volume1,
   Volume2,
   VolumeX,
   Wifi,
@@ -1398,14 +1399,44 @@ export function VideoPlayer(): JSX.Element {
                 >
                   <Shuffle className="size-4" /> Zufall
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void cmd({ type: 'setMuted', muted: !pstate.muted })}
-                >
-                  {pstate.muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-                  {pstate.muted ? 'Stumm' : 'Ton'}
-                </Button>
+                {/* Lautstärke: Stumm-Umschalter + Regler + Pegel. Regler zeigt den
+                    hörbaren Pegel (0 bei stumm); Ziehen hebt die Stummschaltung auf. */}
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 shrink-0"
+                    onClick={() => void cmd({ type: 'setMuted', muted: !pstate.muted })}
+                    title={pstate.muted ? 'Ton einschalten' : 'Stummschalten'}
+                    aria-label={pstate.muted ? 'Ton einschalten' : 'Stummschalten'}
+                  >
+                    {pstate.muted || pstate.volume === 0 ? (
+                      <VolumeX className="size-4" />
+                    ) : pstate.volume < 0.5 ? (
+                      <Volume1 className="size-4" />
+                    ) : (
+                      <Volume2 className="size-4" />
+                    )}
+                  </Button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={pstate.muted ? 0 : pstate.volume}
+                    onChange={(e) => {
+                      const v = Number(e.target.value)
+                      void cmd({ type: 'setVolume', volume: v })
+                      // Am Regler ziehen hebt Stumm auf (sonst bliebe es lautlos).
+                      if (pstate.muted && v > 0) void cmd({ type: 'setMuted', muted: false })
+                    }}
+                    aria-label="Lautstärke"
+                    className="h-1.5 w-24 cursor-pointer appearance-none rounded-full bg-muted accent-[hsl(var(--primary))]"
+                  />
+                  <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">
+                    {Math.round((pstate.muted ? 0 : pstate.volume) * 100)} %
+                  </span>
+                </div>
                 <select
                   className={`${selectClass} h-8`}
                   value={pstate.transition}
