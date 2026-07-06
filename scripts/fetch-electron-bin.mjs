@@ -19,6 +19,8 @@ import {
   rmSync,
   writeFileSync
 } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { Buffer } from 'node:buffer'
 import https from 'node:https'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -130,9 +132,48 @@ async function downloadWithRetry(u, dest) {
   }
 }
 
-async function main() {
+/** Promise mit Zeitwächter. Ein hängender Schritt beendet den Prozess sonst
+ *  still mit Exit 0 (leerer Event-Loop) -- der Timer hält ihn wach und meldet
+ *  klar, statt lautlos ohne Binary zurückzukehren. */
+function withTimeout(promise, ms, label) {
+  let timer
+  const guard = new Promise((_resolve, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} hängt (nach ${Math.round(ms / 1000)}s abgebrochen)`)),
+      ms
+    )
+  })
+  return Promise.race([promise, guard]).finally(() => clearTimeout(timer))
+}
+
+/** Zip entpacken. Unter Windows NATIV (Expand-Archive, sonst tar): extract-zip
+ *  hängt dort in manchen Node-Versionen und der Prozess endet still mit Exit 0,
+ *  bevor das Entpacken fertig ist ("Download vollständig, entpacke …", dann
+ *  nichts). spawnSync blockiert bis zum Ende -> kein stiller Abbruch möglich.
+ *  mac/Linux: weiterhin extract-zip, aber mit Zeitwächter. */
+function unzip(zip, destDir) {
+  if (process.platform === 'win32') {
+    const psScript =
+      `Expand-Archive -LiteralPath '${zip.replace(/'/g, "''")}' ` +
+      `-DestinationPath '${destDir.replace(/'/g, "''")}' -Force`
+    const encoded = Buffer.from(psScript, 'utf16le').toString('base64')
+    const ps = spawnSync(
+      'powershell',
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded],
+      { stdio: 'inherit' }
+    )
+    if (!ps.error && ps.status === 0) return Promise.resolve()
+    console.warn('[electron-bin] Expand-Archive nicht nutzbar, versuche tar …')
+    const t = spawnSync('tar', ['-xf', zip, '-C', destDir], { stdio: 'inherit' })
+    if (!t.error && t.status === 0) return Promise.resolve()
+    console.warn('[electron-bin] tar nicht nutzbar, versuche extract-zip …')
+  }
   // extract-zip ist eine Dependency von electron (fuer dessen install.js) -> vorhanden.
   const extract = require(require.resolve('extract-zip', { paths: [elDir] }))
+  return withTimeout(extract(zip, { dir: destDir }), 180000, 'Entpacken (extract-zip)')
+}
+
+async function main() {
   const tmp = join(tmpdir(), `electron-bin-${Date.now()}`)
   mkdirSync(tmp, { recursive: true })
   const zip = join(tmp, 'electron.zip')
@@ -142,7 +183,7 @@ async function main() {
     console.log('[electron-bin] Download vollständig, entpacke …')
     rmSync(distPath, { recursive: true, force: true })
     mkdirSync(distPath, { recursive: true })
-    await extract(zip, { dir: distPath })
+    await unzip(zip, distPath)
     if (!existsSync(join(distPath, ROOT_ENTRY))) {
       throw new Error(`${ROOT_ENTRY} nach dem Entpacken nicht gefunden (Virenscanner?)`)
     }
