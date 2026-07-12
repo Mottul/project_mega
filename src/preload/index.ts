@@ -77,6 +77,7 @@ const api: ToolboxApi = {
     reconvert: (mediaIds, wall, fit) =>
       ipcRenderer.invoke(Channels.playerReconvert, mediaIds, wall, fit),
     pickIdleMedia: () => ipcRenderer.invoke(Channels.playerPickIdleMedia),
+    pickTickerLogo: () => ipcRenderer.invoke(Channels.playerPickTickerLogo),
     mediaDir: () => ipcRenderer.invoke(Channels.playerMediaDir),
     onLibraryChanged: (cb) => subscribe(Channels.playerLibraryChanged, () => cb()),
     getState: () => ipcRenderer.invoke(Channels.playerGetState),

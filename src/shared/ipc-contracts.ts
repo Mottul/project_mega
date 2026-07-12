@@ -110,6 +110,7 @@ export const Channels = {
   playerLibraryClear: 'player:libraryClear',
   playerReconvert: 'player:reconvert',
   playerPickIdleMedia: 'player:pickIdleMedia',
+  playerPickTickerLogo: 'player:pickTickerLogo',
   playerMediaDir: 'player:mediaDir',
   playerLibraryChanged: 'player:libraryChanged', // Event (kein Payload)
   // Video-Player – Wiedergabe & Ausgabe
@@ -301,6 +302,8 @@ export interface ToolboxApi {
     ): Promise<{ jobIds: string[]; skipped: number }>
     /** Datei-Dialog für ein eigenes Idle-Bild/-Video; kopiert es in den Medienordner. */
     pickIdleMedia(): Promise<{ url: string; kind: 'image' | 'video' } | null>
+    /** Datei-Dialog für das Laufschrift-Logo (Bild); kopiert es in den Medienordner. */
+    pickTickerLogo(): Promise<{ url: string } | null>
     /** Speicherort der konvertierten Medien (userData/player-media). */
     mediaDir(): Promise<string>
     onLibraryChanged(cb: () => void): () => void

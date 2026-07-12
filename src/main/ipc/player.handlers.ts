@@ -1,4 +1,4 @@
-import { readdirSync, rmSync } from 'node:fs'
+import { copyFileSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { dialog, ipcMain } from 'electron'
 import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
@@ -121,6 +121,32 @@ export function registerPlayerHandlers(): void {
       }
     }
     return { url: `${MEDIA_PROTOCOL}://library/${storedName}?v=${Date.now()}`, kind }
+  })
+
+  // Laufschrift-Logo (LED-Trailer): Bild unverändert in den Medienordner kopieren
+  // (kein Einbacken -- das Logo wird zur Laufzeit auf Streifenhöhe skaliert).
+  ipcMain.handle(Channels.playerPickTickerLogo, async () => {
+    const res = await dialog.showOpenDialog({
+      title: 'Logo für die Laufschrift wählen',
+      properties: ['openFile'],
+      filters: [{ name: 'Bilder', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'] }]
+    })
+    if (res.canceled || res.filePaths.length === 0) return null
+    const src = res.filePaths[0]
+    const ext = (src.split('.').pop() || 'png').toLowerCase()
+    const storedName = `__ticker-logo-${Date.now()}.${ext}`
+    copyFileSync(src, join(mediaDir(), storedName))
+    // Alte Logos best effort aufräumen (das aktive kann noch geladen sein).
+    for (const f of readdirSync(mediaDir())) {
+      if (f.startsWith('__ticker-logo') && f !== storedName) {
+        try {
+          rmSync(join(mediaDir(), f))
+        } catch {
+          // in Benutzung -> beim nächsten Wechsel
+        }
+      }
+    }
+    return { url: `${MEDIA_PROTOCOL}://library/${storedName}` }
   })
 
   ipcMain.handle(Channels.playerMediaDir, () => mediaDir())

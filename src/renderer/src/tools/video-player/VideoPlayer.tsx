@@ -20,7 +20,6 @@ import {
   Play,
   Plus,
   Radio,
-  Ratio,
   RefreshCw,
   Repeat,
   Repeat1,
@@ -35,6 +34,7 @@ import {
   Volume2,
   VolumeX,
   Wifi,
+  Wrench,
   X
 } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
@@ -45,7 +45,9 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
-import { EMPTY_PLAYER_STATE } from '@shared/player'
+import { cn } from '@renderer/lib/utils'
+import { useDraft } from '@renderer/lib/useDraft'
+import { EMPTY_PLAYER_STATE, tickerStripPx } from '@shared/player'
 import {
   DEFAULT_PLAYER_NDI,
   type PlayerNdiConfig,
@@ -57,9 +59,11 @@ import {
   type MediaItem,
   type PatternId,
   type PlayerEncoderStatus,
+  type PlayerSettings,
   type PlayerState,
   type RemoteStatus,
   type SavedPlaylist,
+  type TrailerPreset,
   type TransitionMode
 } from '@shared/types'
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
@@ -90,13 +94,6 @@ const FIT_OPTIONS: { value: FitMode; label: string }[] = [
   { value: 'blur', label: 'Blur-Fill (unscharfer Hintergrund)' },
   { value: 'bars', label: 'Schwarze Ränder (Letter-/Pillarbox)' },
   { value: 'stretch', label: 'Strecken (auf Wand-Auflösung ziehen)' }
-]
-
-const RES_PRESETS = [
-  { label: '1280 × 720', w: 1280, h: 720 },
-  { label: '1920 × 1080', w: 1920, h: 1080 },
-  { label: '2560 × 1440', w: 2560, h: 1440 },
-  { label: '3840 × 2160', w: 3840, h: 2160 }
 ]
 
 type ViewMode = 'large' | 'small' | 'list'
@@ -131,8 +128,14 @@ export function VideoPlayer(): JSX.Element {
   const [tick, setTick] = useState<{ positionSec: number; durationSec: number } | null>(null)
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
 
-  const [wallW, setWallW] = useState(1920)
-  const [wallH, setWallH] = useState(1080)
+  // LED-Trailer: fest eingerichtete Formate + Laufschrift + NovaStar-Kopplung.
+  const [presets, setPresets] = useState<TrailerPreset[]>([])
+  const [activePreset, setActivePreset] = useState(0)
+  const [novaEnabled, setNovaEnabled] = useState(false)
+  const [novaHost, setNovaHost] = useState('')
+  const [novaPresets, setNovaPresets] = useState<number[]>([1, 2, 3])
+  const [novaMsg, setNovaMsg] = useState<string | null>(null)
+  const [speedDraft, setSpeedDraft] = useState<number | null>(null)
   const [fit, setFit] = useState<FitMode>('blur')
   const [encoder, setEncoder] = useState('auto')
   const [blurStrength, setBlurStrength] = useState(50)
@@ -211,8 +214,11 @@ export function VideoPlayer(): JSX.Element {
       setDisplayId((cur) => cur ?? (list.find((d) => !d.primary) ?? list[0])?.id ?? null)
     })
     void api.getSettings().then((s) => {
-      setWallW(s.player.wallWidth)
-      setWallH(s.player.wallHeight)
+      setPresets(s.player.trailerPresets ?? [])
+      setActivePreset(s.player.trailerActivePreset ?? 0)
+      setNovaEnabled(s.player.trailerNovaEnabled ?? false)
+      setNovaHost(s.player.trailerNovaHost ?? '')
+      setNovaPresets(s.player.trailerNovaPresets ?? [1, 2, 3])
       setFit(s.player.defaultFit)
       setEncoder(s.player.encoder)
       setBlurStrength(s.player.blurStrength ?? 50)
@@ -260,6 +266,21 @@ export function VideoPlayer(): JSX.Element {
   const seekable = current != null && current.kind !== 'image' && duration > 0
 
   const cmd = api.player.command
+
+  // Wand- und Inhalts-Auflösung aus dem autoritativen Zustand: bei aktiver
+  // Laufschrift ist das Konvertierungs-Ziel die Wand MINUS Laufschriftzeile.
+  const wallW = pstate.wall.width
+  const wallH = pstate.wall.height
+  const contentW = wallW
+  const contentH = wallH - tickerStripPx(pstate)
+  const convActive = Object.values(jobs).filter(
+    (j) => j.status === 'queued' || j.status === 'probing' || j.status === 'converting'
+  ).length
+  const tickerDraft = useDraft(pstate.ticker.text)
+  function commitTickerText(): void {
+    if (tickerDraft.text !== pstate.ticker.text)
+      void cmd({ type: 'setTicker', patch: { text: tickerDraft.text } })
+  }
 
   // Aktuelle Wiedergabewerte für die Tastatursteuerung -> der Handler unten liest
   // sie über die Ref, statt bei jedem Tick neu zu binden.
@@ -376,38 +397,63 @@ export function VideoPlayer(): JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  async function persistPlayer(
-    patch: Partial<{
-      wallWidth: number
-      wallHeight: number
-      defaultFit: FitMode
-      encoder: string
-      blurStrength: number
-      blurDarken: number
-      loudnormEnabled: boolean
-      loudnormI: number
-    }>
-  ): Promise<void> {
+  async function persistPlayer(patch: Partial<PlayerSettings>): Promise<void> {
     const s = await api.getSettings()
     await api.setSettings({ player: { ...s.player, ...patch } })
   }
 
-  function setWall(w: number, h: number): void {
-    const ww = Math.max(2, w)
-    const hh = Math.max(2, h)
-    setWallW(ww)
-    setWallH(hh)
-    void persistPlayer({ wallWidth: ww, wallHeight: hh })
-  }
-
-  function fromMonitor(): void {
-    const d = displays.find((x) => x.id === displayId)
-    if (d) setWall(Math.round(d.width * d.scaleFactor), Math.round(d.height * d.scaleFactor))
-  }
-
   function importSources(sources: string[]): void {
     if (sources.length)
-      void api.player.import({ sources, fitMode: fit, wall: { width: wallW, height: wallH } })
+      void api.player.import({
+        sources,
+        fitMode: fit,
+        wall: { width: contentW, height: contentH }
+      })
+  }
+
+  /** Trailer-Preset umschalten: Format setzen, Medien automatisch anpassen und
+   *  (falls gekoppelt) das NovaStar-Preset abrufen -- EIN Knopf für alles. */
+  async function activatePreset(i: number): Promise<void> {
+    const p = presets[i]
+    if (!p) return
+    setActivePreset(i)
+    await cmd({ type: 'applyPreset', index: i })
+    // Ziel-Auflösung dieses Presets (Wand minus Laufschriftzeile) direkt aus dem
+    // Preset rechnen -- nicht aus pstate (der Broadcast kommt asynchron).
+    const strip = p.ticker ? Math.max(0, Math.min(pstate.ticker.heightPx, p.height - 16)) : 0
+    const cw = p.width
+    const ch = p.height - strip
+    const stale = library.filter((m) => m.width !== cw || m.height !== ch)
+    if (stale.length > 0)
+      void api.player.reconvert(
+        stale.map((m) => m.id),
+        { width: cw, height: ch }
+      )
+    if (novaEnabled && novaHost.trim()) {
+      const nr = novaPresets[i] ?? i + 1
+      setNovaMsg('NovaStar wird umgeschaltet …')
+      try {
+        await api.novastar.connect(novaHost.trim(), 5200)
+        await api.novastar.preset(nr)
+        setNovaMsg(`NovaStar-Preset ${nr} abgerufen ✓`)
+      } catch (e) {
+        setNovaMsg(`NovaStar nicht erreichbar (${e instanceof Error ? e.message : String(e)})`)
+      }
+    }
+  }
+
+  /** Preset-Einrichtung ändern (Name/Maße/Laufschrift-Flag). Betrifft es das
+   *  aktive Preset, wird es sofort neu angewandt (Wand + Laufschrift live). */
+  async function updatePreset(i: number, patch: Partial<TrailerPreset>): Promise<void> {
+    const next = presets.map((p, j) => (j === i ? { ...p, ...patch } : p))
+    setPresets(next)
+    await persistPlayer({ trailerPresets: next })
+    if (i === activePreset) await cmd({ type: 'applyPreset', index: i })
+  }
+
+  async function pickTickerLogo(): Promise<void> {
+    const r = await api.player.pickTickerLogo()
+    if (r) void cmd({ type: 'setTicker', patch: { logoUrl: r.url } })
   }
 
   async function importFiles(): Promise<void> {
@@ -518,13 +564,14 @@ export function VideoPlayer(): JSX.Element {
     }
   }
 
-  // Medien, die nicht in der aktuellen Wand-Auflösung vorliegen.
-  const staleItems = library.filter((m) => m.width !== wallW || m.height !== wallH)
+  // Medien, die nicht in der aktuellen Inhalts-Auflösung vorliegen (Wand minus
+  // Laufschriftzeile, falls das aktive Preset eine hat).
+  const staleItems = library.filter((m) => m.width !== contentW || m.height !== contentH)
   async function reconvertStale(): Promise<void> {
     if (staleItems.length === 0) return
     const res = await api.player.reconvert(
       staleItems.map((m) => m.id),
-      { width: wallW, height: wallH }
+      { width: contentW, height: contentH }
     )
     if (res.skipped > 0)
       void api.notify({
@@ -556,46 +603,6 @@ export function VideoPlayer(): JSX.Element {
       id="video-player"
       aside={
         <>
-          {!locked && (
-            <PanelSection id="wall" title="Wand / Auflösung" icon={Ratio}>
-              <div className="flex items-center gap-2">
-                <NumberField
-                  value={wallW}
-                  min={2}
-                  max={16384}
-                  onCommit={(v) => setWall(v, wallH)}
-                />
-                <span className="text-muted-foreground">×</span>
-                <NumberField
-                  value={wallH}
-                  min={2}
-                  max={16384}
-                  onCommit={(v) => setWall(wallW, v)}
-                />
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {RES_PRESETS.map((r) => (
-                  <Button
-                    key={r.label}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setWall(r.w, r.h)}
-                  >
-                    {r.label}
-                  </Button>
-                ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fromMonitor}
-                  disabled={displayId == null}
-                >
-                  von Monitor
-                </Button>
-              </div>
-            </PanelSection>
-          )}
-
           <PanelSection id="prep" title="Aufbereitung" icon={SlidersHorizontal}>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Fit-Modus (Einbacken)</span>
@@ -672,7 +679,7 @@ export function VideoPlayer(): JSX.Element {
                       onClick={() =>
                         void api.player.reconvert(
                           library.filter((m) => m.fitMode === 'blur').map((m) => m.id),
-                          { width: wallW, height: wallH }
+                          { width: contentW, height: contentH }
                         )
                       }
                       title="Aktuelle Blur-Einstellungen auf bereits importierte Blur-Medien anwenden (kann dauern)"
@@ -879,6 +886,194 @@ export function VideoPlayer(): JSX.Element {
               </div>
             )}
           </PanelSection>
+
+          {/* Einrichtung (Technik): Formate, Laufschrift-Erscheinung, NovaStar.
+              Für den Aufbau gedacht -- der Operator braucht hier nie hinein. */}
+          <PanelSection
+            id="trailer-setup"
+            title="Einrichtung (Technik)"
+            icon={Wrench}
+            defaultOpen={false}
+          >
+            <div className="space-y-2">
+              <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Formate (Presets)
+              </span>
+              {presets.map((p, i) => (
+                <div key={i} className="space-y-1.5 rounded-md border border-border p-2">
+                  <Input
+                    value={p.name}
+                    className="h-8"
+                    onChange={(e) => void updatePreset(i, { name: e.target.value })}
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <NumberField
+                      value={p.width}
+                      min={2}
+                      max={16384}
+                      className="h-8 w-24"
+                      aria-label="Breite (px)"
+                      onCommit={(v) => void updatePreset(i, { width: Math.max(2, v) })}
+                    />
+                    <span className="text-muted-foreground">×</span>
+                    <NumberField
+                      value={p.height}
+                      min={2}
+                      max={16384}
+                      className="h-8 w-24"
+                      aria-label="Höhe (px)"
+                      onCommit={(v) => void updatePreset(i, { height: Math.max(2, v) })}
+                    />
+                    <label className="ml-auto flex items-center gap-1.5 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={p.ticker}
+                        onChange={(e) => void updatePreset(i, { ticker: e.target.checked })}
+                        className="size-4"
+                      />
+                      Laufschrift
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2 border-t border-border pt-3">
+              <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Laufschrift
+              </span>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">Höhe (px, Modulreihe)</span>
+                <NumberField
+                  value={pstate.ticker.heightPx}
+                  min={8}
+                  max={1024}
+                  className="h-8 w-24"
+                  onCommit={(v) => void cmd({ type: 'setTicker', patch: { heightPx: v } })}
+                />
+              </label>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Schrift
+                  <input
+                    type="color"
+                    value={pstate.ticker.color}
+                    onChange={(e) =>
+                      void cmd({ type: 'setTicker', patch: { color: e.target.value } })
+                    }
+                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Hintergrund
+                  <input
+                    type="color"
+                    value={pstate.ticker.bg}
+                    onChange={(e) => void cmd({ type: 'setTicker', patch: { bg: e.target.value } })}
+                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => void pickTickerLogo()}>
+                  <ImageIcon className="size-3.5" /> Logo wählen…
+                </Button>
+                {pstate.ticker.logoUrl && (
+                  <>
+                    <img
+                      src={pstate.ticker.logoUrl}
+                      alt=""
+                      className="h-8 w-auto rounded border border-border bg-black/40 p-0.5"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void cmd({ type: 'setTicker', patch: { logoUrl: null } })}
+                    >
+                      <X className="size-3.5" /> entfernen
+                    </Button>
+                  </>
+                )}
+              </div>
+              <label className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">Logo-Verhalten</span>
+                <select
+                  value={pstate.ticker.logoMode}
+                  onChange={(e) =>
+                    void cmd({
+                      type: 'setTicker',
+                      patch: { logoMode: e.target.value as 'fixed' | 'scroll' }
+                    })
+                  }
+                  className="h-8 rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+                >
+                  <option value="scroll">läuft mit dem Text mit</option>
+                  <option value="fixed">steht links fest</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="space-y-2 border-t border-border pt-3">
+              <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                NovaStar-Kopplung
+              </span>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={novaEnabled}
+                  onChange={(e) => {
+                    setNovaEnabled(e.target.checked)
+                    void persistPlayer({ trailerNovaEnabled: e.target.checked })
+                  }}
+                  className="size-4"
+                />
+                Preset-Knopf ruft NovaStar-Preset ab
+              </label>
+              {novaEnabled && (
+                <>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-muted-foreground">
+                      IP-Adresse des Prozessors
+                    </span>
+                    <Input
+                      value={novaHost}
+                      placeholder="z. B. 192.168.0.10"
+                      spellCheck={false}
+                      className="h-8 font-mono text-xs"
+                      onChange={(e) => {
+                        setNovaHost(e.target.value)
+                        void persistPlayer({ trailerNovaHost: e.target.value })
+                      }}
+                    />
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {presets.map((p, i) => (
+                      <label key={i} className="flex flex-1 flex-col gap-1 text-xs">
+                        <span className="truncate text-muted-foreground" title={p.name}>
+                          {p.name}
+                        </span>
+                        <NumberField
+                          value={novaPresets[i] ?? i + 1}
+                          min={1}
+                          max={26}
+                          className="h-8"
+                          onCommit={(v) => {
+                            const next = [...novaPresets]
+                            next[i] = v
+                            setNovaPresets(next)
+                            void persistPlayer({ trailerNovaPresets: next })
+                          }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    NovaStar-Preset-Nummer je Format (am Prozessor gespeicherte Szene).
+                  </p>
+                </>
+              )}
+            </div>
+          </PanelSection>
         </>
       }
       main={
@@ -896,6 +1091,112 @@ export function VideoPlayer(): JSX.Element {
                   bereitstellen; im fertigen Paket ist es enthalten.
                   {enc?.error ? ` (${enc.error})` : ''}
                 </p>
+              </div>
+            </Card>
+          )}
+
+          {/* LED-Trailer: Format wählen + Ausgabe -- die zwei großen Handgriffe. */}
+          {presets.length > 0 && (
+            <Card className="p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-medium">Format</h2>
+                {novaMsg && <span className="text-xs text-muted-foreground">{novaMsg}</span>}
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {presets.map((p, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => void activatePreset(i)}
+                    aria-pressed={i === activePreset}
+                    className={cn(
+                      'rounded-lg border px-4 py-3 text-left transition-colors',
+                      i === activePreset
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/40'
+                    )}
+                  >
+                    <div className="text-base font-semibold">{p.name}</div>
+                    <div className="text-xs tabular-nums text-muted-foreground">
+                      {p.width} × {p.height}
+                      {p.ticker ? ' · mit Laufschrift' : ''}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {convActive > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Medien werden auf das Format angepasst … ({convActive} in Arbeit)
+                </p>
+              )}
+              <Button
+                variant={pstate.outputOpen ? 'destructive' : 'default'}
+                className="mt-3 h-12 w-full text-base font-semibold"
+                disabled={!pstate.outputOpen && displayId == null}
+                onClick={() => {
+                  if (pstate.outputOpen) void api.player.closeOutput()
+                  else void openOutput()
+                }}
+              >
+                {pstate.outputOpen ? (
+                  <>
+                    <MonitorX className="size-5" /> Ausgabe stoppen
+                  </>
+                ) : (
+                  <>
+                    <MonitorPlay className="size-5" /> Ausgabe starten (Vollbild)
+                  </>
+                )}
+              </Button>
+            </Card>
+          )}
+
+          {/* Laufschrift: nur sichtbar, wenn das aktive Format eine hat. */}
+          {pstate.ticker.enabled && (
+            <Card className="p-4">
+              <h2 className="mb-3 font-medium">Laufschrift</h2>
+              <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                <label className="min-w-0 flex-1">
+                  <span className="mb-1 block text-xs text-muted-foreground">
+                    Text – mit Enter übernehmen
+                  </span>
+                  <Input
+                    ref={tickerDraft.ref}
+                    value={tickerDraft.text}
+                    onChange={(e) => tickerDraft.setText(e.target.value)}
+                    onBlur={commitTickerText}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        commitTickerText()
+                        ;(e.target as HTMLInputElement).blur()
+                      }
+                    }}
+                    placeholder="Text der Laufschrift …"
+                    className="h-11 text-base"
+                  />
+                </label>
+                <label className="w-full md:w-64">
+                  <span className="mb-1 flex justify-between text-xs text-muted-foreground">
+                    <span>Tempo</span>
+                    <span className="tabular-nums">{speedDraft ?? pstate.ticker.speed} px/s</span>
+                  </span>
+                  <input
+                    type="range"
+                    min={20}
+                    max={400}
+                    step={5}
+                    value={speedDraft ?? pstate.ticker.speed}
+                    onChange={(e) => setSpeedDraft(Number(e.target.value))}
+                    onPointerUp={() => {
+                      if (speedDraft != null) {
+                        void cmd({ type: 'setTicker', patch: { speed: speedDraft } })
+                        setSpeedDraft(null)
+                      }
+                    }}
+                    aria-label="Tempo der Laufschrift"
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[hsl(var(--primary))]"
+                  />
+                </label>
               </div>
             </Card>
           )}
@@ -992,7 +1293,7 @@ export function VideoPlayer(): JSX.Element {
                 <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
                   <RefreshCw className="size-4 shrink-0 text-amber-400 light:text-amber-700" />
                   <span className="flex-1 text-amber-400 light:text-amber-700">
-                    {staleItems.length} Medium/Medien ≠ Wand-Auflösung ({wallW}×{wallH}).
+                    {staleItems.length} Medium/Medien ≠ Ziel-Auflösung ({contentW}×{contentH}).
                   </span>
                   <Button size="sm" variant="outline" onClick={() => void reconvertStale()}>
                     Neu konvertieren
@@ -1019,7 +1320,7 @@ export function VideoPlayer(): JSX.Element {
                     <FolderInput className="size-5" />
                     Medien hierher ziehen oder über „Dateien"/„Ordner" importieren.
                     <span className="text-xs">
-                      Konvertierung auf {wallW}×{wallH}.
+                      Konvertierung auf {contentW}×{contentH}.
                     </span>
                   </p>
                 ) : view === 'list' ? (
@@ -1055,7 +1356,11 @@ export function VideoPlayer(): JSX.Element {
                         <button
                           className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground"
                           onClick={() =>
-                            void api.player.reconvert([m.id], { width: wallW, height: wallH }, fit)
+                            void api.player.reconvert(
+                              [m.id],
+                              { width: contentW, height: contentH },
+                              fit
+                            )
                           }
                           title="Neu einbacken aus dem Original (aktuelle Auflösung + Aufbereitung/Blur)"
                         >
@@ -1116,7 +1421,7 @@ export function VideoPlayer(): JSX.Element {
                             onClick={() =>
                               void api.player.reconvert(
                                 [m.id],
-                                { width: wallW, height: wallH },
+                                { width: contentW, height: contentH },
                                 fit
                               )
                             }

@@ -27,7 +27,18 @@ function ensureInit(): void {
     idlePattern: p.idlePattern,
     idleMediaUrl: p.idleMediaUrl,
     idleMediaKind: p.idleMediaKind,
-    wall: { width: p.wallWidth, height: p.wallHeight }
+    wall: { width: p.wallWidth, height: p.wallHeight },
+    ticker: {
+      // enabled folgt dem aktiven Trailer-Preset (nicht separat persistiert)
+      enabled: !!p.trailerPresets?.[p.trailerActivePreset]?.ticker,
+      heightPx: p.tickerHeight,
+      text: p.tickerText,
+      speed: p.tickerSpeed,
+      color: p.tickerColor,
+      bg: p.tickerBg,
+      logoUrl: p.tickerLogoUrl,
+      logoMode: p.tickerLogoMode
+    }
   }
 }
 
@@ -214,6 +225,48 @@ export function applyCommand(cmd: PlayerCommand): void {
       state.idlePattern = cmd.pattern
       setSettings({ player: { ...getSettings().player, idlePattern: state.idlePattern } })
       break
+    case 'applyPreset': {
+      // LED-Trailer: Format umschalten. Wand-Auflösung + Laufschrift-Sichtbarkeit
+      // folgen dem Preset; persistiert, damit Upload/Import dieselbe Zielgröße sehen.
+      const p = getSettings().player
+      const i = Math.max(0, Math.min(Math.round(cmd.index), p.trailerPresets.length - 1))
+      const preset = p.trailerPresets[i]
+      if (!preset) break
+      state.wall = { width: preset.width, height: preset.height }
+      state.ticker = { ...state.ticker, enabled: preset.ticker }
+      setSettings({
+        player: {
+          ...p,
+          trailerActivePreset: i,
+          wallWidth: preset.width,
+          wallHeight: preset.height
+        }
+      })
+      break
+    }
+    case 'setTicker': {
+      // enabled ist bewusst NICHT patchbar -- es folgt dem aktiven Preset.
+      const patch = { ...cmd.patch }
+      if (patch.heightPx != null)
+        patch.heightPx = Math.max(8, Math.min(1024, Math.round(patch.heightPx)))
+      if (patch.speed != null) patch.speed = Math.max(10, Math.min(1000, Math.round(patch.speed)))
+      if (patch.text != null) patch.text = String(patch.text).slice(0, 500)
+      state.ticker = { ...state.ticker, ...patch, enabled: state.ticker.enabled }
+      const p = getSettings().player
+      setSettings({
+        player: {
+          ...p,
+          tickerHeight: state.ticker.heightPx,
+          tickerText: state.ticker.text,
+          tickerSpeed: state.ticker.speed,
+          tickerColor: state.ticker.color,
+          tickerBg: state.ticker.bg,
+          tickerLogoUrl: state.ticker.logoUrl,
+          tickerLogoMode: state.ticker.logoMode
+        }
+      })
+      break
+    }
     case 'setIdleMedia':
       if (cmd.url) {
         state.idlePattern = 'custom'

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@renderer/lib/api'
-import { currentItem, EMPTY_PLAYER_STATE, nextIndex } from '@shared/player'
+import { currentItem, EMPTY_PLAYER_STATE, nextIndex, tickerStripPx } from '@shared/player'
+import { TickerStrip } from './TickerStrip'
 import type { MediaItem, PatternId, PlayerState } from '@shared/types'
 import { IdlePattern } from './IdlePattern'
 import { NDI_AUDIO_WORKLET_SRC } from './ndiAudioWorkletSource'
@@ -454,88 +455,116 @@ export function PlaybackEngine({
 
   const curr = currentItem(state)
   const xDur = state.transition === 'crossfade' ? state.transitionMs : 0
+  // Laufschrift (LED-Trailer): reserviert unten einen Streifen; der Medienbereich
+  // schrumpft anteilig (die Ausgabe skaliert die Wand formatfüllend).
+  const stripFrac = state.wall.height > 0 ? tickerStripPx(state) / state.wall.height : 0
 
   return (
     <div style={{ position: 'absolute', inset: 0, background: '#000', overflow: 'hidden' }}>
-      {[0, 1].map((i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            opacity: i === active ? 1 : 0,
-            transition: `opacity ${xDur}ms linear`,
-            zIndex: i === active ? 2 : 1
-          }}
-        >
-          <video
-            ref={(el) => (videoRefs.current[i] = el)}
-            playsInline
-            preload="auto"
-            // CORS-Modus nur im NDI-Spiegel: media:// ist cross-origin, und ohne
-            // crossOrigin+ACAO-Header liefert MediaElementSource nur Stille.
-            crossOrigin={tapCors ? 'anonymous' : undefined}
-            onError={onTapVideoError}
-            onEnded={() => onVideoEnded(i)}
-            onTimeUpdate={() => onVideoTime(i)}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: stripFrac > 0 ? `${stripFrac * 100}%` : 0
+        }}
+      >
+        {[0, 1].map((i) => (
+          <div
+            key={i}
             style={{
-              width: '100%',
-              height: '100%',
-              objectFit,
-              display: 'none',
-              background: '#000'
+              position: 'absolute',
+              inset: 0,
+              opacity: i === active ? 1 : 0,
+              transition: `opacity ${xDur}ms linear`,
+              zIndex: i === active ? 2 : 1
             }}
-          />
-          <img
-            ref={(el) => (imgRefs.current[i] = el)}
-            alt=""
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit,
-              display: 'none',
-              background: '#000'
-            }}
-          />
-        </div>
-      ))}
-
-      {!curr && state.idlePattern === 'custom' && state.idleMediaUrl && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: '#000' }}>
-          {state.idleMediaKind === 'video' ? (
+          >
             <video
-              key={state.idleMediaUrl}
-              src={state.idleMediaUrl}
-              autoPlay
-              loop
-              muted
+              ref={(el) => (videoRefs.current[i] = el)}
               playsInline
+              preload="auto"
+              // CORS-Modus nur im NDI-Spiegel: media:// ist cross-origin, und ohne
+              // crossOrigin+ACAO-Header liefert MediaElementSource nur Stille.
+              crossOrigin={tapCors ? 'anonymous' : undefined}
+              onError={onTapVideoError}
+              onEnded={() => onVideoEnded(i)}
+              onTimeUpdate={() => onVideoTime(i)}
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: objectFit === 'contain' ? 'contain' : 'cover'
+                objectFit,
+                display: 'none',
+                background: '#000'
               }}
             />
-          ) : (
             <img
-              key={state.idleMediaUrl}
-              src={state.idleMediaUrl}
+              ref={(el) => (imgRefs.current[i] = el)}
               alt=""
               style={{
                 width: '100%',
                 height: '100%',
-                objectFit: objectFit === 'contain' ? 'contain' : 'cover'
+                objectFit,
+                display: 'none',
+                background: '#000'
               }}
             />
-          )}
+          </div>
+        ))}
+
+        {!curr && state.idlePattern === 'custom' && state.idleMediaUrl && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: '#000' }}>
+            {state.idleMediaKind === 'video' ? (
+              <video
+                key={state.idleMediaUrl}
+                src={state.idleMediaUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: objectFit === 'contain' ? 'contain' : 'cover'
+                }}
+              />
+            ) : (
+              <img
+                key={state.idleMediaUrl}
+                src={state.idleMediaUrl}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: objectFit === 'contain' ? 'contain' : 'cover'
+                }}
+              />
+            )}
+          </div>
+        )}
+        {!curr && state.idlePattern !== 'off' && state.idlePattern !== 'custom' && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
+            <IdlePattern pattern={state.idlePattern as PatternId} />
+          </div>
+        )}
+        {/* idlePattern 'off' -> bewusst nichts: reines Schwarz auf der Ausgabe (kein Text). */}
+      </div>
+
+      {stripFrac > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: `${stripFrac * 100}%`,
+            zIndex: 4
+          }}
+        >
+          <TickerStrip ticker={state.ticker} />
         </div>
       )}
-      {!curr && state.idlePattern !== 'off' && state.idlePattern !== 'custom' && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
-          <IdlePattern pattern={state.idlePattern as PatternId} />
-        </div>
-      )}
-      {/* idlePattern 'off' -> bewusst nichts: reines Schwarz auf der Ausgabe (kein Text). */}
 
       {showFps && fps != null && (
         <div

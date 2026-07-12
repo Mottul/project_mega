@@ -2,7 +2,7 @@
 // main-Prozess (autoritativer Zustand) UND das Ausgabefenster (Vor-Pufferung des
 // nächsten Mediums für nahtlose Übergänge) EXAKT dieselbe Reihenfolge berechnen.
 
-import type { MediaItem, PlayerState } from './types'
+import type { MediaItem, PlayerState, WallResolution } from './types'
 
 export const EMPTY_PLAYER_STATE: PlayerState = {
   playlist: [],
@@ -22,8 +22,32 @@ export const EMPTY_PLAYER_STATE: PlayerState = {
   idleMediaKind: null,
   outputOpen: false,
   wall: { width: 1920, height: 1080 },
+  ticker: {
+    enabled: false,
+    heightPx: 104,
+    text: '',
+    speed: 120,
+    color: '#ffffff',
+    bg: '#000000',
+    logoUrl: null,
+    logoMode: 'scroll'
+  },
   seekSeq: 0,
   shuffleNext: -1
+}
+
+/** Auf die Laufschrift begrenzte Streifenhöhe in Wand-Pixeln (0 = keine). */
+export function tickerStripPx(state: Pick<PlayerState, 'wall' | 'ticker'>): number {
+  if (!state.ticker.enabled) return 0
+  // Mindestens 16 px bleiben dem Video -> eine Fehleingabe kann das Bild nicht auf 0 drücken.
+  return Math.max(0, Math.min(state.ticker.heightPx, state.wall.height - 16))
+}
+
+/** Inhalts-Auflösung für Import/Konvertierung: Wand minus Laufschriftzeile.
+ *  main (Upload/Reconvert) und Renderer (Import/Stale-Prüfung) rechnen damit
+ *  garantiert dieselbe Zielgröße. */
+export function contentSize(state: Pick<PlayerState, 'wall' | 'ticker'>): WallResolution {
+  return { width: state.wall.width, height: state.wall.height - tickerStripPx(state) }
 }
 
 /** Index des nächsten Mediums (−1 = nichts mehr / gestoppt).

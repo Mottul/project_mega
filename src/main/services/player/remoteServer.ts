@@ -19,6 +19,7 @@ import { createRemoteHost, readBody, sendJsonRaw } from '../remoteHttp'
 import { ALLOWED_MEDIA_EXT, convertManager } from './convertManager'
 import { listMedia, resolveMediaFile } from './mediaLibrary'
 import { applyCommand, getPlayerState } from './playerState'
+import { contentSize } from '@shared/player'
 import { MOBILE_PAGE } from './remotePage'
 
 const host = createRemoteHost('remote', 8088)
@@ -100,7 +101,8 @@ function receiveUpload(req: IncomingMessage, res: ServerResponse): void {
       convertManager.enqueue({
         sources: [dest],
         fitMode: p.defaultFit,
-        wall: { width: p.wallWidth, height: p.wallHeight }
+        // Inhalts-Auflösung: bei aktiver Laufschrift Wand MINUS Laufschriftzeile.
+        wall: contentSize(getPlayerState())
       })
       sendJsonRaw(res, '{"ok":true}')
     } catch (e) {

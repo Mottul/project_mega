@@ -3,10 +3,15 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Loader2, MonitorSmartphone } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
+import { DensityToggle } from '@renderer/components/DensityToggle'
 import { AccentPicker } from '@renderer/components/AccentPicker'
 import { api } from '@renderer/lib/api'
-import { findTool } from '@renderer/tools/registry'
+import { findTool, tools } from '@renderer/tools/registry'
 import { KioskContext } from './kiosk'
+
+// Einzel-Tool-App (stoffl): ohne Übersicht ergeben Zurück-Pfeil und
+// Kundenansicht-Knopf keinen Sinn -- die Kopfzeile zeigt nur Tool + Design.
+const SINGLE_TOOL = tools.length === 1
 
 export function ToolHost(): JSX.Element {
   const { id } = useParams()
@@ -51,7 +56,7 @@ export function ToolHost(): JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-        {!kiosk && (
+        {!kiosk && !SINGLE_TOOL && (
           <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label="Zurück">
             <ArrowLeft className="size-4" />
           </Button>
@@ -66,23 +71,28 @@ export function ToolHost(): JSX.Element {
         <div className="flex-1" />
         {!kiosk && (
           <>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="In neuem Fenster öffnen"
-              onClick={() => void api.openToolWindow(tool.id)}
-            >
-              <ExternalLink className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Als Kundenansicht starten (gesperrt, ohne Zurück)"
-              onClick={() => void enableKiosk()}
-            >
-              <MonitorSmartphone className="size-4" />
-            </Button>
+            {!SINGLE_TOOL && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="In neuem Fenster öffnen"
+                  onClick={() => void api.openToolWindow(tool.id)}
+                >
+                  <ExternalLink className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Als Kundenansicht starten (gesperrt, ohne Zurück)"
+                  onClick={() => void enableKiosk()}
+                >
+                  <MonitorSmartphone className="size-4" />
+                </Button>
+              </>
+            )}
             <AccentPicker />
+            <DensityToggle />
             <ThemeToggle />
           </>
         )}

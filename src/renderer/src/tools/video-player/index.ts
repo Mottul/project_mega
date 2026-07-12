@@ -4,9 +4,10 @@ import type { ToolModule } from '../types'
 
 export const videoPlayerTool: ToolModule = {
   id: 'video-player',
-  name: 'Video-Player',
+  name: 'LED-Trailer-Player',
   description:
-    'Playlist-Player für LED-Wände/Beamer – Medien auf Wand-Auflösung einbacken (Fit-Modi, GPU), Vollbild-Ausgabe, Play/Pause/Skip/Seek/Loop/Shuffle.',
+    'Playlist-Player für den LED-Trailer (NovaStar) – drei feste Formate, Laufschrift, ' +
+    'Medien auf Format einbacken (Fit-Modi, GPU), Vollbild-Ausgabe.',
   icon: PlaySquare,
   category: 'playback',
   keywords: [

@@ -1,28 +1,20 @@
-import { HashRouter, Route, Routes } from 'react-router-dom'
-import { Launcher } from './launcher/Launcher'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ToolHost } from './launcher/ToolHost'
-import { TimerOutput } from './tools/stage-timer/TimerOutput'
-import { OutputView } from './tools/test-patterns/OutputView'
 import { PlayerOutput } from './tools/video-player/PlayerOutput'
 import { PlayerNdiOutput } from './tools/video-player/PlayerNdiOutput'
-import { OscMonitorWindow } from './tools/osc-control/OscMonitorWindow'
 
+// stoffl-Branch: die App IST der LED-Trailer-Player -- kein Startbildschirm,
+// die Wurzel springt direkt ins Tool (Registry enthält nur dieses eine).
 export function App(): JSX.Element {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<Launcher />} />
+        <Route path="/" element={<Navigate to="/tool/video-player" replace />} />
         <Route path="/tool/:id" element={<ToolHost />} />
-        {/* rahmenloses Vollbild-Ausgabefenster des Testbildgenerators */}
-        <Route path="/output" element={<OutputView />} />
         {/* rahmenloses Vollbild-Ausgabefenster des Video-Players */}
         <Route path="/player-output" element={<PlayerOutput />} />
-        {/* rahmenloses Vollbild-Ausgabefenster des Stage-Timers */}
-        <Route path="/timer-output" element={<TimerOutput />} />
         {/* unsichtbares NDI-Spiegelfenster des Video-Players */}
         <Route path="/player-ndi" element={<PlayerNdiOutput />} />
-        {/* OSC-Monitor in eigenem Fenster */}
-        <Route path="/osc-monitor" element={<OscMonitorWindow />} />
       </Routes>
     </HashRouter>
   )

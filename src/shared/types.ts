@@ -225,6 +225,32 @@ export interface WallResolution {
   height: number
 }
 
+/* --------------------- LED-Trailer: Presets + Laufschrift ---------------- */
+// Der Trailer-Player kennt drei fest eingerichtete Formate (Modul-Layouts des
+// LED-Trailers). Ein Preset kann die unterste Modulreihe für eine Laufschrift
+// reservieren; das Video läuft dann im Bereich darüber (Inhalts-Auflösung =
+// Wand minus Laufschriftzeile).
+
+export interface TrailerPreset {
+  name: string
+  width: number // Wand-Breite in px (gesamt)
+  height: number // Wand-Höhe in px (gesamt, inkl. evtl. Laufschriftzeile)
+  ticker: boolean // dieses Preset zeigt die Laufschrift unten
+}
+
+/** Live-Zustand der Laufschrift (Teil des autoritativen PlayerState; main
+ *  persistiert Änderungen in die Settings). Maße/Tempo in WAND-Pixeln. */
+export interface PlayerTickerState {
+  enabled: boolean // folgt dem aktiven Preset
+  heightPx: number // Höhe der untersten Modulreihe
+  text: string
+  speed: number // px/s (Wand-Pixel)
+  color: string // Textfarbe #rrggbb
+  bg: string // Hintergrund #rrggbb
+  logoUrl: string | null // media://-URL des Logos
+  logoMode: 'fixed' | 'scroll' // Logo steht links fest oder läuft mit
+}
+
 /** Ein konvertiertes, abspielbereites Medium in der verwalteten Bibliothek. */
 export interface MediaItem {
   id: string
@@ -316,6 +342,7 @@ export interface PlayerState {
   idleMediaKind: 'image' | 'video' | null
   outputOpen: boolean
   wall: WallResolution
+  ticker: PlayerTickerState // Laufschrift (LED-Trailer): Streifen unten im Bild
   seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
   /** Bei Shuffle: VORAB gewürfelter nächster Index (-1 = keiner). Main würfelt,
    *  alle Fenster lesen denselben Wert -> das vorgeladene Medium ist garantiert
@@ -352,6 +379,9 @@ export type PlayerCommand =
   | { type: 'setDefaultFit'; fit: FitMode } // Aufbereitung für neue Importe/Uploads (Tablet)
   | { type: 'setIdlePattern'; pattern: PatternId | 'off' }
   | { type: 'setIdleMedia'; url: string | null; kind: 'image' | 'video' | null }
+  // LED-Trailer: Preset (Format) umschalten bzw. Laufschrift ändern.
+  | { type: 'applyPreset'; index: number }
+  | { type: 'setTicker'; patch: Partial<Omit<PlayerTickerState, 'enabled'>> }
   | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig
 
 /* --------------------------- Stage-Timer & Uhr --------------------------- */
@@ -746,6 +776,23 @@ export interface PlayerSettings {
   remoteEnabled: boolean
   remotePort: number
   savedPlaylists: SavedPlaylist[]
+  // ---- LED-Trailer ----
+  /** Die drei fest eingerichteten Formate des Trailers. */
+  trailerPresets: TrailerPreset[]
+  trailerActivePreset: number
+  // Laufschrift-Einrichtung (Erscheinungsbild; Text/Tempo ändert der Operator).
+  tickerHeight: number // px, Höhe der untersten Modulreihe
+  tickerText: string
+  tickerSpeed: number // px/s
+  tickerColor: string
+  tickerBg: string
+  tickerLogoUrl: string | null
+  tickerLogoMode: 'fixed' | 'scroll'
+  // NovaStar-Kopplung: Preset-Knopf ruft zusätzlich das Prozessor-Preset ab.
+  trailerNovaEnabled: boolean
+  trailerNovaHost: string
+  /** NovaStar-Preset-Nummer je Trailer-Preset (Index-gleich). */
+  trailerNovaPresets: number[]
 }
 
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
@@ -768,7 +815,24 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   loudnormLra: 11,
   remoteEnabled: false,
   remotePort: 8088,
-  savedPlaylists: []
+  savedPlaylists: [],
+  // Platzhalter-Auflösungen -- echte Trailer-Werte in der Einrichtung eintragen.
+  trailerPresets: [
+    { name: 'Preset 1', width: 1152, height: 576, ticker: false },
+    { name: 'Preset 2', width: 960, height: 480, ticker: false },
+    { name: 'Preset 3', width: 768, height: 384, ticker: true }
+  ],
+  trailerActivePreset: 0,
+  tickerHeight: 104,
+  tickerText: '',
+  tickerSpeed: 120,
+  tickerColor: '#ffffff',
+  tickerBg: '#000000',
+  tickerLogoUrl: null,
+  tickerLogoMode: 'scroll',
+  trailerNovaEnabled: false,
+  trailerNovaHost: '',
+  trailerNovaPresets: [1, 2, 3]
 }
 
 /** Farbschema der Oberfläche. 'system' folgt der OS-Einstellung. */
