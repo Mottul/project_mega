@@ -90,6 +90,11 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
   // füllen (sichtbar ist [0 .. w + Sichtbreite] des Tracks).
   const repeats = blockW > 1 ? Math.min(40, Math.max(2, Math.ceil(size.w / blockW) + 1)) : 2
 
+  // Abstand VOR dem Logo (paddingRight des Vorgänger-Blocks) und NACH dem Logo
+  // (gap zum Text) bewusst identisch -> das Logo sitzt mittig zwischen den
+  // Textwiederholungen. Ohne Logo etwas mehr Luft zwischen den Wiederholungen.
+  const sep = Math.round(fontPx * (logoScrolls ? 0.9 : 1.4))
+
   const block = (withRef: boolean, key: number): JSX.Element => (
     <div
       key={key}
@@ -98,8 +103,8 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
         display: 'inline-flex',
         alignItems: 'center',
         flexShrink: 0,
-        gap: Math.round(fontPx * 0.55),
-        paddingRight: Math.round(fontPx * 1.4)
+        gap: sep,
+        paddingRight: sep
       }}
     >
       {logoScrolls && (

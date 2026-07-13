@@ -66,8 +66,14 @@ import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
 import { QrCode } from './QrCode'
 
+// block + w-full: ALLE Dropdowns füllen ihren Container gleich breit aus --
+// ohne das rendert jedes <select> in seiner natürlichen Breite (= breiteste
+// Option) und die Felder wirken wild unterschiedlich (Monitor vs. Idle-Bild).
 const selectClass =
-  'h-9 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
+  'block h-9 w-full min-w-0 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
+// Kompakte Variante für Zeilen-Layouts (neben h-8-Knöpfen): natürliche Breite.
+const selectClassCompact =
+  'h-8 rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tif', 'tiff', 'gif']
 const VIDEO_EXTENSIONS = [
@@ -733,10 +739,10 @@ export function VideoPlayer(): JSX.Element {
               <span className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Volume2 className="size-3.5" /> Ton-Ausgabe
               </span>
-              {/* max-w-full + min-w-0: lange Gerätenamen dürfen das Feld nicht über
-                  die Panel-Breite hinausdrücken (Anzeige kürzt, Liste zeigt alles). */}
+              {/* Lange Gerätenamen: Anzeige kürzt (w-full/min-w-0 in selectClass),
+                  die aufgeklappte Liste zeigt alles; Tooltip trägt den vollen Namen. */}
               <select
-                className={`${selectClass} min-w-0 max-w-full`}
+                className={selectClass}
                 value={pstate.outputAudioDeviceId}
                 title={
                   audioOutputs.find((d) => d.deviceId === pstate.outputAudioDeviceId)?.label ||
@@ -776,7 +782,7 @@ export function VideoPlayer(): JSX.Element {
                 ))}
               </select>
               {pstate.idlePattern === 'custom' ? (
-                <span className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Eigenes {pstate.idleMediaKind === 'video' ? 'Video' : 'Bild'} aktiv ·{' '}
                   <button className="underline" onClick={() => void pickIdleMedia()}>
                     ändern
@@ -788,11 +794,11 @@ export function VideoPlayer(): JSX.Element {
                   >
                     entfernen
                   </button>
-                </span>
+                </p>
               ) : (
-                <span className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Testbild oder eigenes Medium als Fallback auf der Ausgabe.
-                </span>
+                </p>
               )}
             </PanelSection>
           )}
@@ -1154,7 +1160,7 @@ export function VideoPlayer(): JSX.Element {
                       </div>
                     </div>
                     {pstate.ticker.logoUrl && (
-                      <label className="block">
+                      <label className="block w-56">
                         <span className="mb-1 block text-xs text-muted-foreground">
                           Logo-Verhalten
                         </span>
@@ -1166,7 +1172,7 @@ export function VideoPlayer(): JSX.Element {
                               patch: { logoMode: e.target.value as 'fixed' | 'scroll' }
                             })
                           }
-                          className={`${selectClass} w-auto`}
+                          className={selectClass}
                         >
                           <option value="scroll">läuft mit dem Text mit</option>
                           <option value="fixed">steht links fest</option>
@@ -1721,7 +1727,7 @@ export function VideoPlayer(): JSX.Element {
                   </span>
                 </div>
                 <select
-                  className={`${selectClass} h-8`}
+                  className={selectClassCompact}
                   value={pstate.transition}
                   onChange={(e) =>
                     void cmd({
