@@ -729,13 +729,19 @@ export function VideoPlayer(): JSX.Element {
                 </Button>
               )}
             </div>
-            <label className="block">
+            <label className="block min-w-0">
               <span className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Volume2 className="size-3.5" /> Ton-Ausgabe
               </span>
+              {/* max-w-full + min-w-0: lange Gerätenamen dürfen das Feld nicht über
+                  die Panel-Breite hinausdrücken (Anzeige kürzt, Liste zeigt alles). */}
               <select
-                className={selectClass}
+                className={`${selectClass} min-w-0 max-w-full`}
                 value={pstate.outputAudioDeviceId}
+                title={
+                  audioOutputs.find((d) => d.deviceId === pstate.outputAudioDeviceId)?.label ||
+                  'Standardgerät'
+                }
                 onChange={(e) =>
                   void cmd({ type: 'setOutputAudioDevice', deviceId: e.target.value })
                 }
@@ -844,8 +850,8 @@ export function VideoPlayer(): JSX.Element {
             )}
           </PanelSection>
 
-          {/* Einrichtung (Technik): Formate, Laufschrift-Erscheinung, NovaStar.
-              Für den Aufbau gedacht -- der Operator braucht hier nie hinein. */}
+          {/* Einrichtung (Technik): Formate + NovaStar. Für den Aufbau gedacht --
+              die Laufschrift-Gestaltung liegt direkt in der Laufschrift-Karte. */}
           <PanelSection
             id="trailer-setup"
             title="Einrichtung (Technik)"
@@ -893,81 +899,6 @@ export function VideoPlayer(): JSX.Element {
                   </div>
                 </div>
               ))}
-            </div>
-
-            <div className="space-y-2 border-t border-border pt-3">
-              <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Laufschrift
-              </span>
-              <label className="flex items-center justify-between gap-2 text-sm">
-                <span className="text-muted-foreground">Höhe (px, Modulreihe)</span>
-                <NumberField
-                  value={pstate.ticker.heightPx}
-                  min={8}
-                  max={1024}
-                  className="h-8 w-24"
-                  onCommit={(v) => void cmd({ type: 'setTicker', patch: { heightPx: v } })}
-                />
-              </label>
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  Schrift
-                  <input
-                    type="color"
-                    value={pstate.ticker.color}
-                    onChange={(e) =>
-                      void cmd({ type: 'setTicker', patch: { color: e.target.value } })
-                    }
-                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  Hintergrund
-                  <input
-                    type="color"
-                    value={pstate.ticker.bg}
-                    onChange={(e) => void cmd({ type: 'setTicker', patch: { bg: e.target.value } })}
-                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
-                  />
-                </label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => void pickTickerLogo()}>
-                  <ImageIcon className="size-3.5" /> Logo wählen…
-                </Button>
-                {pstate.ticker.logoUrl && (
-                  <>
-                    <img
-                      src={pstate.ticker.logoUrl}
-                      alt=""
-                      className="h-8 w-auto rounded border border-border bg-black/40 p-0.5"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void cmd({ type: 'setTicker', patch: { logoUrl: null } })}
-                    >
-                      <X className="size-3.5" /> entfernen
-                    </Button>
-                  </>
-                )}
-              </div>
-              <label className="flex items-center justify-between gap-2 text-sm">
-                <span className="text-muted-foreground">Logo-Verhalten</span>
-                <select
-                  value={pstate.ticker.logoMode}
-                  onChange={(e) =>
-                    void cmd({
-                      type: 'setTicker',
-                      patch: { logoMode: e.target.value as 'fixed' | 'scroll' }
-                    })
-                  }
-                  className="h-8 rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
-                >
-                  <option value="scroll">läuft mit dem Text mit</option>
-                  <option value="fixed">steht links fest</option>
-                </select>
-              </label>
             </div>
 
             <div className="space-y-2 border-t border-border pt-3">
@@ -1052,110 +983,200 @@ export function VideoPlayer(): JSX.Element {
             </Card>
           )}
 
-          {/* LED-Trailer: Format wählen + Ausgabe -- die zwei großen Handgriffe. */}
+          {/* LED-Trailer: Format links (Presets untereinander), Laufschrift daneben. */}
           {presets.length > 0 && (
-            <Card className="p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-medium">Format</h2>
-                {novaMsg && <span className="text-xs text-muted-foreground">{novaMsg}</span>}
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {presets.map((p, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => void activatePreset(i)}
-                    aria-pressed={i === activePreset}
-                    className={cn(
-                      'rounded-lg border px-4 py-3 text-left transition-colors',
-                      i === activePreset
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/40'
-                    )}
-                  >
-                    <div className="text-base font-semibold">{p.name}</div>
-                    <div className="text-xs tabular-nums text-muted-foreground">
-                      {p.width} × {p.height}
-                      {p.ticker ? ' · mit Laufschrift' : ''}
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {convActive > 0 && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Medien werden auf das Format angepasst … ({convActive} in Arbeit)
-                </p>
+            <div
+              className={cn(
+                'grid gap-6',
+                pstate.ticker.enabled && 'xl:grid-cols-[minmax(260px,340px)_1fr]'
               )}
-              <Button
-                variant={pstate.outputOpen ? 'destructive' : 'default'}
-                className="mt-3 h-12 w-full text-base font-semibold"
-                disabled={!pstate.outputOpen && displayId == null}
-                onClick={() => {
-                  if (pstate.outputOpen) void api.player.closeOutput()
-                  else void openOutput()
-                }}
-              >
-                {pstate.outputOpen ? (
-                  <>
-                    <MonitorX className="size-5" /> Ausgabe stoppen
-                  </>
-                ) : (
-                  <>
-                    <MonitorPlay className="size-5" /> Ausgabe starten (Vollbild)
-                  </>
+            >
+              <Card className="p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-medium">Format</h2>
+                  {novaMsg && <span className="text-xs text-muted-foreground">{novaMsg}</span>}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {presets.map((p, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => void activatePreset(i)}
+                      aria-pressed={i === activePreset}
+                      className={cn(
+                        'rounded-lg border px-4 py-3 text-left transition-colors',
+                        i === activePreset
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/40'
+                      )}
+                    >
+                      <div className="text-base font-semibold">{p.name}</div>
+                      <div className="text-xs tabular-nums text-muted-foreground">
+                        {p.width} × {p.height}
+                        {p.ticker ? ' · mit Laufschrift' : ''}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {convActive > 0 && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Medien werden auf das Format angepasst … ({convActive} in Arbeit)
+                  </p>
                 )}
-              </Button>
-            </Card>
-          )}
+              </Card>
 
-          {/* Laufschrift: nur sichtbar, wenn das aktive Format eine hat. */}
-          {pstate.ticker.enabled && (
-            <Card className="p-4">
-              <h2 className="mb-3 font-medium">Laufschrift</h2>
-              <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                <label className="min-w-0 flex-1">
-                  <span className="mb-1 block text-xs text-muted-foreground">
-                    Text – mit Enter übernehmen
-                  </span>
-                  <Input
-                    ref={tickerDraft.ref}
-                    value={tickerDraft.text}
-                    onChange={(e) => tickerDraft.setText(e.target.value)}
-                    onBlur={commitTickerText}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        commitTickerText()
-                        ;(e.target as HTMLInputElement).blur()
-                      }
-                    }}
-                    placeholder="Text der Laufschrift …"
-                    className="h-11 text-base"
-                  />
-                </label>
-                <label className="w-full md:w-64">
-                  <span className="mb-1 flex justify-between text-xs text-muted-foreground">
-                    <span>Tempo</span>
-                    <span className="tabular-nums">{speedDraft ?? pstate.ticker.speed} px/s</span>
-                  </span>
-                  <input
-                    type="range"
-                    min={20}
-                    max={400}
-                    step={5}
-                    value={speedDraft ?? pstate.ticker.speed}
-                    onChange={(e) => setSpeedDraft(Number(e.target.value))}
-                    onPointerUp={() => {
-                      if (speedDraft != null) {
-                        void cmd({ type: 'setTicker', patch: { speed: speedDraft } })
-                        setSpeedDraft(null)
-                      }
-                    }}
-                    aria-label="Tempo der Laufschrift"
-                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[hsl(var(--primary))]"
-                  />
-                </label>
-              </div>
-            </Card>
+              {/* Laufschrift: nur sichtbar, wenn das aktive Format eine hat. Text,
+                  Tempo und Gestaltung an einem Ort -- kein Wechsel in die Einrichtung. */}
+              {pstate.ticker.enabled && (
+                <Card className="min-w-0 p-4">
+                  <h2 className="mb-3 font-medium">Laufschrift</h2>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                    <label className="min-w-0 flex-1">
+                      <span className="mb-1 block text-xs text-muted-foreground">
+                        Text – mit Enter übernehmen
+                      </span>
+                      <Input
+                        ref={tickerDraft.ref}
+                        value={tickerDraft.text}
+                        onChange={(e) => tickerDraft.setText(e.target.value)}
+                        onBlur={commitTickerText}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            commitTickerText()
+                            ;(e.target as HTMLInputElement).blur()
+                          }
+                        }}
+                        placeholder="Text der Laufschrift …"
+                        className="h-11 text-base"
+                      />
+                    </label>
+                    <div className="flex w-full items-end gap-2 lg:w-72">
+                      <label className="min-w-0 flex-1">
+                        <span className="mb-1 block text-xs text-muted-foreground">
+                          Tempo (px/s)
+                        </span>
+                        <input
+                          type="range"
+                          min={20}
+                          max={400}
+                          step={5}
+                          value={speedDraft ?? pstate.ticker.speed}
+                          onChange={(e) => setSpeedDraft(Number(e.target.value))}
+                          onPointerUp={() => {
+                            if (speedDraft != null) {
+                              void cmd({ type: 'setTicker', patch: { speed: speedDraft } })
+                              setSpeedDraft(null)
+                            }
+                          }}
+                          aria-label="Tempo der Laufschrift"
+                          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[hsl(var(--primary))]"
+                          style={{ marginBottom: 12 }}
+                        />
+                      </label>
+                      <NumberField
+                        value={speedDraft ?? pstate.ticker.speed}
+                        min={10}
+                        max={1000}
+                        className="h-9 w-20 shrink-0"
+                        aria-label="Tempo (px/s) als Zahl"
+                        onCommit={(v) => void cmd({ type: 'setTicker', patch: { speed: v } })}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Gestaltung: Höhe, Farben, Logo -- direkt beim Textfeld. */}
+                  <div className="mt-4 flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-border pt-3">
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-muted-foreground">
+                        Höhe (px, Modulreihe)
+                      </span>
+                      <NumberField
+                        value={pstate.ticker.heightPx}
+                        min={8}
+                        max={1024}
+                        className="h-9 w-24"
+                        onCommit={(v) => void cmd({ type: 'setTicker', patch: { heightPx: v } })}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-muted-foreground">Schrift</span>
+                      <input
+                        type="color"
+                        value={pstate.ticker.color}
+                        onChange={(e) =>
+                          void cmd({ type: 'setTicker', patch: { color: e.target.value } })
+                        }
+                        className="h-9 w-12 cursor-pointer rounded-md border border-border bg-transparent"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-xs text-muted-foreground">Hintergrund</span>
+                      <input
+                        type="color"
+                        value={pstate.ticker.bg}
+                        onChange={(e) =>
+                          void cmd({ type: 'setTicker', patch: { bg: e.target.value } })
+                        }
+                        className="h-9 w-12 cursor-pointer rounded-md border border-border bg-transparent"
+                      />
+                    </label>
+                    <div className="block">
+                      <span className="mb-1 block text-xs text-muted-foreground">Logo</span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9"
+                          onClick={() => void pickTickerLogo()}
+                        >
+                          <ImageIcon className="size-3.5" /> wählen…
+                        </Button>
+                        {pstate.ticker.logoUrl && (
+                          <>
+                            <img
+                              src={pstate.ticker.logoUrl}
+                              alt=""
+                              className="h-9 w-auto rounded border border-border bg-black/40 p-0.5"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-9"
+                              title="Logo entfernen"
+                              onClick={() =>
+                                void cmd({ type: 'setTicker', patch: { logoUrl: null } })
+                              }
+                            >
+                              <X className="size-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {pstate.ticker.logoUrl && (
+                      <label className="block">
+                        <span className="mb-1 block text-xs text-muted-foreground">
+                          Logo-Verhalten
+                        </span>
+                        <select
+                          value={pstate.ticker.logoMode}
+                          onChange={(e) =>
+                            void cmd({
+                              type: 'setTicker',
+                              patch: { logoMode: e.target.value as 'fixed' | 'scroll' }
+                            })
+                          }
+                          className={`${selectClass} w-auto`}
+                        >
+                          <option value="scroll">läuft mit dem Text mit</option>
+                          <option value="fixed">steht links fest</option>
+                        </select>
+                      </label>
+                    )}
+                  </div>
+                </Card>
+              )}
+            </div>
           )}
 
           <div className="flex flex-col gap-6 xl:flex-row">

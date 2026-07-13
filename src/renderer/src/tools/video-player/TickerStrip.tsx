@@ -1,9 +1,17 @@
 // Laufschrift-Streifen des LED-Trailers (unterste Modulreihe). Läuft in ALLEN
-// Wiedergabe-Kontexten (Vorschau, Vollbild-Ausgabe, NDI-Spiegel), da er Teil der
+// Wiedergabe-Kontexten (Vorschau, Vollbild-Ausgabe), da er Teil der
 // PlaybackEngine-Komposition ist. Tempo ist in WAND-Pixeln definiert und wird
 // über das Größenverhältnis des Streifens umgerechnet -> auf dem LED läuft der
 // Text exakt mit den eingestellten px/s, in der kleinen Vorschau entsprechend
 // langsamer. Bewusst Inline-Styles (Farben kommen vom Nutzer, kein Theme).
+//
+// Robustheit des Endlos-Laufs: Die Periodenbreite wird JEDEN FRAME live am DOM
+// gemessen (getBoundingClientRect, subpixelgenau) statt einmalig in den State
+// -- das Logo-<img> lädt asynchron und ändert die Blockbreite nachträglich; mit
+// einer veralteten Breite setzte der Lauf zu früh zurück (Logo überlappte den
+// Text, und beim Auslaufen verschwand der Rest vor dem Bildrand). Zusätzlich:
+// width:max-content + flexShrink:0 (Flex kann nichts stauchen) und ein echter
+// Modulo-Wrap (while), damit auch ein Breitensprung sauber normalisiert.
 
 import { useEffect, useRef, useState } from 'react'
 import type { PlayerTickerState } from '@shared/types'
@@ -35,11 +43,8 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
   const logoFixed = ticker.logoMode === 'fixed' && !!ticker.logoUrl
   const hasContent = !!text || logoScrolls
 
-  // Breite eines Inhaltsblocks messen -- per ResizeObserver statt einmaligem
-  // Zugriff nach dem Render: das Logo-<img> lädt ASYNCHRON, sein tatsächliches
-  // Breitenwachstum kommt also erst NACH dem ersten Messen. Ohne Beobachter blieb
-  // blockW auf dem zu kleinen Anfangswert stehen -> der Endlos-Lauf setzte zu
-  // früh zurück, Logo und Folgetext überlappten sich sichtbar bei jedem Umlauf.
+  // Blockbreite in den State spiegeln -- NUR für die Anzahl der Wiederholungen
+  // (Kachelung); der Lauf selbst liest die Breite live im RAF.
   useEffect(() => {
     if (!hasContent) {
       setBlockW(0)
@@ -47,16 +52,17 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
     }
     const el = blockRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => setBlockW(el.offsetWidth))
+    const ro = new ResizeObserver(() => setBlockW(el.getBoundingClientRect().width))
     ro.observe(el)
-    setBlockW(el.offsetWidth)
+    setBlockW(el.getBoundingClientRect().width)
     return () => ro.disconnect()
   }, [hasContent])
 
-  // Endlos-Marquee: ein RAF-Ticker verschiebt den Track; nach einer Blockbreite
-  // wird zurückgesetzt (die Blöcke wiederholen sich -> nahtlos).
+  // Endlos-Marquee: ein RAF-Ticker verschiebt den Track; nach einer PERIODE
+  // (= live gemessene Blockbreite) wird per Modulo zurückgesetzt -> nahtlos,
+  // auch wenn die Breite sich mitten im Lauf ändert (Logo fertig geladen).
   useEffect(() => {
-    if (!hasContent || blockW <= 0 || size.w <= 0) return
+    if (!hasContent || size.w <= 0) return
     const el = trackRef.current
     if (!el) return
     // px/s auf dem LED -> px/s auf dem (skalierten) Streifen.
@@ -68,17 +74,21 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
     const step = (now: number): void => {
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
-      offset -= v * dt
-      if (offset <= -blockW) offset += blockW
-      el.style.transform = `translate3d(${offset}px,0,0)`
+      const w = blockRef.current?.getBoundingClientRect().width ?? 0
+      if (w > 1) {
+        offset -= v * dt
+        while (offset <= -w) offset += w
+        el.style.transform = `translate3d(${offset}px,0,0)`
+      }
       raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [hasContent, blockW, size.w, size.h, ticker.speed, ticker.heightPx])
+  }, [hasContent, size.w, size.h, ticker.speed, ticker.heightPx])
 
-  // Genug Wiederholungen, um das Sichtfenster lückenlos zu füllen.
-  const repeats = blockW > 0 ? Math.max(2, Math.ceil(size.w / blockW) + 1) : 2
+  // Genug Wiederholungen, um das Sichtfenster in jeder Phase lückenlos zu
+  // füllen (sichtbar ist [0 .. w + Sichtbreite] des Tracks).
+  const repeats = blockW > 1 ? Math.min(40, Math.max(2, Math.ceil(size.w / blockW) + 1)) : 2
 
   const block = (withRef: boolean, key: number): JSX.Element => (
     <div
@@ -87,6 +97,7 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
       style={{
         display: 'inline-flex',
         alignItems: 'center',
+        flexShrink: 0,
         gap: Math.round(fontPx * 0.55),
         paddingRight: Math.round(fontPx * 1.4)
       }}
@@ -95,10 +106,15 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
         <img
           src={ticker.logoUrl ?? undefined}
           alt=""
-          style={{ height: Math.round(size.h * 0.76), width: 'auto', display: 'block' }}
+          style={{
+            height: Math.round(size.h * 0.76),
+            width: 'auto',
+            display: 'block',
+            flexShrink: 0
+          }}
         />
       )}
-      {text && <span style={{ whiteSpace: 'pre' }}>{text}</span>}
+      {text && <span style={{ whiteSpace: 'pre', flexShrink: 0 }}>{text}</span>}
     </div>
   )
 
@@ -144,7 +160,10 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
               left: 0,
               top: 0,
               height: '100%',
-              display: 'inline-flex',
+              // max-content: der Track nimmt IMMER seine volle Inhaltsbreite an --
+              // kein Shrink-to-fit der absoluten Positionierung, kein Stauchen.
+              width: 'max-content',
+              display: 'flex',
               alignItems: 'center',
               whiteSpace: 'nowrap',
               willChange: 'transform'
