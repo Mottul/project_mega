@@ -4,7 +4,6 @@ import { currentItem, EMPTY_PLAYER_STATE, nextIndex, tickerStripPx } from '@shar
 import { TickerStrip } from './TickerStrip'
 import type { MediaItem, PatternId, PlayerState } from '@shared/types'
 import { IdlePattern } from './IdlePattern'
-import { NDI_AUDIO_WORKLET_SRC } from './ndiAudioWorkletSource'
 
 interface EngineProps {
   /** 'fill' für die Wand (1:1 eingebacken), 'contain' für die kleine Vorschau. */
@@ -16,10 +15,6 @@ interface EngineProps {
   passive?: boolean
   /** Kleine FPS-Anzeige (tatsächlich dargestellte Videobilder/s) oben rechts. */
   showFps?: boolean
-  /** NDI-Audio-Tap: Wiedergabe-Ton per WebAudio abgreifen und als PCM an den
-   *  main-Prozess melden (api.player.ndiAudio). MediaElementSource koppelt die
-   *  Elemente dabei von den Lautsprechern ab -> kein doppelter Ton. */
-  audioTap?: boolean
 }
 
 // Gemeinsame Wiedergabe-Engine. Zwei Ebenen (0/1), jede hält ein <video> ODER
@@ -38,8 +33,7 @@ export function PlaybackEngine({
   objectFit = 'fill',
   debug = false,
   passive = false,
-  showFps = false,
-  audioTap = false
+  showFps = false
 }: EngineProps): JSX.Element {
   const [state, setState] = useState<PlayerState>(EMPTY_PLAYER_STATE)
   const [active, setActive] = useState(0)
@@ -190,12 +184,9 @@ export function PlaybackEngine({
     const v = videoRefs.current[slot]
     if (!v) return
     v.loop = state.loop === 'one' || (state.playlist.length === 1 && state.loop === 'all')
-    // Spiegel normalerweise stumm (Ton kommt vom Ausgabefenster). Mit Audio-Tap
-    // ist der NDI-Ton PRE-FADER: unabhängig von lokaler Lautstärke/Stumm --
-    // MediaElementSource koppelt den Spiegel ohnehin von den Lautsprechern ab,
-    // der Ton fließt ausschließlich in den NDI-Tap (Crossfades bleiben erhalten).
-    const vol = audioTap ? 1 : state.volume
-    v.muted = audioTap ? false : passive || state.muted
+    // Spiegel normalerweise stumm (Ton kommt vom Ausgabefenster).
+    const vol = state.volume
+    v.muted = passive || state.muted
     if (state.playing) {
       const start = swapped || isNew || !engaged.current.playing
       if (start) {
@@ -369,89 +360,22 @@ export function PlaybackEngine({
     return () => clearInterval(id)
   }, [showFps])
 
-  // CORS-Modus des Audio-Taps mit Sicherheitsnetz: scheitert der CORS-Load der
-  // Medien (z.B. Scheme ohne corsEnabled -> schwarzes Bild), wird SOFORT ohne
-  // CORS neu geladen -- Video hat Vorrang, der Ton meldet sich sichtbar ab.
-  const [tapCors, setTapCors] = useState(audioTap)
-  function onTapVideoError(): void {
-    if (!audioTap || !tapCors) return
-    setTapCors(false)
-    api.player.ndiTapError(
-      'CORS-Load der Medien fehlgeschlagen -- Spiegel lädt ohne CORS neu ' +
-        '(Video läuft, Ton bleibt stumm). media://-corsEnabled/ACAO prüfen.'
-    )
-  }
+  // Audio-Ausgabegerät: nur wo diese Instanz tatsächlich Ton produziert (nicht
+  // im passiven Spiegel). setSinkId ist ein Element-Feature -- einmal gesetzt,
+  // bleibt es auch beim Quellwechsel (assignSlot) erhalten.
   useEffect(() => {
-    if (!audioTap || tapCors) return
-    // Nach dem Umschalten laden die Elemente ihre Quelle neu (Attribut wirkt
-    // erst beim nächsten Resource-Load); Position/Playback wiederherstellen.
+    if (passive) return
+    const id = state.outputAudioDeviceId || 'default'
     for (const v of videoRefs.current) {
-      if (!v || !v.getAttribute('src')) continue
-      const pos = stateRef.current.positionSec
-      const playing = stateRef.current.playing
-      v.load()
-      v.addEventListener(
-        'loadedmetadata',
-        () => {
-          try {
-            v.currentTime = pos
-          } catch {
-            /* Position nicht setzbar -> Sync kommt mit dem nächsten Seek */
-          }
-          if (playing) void v.play().catch(() => {})
-        },
-        { once: true }
-      )
-    }
-  }, [tapCors, audioTap])
-
-  // NDI-Audio-Tap: beide Video-Ebenen in einen AudioWorklet leiten (planare
-  // Float32-Blöcke -> IPC -> NDI-Audioframes). Crossfades mischen sich dadurch
-  // automatisch korrekt. Der Graph endet in Gain(0) -> lokal bleibt es stumm.
-  // Fehler beim Aufbau werden an den main-Prozess gemeldet (sichtbar im Panel).
-  useEffect(() => {
-    if (!audioTap) return
-    let cancelled = false
-    let ctx: AudioContext | null = null
-    const setup = async (): Promise<void> => {
-      ctx = new AudioContext({ sampleRate: 48000 })
-      // Worklet als Blob-URL laden: funktioniert in dev UND paketiert (asar)
-      // identisch; CSP erlaubt blob: für script/worker.
-      const blobUrl = URL.createObjectURL(
-        new Blob([NDI_AUDIO_WORKLET_SRC], { type: 'text/javascript' })
-      )
-      try {
-        await ctx.audioWorklet.addModule(blobUrl)
-      } finally {
-        URL.revokeObjectURL(blobUrl)
+      const withSink = v as
+        (HTMLVideoElement & { setSinkId?: (id: string) => Promise<void> }) | null
+      if (withSink && typeof withSink.setSinkId === 'function') {
+        withSink.setSinkId(id).catch(() => {
+          // Gerät nicht (mehr) verfügbar -> beim Systemstandard bleiben
+        })
       }
-      if (cancelled || !ctx) return
-      const tap = new AudioWorkletNode(ctx, 'ndi-audio-tap', {
-        numberOfInputs: 1,
-        numberOfOutputs: 1,
-        outputChannelCount: [2]
-      })
-      const silent = ctx.createGain()
-      silent.gain.value = 0
-      tap.connect(silent)
-      silent.connect(ctx.destination)
-      tap.port.onmessage = (ev: MessageEvent<{ channels: Float32Array[] }>) => {
-        if (ctx) api.player.ndiAudio({ sampleRate: ctx.sampleRate, channels: ev.data.channels })
-      }
-      for (const v of videoRefs.current) {
-        if (v) ctx.createMediaElementSource(v).connect(tap)
-      }
-      await ctx.resume()
     }
-    setup().catch((err) => {
-      api.player.ndiTapError(err instanceof Error ? err.message : String(err))
-    })
-    return () => {
-      cancelled = true
-      void ctx?.close()
-      ctx = null
-    }
-  }, [audioTap])
+  }, [passive, state.outputAudioDeviceId])
 
   const curr = currentItem(state)
   const xDur = state.transition === 'crossfade' ? state.transitionMs : 0
@@ -485,10 +409,6 @@ export function PlaybackEngine({
               ref={(el) => (videoRefs.current[i] = el)}
               playsInline
               preload="auto"
-              // CORS-Modus nur im NDI-Spiegel: media:// ist cross-origin, und ohne
-              // crossOrigin+ACAO-Header liefert MediaElementSource nur Stille.
-              crossOrigin={tapCors ? 'anonymous' : undefined}
-              onError={onTapVideoError}
               onEnded={() => onVideoEnded(i)}
               onTimeUpdate={() => onVideoTime(i)}
               style={{

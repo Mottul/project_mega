@@ -19,7 +19,6 @@ import { stopRemote } from './services/player/remoteServer'
 import { disposeTimer } from './services/stageTimer'
 import { closeTimerOutput } from './services/timerWindow'
 import { stopTimerNdi } from './services/timerNdi'
-import { stopPlayerNdi } from './services/playerNdi'
 
 const isDev = !app.isPackaged
 
@@ -33,10 +32,9 @@ protocol.registerSchemesAsPrivileged([
   {
     scheme: MEDIA_PROTOCOL,
     // corsEnabled: ohne dieses Privileg sind Custom-Schemes von CORS
-    // AUSGESCHLOSSEN -- ein <video crossOrigin="anonymous"> (NDI-Audio-Tap)
-    // scheitert dann trotz Access-Control-Allow-Origin-Header komplett
-    // (schwarzes Bild). Mit corsEnabled + ACAO-Header ist der Load sauber
-    // CORS-freigegeben und MediaElementSource liefert Ton statt Stille.
+    // AUSGESCHLOSSEN -- ein <video crossOrigin="anonymous"> scheitert dann trotz
+    // Access-Control-Allow-Origin-Header komplett (schwarzes Bild). Aktuell nicht
+    // im Einsatz, aber harmlos gesetzt (falls ein Audio-Tap künftig zurückkehrt).
     privileges: {
       standard: true,
       secure: true,
@@ -175,7 +173,6 @@ app.on('browser-window-created', (_e, win) => {
 // verschwindet sauber aus dem Netz (kein hängender Eintrag bei Empfängern).
 app.on('before-quit', () => {
   stopTimerNdi(false)
-  stopPlayerNdi(false)
 })
 
 // Fernsteuerungs-Server + Timer-Intervall beim Beenden sauber schliessen.

@@ -34,9 +34,6 @@ import type {
   PlayerCommand,
   PlayerEncoderStatus,
   PlayerImportRequest,
-  NdiAudioChunk,
-  PlayerNdiConfig,
-  PlayerNdiStatus,
   PlayerState,
   PlayerTick,
   ProbeResult,
@@ -137,12 +134,6 @@ export const Channels = {
   timerNdiStop: 'timer:ndiStop',
   timerNdiStatus: 'timer:ndiStatus',
   timerNdiChanged: 'timer:ndiChanged', // Event: TimerNdiStatus
-  playerNdiStart: 'player:ndiStart',
-  playerNdiStop: 'player:ndiStop',
-  playerNdiStatus: 'player:ndiStatus',
-  playerNdiChanged: 'player:ndiChanged', // Event: PlayerNdiStatus
-  playerNdiAudio: 'player:ndiAudio', // Renderer (NDI-Spiegel) -> main: PCM-Blöcke
-  playerNdiTapError: 'player:ndiTapError', // Renderer (NDI-Spiegel) -> main: Audio-Tap-Fehler
   // Fenster
   windowOpenTool: 'window:openTool', // Tool in eigenem Fenster öffnen
   // Werkzeuge
@@ -321,15 +312,6 @@ export interface ToolboxApi {
     remoteStart(port: number): Promise<RemoteStatus>
     remoteStop(): Promise<RemoteStatus>
     onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
-    /** NDI-Ausgabe (experimentell): Wiedergabe als NDI-Quelle ins Netz senden. */
-    ndiStart(config: PlayerNdiConfig): Promise<PlayerNdiStatus>
-    ndiStop(): Promise<PlayerNdiStatus>
-    ndiStatus(): Promise<PlayerNdiStatus>
-    onNdiChanged(cb: (status: PlayerNdiStatus) => void): () => void
-    /** Vom NDI-Spiegelfenster: PCM-Block des Audio-Taps (fire-and-forget). */
-    ndiAudio(chunk: NdiAudioChunk): void
-    /** Vom NDI-Spiegelfenster: Fehler beim Aufbau des Audio-Taps melden. */
-    ndiTapError(message: string): void
   }
 
   timer: {

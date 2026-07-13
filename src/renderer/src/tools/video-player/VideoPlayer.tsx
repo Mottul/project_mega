@@ -19,7 +19,6 @@ import {
   Pause,
   Play,
   Plus,
-  Radio,
   RefreshCw,
   Repeat,
   Repeat1,
@@ -49,9 +48,6 @@ import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
 import { EMPTY_PLAYER_STATE, tickerStripPx } from '@shared/player'
 import {
-  DEFAULT_PLAYER_NDI,
-  type PlayerNdiConfig,
-  type PlayerNdiStatus,
   type ConvertJob,
   type DisplayInfo,
   type FitMode,
@@ -96,6 +92,12 @@ const FIT_OPTIONS: { value: FitMode; label: string }[] = [
   { value: 'stretch', label: 'Strecken (auf Wand-Auflösung ziehen)' }
 ]
 
+// Idle-Bild (LED-Trailer): bewusst nur die vier einfachsten, universell
+// tauglichen Muster -- die übrigen (Farbbalken, Siemensstern, …) sind für
+// Kalibrierung gedacht, nicht für den Trailer-Alltag.
+const IDLE_PATTERN_IDS = ['geometry', 'grid', 'checkerboard', 'solid']
+const IDLE_PATTERN_OPTIONS = PATTERN_OPTIONS.filter((o) => IDLE_PATTERN_IDS.includes(o.value))
+
 type ViewMode = 'large' | 'small' | 'list'
 
 function fmtTime(sec: number): string {
@@ -117,9 +119,9 @@ function kindIcon(kind: MediaItem['kind']): JSX.Element {
 }
 
 export function VideoPlayer(): JSX.Element {
-  // Kundenansicht: technische Setup-Optionen ausblenden (Wand/Auflösung, Encoder,
-  // Idle-Bild). Bibliothek, Import, Fit-Modus, Fernsteuerung, Ausgabe und Playlist
-  // bleiben voll bedienbar.
+  // Kundenansicht: technische Setup-Optionen ausblenden (Idle-Bild, Einrichtung).
+  // Bibliothek, Import, Fit-Modus, Fernsteuerung, Ausgabe und Playlist bleiben
+  // voll bedienbar.
   const locked = useKiosk()
   const [enc, setEnc] = useState<PlayerEncoderStatus | null>(null)
   const [library, setLibrary] = useState<MediaItem[]>([])
@@ -127,6 +129,7 @@ export function VideoPlayer(): JSX.Element {
   const [pstate, setPstate] = useState<PlayerState>(EMPTY_PLAYER_STATE)
   const [tick, setTick] = useState<{ positionSec: number; durationSec: number } | null>(null)
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
+  const [audioOutputs, setAudioOutputs] = useState<MediaDeviceInfo[]>([])
 
   // LED-Trailer: fest eingerichtete Formate + Laufschrift + NovaStar-Kopplung.
   const [presets, setPresets] = useState<TrailerPreset[]>([])
@@ -137,11 +140,8 @@ export function VideoPlayer(): JSX.Element {
   const [novaMsg, setNovaMsg] = useState<string | null>(null)
   const [speedDraft, setSpeedDraft] = useState<number | null>(null)
   const [fit, setFit] = useState<FitMode>('blur')
-  const [encoder, setEncoder] = useState('auto')
   const [blurStrength, setBlurStrength] = useState(50)
   const [blurDarken, setBlurDarken] = useState(0)
-  const [loudnorm, setLoudnorm] = useState(false)
-  const [loudnormI, setLoudnormI] = useState(-16)
   const [displayId, setDisplayId] = useState<number | null>(null)
 
   // Live gezogene Position (während des Scrubbens) und die committe Zielposition,
@@ -220,11 +220,8 @@ export function VideoPlayer(): JSX.Element {
       setNovaHost(s.player.trailerNovaHost ?? '')
       setNovaPresets(s.player.trailerNovaPresets ?? [1, 2, 3])
       setFit(s.player.defaultFit)
-      setEncoder(s.player.encoder)
       setBlurStrength(s.player.blurStrength ?? 50)
       setBlurDarken(s.player.blurDarken ?? 0)
-      setLoudnorm(s.player.loudnormEnabled ?? false)
-      setLoudnormI(s.player.loudnormI ?? -16)
       setRemotePort(s.player.remotePort)
       setSaved(s.player.savedPlaylists ?? [])
       if (s.player.outputDisplayId != null) setDisplayId(s.player.outputDisplayId)
@@ -246,6 +243,19 @@ export function VideoPlayer(): JSX.Element {
       offTick()
       offRemote()
     }
+  }, [])
+
+  // Audio-Ausgabegeräte auflisten (Labels brauchen u.U. eine Audio-Berechtigung).
+  useEffect(() => {
+    const load = (): void => {
+      void navigator.mediaDevices
+        .enumerateDevices()
+        .then((d) => setAudioOutputs(d.filter((x) => x.kind === 'audiooutput')))
+        .catch(() => setAudioOutputs([]))
+    }
+    load()
+    navigator.mediaDevices.addEventListener('devicechange', load)
+    return () => navigator.mediaDevices.removeEventListener('devicechange', load)
   }, [])
 
   const jobList = useMemo(
@@ -690,74 +700,6 @@ export function VideoPlayer(): JSX.Element {
                 </div>
               </div>
             )}
-
-            {!locked && (
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Encoder</span>
-                <select
-                  className={selectClass}
-                  value={encoder}
-                  onChange={(e) => {
-                    setEncoder(e.target.value)
-                    void persistPlayer({ encoder: e.target.value })
-                  }}
-                >
-                  <option value="auto">
-                    Automatisch
-                    {enc
-                      ? ` (${enc.available.find((a) => a.id === enc.recommended)?.label ?? enc.recommended})`
-                      : ''}
-                  </option>
-                  {enc?.available.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs text-muted-foreground">
-                  Konvertierung nach H.264/MP4 (GPU, falls verfügbar).
-                </span>
-              </label>
-            )}
-
-            {!locked && (
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={loudnorm}
-                    onChange={(e) => {
-                      setLoudnorm(e.target.checked)
-                      void persistPlayer({ loudnormEnabled: e.target.checked })
-                    }}
-                    className="size-4"
-                  />
-                  <span className="text-sm font-medium">Lautheit angleichen (EBU R128)</span>
-                </label>
-                {loudnorm && (
-                  <label className="flex items-center justify-between gap-2 pl-6">
-                    <span className="text-xs text-muted-foreground">Ziel-Lautheit</span>
-                    <select
-                      className={`${selectClass} h-8 w-auto`}
-                      value={loudnormI}
-                      onChange={(e) => {
-                        const v = Number(e.target.value)
-                        setLoudnormI(v)
-                        void persistPlayer({ loudnormI: v })
-                      }}
-                    >
-                      <option value={-23}>−23 LUFS (Broadcast)</option>
-                      <option value={-16}>−16 LUFS (Streaming)</option>
-                      <option value={-14}>−14 LUFS (laut)</option>
-                    </select>
-                  </label>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  Gleicht beim Einbacken unterschiedlich laute Clips an – wirkt auf neu
-                  importierte/neu konvertierte Medien (mit Tonspur).
-                </span>
-              </div>
-            )}
           </PanelSection>
 
           <PanelSection
@@ -787,10 +729,25 @@ export function VideoPlayer(): JSX.Element {
                 </Button>
               )}
             </div>
-          </PanelSection>
-
-          <PanelSection id="ndi" title="NDI-Ausgabe (Netzwerk)" icon={Radio} defaultOpen={false}>
-            <PlayerNdiPanel wallW={wallW} wallH={wallH} />
+            <label className="block">
+              <span className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Volume2 className="size-3.5" /> Ton-Ausgabe
+              </span>
+              <select
+                className={selectClass}
+                value={pstate.outputAudioDeviceId}
+                onChange={(e) =>
+                  void cmd({ type: 'setOutputAudioDevice', deviceId: e.target.value })
+                }
+              >
+                <option value="">Standardgerät</option>
+                {audioOutputs.map((d, i) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label || `Ausgabegerät ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+            </label>
           </PanelSection>
 
           {!locked && (
@@ -806,7 +763,7 @@ export function VideoPlayer(): JSX.Element {
               >
                 <option value="off">Aus (schwarz)</option>
                 <option value="custom">Eigenes Bild/Video…</option>
-                {PATTERN_OPTIONS.map((o) => (
+                {IDLE_PATTERN_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -1856,194 +1813,5 @@ export function VideoPlayer(): JSX.Element {
         </div>
       }
     />
-  )
-}
-
-/* --------------------------- NDI-Ausgabe (Panel) ------------------------- */
-
-type NdiMode = 'wall' | 'half' | 'hd1080' | 'hd720'
-const NDI_LS_KEY = 'player:ndi'
-
-// NDI mag gerade Maße; außerdem Untergrenze für sinnvolle Streams.
-function evenDim(n: number): number {
-  return Math.max(320, Math.round(n / 2) * 2)
-}
-
-function ndiConfigFor(
-  mode: NdiMode,
-  name: string,
-  fps: number,
-  audio: boolean,
-  wallW: number,
-  wallH: number
-): PlayerNdiConfig {
-  const base = { name: name.trim() || DEFAULT_PLAYER_NDI.name, fps, audio }
-  switch (mode) {
-    case 'half':
-      return { ...base, width: evenDim(wallW / 2), height: evenDim(wallH / 2), fit: 'fill' }
-    case 'hd1080':
-      return { ...base, width: 1920, height: 1080, fit: 'contain' }
-    case 'hd720':
-      return { ...base, width: 1280, height: 720, fit: 'contain' }
-    default:
-      return { ...base, width: evenDim(wallW), height: evenDim(wallH), fit: 'fill' }
-  }
-}
-
-/** NDI-Ausgabe des Players (experimentell): Wandbild (und optional Ton) als
- *  NDI-Quelle ins Netz. Ohne installiertes NDI-Modul nur ein Hinweis. */
-function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX.Element {
-  const [status, setStatus] = useState<PlayerNdiStatus | null>(null)
-  const [prefs, setPrefs] = useState<{ name: string; mode: NdiMode; fps: number; audio: boolean }>(
-    () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(NDI_LS_KEY) ?? 'null')
-        if (saved && typeof saved.name === 'string') {
-          return {
-            name: saved.name,
-            mode: ['wall', 'half', 'hd1080', 'hd720'].includes(saved.mode) ? saved.mode : 'wall',
-            fps: [25, 30, 50].includes(saved.fps) ? saved.fps : 30,
-            audio: !!saved.audio
-          }
-        }
-      } catch {
-        /* defekter Eintrag -> Defaults */
-      }
-      return { name: DEFAULT_PLAYER_NDI.name, mode: 'wall', fps: 30, audio: true }
-    }
-  )
-
-  useEffect(() => {
-    void api.player.ndiStatus().then(setStatus)
-    return api.player.onNdiChanged(setStatus)
-  }, [])
-
-  // Frame-Zähler lebt im main -> während des Sendens gelegentlich nachfragen.
-  useEffect(() => {
-    if (!status?.running) return
-    const t = setInterval(() => void api.player.ndiStatus().then(setStatus), 2000)
-    return () => clearInterval(t)
-  }, [status?.running])
-
-  function patch(p: Partial<typeof prefs>): void {
-    setPrefs((prev) => {
-      const next = { ...prev, ...p }
-      try {
-        localStorage.setItem(NDI_LS_KEY, JSON.stringify(next))
-      } catch {
-        /* localStorage nicht verfügbar */
-      }
-      return next
-    })
-  }
-
-  if (!status) return <p className="text-xs text-muted-foreground">Lade…</p>
-  if (!status.available) {
-    return (
-      <div className="space-y-2 text-xs text-muted-foreground">
-        <p>
-          NDI-Modul nicht verfügbar – die App läuft normal weiter. Zum Aktivieren einmalig
-          <span className="font-mono"> npm run ndi:setup</span> ausführen (siehe README).
-        </p>
-        {status.error && <p className="break-words font-mono text-[10px]">{status.error}</p>}
-      </div>
-    )
-  }
-
-  const running = status.running
-  const modes: { value: NdiMode; label: string }[] = [
-    { value: 'wall', label: `Wand 1:1 (${evenDim(wallW)} × ${evenDim(wallH)})` },
-    { value: 'half', label: `Wand 50 % (${evenDim(wallW / 2)} × ${evenDim(wallH / 2)})` },
-    { value: 'hd1080', label: '1920 × 1080 (einbetten)' },
-    { value: 'hd720', label: '1280 × 720 (einbetten)' }
-  ]
-  return (
-    <>
-      <label className="block">
-        <span className="mb-1 block text-xs text-muted-foreground">Quellenname im Netz</span>
-        <Input
-          value={prefs.name}
-          disabled={running}
-          onChange={(e) => patch({ name: e.target.value })}
-        />
-      </label>
-      <div className="grid grid-cols-2 gap-2">
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Auflösung</span>
-          <select
-            className={`${selectClass} w-full`}
-            disabled={running}
-            value={prefs.mode}
-            onChange={(e) => patch({ mode: e.target.value as NdiMode })}
-          >
-            {modes.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Bildrate</span>
-          <select
-            className={`${selectClass} w-full`}
-            disabled={running}
-            value={prefs.fps}
-            onChange={(e) => patch({ fps: Number(e.target.value) })}
-          >
-            {[25, 30, 50].map((f) => (
-              <option key={f} value={f}>
-                {f} fps
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          className="size-4"
-          disabled={running}
-          checked={prefs.audio}
-          onChange={(e) => patch({ audio: e.target.checked })}
-        />
-        Audio mitsenden
-      </label>
-      <p className="text-[11px] text-muted-foreground">
-        Ton ist Pre-Fader (unabhängig von lokaler Lautstärke/Stumm). Volle Auflösung braucht
-        Gigabit-LAN (~100–150 Mbit/s bei 1080p30).
-      </p>
-      {running ? (
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => void api.player.ndiStop().then(setStatus)}
-        >
-          <X className="size-4" /> NDI-Ausgabe stoppen
-        </Button>
-      ) : (
-        <Button
-          className="w-full"
-          onClick={() =>
-            void api.player
-              .ndiStart(ndiConfigFor(prefs.mode, prefs.name, prefs.fps, prefs.audio, wallW, wallH))
-              .then(setStatus)
-          }
-        >
-          <Radio className="size-4" /> NDI-Ausgabe starten
-        </Button>
-      )}
-      {running && (
-        <p className="text-xs text-muted-foreground">
-          Sendet als <span className="font-medium text-foreground">„{status.config.name}“</span> ·{' '}
-          {status.config.width}×{status.config.height}@{status.config.fps}
-          {status.config.audio
-            ? ` · Audio: ${status.audioChunks} Blöcke, Pegel ${Math.round(status.audioLevel * 100)} %`
-            : ''}{' '}
-          · <span className="tabular-nums">{status.framesSent}</span> Frames
-        </p>
-      )}
-      {status.error && <p className="text-xs text-destructive">{status.error}</p>}
-    </>
   )
 }

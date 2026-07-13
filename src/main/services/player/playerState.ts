@@ -38,7 +38,8 @@ function ensureInit(): void {
       bg: p.tickerBg,
       logoUrl: p.tickerLogoUrl,
       logoMode: p.tickerLogoMode
-    }
+    },
+    outputAudioDeviceId: p.outputAudioDeviceId ?? ''
   }
 }
 
@@ -267,6 +268,10 @@ export function applyCommand(cmd: PlayerCommand): void {
       })
       break
     }
+    case 'setOutputAudioDevice':
+      state.outputAudioDeviceId = cmd.deviceId
+      setSettings({ player: { ...getSettings().player, outputAudioDeviceId: cmd.deviceId } })
+      break
     case 'setIdleMedia':
       if (cmd.url) {
         state.idlePattern = 'custom'

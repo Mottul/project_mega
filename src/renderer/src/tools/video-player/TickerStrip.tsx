@@ -35,10 +35,23 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
   const logoFixed = ticker.logoMode === 'fixed' && !!ticker.logoUrl
   const hasContent = !!text || logoScrolls
 
-  // Breite eines Inhaltsblocks messen (nach Text-/Logo-/Größenänderung).
+  // Breite eines Inhaltsblocks messen -- per ResizeObserver statt einmaligem
+  // Zugriff nach dem Render: das Logo-<img> lädt ASYNCHRON, sein tatsächliches
+  // Breitenwachstum kommt also erst NACH dem ersten Messen. Ohne Beobachter blieb
+  // blockW auf dem zu kleinen Anfangswert stehen -> der Endlos-Lauf setzte zu
+  // früh zurück, Logo und Folgetext überlappten sich sichtbar bei jedem Umlauf.
   useEffect(() => {
-    setBlockW(blockRef.current?.offsetWidth ?? 0)
-  }, [text, ticker.logoUrl, ticker.logoMode, fontPx, size.w])
+    if (!hasContent) {
+      setBlockW(0)
+      return
+    }
+    const el = blockRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setBlockW(el.offsetWidth))
+    ro.observe(el)
+    setBlockW(el.offsetWidth)
+    return () => ro.disconnect()
+  }, [hasContent])
 
   // Endlos-Marquee: ein RAF-Ticker verschiebt den Track; nach einer Blockbreite
   // wird zurückgesetzt (die Blöcke wiederholen sich -> nahtlos).

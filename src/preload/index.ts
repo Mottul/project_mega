@@ -91,14 +91,7 @@ const api: ToolboxApi = {
     remoteStatus: () => ipcRenderer.invoke(Channels.playerRemoteStatus),
     remoteStart: (port) => ipcRenderer.invoke(Channels.playerRemoteStart, port),
     remoteStop: () => ipcRenderer.invoke(Channels.playerRemoteStop),
-    onRemoteChanged: (cb) => subscribe(Channels.playerRemoteChanged, (s) => cb(s as never)),
-    ndiStart: (config) => ipcRenderer.invoke(Channels.playerNdiStart, config),
-    ndiStop: () => ipcRenderer.invoke(Channels.playerNdiStop),
-    ndiStatus: () => ipcRenderer.invoke(Channels.playerNdiStatus),
-    onNdiChanged: (cb) => subscribe(Channels.playerNdiChanged, (s) => cb(s as never)),
-    // fire-and-forget: PCM-Blöcke kommen ~30x/s, eine Antwort braucht niemand
-    ndiAudio: (chunk) => ipcRenderer.send(Channels.playerNdiAudio, chunk),
-    ndiTapError: (message) => ipcRenderer.send(Channels.playerNdiTapError, message)
+    onRemoteChanged: (cb) => subscribe(Channels.playerRemoteChanged, (s) => cb(s as never))
   },
 
   timer: {

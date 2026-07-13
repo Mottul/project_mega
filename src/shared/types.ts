@@ -343,6 +343,9 @@ export interface PlayerState {
   outputOpen: boolean
   wall: WallResolution
   ticker: PlayerTickerState // Laufschrift (LED-Trailer): Streifen unten im Bild
+  /** Audio-Ausgabegerät (setSinkId-deviceId; '' = Systemstandard). Persistiert,
+   *  gilt überall wo die Engine tatsächlich Ton produziert. */
+  outputAudioDeviceId: string
   seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
   /** Bei Shuffle: VORAB gewürfelter nächster Index (-1 = keiner). Main würfelt,
    *  alle Fenster lesen denselben Wert -> das vorgeladene Medium ist garantiert
@@ -382,6 +385,7 @@ export type PlayerCommand =
   // LED-Trailer: Preset (Format) umschalten bzw. Laufschrift ändern.
   | { type: 'applyPreset'; index: number }
   | { type: 'setTicker'; patch: Partial<Omit<PlayerTickerState, 'enabled'>> }
+  | { type: 'setOutputAudioDevice'; deviceId: string }
   | { type: 'ended' } // vom Ausgabefenster gemeldet: aktuelles Medium fertig
 
 /* --------------------------- Stage-Timer & Uhr --------------------------- */
@@ -472,47 +476,6 @@ export const DEFAULT_TIMER_NDI: TimerNdiConfig = {
   width: 1920,
   height: 1080,
   fps: 30
-}
-
-/** NDI-Ausgabe des Video-Players (experimentell): ein Offscreen-Spiegel der
- *  Wiedergabe sendet Bild (und optional Ton) als NDI-Quelle ins Netz. */
-export interface PlayerNdiConfig {
-  name: string
-  width: number
-  height: number
-  fps: number
-  /** fill = Wandbild 1:1 (gleiches Seitenverhältnis), contain = in die
-   *  Zielauflösung einbetten (schwarze Ränder bei anderem Seitenverhältnis). */
-  fit: 'fill' | 'contain'
-  audio: boolean
-}
-
-export interface PlayerNdiStatus {
-  available: boolean
-  running: boolean
-  config: PlayerNdiConfig
-  framesSent: number
-  /** Anzahl der beim Sender angekommenen PCM-Blöcke -- 0 bei laufender
-   *  Wiedergabe deutet auf ein Problem im Audio-Tap des Spiegelfensters. */
-  audioChunks: number
-  /** Spitzenpegel des Taps (0..1, abklingend): 0 bei Blöcken = Stille (CORS/Tonspur). */
-  audioLevel: number
-  error: string | null
-}
-
-export const DEFAULT_PLAYER_NDI: PlayerNdiConfig = {
-  name: 'MegaToolBox Player',
-  width: 1920,
-  height: 1080,
-  fps: 30,
-  fit: 'fill',
-  audio: true
-}
-
-/** PCM-Block des NDI-Audio-Taps (Renderer -> main): planare Float32-Kanäle. */
-export interface NdiAudioChunk {
-  sampleRate: number
-  channels: Float32Array[]
 }
 
 /* -------------------------------- Dialog -------------------------------- */
@@ -760,15 +723,19 @@ export interface PlayerSettings {
   idlePattern: PatternId | 'off' | 'custom'
   idleMediaUrl: string | null
   idleMediaKind: 'image' | 'video' | null
-  encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
+  // 'auto' wählt automatisch den besten verfügbaren Encoder (GPU, falls vorhanden)
+  // -- in dieser Ein-Tool-App bewusst ohne UI, damit niemand versehentlich einen
+  // ungeeigneten Encoder wählt.
+  encoder: string
   // Blur-Fill: Unschärfe-Stärke (0..100, 50 = bisheriger Standard) und Abdunkelung
   // des Hintergrunds (0..100 %). Wird beim Einbacken angewandt -> gilt für neu
   // importierte/neu konvertierte Medien.
   blurStrength: number
   blurDarken: number
   // Loudness-Normalisierung (EBU R128 / ffmpeg loudnorm) beim Einbacken: gleicht
-  // unterschiedlich laute Clips auf ein Ziel an. Standard AUS (ändert bestehende
-  // Medien nicht). Zielwerte: Integrated LUFS, True Peak (dBTP), Range (LU).
+  // unterschiedlich laute Clips auf ein Ziel an. Standardmäßig AN (bewusst ohne
+  // UI in dieser Ein-Tool-App); Zielwerte: Integrated LUFS, True Peak (dBTP),
+  // Range (LU).
   loudnormEnabled: boolean
   loudnormI: number
   loudnormTp: number
@@ -776,6 +743,8 @@ export interface PlayerSettings {
   remoteEnabled: boolean
   remotePort: number
   savedPlaylists: SavedPlaylist[]
+  /** Audio-Ausgabegerät der Wiedergabe (setSinkId-deviceId; '' = Standard). */
+  outputAudioDeviceId: string
   // ---- LED-Trailer ----
   /** Die drei fest eingerichteten Formate des Trailers. */
   trailerPresets: TrailerPreset[]
@@ -809,13 +778,14 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   encoder: 'auto',
   blurStrength: 50,
   blurDarken: 0,
-  loudnormEnabled: false,
+  loudnormEnabled: true,
   loudnormI: -16,
   loudnormTp: -1.5,
   loudnormLra: 11,
   remoteEnabled: false,
   remotePort: 8088,
   savedPlaylists: [],
+  outputAudioDeviceId: '',
   // Platzhalter-Auflösungen -- echte Trailer-Werte in der Einrichtung eintragen.
   trailerPresets: [
     { name: 'Preset 1', width: 1152, height: 576, ticker: false },

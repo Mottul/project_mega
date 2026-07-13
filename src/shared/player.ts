@@ -32,6 +32,7 @@ export const EMPTY_PLAYER_STATE: PlayerState = {
     logoUrl: null,
     logoMode: 'scroll'
   },
+  outputAudioDeviceId: '',
   seekSeq: 0,
   shuffleNext: -1
 }
