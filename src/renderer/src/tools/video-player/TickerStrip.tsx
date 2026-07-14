@@ -134,7 +134,8 @@ export function TickerStrip({ ticker }: { ticker: PlayerTickerState }): JSX.Elem
         overflow: 'hidden',
         background: ticker.bg,
         color: ticker.color,
-        fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        // '' = System-Standard; sonst der im Stil gewählte Font-Stack.
+        fontFamily: ticker.fontFamily || "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
         fontWeight: 700,
         fontSize: fontPx,
         lineHeight: 1

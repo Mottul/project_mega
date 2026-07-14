@@ -3,7 +3,14 @@
 // Änderung wird an ALLE Fenster gebroadcastet -> ein einziger, geteilter Zustand.
 
 import { EMPTY_PLAYER_STATE, nextIndex, prevIndex, rollShuffleNext } from '@shared/player'
-import type { MediaItem, PlayerCommand, PlayerState, PlayerTick } from '@shared/types'
+import {
+  DEFAULT_TICKER_STYLE,
+  type MediaItem,
+  type PlayerCommand,
+  type PlayerState,
+  type PlayerTick,
+  type TickerStyle
+} from '@shared/types'
 import { getMedia } from './mediaLibrary'
 import { getSettings, setSettings } from '../store'
 
@@ -29,17 +36,26 @@ function ensureInit(): void {
     idleMediaKind: p.idleMediaKind,
     wall: { width: p.wallWidth, height: p.wallHeight },
     ticker: {
-      // enabled folgt dem aktiven Trailer-Preset (nicht separat persistiert)
+      // Gestaltung kommt aus dem AKTIVEN Preset; enabled folgt dem Preset-Flag.
+      // Der Text ist Live-Inhalt und presetübergreifend.
+      ...(p.trailerPresets?.[p.trailerActivePreset]?.tickerStyle ?? DEFAULT_TICKER_STYLE),
       enabled: !!p.trailerPresets?.[p.trailerActivePreset]?.ticker,
-      heightPx: p.tickerHeight,
-      text: p.tickerText,
-      speed: p.tickerSpeed,
-      color: p.tickerColor,
-      bg: p.tickerBg,
-      logoUrl: p.tickerLogoUrl,
-      logoMode: p.tickerLogoMode
+      text: p.tickerText
     },
     outputAudioDeviceId: p.outputAudioDeviceId ?? ''
+  }
+}
+
+/** Gestaltungs-Anteil des Live-Zustands (für die Persistierung ins Preset). */
+function styleOf(t: PlayerState['ticker']): TickerStyle {
+  return {
+    heightPx: t.heightPx,
+    speed: t.speed,
+    color: t.color,
+    bg: t.bg,
+    logoUrl: t.logoUrl,
+    logoMode: t.logoMode,
+    fontFamily: t.fontFamily
   }
 }
 
@@ -227,14 +243,15 @@ export function applyCommand(cmd: PlayerCommand): void {
       setSettings({ player: { ...getSettings().player, idlePattern: state.idlePattern } })
       break
     case 'applyPreset': {
-      // LED-Trailer: Format umschalten. Wand-Auflösung + Laufschrift-Sichtbarkeit
-      // folgen dem Preset; persistiert, damit Upload/Import dieselbe Zielgröße sehen.
+      // LED-Trailer: Format umschalten. Wand-Auflösung, Laufschrift-Sichtbarkeit
+      // UND -Gestaltung folgen dem Preset (jedes Format hat seinen eigenen Stil);
+      // persistiert, damit Upload/Import dieselbe Zielgröße sehen.
       const p = getSettings().player
       const i = Math.max(0, Math.min(Math.round(cmd.index), p.trailerPresets.length - 1))
       const preset = p.trailerPresets[i]
       if (!preset) break
       state.wall = { width: preset.width, height: preset.height }
-      state.ticker = { ...state.ticker, enabled: preset.ticker }
+      state.ticker = { ...state.ticker, ...preset.tickerStyle, enabled: preset.ticker }
       setSettings({
         player: {
           ...p,
@@ -252,19 +269,16 @@ export function applyCommand(cmd: PlayerCommand): void {
         patch.heightPx = Math.max(8, Math.min(1024, Math.round(patch.heightPx)))
       if (patch.speed != null) patch.speed = Math.max(10, Math.min(1000, Math.round(patch.speed)))
       if (patch.text != null) patch.text = String(patch.text).slice(0, 500)
+      if (patch.fontFamily != null) patch.fontFamily = String(patch.fontFamily).slice(0, 200)
       state.ticker = { ...state.ticker, ...patch, enabled: state.ticker.enabled }
+      // Gestaltung ins AKTIVE Preset schreiben (Preset-Wechsel stellt sie wieder
+      // her); der Text ist presetübergreifender Live-Inhalt.
       const p = getSettings().player
+      const presets = p.trailerPresets.map((pre, j) =>
+        j === p.trailerActivePreset ? { ...pre, tickerStyle: styleOf(state.ticker) } : pre
+      )
       setSettings({
-        player: {
-          ...p,
-          tickerHeight: state.ticker.heightPx,
-          tickerText: state.ticker.text,
-          tickerSpeed: state.ticker.speed,
-          tickerColor: state.ticker.color,
-          tickerBg: state.ticker.bg,
-          tickerLogoUrl: state.ticker.logoUrl,
-          tickerLogoMode: state.ticker.logoMode
-        }
+        player: { ...p, trailerPresets: presets, tickerText: state.ticker.text }
       })
       break
     }

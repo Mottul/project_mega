@@ -2,7 +2,12 @@
 // main-Prozess (autoritativer Zustand) UND das Ausgabefenster (Vor-Pufferung des
 // nächsten Mediums für nahtlose Übergänge) EXAKT dieselbe Reihenfolge berechnen.
 
-import type { MediaItem, PlayerState, WallResolution } from './types'
+import {
+  DEFAULT_TICKER_STYLE,
+  type MediaItem,
+  type PlayerState,
+  type WallResolution
+} from './types'
 
 export const EMPTY_PLAYER_STATE: PlayerState = {
   playlist: [],
@@ -22,16 +27,7 @@ export const EMPTY_PLAYER_STATE: PlayerState = {
   idleMediaKind: null,
   outputOpen: false,
   wall: { width: 1920, height: 1080 },
-  ticker: {
-    enabled: false,
-    heightPx: 104,
-    text: '',
-    speed: 120,
-    color: '#ffffff',
-    bg: '#000000',
-    logoUrl: null,
-    logoMode: 'scroll'
-  },
+  ticker: { ...DEFAULT_TICKER_STYLE, enabled: false, text: '' },
   outputAudioDeviceId: '',
   seekSeq: 0,
   shuffleNext: -1

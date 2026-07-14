@@ -59,6 +59,7 @@ import {
   type PlayerState,
   type RemoteStatus,
   type SavedPlaylist,
+  type NamedTickerStyle,
   type TrailerPreset,
   type TransitionMode
 } from '@shared/types'
@@ -74,6 +75,29 @@ const selectClass =
 // Kompakte Variante für Zeilen-Layouts (neben h-8-Knöpfen): natürliche Breite.
 const selectClassCompact =
   'h-8 rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
+
+// Schriftarten der Laufschrift: kuratierte, auf Windows sicher vorhandene
+// Stacks (Systemfonts -- keine Font-Dateien nötig). '' = System-Standard.
+const TICKER_FONTS: { value: string; label: string }[] = [
+  { value: '', label: 'Standard (System)' },
+  { value: '"Arial Black", Arial, sans-serif', label: 'Arial Black (breit/fett)' },
+  { value: 'Impact, "Arial Black", sans-serif', label: 'Impact (kompakt)' },
+  { value: 'Arial, Helvetica, sans-serif', label: 'Arial' },
+  { value: 'Verdana, Geneva, sans-serif', label: 'Verdana' },
+  { value: 'Tahoma, Geneva, sans-serif', label: 'Tahoma' },
+  { value: '"Segoe UI", sans-serif', label: 'Segoe UI' },
+  { value: 'Georgia, serif', label: 'Georgia (Serife)' },
+  { value: '"Times New Roman", Times, serif', label: 'Times New Roman' },
+  { value: 'Consolas, "Courier New", monospace', label: 'Consolas (Mono)' }
+]
+
+function styleUid(): string {
+  try {
+    return crypto.randomUUID()
+  } catch {
+    return `s${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`
+  }
+}
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tif', 'tiff', 'gif']
 const VIDEO_EXTENSIONS = [
@@ -145,6 +169,10 @@ export function VideoPlayer(): JSX.Element {
   const [novaPresets, setNovaPresets] = useState<number[]>([1, 2, 3])
   const [novaMsg, setNovaMsg] = useState<string | null>(null)
   const [speedDraft, setSpeedDraft] = useState<number | null>(null)
+  // Stil-Vorlagen der Laufschrift (benannt, abrufbar) + UI-Zustand dafür.
+  const [tickerStyles, setTickerStyles] = useState<NamedTickerStyle[]>([])
+  const [styleSel, setStyleSel] = useState('')
+  const [styleName, setStyleName] = useState('')
   const [fit, setFit] = useState<FitMode>('blur')
   const [blurStrength, setBlurStrength] = useState(50)
   const [blurDarken, setBlurDarken] = useState(0)
@@ -225,6 +253,7 @@ export function VideoPlayer(): JSX.Element {
       setNovaEnabled(s.player.trailerNovaEnabled ?? false)
       setNovaHost(s.player.trailerNovaHost ?? '')
       setNovaPresets(s.player.trailerNovaPresets ?? [1, 2, 3])
+      setTickerStyles(s.player.tickerStyles ?? [])
       setFit(s.player.defaultFit)
       setBlurStrength(s.player.blurStrength ?? 50)
       setBlurDarken(s.player.blurDarken ?? 0)
@@ -436,7 +465,7 @@ export function VideoPlayer(): JSX.Element {
     await cmd({ type: 'applyPreset', index: i })
     // Ziel-Auflösung dieses Presets (Wand minus Laufschriftzeile) direkt aus dem
     // Preset rechnen -- nicht aus pstate (der Broadcast kommt asynchron).
-    const strip = p.ticker ? Math.max(0, Math.min(pstate.ticker.heightPx, p.height - 16)) : 0
+    const strip = p.ticker ? Math.max(0, Math.min(p.tickerStyle.heightPx, p.height - 16)) : 0
     const cw = p.width
     const ch = p.height - strip
     const stale = library.filter((m) => m.width !== cw || m.height !== ch)
@@ -470,6 +499,59 @@ export function VideoPlayer(): JSX.Element {
   async function pickTickerLogo(): Promise<void> {
     const r = await api.player.pickTickerLogo()
     if (r) void cmd({ type: 'setTicker', patch: { logoUrl: r.url } })
+  }
+
+  /** Stil-Vorlage anwenden: Gestaltung in den Live-Zustand (und damit ins
+   *  aktive Preset) übernehmen -- der Text bleibt unverändert. */
+  function applyTickerStyle(id: string): void {
+    setStyleSel(id)
+    const s = tickerStyles.find((x) => x.id === id)
+    if (!s) return
+    void cmd({
+      type: 'setTicker',
+      patch: {
+        heightPx: s.heightPx,
+        speed: s.speed,
+        color: s.color,
+        bg: s.bg,
+        logoUrl: s.logoUrl,
+        logoMode: s.logoMode,
+        fontFamily: s.fontFamily
+      }
+    })
+  }
+
+  /** Aktuelle Gestaltung unter Namen speichern (gleicher Name = überschreiben). */
+  async function saveTickerStyle(): Promise<void> {
+    const name = styleName.trim()
+    if (!name) return
+    const t = pstate.ticker
+    const style = {
+      name,
+      heightPx: t.heightPx,
+      speed: t.speed,
+      color: t.color,
+      bg: t.bg,
+      logoUrl: t.logoUrl,
+      logoMode: t.logoMode,
+      fontFamily: t.fontFamily
+    }
+    const existing = tickerStyles.find((x) => x.name.toLowerCase() === name.toLowerCase())
+    const next = existing
+      ? tickerStyles.map((x) => (x.id === existing.id ? { ...x, ...style } : x))
+      : [...tickerStyles, { id: styleUid(), ...style }]
+    setTickerStyles(next)
+    setStyleSel(existing?.id ?? next[next.length - 1].id)
+    setStyleName('')
+    await persistPlayer({ tickerStyles: next })
+  }
+
+  async function deleteTickerStyle(): Promise<void> {
+    if (!styleSel) return
+    const next = tickerStyles.filter((x) => x.id !== styleSel)
+    setTickerStyles(next)
+    setStyleSel('')
+    await persistPlayer({ tickerStyles: next })
   }
 
   async function importFiles(): Promise<void> {
@@ -1126,6 +1208,23 @@ export function VideoPlayer(): JSX.Element {
                         className="h-9 w-12 cursor-pointer rounded-md border border-border bg-transparent"
                       />
                     </label>
+                    <label className="block w-52">
+                      <span className="mb-1 block text-xs text-muted-foreground">Schriftart</span>
+                      <select
+                        value={pstate.ticker.fontFamily}
+                        onChange={(e) =>
+                          void cmd({ type: 'setTicker', patch: { fontFamily: e.target.value } })
+                        }
+                        className={selectClass}
+                        style={{ fontFamily: pstate.ticker.fontFamily || undefined }}
+                      >
+                        {TICKER_FONTS.map((f) => (
+                          <option key={f.label} value={f.value} style={{ fontFamily: f.value }}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <div className="block">
                       <span className="mb-1 block text-xs text-muted-foreground">Logo</span>
                       <div className="flex items-center gap-2">
@@ -1179,6 +1278,69 @@ export function VideoPlayer(): JSX.Element {
                         </select>
                       </label>
                     )}
+                  </div>
+
+                  {/* Stil-Vorlagen: Gestaltung benannt ablegen und abrufen. Die
+                      Gestaltung selbst hängt am aktiven Preset -- eine Vorlage
+                      anzuwenden schreibt sie dorthin. */}
+                  <div className="mt-4 flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-border pt-3">
+                    <label className="block w-64">
+                      <span className="mb-1 block text-xs text-muted-foreground">
+                        Stil-Vorlage abrufen
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={styleSel}
+                          onChange={(e) => applyTickerStyle(e.target.value)}
+                          className={selectClass}
+                          disabled={tickerStyles.length === 0}
+                        >
+                          <option value="">
+                            {tickerStyles.length === 0 ? 'keine gespeichert' : 'Vorlage wählen…'}
+                          </option>
+                          {tickerStyles.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-9 shrink-0"
+                          title="Gewählte Vorlage löschen"
+                          disabled={!styleSel}
+                          onClick={() => void deleteTickerStyle()}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </label>
+                    <label className="block w-72">
+                      <span className="mb-1 block text-xs text-muted-foreground">
+                        Aktuelle Gestaltung als Vorlage speichern
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={styleName}
+                          placeholder="Name der Vorlage…"
+                          className="h-9"
+                          onChange={(e) => setStyleName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') void saveTickerStyle()
+                          }}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 shrink-0"
+                          disabled={!styleName.trim()}
+                          onClick={() => void saveTickerStyle()}
+                        >
+                          <Save className="size-3.5" /> Speichern
+                        </Button>
+                      </div>
+                    </label>
                   </div>
                 </Card>
               )}

@@ -231,24 +231,48 @@ export interface WallResolution {
 // reservieren; das Video läuft dann im Bereich darüber (Inhalts-Auflösung =
 // Wand minus Laufschriftzeile).
 
-export interface TrailerPreset {
-  name: string
-  width: number // Wand-Breite in px (gesamt)
-  height: number // Wand-Höhe in px (gesamt, inkl. evtl. Laufschriftzeile)
-  ticker: boolean // dieses Preset zeigt die Laufschrift unten
-}
-
-/** Live-Zustand der Laufschrift (Teil des autoritativen PlayerState; main
- *  persistiert Änderungen in die Settings). Maße/Tempo in WAND-Pixeln. */
-export interface PlayerTickerState {
-  enabled: boolean // folgt dem aktiven Preset
+/** Gestaltung der Laufschrift (ohne Text -- der ist Live-Inhalt des Operators).
+ *  Maße/Tempo in WAND-Pixeln. Wird JE PRESET gespeichert und kann zusätzlich
+ *  als benannte Vorlage abgelegt/abgerufen werden. */
+export interface TickerStyle {
   heightPx: number // Höhe der untersten Modulreihe
-  text: string
   speed: number // px/s (Wand-Pixel)
   color: string // Textfarbe #rrggbb
   bg: string // Hintergrund #rrggbb
   logoUrl: string | null // media://-URL des Logos
   logoMode: 'fixed' | 'scroll' // Logo steht links fest oder läuft mit
+  fontFamily: string // CSS-Font-Stack; '' = System-Standard
+}
+
+export const DEFAULT_TICKER_STYLE: TickerStyle = {
+  heightPx: 104,
+  speed: 120,
+  color: '#ffffff',
+  bg: '#000000',
+  logoUrl: null,
+  logoMode: 'scroll',
+  fontFamily: ''
+}
+
+/** Benannte, abrufbare Stil-Vorlage der Laufschrift. */
+export interface NamedTickerStyle extends TickerStyle {
+  id: string
+  name: string
+}
+
+export interface TrailerPreset {
+  name: string
+  width: number // Wand-Breite in px (gesamt)
+  height: number // Wand-Höhe in px (gesamt, inkl. evtl. Laufschriftzeile)
+  ticker: boolean // dieses Preset zeigt die Laufschrift unten
+  tickerStyle: TickerStyle // Gestaltung DIESES Presets (Preset-Wechsel lädt sie)
+}
+
+/** Live-Zustand der Laufschrift (Teil des autoritativen PlayerState; main
+ *  persistiert Gestaltungs-Änderungen in das AKTIVE Preset). */
+export type PlayerTickerState = TickerStyle & {
+  enabled: boolean // folgt dem aktiven Preset
+  text: string
 }
 
 /** Ein konvertiertes, abspielbereites Medium in der verwalteten Bibliothek. */
@@ -749,14 +773,11 @@ export interface PlayerSettings {
   /** Die drei fest eingerichteten Formate des Trailers. */
   trailerPresets: TrailerPreset[]
   trailerActivePreset: number
-  // Laufschrift-Einrichtung (Erscheinungsbild; Text/Tempo ändert der Operator).
-  tickerHeight: number // px, Höhe der untersten Modulreihe
+  /** Laufschrift-Text (Live-Inhalt, presetübergreifend; Gestaltung liegt je
+   *  Preset in trailerPresets[].tickerStyle). */
   tickerText: string
-  tickerSpeed: number // px/s
-  tickerColor: string
-  tickerBg: string
-  tickerLogoUrl: string | null
-  tickerLogoMode: 'fixed' | 'scroll'
+  /** Benannte Stil-Vorlagen zum Abrufen (Logo, Farben, Schriftart, …). */
+  tickerStyles: NamedTickerStyle[]
   // NovaStar-Kopplung: Preset-Knopf ruft zusätzlich das Prozessor-Preset ab.
   trailerNovaEnabled: boolean
   trailerNovaHost: string
@@ -788,18 +809,31 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   outputAudioDeviceId: '',
   // Platzhalter-Auflösungen -- echte Trailer-Werte in der Einrichtung eintragen.
   trailerPresets: [
-    { name: 'Preset 1', width: 1152, height: 576, ticker: false },
-    { name: 'Preset 2', width: 960, height: 480, ticker: false },
-    { name: 'Preset 3', width: 768, height: 384, ticker: true }
+    {
+      name: 'Preset 1',
+      width: 1152,
+      height: 576,
+      ticker: false,
+      tickerStyle: { ...DEFAULT_TICKER_STYLE }
+    },
+    {
+      name: 'Preset 2',
+      width: 960,
+      height: 480,
+      ticker: false,
+      tickerStyle: { ...DEFAULT_TICKER_STYLE }
+    },
+    {
+      name: 'Preset 3',
+      width: 768,
+      height: 384,
+      ticker: true,
+      tickerStyle: { ...DEFAULT_TICKER_STYLE }
+    }
   ],
   trailerActivePreset: 0,
-  tickerHeight: 104,
   tickerText: '',
-  tickerSpeed: 120,
-  tickerColor: '#ffffff',
-  tickerBg: '#000000',
-  tickerLogoUrl: null,
-  tickerLogoMode: 'scroll',
+  tickerStyles: [],
   trailerNovaEnabled: false,
   trailerNovaHost: '',
   trailerNovaPresets: [1, 2, 3]

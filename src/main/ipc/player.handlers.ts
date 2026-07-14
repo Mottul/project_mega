@@ -135,9 +135,19 @@ export function registerPlayerHandlers(): void {
     const ext = (src.split('.').pop() || 'png').toLowerCase()
     const storedName = `__ticker-logo-${Date.now()}.${ext}`
     copyFileSync(src, join(mediaDir(), storedName))
-    // Alte Logos best effort aufräumen (das aktive kann noch geladen sein).
+    // Nur UNREFERENZIERTE alte Logos aufräumen: andere Presets und gespeicherte
+    // Stil-Vorlagen können eigene Logos haben -- die dürfen nicht verschwinden.
+    const p = getSettings().player
+    const referenced = new Set(
+      [
+        ...p.trailerPresets.map((pre) => pre.tickerStyle.logoUrl),
+        ...p.tickerStyles.map((s) => s.logoUrl)
+      ]
+        .filter((u): u is string => !!u)
+        .map((u) => u.split('/').pop() ?? '')
+    )
     for (const f of readdirSync(mediaDir())) {
-      if (f.startsWith('__ticker-logo') && f !== storedName) {
+      if (f.startsWith('__ticker-logo') && f !== storedName && !referenced.has(f)) {
         try {
           rmSync(join(mediaDir(), f))
         } catch {
