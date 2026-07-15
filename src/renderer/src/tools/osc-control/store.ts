@@ -15,6 +15,29 @@ export type OscWidgetType =
 /** Verhalten der Felder einer Bank-Kachel. */
 export type BankMode = 'momentary' | 'toggle' | 'knob'
 
+/** Ziel einer Widget-Interaktion: OSC-Nachricht (Default) oder NovaStar-Befehl.
+ *  NovaStar-Widgets sind normale Fader/Schalter/Taster/Auswahl -- nur das Ziel
+ *  ist der (werkzeugübergreifend geteilte) NovaStar-Prozessor statt OSC. */
+export type OscTarget = 'osc' | 'nova'
+
+/** NovaStar-Funktion eines Widgets (nur wenn target === 'nova'). */
+export type NovaFn =
+  | 'brightness' // Fader: 0..100 % (min/max des Faders = %)
+  | 'brightnessSet' // Taster: Helligkeit auf `value` % setzen
+  | 'brightnessStep' // Taster: Helligkeit um `value` % ändern (±)
+  | 'fadeToBlack' // Schalter: an = weich auf 0, aus = weich auf `restore` %
+  | 'freeze' // Schalter: einfrieren / auftauen
+  | 'blackout' // Schalter: schwarz / normal (schließt Freeze aus)
+  | 'preset' // Auswahl: Option-Wert = Preset-Nummer
+
+export interface NovaConfig {
+  fn: NovaFn
+  value: number // brightnessSet: Ziel-%, brightnessStep: ±%, fadeToBlack: Dauer (s)
+  restore: number // fadeToBlack: Helligkeit beim Ausschalten (%)
+}
+
+export const DEFAULT_NOVA: NovaConfig = { fn: 'brightness', value: 10, restore: 100 }
+
 /** Eintrag einer Auswahl-/Bank-Kachel. `value` ist der gespeicherte Live-Wert des
  *  Eintrags (Auswahl: zu sendender Wert; Bank-Schalter: An/Aus 0/1; Bank-Poti:
  *  Reglerwert min..max). */
@@ -58,6 +81,8 @@ export interface OscWidget {
   cols: number // Auswahl/Bank: Spalten im Raster (Zeilen folgen aus der Anzahl; 0 = automatisch)
   bankMode: BankMode // Bank: Verhalten der Felder (Taster/Schalter/Poti)
   endless: boolean // Poti: Endlos-Encoder (sendet relative Schritte statt Absolutwert)
+  target: OscTarget // 'osc' (Default) oder 'nova' -> NovaStar-Prozessor
+  nova: NovaConfig // nur bei target === 'nova'
 }
 
 /** Vorschau-Anzeige eines Sets (gemerkt je Set). */
@@ -291,7 +316,9 @@ export function makeWidget(type: OscWidgetType, title: string = DEFAULT_TITLE): 
     orient: 'v',
     cols: 1,
     bankMode: 'momentary',
-    endless: false
+    endless: false,
+    target: 'osc',
+    nova: { ...DEFAULT_NOVA }
   }
   if (type === 'xy') {
     base.address = `/${slug}/x`
@@ -330,6 +357,85 @@ export function makeWidget(type: OscWidgetType, title: string = DEFAULT_TITLE): 
     ]
   }
   return base
+}
+
+/* ------------------------- NovaStar-Widgets ----------------------------- */
+// Eigene Palette-Einträge, die intern ganz normale Fader/Schalter/Taster/Auswahl
+// sind (target='nova') -- so wird die gesamte Darstellung/Interaktion/Remote
+// wiederverwendet, es fühlt sich aber wie dedizierte NovaStar-Widgets an.
+
+export type NovaWidgetKind =
+  | 'nova-brightness'
+  | 'nova-bright-set'
+  | 'nova-bright-step'
+  | 'nova-fade'
+  | 'nova-freeze'
+  | 'nova-blackout'
+  | 'nova-preset'
+
+export const NOVA_PALETTE: { kind: NovaWidgetKind; type: OscWidgetType; label: string }[] = [
+  { kind: 'nova-brightness', type: 'fader', label: 'Helligkeit' },
+  { kind: 'nova-bright-set', type: 'button', label: 'Helligkeit =' },
+  { kind: 'nova-bright-step', type: 'button', label: 'Helligkeit ±' },
+  { kind: 'nova-fade', type: 'toggle', label: 'Fade to Black' },
+  { kind: 'nova-freeze', type: 'toggle', label: 'Freeze' },
+  { kind: 'nova-blackout', type: 'toggle', label: 'Blackout' },
+  { kind: 'nova-preset', type: 'select', label: 'Presets' }
+]
+
+export const NOVA_FN_LABEL: Record<NovaFn, string> = {
+  brightness: 'Helligkeit (Fader)',
+  brightnessSet: 'Helligkeit setzen',
+  brightnessStep: 'Helligkeit ±',
+  fadeToBlack: 'Fade to Black',
+  freeze: 'Freeze',
+  blackout: 'Blackout',
+  preset: 'Preset abrufen'
+}
+
+/** Fertig konfiguriertes NovaStar-Widget für einen Palette-Eintrag. */
+export function makeNovaWidget(kind: NovaWidgetKind): OscWidget {
+  const entry = NOVA_PALETTE.find((e) => e.kind === kind) ?? NOVA_PALETTE[0]
+  const w = makeWidget(entry.type)
+  w.target = 'nova'
+  w.label = entry.label
+  w.address = '' // NovaStar nutzt keine OSC-Adresse
+  w.color = WIDGET_COLORS[1] // rot-orange -> hebt NovaStar-Widgets optisch ab
+  switch (kind) {
+    case 'nova-brightness':
+      w.min = 0
+      w.max = 100
+      w.value = 100
+      w.nova = { fn: 'brightness', value: 0, restore: 100 }
+      break
+    case 'nova-bright-set':
+      w.nova = { fn: 'brightnessSet', value: 100, restore: 100 }
+      w.label = 'Helligkeit 100 %'
+      break
+    case 'nova-bright-step':
+      w.nova = { fn: 'brightnessStep', value: 10, restore: 100 }
+      w.label = 'Helligkeit +10 %'
+      break
+    case 'nova-fade':
+      w.nova = { fn: 'fadeToBlack', value: 2, restore: 100 }
+      break
+    case 'nova-freeze':
+      w.nova = { fn: 'freeze', value: 0, restore: 100 }
+      break
+    case 'nova-blackout':
+      w.nova = { fn: 'blackout', value: 0, restore: 100 }
+      break
+    case 'nova-preset':
+      w.nova = { fn: 'preset', value: 0, restore: 100 }
+      w.address = ''
+      w.items = [
+        { label: '1', address: '', value: 1 },
+        { label: '2', address: '', value: 2 },
+        { label: '3', address: '', value: 3 }
+      ]
+      break
+  }
+  return w
 }
 
 /** Adresse/Label eines NEU hinzugefügten Widgets durchnummerieren, wenn der Typ
@@ -400,6 +506,12 @@ function normalizeWidget(w: Partial<OscWidget> | undefined): OscWidget {
   merged.cols =
     Number.isFinite(w?.cols) && (w!.cols as number) >= 0 ? Math.round(w!.cols as number) : def.cols
   merged.endless = typeof w?.endless === 'boolean' ? w.endless : def.endless
+  merged.target = w?.target === 'nova' ? 'nova' : 'osc'
+  merged.nova = {
+    fn: (w?.nova?.fn as NovaFn) ?? DEFAULT_NOVA.fn,
+    value: Number.isFinite(w?.nova?.value) ? (w!.nova!.value as number) : DEFAULT_NOVA.value,
+    restore: Number.isFinite(w?.nova?.restore) ? (w!.nova!.restore as number) : DEFAULT_NOVA.restore
+  }
   const min = WIDGET_MIN[type]
   merged.cw = clampInt(merged.cw, min.cw, MAX_COLS)
   merged.ch = clampInt(merged.ch, min.ch, MAX_CH)
@@ -490,6 +602,7 @@ interface OscStoreState {
   setLandscape: (landscape: boolean) => void
 
   addWidget: (type: OscWidgetType, pos?: { gx: number; gy: number }) => string
+  addNovaWidget: (kind: NovaWidgetKind, pos?: { gx: number; gy: number }) => string
   duplicateWidget: (id: string) => string | null
   updateWidget: (id: string, patch: Partial<OscWidget>) => void
   removeWidget: (id: string) => void
@@ -516,6 +629,37 @@ export const useOscSurface = create<OscStoreState>()(
         )
       const patchSet = (fn: (s: OscSet) => OscSet): OscProject[] =>
         mapSets((sets) => sets.map((s) => (s.id === proj().currentSetId ? fn(s) : s)))
+      // Ein fertiges Widget ins aktive Set einfügen (an Klickzelle oder erste freie
+      // Stelle). Von addWidget UND addNovaWidget genutzt.
+      const placeAndAdd = (w: OscWidget, pos?: { gx: number; gy: number }): string => {
+        const cols = get().currentSet().columns
+        const ws = get().currentSet().widgets
+        const cw = Math.min(w.cw, cols)
+        if (pos) {
+          const occ = occupancyOf(ws, cols)
+          let gx = Math.max(0, Math.min(Math.round(pos.gx), cols - cw))
+          let gy = Math.max(0, Math.round(pos.gy))
+          if (!fitsAt(occ, gx, gy, cw, w.ch)) {
+            const rowsLimit = ws.reduce((m, x) => Math.max(m, x.gy + x.ch), 0) + w.ch + 1
+            const free = nearestFree(occ, cols, rowsLimit, cw, w.ch, gx, gy)
+            gx = free.gx
+            gy = free.gy
+          }
+          w.gx = gx
+          w.gy = gy
+        } else {
+          w.gx = -1
+          w.gy = -1
+        }
+        set({
+          projects: mapWidgets((arr) => {
+            const next = [...arr, w]
+            if (!pos) placeMissing(next, cols)
+            return next
+          })
+        })
+        return w.id
+      }
       const initial = seededProject('Projekt 1')
 
       return {
@@ -597,37 +741,17 @@ export const useOscSurface = create<OscStoreState>()(
 
         addWidget: (type, pos) => {
           const w = makeWidget(type, proj().name)
-          const cols = get().currentSet().columns
           const ws = get().currentSet().widgets
           numberWidget(w, ws) // Adresse/Label durchnummerieren, wenn Typ schon da
-          const cw = Math.min(w.cw, cols)
-          if (pos) {
-            // an die angeklickte Zelle setzen; ist sie belegt, auf die
-            // nächstgelegene freie Stelle rücken (statt unter alles zu hängen).
-            const occ = occupancyOf(ws, cols)
-            let gx = Math.max(0, Math.min(Math.round(pos.gx), cols - cw))
-            let gy = Math.max(0, Math.round(pos.gy))
-            if (!fitsAt(occ, gx, gy, cw, w.ch)) {
-              const rowsLimit = ws.reduce((m, x) => Math.max(m, x.gy + x.ch), 0) + w.ch + 1
-              const free = nearestFree(occ, cols, rowsLimit, cw, w.ch, gx, gy)
-              gx = free.gx
-              gy = free.gy
-            }
-            w.gx = gx
-            w.gy = gy
-          } else {
-            // erste freie Stelle in Lesereihenfolge -> füllt seitlich, nicht nur unten
-            w.gx = -1
-            w.gy = -1
-          }
-          set({
-            projects: mapWidgets((arr) => {
-              const next = [...arr, w]
-              if (!pos) placeMissing(next, cols)
-              return next
-            })
-          })
-          return w.id
+          return placeAndAdd(w, pos)
+        },
+        addNovaWidget: (kind, pos) => {
+          const w = makeNovaWidget(kind)
+          const ws = get().currentSet().widgets
+          // nur Label durchnummerieren (NovaStar-Widgets haben keine OSC-Adresse)
+          const sameLabel = ws.filter((x) => x.label === w.label).length
+          if (sameLabel > 0) w.label = `${w.label} ${sameLabel + 1}`
+          return placeAndAdd(w, pos)
         },
         duplicateWidget: (id) => {
           const ws = get().currentSet().widgets
