@@ -102,13 +102,35 @@ function kindOf(path: string): MediaKind {
 // Bibliothek liegen (eigene conv_key je Fit-Modus). Damit die Einträge nicht
 // gleich aussehen, wandert der Fit in den Titel (das Thumbnail wird ohnehin aus
 // dem aufbereiteten Ergebnis erzeugt, zeigt also Blur/Balken/Streckung direkt).
-const FIT_TITLE: Record<PlayerImportRequest['fitMode'], string> = {
+type Fit = PlayerImportRequest['fitMode']
+const FIT_TITLE: Record<Fit, string> = {
   blur: 'Blur',
   bars: 'Letterbox',
   stretch: 'Stretch'
 }
-function titleWithFit(base: string, fit: PlayerImportRequest['fitMode']): string {
-  return `${base} · ${FIT_TITLE[fit]}`
+
+// Namens-Zusatz + tatsächlich nötiger Fit ergeben sich erst NACH dem Prüfen der
+// Quell-Auflösung -- nicht aus dem gewählten Fit-Modus allein:
+//  - gleiche Auflösung  -> nichts verändert            -> „Original" (Stream-Copy)
+//  - gleiches Seitenverh.-> reine Skalierung, Fit egal -> „Scale" (billiger Scale
+//                                                          statt Blur-Graph)
+//  - anderes Seitenverh. -> Fit greift sichtbar        -> Blur/Letterbox/Stretch
+function analyzeFit(
+  fit: Fit,
+  srcW: number | null,
+  srcH: number | null,
+  tgtW: number,
+  tgtH: number
+): { suffix: string; effectiveFit: Fit } {
+  const known = !!srcW && !!srcH
+  const exact = known && srcW === tgtW && srcH === tgtH
+  const sameAspect = known && Math.abs(srcW! / srcH! - tgtW / tgtH) < 0.01
+  if (exact) return { suffix: 'Original', effectiveFit: 'stretch' }
+  if (sameAspect) return { suffix: 'Scale', effectiveFit: 'stretch' }
+  return { suffix: FIT_TITLE[fit], effectiveFit: fit }
+}
+function titleWithSuffix(base: string, suffix: string): string {
+  return `${base} · ${suffix}`
 }
 
 async function probeSource(path: string): Promise<ProbeInfo> {
@@ -151,7 +173,9 @@ function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): 
     info.width === w &&
     info.height === h &&
     info.codecName === 'h264' &&
-    info.pixFmt === 'yuv420p'
+    // 8-Bit-4:2:0 spielt Chromium direkt -- yuvj420p (Full-Range) ebenso wie
+    // yuv420p. 10-Bit (yuv420p10le) o.ä. würde nicht spielen -> Re-Encode.
+    (info.pixFmt === 'yuv420p' || info.pixFmt === 'yuvj420p')
   )
 }
 
@@ -226,7 +250,9 @@ class ConvertManager {
       const job: ConvertJob = {
         id,
         sourcePath: src,
-        title: titleWithFit(basename(src, extname(src)), req.fitMode),
+        // Vorläufig ohne Zusatz -- der echte („Original"/„Scale"/Fit) steht erst
+        // nach dem Prüfen der Quell-Auflösung fest (siehe run()).
+        title: basename(src, extname(src)),
         status: 'queued',
         progress: 0,
         fitMode: req.fitMode,
@@ -331,6 +357,17 @@ class ConvertManager {
         throw new Error('Keine Videospur gefunden')
       }
 
+      // Namens-Zusatz + tatsächlich nötiger Fit aus der Quell-Auflösung ableiten.
+      const { suffix, effectiveFit } = analyzeFit(
+        spec.fit,
+        info.width,
+        info.height,
+        spec.width,
+        spec.height
+      )
+      const title = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), suffix)
+      this.update(job, { title })
+
       const storedName = `${job.id}${storedExtFor(kind)}`
       const output = mediaFilePath(storedName)
       // eigener Suffix -> kollidiert nicht mit der gebackenen Bild-Datei (${id}.jpg)
@@ -346,7 +383,7 @@ class ConvertManager {
           buildImageArgs({
             input: job.sourcePath,
             output,
-            fit: spec.fit,
+            fit: effectiveFit,
             width: spec.width,
             height: spec.height,
             blur
@@ -378,7 +415,7 @@ class ConvertManager {
             input: job.sourcePath,
             output,
             encoder,
-            fit: spec.fit,
+            fit: effectiveFit,
             width: spec.width,
             height: spec.height,
             hasAudio: info.hasAudio,
@@ -493,6 +530,15 @@ class ConvertManager {
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
       if (kind !== 'image' && !info.hasVideo) throw new Error('Keine Videospur gefunden')
 
+      const { suffix, effectiveFit } = analyzeFit(
+        spec.fit,
+        info.width,
+        info.height,
+        spec.width,
+        spec.height
+      )
+      const reTitle = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), suffix)
+
       const blur = { strength: spec.blurStrength, darken: spec.blurDarken }
       const loudnorm = currentLoudnorm()
       if (kind === 'image') {
@@ -502,7 +548,7 @@ class ConvertManager {
           buildImageArgs({
             input: job.sourcePath,
             output: tmpStored,
-            fit: spec.fit,
+            fit: effectiveFit,
             width: spec.width,
             height: spec.height,
             blur
@@ -532,7 +578,7 @@ class ConvertManager {
             input: job.sourcePath,
             output: tmpStored,
             encoder,
-            fit: spec.fit,
+            fit: effectiveFit,
             width: spec.width,
             height: spec.height,
             hasAudio: info.hasAudio,
@@ -603,8 +649,8 @@ class ConvertManager {
         convKey,
         sizeBytes,
         thumbName: existsSync(finalThumb) ? `${id}_thumb.jpg` : null,
-        // Fit-Hinweis im Namen an die (evtl. geänderte) Aufbereitung anpassen.
-        title: titleWithFit(basename(job.sourcePath, extname(job.sourcePath)), spec.fit)
+        // Namens-Zusatz an das tatsächliche Ergebnis anpassen (Original/Scale/Fit).
+        title: reTitle
       })
       this.update(job, { status: 'done', progress: 1, kind, mediaId: id })
       this.librarySink()
