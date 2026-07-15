@@ -58,6 +58,7 @@ import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
+import { useHandoff } from '@renderer/lib/handoff'
 import { QrCode } from '../video-player/QrCode'
 import {
   makeWidget,
@@ -957,7 +958,6 @@ export function OscControl(): JSX.Element {
                     onSendMany={sendMany}
                     onNova={runNova}
                     onPlacePick={placePick}
-                    preview
                   />
                 )
               }
@@ -1225,19 +1225,8 @@ function reflectFeedback(fb: OscFeedback): void {
 /* ------------------------------- Kachel --------------------------------- */
 
 // Schwach sichtbares Raster im Edit-Modus (Zellen als nicht-interaktive Kacheln
-// hinter den Widgets) -> man sieht, wo gerastert wird. In der Geräte-Vorschau
-// (`subtle`) bleiben die Zellen unsichtbar: kein gestricheltes Gitter (die
-// Vorschau soll wie das echte Gerät aussehen), aber sie halten weiterhin die
-// Rasterhöhe fürs Einfügen per Klick auf leere Fläche.
-function GridBackdrop({
-  columns,
-  rows,
-  subtle = false
-}: {
-  columns: number
-  rows: number
-  subtle?: boolean
-}): JSX.Element {
+// hinter den Widgets) -> man sieht, wo gerastert wird.
+function GridBackdrop({ columns, rows }: { columns: number; rows: number }): JSX.Element {
   const cells: JSX.Element[] = []
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < columns; x++) {
@@ -1245,11 +1234,7 @@ function GridBackdrop({
         <div
           key={`${x}-${y}`}
           style={{ gridColumn: `${x + 1}`, gridRow: `${y + 1}` }}
-          className={
-            subtle
-              ? 'pointer-events-none'
-              : 'pointer-events-none rounded-[3px] border border-dashed border-border/40'
-          }
+          className="pointer-events-none rounded-[3px] border border-dashed border-border/40"
         />
       )
     }
@@ -1521,9 +1506,13 @@ function DeviceFrame({
     <div ref={ref} className="flex h-full w-full items-center justify-center">
       <div style={{ transform: `scale(${scale})` }} className="origin-center">
         <div className="rounded-[2.6rem] border-[12px] border-neutral-800 bg-neutral-800 shadow-2xl">
+          {/* Scrollbar im „Display" ausblenden: die 10px-Scrollleiste läge sonst
+              als dicke Linie direkt am Rahmen und würde ihn optisch verdoppeln.
+              Gescrollt wird weiterhin (Rad/Ziehen); scrollbar-width für nicht-
+              Chromium-Fälle, ::-webkit-scrollbar für Electron. */}
           <div
             style={{ width: w, height: h }}
-            className="overflow-auto rounded-[1.6rem] bg-background p-3"
+            className="overflow-auto rounded-[1.6rem] bg-background p-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {children(scale)}
           </div>
@@ -1549,8 +1538,7 @@ const SurfaceGrid = memo(function SurfaceGrid({
   onSend,
   onSendMany,
   onNova,
-  onPlacePick,
-  preview = false
+  onPlacePick
 }: {
   columns: number
   widgets: OscWidget[]
@@ -1564,7 +1552,6 @@ const SurfaceGrid = memo(function SurfaceGrid({
   onSendMany: SendMany
   onNova: Nova
   onPlacePick?: (gx: number, gy: number, clientX: number, clientY: number) => void
-  preview?: boolean // Geräte-Vorschau: Raster unsichtbar (soll wie das echte Gerät aussehen)
 }): JSX.Element {
   const gridRef = useRef<HTMLDivElement>(null)
   // Merkt sich, wo ein Druck begann -> ein Klick nach Drag/Resize (Bewegung oder
@@ -1631,7 +1618,7 @@ const SurfaceGrid = memo(function SurfaceGrid({
         gap: `${GAP}px`
       }}
     >
-      {!live && <GridBackdrop columns={columns} rows={rows} subtle={preview} />}
+      {!live && <GridBackdrop columns={columns} rows={rows} />}
       {!live && hoverCell && (
         <div
           className="pointer-events-none z-0 flex items-center justify-center rounded-[4px] border-2 border-dashed border-primary/70 bg-primary/10 text-primary"
@@ -3131,6 +3118,11 @@ function NovaStarPanel(): JSX.Element {
   const [host, setHost] = useState('')
   const [port, setPort] = useState(5200)
   const connected = status?.connected ?? false
+  // IP-Übergabe aus dem Netzwerk-Scanner übernehmen (einmalig, beim Öffnen).
+  useEffect(() => {
+    const ip = useHandoff.getState().takeNovastarHost()
+    if (ip) setHost(ip)
+  }, [])
   async function toggle(): Promise<void> {
     if (connected) await api.novastar.disconnect()
     else if (host.trim()) await api.novastar.connect(host, port)

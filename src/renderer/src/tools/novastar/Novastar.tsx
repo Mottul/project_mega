@@ -7,6 +7,7 @@ import { Input } from '@renderer/components/ui/input'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { toolPageClass } from '@renderer/lib/toolPage'
+import { useHandoff } from '@renderer/lib/handoff'
 
 // NovaStar-Prozessor-Steuerung (NovaPro UHD Jr & Co.) über TCP 5200.
 // Paket-Bytes abgeglichen mit dem Bitfocus-Companion-Modul (siehe novastarCodec).
@@ -29,6 +30,9 @@ export function Novastar(): JSX.Element {
   useEffect(() => {
     void api.novastar.status().then(setStatus)
     const off = api.novastar.onStatus(setStatus)
+    // IP-Übergabe aus dem Netzwerk-Scanner übernehmen (einmalig).
+    const ip = useHandoff.getState().takeNovastarHost()
+    if (ip) setHost(ip)
     return () => {
       off()
       if (rampRef.current) clearInterval(rampRef.current)
