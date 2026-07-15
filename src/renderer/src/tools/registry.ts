@@ -6,6 +6,7 @@ import { hapConverterTool } from './hap-converter'
 import { jinglePlayerTool } from './jingle-player'
 import { ledWallTool } from './led-wall'
 import { manualsTool } from './manuals'
+import { netscanTool } from './netscan'
 import { novastarTool } from './novastar'
 import { oscControlTool } from './osc-control'
 import { packingListTool } from './packing-list'
@@ -29,6 +30,7 @@ export const tools: ToolModule[] = [
   jinglePlayerTool,
   oscControlTool,
   novastarTool,
+  netscanTool,
   youtubeDlTool,
   stageTimerTool,
   ledWallTool,

@@ -1,0 +1,343 @@
+// Netzwerk-Scanner: findet Geräte im lokalen Subnetz (LED-Prozessoren,
+// Video-Mischer/ATEM, PTZ-Kameras, Projektoren, Rechner …) über einen aktiven
+// TCP-Sweep + ARP (Hersteller aus der MAC) + Bonjour/mDNS-Namen. Der Scan läuft
+// im main-Prozess; hier werden Fortschritt und Geräte live gespiegelt.
+
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  Ban,
+  Camera,
+  Copy,
+  ExternalLink,
+  Globe,
+  HelpCircle,
+  Lightbulb,
+  Monitor as MonitorIcon,
+  MonitorCog,
+  Projector,
+  Radar,
+  Radio,
+  Search,
+  SlidersHorizontal,
+  Video,
+  Volume2,
+  Wifi
+} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import type { LucideIcon } from 'lucide-react'
+import type { NetDevice, NetDeviceType, NetInterface, NetScanProgress } from '@shared/types'
+import { Badge, type BadgeTone } from '@renderer/components/ui/badge'
+import { Button } from '@renderer/components/ui/button'
+import { Card } from '@renderer/components/ui/card'
+import { Input } from '@renderer/components/ui/input'
+import { Progress } from '@renderer/components/ui/progress'
+import { api } from '@renderer/lib/api'
+import { cn } from '@renderer/lib/utils'
+import { toolPageClass } from '@renderer/lib/toolPage'
+import { useHandoff } from '@renderer/lib/handoff'
+import { deviceKey, useNetLabels } from './store'
+
+// Anzeige-Namen für bekannte Ports (Spiegel der main-Seite, nur zur Darstellung).
+const PORT_LABEL: Record<number, string> = {
+  22: 'SSH',
+  23: 'Telnet',
+  80: 'HTTP',
+  443: 'HTTPS',
+  445: 'SMB',
+  554: 'RTSP',
+  1935: 'RTMP',
+  3389: 'RDP',
+  4352: 'PJLink',
+  5200: 'NovaStar',
+  5900: 'VNC',
+  7000: 'AirPlay',
+  8000: 'ONVIF',
+  8080: 'HTTP',
+  8443: 'HTTPS'
+}
+const WEB_PORTS = [80, 443, 8080, 8443, 8000]
+
+const TYPE_META: Record<NetDeviceType, { label: string; tone: BadgeTone; icon: LucideIcon }> = {
+  novastar: { label: 'LED-Prozessor', tone: 'info', icon: MonitorCog },
+  atem: { label: 'Video-Mischer', tone: 'info', icon: Video },
+  camera: { label: 'Kamera', tone: 'info', icon: Camera },
+  video: { label: 'Video/Streaming', tone: 'info', icon: Video },
+  projector: { label: 'Projektor', tone: 'info', icon: Projector },
+  lighting: { label: 'Licht', tone: 'info', icon: Lightbulb },
+  audio: { label: 'Audio', tone: 'info', icon: Volume2 },
+  computer: { label: 'Computer', tone: 'neutral', icon: MonitorIcon },
+  web: { label: 'Web-Gerät', tone: 'neutral', icon: Globe },
+  unknown: { label: 'Unbekannt', tone: 'neutral', icon: HelpCircle }
+}
+
+const ipToSortKey = (ip: string): number =>
+  ip.split('.').reduce((n, o) => n * 256 + (Number(o) || 0), 0)
+
+const PHASE_LABEL: Record<NetScanProgress['phase'], string> = {
+  idle: 'bereit',
+  sweep: 'suche Geräte …',
+  resolve: 'ermittle Hersteller …',
+  done: 'fertig'
+}
+
+export function NetScan(): JSX.Element {
+  const navigate = useNavigate()
+  const labels = useNetLabels((s) => s.labels)
+  const setLabel = useNetLabels((s) => s.setLabel)
+
+  const [interfaces, setInterfaces] = useState<NetInterface[]>([])
+  const [iface, setIface] = useState<string>('')
+  const [progress, setProgress] = useState<NetScanProgress>({
+    running: false,
+    phase: 'idle',
+    scanned: 0,
+    total: 0,
+    found: 0
+  })
+  const [devices, setDevices] = useState<NetDevice[]>([])
+  const [copied, setCopied] = useState<string | null>(null)
+  // Geräte nach IP sammeln (Upserts vom main-Prozess), Liste daraus ableiten.
+  const mapRef = useRef<Map<string, NetDevice>>(new Map())
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    void api.netscan.interfaces().then((list) => {
+      setInterfaces(list)
+      setIface((cur) => cur || list[0]?.address || '')
+    })
+    const offProgress = api.netscan.onProgress(setProgress)
+    const offDevice = api.netscan.onDevice((d) => {
+      mapRef.current.set(d.ip, d)
+      setDevices([...mapRef.current.values()].sort((a, b) => ipToSortKey(a.ip) - ipToSortKey(b.ip)))
+    })
+    return () => {
+      offProgress()
+      offDevice()
+      if (copiedTimer.current) clearTimeout(copiedTimer.current)
+    }
+  }, [])
+
+  const selected = interfaces.find((i) => i.address === iface) ?? null
+
+  async function startOrStop(): Promise<void> {
+    if (progress.running) {
+      setProgress(await api.netscan.stop())
+      return
+    }
+    mapRef.current = new Map()
+    setDevices([])
+    setProgress(await api.netscan.start(iface))
+  }
+
+  function copyIp(ip: string): void {
+    void navigator.clipboard?.writeText(ip).catch(() => {})
+    setCopied(ip)
+    if (copiedTimer.current) clearTimeout(copiedTimer.current)
+    copiedTimer.current = setTimeout(() => setCopied(null), 1200)
+  }
+  function openWeb(d: NetDevice): void {
+    const https = d.ports.includes(443) || d.ports.includes(8443)
+    const port = d.ports.includes(80)
+      ? ''
+      : d.ports.includes(8080)
+        ? ':8080'
+        : d.ports.includes(8000)
+          ? ':8000'
+          : d.ports.includes(8443)
+            ? ':8443'
+            : ''
+    window.open(`${https && !d.ports.includes(80) ? 'https' : 'http'}://${d.ip}${port}`, '_blank')
+  }
+  function openInNovastar(ip: string): void {
+    useHandoff.getState().setNovastarHost(ip)
+    navigate('/tool/novastar')
+  }
+  function openInOsc(ip: string): void {
+    useHandoff.getState().setNovastarHost(ip)
+    navigate('/tool/osc-control')
+  }
+
+  const pct = progress.total > 0 ? progress.scanned / progress.total : 0
+
+  return (
+    <div className={toolPageClass('5xl')}>
+      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        Sucht Geräte im lokalen Netz per aktivem Scan (typische AV-Ports), erkennt den Hersteller
+        über die MAC-Adresse und liest Bonjour/mDNS-Namen. Nur im eigenen Netzwerk verwenden.
+      </div>
+
+      {/* Steuerung */}
+      <Card className="space-y-3 p-5">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="min-w-0 flex-1">
+            <span className="mb-1 block text-xs text-muted-foreground">Netzwerk-Adapter</span>
+            <select
+              value={iface}
+              onChange={(e) => setIface(e.target.value)}
+              disabled={progress.running || interfaces.length === 0}
+              className="block h-9 w-full min-w-0 rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+            >
+              {interfaces.length === 0 && <option value="">kein Adapter gefunden</option>}
+              {interfaces.map((i) => (
+                <option key={i.address} value={i.address}>
+                  {i.label} · {i.address} · {i.hosts} Hosts
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            onClick={() => void startOrStop()}
+            disabled={!iface}
+            variant={progress.running ? 'outline' : 'default'}
+          >
+            {progress.running ? (
+              <>
+                <Ban className="size-4" /> Stopp
+              </>
+            ) : (
+              <>
+                <Search className="size-4" /> Scannen
+              </>
+            )}
+          </Button>
+        </div>
+
+        {selected && (
+          <p className="text-xs text-muted-foreground">
+            Subnetz von {selected.address} / {selected.netmask} · {selected.hosts} Hosts
+          </p>
+        )}
+
+        {(progress.running || progress.scanned > 0) && (
+          <div className="space-y-1.5">
+            <Progress
+              value={pct}
+              indeterminate={progress.running && progress.phase === 'resolve'}
+            />
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                {progress.running && <Wifi className="size-3.5 animate-pulse text-primary" />}
+                {PHASE_LABEL[progress.phase]}
+              </span>
+              <span className="tabular-nums">
+                {progress.scanned}/{progress.total} geprüft · {progress.found} gefunden
+              </span>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Ergebnisse */}
+      {devices.length === 0 ? (
+        <Card className="flex h-32 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+          {progress.running ? 'Suche läuft …' : 'Noch keine Geräte. „Scannen" starten.'}
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {devices.map((d) => {
+            const meta = TYPE_META[d.type]
+            const key = deviceKey(d.mac, d.ip)
+            const hasWeb = d.ports.some((p) => WEB_PORTS.includes(p))
+            const oui = d.mac ? d.mac.slice(0, 8) : null
+            return (
+              <Card key={d.ip} className="flex items-center gap-3 p-3">
+                <meta.icon className="size-5 shrink-0 text-primary" />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      value={labels[key] ?? ''}
+                      placeholder={d.hostname || 'Bezeichnung …'}
+                      onChange={(e) => setLabel(key, e.target.value)}
+                      className="h-7 w-44 text-sm"
+                    />
+                    <Badge tone={meta.tone}>{meta.label}</Badge>
+                    {d.ports.map((p) => (
+                      <Badge key={p} tone="neutral" title={`Port ${p}`}>
+                        {PORT_LABEL[p] ?? p}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                    <span className="font-mono text-foreground">{d.ip}</span>
+                    {d.vendor ? (
+                      <span>{d.vendor}</span>
+                    ) : (
+                      oui && <span className="font-mono">OUI {oui}</span>
+                    )}
+                    {d.hostname && <span className="truncate">{d.hostname}</span>}
+                    {d.rttMs != null && <span className="tabular-nums">{d.rttMs} ms</span>}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <IconBtn
+                    title={copied === d.ip ? 'kopiert!' : 'IP kopieren'}
+                    onClick={() => copyIp(d.ip)}
+                    active={copied === d.ip}
+                  >
+                    <Copy className="size-4" />
+                  </IconBtn>
+                  <IconBtn
+                    title="Web-Oberfläche öffnen"
+                    onClick={() => openWeb(d)}
+                    disabled={!hasWeb}
+                  >
+                    <ExternalLink className="size-4" />
+                  </IconBtn>
+                  <IconBtn
+                    title="IP im NovaStar-Tool verwenden"
+                    onClick={() => openInNovastar(d.ip)}
+                  >
+                    <MonitorCog className="size-4" />
+                  </IconBtn>
+                  <IconBtn
+                    title="IP in der OSC-Steuerung verwenden"
+                    onClick={() => openInOsc(d.ip)}
+                  >
+                    <Radio className="size-4" />
+                  </IconBtn>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <SlidersHorizontal className="size-3" />
+        Tipp: <MonitorCog className="inline size-3" /> übergibt die IP direkt an die NovaStar-
+        Steuerung, <Radar className="inline size-3" /> Gerätetyp ist eine best-effort-Schätzung aus
+        offenen Ports und Hersteller.
+      </p>
+    </div>
+  )
+}
+
+/** Kompakter Icon-Knopf für die Geräteaktionen. */
+function IconBtn({
+  title,
+  onClick,
+  disabled,
+  active,
+  children
+}: {
+  title: string
+  onClick: () => void
+  disabled?: boolean
+  active?: boolean
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'rounded-md border border-border p-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-30 disabled:hover:border-border disabled:hover:text-muted-foreground',
+        active && 'border-emerald-500 text-emerald-400 light:text-emerald-700'
+      )}
+    >
+      {children}
+    </button>
+  )
+}

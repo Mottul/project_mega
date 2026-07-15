@@ -20,6 +20,9 @@ import type {
   ManualPatch,
   ManualSearchHit,
   MediaItem,
+  NetDevice,
+  NetInterface,
+  NetScanProgress,
   OscFeedback,
   OscLogEntry,
   NovastarStatus,
@@ -184,6 +187,12 @@ export const Channels = {
   novastarFreeze: 'novastar:freeze',
   novastarPreset: 'novastar:preset',
   novastarRaw: 'novastar:raw',
+  // Netzwerk-Scanner
+  netscanInterfaces: 'netscan:interfaces',
+  netscanStart: 'netscan:start',
+  netscanStop: 'netscan:stop',
+  netscanProgress: 'netscan:progress', // Event: NetScanProgress
+  netscanDevice: 'netscan:device', // Event: NetDevice (Upsert)
   // YouTube-Downloader (yt-dlp)
   ytStatus: 'yt:status',
   ytUpdate: 'yt:update', // yt-dlp-Binary herunterladen/aktualisieren
@@ -422,6 +431,19 @@ export interface ToolboxApi {
     preset(n: number): Promise<void>
     /** Roh-Befehl als Hex senden; addChecksum ergänzt Prüfsumme automatisch. */
     raw(hex: string, addChecksum: boolean): Promise<void>
+  }
+
+  netscan: {
+    /** Scannbare lokale IPv4-Interfaces auflisten. */
+    interfaces(): Promise<NetInterface[]>
+    /** Scan über das Subnetz des gewählten Interfaces starten. */
+    start(interfaceAddress: string): Promise<NetScanProgress>
+    /** Laufenden Scan abbrechen. */
+    stop(): Promise<NetScanProgress>
+    /** Fortschritt (laufend/Phase/Zähler). Liefert Cleanup. */
+    onProgress(cb: (p: NetScanProgress) => void): () => void
+    /** Gefundenes/aktualisiertes Gerät (Upsert nach IP). Liefert Cleanup. */
+    onDevice(cb: (d: NetDevice) => void): () => void
   }
 
   youtube: {

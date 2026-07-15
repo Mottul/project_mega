@@ -161,6 +161,14 @@ const api: ToolboxApi = {
     raw: (hex, addChecksum) => ipcRenderer.invoke(Channels.novastarRaw, hex, addChecksum)
   },
 
+  netscan: {
+    interfaces: () => ipcRenderer.invoke(Channels.netscanInterfaces),
+    start: (addr) => ipcRenderer.invoke(Channels.netscanStart, addr),
+    stop: () => ipcRenderer.invoke(Channels.netscanStop),
+    onProgress: (cb) => subscribe(Channels.netscanProgress, (p) => cb(p as never)),
+    onDevice: (cb) => subscribe(Channels.netscanDevice, (d) => cb(d as never))
+  },
+
   youtube: {
     status: () => ipcRenderer.invoke(Channels.ytStatus),
     updateTool: () => ipcRenderer.invoke(Channels.ytUpdate),

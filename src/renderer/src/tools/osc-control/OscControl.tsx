@@ -58,6 +58,7 @@ import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
+import { useHandoff } from '@renderer/lib/handoff'
 import { QrCode } from '../video-player/QrCode'
 import {
   makeWidget,
@@ -3117,6 +3118,11 @@ function NovaStarPanel(): JSX.Element {
   const [host, setHost] = useState('')
   const [port, setPort] = useState(5200)
   const connected = status?.connected ?? false
+  // IP-Übergabe aus dem Netzwerk-Scanner übernehmen (einmalig, beim Öffnen).
+  useEffect(() => {
+    const ip = useHandoff.getState().takeNovastarHost()
+    if (ip) setHost(ip)
+  }, [])
   async function toggle(): Promise<void> {
     if (connected) await api.novastar.disconnect()
     else if (host.trim()) await api.novastar.connect(host, port)

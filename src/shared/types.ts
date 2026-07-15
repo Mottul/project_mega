@@ -712,6 +712,59 @@ export interface NovastarStatus {
   lastError: string | null
 }
 
+/* ---------------------------- Netzwerk-Scanner --------------------------- */
+// Findet Geräte im lokalen Netz (LED-Prozessoren, Video-Mischer/ATEM, PTZ-
+// Kameras, Projektoren …). Aktiver Scan: TCP-Ports + ARP (Hersteller über MAC)
+// + Bonjour/mDNS-Namen. Alles abhängigkeitsfrei im main-Prozess.
+
+export type NetDeviceType =
+  | 'novastar' // LED-Prozessor (Port 5200)
+  | 'atem' // Blackmagic ATEM (UDP 9910)
+  | 'camera' // PTZ-/Netzwerkkamera (RTSP/ONVIF)
+  | 'video' // sonstiges Video/Streaming
+  | 'projector' // Projektor (PJLink 4352)
+  | 'lighting' // Licht (Art-Net/sACN)
+  | 'audio' // Audio
+  | 'computer' // PC/Server (SSH/RDP/SMB)
+  | 'web' // hat Web-Oberfläche
+  | 'unknown'
+
+export interface NetService {
+  type: string // Bonjour-Diensttyp, z.B. _http._tcp
+  name: string // Instanzname
+  port: number
+}
+
+export interface NetDevice {
+  ip: string
+  mac: string | null // normalisiert "aa:bb:cc:dd:ee:ff"
+  vendor: string | null // aus MAC-OUI (best effort)
+  hostname: string | null // aus mDNS
+  type: NetDeviceType
+  ports: number[] // offene TCP-Ports (aufsteigend)
+  services: NetService[] // Bonjour-Dienste
+  rttMs: number | null // Antwortzeit des ersten offenen Ports
+  seenAt: number
+}
+
+export interface NetInterface {
+  address: string // lokale IPv4
+  netmask: string
+  mac: string
+  label: string // Interface-Name (z.B. en0/eth0)
+  hosts: number // Anzahl scannbarer Hosts im Subnetz (gedeckelt)
+}
+
+export type NetScanPhase = 'idle' | 'sweep' | 'resolve' | 'done'
+
+export interface NetScanProgress {
+  running: boolean
+  phase: NetScanPhase
+  scanned: number
+  total: number
+  found: number
+}
+
 /* ------------------------------- Settings ------------------------------- */
 
 export interface PatternPreset {
