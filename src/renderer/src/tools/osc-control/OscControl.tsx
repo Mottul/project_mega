@@ -36,10 +36,12 @@ import {
   Star,
   Tablet,
   Trash2,
+  Tv,
   Wifi,
   Zap
 } from 'lucide-react'
 import type {
+  NovastarStatus,
   OscArg,
   OscFeedback,
   OscMessage,
@@ -62,12 +64,15 @@ import {
   MAX_CH,
   MAX_COLS,
   MIN_COLS,
+  NOVA_FN_LABEL,
+  NOVA_PALETTE,
   oscSlug,
   useOscSurface,
   WIDGET_COLORS,
   WIDGET_MIN,
   WIDGET_ORDER,
   WIDGET_TYPE_LABEL,
+  type NovaWidgetKind,
   type OscItem,
   type OscWidget,
   type OscWidgetType
@@ -193,6 +198,9 @@ interface LogEntry {
 
 type Send = (msg: OscMessage) => void
 type SendMany = (msgs: OscMessage[]) => void
+// NovaStar-Widget ausführen. `arg`: Fader=Helligkeit 0..100, Schalter=0/1,
+// Taster=1 (Druck), Auswahl=Preset-Nummer.
+type Nova = (w: OscWidget, arg: number) => void
 
 /* ------------------------------ Hauptansicht ---------------------------- */
 
@@ -307,6 +315,97 @@ export function OscControl(): JSX.Element {
     [pushLog]
   )
 
+  /* ---- NovaStar-Widgets (Ziel = geteilter Prozessor statt OSC) ---- */
+  // Zuletzt gesetzte Helligkeit (0..100) -> Grundlage für relative Schritte und
+  // weiche Blenden. Die Blende läuft als Intervall (wie im NovaStar-Tool).
+  const novaBrightRef = useRef(100)
+  const novaFadeRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const stopNovaFade = useCallback((): void => {
+    if (novaFadeRef.current) {
+      clearInterval(novaFadeRef.current)
+      novaFadeRef.current = null
+    }
+  }, [])
+  // Helligkeit setzen: an den Prozessor senden, merken und etwaige Helligkeits-
+  // Fader auf der Fläche mitziehen (damit weiche Blenden sichtbar sind).
+  const setNovaBright = useCallback(
+    (pct: number): void => {
+      const v = clamp(pct, 0, 100)
+      novaBrightRef.current = v
+      void api.novastar.brightness(v)
+      const st = useOscSurface.getState()
+      for (const x of st.currentSet().widgets) {
+        if (x.target === 'nova' && x.nova.fn === 'brightness' && x.value !== v)
+          st.updateWidget(x.id, { value: v })
+      }
+      pushLog('out', 'nova/helligkeit', [Math.round(v)])
+    },
+    [pushLog]
+  )
+  const fadeNovaTo = useCallback(
+    (to: number, sec: number): void => {
+      stopNovaFade()
+      const from = novaBrightRef.current
+      const steps = Math.max(1, Math.round((Math.max(0.1, sec) * 1000) / 50))
+      let i = 0
+      novaFadeRef.current = setInterval(() => {
+        i++
+        setNovaBright(from + (to - from) * (i / steps))
+        if (i >= steps) stopNovaFade()
+      }, 50)
+    },
+    [setNovaBright, stopNovaFade]
+  )
+  // Blackout und Freeze sind am Gerät EIN Anzeigemodus -> schließen sich
+  // gegenseitig aus. Beim Einschalten des einen den anderen Schalter optisch lösen.
+  const clearNovaMode = useCallback((keep: 'freeze' | 'blackout'): void => {
+    const other = keep === 'freeze' ? 'blackout' : 'freeze'
+    const st = useOscSurface.getState()
+    for (const x of st.currentSet().widgets) {
+      if (x.target === 'nova' && x.nova.fn === other && x.value >= 0.5)
+        st.updateWidget(x.id, { value: 0 })
+    }
+  }, [])
+  const runNova = useCallback<Nova>(
+    (w, arg) => {
+      const n = w.nova
+      switch (n.fn) {
+        case 'brightness':
+          stopNovaFade()
+          setNovaBright(arg)
+          break
+        case 'brightnessSet':
+          stopNovaFade()
+          setNovaBright(n.value)
+          break
+        case 'brightnessStep':
+          stopNovaFade()
+          setNovaBright(novaBrightRef.current + n.value)
+          break
+        case 'fadeToBlack':
+          fadeNovaTo(arg >= 0.5 ? 0 : n.restore, n.value)
+          break
+        case 'freeze':
+          if (arg >= 0.5) clearNovaMode('freeze')
+          void api.novastar.freeze(arg >= 0.5)
+          pushLog('out', 'nova/freeze', [arg >= 0.5 ? 1 : 0])
+          break
+        case 'blackout':
+          if (arg >= 0.5) clearNovaMode('blackout')
+          void api.novastar.blackout(arg >= 0.5)
+          pushLog('out', 'nova/blackout', [arg >= 0.5 ? 1 : 0])
+          break
+        case 'preset':
+          void api.novastar.preset(Math.round(arg))
+          pushLog('out', 'nova/preset', [Math.round(arg)])
+          break
+      }
+    },
+    [setNovaBright, fadeNovaTo, stopNovaFade, clearNovaMode, pushLog]
+  )
+  // Laufende Blende beim Schließen des Tabs stoppen.
+  useEffect(() => () => stopNovaFade(), [stopNovaFade])
+
   useEffect(() => {
     let alive = true
     void api.osc.config().then((c) => alive && setConfig(c))
@@ -344,6 +443,25 @@ export function OscControl(): JSX.Element {
       }
       const w = st.currentSet().widgets.find((x) => x.id === cmd.id)
       if (!w) return
+      // NovaStar-Widgets: gleiche Basis-Kommandos vom Handy, aber an den Prozessor.
+      if (w.target === 'nova') {
+        if (cmd.kind === 'fader') {
+          st.updateWidget(w.id, { value: cmd.value })
+          runNova(w, cmd.value)
+        } else if (cmd.kind === 'toggle') {
+          st.updateWidget(w.id, { value: cmd.on ? 1 : 0 })
+          runNova(w, cmd.on ? 1 : 0)
+        } else if (cmd.kind === 'button') {
+          if (cmd.down) runNova(w, 1)
+        } else if (cmd.kind === 'select') {
+          const it = w.items[cmd.index]
+          if (it) {
+            st.updateWidget(w.id, { value: cmd.index })
+            runNova(w, it.value)
+          }
+        }
+        return
+      }
       if (cmd.kind === 'fader') {
         st.updateWidget(w.id, { value: cmd.value })
         send(fmsg(w.address, cmd.value))
@@ -404,7 +522,7 @@ export function OscControl(): JSX.Element {
       offChanged()
       offCmd()
     }
-  }, [send, sendMany])
+  }, [send, sendMany, runNova])
 
   // Schnappschuss der Oberfläche an den Fernsteuer-Server – gedrosselt, da sich
   // Werte beim Ziehen schnell ändern.
@@ -570,6 +688,11 @@ export function OscControl(): JSX.Element {
 
   function onAdd(type: OscWidgetType, pos?: { gx: number; gy: number }): void {
     const id = useOscSurface.getState().addWidget(type, pos)
+    setSelectedId(id)
+    if (mode !== 'edit') setStore({ mode: 'edit' })
+  }
+  function onAddNova(kind: NovaWidgetKind, pos?: { gx: number; gy: number }): void {
+    const id = useOscSurface.getState().addNovaWidget(kind, pos)
     setSelectedId(id)
     if (mode !== 'edit') setStore({ mode: 'edit' })
   }
@@ -832,6 +955,7 @@ export function OscControl(): JSX.Element {
                     onRemove={removeWidget}
                     onSend={send}
                     onSendMany={sendMany}
+                    onNova={runNova}
                     onPlacePick={placePick}
                   />
                 )
@@ -859,6 +983,7 @@ export function OscControl(): JSX.Element {
                 onRemove={removeWidget}
                 onSend={send}
                 onSendMany={sendMany}
+                onNova={runNova}
                 onPlacePick={placePick}
               />
             </>
@@ -871,6 +996,15 @@ export function OscControl(): JSX.Element {
             onPick={(t) => {
               onAdd(
                 t,
+                picker.gx != null && picker.gy != null
+                  ? { gx: picker.gx, gy: picker.gy }
+                  : undefined
+              )
+              setPicker(null)
+            }}
+            onPickNova={(kind) => {
+              onAddNova(
+                kind,
                 picker.gx != null && picker.gy != null
                   ? { gx: picker.gx, gy: picker.gy }
                   : undefined
@@ -997,6 +1131,16 @@ export function OscControl(): JSX.Element {
         )}
       </PanelSection>
 
+      <PanelSection
+        id="novastar"
+        title="NovaStar (LED)"
+        icon={Tv}
+        defaultOpen={false}
+        right={<NovaStarDot />}
+      >
+        <NovaStarPanel />
+      </PanelSection>
+
       <PanelSection id="monitor" title="OSC-Monitor" icon={Activity} defaultOpen={false}>
         <Button
           variant="outline"
@@ -1028,6 +1172,7 @@ function reflectFeedback(fb: OscFeedback): void {
   const num = toNum(fb.args[0])
   const st = useOscSurface.getState()
   for (const w of st.currentSet().widgets) {
+    if (w.target === 'nova') continue // NovaStar-Widgets kennen kein OSC-Feedback
     if (w.type === 'color' && w.address === fb.address && num != null) {
       // r,g,b(,a) aus den ersten Argumenten – fehlende Kanäle bleiben unverändert.
       const patch: Partial<OscWidget> = { r: clamp01(num) }
@@ -1109,6 +1254,7 @@ const WidgetTile = memo(function WidgetTile({
   onSelect,
   onSend,
   onSendMany,
+  onNova,
   onDuplicate,
   onRemove
 }: {
@@ -1121,6 +1267,7 @@ const WidgetTile = memo(function WidgetTile({
   onSelect: (id: string) => void
   onSend: Send
   onSendMany: SendMany
+  onNova: Nova
   onDuplicate: (id: string) => void
   onRemove: (id: string) => void
 }): JSX.Element {
@@ -1219,15 +1366,15 @@ const WidgetTile = memo(function WidgetTile({
       )}
 
       <div className={cn('min-h-0 flex-1', !live && 'pointer-events-none')}>
-        {w.type === 'fader' && <Fader w={w} onSend={onSend} />}
+        {w.type === 'fader' && <Fader w={w} onSend={onSend} onNova={onNova} />}
         {w.type === 'knob' && <Knob w={w} onSend={onSend} />}
-        {w.type === 'toggle' && <Toggle w={w} onSend={onSend} />}
-        {w.type === 'button' && <Momentary w={w} onSend={onSend} />}
+        {w.type === 'toggle' && <Toggle w={w} onSend={onSend} onNova={onNova} />}
+        {w.type === 'button' && <Momentary w={w} onSend={onSend} onNova={onNova} />}
         {w.type === 'xy' && <XYPad w={w} onSendMany={onSendMany} />}
         {w.type === 'color' && <ColorPad w={w} onSend={onSend} />}
         {w.type === 'label' && <LabelView w={w} />}
         {w.type === 'meter' && <Meter w={w} />}
-        {w.type === 'select' && <SelectPad w={w} onSend={onSend} />}
+        {w.type === 'select' && <SelectPad w={w} onSend={onSend} onNova={onNova} />}
         {w.type === 'bank' && <BankGrid w={w} onSend={onSend} />}
       </div>
 
@@ -1385,6 +1532,7 @@ const SurfaceGrid = memo(function SurfaceGrid({
   onRemove,
   onSend,
   onSendMany,
+  onNova,
   onPlacePick
 }: {
   columns: number
@@ -1397,6 +1545,7 @@ const SurfaceGrid = memo(function SurfaceGrid({
   onRemove: (id: string) => void
   onSend: Send
   onSendMany: SendMany
+  onNova: Nova
   onPlacePick?: (gx: number, gy: number, clientX: number, clientY: number) => void
 }): JSX.Element {
   const gridRef = useRef<HTMLDivElement>(null)
@@ -1485,6 +1634,7 @@ const SurfaceGrid = memo(function SurfaceGrid({
           onSelect={onSelect}
           onSend={onSend}
           onSendMany={onSendMany}
+          onNova={onNova}
           onDuplicate={onDuplicate}
           onRemove={onRemove}
         />
@@ -1500,11 +1650,13 @@ function WidgetPicker({
   x,
   y,
   onPick,
+  onPickNova,
   onClose
 }: {
   x: number
   y: number
   onPick: (t: OscWidgetType) => void
+  onPickNova: (kind: NovaWidgetKind) => void
   onClose: () => void
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
@@ -1518,14 +1670,14 @@ function WidgetPicker({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
-  // am Klickpunkt verankern, aber im Viewport halten
+  // am Klickpunkt verankern, aber im Viewport halten (höher wegen NovaStar-Block)
   const left = Math.max(8, Math.min(x, window.innerWidth - 220))
-  const top = Math.max(8, Math.min(y, window.innerHeight - 300))
+  const top = Math.max(8, Math.min(y, window.innerHeight - 420))
   return (
     <div
       ref={ref}
       style={{ position: 'fixed', left, top, zIndex: 50 }}
-      className="w-52 select-none rounded-lg border border-border bg-card p-2 shadow-xl"
+      className="max-h-[80vh] w-52 select-none overflow-auto rounded-lg border border-border bg-card p-2 shadow-xl"
     >
       <p className="mb-1.5 px-1 text-xs text-muted-foreground">Widget einfügen</p>
       <div className="grid grid-cols-2 gap-1.5">
@@ -1540,18 +1692,35 @@ function WidgetPicker({
           </button>
         ))}
       </div>
+      {/* NovaStar-Bedienelemente: eigene Kacheln, die an den Prozessor senden. */}
+      <p className="mb-1.5 mt-2.5 flex items-center gap-1 px-1 text-xs text-muted-foreground">
+        <Tv className="size-3" /> NovaStar (LED)
+      </p>
+      <div className="grid grid-cols-2 gap-1.5">
+        {NOVA_PALETTE.map((e) => (
+          <button
+            key={e.kind}
+            type="button"
+            onClick={() => onPickNova(e.kind)}
+            className="flex items-center gap-1 rounded-md border border-border px-2 py-1.5 text-left text-xs hover:border-primary/50 hover:bg-muted/40"
+          >
+            <Plus className="size-3 shrink-0" /> {e.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
 
 /* ------------------------- Bedienelement: Fader ------------------------- */
 
-function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
+function Fader({ w, onSend, onNova }: { w: OscWidget; onSend: Send; onNova?: Nova }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const raf = useRef(0)
   const pending = useRef<number | null>(null)
   const start = useRef<{ p: number; v: number } | null>(null)
   const horiz = w.orient === 'h'
+  const isNova = w.target === 'nova'
   const lo = Math.min(w.min, w.max)
   const hi = Math.max(w.min, w.max)
   const span = hi - lo
@@ -1565,7 +1734,8 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
     const v = pending.current
     pending.current = null
     useOscSurface.getState().updateWidget(w.id, { value: v })
-    onSend(fmsg(w.address, v))
+    if (isNova) onNova?.(w, v)
+    else onSend(fmsg(w.address, v))
   }
   // Relativ: ab dem Anfasspunkt ziehen (kein Sprung auf den Klickwert).
   function drag(client: number): void {
@@ -1619,7 +1789,7 @@ function Fader({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
         </>
       )}
       <span className="absolute inset-x-0 bottom-1 text-center text-[11px] tabular-nums text-foreground/90">
-        {w.value.toFixed(2)}
+        {isNova ? `${Math.round(w.value)} %` : w.value.toFixed(2)}
       </span>
     </div>
   )
@@ -1726,7 +1896,7 @@ function Knob({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
 
 /* ------------------------- Bedienelement: Schalter ---------------------- */
 
-function Toggle({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
+function Toggle({ w, onSend, onNova }: { w: OscWidget; onSend: Send; onNova?: Nova }): JSX.Element {
   const on = w.value >= 0.5
   return (
     <button
@@ -1734,7 +1904,8 @@ function Toggle({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       onClick={() => {
         const next = on ? 0 : 1
         useOscSurface.getState().updateWidget(w.id, { value: next })
-        onSend(fmsg(w.address, next ? w.onValue : w.offValue))
+        if (w.target === 'nova') onNova?.(w, next)
+        else onSend(fmsg(w.address, next ? w.onValue : w.offValue))
       }}
       className="flex h-full w-full items-center justify-center rounded-md border text-sm font-semibold transition-colors"
       style={{
@@ -1750,12 +1921,22 @@ function Toggle({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
 
 /* ------------------------- Bedienelement: Taster ------------------------ */
 
-function Momentary({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
+function Momentary({
+  w,
+  onSend,
+  onNova
+}: {
+  w: OscWidget
+  onSend: Send
+  onNova?: Nova
+}): JSX.Element {
   const [pressed, setPressed] = useState(false)
+  const isNova = w.target === 'nova'
   function release(): void {
     if (!pressed) return
     setPressed(false)
-    onSend(fmsg(w.address, w.offValue))
+    // NovaStar-Taster feuern die Aktion beim Druck (kein „Loslassen"-Wert).
+    if (!isNova) onSend(fmsg(w.address, w.offValue))
   }
   return (
     <button
@@ -1763,14 +1944,24 @@ function Momentary({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
         setPressed(true)
-        onSend(fmsg(w.address, w.onValue))
+        if (isNova) onNova?.(w, 1)
+        else onSend(fmsg(w.address, w.onValue))
       }}
       onPointerUp={release}
       onPointerCancel={release}
-      className="flex h-full w-full items-center justify-center rounded-md border transition-transform active:scale-[0.98]"
+      className="flex h-full w-full items-center justify-center rounded-md border text-sm font-semibold transition-transform active:scale-[0.98]"
       style={{ borderColor: w.color, background: pressed ? w.color : 'transparent' }}
     >
-      <Zap className="size-7" style={{ color: pressed ? '#fff' : w.color }} />
+      {isNova && w.nova.fn === 'brightnessSet' ? (
+        <span style={{ color: pressed ? '#fff' : w.color }}>{Math.round(w.nova.value)} %</span>
+      ) : isNova && w.nova.fn === 'brightnessStep' ? (
+        <span style={{ color: pressed ? '#fff' : w.color }}>
+          {w.nova.value >= 0 ? '+' : '−'}
+          {Math.abs(Math.round(w.nova.value))} %
+        </span>
+      ) : (
+        <Zap className="size-7" style={{ color: pressed ? '#fff' : w.color }} />
+      )}
     </button>
   )
 }
@@ -1779,7 +1970,15 @@ function Momentary({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
 
 // 1-aus-n: Tippen sendet die Adresse der Option (Fallback: Widget-Adresse) mit
 // ihrem Wert; die zuletzt gewählte Option bleibt markiert (value = Index).
-function SelectPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
+function SelectPad({
+  w,
+  onSend,
+  onNova
+}: {
+  w: OscWidget
+  onSend: Send
+  onNova?: Nova
+}): JSX.Element {
   const sel = Math.round(w.value)
   const cols = w.cols >= 1 ? w.cols : 1
   return (
@@ -1795,7 +1994,8 @@ function SelectPad({ w, onSend }: { w: OscWidget; onSend: Send }): JSX.Element {
             type="button"
             onClick={() => {
               useOscSurface.getState().updateWidget(w.id, { value: i })
-              onSend(fmsg(it.address || w.address, it.value))
+              if (w.target === 'nova') onNova?.(w, it.value)
+              else onSend(fmsg(it.address || w.address, it.value))
             }}
             className="flex min-h-0 items-center justify-center overflow-hidden rounded-md border px-1 text-sm font-medium transition-colors"
             style={{
@@ -2509,6 +2709,76 @@ function Segmented<T extends string>({
   )
 }
 
+/** Einstellungen eines NovaStar-Widgets (nur die zur Funktion passenden Felder).
+ *  Bindet an w.nova; Preset-Optionen werden weiter unten über den ItemsEditor
+ *  bearbeitet (Auswahl-Kachel). */
+function NovaConfigEditor({ w }: { w: OscWidget }): JSX.Element {
+  const update = useOscSurface((s) => s.updateWidget)
+  const setNova = (patch: Partial<OscWidget['nova']>): void =>
+    update(w.id, { nova: { ...w.nova, ...patch } })
+  const fn = w.nova.fn
+  return (
+    <div className="space-y-2.5 rounded-md border border-border bg-muted/20 p-2.5">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <Tv className="size-3.5" /> {NOVA_FN_LABEL[fn]}
+      </p>
+      {fn === 'brightness' && (
+        <p className="text-xs text-muted-foreground">
+          Fader 0–100 %. Blendet die LED-Helligkeit direkt. Ausrichtung unten wählbar.
+        </p>
+      )}
+      {fn === 'brightnessSet' && (
+        <Field label="Ziel-Helligkeit (%)">
+          <DecimalField
+            value={w.nova.value}
+            onCommit={(v) => setNova({ value: clamp(v, 0, 100) })}
+            className="h-9"
+          />
+        </Field>
+      )}
+      {fn === 'brightnessStep' && (
+        <Field label="Schrittweite (± %)">
+          <DecimalField
+            value={w.nova.value}
+            onCommit={(v) => setNova({ value: clamp(v, -100, 100) })}
+            className="h-9"
+          />
+        </Field>
+      )}
+      {fn === 'fadeToBlack' && (
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Fade-Dauer (s)">
+            <DecimalField
+              value={w.nova.value}
+              onCommit={(v) => setNova({ value: Math.max(0.1, v) })}
+              className="h-9"
+            />
+          </Field>
+          <Field label="Aufblenden auf (%)">
+            <DecimalField
+              value={w.nova.restore}
+              onCommit={(v) => setNova({ restore: clamp(v, 0, 100) })}
+              className="h-9"
+            />
+          </Field>
+        </div>
+      )}
+      {(fn === 'freeze' || fn === 'blackout') && (
+        <p className="text-xs text-muted-foreground">
+          Schalter (an/aus). Blackout und Freeze teilen sich am Gerät einen Anzeigemodus – nur eines
+          gleichzeitig; das aktive ausschalten geht zurück auf Normal.
+        </p>
+      )}
+      {fn === 'preset' && (
+        <p className="text-xs text-muted-foreground">
+          Auswahl der Preset-/Szenennummern (unten als Optionen). Der Wert einer Option ist die
+          abzurufende Preset-Nummer.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function WidgetEditor({
   w,
   columns,
@@ -2528,13 +2798,16 @@ function WidgetEditor({
 }): JSX.Element {
   const update = useOscSurface((s) => s.updateWidget)
   const min = WIDGET_MIN[w.type]
+  const isNova = w.target === 'nova'
   const hasRange =
-    w.type === 'fader' ||
-    (w.type === 'knob' && !w.endless) ||
-    (w.type === 'meter' && w.source === 'osc') ||
-    (w.type === 'bank' && w.bankMode === 'knob')
+    !isNova &&
+    (w.type === 'fader' ||
+      (w.type === 'knob' && !w.endless) ||
+      (w.type === 'meter' && w.source === 'osc') ||
+      (w.type === 'bank' && w.bankMode === 'knob'))
   const hasOnOff =
-    w.type === 'button' || w.type === 'toggle' || (w.type === 'bank' && w.bankMode !== 'knob')
+    !isNova &&
+    (w.type === 'button' || w.type === 'toggle' || (w.type === 'bank' && w.bankMode !== 'knob'))
   return (
     <div className="space-y-2.5">
       {/* Schnellaktionen oben: Duplizieren + Entfernen */}
@@ -2556,27 +2829,35 @@ function WidgetEditor({
           />
         </Field>
         <Field label="Typ">
-          <select
-            value={w.type}
-            onChange={(e) => {
-              const type = e.target.value as OscWidgetType
-              const patch: Partial<OscWidget> = { type }
-              if (type === 'xy' && !w.addressY) patch.addressY = makeWidget('xy').addressY
-              // Auswahl/Bank brauchen Einträge -> Beispiele setzen, falls leer.
-              if ((type === 'select' || type === 'bank') && w.items.length === 0)
-                patch.items = makeWidget(type).items
-              update(w.id, patch)
-            }}
-            className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
-          >
-            {WIDGET_ORDER.map((t) => (
-              <option key={t} value={t}>
-                {WIDGET_TYPE_LABEL[t]}
-              </option>
-            ))}
-          </select>
+          {isNova ? (
+            <div className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-2 text-sm text-muted-foreground">
+              <Tv className="size-3.5 shrink-0" /> NovaStar
+            </div>
+          ) : (
+            <select
+              value={w.type}
+              onChange={(e) => {
+                const type = e.target.value as OscWidgetType
+                const patch: Partial<OscWidget> = { type }
+                if (type === 'xy' && !w.addressY) patch.addressY = makeWidget('xy').addressY
+                // Auswahl/Bank brauchen Einträge -> Beispiele setzen, falls leer.
+                if ((type === 'select' || type === 'bank') && w.items.length === 0)
+                  patch.items = makeWidget(type).items
+                update(w.id, patch)
+              }}
+              className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+            >
+              {WIDGET_ORDER.map((t) => (
+                <option key={t} value={t}>
+                  {WIDGET_TYPE_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          )}
         </Field>
       </div>
+
+      {isNova && <NovaConfigEditor w={w} />}
 
       {w.type === 'meter' && (
         <Field label="Quelle">
@@ -2592,7 +2873,7 @@ function WidgetEditor({
         </Field>
       )}
 
-      {w.type !== 'label' && !(w.type === 'meter' && w.source === 'video') && (
+      {!isNova && w.type !== 'label' && !(w.type === 'meter' && w.source === 'video') && (
         <Field
           label={
             w.type === 'xy'
@@ -2791,6 +3072,89 @@ function WidgetEditor({
         </div>
       </div>
     </div>
+  )
+}
+
+/* ------------------------- Inspector: NovaStar -------------------------- */
+
+/** Status des (werkzeugübergreifend geteilten) NovaStar-Prozessors abonnieren. */
+function useNovastarStatus(): NovastarStatus | null {
+  const [status, setStatus] = useState<NovastarStatus | null>(null)
+  useEffect(() => {
+    let alive = true
+    void api.novastar.status().then((s) => alive && setStatus(s))
+    const off = api.novastar.onStatus(setStatus)
+    return () => {
+      alive = false
+      off()
+    }
+  }, [])
+  return status
+}
+
+/** Kleiner Statuspunkt (grün = verbunden) für die Panel-Kopfzeile. */
+function NovaStarDot(): JSX.Element {
+  const status = useNovastarStatus()
+  return (
+    <span
+      className={cn(
+        'size-2.5 rounded-full',
+        status?.connected ? 'bg-emerald-500' : 'bg-muted-foreground'
+      )}
+    />
+  )
+}
+
+/** Verbindung zum NovaStar-Prozessor direkt aus der OSC-Steuerung (dieselbe
+ *  geteilte Verbindung wie im NovaStar-Tool). Damit NovaStar-Widgets ohne
+ *  Werkzeugwechsel funktionieren. */
+function NovaStarPanel(): JSX.Element {
+  const status = useNovastarStatus()
+  const [host, setHost] = useState('')
+  const [port, setPort] = useState(5200)
+  const connected = status?.connected ?? false
+  async function toggle(): Promise<void> {
+    if (connected) await api.novastar.disconnect()
+    else if (host.trim()) await api.novastar.connect(host, port)
+  }
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">
+        NovaStar-Widgets senden an diesen Prozessor (geteilt mit dem NovaStar-Tool). Ohne Verbindung
+        bleiben sie wirkungslos.
+      </p>
+      <div className="flex items-end gap-2">
+        <label className="flex-1">
+          <span className="mb-1 block text-xs text-muted-foreground">Prozessor-IP</span>
+          <Input
+            value={host}
+            placeholder="z. B. 192.168.0.10"
+            onChange={(e) => setHost(e.target.value)}
+            disabled={connected}
+            className="h-8"
+          />
+        </label>
+        <label className="w-20">
+          <span className="mb-1 block text-xs text-muted-foreground">Port</span>
+          <Input
+            type="number"
+            value={port}
+            onChange={(e) => setPort(Number(e.target.value) || 5200)}
+            disabled={connected}
+            className="h-8 tabular-nums"
+          />
+        </label>
+        <Button variant={connected ? 'outline' : 'default'} size="sm" onClick={() => void toggle()}>
+          <Wifi className="size-4" /> {connected ? 'Trennen' : 'Verbinden'}
+        </Button>
+      </div>
+      {status?.lastError && <p className="text-xs text-destructive">Fehler: {status.lastError}</p>}
+      {connected && (
+        <p className="text-xs text-emerald-400 light:text-emerald-700">
+          Verbunden {status?.host}:{status?.port}
+        </p>
+      )}
+    </>
   )
 }
 
