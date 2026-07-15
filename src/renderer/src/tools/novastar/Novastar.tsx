@@ -9,7 +9,7 @@ import { cn } from '@renderer/lib/utils'
 import { toolPageClass } from '@renderer/lib/toolPage'
 
 // NovaStar-Prozessor-Steuerung (NovaPro UHD Jr & Co.) über TCP 5200.
-// Paket-Bytes exakt nach „Central Control Protocol" V1.5.0.
+// Paket-Bytes abgeglichen mit dem Bitfocus-Companion-Modul (siehe novastarCodec).
 
 export function Novastar(): JSX.Element {
   const [host, setHost] = useState('')
@@ -63,14 +63,19 @@ export function Novastar(): JSX.Element {
     if (bright > 0) prevBright.current = bright
     ramp(0)
   }
+  // Blackout und Freeze sind am Gerät EIN Anzeigemodus (Normal/Freeze/Black) --
+  // sie schließen sich gegenseitig aus. Das eine einzuschalten hebt das andere
+  // sichtbar auf; das aktive ausschalten schaltet auf Normal zurück.
   function toggleBlackout(): void {
     const next = !black
     setBlack(next)
+    if (next) setFrozen(false)
     void api.novastar.blackout(next)
   }
   function toggleFreeze(): void {
     const next = !frozen
     setFrozen(next)
+    if (next) setBlack(false)
     void api.novastar.freeze(next)
   }
   async function connect(): Promise<void> {
@@ -81,8 +86,9 @@ export function Novastar(): JSX.Element {
   return (
     <div className={toolPageClass('2xl')}>
       <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Befehls-Bytes exakt nach NovaStar „Central Control Protocol" V1.5.0 (TCP 5200). Auf echter
-        Hardware noch nicht gegengeprüft – bei Problemen den <i>Roh-Befehl</i> nutzen.
+        Befehls-Bytes für NovaPro UHD Jr &amp; Co. (TCP 5200), abgeglichen mit dem
+        Bitfocus-Companion- Modul. Blackout und Freeze sind ein gemeinsamer Anzeigemodus (schließen
+        sich gegenseitig aus). Bei anderen Modellen ggf. den <i>Roh-Befehl</i> nutzen.
       </div>
 
       {/* Verbindung */}
@@ -200,8 +206,9 @@ export function Novastar(): JSX.Element {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          „Fade to Black" blendet die Helligkeit weich aus; „Blackout" schaltet die Empfangskarten
-          sofort hart schwarz (eigener Protokoll-Befehl).
+          „Fade to Black" blendet die Helligkeit weich aus; „Blackout" schaltet den Anzeigemodus
+          sofort hart auf Schwarz. Blackout und Einfrieren teilen sich diesen Anzeigemodus – nur
+          eines gleichzeitig; das aktive ausschalten geht zurück auf Normal.
         </p>
       </Card>
 
