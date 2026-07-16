@@ -3,10 +3,18 @@
 // TCP-Sweep + ARP (Hersteller aus der MAC) + Bonjour/mDNS-Namen. Der Scan läuft
 // im main-Prozess; hier werden Fortschritt und Geräte live gespiegelt.
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode
+} from 'react'
 import {
   Ban,
   Camera,
+  Check,
+  ChevronDown,
   Copy,
   ExternalLink,
   Globe,
@@ -14,13 +22,16 @@ import {
   Lightbulb,
   Monitor as MonitorIcon,
   MonitorCog,
+  MonitorPlay,
+  Printer,
   Projector,
-  Radar,
   Radio,
+  Router,
   Search,
-  SlidersHorizontal,
+  Smartphone,
   Video,
   Volume2,
+  Wand2,
   Wifi
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -61,14 +72,34 @@ const TYPE_META: Record<NetDeviceType, { label: string; tone: BadgeTone; icon: L
   novastar: { label: 'LED-Prozessor', tone: 'info', icon: MonitorCog },
   atem: { label: 'Video-Mischer', tone: 'info', icon: Video },
   camera: { label: 'Kamera', tone: 'info', icon: Camera },
-  video: { label: 'Video/Streaming', tone: 'info', icon: Video },
+  video: { label: 'Video/Streaming', tone: 'info', icon: MonitorPlay },
   projector: { label: 'Projektor', tone: 'info', icon: Projector },
   lighting: { label: 'Licht', tone: 'info', icon: Lightbulb },
   audio: { label: 'Audio', tone: 'info', icon: Volume2 },
+  printer: { label: 'Drucker', tone: 'neutral', icon: Printer },
   computer: { label: 'Computer', tone: 'neutral', icon: MonitorIcon },
+  mobile: { label: 'Handy/Tablet', tone: 'neutral', icon: Smartphone },
+  router: { label: 'Router', tone: 'neutral', icon: Router },
   web: { label: 'Web-Gerät', tone: 'neutral', icon: Globe },
   unknown: { label: 'Unbekannt', tone: 'neutral', icon: HelpCircle }
 }
+
+// Reihenfolge der Typen im Auswahlmenü.
+const TYPE_ORDER: NetDeviceType[] = [
+  'novastar',
+  'atem',
+  'camera',
+  'video',
+  'projector',
+  'lighting',
+  'audio',
+  'printer',
+  'computer',
+  'mobile',
+  'router',
+  'web',
+  'unknown'
+]
 
 const ipToSortKey = (ip: string): number =>
   ip.split('.').reduce((n, o) => n * 256 + (Number(o) || 0), 0)
@@ -84,6 +115,15 @@ export function NetScan(): JSX.Element {
   const navigate = useNavigate()
   const labels = useNetLabels((s) => s.labels)
   const setLabel = useNetLabels((s) => s.setLabel)
+  const typeOverrides = useNetLabels((s) => s.types)
+  const setType = useNetLabels((s) => s.setType)
+  // Offenes Typ-Menü: an welchem Gerät + Bildschirmposition.
+  const [typeMenu, setTypeMenu] = useState<{
+    key: string
+    detected: NetDeviceType
+    x: number
+    y: number
+  } | null>(null)
 
   const [interfaces, setInterfaces] = useState<NetInterface[]>([])
   const [iface, setIface] = useState<string>('')
@@ -235,13 +275,33 @@ export function NetScan(): JSX.Element {
       ) : (
         <div className="space-y-2">
           {devices.map((d) => {
-            const meta = TYPE_META[d.type]
             const key = deviceKey(d.mac, d.ip)
+            const override = typeOverrides[key]
+            const effType = override ?? d.type
+            const meta = TYPE_META[effType]
             const hasWeb = d.ports.some((p) => WEB_PORTS.includes(p))
             const oui = d.mac ? d.mac.slice(0, 8) : null
+            const openTypeMenu = (e: ReactMouseEvent<HTMLElement>): void => {
+              const r = e.currentTarget.getBoundingClientRect()
+              setTypeMenu({ key, detected: d.type, x: r.left, y: r.bottom + 4 })
+            }
             return (
               <Card key={d.ip} className="flex items-center gap-3 p-3">
-                <meta.icon className="size-5 shrink-0 text-primary" />
+                {/* Typ-Symbol = Auswahlknopf; manuell gesetzt -> kleiner Marker. */}
+                <button
+                  type="button"
+                  onClick={openTypeMenu}
+                  title={`Typ: ${meta.label}${override ? ' (manuell)' : ''} – ändern`}
+                  className="relative flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-primary transition-colors hover:border-primary/50 hover:bg-muted/40"
+                >
+                  <meta.icon className="size-5" />
+                  {override && (
+                    <span
+                      className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card"
+                      title="manuell festgelegt"
+                    />
+                  )}
+                </button>
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Input
@@ -250,7 +310,17 @@ export function NetScan(): JSX.Element {
                       onChange={(e) => setLabel(key, e.target.value)}
                       className="h-7 w-44 text-sm"
                     />
-                    <Badge tone={meta.tone}>{meta.label}</Badge>
+                    <button
+                      type="button"
+                      onClick={openTypeMenu}
+                      title="Typ ändern"
+                      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+                    >
+                      <Badge tone={meta.tone} className="cursor-pointer hover:opacity-80">
+                        {meta.label}
+                        <ChevronDown className="size-3 opacity-70" />
+                      </Badge>
+                    </button>
                     {d.ports.map((p) => (
                       <Badge key={p} tone="neutral" title={`Port ${p}`}>
                         {PORT_LABEL[p] ?? p}
@@ -303,11 +373,102 @@ export function NetScan(): JSX.Element {
       )}
 
       <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <SlidersHorizontal className="size-3" />
-        Tipp: <MonitorCog className="inline size-3" /> übergibt die IP direkt an die NovaStar-
-        Steuerung, <Radar className="inline size-3" /> Gerätetyp ist eine best-effort-Schätzung aus
-        offenen Ports und Hersteller.
+        <Wand2 className="size-3 shrink-0" />
+        Tipp: Symbol oder Typ-Etikett anklicken, um den Gerätetyp – und damit das Symbol – manuell
+        zu setzen (bleibt gespeichert). <MonitorCog className="inline size-3" /> übergibt die IP an
+        die NovaStar-Steuerung.
       </p>
+
+      {typeMenu && (
+        <TypeMenu
+          x={typeMenu.x}
+          y={typeMenu.y}
+          detected={typeMenu.detected}
+          current={typeOverrides[typeMenu.key] ?? null}
+          onPick={(t) => {
+            setType(typeMenu.key, t)
+            setTypeMenu(null)
+          }}
+          onClose={() => setTypeMenu(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+/** Popover zur manuellen Wahl des Gerätetyps (setzt zugleich das Symbol).
+ *  „Automatisch" verwirft die manuelle Wahl und nutzt wieder die Erkennung. */
+function TypeMenu({
+  x,
+  y,
+  detected,
+  current,
+  onPick,
+  onClose
+}: {
+  x: number
+  y: number
+  detected: NetDeviceType
+  current: NetDeviceType | null
+  onPick: (t: NetDeviceType | null) => void
+  onClose: () => void
+}): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    const onDown = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('mousedown', onDown)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mousedown', onDown)
+    }
+  }, [onClose])
+  const left = Math.max(8, Math.min(x, window.innerWidth - 236))
+  const top = Math.max(8, Math.min(y, window.innerHeight - 430))
+  return (
+    <div
+      ref={ref}
+      style={{ position: 'fixed', left, top, zIndex: 50 }}
+      className="max-h-[80vh] w-56 select-none overflow-auto rounded-lg border border-border bg-card p-1.5 shadow-xl"
+    >
+      <button
+        type="button"
+        onClick={() => onPick(null)}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted/60',
+          current === null && 'bg-primary/10 text-primary'
+        )}
+      >
+        <Wand2 className="size-4 shrink-0" />
+        <span className="flex-1">Automatisch</span>
+        <span className="text-xs text-muted-foreground">{TYPE_META[detected].label}</span>
+        {current === null && <Check className="size-3.5 shrink-0" />}
+      </button>
+      <div className="my-1 h-px bg-border" />
+      {TYPE_ORDER.map((t) => {
+        const m = TYPE_META[t]
+        const sel = current === t
+        return (
+          <button
+            key={t}
+            type="button"
+            onClick={() => onPick(t)}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted/60',
+              sel && 'bg-primary/10 text-primary'
+            )}
+          >
+            <m.icon className="size-4 shrink-0" />
+            <span className="flex-1">{m.label}</span>
+            {sel && <Check className="size-3.5 shrink-0" />}
+          </button>
+        )
+      })}
     </div>
   )
 }

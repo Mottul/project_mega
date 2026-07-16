@@ -725,7 +725,10 @@ export type NetDeviceType =
   | 'projector' // Projektor (PJLink 4352)
   | 'lighting' // Licht (Art-Net/sACN)
   | 'audio' // Audio
-  | 'computer' // PC/Server (SSH/RDP/SMB)
+  | 'printer' // Drucker
+  | 'computer' // PC/Laptop/Server (SSH/RDP/SMB)
+  | 'mobile' // Handy/Tablet
+  | 'router' // Router/Netzwerkgerät
   | 'web' // hat Web-Oberfläche
   | 'unknown'
 
