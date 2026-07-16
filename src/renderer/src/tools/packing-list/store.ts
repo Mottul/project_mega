@@ -25,9 +25,13 @@ interface PackState {
   addCategory: (name?: string) => void
   renameCategory: (oldName: string, newName: string) => void
   removeCategory: (name: string) => void
+  /** Kategorie in der Reihenfolge verschieben (dir = -1 vor, +1 zurück). */
+  moveCategory: (name: string, dir: -1 | 1) => void
   addItem: (category?: string) => void
   updateItem: (id: string, patch: Partial<PackItem>) => void
   removeItem: (id: string) => void
+  /** Position innerhalb ihrer Kategorie verschieben (dir = -1 hoch, +1 runter). */
+  moveItem: (id: string, dir: -1 | 1) => void
   clearChecked: () => void
   reset: () => void
   /** Positionen ergänzen; gleiche (Kategorie+Name) werden in der Menge ersetzt.
@@ -84,6 +88,15 @@ export const usePacking = create<PackState>()(
         })
       },
 
+      moveCategory: (name, dir) => {
+        const cats = [...get().categories]
+        const i = cats.indexOf(name)
+        const j = i + dir
+        if (i < 0 || j < 0 || j >= cats.length) return
+        ;[cats[i], cats[j]] = [cats[j], cats[i]]
+        set({ categories: cats })
+      },
+
       addItem: (category) => {
         const s = get()
         const cat = category ?? s.categories[0] ?? 'Allgemein'
@@ -100,6 +113,20 @@ export const usePacking = create<PackState>()(
       updateItem: (id, patch) =>
         set({ items: get().items.map((it) => (it.id === id ? { ...it, ...patch } : it)) }),
       removeItem: (id) => set({ items: get().items.filter((it) => it.id !== id) }),
+
+      moveItem: (id, dir) => {
+        const items = [...get().items]
+        const idx = items.findIndex((it) => it.id === id)
+        if (idx < 0) return
+        // Nur unter Geschwistern derselben Kategorie tauschen (in Array-Reihenfolge).
+        const cat = items[idx].category
+        const siblings = items.map((it, k) => ({ it, k })).filter((x) => x.it.category === cat)
+        const pos = siblings.findIndex((x) => x.k === idx)
+        const target = siblings[pos + dir]
+        if (!target) return
+        ;[items[idx], items[target.k]] = [items[target.k], items[idx]]
+        set({ items })
+      },
       clearChecked: () => set({ items: get().items.filter((it) => !it.checked) }),
       reset: () => set({ items: [] }),
 
