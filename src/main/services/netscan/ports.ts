@@ -67,6 +67,8 @@ export function classify(d: {
   )
     return 'camera'
   if (has(1935)) return 'video'
+  if (svc.includes('_ipp') || svc.includes('_printer') || svc.includes('_pdl-datastream'))
+    return 'printer'
   if (has(3389) || has(445) || has(5900) || svc.includes('_smb') || svc.includes('_workstation'))
     return 'computer'
   if (has(80) || has(443) || has(8080) || has(8443) || svc.includes('_http')) return 'web'

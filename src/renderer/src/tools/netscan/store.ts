@@ -4,11 +4,15 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { NetDeviceType } from '@shared/types'
 import { debouncedStorage } from '@renderer/lib/persistStorage'
 
 interface NetLabelState {
   labels: Record<string, string> // key (mac||ip) -> Bezeichnung
+  types: Record<string, NetDeviceType> // key (mac||ip) -> manuell gesetzter Typ
   setLabel: (key: string, label: string) => void
+  /** Typ manuell festlegen; null = wieder automatisch erkennen. */
+  setType: (key: string, type: NetDeviceType | null) => void
 }
 
 /** Stabiler Schlüssel für ein Gerät: MAC bevorzugt, sonst IP. */
@@ -20,6 +24,7 @@ export const useNetLabels = create<NetLabelState>()(
   persist(
     (set) => ({
       labels: {},
+      types: {},
       setLabel: (key, label) =>
         set((s) => {
           const next = { ...s.labels }
@@ -27,6 +32,13 @@ export const useNetLabels = create<NetLabelState>()(
           if (trimmed) next[key] = trimmed
           else delete next[key]
           return { labels: next }
+        }),
+      setType: (key, type) =>
+        set((s) => {
+          const next = { ...s.types }
+          if (type) next[key] = type
+          else delete next[key]
+          return { types: next }
         })
     }),
     { name: 'netscan-labels', storage: debouncedStorage() }

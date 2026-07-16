@@ -27,6 +27,10 @@ describe('ports – classify', () => {
     expect(classify({ ...base, ports: [3389, 445] })).toBe('computer')
     expect(classify({ ...base, ports: [5900] })).toBe('computer')
   })
+  it('Drucker per IPP/PDL-Dienst (auch mit Web)', () => {
+    expect(classify({ ...base, ports: [80], services: [{ type: '_ipp._tcp' }] })).toBe('printer')
+    expect(classify({ ...base, services: [{ type: '_pdl-datastream._tcp' }] })).toBe('printer')
+  })
   it('Web-Gerät als Rückfall bei HTTP', () => {
     expect(classify({ ...base, ports: [80, 443] })).toBe('web')
   })
