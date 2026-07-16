@@ -281,15 +281,22 @@ export function NetScan(): JSX.Element {
             const meta = TYPE_META[effType]
             const hasWeb = d.ports.some((p) => WEB_PORTS.includes(p))
             const oui = d.mac ? d.mac.slice(0, 8) : null
+            // Klick öffnet das Menü – erneuter Klick auf denselben Auslöser schließt es
+            // wieder (der Außenklick-Handler ignoriert Auslöser per data-Attribut).
             const openTypeMenu = (e: ReactMouseEvent<HTMLElement>): void => {
               const r = e.currentTarget.getBoundingClientRect()
-              setTypeMenu({ key, detected: d.type, x: r.left, y: r.bottom + 4 })
+              setTypeMenu((cur) =>
+                cur && cur.key === key
+                  ? null
+                  : { key, detected: d.type, x: r.left, y: r.bottom + 4 }
+              )
             }
             return (
               <Card key={d.ip} className="flex items-center gap-3 p-3">
                 {/* Typ-Symbol = Auswahlknopf; manuell gesetzt -> kleiner Marker. */}
                 <button
                   type="button"
+                  data-typemenu-trigger
                   onClick={openTypeMenu}
                   title={`Typ: ${meta.label}${override ? ' (manuell)' : ''} – ändern`}
                   className="relative flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-primary transition-colors hover:border-primary/50 hover:bg-muted/40"
@@ -312,6 +319,7 @@ export function NetScan(): JSX.Element {
                     />
                     <button
                       type="button"
+                      data-typemenu-trigger
                       onClick={openTypeMenu}
                       title="Typ ändern"
                       className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
@@ -418,8 +426,12 @@ function TypeMenu({
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
     }
+    // Außenklick schließt – Klicks auf einen Auslöser (Symbol/Etikett) NICHT, damit
+    // deren onClick das Menü sauber umschalten kann statt schließen-und-neu-öffnen.
     const onDown = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+      const t = e.target as HTMLElement
+      if (ref.current && !ref.current.contains(t) && !t.closest('[data-typemenu-trigger]'))
+        onClose()
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('mousedown', onDown)
@@ -428,13 +440,16 @@ function TypeMenu({
       window.removeEventListener('mousedown', onDown)
     }
   }, [onClose])
+  // Nach oben schieben, falls unten kein Platz ist; Höhe hart auf den verfügbaren
+  // Raum deckeln, damit alle Einträge scrollbar erreichbar bleiben (~470px hoch).
   const left = Math.max(8, Math.min(x, window.innerWidth - 236))
-  const top = Math.max(8, Math.min(y, window.innerHeight - 430))
+  const top = Math.max(8, Math.min(y, window.innerHeight - 8 - 472))
+  const maxHeight = window.innerHeight - top - 8
   return (
     <div
       ref={ref}
-      style={{ position: 'fixed', left, top, zIndex: 50 }}
-      className="max-h-[80vh] w-56 select-none overflow-auto rounded-lg border border-border bg-card p-1.5 shadow-xl"
+      style={{ position: 'fixed', left, top, maxHeight, zIndex: 50 }}
+      className="w-56 select-none overflow-auto rounded-lg border border-border bg-card p-1.5 shadow-xl"
     >
       <button
         type="button"
