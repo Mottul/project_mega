@@ -18,7 +18,7 @@ const namesIn = (cat: string): string[] =>
     .map((i) => i.name)
 
 beforeEach(() => {
-  usePacking.setState({ categories: ['A', 'B', 'C'], items: [] })
+  usePacking.setState({ projectName: '', categories: ['A', 'B', 'C'], items: [], saved: [] })
 })
 
 describe('usePacking – moveCategory', () => {
@@ -54,5 +54,37 @@ describe('usePacking – moveItem', () => {
     usePacking.getState().moveItem('a1', -1) // schon oben
     usePacking.getState().moveItem('a2', 1) // schon unten
     expect(namesIn('A')).toEqual(['A1', 'A2'])
+  })
+})
+
+describe('usePacking – gespeicherte Jobs', () => {
+  it('speichert, lädt und löscht Jobs; gleicher Name überschreibt', () => {
+    usePacking.setState({
+      projectName: 'Konzert',
+      categories: ['A'],
+      items: [mk('a1', 'A', 'Kabel')]
+    })
+    usePacking.getState().saveJob('Konzert')
+    expect(usePacking.getState().saved).toHaveLength(1)
+    const jobId = usePacking.getState().saved[0].id
+
+    // Aktuelle Liste ändern, dann Job erneut speichern -> überschreibt (kein Duplikat)
+    usePacking.setState({ items: [mk('a1', 'A', 'Kabel'), mk('a2', 'A', 'Case')] })
+    usePacking.getState().saveJob('Konzert')
+    expect(usePacking.getState().saved).toHaveLength(1)
+    expect(usePacking.getState().saved[0].id).toBe(jobId) // gleiche ID behalten
+
+    // Liste leeren, dann Job laden -> stellt 2 Positionen wieder her
+    usePacking.setState({ items: [] })
+    usePacking.getState().loadJob(jobId)
+    expect(namesIn('A')).toEqual(['Kabel', 'Case'])
+    expect(usePacking.getState().projectName).toBe('Konzert')
+
+    // Geladene Positionen sind Kopien (keine geteilten Referenzen mit dem Job)
+    usePacking.getState().updateItem(usePacking.getState().items[0].id, { name: 'X' })
+    expect(usePacking.getState().saved[0].items[0].name).toBe('Kabel')
+
+    usePacking.getState().deleteJob(jobId)
+    expect(usePacking.getState().saved).toHaveLength(0)
   })
 })
