@@ -16,11 +16,23 @@ export interface PackItem {
   note: string
 }
 
+/** Gespeicherter Job (wiederkehrende Packliste) – Schnappschuss der Liste. */
+export interface SavedJob {
+  id: string
+  name: string
+  savedAt: number
+  projectName: string
+  categories: string[]
+  items: PackItem[]
+}
+
 interface PackState {
   projectName: string
   /** Existenz + Reihenfolge der Kategorien (auch leere). */
   categories: string[]
   items: PackItem[]
+  /** Gespeicherte Jobs (im Store persistiert). */
+  saved: SavedJob[]
   set: (patch: Partial<Pick<PackState, 'projectName'>>) => void
   addCategory: (name?: string) => void
   renameCategory: (oldName: string, newName: string) => void
@@ -37,6 +49,14 @@ interface PackState {
   /** Positionen ergänzen; gleiche (Kategorie+Name) werden in der Menge ersetzt.
    *  Vorkommende Kategorien werden angelegt. */
   mergeItems: (items: Omit<PackItem, 'id' | 'checked'>[]) => void
+  /** Aktuelle Liste komplett ersetzen (z.B. beim Import/Laden). */
+  replaceAll: (snap: { projectName: string; categories: string[]; items: PackItem[] }) => void
+  /** Aktuelle Liste als Job unter `name` speichern (gleicher Name überschreibt). */
+  saveJob: (name: string) => void
+  /** Gespeicherten Job laden (ersetzt die aktuelle Liste). */
+  loadJob: (id: string) => void
+  /** Gespeicherten Job löschen. */
+  deleteJob: (id: string) => void
 }
 
 let seq = 0
@@ -48,6 +68,7 @@ export const usePacking = create<PackState>()(
       projectName: '',
       categories: ['Allgemein'],
       items: [],
+      saved: [],
       set: (patch) => set(patch),
 
       addCategory: (name) => {
@@ -141,7 +162,48 @@ export const usePacking = create<PackState>()(
           else items.push({ ...inc, id: uid(), checked: false })
         }
         set({ items, categories })
-      }
+      },
+
+      replaceAll: (snap) =>
+        set({
+          projectName: snap.projectName,
+          categories: snap.categories.length ? [...snap.categories] : ['Allgemein'],
+          items: snap.items.map((it) => ({ ...it }))
+        }),
+
+      saveJob: (name) => {
+        const s = get()
+        const n = name.trim() || `Job ${new Date().toLocaleDateString('de-DE')}`
+        const snapshot = {
+          projectName: s.projectName,
+          categories: [...s.categories],
+          items: s.items.map((it) => ({ ...it }))
+        }
+        const existing = s.saved.find((j) => j.name === n)
+        const job: SavedJob = {
+          id: existing?.id ?? uid(),
+          name: n,
+          savedAt: Date.now(),
+          ...snapshot
+        }
+        // Gleicher Name -> ersetzen, sonst anhängen. Nach Name sortiert halten.
+        const saved = [...s.saved.filter((j) => j.id !== job.id), job].sort((a, b) =>
+          a.name.localeCompare(b.name, 'de')
+        )
+        set({ saved })
+      },
+
+      loadJob: (id) => {
+        const job = get().saved.find((j) => j.id === id)
+        if (!job) return
+        get().replaceAll({
+          projectName: job.projectName,
+          categories: job.categories,
+          items: job.items
+        })
+      },
+
+      deleteJob: (id) => set({ saved: get().saved.filter((j) => j.id !== id) })
     }),
     {
       name: 'packing-list',
@@ -155,6 +217,7 @@ export const usePacking = create<PackState>()(
             : ['Allgemein']
         for (const it of state.items) if (!cats.includes(it.category)) cats.push(it.category)
         state.categories = cats
+        if (!Array.isArray(state.saved)) state.saved = []
       }
     }
   )

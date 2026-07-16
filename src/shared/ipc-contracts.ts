@@ -149,6 +149,8 @@ export const Channels = {
   windowOpenTool: 'window:openTool', // Tool in eigenem Fenster öffnen
   // Werkzeuge
   utilExportPdf: 'util:exportPdf', // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
+  utilSaveText: 'util:saveText', // Text/JSON in Datei speichern (Save-Dialog)
+  utilOpenText: 'util:openText', // Textdatei einlesen (Open-Dialog)
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
@@ -358,6 +360,11 @@ export interface ToolboxApi {
     /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF).
      *  Liefert den gewählten Pfad oder null (abgebrochen). */
     exportPdf(html: string, suggestedName: string, landscape?: boolean): Promise<string | null>
+    /** Text (z.B. JSON) über einen Speichern-Dialog in eine Datei schreiben.
+     *  Liefert den gewählten Pfad oder null (abgebrochen). */
+    saveText(text: string, suggestedName: string): Promise<string | null>
+    /** Textdatei über einen Öffnen-Dialog einlesen. Liefert den Inhalt oder null. */
+    openText(): Promise<string | null>
   }
 
   jingles: {

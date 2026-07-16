@@ -3,11 +3,49 @@
 // printToPDF in die vom Nutzer gewaehlte Datei (z.B. LED-Wall-Projektdoku).
 
 import { BrowserWindow, dialog, ipcMain } from 'electron'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { Channels } from '@shared/ipc-contracts'
 import { logLine } from '../services/log'
 
 export function registerUtilHandlers(): void {
+  // Beliebigen Text (z.B. JSON) über einen Speichern-Dialog schreiben.
+  ipcMain.handle(Channels.utilSaveText, async (e, text: string, suggestedName: string) => {
+    const parent = BrowserWindow.fromWebContents(e.sender)
+    const opts = {
+      title: 'Speichern',
+      defaultPath: suggestedName,
+      filters: [
+        { name: 'JSON', extensions: ['json'] },
+        { name: 'Alle Dateien', extensions: ['*'] }
+      ]
+    }
+    const res = parent
+      ? await dialog.showSaveDialog(parent, opts)
+      : await dialog.showSaveDialog(opts)
+    if (res.canceled || !res.filePath) return null
+    await writeFile(res.filePath, text, 'utf8')
+    logLine('[util] Text gespeichert ->', res.filePath, `${text.length} Zeichen`)
+    return res.filePath
+  })
+
+  // Textdatei über einen Öffnen-Dialog einlesen.
+  ipcMain.handle(Channels.utilOpenText, async (e) => {
+    const parent = BrowserWindow.fromWebContents(e.sender)
+    const opts = {
+      title: 'Öffnen',
+      properties: ['openFile' as const],
+      filters: [
+        { name: 'JSON', extensions: ['json'] },
+        { name: 'Alle Dateien', extensions: ['*'] }
+      ]
+    }
+    const res = parent
+      ? await dialog.showOpenDialog(parent, opts)
+      : await dialog.showOpenDialog(opts)
+    if (res.canceled || !res.filePaths[0]) return null
+    return readFile(res.filePaths[0], 'utf8')
+  })
+
   ipcMain.handle(
     Channels.utilExportPdf,
     async (e, html: string, suggestedName: string, landscape = false) => {
