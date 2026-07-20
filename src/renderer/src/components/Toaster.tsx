@@ -4,7 +4,7 @@
 
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useToasts, type ToastKind } from '@renderer/lib/toast'
+import { dismissToast, useToasts, type ToastKind } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 
 const META: Record<ToastKind, { icon: LucideIcon; cls: string }> = {
@@ -16,7 +16,6 @@ const META: Record<ToastKind, { icon: LucideIcon; cls: string }> = {
 
 export function Toaster(): JSX.Element {
   const items = useToasts((s) => s.items)
-  const dismiss = useToasts((s) => s.dismiss)
   return (
     <div
       aria-live="polite"
@@ -40,7 +39,7 @@ export function Toaster(): JSX.Element {
             </div>
             <button
               type="button"
-              onClick={() => dismiss(t.id)}
+              onClick={() => dismissToast(t.id)}
               className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
               aria-label="Schließen"
             >

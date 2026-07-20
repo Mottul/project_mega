@@ -55,6 +55,16 @@ function push(kind: ToastKind, message: string, detail?: string): void {
   )
 }
 
+/** Toast entfernen und seinen Auto-Timer aufräumen (für manuelles Schließen). */
+export function dismissToast(id: number): void {
+  const t = timers.get(id)
+  if (t) {
+    clearTimeout(t)
+    timers.delete(id)
+  }
+  useToasts.getState().dismiss(id)
+}
+
 export const toast = {
   info: (message: string, detail?: string): void => push('info', message, detail),
   success: (message: string, detail?: string): void => push('success', message, detail),

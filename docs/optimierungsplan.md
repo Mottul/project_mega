@@ -37,6 +37,11 @@ diszipliniertes Projekt.** Belege quer durch den Baum:
 
 ## 1. Phase 1 — „Show-Härtung" (höchster Nutzen/Aufwand, zuerst)
 
+> **Status: umgesetzt.** ErrorBoundary (global + pro Werkzeug) + `api`-Guard/Boot-Check, globale
+> main-Fehler-Handler + Renderer-Fehler ins Debug-Log (`util.log`), In-App-Toasts, stille Fehler
+> sichtbar (Jingle-Pad/-Audiogerät, Jingle-/Manuals-/netscan-Pfade), `settings.json`- und
+> `library.db`-Wiederherstellung, Persist-Stores versioniert. Details unten.
+
 Diese Punkte wurden von mehreren Analysen unabhängig markiert und/oder sind für eine **Live-Show-App**
 das größte Risiko. Alle klein bis mittel.
 

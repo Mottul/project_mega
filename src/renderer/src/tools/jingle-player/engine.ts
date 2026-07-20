@@ -187,9 +187,11 @@ export function useJingleEngine({ pads, outputDeviceId, soloMode }: EngineArgs):
       void e.el
         .play()
         .then(() => markPlaying(padId, true))
-        .catch(() => {
-          // Datei fehlt/beschädigt -> Pad-Druck bliebe sonst wirkungslos.
+        .catch((err: unknown) => {
           markPlaying(padId, false)
+          // AbortError = durch schnelles Stoppen/Neu-Triggern unterbrochen -> harmlos,
+          // nicht melden. Echte Ursachen (Datei fehlt/beschädigt) dagegen anzeigen.
+          if (err instanceof DOMException && err.name === 'AbortError') return
           toast.error(
             `Jingle „${pad.label || pad.originalName || 'ohne Name'}“ konnte nicht abgespielt werden`,
             'Datei fehlt oder ist beschädigt.'

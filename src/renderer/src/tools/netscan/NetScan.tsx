@@ -171,8 +171,14 @@ export function NetScan(): JSX.Element {
   }
 
   function copyIp(ip: string): void {
-    // „kopiert!" erst bei tatsächlichem Erfolg zeigen (nicht optimistisch).
-    Promise.resolve(navigator.clipboard?.writeText(ip))
+    // „kopiert!" erst bei tatsächlichem Erfolg zeigen (nicht optimistisch). Fehlt
+    // die Zwischenablage-API ganz, wäre Promise.resolve(undefined) sonst „Erfolg".
+    const cb = navigator.clipboard
+    if (!cb) {
+      toast.error('Zwischenablage nicht verfügbar')
+      return
+    }
+    cb.writeText(ip)
       .then(() => {
         setCopied(ip)
         if (copiedTimer.current) clearTimeout(copiedTimer.current)
