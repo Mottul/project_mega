@@ -99,6 +99,13 @@ export const useLedWall = create<LedWallState>()(
         } as Partial<LedWallState>)
       }
     }),
-    { name: 'led-wall-konfigurator', storage: debouncedStorage() }
+    {
+      name: 'led-wall-konfigurator',
+      storage: debouncedStorage(),
+      // Basisversion: v0 (unversioniert) und v1 haben dieselbe Form -> durchreichen.
+      // Ab jetzt existiert ein Migrationspunkt für künftige Schemaänderungen.
+      version: 1,
+      migrate: (persisted) => persisted as LedWallState
+    }
   )
 )

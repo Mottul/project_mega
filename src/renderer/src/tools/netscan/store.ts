@@ -41,6 +41,13 @@ export const useNetLabels = create<NetLabelState>()(
           return { types: next }
         })
     }),
-    { name: 'netscan-labels', storage: debouncedStorage() }
+    {
+      name: 'netscan-labels',
+      storage: debouncedStorage(),
+      // Basisversion: v0 (unversioniert) und v1 haben dieselbe Form -> durchreichen.
+      // Ab jetzt existiert ein Migrationspunkt für künftige Schemaänderungen.
+      version: 1,
+      migrate: (persisted) => persisted as NetLabelState
+    }
   )
 )

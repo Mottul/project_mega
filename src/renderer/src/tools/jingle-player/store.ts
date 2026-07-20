@@ -192,6 +192,10 @@ export const useJingles = create<JingleState>()(
     {
       name: 'jingle-player',
       storage: debouncedStorage(),
+      // Basisversion: v0 (unversioniert) und v1 haben dieselbe Form -> durchreichen
+      // (die feldweise Absicherung erledigt onRehydrateStorage). Migrationspunkt ab jetzt.
+      version: 1,
+      migrate: (persisted) => persisted as JingleState,
       onRehydrateStorage: () => (state) => {
         if (!state) return
         // currentBankId auf eine existierende Bank setzen.

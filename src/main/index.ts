@@ -23,6 +23,18 @@ import { stopPlayerNdi } from './services/playerNdi'
 
 const isDev = !app.isPackaged
 
+// Globale Auffanglinien: unbehandelte Fehler/Rejections landen im Debug-Log
+// (im gepackten Build sonst unsichtbar) statt die App still zu destabilisieren.
+process.on('unhandledRejection', (reason) => {
+  logLine(
+    '[unhandledRejection]',
+    reason instanceof Error ? (reason.stack ?? reason.message) : reason
+  )
+})
+process.on('uncaughtException', (err) => {
+  logLine('[uncaughtException]', err.stack ?? err.message)
+})
+
 // Privilegierte Schemata MÜSSEN vor app.whenReady registriert werden, damit der
 // renderer darauf zugreifen darf (pdfjs-fetch bzw. <video src> mit Range/Stream).
 protocol.registerSchemesAsPrivileged([
@@ -115,10 +127,14 @@ function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWi
 
   const devUrl = process.env['ELECTRON_RENDERER_URL']
   const hash = opts.hash ?? ''
+  const onLoadErr = (e: unknown): void =>
+    logLine('[window] Laden fehlgeschlagen:', e instanceof Error ? e.message : String(e))
   if (isDev && devUrl) {
-    void win.loadURL(devUrl + (hash ? `#${hash}` : ''))
+    win.loadURL(devUrl + (hash ? `#${hash}` : '')).catch(onLoadErr)
   } else {
-    void win.loadFile(join(__dirname, '../renderer/index.html'), hash ? { hash } : undefined)
+    win
+      .loadFile(join(__dirname, '../renderer/index.html'), hash ? { hash } : undefined)
+      .catch(onLoadErr)
   }
   return win
 }

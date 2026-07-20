@@ -208,6 +208,10 @@ export const usePacking = create<PackState>()(
     {
       name: 'packing-list',
       storage: debouncedStorage(),
+      // Basisversion: v0 (unversioniert) und v1 haben dieselbe Form -> durchreichen
+      // (Feld-Absicherung erledigt onRehydrateStorage). Migrationspunkt ab jetzt.
+      version: 1,
+      migrate: (persisted) => persisted as PackState,
       // Migration/Defensive: Kategorienliste muss alle Item-Kategorien enthalten.
       onRehydrateStorage: () => (state) => {
         if (!state) return

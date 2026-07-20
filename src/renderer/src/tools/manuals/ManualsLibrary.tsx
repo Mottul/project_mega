@@ -20,6 +20,7 @@ import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { toast } from '@renderer/lib/toast'
 import type { ImportProgress, ImportSummary, ManualMeta, ManualSearchHit } from '@shared/types'
 import { PdfViewer } from './PdfViewer'
 
@@ -134,6 +135,8 @@ export function ManualsLibrary(): JSX.Element {
       const result = await api.manuals.import(paths)
       setSummary(result)
       await refreshList()
+    } catch (e) {
+      toast.error('Import fehlgeschlagen', e instanceof Error ? e.message : undefined)
     } finally {
       setImporting(false)
       setProgress(null)

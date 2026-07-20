@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { JINGLE_PROTOCOL } from '@shared/ipc-contracts'
+import { toast } from '@renderer/lib/toast'
 import type { Pad } from './store'
 
 interface EngineArgs {
@@ -31,7 +32,13 @@ function setSink(el: HTMLAudioElement, id: string): void {
   const withSink = el as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
   if (typeof withSink.setSinkId === 'function') {
     withSink.setSinkId(id || 'default').catch(() => {
-      /* Gerät evtl. verschwunden -> Standard bleibt aktiv */
+      // Gewähltes Gerät verschwunden -> läuft auf Standard. Auf der Bühne würde
+      // der Jingle sonst unbemerkt über die falschen Lautsprecher gehen.
+      if (id && id !== 'default')
+        toast.warning(
+          'Audio-Ausgabegerät nicht verfügbar',
+          'Der Jingle läuft über das Standardgerät.'
+        )
     })
   }
 }
@@ -180,7 +187,14 @@ export function useJingleEngine({ pads, outputDeviceId, soloMode }: EngineArgs):
       void e.el
         .play()
         .then(() => markPlaying(padId, true))
-        .catch(() => {})
+        .catch(() => {
+          // Datei fehlt/beschädigt -> Pad-Druck bliebe sonst wirkungslos.
+          markPlaying(padId, false)
+          toast.error(
+            `Jingle „${pad.label || pad.originalName || 'ohne Name'}“ konnte nicht abgespielt werden`,
+            'Datei fehlt oder ist beschädigt.'
+          )
+        })
     },
     [ensure, stop, markPlaying]
   )
