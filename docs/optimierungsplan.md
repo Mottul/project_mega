@@ -137,11 +137,12 @@ Keine veralteten APIs gefunden (createRoot+StrictMode, keine Klassen/`ReactDOM.r
 ## 4. Phase 4 — Tests & CI (kontinuierlich)
 
 - **Reducer zuerst** (DOM-frei, sofort lauffähig, höchster Wert, weil main-autoritativ):
-  `stageTimer.applyTimerCommand` ✅ **umgesetzt** (10 Tests inkl. Wanduhr-Countdown + End-
-  Verhalten stop/next/overtime). Offen: `playerState`, `convertManager.analyzeFit`/`canStreamCopy`,
-  `ytDlp`-Args/Zeilen-Parser, `remoteHttp`-Parsing — diese importieren aktuell Electron (db/store)
-  bzw. sind nicht exportiert; brauchen erst einen `electron`-Mock in der vitest-Config oder ein
-  Herauslösen der reinen Logik. **[M]**
+  - `stageTimer.applyTimerCommand` ✅ (10 Tests inkl. Wanduhr-Countdown + End-Verhalten stop/next/overtime).
+  - `convertManager.analyzeFit`/`canStreamCopy` ✅ (7 Tests; die „Warum-neu-konvertieren?"-Logik).
+    Dabei etabliert: ein schlanker `vi.mock('electron', …)` reicht, um main-Services **ohne** natives
+    Modul zu testen (Muster für die nächsten).
+  - Offen: `playerState` (importiert `db` → better-sqlite3, braucht mehr Mock-Aufwand),
+    `ytDlp`-Args/Zeilen-Parser, `remoteHttp`-Parsing. **[M]**
 - **Komponententests:** `jsdom` + `@testing-library/react` ergänzen, vitest-`include` von `.ts` auf
   `{ts,tsx}` erweitern (heute würde ein `*.test.tsx` typgeprüft, aber nie ausgeführt). **[M]**
 - **CI:** Matrix um `windows-latest`/`macos-latest` (Kernversprechen „plattformübergreifend" wird heute

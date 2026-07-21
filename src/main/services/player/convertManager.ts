@@ -41,7 +41,7 @@ export const ALLOWED_MEDIA_EXT = MEDIA_EXT
 type JobSink = (job: ConvertJob) => void
 type LibrarySink = () => void
 
-interface ProbeInfo {
+export interface ProbeInfo {
   width: number | null
   height: number | null
   durationSec: number | null
@@ -102,7 +102,7 @@ const FIT_TITLE: Record<Fit, string> = {
 //  - gleiches Seitenverh.-> reine Skalierung, Fit egal -> „Scale" (billiger Scale
 //                                                          statt Blur-Graph)
 //  - anderes Seitenverh. -> Fit greift sichtbar        -> Blur/Letterbox/Stretch
-function analyzeFit(
+export function analyzeFit(
   fit: Fit,
   srcW: number | null,
   srcH: number | null,
@@ -154,7 +154,7 @@ async function probeSource(path: string): Promise<ProbeInfo> {
 
 // Quelle liegt bereits exakt in Zielauflösung + browsertauglichem H.264 vor
 // -> kein Re-Encode nötig, nur Container-Copy.
-function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): boolean {
+export function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): boolean {
   return (
     kind === 'video' &&
     info.width === w &&
