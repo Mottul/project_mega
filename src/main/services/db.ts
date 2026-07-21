@@ -1,19 +1,45 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
+import { existsSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
+import { logLine } from './log'
 
 export type DB = Database.Database
 
 let db: DB | null = null
 
-/** Oeffnet die SQLite-DB (einmalig) und fuehrt Migrationen aus. */
+function openAndMigrate(dbPath: string): DB {
+  const d = new Database(dbPath)
+  d.pragma('journal_mode = WAL')
+  d.pragma('foreign_keys = ON')
+  migrate(d)
+  return d
+}
+
+/** Oeffnet die SQLite-DB (einmalig) und fuehrt Migrationen aus. Ist die Datei
+ *  defekt (z.B. Stromausfall im WAL-Write), wird sie samt WAL/SHM weggesichert
+ *  und neu angelegt – statt jeden Bibliotheks-Zugriff dauerhaft zu blockieren. */
 export function getDb(): DB {
   if (db) return db
   const dbPath = join(app.getPath('userData'), 'library.db')
-  db = new Database(dbPath)
-  db.pragma('journal_mode = WAL')
-  db.pragma('foreign_keys = ON')
-  migrate(db)
+  try {
+    db = openAndMigrate(dbPath)
+  } catch (err) {
+    logLine(
+      '[db] library.db defekt – sichere und lege neu an:',
+      err instanceof Error ? err.message : String(err)
+    )
+    const ts = Date.now()
+    for (const ext of ['', '-wal', '-shm']) {
+      try {
+        if (existsSync(dbPath + ext)) renameSync(dbPath + ext, `${dbPath}${ext}.corrupt-${ts}`)
+      } catch (e2) {
+        logLine('[db] Sichern der defekten DB fehlgeschlagen:', dbPath + ext, e2)
+      }
+    }
+    // Frischer Versuch; scheitert auch der, ist es ein echtes Umgebungsproblem.
+    db = openAndMigrate(dbPath)
+  }
   return db
 }
 

@@ -23,6 +23,7 @@ import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { toast } from '@renderer/lib/toast'
 import { useDraft } from '@renderer/lib/useDraft'
 import type { JingleRemoteSnapshot, RemoteStatus } from '@shared/types'
 import { selectClass } from '../_calc/ui'
@@ -103,8 +104,11 @@ export function JinglePlayer(): JSX.Element {
     else {
       try {
         setRemote(await api.jingles.remoteStart(remotePort))
-      } catch {
-        // Port belegt o.ä.
+      } catch (e) {
+        toast.error(
+          `Fernsteuerung konnte nicht starten (Port ${remotePort} belegt?)`,
+          e instanceof Error ? e.message : undefined
+        )
       }
     }
   }

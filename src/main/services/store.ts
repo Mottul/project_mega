@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   DEFAULT_OSC_SETTINGS,
@@ -7,6 +7,7 @@ import {
   DEFAULT_SETTINGS,
   type AppSettings
 } from '@shared/types'
+import { logLine } from './log'
 
 // Schlanker Settings-Store: eine JSON-Datei in userData. Bewusst ohne externe
 // Abhaengigkeit (electron-store ist ESM-only und macht im CJS-main Aerger).
@@ -32,7 +33,19 @@ export function getSettings(): AppSettings {
     } else {
       cache = { ...DEFAULT_SETTINGS }
     }
-  } catch {
+  } catch (err) {
+    // Defekte Datei NICHT kommentarlos beim nächsten Write überschreiben ->
+    // wegsichern (recoverbar) und mit Standardwerten weitermachen.
+    try {
+      const f = settingsFile()
+      if (existsSync(f)) renameSync(f, `${f}.corrupt-${Date.now()}`)
+      logLine(
+        '[settings] settings.json defekt – gesichert, nutze Standardwerte:',
+        err instanceof Error ? err.message : String(err)
+      )
+    } catch (e2) {
+      logLine('[settings] Sichern der defekten settings.json fehlgeschlagen:', e2)
+    }
     cache = { ...DEFAULT_SETTINGS }
   }
   return cache

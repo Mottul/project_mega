@@ -2,6 +2,7 @@ import { Suspense, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ExternalLink, Loader2, MonitorSmartphone } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
+import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { AccentPicker } from '@renderer/components/AccentPicker'
 import { api } from '@renderer/lib/api'
@@ -88,17 +89,21 @@ export function ToolHost(): JSX.Element {
         )}
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
-        <Suspense
-          fallback={
-            <div className="flex h-full items-center justify-center">
-              <Loader2 className="size-6 animate-spin text-muted-foreground" />
-            </div>
-          }
-        >
-          <KioskContext.Provider value={kiosk}>
-            <Tool />
-          </KioskContext.Provider>
-        </Suspense>
+        {/* Pro Werkzeug eine Fehlergrenze (key = Tool-Id -> Wechsel setzt sie
+            zurück). Ein Absturz bleibt im Inhaltsbereich; Kopfzeile/Zurück wirken. */}
+        <ErrorBoundary key={tool.id} label={tool.name}>
+          <Suspense
+            fallback={
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <KioskContext.Provider value={kiosk}>
+              <Tool />
+            </KioskContext.Provider>
+          </Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   )

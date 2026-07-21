@@ -151,6 +151,7 @@ export const Channels = {
   utilExportPdf: 'util:exportPdf', // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
   utilSaveText: 'util:saveText', // Text/JSON in Datei speichern (Save-Dialog)
   utilOpenText: 'util:openText', // Textdatei einlesen (Open-Dialog)
+  utilLog: 'util:log', // Renderer -> main-Debug-Log (Feld-Diagnose)
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
@@ -365,6 +366,9 @@ export interface ToolboxApi {
     saveText(text: string, suggestedName: string): Promise<string | null>
     /** Textdatei über einen Öffnen-Dialog einlesen. Liefert den Inhalt oder null. */
     openText(): Promise<string | null>
+    /** Eine Zeile ins Debug-Log des main-Prozesses schreiben (Feld-Diagnose von
+     *  Renderer-Fehlern, wenn keine DevTools offen sind). */
+    log(message: string): void
   }
 
   jingles: {

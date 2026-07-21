@@ -44,6 +44,7 @@ import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
+import { toast } from '@renderer/lib/toast'
 import { toolPageClass } from '@renderer/lib/toolPage'
 import { useHandoff } from '@renderer/lib/handoff'
 import { deviceKey, useNetLabels } from './store'
@@ -170,10 +171,20 @@ export function NetScan(): JSX.Element {
   }
 
   function copyIp(ip: string): void {
-    void navigator.clipboard?.writeText(ip).catch(() => {})
-    setCopied(ip)
-    if (copiedTimer.current) clearTimeout(copiedTimer.current)
-    copiedTimer.current = setTimeout(() => setCopied(null), 1200)
+    // „kopiert!" erst bei tatsächlichem Erfolg zeigen (nicht optimistisch). Fehlt
+    // die Zwischenablage-API ganz, wäre Promise.resolve(undefined) sonst „Erfolg".
+    const cb = navigator.clipboard
+    if (!cb) {
+      toast.error('Zwischenablage nicht verfügbar')
+      return
+    }
+    cb.writeText(ip)
+      .then(() => {
+        setCopied(ip)
+        if (copiedTimer.current) clearTimeout(copiedTimer.current)
+        copiedTimer.current = setTimeout(() => setCopied(null), 1200)
+      })
+      .catch(() => toast.error('In die Zwischenablage kopieren fehlgeschlagen'))
   }
   function openWeb(d: NetDevice): void {
     const https = d.ports.includes(443) || d.ports.includes(8443)

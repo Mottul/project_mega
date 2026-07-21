@@ -118,7 +118,9 @@ const api: ToolboxApi = {
       ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName, landscape ?? false),
     saveText: (text, suggestedName) =>
       ipcRenderer.invoke(Channels.utilSaveText, text, suggestedName),
-    openText: () => ipcRenderer.invoke(Channels.utilOpenText)
+    openText: () => ipcRenderer.invoke(Channels.utilOpenText),
+    // Einweg (send): darf im Renderer nie werfen/hängen.
+    log: (message) => ipcRenderer.send(Channels.utilLog, message)
   },
 
   jingles: {

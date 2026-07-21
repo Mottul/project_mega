@@ -8,6 +8,11 @@ import { Channels } from '@shared/ipc-contracts'
 import { logLine } from '../services/log'
 
 export function registerUtilHandlers(): void {
+  // Renderer-seitige Fehler ins gemeinsame Debug-Log spiegeln (Einweg).
+  ipcMain.on(Channels.utilLog, (_e, message: unknown) => {
+    logLine(typeof message === 'string' ? message : String(message))
+  })
+
   // Beliebigen Text (z.B. JSON) über einen Speichern-Dialog schreiben.
   ipcMain.handle(Channels.utilSaveText, async (e, text: string, suggestedName: string) => {
     const parent = BrowserWindow.fromWebContents(e.sender)
