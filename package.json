@@ -35,8 +35,8 @@
     "package:dir": "npm run build && npx --yes electron-builder@26 --dir"
   },
   "dependencies": {
-    "better-sqlite3": "12.8.0",
-    "pdfjs-dist": "^4.10.38"
+    "better-sqlite3": "12.11.1",
+    "pdfjs-dist": "^6.1.200"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -48,7 +48,7 @@
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "electron": "^40.10.2",
+    "electron": "^42.7.1",
     "electron-vite": "^5.0.0",
     "eslint": "10.6.0",
     "eslint-config-prettier": "10.1.8",

@@ -51,7 +51,7 @@ export const MOBILE_PAGE = `<!doctype html>
     cursor:grab; touch-action:none; flex:0 0 auto; }
   .item.dragging { opacity:0.6; border-color:var(--gold); }
   .empty { color:var(--sub); font-size:13px; text-align:center; padding:14px; }
-  .libhead { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .libhead { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:22px; margin-bottom:12px; }
   .libhead h3 { margin:0; }
   .libtools { display:flex; align-items:center; gap:8px; }
   .uploadbtn { background:var(--muted); border:1px solid #3f3f46; border-radius:10px;
@@ -82,6 +82,12 @@ export const MOBILE_PAGE = `<!doctype html>
   .stepper { display:flex; align-items:center; gap:8px; }
   .stepper button { min-width:48px; font-size:22px; }
   .stepper .v { font-size:16px; min-width:64px; text-align:center; }
+  .timerow { display:flex; gap:12px; }
+  .timecol { flex:1 1 0; min-width:0; }
+  .timecol > .setlabel { margin-bottom:8px; }
+  .timecol .stepper { justify-content:space-between; }
+  .timecol .stepper button { min-width:44px; }
+  .timecol .stepper .v { min-width:0; }
   .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .grid .item { flex-direction:column; align-items:stretch; padding:6px; gap:6px; }
   .grid .item img { width:100%; height:auto; aspect-ratio:16/9; }
@@ -107,19 +113,23 @@ export const MOBILE_PAGE = `<!doctype html>
           <button id="tr-cut">Schnitt</button>
           <button id="tr-xf">Überblenden</button>
         </div>
-        <div id="xfrow" class="stepper" style="margin-top:10px;display:none">
-          <span class="setlabel" style="margin:0;flex:1">Überblendzeit</span>
-          <button id="xf-dec" aria-label="kürzer">−</button>
-          <span id="xf-val" class="v">0.5s</span>
-          <button id="xf-inc" aria-label="länger">+</button>
-        </div>
       </div>
-      <div>
-        <div class="setlabel">Bild-Standzeit</div>
-        <div class="stepper">
-          <button id="dur-dec" aria-label="weniger">−</button>
-          <span id="dur-val" class="v">10s</span>
-          <button id="dur-inc" aria-label="mehr">+</button>
+      <div class="timerow">
+        <div id="xfcol" class="timecol" style="display:none">
+          <div class="setlabel">Überblendzeit</div>
+          <div class="stepper">
+            <button id="xf-dec" aria-label="kürzer">−</button>
+            <span id="xf-val" class="v">0.5s</span>
+            <button id="xf-inc" aria-label="länger">+</button>
+          </div>
+        </div>
+        <div class="timecol">
+          <div class="setlabel">Bild-Standzeit</div>
+          <div class="stepper">
+            <button id="dur-dec" aria-label="weniger">−</button>
+            <span id="dur-val" class="v">10s</span>
+            <button id="dur-inc" aria-label="mehr">+</button>
+          </div>
         </div>
       </div>
     </div>
@@ -164,8 +174,8 @@ export const MOBILE_PAGE = `<!doctype html>
     <h3>Bibliothek</h3>
     <div class="libtools">
       <button id="view-toggle" class="iconbtn" aria-label="Ansicht umschalten"></button>
-      <label class="iconbtn" aria-label="Foto/Video aufnehmen"><span id="cam-ic"></span>
-        <input id="cam" type="file" accept="image/*,video/*" capture="environment" hidden />
+      <label class="iconbtn" aria-label="Foto aufnehmen"><span id="cam-ic"></span>
+        <input id="cam" type="file" accept="image/*" capture="environment" hidden />
       </label>
       <label class="uploadbtn">+ Hochladen
         <input id="file" type="file" accept="image/*,video/*" multiple hidden />
@@ -233,7 +243,7 @@ export const MOBILE_PAGE = `<!doctype html>
     // Übergang + Überblendzeit
     el('tr-cut').className = state.transition==='crossfade' ? '' : 'on';
     el('tr-xf').className = state.transition==='crossfade' ? 'on' : '';
-    el('xfrow').style.display = state.transition==='crossfade' ? 'flex' : 'none';
+    el('xfcol').style.display = state.transition==='crossfade' ? '' : 'none';
     el('xf-val').textContent = ((state.transitionMs||500)/1000).toFixed(1)+'s';
     // Verarbeitung (Fit für neue Uploads)
     var f=state.defaultFit||'blur';

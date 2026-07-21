@@ -20,6 +20,8 @@ export const EMPTY_TIMER_STATE: StageTimerState = {
   message: null,
   displayMode: 'timer',
   showClockInTimer: true,
+  clockShowSeconds: true,
+  clockShowDate: true,
   outputOpen: false
 }
 
@@ -187,6 +189,10 @@ export function applyTimerCommand(cmd: TimerCommand): void {
       break
     case 'setShowClock':
       state.showClockInTimer = cmd.show
+      break
+    case 'setClockOptions':
+      if (cmd.showSeconds !== undefined) state.clockShowSeconds = cmd.showSeconds
+      if (cmd.showDate !== undefined) state.clockShowDate = cmd.showDate
       break
     case 'message':
       state.message = { text: cmd.text, flash: cmd.flash, seq: ++messageSeq }

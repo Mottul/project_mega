@@ -115,7 +115,8 @@ export async function extractPdfText(
       onPage?.(i, pageCount)
     }
   } finally {
-    await doc.destroy()
+    // pdfjs v6: PDFDocumentProxy.destroy() entfernt -> Teardown ueber den LoadingTask.
+    await doc.loadingTask.destroy()
   }
   return { pageCount, pages }
 }

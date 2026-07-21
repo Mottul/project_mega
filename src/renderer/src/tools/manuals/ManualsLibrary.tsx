@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
+  ArrowLeft,
   BookOpen,
   ChevronDown,
   ChevronRight,
@@ -10,8 +11,7 @@ import {
   Loader2,
   Pencil,
   Search,
-  Trash2,
-  X
+  Trash2
 } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
@@ -293,17 +293,17 @@ export function ManualsLibrary(): JSX.Element {
 
       {viewer && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background">
-          <header className="flex items-center gap-3 border-b border-border px-4 py-2">
-            <FileText className="size-4 text-primary" />
-            <h2 className="flex-1 truncate font-medium">{viewer.title}</h2>
+          <header className="flex items-center gap-2 border-b border-border px-3 py-2">
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={() => setViewer(null)}
-              aria-label="Schließen"
+              aria-label="Zurück zur Bibliothek"
             >
-              <X className="size-4" />
+              <ArrowLeft className="size-4" /> Bibliothek
             </Button>
+            <FileText className="size-4 shrink-0 text-primary" />
+            <h2 className="min-w-0 flex-1 truncate font-medium">{viewer.title}</h2>
           </header>
           <div className="min-h-0 flex-1">
             <PdfViewer manualId={viewer.id} initialPage={viewer.page} />
