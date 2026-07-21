@@ -4,6 +4,7 @@ import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 // vite ?worker -> Worker-Konstruktor; bundelt den pdfjs-Worker sauber mit
 import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker'
 import {
+  BookOpen,
   ChevronDown,
   ChevronUp,
   Loader2,
@@ -24,6 +25,7 @@ pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker()
 type FitMode = 'width' | 'page' | 'custom'
 
 const PAD = 32 // Innenabstand + Platz fuer die Scrollbar
+const SPREAD_GAP = 16 // Abstand zwischen den zwei Seiten einer Doppelseite (= gap-4)
 
 interface PdfViewerProps {
   manualId: number
@@ -39,6 +41,7 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
   const [fit, setFit] = useState<FitMode>('width')
   const [customScale, setCustomScale] = useState(1)
   const [current, setCurrent] = useState(1)
+  const [pageLayout, setPageLayout] = useState<'single' | 'double'>('single')
 
   const [find, setFind] = useState('')
   const [matches, setMatches] = useState<InDocHit[]>([])
@@ -66,7 +69,7 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
         if (cancelled) return
         const d = await pdfjsLib.getDocument({ data: bytes }).promise
         if (cancelled) {
-          void d.destroy()
+          void d.loadingTask.destroy()
           return
         }
         const p1 = await d.getPage(1)
@@ -86,7 +89,7 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
     })()
     return () => {
       cancelled = true
-      if (localDoc) void localDoc.destroy()
+      if (localDoc) void localDoc.loadingTask.destroy()
     }
   }, [manualId, initialPage])
 
@@ -113,11 +116,14 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
     return () => clearTimeout(t)
   }, [doc, initialPage])
 
+  // Bei der Doppelseiten-Ansicht müssen zwei Seiten + Spalt in die Breite passen.
+  const across = pageLayout === 'double' ? 2 : 1
+  const fitWidthScale = (vw - PAD - (across - 1) * SPREAD_GAP) / (across * baseSize.current.w)
   const effScale =
     fit === 'width'
-      ? Math.max(0.2, (vw - PAD) / baseSize.current.w)
+      ? Math.max(0.2, fitWidthScale)
       : fit === 'page'
-        ? Math.max(0.2, Math.min((vw - PAD) / baseSize.current.w, (vh - PAD) / baseSize.current.h))
+        ? Math.max(0.2, Math.min(fitWidthScale, (vh - PAD) / baseSize.current.h))
         : customScale
 
   // immer aktueller Massstab fuer den (einmal angehaengten) Wheel-Handler
@@ -140,6 +146,12 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
   function zoom(factor: number): void {
     setFit('custom')
     setCustomScale(Math.min(5, Math.max(0.2, +(effScaleRef.current * factor).toFixed(3))))
+  }
+
+  // Zoom direkt per Prozent-Eingabe (20–500 %).
+  function setZoomPercent(pct: number): void {
+    setFit('custom')
+    setCustomScale(Math.min(5, Math.max(0.2, pct / 100)))
   }
 
   function scrollToPage(p: number): void {
@@ -186,7 +198,9 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
       e.stopPropagation()
       // Fokuspunkt = Mausposition im Container -> dort bleibt der Inhalt stehen
       anchorYRef.current = e.clientY - rootEl.getBoundingClientRect().top
-      const factor = e.deltaY < 0 ? 1.1 : 0.9
+      // Zoom proportional zur Pinch-/Wheel-Stärke -> feinfühlig am Trackpad.
+      // Vorher fixe ±10 % pro Event, wodurch schon ein kleiner Pinch übersteuerte.
+      const factor = Math.min(2, Math.max(0.5, Math.exp(-e.deltaY * 0.0025)))
       const next = Math.min(5, Math.max(0.2, +(effScaleRef.current * factor).toFixed(3)))
       effScaleRef.current = next
       setFit('custom')
@@ -228,9 +242,17 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
         <Button variant="ghost" size="icon" onClick={() => zoom(0.8)} aria-label="Verkleinern">
           <ZoomOut className="size-4" />
         </Button>
-        <span className="min-w-14 text-center text-sm tabular-nums text-muted-foreground">
-          {Math.round(effScale * 100)}%
-        </span>
+        <div className="flex items-center gap-1">
+          <NumberField
+            value={Math.round(effScale * 100)}
+            min={20}
+            max={500}
+            className="h-7 w-16 text-center tabular-nums"
+            aria-label="Zoom in Prozent"
+            onCommit={setZoomPercent}
+          />
+          <span className="text-sm text-muted-foreground">%</span>
+        </div>
         <Button variant="ghost" size="icon" onClick={() => zoom(1.25)} aria-label="Vergrößern">
           <ZoomIn className="size-4" />
         </Button>
@@ -248,6 +270,14 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
           onClick={() => setFit('page')}
         >
           <Maximize className="size-4" /> Ganze Seite
+        </Button>
+        <Button
+          variant={pageLayout === 'double' ? 'secondary' : 'ghost'}
+          size="sm"
+          onClick={() => setPageLayout((p) => (p === 'double' ? 'single' : 'double'))}
+          aria-label="Zwei-Seiten-Ansicht umschalten"
+        >
+          <BookOpen className="size-4" /> Doppelseite
         </Button>
         <div className="mx-2 h-5 w-px bg-border" />
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -347,18 +377,47 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
         ) : (
           doc && (
             <div className="flex flex-col items-center gap-4 p-4">
-              {Array.from({ length: numPages }, (_, i) => (
-                <PdfPage
-                  key={i + 1}
-                  assignRef={(el) => (pageEls.current[i] = el)}
-                  doc={doc}
-                  pageNo={i + 1}
-                  scale={effScale}
-                  estWidth={baseSize.current.w * effScale}
-                  estHeight={baseSize.current.h * effScale}
-                  root={rootEl}
-                />
-              ))}
+              {pageLayout === 'double'
+                ? Array.from({ length: Math.ceil(numPages / 2) }, (_, r) => {
+                    const left = r * 2 + 1
+                    const right = left + 1
+                    return (
+                      <div key={r} className="flex justify-center gap-4">
+                        <PdfPage
+                          assignRef={(el) => (pageEls.current[left - 1] = el)}
+                          doc={doc}
+                          pageNo={left}
+                          scale={effScale}
+                          estWidth={baseSize.current.w * effScale}
+                          estHeight={baseSize.current.h * effScale}
+                          root={rootEl}
+                        />
+                        {right <= numPages && (
+                          <PdfPage
+                            assignRef={(el) => (pageEls.current[right - 1] = el)}
+                            doc={doc}
+                            pageNo={right}
+                            scale={effScale}
+                            estWidth={baseSize.current.w * effScale}
+                            estHeight={baseSize.current.h * effScale}
+                            root={rootEl}
+                          />
+                        )}
+                      </div>
+                    )
+                  })
+                : Array.from({ length: numPages }, (_, i) => (
+                    <PdfPage
+                      key={i + 1}
+                      assignRef={(el) => (pageEls.current[i] = el)}
+                      doc={doc}
+                      pageNo={i + 1}
+                      scale={effScale}
+                      estWidth={baseSize.current.w * effScale}
+                      estHeight={baseSize.current.h * effScale}
+                      root={rootEl}
+                    />
+                  ))}
             </div>
           )
         )}
@@ -432,7 +491,8 @@ function PdfPage({
       if (!canvas || !ctx) return
       canvas.width = vp.width
       canvas.height = vp.height
-      task = page.render({ canvasContext: ctx, viewport: vp })
+      // pdfjs v6: RenderParameters verlangt `canvas`; `canvasContext` ist optional
+      task = page.render({ canvas, canvasContext: ctx, viewport: vp })
       try {
         await task.promise
         if (!cancelled) setRendered(true)

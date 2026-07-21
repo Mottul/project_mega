@@ -326,6 +326,7 @@ export function StageTimer(): JSX.Element {
   }
 
   const segs = state.segments
+  const isClock = state.displayMode === 'clock'
 
   return (
     <ToolShell
@@ -344,56 +345,81 @@ export function StageTimer(): JSX.Element {
                 }
               >
                 <option value="timer">Timer (Restzeit)</option>
-                <option value="clock">Uhr (mit Sekunden)</option>
+                <option value="clock">Uhr</option>
               </select>
             </label>
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">
-                Wenn die Zeit abgelaufen ist
-              </span>
-              <select
-                className={selectClass}
-                value={state.endBehavior}
-                onChange={(e) =>
-                  cmd({
-                    type: 'setEndBehavior',
-                    behavior: e.target.value as StageTimerState['endBehavior']
-                  })
-                }
-              >
-                <option value="overtime">Überziehung zählen (rot blinkend)</option>
-                <option value="stop">Bei 0:00 stehen bleiben</option>
-                <option value="next">Automatisch nächster Abschnitt</option>
-              </select>
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block">
-                <span className="mb-1 block text-xs text-muted-foreground">Gelb ab Rest</span>
-                <DurationInput
-                  seconds={state.warnSec}
-                  onCommit={(sec) =>
-                    cmd({ type: 'setThresholds', warnSec: sec, alertSec: state.alertSec })
-                  }
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs text-muted-foreground">Rot ab Rest</span>
-                <DurationInput
-                  seconds={state.alertSec}
-                  onCommit={(sec) =>
-                    cmd({ type: 'setThresholds', warnSec: state.warnSec, alertSec: sec })
-                  }
-                />
-              </label>
-            </div>
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={state.showClockInTimer}
-                onChange={(e) => cmd({ type: 'setShowClock', show: e.target.checked })}
-              />
-              Uhrzeit klein einblenden (Timer-Modus)
-            </label>
+            {isClock ? (
+              <>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={state.clockShowSeconds}
+                    onChange={(e) =>
+                      cmd({ type: 'setClockOptions', showSeconds: e.target.checked })
+                    }
+                  />
+                  Sekunden anzeigen
+                </label>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={state.clockShowDate}
+                    onChange={(e) => cmd({ type: 'setClockOptions', showDate: e.target.checked })}
+                  />
+                  Datum anzeigen
+                </label>
+              </>
+            ) : (
+              <>
+                <label className="block">
+                  <span className="mb-1 block text-xs text-muted-foreground">
+                    Wenn die Zeit abgelaufen ist
+                  </span>
+                  <select
+                    className={selectClass}
+                    value={state.endBehavior}
+                    onChange={(e) =>
+                      cmd({
+                        type: 'setEndBehavior',
+                        behavior: e.target.value as StageTimerState['endBehavior']
+                      })
+                    }
+                  >
+                    <option value="overtime">Überziehung zählen (rot blinkend)</option>
+                    <option value="stop">Bei 0:00 stehen bleiben</option>
+                    <option value="next">Automatisch nächster Abschnitt</option>
+                  </select>
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-muted-foreground">Gelb ab Rest</span>
+                    <DurationInput
+                      seconds={state.warnSec}
+                      onCommit={(sec) =>
+                        cmd({ type: 'setThresholds', warnSec: sec, alertSec: state.alertSec })
+                      }
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs text-muted-foreground">Rot ab Rest</span>
+                    <DurationInput
+                      seconds={state.alertSec}
+                      onCommit={(sec) =>
+                        cmd({ type: 'setThresholds', warnSec: state.warnSec, alertSec: sec })
+                      }
+                    />
+                  </label>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={state.showClockInTimer}
+                    onChange={(e) => cmd({ type: 'setShowClock', show: e.target.checked })}
+                  />
+                  Uhrzeit klein einblenden (Timer-Modus)
+                </label>
+              </>
+            )}
           </PanelSection>
 
           <PanelSection id="output" title="Ausgabefenster" defaultOpen>
@@ -436,7 +462,13 @@ export function StageTimer(): JSX.Element {
         </>
       }
       main={
-        <div className="grid items-start gap-4 p-6 lg:grid-cols-[minmax(0,32rem),1fr]">
+        <div
+          className={
+            isClock
+              ? 'flex max-w-2xl flex-col gap-4 p-6'
+              : 'grid items-start gap-4 p-6 lg:grid-cols-[minmax(0,32rem),1fr]'
+          }
+        >
           {/* Spalte 1: Vorschau, Steuerung, Nachricht an die Bühne (≈ Vorschaubreite) */}
           <div className="space-y-4">
             <Card className="overflow-hidden p-0">
@@ -445,70 +477,72 @@ export function StageTimer(): JSX.Element {
               </div>
             </Card>
 
-            <Card className="p-4">
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => cmd({ type: 'prev' })}
-                  disabled={state.current <= 0}
-                >
-                  <ChevronsLeft className="size-4" /> Voriger
-                </Button>
-                <Button
-                  size="default"
-                  className="min-w-28"
-                  onClick={() => cmd({ type: 'toggle' })}
-                  disabled={segs.length === 0}
-                >
-                  {state.running ? <Pause className="size-4" /> : <Play className="size-4" />}
-                  {state.running ? 'Pause' : 'Start'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => cmd({ type: 'next' })}
-                  disabled={state.current >= segs.length - 1}
-                >
-                  Nächster <ChevronsRight className="size-4" />
-                </Button>
-                <span className="mx-1 h-6 w-px bg-border" />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => cmd({ type: 'adjust', deltaSec: -60 })}
-                  disabled={state.current < 0}
-                >
-                  −1 min
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => cmd({ type: 'adjust', deltaSec: 60 })}
-                  disabled={state.current < 0}
-                >
-                  +1 min
-                </Button>
-                <span className="mx-1 h-6 w-px bg-border" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => cmd({ type: 'reset' })}
-                  disabled={state.current < 0}
-                >
-                  <RotateCcw className="size-4" /> Abschnitt
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => cmd({ type: 'resetAll' })}
-                  disabled={segs.length === 0}
-                  title="Stoppen und zurück zum ersten Abschnitt"
-                >
-                  <Square className="size-4" /> Stopp
-                </Button>
-              </div>
-            </Card>
+            {!isClock && (
+              <Card className="p-4">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cmd({ type: 'prev' })}
+                    disabled={state.current <= 0}
+                  >
+                    <ChevronsLeft className="size-4" /> Voriger
+                  </Button>
+                  <Button
+                    size="default"
+                    className="min-w-28"
+                    onClick={() => cmd({ type: 'toggle' })}
+                    disabled={segs.length === 0}
+                  >
+                    {state.running ? <Pause className="size-4" /> : <Play className="size-4" />}
+                    {state.running ? 'Pause' : 'Start'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cmd({ type: 'next' })}
+                    disabled={state.current >= segs.length - 1}
+                  >
+                    Nächster <ChevronsRight className="size-4" />
+                  </Button>
+                  <span className="mx-1 h-6 w-px bg-border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cmd({ type: 'adjust', deltaSec: -60 })}
+                    disabled={state.current < 0}
+                  >
+                    −1 min
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cmd({ type: 'adjust', deltaSec: 60 })}
+                    disabled={state.current < 0}
+                  >
+                    +1 min
+                  </Button>
+                  <span className="mx-1 h-6 w-px bg-border" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => cmd({ type: 'reset' })}
+                    disabled={state.current < 0}
+                  >
+                    <RotateCcw className="size-4" /> Abschnitt
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => cmd({ type: 'resetAll' })}
+                    disabled={segs.length === 0}
+                    title="Stoppen und zurück zum ersten Abschnitt"
+                  >
+                    <Square className="size-4" /> Stopp
+                  </Button>
+                </div>
+              </Card>
+            )}
 
             {/* Nachrichten */}
             <Card className="p-5">
@@ -564,113 +598,117 @@ export function StageTimer(): JSX.Element {
           </div>
 
           {/* Spalte 2: Abschnitte – bekommt so viel Platz wie möglich */}
-          <Card className="p-5">
-            <SectionTitle>Abschnitte</SectionTitle>
-            <div className="mt-3 space-y-1.5">
-              {segs.map((seg, i) => (
-                <div
-                  key={seg.id}
-                  className={`flex items-center gap-2 rounded-md border p-2 ${
-                    i === state.current ? 'border-primary/60 bg-primary/[0.07]' : 'border-border'
-                  }`}
-                >
-                  <button
-                    type="button"
-                    title="Zu diesem Abschnitt springen"
-                    onClick={() => cmd({ type: 'goto', index: i })}
-                    className={`size-6 shrink-0 rounded-full border text-[11px] font-bold ${
-                      i === state.current
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border text-muted-foreground hover:border-primary'
+          {!isClock && (
+            <Card className="p-5">
+              <SectionTitle>Abschnitte</SectionTitle>
+              <div className="mt-3 space-y-1.5">
+                {segs.map((seg, i) => (
+                  <div
+                    key={seg.id}
+                    className={`flex items-center gap-2 rounded-md border p-2 ${
+                      i === state.current ? 'border-primary/60 bg-primary/[0.07]' : 'border-border'
                     }`}
                   >
-                    {i + 1}
-                  </button>
-                  <SegText
-                    value={seg.speaker}
-                    placeholder="Redner"
-                    className="h-8 w-48 shrink-0 text-xs"
-                    onCommit={(v) =>
-                      patchSegments(segs.map((x, j) => (j === i ? { ...x, speaker: v } : x)))
-                    }
-                  />
-                  <SegText
-                    value={seg.title}
-                    placeholder="Titel / Beitrag"
-                    className="h-8 flex-1 text-sm font-medium"
-                    onCommit={(v) =>
-                      patchSegments(segs.map((x, j) => (j === i ? { ...x, title: v } : x)))
-                    }
-                  />
-                  <DurationInput
-                    seconds={seg.durationSec}
-                    className="h-8 w-20 shrink-0 text-center text-sm"
-                    onCommit={(sec) =>
-                      patchSegments(segs.map((x, j) => (j === i ? { ...x, durationSec: sec } : x)))
-                    }
-                  />
-                  <div className="flex shrink-0 flex-col">
                     <button
                       type="button"
-                      disabled={i === 0}
-                      onClick={() => {
-                        const next = [...segs]
-                        ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
-                        patchSegments(next)
-                      }}
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      title="Zu diesem Abschnitt springen"
+                      onClick={() => cmd({ type: 'goto', index: i })}
+                      className={`size-6 shrink-0 rounded-full border text-[11px] font-bold ${
+                        i === state.current
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border text-muted-foreground hover:border-primary'
+                      }`}
                     >
-                      <ArrowUp className="size-3.5" />
+                      {i + 1}
                     </button>
+                    <SegText
+                      value={seg.speaker}
+                      placeholder="Redner"
+                      className="h-8 w-48 shrink-0 text-xs"
+                      onCommit={(v) =>
+                        patchSegments(segs.map((x, j) => (j === i ? { ...x, speaker: v } : x)))
+                      }
+                    />
+                    <SegText
+                      value={seg.title}
+                      placeholder="Titel / Beitrag"
+                      className="h-8 flex-1 text-sm font-medium"
+                      onCommit={(v) =>
+                        patchSegments(segs.map((x, j) => (j === i ? { ...x, title: v } : x)))
+                      }
+                    />
+                    <DurationInput
+                      seconds={seg.durationSec}
+                      className="h-8 w-20 shrink-0 text-center text-sm"
+                      onCommit={(sec) =>
+                        patchSegments(
+                          segs.map((x, j) => (j === i ? { ...x, durationSec: sec } : x))
+                        )
+                      }
+                    />
+                    <div className="flex shrink-0 flex-col">
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => {
+                          const next = [...segs]
+                          ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+                          patchSegments(next)
+                        }}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowUp className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === segs.length - 1}
+                        onClick={() => {
+                          const next = [...segs]
+                          ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                          patchSegments(next)
+                        }}
+                        className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        <ArrowDown className="size-3.5" />
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      disabled={i === segs.length - 1}
-                      onClick={() => {
-                        const next = [...segs]
-                        ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
-                        patchSegments(next)
-                      }}
-                      className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      onClick={() => patchSegments(segs.filter((_, j) => j !== i))}
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      title="Abschnitt löschen"
                     >
-                      <ArrowDown className="size-3.5" />
+                      <Trash2 className="size-4" />
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => patchSegments(segs.filter((_, j) => j !== i))}
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                    title="Abschnitt löschen"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() =>
-                patchSegments([
-                  ...segs,
-                  {
-                    id: crypto.randomUUID(),
-                    speaker: `Redner ${segs.length + 1}`,
-                    title: '',
-                    durationSec: 600
-                  }
-                ])
-              }
-            >
-              <Plus className="size-4" /> Abschnitt hinzufügen
-            </Button>
-            {segs.length === 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Abschnitte laufen nacheinander – z.B. „Begrüßung 5:00“, „Vortrag 20:00“, „Q&amp;A
-                10:00“.
-              </p>
-            )}
-          </Card>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() =>
+                  patchSegments([
+                    ...segs,
+                    {
+                      id: crypto.randomUUID(),
+                      speaker: `Redner ${segs.length + 1}`,
+                      title: '',
+                      durationSec: 600
+                    }
+                  ])
+                }
+              >
+                <Plus className="size-4" /> Abschnitt hinzufügen
+              </Button>
+              {segs.length === 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Abschnitte laufen nacheinander – z.B. „Begrüßung 5:00“, „Vortrag 20:00“, „Q&amp;A
+                  10:00“.
+                </p>
+              )}
+            </Card>
+          )}
         </div>
       }
     />

@@ -62,7 +62,11 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
 
   // Schriftgröße aus Containermaß + Textlänge (Vorschau und Vollbild identisch).
   const mainText =
-    state.displayMode === 'clock' ? fmtClock(now) : seg ? fmtTimer(remainingSec) : '--:--'
+    state.displayMode === 'clock'
+      ? fmtClock(now, state.clockShowSeconds)
+      : seg
+        ? fmtTimer(remainingSec)
+        : '--:--'
   const mainFs = Math.min((w / Math.max(4, mainText.length)) * 1.55, h * 0.42)
   const smallFs = Math.max(11, Math.min(w / 30, h / 14))
 
@@ -89,14 +93,16 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
           >
             {mainText}
           </div>
-          <div className="mt-[2%] text-neutral-400" style={{ fontSize: smallFs * 1.3 }}>
-            {now.toLocaleDateString('de-AT', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
-            })}
-          </div>
+          {state.clockShowDate && (
+            <div className="mt-[2%] text-neutral-400" style={{ fontSize: smallFs * 1.3 }}>
+              {now.toLocaleDateString('de-AT', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })}
+            </div>
+          )}
         </div>
       ) : (
         <>

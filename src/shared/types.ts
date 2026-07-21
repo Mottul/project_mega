@@ -391,6 +391,8 @@ export interface StageTimerState {
   message: TimerMessage | null
   displayMode: TimerDisplayMode
   showClockInTimer: boolean // kleine Uhrzeit zusaetzlich im Timer-Modus
+  clockShowSeconds: boolean // Uhr-Modus: Sekunden anzeigen
+  clockShowDate: boolean // Uhr-Modus: Datum unter der Uhrzeit anzeigen
   outputOpen: boolean
 }
 
@@ -416,6 +418,7 @@ export type TimerCommand =
   | { type: 'setThresholds'; warnSec: number; alertSec: number }
   | { type: 'setDisplayMode'; mode: TimerDisplayMode }
   | { type: 'setShowClock'; show: boolean }
+  | { type: 'setClockOptions'; showSeconds?: boolean; showDate?: boolean }
   | { type: 'message'; text: string; flash: boolean }
   | { type: 'clearMessage' }
 
