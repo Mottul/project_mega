@@ -7,6 +7,7 @@ import { existsSync, readdirSync, renameSync, rmSync, statSync, type Dirent } fr
 import { randomUUID } from 'node:crypto'
 import { basename, extname, join } from 'node:path'
 import { promisify } from 'node:util'
+import { dotted, STILL_IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type { ConvertJob, MediaKind, PlayerImportRequest } from '@shared/types'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 import { logLine } from '../log'
@@ -32,22 +33,8 @@ import {
 
 const pexecFile = promisify(execFile)
 
-const VIDEO_EXT = new Set([
-  '.mov',
-  '.mp4',
-  '.mxf',
-  '.avi',
-  '.mkv',
-  '.m4v',
-  '.mpg',
-  '.mpeg',
-  '.wmv',
-  '.mts',
-  '.m2ts',
-  '.ts',
-  '.webm'
-])
-const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tif', '.tiff'])
+const VIDEO_EXT = new Set(dotted(VIDEO_EXTENSIONS))
+const IMAGE_EXT = new Set(dotted(STILL_IMAGE_EXTENSIONS))
 const MEDIA_EXT = new Set([...VIDEO_EXT, ...IMAGE_EXT, '.gif'])
 export const ALLOWED_MEDIA_EXT = MEDIA_EXT
 

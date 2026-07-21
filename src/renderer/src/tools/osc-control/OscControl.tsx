@@ -59,7 +59,7 @@ import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
 import { useHandoff } from '@renderer/lib/handoff'
-import { QrCode } from '../video-player/QrCode'
+import { QrCode } from '@renderer/components/QrCode'
 import {
   makeWidget,
   MAX_CH,

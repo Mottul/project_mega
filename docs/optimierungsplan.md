@@ -59,6 +59,14 @@ das größte Risiko. Alle klein bis mittel.
 
 ## 2. Phase 2 — Konsolidierung (Tech-Debt abbauen)
 
+> **Teilweise umgesetzt (die verifizierbaren Quick-Wins):** gemeinsame `MEDIA_EXTENSIONS`
+> in `src/shared/` (behebt die Drift im Idle-Dialog – dort fehlten mxf/mpg/wmv/mts/tif …);
+> `QrCode`/`qr` nach `components/` verschoben (kein verstecktes Cross-Tool-Import mehr);
+> vitest-`include` auf `{ts,tsx}` (künftige Komponententests laufen); Persist-Stores versioniert
+> (in Phase 1). **Bewusst NICHT gemacht: N7** (electron-builder als devDependency) – das würde die
+> im README dokumentierte Sicherheits-Entscheidung (node-gyp/tar aus `npm ci` heraushalten)
+> rückgängig machen. Rest folgt.
+
 Das schnelle Feature-Wachstum hat Duplikate hinterlassen. Reihenfolge nach „Nutzen pro Aufwand".
 
 ### Duplikate zusammenführen

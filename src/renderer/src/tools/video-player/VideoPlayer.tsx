@@ -45,6 +45,7 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
 import {
   DEFAULT_PLAYER_NDI,
@@ -64,27 +65,10 @@ import {
 } from '@shared/types'
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
-import { QrCode } from './QrCode'
+import { QrCode } from '@renderer/components/QrCode'
 
 const selectClass =
   'h-9 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
-
-const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tif', 'tiff', 'gif']
-const VIDEO_EXTENSIONS = [
-  'mov',
-  'mp4',
-  'mxf',
-  'avi',
-  'mkv',
-  'm4v',
-  'mpg',
-  'mpeg',
-  'wmv',
-  'mts',
-  'm2ts',
-  'ts',
-  'webm'
-]
 
 const FIT_OPTIONS: { value: FitMode; label: string }[] = [
   { value: 'blur', label: 'Blur-Fill (unscharfer Hintergrund)' },
@@ -414,7 +398,7 @@ export function VideoPlayer(): JSX.Element {
     const sources = await api.selectPaths({
       title: 'Medien auswählen',
       multi: true,
-      filters: [{ name: 'Medien', extensions: [...VIDEO_EXTENSIONS, ...IMAGE_EXTENSIONS] }]
+      filters: [{ name: 'Medien', extensions: [...MEDIA_EXTENSIONS] }]
     })
     importSources(sources)
   }
