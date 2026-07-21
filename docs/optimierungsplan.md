@@ -59,6 +59,16 @@ das größte Risiko. Alle klein bis mittel.
 
 ## 2. Phase 2 — Konsolidierung (Tech-Debt abbauen)
 
+> **Teilweise umgesetzt (die verifizierbaren Quick-Wins):** gemeinsame `MEDIA_EXTENSIONS`
+> in `src/shared/` (behebt die Drift im Idle-Dialog – dort fehlten mxf/mpg/wmv/mts/tif …);
+> `QrCode`/`qr` nach `components/` verschoben (kein verstecktes Cross-Tool-Import mehr);
+> gemeinsames `components/ui/select.tsx` (drei `selectClass`-Kopien + HapConverters eigene
+> Video-Liste vereint); vitest-`include` auf `{ts,tsx}` (künftige Komponententests laufen);
+> Persist-Stores versioniert
+> (in Phase 1). **Bewusst NICHT gemacht: N7** (electron-builder als devDependency) – das würde die
+> im README dokumentierte Sicherheits-Entscheidung (node-gyp/tar aus `npm ci` heraushalten)
+> rückgängig machen. Rest folgt.
+
 Das schnelle Feature-Wachstum hat Duplikate hinterlassen. Reihenfolge nach „Nutzen pro Aufwand".
 
 ### Duplikate zusammenführen
@@ -127,8 +137,12 @@ Keine veralteten APIs gefunden (createRoot+StrictMode, keine Klassen/`ReactDOM.r
 ## 4. Phase 4 — Tests & CI (kontinuierlich)
 
 - **Reducer zuerst** (DOM-frei, sofort lauffähig, höchster Wert, weil main-autoritativ):
-  `stageTimer.applyTimerCommand`, `playerState`, `convertManager.analyzeFit`/`canStreamCopy`,
-  `ytDlp`-Args/Zeilen-Parser, `remoteHttp`-Parsing. **[M]**
+  - `stageTimer.applyTimerCommand` ✅ (10 Tests inkl. Wanduhr-Countdown + End-Verhalten stop/next/overtime).
+  - `convertManager.analyzeFit`/`canStreamCopy` ✅ (7 Tests; die „Warum-neu-konvertieren?"-Logik).
+    Dabei etabliert: ein schlanker `vi.mock('electron', …)` reicht, um main-Services **ohne** natives
+    Modul zu testen (Muster für die nächsten).
+  - Offen: `playerState` (importiert `db` → better-sqlite3, braucht mehr Mock-Aufwand),
+    `ytDlp`-Args/Zeilen-Parser, `remoteHttp`-Parsing. **[M]**
 - **Komponententests:** `jsdom` + `@testing-library/react` ergänzen, vitest-`include` von `.ts` auf
   `{ts,tsx}` erweitern (heute würde ein `*.test.tsx` typgeprüft, aber nie ausgeführt). **[M]**
 - **CI:** Matrix um `windows-latest`/`macos-latest` (Kernversprechen „plattformübergreifend" wird heute

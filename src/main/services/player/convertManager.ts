@@ -7,6 +7,7 @@ import { existsSync, readdirSync, renameSync, rmSync, statSync, type Dirent } fr
 import { randomUUID } from 'node:crypto'
 import { basename, extname, join } from 'node:path'
 import { promisify } from 'node:util'
+import { dotted, STILL_IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type { ConvertJob, MediaKind, PlayerImportRequest } from '@shared/types'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 import { logLine } from '../log'
@@ -32,29 +33,15 @@ import {
 
 const pexecFile = promisify(execFile)
 
-const VIDEO_EXT = new Set([
-  '.mov',
-  '.mp4',
-  '.mxf',
-  '.avi',
-  '.mkv',
-  '.m4v',
-  '.mpg',
-  '.mpeg',
-  '.wmv',
-  '.mts',
-  '.m2ts',
-  '.ts',
-  '.webm'
-])
-const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tif', '.tiff'])
+const VIDEO_EXT = new Set(dotted(VIDEO_EXTENSIONS))
+const IMAGE_EXT = new Set(dotted(STILL_IMAGE_EXTENSIONS))
 const MEDIA_EXT = new Set([...VIDEO_EXT, ...IMAGE_EXT, '.gif'])
 export const ALLOWED_MEDIA_EXT = MEDIA_EXT
 
 type JobSink = (job: ConvertJob) => void
 type LibrarySink = () => void
 
-interface ProbeInfo {
+export interface ProbeInfo {
   width: number | null
   height: number | null
   durationSec: number | null
@@ -115,7 +102,7 @@ const FIT_TITLE: Record<Fit, string> = {
 //  - gleiches Seitenverh.-> reine Skalierung, Fit egal -> „Scale" (billiger Scale
 //                                                          statt Blur-Graph)
 //  - anderes Seitenverh. -> Fit greift sichtbar        -> Blur/Letterbox/Stretch
-function analyzeFit(
+export function analyzeFit(
   fit: Fit,
   srcW: number | null,
   srcH: number | null,
@@ -167,7 +154,7 @@ async function probeSource(path: string): Promise<ProbeInfo> {
 
 // Quelle liegt bereits exakt in Zielauflösung + browsertauglichem H.264 vor
 // -> kein Re-Encode nötig, nur Container-Copy.
-function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): boolean {
+export function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): boolean {
   return (
     kind === 'video' &&
     info.width === w &&

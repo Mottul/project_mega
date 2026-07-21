@@ -6,10 +6,12 @@
 import type { ReactNode } from 'react'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { selectClass as selectBase } from '@renderer/components/ui/select'
 import { toolPageClass } from '@renderer/lib/toolPage'
 
-export const selectClass =
-  'h-9 w-full rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
+// Rechner-Layouts sind zentriert -> volle Breite. Basis-Styling kommt aus dem
+// gemeinsamen Select-Baustein (eine Quelle).
+export const selectClass = `${selectBase} w-full`
 
 /** Zentrierte Rechner-Seite (in den Tool-Host eingebettet, scrollbar). */
 export function CalcPage({ children }: { children: ReactNode }): JSX.Element {

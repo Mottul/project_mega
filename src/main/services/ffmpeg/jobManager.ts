@@ -2,26 +2,13 @@ import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { existsSync, readdirSync, rmSync, statSync, type Dirent } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { extname, join } from 'node:path'
+import { dotted, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type { ChunksMode, HapEnqueueRequest, HapJob } from '@shared/types'
 import { ffmpegBinPath } from './ffmpegPath'
 import { buildHapArgs, computeChunks, hapOutputPath } from './hapEncoder'
 import { probe } from './probe'
 
-const VIDEO_EXT = new Set([
-  '.mov',
-  '.mp4',
-  '.mxf',
-  '.avi',
-  '.mkv',
-  '.m4v',
-  '.mpg',
-  '.mpeg',
-  '.wmv',
-  '.mts',
-  '.m2ts',
-  '.ts',
-  '.webm'
-])
+const VIDEO_EXT = new Set(dotted(VIDEO_EXTENSIONS))
 
 type Sink = (job: HapJob) => void
 

@@ -2,6 +2,7 @@ import { readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { dialog, ipcMain } from 'electron'
 import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
+import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
 import type { PlayerCommand, PlayerImportRequest } from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { convertManager } from '../services/player/convertManager'
@@ -83,25 +84,9 @@ export function registerPlayerHandlers(): void {
     const res = await dialog.showOpenDialog({
       title: 'Idle-Bild/-Video wählen',
       properties: ['openFile'],
-      filters: [
-        {
-          name: 'Bilder & Videos',
-          extensions: [
-            'jpg',
-            'jpeg',
-            'png',
-            'webp',
-            'bmp',
-            'gif',
-            'mp4',
-            'mov',
-            'mkv',
-            'webm',
-            'avi',
-            'm4v'
-          ]
-        }
-      ]
+      // Dieselbe Menge, die der Konverter tatsächlich verarbeitet (vorher fehlten
+      // hier u.a. mxf/mpg/wmv/mts/tif – Drift zwischen Dialog und Import).
+      filters: [{ name: 'Bilder & Videos', extensions: [...MEDIA_EXTENSIONS] }]
     })
     if (res.canceled || res.filePaths.length === 0) return null
     const src = res.filePaths[0]

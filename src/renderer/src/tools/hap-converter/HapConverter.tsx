@@ -15,8 +15,10 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
+import { selectClass } from '@renderer/components/ui/select'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type {
   ChunksMode,
   HapCheckResult,
@@ -25,22 +27,6 @@ import type {
   HapJob,
   JobStatus
 } from '@shared/types'
-
-const VIDEO_EXTENSIONS = [
-  'mov',
-  'mp4',
-  'mxf',
-  'avi',
-  'mkv',
-  'm4v',
-  'mpg',
-  'mpeg',
-  'wmv',
-  'mts',
-  'm2ts',
-  'ts',
-  'webm'
-]
 
 // Sinnvolle Parallel-Stufen bis zur Kernzahl (ein einzelner HAP-Encode lastet die
 // CPU nicht voll aus -> mehrere gleichzeitig nutzen die Kerne besser).
@@ -63,9 +49,6 @@ const STATUS_META: Record<JobStatus, { label: string; tone: BadgeTone }> = {
   error: { label: 'Fehler', tone: 'danger' },
   canceled: { label: 'Abgebrochen', tone: 'warning' }
 }
-
-const selectClass =
-  'h-9 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
 
 function basename(p: string): string {
   return p.split(/[\\/]/).pop() ?? p
