@@ -62,7 +62,9 @@ das größte Risiko. Alle klein bis mittel.
 > **Teilweise umgesetzt (die verifizierbaren Quick-Wins):** gemeinsame `MEDIA_EXTENSIONS`
 > in `src/shared/` (behebt die Drift im Idle-Dialog – dort fehlten mxf/mpg/wmv/mts/tif …);
 > `QrCode`/`qr` nach `components/` verschoben (kein verstecktes Cross-Tool-Import mehr);
-> vitest-`include` auf `{ts,tsx}` (künftige Komponententests laufen); Persist-Stores versioniert
+> gemeinsames `components/ui/select.tsx` (drei `selectClass`-Kopien + HapConverters eigene
+> Video-Liste vereint); vitest-`include` auf `{ts,tsx}` (künftige Komponententests laufen);
+> Persist-Stores versioniert
 > (in Phase 1). **Bewusst NICHT gemacht: N7** (electron-builder als devDependency) – das würde die
 > im README dokumentierte Sicherheits-Entscheidung (node-gyp/tar aus `npm ci` heraushalten)
 > rückgängig machen. Rest folgt.
