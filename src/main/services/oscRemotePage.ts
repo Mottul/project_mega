@@ -58,10 +58,12 @@ header b{font-size:16px}
 .knob{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;touch-action:none}
 .bknob{display:flex;align-items:center;justify-content:center;min-height:0;height:100%;touch-action:none}
 .knob svg,.bknob svg{height:100%;max-height:100%;width:auto;display:block}
+.hbtn{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;padding:6px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.hbtn:active{filter:brightness(1.3)}
 </style>
 </head>
 <body>
-<header><div class="hrow"><span id="dot"></span><b>OSC</b><span id="setName"></span></div><div id="sets"></div></header>
+<header><div class="hrow"><span id="dot"></span><b>OSC</b><span id="setName"></span><button id="fs" class="hbtn" aria-label="Vollbild"></button></div><div id="sets"></div></header>
 <div id="warn">OSC-Steuerung ist nicht geöffnet. Auf dem Rechner das Werkzeug „OSC-Steuerung" öffnen und die Fernsteuerung aktiv lassen.</div>
 <div id="grid"></div>
 <script>
@@ -319,6 +321,15 @@ function apply(s){
 
 fetch('/api/state').then(function(r){return r.json();}).then(apply).catch(function(){});
 try{var es=new EventSource('/api/events');es.onmessage=function(e){try{var m=JSON.parse(e.data);if(m.type==='state')apply(m.payload);}catch(_){}};}catch(_){}
+(function(){var de=document.documentElement,b=document.getElementById('fs');if(!b)return;
+var MAX='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+var MIN='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
+function fs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
+function u(){b.innerHTML=fs()?MIN:MAX;}
+if(!(de.requestFullscreen||de.webkitRequestFullscreen)){b.style.display='none';return;}
+b.onclick=function(){if(fs()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}else{(de.requestFullscreen||de.webkitRequestFullscreen).call(de);}};
+document.addEventListener('fullscreenchange',u);document.addEventListener('webkitfullscreenchange',u);u();
+})();
 </script>
 </body>
 </html>`

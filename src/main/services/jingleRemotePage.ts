@@ -26,10 +26,12 @@ footer{position:sticky;bottom:0;padding:12px 14px;background:var(--bg);border-to
 #stop:active{filter:brightness(.9)}
 #dot{width:9px;height:9px;border-radius:50%;background:#ef4444;display:inline-block}
 #dot.ok{background:#34d399}
+.hbtn{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;padding:7px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.hbtn:active{filter:brightness(1.3)}
 </style>
 </head>
 <body>
-<header><span id="dot"></span><b>Jingles</b><span id="bank"></span></header>
+<header><span id="dot"></span><b>Jingles</b><span id="bank"></span><button id="fs" class="hbtn" aria-label="Vollbild"></button></header>
 <div id="warn">Jingle-Player ist nicht geöffnet. Auf dem Rechner das Werkzeug „Jingle-Player" öffnen.</div>
 <div id="grid"></div>
 <footer><button id="stop">■ Alles stoppen</button></footer>
@@ -60,6 +62,15 @@ try{
   es.onmessage=function(e){try{var m=JSON.parse(e.data);if(m.type==='state')applyState(m.payload);}catch(_){}};
 }catch(_){}
 render();
+(function(){var de=document.documentElement,b=document.getElementById('fs');if(!b)return;
+var MAX='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+var MIN='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
+function fs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
+function u(){b.innerHTML=fs()?MIN:MAX;}
+if(!(de.requestFullscreen||de.webkitRequestFullscreen)){b.style.display='none';return;}
+b.onclick=function(){if(fs()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}else{(de.requestFullscreen||de.webkitRequestFullscreen).call(de);}};
+document.addEventListener('fullscreenchange',u);document.addEventListener('webkitfullscreenchange',u);u();
+})();
 </script>
 </body>
 </html>`

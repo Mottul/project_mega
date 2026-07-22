@@ -26,6 +26,7 @@ import { Input } from '@renderer/components/ui/input'
 import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { useDraft } from '@renderer/lib/useDraft'
+import { useElementWidth } from '@renderer/lib/useElementWidth'
 import {
   DEFAULT_TIMER_NDI,
   type DisplayInfo,
@@ -319,6 +320,11 @@ export function StageTimer(): JSX.Element {
     localStorage.setItem(LS_KEY, JSON.stringify(save))
   }, [state])
 
+  // Container-basiertes Layout: Abschnitte neben die Vorschau, sobald genug Breite
+  // da ist (auch nach dem Einklappen der Einstellungen) -> Vorschau wird dann kleiner.
+  // Vor dem Early-Return aufrufen (Hook-Reihenfolge muss konstant bleiben).
+  const [mainRef, mainW] = useElementWidth<HTMLDivElement>()
+
   if (!state) return <div className="p-6 text-sm text-muted-foreground">Lade…</div>
 
   function patchSegments(next: TimerSegment[]): void {
@@ -327,6 +333,7 @@ export function StageTimer(): JSX.Element {
 
   const segs = state.segments
   const isClock = state.displayMode === 'clock'
+  const twoCol = !isClock && mainW >= 820
 
   return (
     <ToolShell
@@ -463,10 +470,13 @@ export function StageTimer(): JSX.Element {
       }
       main={
         <div
+          ref={mainRef}
           className={
             isClock
               ? 'flex max-w-2xl flex-col gap-4 p-6'
-              : 'grid items-start gap-4 p-6 lg:grid-cols-[minmax(0,32rem),1fr]'
+              : twoCol
+                ? 'grid grid-cols-[minmax(0,24rem)_1fr] items-start gap-4 p-6'
+                : 'flex flex-col gap-4 p-6'
           }
         >
           {/* Spalte 1: Vorschau, Steuerung, Nachricht an die Bühne (≈ Vorschaubreite) */}

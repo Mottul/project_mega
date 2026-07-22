@@ -93,9 +93,14 @@ export const MOBILE_PAGE = `<!doctype html>
   .grid .item img { width:100%; height:auto; aspect-ratio:16/9; }
   .grid .item .t { white-space:normal; font-size:13px; }
   .grid .item .d { display:none; }
+  .fsbtn { position:fixed; right:14px; bottom:14px; z-index:60; width:44px; height:44px; padding:0;
+    min-height:0; display:flex; align-items:center; justify-content:center; border-radius:50%;
+    background:var(--card); border:1px solid var(--muted); color:var(--sub);
+    box-shadow:0 2px 10px rgba(0,0,0,0.45); }
 </style>
 </head>
 <body>
+  <button id="fs-btn" class="fsbtn" aria-label="Vollbild"></button>
   <details class="setpanel">
     <summary><span class="caret"></span>Einstellungen</summary>
     <div class="card setcard">
@@ -177,6 +182,9 @@ export const MOBILE_PAGE = `<!doctype html>
       <label class="iconbtn" aria-label="Foto aufnehmen"><span id="cam-ic"></span>
         <input id="cam" type="file" accept="image/*" capture="environment" hidden />
       </label>
+      <label class="iconbtn" aria-label="Video aufnehmen"><span id="vid-ic"></span>
+        <input id="vidcam" type="file" accept="video/*" capture="environment" hidden />
+      </label>
       <label class="uploadbtn">+ Hochladen
         <input id="file" type="file" accept="image/*,video/*" multiple hidden />
       </label>
@@ -210,7 +218,10 @@ export const MOBILE_PAGE = `<!doctype html>
     volx:'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19" fill="currentColor" stroke="none"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/>',
     list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3.5" y1="6" x2="3.51" y2="6"/><line x1="3.5" y1="12" x2="3.51" y2="12"/><line x1="3.5" y1="18" x2="3.51" y2="18"/>',
     grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
-    cam:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.2"/>'
+    cam:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.2"/>',
+    video:'<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+    maximize:'<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
+    minimize:'<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>'
   };
 
   function curItem(){ return state && state.index>=0 ? state.playlist[state.index] : null; }
@@ -397,6 +408,7 @@ export const MOBILE_PAGE = `<!doctype html>
   function onPick(){ var fl=this.files; if(fl&&fl.length) uploadQueue(Array.prototype.slice.call(fl)); this.value=''; }
   el('file').addEventListener('change', onPick);
   el('cam').addEventListener('change', onPick);
+  el('vidcam').addEventListener('change', onPick);
   function uploadQueue(files){
     var total=files.length, done=0, prog=el('uprog'); prog.className='uprog active';
     function next(){
@@ -435,7 +447,22 @@ export const MOBILE_PAGE = `<!doctype html>
   el('prev').innerHTML = svg(IC.prev,22);
   el('next').innerHTML = svg(IC.next,22);
   el('cam-ic').innerHTML = svg(IC.cam,20);
+  el('vid-ic').innerHTML = svg(IC.video,20);
   updateViewToggle();
+
+  // Vollbild-Umschalter (Fullscreen-API des Browsers; mehr Platz auf dem Gerät)
+  var fsBtn=el('fs-btn');
+  var docEl=document.documentElement;
+  function isFs(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
+  function updateFs(){ fsBtn.innerHTML=svg(isFs()?IC.minimize:IC.maximize,22); }
+  if(!(docEl.requestFullscreen||docEl.webkitRequestFullscreen)){ fsBtn.style.display='none'; }
+  fsBtn.addEventListener('click',function(){
+    if(isFs()){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+    else { (docEl.requestFullscreen||docEl.webkitRequestFullscreen).call(docEl); }
+  });
+  document.addEventListener('fullscreenchange',updateFs);
+  document.addEventListener('webkitfullscreenchange',updateFs);
+  updateFs();
 
   loadState(); loadLib(); connect();
 })();

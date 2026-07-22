@@ -289,7 +289,7 @@ export function Waveform({
     <div>
       <div
         ref={wrapRef}
-        className="relative h-44 w-full select-none overflow-hidden rounded-md border border-border bg-black/40"
+        className="relative h-44 w-full select-none overflow-hidden rounded-md border border-border bg-black/40 light:bg-zinc-200"
       >
         {error ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -303,11 +303,11 @@ export function Waveform({
           <>
             <canvas ref={canvasRef} className="block h-full w-full" />
             <div
-              className="pointer-events-none absolute inset-y-0 left-0 bg-black/55"
+              className="pointer-events-none absolute inset-y-0 left-0 bg-black/55 light:bg-black/20"
               style={{ width: `${dimLeft}%` }}
             />
             <div
-              className="pointer-events-none absolute inset-y-0 right-0 bg-black/55"
+              className="pointer-events-none absolute inset-y-0 right-0 bg-black/55 light:bg-black/20"
               style={{ width: `${dimRight}%` }}
             />
             {startInView && (

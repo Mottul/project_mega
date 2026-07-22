@@ -45,6 +45,7 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { useElementWidth } from '@renderer/lib/useElementWidth'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
 import {
@@ -108,6 +109,10 @@ export function VideoPlayer(): JSX.Element {
   // Idle-Bild). Bibliothek, Import, Fit-Modus, Fernsteuerung, Ausgabe und Playlist
   // bleiben voll bedienbar.
   const locked = useKiosk()
+  // Container-basiertes Layout: Bibliothek neben den Player, sobald genug Breite da
+  // ist (auch nach dem Einklappen der Einstellungen) -> die Vorschau wird dann kleiner.
+  const [mainRef, mainW] = useElementWidth<HTMLDivElement>()
+  const wide = mainW >= 900
   const [enc, setEnc] = useState<PlayerEncoderStatus | null>(null)
   const [library, setLibrary] = useState<MediaItem[]>([])
   const [jobs, setJobs] = useState<Record<string, ConvertJob>>({})
@@ -866,7 +871,7 @@ export function VideoPlayer(): JSX.Element {
         </>
       }
       main={
-        <div className="space-y-6 p-6">
+        <div ref={mainRef} className="space-y-6 p-6">
           {ffmpegMissing && (
             <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
               <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400 light:text-amber-700" />
@@ -884,10 +889,10 @@ export function VideoPlayer(): JSX.Element {
             </Card>
           )}
 
-          <div className="flex flex-col gap-6 xl:flex-row">
-            {/* Bibliothek – auf breiten Screens links, beim Stapeln NACH dem Player
+          <div className={`flex flex-col gap-6 ${wide ? 'flex-row' : ''}`}>
+            {/* Bibliothek – bei genug Breite links, beim Stapeln NACH dem Player
             (order-2): schmal soll zuerst der Player kommen, nicht die Bibliothek. */}
-            <Card className="order-2 flex min-w-0 flex-col p-5 xl:order-1 xl:flex-1">
+            <Card className={`flex min-w-0 flex-col p-5 ${wide ? 'order-1 flex-1' : 'order-2'}`}>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="font-medium">Bibliothek</h2>
                 <div className="flex items-center gap-1">
@@ -1165,8 +1170,8 @@ export function VideoPlayer(): JSX.Element {
               </div>
             </Card>
 
-            {/* Wiedergabe – beim Stapeln zuerst (order-1), auf breiten Screens rechts. */}
-            <Card className="order-1 flex min-w-0 flex-col p-5 xl:order-2 xl:flex-1">
+            {/* Wiedergabe – beim Stapeln zuerst (order-1), bei genug Breite rechts. */}
+            <Card className={`flex min-w-0 flex-col p-5 ${wide ? 'order-2 flex-1' : 'order-1'}`}>
               <div className="mb-3">
                 <h2 className="font-medium">Wiedergabe</h2>
               </div>

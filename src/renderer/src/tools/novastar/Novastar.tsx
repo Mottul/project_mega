@@ -18,6 +18,8 @@ export function Novastar(): JSX.Element {
   const [status, setStatus] = useState<NovastarStatus | null>(null)
   const [bright, setBright] = useState(100)
   const [ftbSec, setFtbSec] = useState(2)
+  const [faded, setFaded] = useState(false)
+  const [fadeUpTarget, setFadeUpTarget] = useState('') // leer = letzter Wert vor dem Ausblenden
   const [black, setBlack] = useState(false)
   const [frozen, setFrozen] = useState(false)
   const [preset, setPreset] = useState(1)
@@ -63,9 +65,20 @@ export function Novastar(): JSX.Element {
       if (i >= steps) stopRamp()
     }, 50)
   }
-  function fadeToBlack(): void {
-    if (bright > 0) prevBright.current = bright
-    ramp(0)
+  // Toggle: ausblenden -> Schwarz; erneut -> wieder aufblenden auf den Zielwert
+  // (eingestellt, sonst der letzte Wert vor dem Ausblenden).
+  function toggleFade(): void {
+    if (faded) {
+      const t = fadeUpTarget.trim()
+      const target =
+        t === '' ? prevBright.current || 100 : Math.max(0, Math.min(100, Number(t) || 0))
+      ramp(target)
+      setFaded(false)
+    } else {
+      if (bright > 0) prevBright.current = bright
+      ramp(0)
+      setFaded(true)
+    }
   }
   // Blackout und Freeze sind am Gerät EIN Anzeigemodus (Normal/Freeze/Black) --
   // sie schließen sich gegenseitig aus. Das eine einzuschalten hebt das andere
@@ -160,25 +173,25 @@ export function Novastar(): JSX.Element {
             min={0}
             max={100}
             value={bright}
-            onChange={(e) => applyBright(Number(e.target.value))}
+            onChange={(e) => {
+              applyBright(Number(e.target.value))
+              setFaded(false)
+            }}
             className="w-full accent-primary"
             disabled={!connected}
           />
         </div>
 
         <div className="flex flex-wrap items-end gap-2">
-          <Button variant="outline" onClick={fadeToBlack} disabled={!connected} className="flex-1">
-            Fade to Black
-          </Button>
           <Button
-            variant="outline"
-            onClick={() => ramp(prevBright.current || 100)}
+            variant={faded ? 'default' : 'outline'}
+            onClick={toggleFade}
             disabled={!connected}
             className="flex-1"
           >
-            Aufblenden
+            {faded ? 'Aufblenden' : 'Fade to Black'}
           </Button>
-          <label className="w-28">
+          <label className="w-24">
             <span className="mb-1 block text-xs text-muted-foreground">Fade-Dauer (s)</span>
             <Input
               type="number"
@@ -186,6 +199,18 @@ export function Novastar(): JSX.Element {
               min={0.1}
               value={ftbSec}
               onChange={(e) => setFtbSec(Number(e.target.value) || 2)}
+              className="tabular-nums"
+            />
+          </label>
+          <label className="w-24">
+            <span className="mb-1 block text-xs text-muted-foreground">Ziel %</span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              placeholder="letzter"
+              value={fadeUpTarget}
+              onChange={(e) => setFadeUpTarget(e.target.value)}
               className="tabular-nums"
             />
           </label>
@@ -210,9 +235,10 @@ export function Novastar(): JSX.Element {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          „Fade to Black" blendet die Helligkeit weich aus; „Blackout" schaltet den Anzeigemodus
-          sofort hart auf Schwarz. Blackout und Einfrieren teilen sich diesen Anzeigemodus – nur
-          eines gleichzeitig; das aktive ausschalten geht zurück auf Normal.
+          „Fade to Black" blendet die Helligkeit weich aus und beim erneuten Klick wieder auf – auf
+          den „Ziel %"-Wert, sonst auf den letzten Wert vor dem Ausblenden. „Blackout" schaltet den
+          Anzeigemodus sofort hart auf Schwarz. Blackout und Einfrieren teilen sich diesen
+          Anzeigemodus – nur eines gleichzeitig; das aktive ausschalten geht zurück auf Normal.
         </p>
       </Card>
 
