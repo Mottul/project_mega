@@ -88,9 +88,9 @@ export const MOBILE_PAGE = `<!doctype html>
   .timecol .stepper { justify-content:space-between; }
   .timecol .stepper button { min-width:44px; }
   .timecol .stepper .v { min-width:0; }
-  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
   .grid .item { flex-direction:column; align-items:stretch; padding:6px; gap:6px; }
-  .grid .item img { width:100%; height:auto; aspect-ratio:16/9; }
+  .grid .item img { width:100%; aspect-ratio:16/9; object-fit:cover; }
   .grid .item .t { white-space:normal; font-size:13px; }
   .grid .item .d { display:none; }
   .fsbtn { position:fixed; right:14px; bottom:14px; z-index:60; width:44px; height:44px; padding:0;

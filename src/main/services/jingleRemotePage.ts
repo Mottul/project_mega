@@ -16,8 +16,8 @@ header{position:sticky;top:0;background:var(--bg);padding:12px 14px;border-botto
 header b{font-size:17px}
 #bank{color:var(--dim);font-size:13px}
 #warn{display:none;margin:10px 14px;padding:10px 12px;border-radius:8px;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);color:var(--gold);font-size:13px}
-#grid{display:grid;gap:10px;padding:14px;grid-template-columns:repeat(2,1fr)}
-.pad{border:none;border-radius:12px;min-height:96px;color:#000;font-size:15px;font-weight:700;padding:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;transition:transform .05s,filter .1s}
+#grid{display:grid;gap:10px;padding:14px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.pad{border:none;border-radius:12px;min-height:96px;color:#000;font-size:15px;font-weight:700;padding:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;overflow-wrap:anywhere;transition:transform .05s,filter .1s}
 .pad:active{transform:scale(.97)}
 .pad.empty{background:var(--card);color:var(--dim);border:1px dashed var(--border);font-weight:400}
 .pad.playing{outline:3px solid #fff;filter:brightness(1.1)}
@@ -44,7 +44,7 @@ function render(){
   document.getElementById('warn').style.display=state.connected?'none':'block';
   var cols=Math.max(1,Math.min(6,state.columns||2));
   var grid=document.getElementById('grid');
-  grid.style.gridTemplateColumns='repeat('+cols+',1fr)';
+  grid.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
   var playing={};(state.playing||[]).forEach(function(id){playing[id]=true;});
   grid.innerHTML='';
   (state.pads||[]).forEach(function(p){

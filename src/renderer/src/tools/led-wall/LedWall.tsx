@@ -3,7 +3,7 @@
 // und (uS2+) die Curving-Planung. Export als PDF-Projektdoku.
 
 import { useEffect, useMemo } from 'react'
-import { ClipboardList, FileDown } from 'lucide-react'
+import { ClipboardList, FileDown, Save, Trash2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -18,7 +18,7 @@ import { CURVE_MODE_LABELS } from './curve'
 import { MODULES, PWR_COLORS, SIG_COLORS } from './data'
 import { type Fit169 } from './math'
 import { exportLedWallPdf } from './print'
-import { useLedWall, type BuildMode } from './store'
+import { useLedWall, type BuildMode, type LedWallPreset } from './store'
 import { topDownMarkup } from './topdown'
 import { LField } from './ui'
 import { cn } from '@renderer/lib/utils'
@@ -169,6 +169,18 @@ export function LedWall(): JSX.Element {
     })
   }
 
+  function saveCurrent(): void {
+    s.savePreset(s.projectName.trim() || `Vorlage ${s.presets.length + 1}`)
+  }
+  async function removePreset(p: LedWallPreset): Promise<void> {
+    const ok = await api.confirm({
+      message: `Vorlage „${p.name}" löschen?`,
+      confirmLabel: 'Löschen',
+      danger: true
+    })
+    if (ok) s.deletePreset(p.id)
+  }
+
   return (
     <div className={cn('ledwall-grid p-6', hasCurving && 'has-curving')}>
       {/* Projekt */}
@@ -233,6 +245,49 @@ export function LedWall(): JSX.Element {
               onChange={(e) => s.set({ customerName: e.target.value })}
             />
           </label>
+        </div>
+
+        {/* Vorlagen: benannte Konfigurationen sichern/laden (wie bei anderen Tools) */}
+        <div className="mt-3 border-t border-border pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <SectionTitle>Vorlagen</SectionTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={saveCurrent}
+              title="Aktuelle Planung als Vorlage sichern (Name = Projektname)"
+            >
+              <Save className="size-4" /> Speichern
+            </Button>
+          </div>
+          {s.presets.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {s.presets.map((p) => (
+                <div key={p.id} className="flex items-center rounded-md border border-border pl-2">
+                  <button
+                    type="button"
+                    onClick={() => s.loadPreset(p.id)}
+                    title={`Laden · gespeichert ${new Date(p.savedAt).toLocaleString('de-AT')}`}
+                    className="max-w-[16rem] truncate py-1 pr-2 text-sm hover:text-primary"
+                  >
+                    {p.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void removePreset(p)}
+                    aria-label="Vorlage löschen"
+                    className="px-1.5 py-1 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Noch keine Vorlagen. „Speichern" sichert die aktuelle Planung unter dem Projektnamen.
+            </p>
+          )}
         </div>
       </Card>
 

@@ -889,7 +889,7 @@ export function VideoPlayer(): JSX.Element {
             </Card>
           )}
 
-          <div className={`flex flex-col gap-6 ${wide ? 'flex-row' : ''}`}>
+          <div className={`flex gap-6 ${wide ? 'flex-row' : 'flex-col'}`}>
             {/* Bibliothek – bei genug Breite links, beim Stapeln NACH dem Player
             (order-2): schmal soll zuerst der Player kommen, nicht die Bibliothek. */}
             <Card className={`flex min-w-0 flex-col p-5 ${wide ? 'order-1 flex-1' : 'order-2'}`}>

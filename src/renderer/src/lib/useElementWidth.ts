@@ -10,10 +10,10 @@ export function useElementWidth<T extends HTMLElement>(): [RefObject<T>, number]
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    setWidth(el.clientWidth)
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) setWidth(e.contentRect.width)
-    })
+    // clientWidth (inkl. Padding) für Erst- UND Folgemessung -> konsistente Schwelle.
+    const measure = (): void => setWidth(el.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
   }, [])

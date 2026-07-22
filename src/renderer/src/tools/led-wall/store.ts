@@ -10,7 +10,8 @@ import { resizeGrid, type BuilderSegment } from './math'
 export type BuildMode = 'stacked' | 'flying'
 export type CurveMode = 'circle' | 'segment' | 'builder' | 'squircle'
 
-interface LedWallState {
+/** Reine Konfigurationsfelder (das, was eine gespeicherte Vorlage ausmacht). */
+export interface LedWallConfig {
   moduleKey: string
   widthM: string // Eingaben als Text (Komma-tolerant), geparst wird beim Rechnen
   heightM: string
@@ -30,6 +31,18 @@ interface LedWallState {
   sqCorner: number
   selectedCircle: number // Index in CIRCLE_TABLE
   pdfLandscape: boolean // PDF-Doku im Querformat (Default: ja – Pläne sind breit)
+}
+
+/** Benannte, gespeicherte Konfiguration. */
+export interface LedWallPreset {
+  id: string
+  name: string
+  savedAt: number
+  data: LedWallConfig
+}
+
+interface LedWallState extends LedWallConfig {
+  presets: LedWallPreset[]
 
   set: (patch: Partial<LedWallState>) => void
   /** Grids an neue Modulzahl anpassen (Zuordnungen im Überlapp bleiben erhalten). */
@@ -37,6 +50,33 @@ interface LedWallState {
   setCell: (grid: 'sig' | 'pwr', row: number, col: number) => void
   fillLine: (grid: 'sig' | 'pwr', kind: 'row' | 'col', index: number) => void
   resetGrid: (grid: 'sig' | 'pwr') => void
+  /** Aktuelle Konfiguration als Vorlage sichern (gleicher Name -> überschreiben). */
+  savePreset: (name: string) => void
+  loadPreset: (id: string) => void
+  deletePreset: (id: string) => void
+}
+
+/** Tiefe Kopie nur der Konfigurationsfelder (ohne Vorlagen/Methoden). */
+function snapshot(s: LedWallState): LedWallConfig {
+  return structuredClone({
+    moduleKey: s.moduleKey,
+    widthM: s.widthM,
+    heightM: s.heightM,
+    projectName: s.projectName,
+    customerName: s.customerName,
+    buildMode: s.buildMode,
+    sig: s.sig,
+    pwr: s.pwr,
+    sigChain: s.sigChain,
+    pwrChain: s.pwrChain,
+    curveMode: s.curveMode,
+    segSag: s.segSag,
+    builderSegs: s.builderSegs,
+    sqD: s.sqD,
+    sqCorner: s.sqCorner,
+    selectedCircle: s.selectedCircle,
+    pdfLandscape: s.pdfLandscape
+  })
 }
 
 export const useLedWall = create<LedWallState>()(
@@ -63,6 +103,7 @@ export const useLedWall = create<LedWallState>()(
       sqCorner: 3,
       selectedCircle: 0,
       pdfLandscape: true,
+      presets: [],
 
       set: (patch) => set(patch),
 
@@ -97,7 +138,35 @@ export const useLedWall = create<LedWallState>()(
           [grid]: s[grid].map((r) => r.map(() => -1)),
           [grid === 'sig' ? 'sigChain' : 'pwrChain']: 0
         } as Partial<LedWallState>)
-      }
+      },
+
+      savePreset: (name) => {
+        const trimmed = name.trim()
+        if (!trimmed) return
+        const data = snapshot(get())
+        set((state) => {
+          const idx = state.presets.findIndex((p) => p.name === trimmed)
+          const entry: LedWallPreset = {
+            id: idx >= 0 ? state.presets[idx].id : crypto.randomUUID(),
+            name: trimmed,
+            savedAt: Date.now(),
+            data
+          }
+          return {
+            presets:
+              idx >= 0
+                ? state.presets.map((p, i) => (i === idx ? entry : p))
+                : [...state.presets, entry]
+          }
+        })
+      },
+
+      loadPreset: (id) => {
+        const preset = get().presets.find((p) => p.id === id)
+        if (preset) set(structuredClone(preset.data))
+      },
+
+      deletePreset: (id) => set((state) => ({ presets: state.presets.filter((p) => p.id !== id) }))
     }),
     {
       name: 'led-wall-konfigurator',
