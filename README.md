@@ -19,7 +19,7 @@ Tech-Stack: **Electron + React + TypeScript** (electron-vite), Tailwind CSS,
 
 ## Voraussetzungen
 
-- **Node.js `^20.19` oder `≥ 22.12`** und npm (von vite 7 vorgegeben; `engine-strict=true` in
+- **Node.js `≥ 22.12`** und npm (von Electron 42 vorgegeben; `engine-strict=true` in
   `.npmrc` erzwingt es – ein zu altes Node bricht den Install mit klarer Meldung ab statt
   später kryptisch).
 - **Kein C++-Compiler nötig.** Das einzige native Modul (`better-sqlite3`) wird beim `npm install`
@@ -237,7 +237,7 @@ src/
   IPC-Brücke, Tool-Modulsystem, Launcher mit Suche, Gold-Akzent (#ffce2c) auf kühlem Dark-Theme,
   App-Icon, **0 npm-Vulnerabilities in den Laufzeit-Abhängigkeiten**, schlanker Install ohne Compiler
   (Prebuilds). **Unit-Tests (Vitest)** für die Rechenkerne und eine **Mini-CI** (Typecheck + Tests +
-  Build je Push, Node 20/22).
+  Build je Push, Node 22/24).
 - **HAP-Konverter** – Batch nach HAP/HAP Q/HAP Alpha, gebündeltes ffmpeg, Parallel + Kompressor,
   Auto-Padding auf ×4-Maße. End-to-end getestet.
 - **Manuals-Bibliothek** – PDF-Import (SHA-256-Dedup), FTS5-Volltextsuche mit aufklappbaren
