@@ -475,9 +475,12 @@ export function StageTimer(): JSX.Element {
             isClock
               ? 'flex max-w-2xl flex-col gap-4 p-6'
               : twoCol
-                ? 'grid grid-cols-[minmax(0,24rem)_1fr] items-start gap-4 p-6'
+                ? 'grid items-start gap-4 p-6'
                 : 'flex flex-col gap-4 p-6'
           }
+          // Vorschau-Spalte wächst mit, bleibt aber gedeckelt -> daneben bleibt
+          // immer genug Platz für die Abschnitte.
+          style={twoCol ? { gridTemplateColumns: 'minmax(0, min(38%, 34rem)) 1fr' } : undefined}
         >
           {/* Spalte 1: Vorschau, Steuerung, Nachricht an die Bühne (≈ Vorschaubreite) */}
           <div className="space-y-4">
