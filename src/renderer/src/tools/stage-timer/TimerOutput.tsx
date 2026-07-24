@@ -3,12 +3,16 @@
 
 import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/api'
+import { windowTitle } from '@shared/brand'
 import type { StageTimerState } from '@shared/types'
 import { TimerDisplay } from './TimerDisplay'
 
 export function TimerOutput(): JSX.Element {
   const [state, setState] = useState<StageTimerState | null>(null)
   const [remaining, setRemaining] = useState(0)
+  useEffect(() => {
+    document.title = windowTitle('Timer-Ausgabe')
+  }, [])
 
   useEffect(() => {
     void api.timer.getState().then((s) => {

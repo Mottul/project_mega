@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Eraser } from 'lucide-react'
 import { api } from '@renderer/lib/api'
+import { windowTitle } from '@shared/brand'
 import type { OscLogEntry } from '@shared/types'
 
 function fmtArg(a: number | string | boolean): string {
@@ -27,6 +28,9 @@ export function OscMonitorWindow(): JSX.Element {
   // „Leeren" blendet Älteres aus, ohne das Log im OSC-Tab zu verändern.
   const [since, setSince] = useState(0)
 
+  useEffect(() => {
+    document.title = windowTitle('OSC-Monitor')
+  }, [])
   useEffect(() => api.osc.onMonitor((entries) => setLog(entries)), [])
 
   const visible = log.filter((e) => e.at >= since)
