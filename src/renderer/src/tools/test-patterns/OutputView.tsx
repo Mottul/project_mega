@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@renderer/lib/api'
+import { windowTitle } from '@shared/brand'
 import type { PatternConfig } from '@shared/types'
 import { drawPattern, isAnimated } from './patterns'
 
@@ -9,6 +10,9 @@ import { drawPattern, isAnimated } from './patterns'
 export function OutputView(): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [config, setConfig] = useState<PatternConfig | null>(null)
+  useEffect(() => {
+    document.title = windowTitle('Testbild-Ausgabe')
+  }, [])
 
   useEffect(() => {
     void api.patterns.current().then((c) => {

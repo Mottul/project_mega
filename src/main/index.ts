@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { APP_NAME } from '@shared/brand'
 import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import {
   attachWindow,
@@ -83,7 +84,9 @@ function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWi
     show: false,
     backgroundColor: '#09090b',
     autoHideMenuBar: true,
-    title: 'MegaToolBox',
+    // Anfangstitel; sobald der Renderer document.title setzt (Tool-Name), folgt
+    // das Fenster automatisch (Electron spiegelt page-title-updated).
+    title: APP_NAME,
     icon: appIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),

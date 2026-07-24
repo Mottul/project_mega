@@ -8,6 +8,7 @@ import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { DensityToggle } from '@renderer/components/DensityToggle'
 import { AccentPicker } from '@renderer/components/AccentPicker'
 import { api } from '@renderer/lib/api'
+import { APP_NAME, APP_TAGLINE } from '@shared/brand'
 import { cn } from '@renderer/lib/utils'
 import { findTool, tools } from '@renderer/tools/registry'
 import { CATEGORY_LABELS, type ToolModule } from '@renderer/tools/types'
@@ -116,6 +117,11 @@ export function Launcher(): JSX.Element {
   const activity = useToolActivity()
   const { favorites, isFavorite, toggle } = useToolFavorites()
 
+  // Übersicht -> Fenstertitel zurück auf den App-Namen.
+  useEffect(() => {
+    document.title = APP_NAME
+  }, [])
+
   // Kundenansicht: ist ein Start-Tool gesetzt, direkt (gesperrt) dorthin springen.
   useEffect(() => {
     void api.getSettings().then((s) => {
@@ -151,10 +157,8 @@ export function Launcher(): JSX.Element {
       <header className="border-b border-border px-8 py-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">MegaToolBox</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Werkzeuge für den AV-Alltag – offline, an einem Ort.
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight">{APP_NAME}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{APP_TAGLINE}</p>
           </div>
           <div className="flex items-center gap-1">
             <AccentPicker />

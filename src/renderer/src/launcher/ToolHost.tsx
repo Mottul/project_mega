@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { AccentPicker } from '@renderer/components/AccentPicker'
 import { api } from '@renderer/lib/api'
+import { windowTitle } from '@shared/brand'
 import { findTool } from '@renderer/tools/registry'
 import { KioskContext } from './kiosk'
 
@@ -15,6 +16,12 @@ export function ToolHost(): JSX.Element {
   const navigate = useNavigate()
   const tool = id ? findTool(id) : undefined
   const kiosk = params.get('kiosk') === '1'
+
+  // Fenstertitel = Werkzeugname · App (auch in eigenen Fenstern). Beim Verlassen
+  // zurück auf den App-Namen (Launcher setzt ihn selbst wieder).
+  useEffect(() => {
+    document.title = windowTitle(tool?.name)
+  }, [tool])
 
   // In der Kundenansicht: Strg+Shift+K verlässt sie (und hebt den Auto-Start auf).
   useEffect(() => {

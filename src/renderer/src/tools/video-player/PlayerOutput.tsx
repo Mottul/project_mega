@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/api'
+import { windowTitle } from '@shared/brand'
 import { PlaybackEngine } from './PlaybackEngine'
 
 // Inhalt des rahmenlosen Vollbild-Ausgabefensters (#/player-output): die
@@ -9,6 +10,9 @@ import { PlaybackEngine } from './PlaybackEngine'
 // – geschlossen wird über die App oder den dezenten Button unten rechts.
 export function PlayerOutput(): JSX.Element {
   const [debug, setDebug] = useState(false)
+  useEffect(() => {
+    document.title = windowTitle('Player-Ausgabe')
+  }, [])
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'd' || e.key === 'D') setDebug((v) => !v)
