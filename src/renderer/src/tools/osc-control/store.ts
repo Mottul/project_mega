@@ -7,6 +7,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { APP_SLUG } from '@shared/brand'
 import { debouncedStorage } from '@renderer/lib/persistStorage'
 
 export type OscWidgetType =
@@ -270,7 +271,7 @@ function placeMissing(ws: OscWidget[], cols: number): void {
 
 /* ------------------------------- Widgets -------------------------------- */
 
-const DEFAULT_TITLE = 'megatoolbox'
+const DEFAULT_TITLE = APP_SLUG
 
 /** Projekt-Titel -> erstes OSC-Adresssegment (klein, ohne Sonderzeichen). */
 export function oscSlug(title: string): string {

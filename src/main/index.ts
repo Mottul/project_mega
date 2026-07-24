@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
-import { APP_NAME } from '@shared/brand'
+import { existsSync, renameSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { APP_NAME, PREVIOUS_APP_NAMES } from '@shared/brand'
 import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import {
   attachWindow,
@@ -147,7 +147,30 @@ export function openToolWindow(id: string): void {
   createWindow({ hash: `/tool/${id}` })
 }
 
+// Einmalige userData-Übernahme nach der Umbenennung: heißt der App-Ordner neu
+// (leitet Electron aus dem App-Namen ab) und existiert noch nicht, aber ein
+// Ordner eines früheren Namens liegt daneben -> diesen übernehmen. Best effort,
+// wirft nie; passiert genau einmal (danach existiert der neue Ordner).
+function migrateUserData(): void {
+  try {
+    const cur = app.getPath('userData')
+    if (existsSync(cur)) return
+    const parent = dirname(cur)
+    for (const old of PREVIOUS_APP_NAMES) {
+      const oldPath = join(parent, old)
+      if (oldPath !== cur && existsSync(oldPath)) {
+        renameSync(oldPath, cur)
+        logLine('[migrate] userData übernommen:', oldPath, '->', cur)
+        return
+      }
+    }
+  } catch (e) {
+    logLine('[migrate] userData-Migration übersprungen:', e instanceof Error ? e.message : e)
+  }
+}
+
 app.whenReady().then(() => {
+  migrateUserData() // vor jedem Zugriff auf DB/Settings
   logLine('--- Start ---', `packaged=${app.isPackaged}`)
   logLine('appPath=', app.getAppPath())
   logLine('resourcesPath=', process.resourcesPath)
