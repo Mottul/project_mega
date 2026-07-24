@@ -120,15 +120,19 @@ Das schnelle Feature-Wachstum hat Duplikate hinterlassen. Reihenfolge nach „Nu
 
 ## 3. Phase 3 — Modernisierung
 
-| Upgrade | Nutzen | Aufwand | Anmerkung |
+> **Sicherheits-Upgrades erledigt:** **Electron 42** + **pdfjs 6** (Branch `security/electron-42-pdfjs-6`,
+> in `main`), **react-router 7** (behob 2 moderate CVEs). `npm audit` jetzt **1 Low** (esbuild Dev-Server).
+> README-Sicherheitsabschnitt entsprechend angepasst.
+
+| Upgrade | Nutzen | Aufwand | Status |
 |---|---|---|---|
-| **Electron 40 → 42/43** | **Muss.** 40 ist EOL (seit Release 43), keine Chromium/Node-Security-Backports mehr — relevant, weil der Renderer Fremd-PDFs/-Medien parst | M | Scripts sind versionsagnostisch, NDI baut per ABI-Marker neu; `<video>`/Offscreen (NDI) testen |
-| **pdfjs-dist 4 → 6** | Sicherheit: parst **importierte Fremd-PDFs**, v4 ungepflegt (2 Majors zurück) | S–M | Nur 2 Stellen (PdfViewer-Worker, main pdfText) |
-| **react-router 6 → 7** | Endpflege 6.x; Library-Mode praktisch drop-in | S | Nur HashRouter/Routes/Route |
-| **React 18 → 19** | Zukunftssicherheit; Codebasis ist schon 19-ready | M | Hauptarbeit mechanisch: 128× globales `JSX.Element` in 49 Dateien → `ReactElement`/`React.JSX.Element` |
-| **Tailwind 3 → 4** | Schnellere Builds (Oxide), postcss/autoprefixer entfällt | M | Eigenes Token-System + `light:`-Variante auf `@theme`/`@custom-variant`; kein Druck |
-| Kleinkram | `npm audit fix` (1 low: esbuild Dev-Server, nur Win/`npm run dev`); lucide-react 0.469→1.x (Icon-Renames prüfen); better-sqlite3 12.11.x mit Cooldown; README-Sicherheitsabschnitt an Electron-Stand anpassen | S | |
-| Beobachten (gated) | **Vite 8** (electron-vite@5 peert nur ≤7), **TS 7 „tsgo"** (würde den doppelten `tsc`-Build stark beschleunigen) | — | Warten auf Ökosystem |
+| **Electron 40 → 42** | zurück ins Sicherheits-Supportfenster (Renderer parst Fremd-PDFs/-Medien) | M | ✅ erledigt |
+| **pdfjs-dist 4 → 6** | Sicherheit: parst importierte Fremd-PDFs | S–M | ✅ erledigt |
+| **react-router 6 → 7** | behob 2 moderate CVEs; Library-Mode drop-in | S | ✅ erledigt |
+| **React 18 → 19** | Zukunftssicherheit; Codebasis ist schon 19-ready | M | offen — mechanisch: 128× globales `JSX.Element` → `ReactElement`/`React.JSX.Element` |
+| **Tailwind 3 → 4** | Schnellere Builds (Oxide), postcss/autoprefixer entfällt | M | offen — eigenes Token-System + `light:`-Variante auf `@theme`/`@custom-variant`; kein Druck |
+| Kleinkram | esbuild-Low (Dev-Server, nur Windows) — bewusst offen gelassen; lucide-react 0.469→1.x (Icon-Renames prüfen) | S | teils |
+| Beobachten (gated) | **Vite 8** (electron-vite peert nur ≤7), **TS 7 „tsgo"** | — | warten aufs Ökosystem |
 
 Keine veralteten APIs gefunden (createRoot+StrictMode, keine Klassen/`ReactDOM.render`/`new Buffer`).
 

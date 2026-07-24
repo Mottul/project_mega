@@ -7,13 +7,47 @@ und ein Tool kann als **gesperrte Kundenansicht** beim Start direkt angezeigt we
 Video-Player ohne Konfiguration; Verlassen mit Strg+Shift+K). Der Homescreen zeigt je Tool an, was
 gerade läuft (Konvertierungen, Downloads, Timer, Player-Ausgabe).
 
-Enthaltene Werkzeuge (Runde 1):
+**Tech-Stack:** Electron 42 + React 18 + TypeScript (electron-vite), Tailwind CSS,
+react-router 7, `better-sqlite3` 12.11 (FTS5), `pdfjs-dist` 6, gebündeltes `ffmpeg`.
 
-- **HAP-Konverter** – Videos im Batch nach HAP / HAP Q / HAP Alpha konvertieren (z.B. für Resolume).
-- **Manuals-Bibliothek** – Geräte-Handbücher (PDF) importieren und per **Volltextsuche** offline durchsuchen.
+## Werkzeuge
 
-Tech-Stack: **Electron + React + TypeScript** (electron-vite), Tailwind CSS,
-`better-sqlite3` (FTS5), `pdfjs-dist`, gebündeltes `ffmpeg`.
+Derzeit **21 Werkzeuge**, im Launcher nach Kategorie sortiert und durchsuchbar. Jedes lässt
+sich in einem eigenen Fenster parallel öffnen.
+
+**🎬 Wiedergabe & Show**
+
+- **Video-Player** – Playlist-Player für LED-Wände/Beamer: Medien auf Wand-Auflösung eingebacken (Blur/Ränder/Strecken), H.264, Vollbild-Ausgabe, Überblenden, Handy-Fernsteuerung.
+- **Jingle-Player** – belegbare Audio-Pads mit Waveform-Editor, Sets, wählbarem Ausgabegerät, Handy-Fernsteuerung.
+- **Stage-Timer & Uhr** – Sprechzeit-Timer mit Abschnitten, Farbwarnung, Bühnen-Nachrichten, Vollbild-Ausgabe.
+- **Testbildgenerator** – statische + bewegte Muster, pixelgenaue Vollbild-Ausgabe, PNG-/Video-Export.
+
+**🎛️ Steuerung**
+
+- **OSC-Steuerung** – frei belegbares Steuerpult (Fader/Taster/XY/Farbe/Bank …), Feedback/Learn, Handy-Fernsteuerung, NovaStar-Widgets.
+- **NovaStar-Steuerung** – LED-Prozessor über TCP 5200: Helligkeit, Fade-to-Black, Blackout/Freeze, Presets.
+- **Netzwerk-Scanner** – Geräte im LAN finden (IP/Hersteller/Typ): ATEM, PTZ-Kameras, NovaStar u.a.; IP-Übergabe an NovaStar/OSC.
+- **DMX-Dip-Schalter** – DMX-Startadresse ↔ Dip-Schalterbild.
+
+**📽️ Bild & Projektion**
+
+- **LED-Wall-Konfigurator** – Auflösung/Gewicht/Strom/Ballast, zeichenbare Verkabelungspläne, Curving-Planung, PDF-Doku.
+- **Projektionsverhältnis** / **Kameraobjektiv** / **Beamer-Lumen** – Objektiv-, Bildausschnitt- und Lumen-Bedarf-Rechner.
+
+**📚 Medien & Bibliothek**
+
+- **HAP-Konverter** – Batch nach HAP / HAP Q / HAP Alpha (z.B. Resolume).
+- **Manuals-Bibliothek** – Geräte-Handbücher (PDF) mit Offline-Volltextsuche (FTS5) + In-App-Viewer.
+- **YouTube-Downloader** – yt-dlp-Wrapper (Video/Audio), Queue mit Fortschritt, Self-Update.
+
+**⚡ Strom, Rigging & Aufbau**
+
+- **Packliste** – Material-Checkliste (aus LED-Wall befüllbar), speicherbare Jobs, PDF-/JSON-Export.
+- **Stromlast & Absicherung** / **Rigging-Last** – Stromkreise/Absicherung bzw. Auflager- und Bridle-Strangkräfte.
+
+**🧮 Rechner**
+
+- **Kreisrechner**, **Audio-Delay & SPL**, **Timecode-Rechner** (SMPTE ↔ Frames ↔ Echtzeit, Drop-Frame).
 
 ---
 
@@ -64,8 +98,8 @@ Angesichts der jüngsten npm-Angriffe (selbstreplizierende Worms über gekaperte
 bösartige Lifecycle-Scripts, Typosquatting) ist dieses Projekt bewusst defensiv aufgesetzt:
 
 - **`package-lock.json` ist eingecheckt** – mit sha512-Integrity je Paket.
-- **`better-sqlite3` ist exakt gepinnt** (`12.8.0`) und bewusst **nicht** die brandneueste Version
-  („Cooldown" – kompromittierte Releases fallen meist in den ersten Tagen auf).
+- **`better-sqlite3` ist exakt gepinnt** (`12.11.1`) und bewusst mit „Cooldown" nachgezogen –
+  kompromittierte Releases fallen meist in den ersten Tagen auf.
 - **`.npmrc`**: `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
 - **Schlanker Install-Baum:** `electron-builder` ist **keine** Standard-Abhängigkeit, sondern wird
   beim Paketieren on-demand via `npx` geladen. Dadurch bleibt die gesamte
@@ -81,9 +115,12 @@ npm ci
 npm audit signatures   # optional: Registry-Signaturen prüfen
 ```
 
-> `npm audit` meldet aktuell **0 Findings**. Erreicht durch: `electron-builder` aus den
-> Standard-Deps entfernt (eliminiert die `node-gyp`/`tar`-Kette), Electron auf eine **unterstützte**
-> Version (40.x statt EOL-33), und das Dev-Tooling (`vite`/`electron-vite`) auf aktuelle Stände.
+> `npm audit` meldet aktuell **1 Low** (`esbuild` ≤0.28 – Datei-Lesen im **Dev-Server**, nur
+> **Windows**, nur bei `npm run dev`; via `vite`). Nichts Laufzeit-Relevantes. Erreicht durch:
+> Electron auf eine **im Support befindliche** Version (**42.x**), `pdfjs-dist` auf **6.x**
+> (parst importierte Fremd-PDFs), `react-router` auf **7.x** (behob zwei moderate Advisories der
+> 6er-Linie), `electron-builder` aus den Standard-Deps heraus (eliminiert die `node-gyp`/`tar`-Kette)
+> und das Dev-Tooling auf aktuelle Stände.
 
 **Maximal vorsichtig** (blockiert den häufigsten Vektor – Install-Scripts beliebiger Transitive-Deps):
 
@@ -181,24 +218,27 @@ Hinweis: NDI ist eine Marke von Vizrt/NewTek; SDK-Lizenzbedingungen beachten.
 ```
 src/
 ├── main/                     # Electron Main-Prozess
-│   ├── index.ts              # App-Lifecycle, Fenster (sichere Defaults), Protocol
-│   ├── ipc/                  # IPC-Handler (dialog, ffmpeg, manuals, player) + Registry
+│   ├── index.ts              # App-Lifecycle, Fenster (sichere Defaults), globale Fehler-Handler
+│   ├── ipc/                  # IPC-Handler (dialog, ffmpeg, manuals, player, osc, novastar, netscan …) + Registry
 │   └── services/
-│       ├── db.ts             # SQLite (better-sqlite3) + FTS5-Migrationen + media_items
+│       ├── db.ts             # SQLite (better-sqlite3) + FTS5; Wiederherstellung bei Korruption
+│       ├── store.ts          # settings.json (Quelle der Wahrheit; Backup bei Korruption)
 │       ├── ffmpeg/           # ffmpegPath, probe, hapEncoder, jobManager (Queue)
 │       ├── manuals/          # manualsService, pdfText (pdfjs)
-│       └── player/           # mediaLibrary, encoder (Fit/GPU), convertManager, playerState, playerWindow
+│       ├── player/           # mediaLibrary, encoder (Fit/GPU), convertManager, playerState
+│       ├── osc/ + oscRemoteServer  # OSC-Codec (UDP) + Handy-Fernsteuer-Server
+│       ├── novastar/         # TCP-Codec (gegen Companion-Modul verifiziert)
+│       └── netscan/          # Subnetz-Scan: TCP-Sweep + ARP/OUI + mDNS + ATEM
 ├── preload/index.ts          # contextBridge -> window.api (typisiert)
-├── shared/                   # ipc-contracts.ts + types.ts (single source of truth)
+├── shared/                   # ipc-contracts.ts, types.ts, mediaExtensions.ts (single source of truth)
 └── renderer/src/
-    ├── launcher/             # Launcher + ToolHost (Router)
-    ├── components/ui/        # UI-Primitives (Button, Card, …)
+    ├── launcher/             # Launcher + ToolHost (Router, mit Fehlergrenze pro Tool)
+    ├── components/           # ErrorBoundary, Toaster, QrCode + ui/ (Button, Card, Select, …)
+    ├── lib/                  # api, toast, handoff, persistStorage, useDraft …
     └── tools/
         ├── registry.ts       # ◀ EINZIGE Stelle zum Eintragen neuer Tools
-        ├── hap-converter/
-        ├── manuals/
-        ├── test-patterns/
-        └── video-player/     # Steuer-UI (VideoPlayer) + Vollbild-Ausgabe (PlayerOutput)
+        ├── video-player/     # Steuer-UI (VideoPlayer) + Vollbild-Ausgabe (PlayerOutput)
+        └── …                 # 21 Werkzeuge, je ein Ordner mit index.ts (ToolModule)
 ```
 
 ### Ein neues Tool hinzufügen
@@ -235,9 +275,15 @@ src/
 
 - **Fundament** – electron-vite (main/preload/renderer), sichere Fenster-Defaults, typisierte
   IPC-Brücke, Tool-Modulsystem, Launcher mit Suche, Gold-Akzent (#ffce2c) auf kühlem Dark-Theme,
-  App-Icon, **0 npm-Vulnerabilities in den Laufzeit-Abhängigkeiten**, schlanker Install ohne Compiler
-  (Prebuilds). **Unit-Tests (Vitest)** für die Rechenkerne und eine **Mini-CI** (Typecheck + Tests +
-  Build je Push, Node 22/24).
+  App-Icon, **nur 1 Low-Finding (Dev-Server)** in den Abhängigkeiten, schlanker Install ohne Compiler
+  (Prebuilds). **Unit-Tests (Vitest, 174)** für Rechenkerne **und main-Reducer** (Stage-Timer-Ablauf,
+  Konvertier-Entscheidung des Players) und eine **CI** (Format + Lint + Typecheck + Tests + Build je
+  Push, Node 22).
+- **Robustheit (Show-Härtung)** – **Fehlergrenzen** um jedes Werkzeug (ein Absturz reißt nicht die
+  ganze App in einen weißen Bildschirm), globale Fehler-Handler + Renderer-Fehler im Debug-Log,
+  **In-App-Benachrichtigungen** (stille Fehler werden sichtbar – z.B. defekte Jingle-Datei oder
+  verlorenes Audiogerät), **Wiederherstellung** korrupter `settings.json`/`library.db` (sichern +
+  neu anlegen statt still resetten) und versionierte, migrierbare Speicherstände.
 - **HAP-Konverter** – Batch nach HAP/HAP Q/HAP Alpha, gebündeltes ffmpeg, Parallel + Kompressor,
   Auto-Padding auf ×4-Maße. End-to-end getestet.
 - **Manuals-Bibliothek** – PDF-Import (SHA-256-Dedup), FTS5-Volltextsuche mit aufklappbaren
@@ -322,12 +368,19 @@ src/
   Jingle-Player) zeigt dieselbe Oberfläche im Browser – Tippen/Ziehen dort löst den **OSC-Versand am
   Rechner** aus (QR-Code zum Öffnen); **Sets lassen sich auch am Handy/Tablet umschalten**. Sets und
   Oberfläche überstehen App-Neustarts.
-- **NovaStar-Steuerung** (Vorabversion) – steuert einen **NovaStar-Prozessor** (NovaPro UHD Jr & Co.)
-  über **TCP 5200** mit eigenem, abhängigkeitsfreiem **Paket-Codec** (Header 0x55AA + Prüfsumme).
-  **Helligkeit** und **Fade-to-Black** als zeitgesteuerte Helligkeits-Rampe (es gibt keinen echten
-  Blackout-Befehl), plus **Roh-Befehl-Sender** und editierbares Register zum Verifizieren der exakten
-  Frames am Gerät. _(v0: Transport/Framing/FTB gesichert; Befehls-Bytes am echten NovaPro zu
-  bestätigen.)_
+- **Netzwerk-Scanner** – findet Geräte im lokalen Subnetz und zeigt **IP, Hersteller (aus der
+  MAC/ARP) und geratenen Gerätetyp**: aktiver TCP-Sweep über typische AV-Ports (NovaStar 5200,
+  RTSP/ONVIF, PJLink, HTTP/SSH/RDP …), **ATEM per UDP-Handshake** und **Bonjour/mDNS**-Namen.
+  Gerätetyp/-symbol **manuell überschreibbar** (an der MAC gespeichert), eigene Bezeichnungen,
+  Web-Oberfläche öffnen und **IP direkt an NovaStar-/OSC-Tool übergeben**. Alles abhängigkeitsfrei
+  im main-Prozess (`node:net`/`dgram`).
+- **NovaStar-Steuerung** – steuert einen **NovaStar-Prozessor** (NovaPro UHD Jr & Co.) über
+  **TCP 5200** mit eigenem, abhängigkeitsfreiem **Paket-Codec** (Header 0x55AA + Prüfsumme).
+  **Helligkeit**, **Fade-to-Black** (weiche Rampe), **Blackout** und **Freeze** (ein gemeinsamer
+  Anzeigemodus, schließen sich aus) und **Preset-/Szenen-Abruf** – Befehls-Bytes gegen das
+  praxiserprobte **Bitfocus-Companion-Modul** abgeglichen (Prüfsummen per Unit-Test). Dazu ein
+  **Roh-Befehl-Sender** für andere Modelle. Zusätzlich als **NovaStar-Widgets in der OSC-Steuerung**
+  nutzbar (Helligkeits-Fader, Fade/Freeze/Blackout, Preset-Auswahl) – auch über die Handy-Fernsteuerung.
 - **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
   (Throw Ratio / Objektivwahl), **Kameraobjektiv** (Bildausschnitt bei Personen aus
   Brennweite/Sensor/Telekonverter, mit Visualisierung des sichtbaren Anteils),
@@ -355,9 +408,10 @@ src/
   in die Mitte – Jog/PTZ/Speed), **Tap-Tempo/BPM** (aus mehreren Taps ein Tempo mitteln),
   **Set-Wechsel-Button** (per Tipp ein anderes Set aktivieren) und **Farb-Regler horizontal/vertikal**
   umstellbar.
-- **NovaStar-Steuerung – Ausbau**: Befehls-Bytes am echten **NovaPro UHD Jr** bestätigen, dann
-  **Preset-Abruf**, **Testbild** und **Display-Mode** ergänzen (Befehlssatz aus dem offenen
-  Companion-Modul `novastar-controller`); optional weitere Modelle (VX-Serie, MCTRL).
+- **NovaStar-Steuerung – Ausbau**: _(Erledigt: Preset-Abruf, Blackout/Freeze und Display-Mode –
+  Bytes gegen das Companion-Modul `novastar-controller` verifiziert.)_ Offen: **Testbild**,
+  **Ist-Zustand vom Gerät lesen** (statt optimistischer UI) und optional weitere Modelle
+  (VX-Serie, MCTRL).
 - **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
   eingebacken).
 - **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der
@@ -375,3 +429,16 @@ src/
   Konverter** (Lee↔Rosco↔RGB), **Spannungsabfall/Kabelquerschnitt** (an die Stromlast angedockt).
 - **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
   (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).
+- **Tool-Verzahnung** (baut auf den bestehenden Übergaben LED-Wall→Packliste und
+  Netzwerk-Scanner→NovaStar/OSC auf):
+  - **Fertiger Job → Player-Bibliothek** (YouTube-/HAP-Ergebnis mit einem Klick in den Video-Player).
+  - **LED-Wall → Player/Testbild** (Wandauflösung übernehmen) sowie **→ Stromlast/Rigging**
+    (Gewicht + Stromaufnahme sind bereits berechnet).
+  - **Netzwerk-Scanner → Manuals** (erkannten Hersteller direkt als Handbuch-Suche öffnen).
+  - **Stage-Timer per OSC steuerbar** (Start/Pause/±1 min – aus Companion/Streamdeck).
+  - **Übergreifendes „Show-Profil"** – Wandauflösung, Geräte-IPs und Ziele tool-übergreifend
+    speichern und als „Event" laden.
+
+> **Interne Qualitäts-/Architektur-Roadmap:** technische Verbesserungen (Konsolidierung von
+> Duplikaten, geteilte Bausteine, Testausbau, weitere Modernisierung) sind separat in
+> [`docs/optimierungsplan.md`](docs/optimierungsplan.md) priorisiert dokumentiert.
