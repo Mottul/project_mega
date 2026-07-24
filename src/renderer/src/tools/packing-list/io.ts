@@ -3,6 +3,7 @@
 // abbildet – anders als eine reine Textliste. Import ist tolerant: fehlende
 // Felder werden mit Standardwerten ergänzt, ungültige Dateien liefern null.
 
+import { APP_SLUG } from '@shared/brand'
 import type { PackItem } from './store'
 
 export interface PackSnapshot {
@@ -14,14 +15,14 @@ export interface PackSnapshot {
 const FILE_TYPE = 'packing-list'
 
 interface PackFile extends PackSnapshot {
-  app: 'megatoolbox'
+  app: string // Marken-Kennung (informativ; beim Import nicht geprüft)
   type: typeof FILE_TYPE
   version: 1
 }
 
 /** Snapshot als hübsches JSON (mit Kopf zum Wiedererkennen). */
 export function serialize(snap: PackSnapshot): string {
-  const file: PackFile = { app: 'megatoolbox', type: FILE_TYPE, version: 1, ...snap }
+  const file: PackFile = { app: APP_SLUG, type: FILE_TYPE, version: 1, ...snap }
   return JSON.stringify(file, null, 2)
 }
 

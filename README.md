@@ -1,4 +1,4 @@
-# MegaToolBox (project_mega)
+# Mottulbox (project_mega)
 
 Plattformübergreifende Desktop-App (Windows / macOS / Linux), die kleine AV-Arbeitswerkzeuge
 unter einem Dach bündelt und über einen Launcher auswählbar macht. Läuft **offline**. Tools lassen

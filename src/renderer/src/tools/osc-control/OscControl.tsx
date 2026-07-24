@@ -50,6 +50,7 @@ import type {
   OscStatus,
   RemoteStatus
 } from '@shared/types'
+import { APP_SLUG } from '@shared/brand'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -3258,7 +3259,7 @@ function ConnectionPanel({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => onSend({ address: '/megatoolbox/test', args: [{ type: 'f', value: 1 }] })}
+          onClick={() => onSend({ address: `/${APP_SLUG}/test`, args: [{ type: 'f', value: 1 }] })}
         >
           <Send className="size-3.5" /> Test
         </Button>

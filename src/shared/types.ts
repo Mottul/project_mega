@@ -1,6 +1,8 @@
 // Gemeinsame Domain-Typen fuer main, preload und renderer.
 // Single source of truth -- nur hier werden Datenstrukturen definiert.
 
+import { APP_NAME } from './brand'
+
 export type ToolCategoryId = 'playback' | 'control' | 'visual' | 'media' | 'rigging' | 'calc'
 
 /* ----------------------------- ffmpeg / HAP ----------------------------- */
@@ -441,7 +443,7 @@ export interface TimerNdiStatus {
 }
 
 export const DEFAULT_TIMER_NDI: TimerNdiConfig = {
-  name: 'MegaToolBox Timer',
+  name: `${APP_NAME} Timer`,
   width: 1920,
   height: 1080,
   fps: 30
@@ -474,7 +476,7 @@ export interface PlayerNdiStatus {
 }
 
 export const DEFAULT_PLAYER_NDI: PlayerNdiConfig = {
-  name: 'MegaToolBox Player',
+  name: `${APP_NAME} Player`,
   width: 1920,
   height: 1080,
   fps: 30,
