@@ -8,7 +8,7 @@ import { ThemeToggle } from '@renderer/components/ThemeToggle'
 import { DensityToggle } from '@renderer/components/DensityToggle'
 import { AccentPicker } from '@renderer/components/AccentPicker'
 import { api } from '@renderer/lib/api'
-import { APP_NAME, APP_TAGLINE } from '@shared/brand'
+import { APP_NAME } from '@shared/brand'
 import { MottulboxLogo } from '@renderer/components/MottulboxLogo'
 import { cn } from '@renderer/lib/utils'
 import { findTool, tools } from '@renderer/tools/registry'
@@ -156,13 +156,11 @@ export function Launcher(): JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-8 py-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <MottulboxLogo size={44} className="shrink-0" />
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">{APP_NAME}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">{APP_TAGLINE}</p>
-            </div>
+            {/* themetreu: folgt der Textfarbe in Hell/Dunkel */}
+            <MottulboxLogo height={40} className="shrink-0 text-foreground" title="" />
+            <h1 className="text-2xl font-semibold tracking-tight">{APP_NAME}</h1>
           </div>
           <div className="flex items-center gap-1">
             <AccentPicker />

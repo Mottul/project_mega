@@ -8,8 +8,6 @@ export const APP_NAME = 'Mottulbox'
 /** Kleinschreib-Kennung ohne Leerzeichen (Datei-Marker, OSC-Adress-Präfix …). */
 export const APP_SLUG = 'mottulbox'
 
-export const APP_TAGLINE = 'Werkzeuge für den AV-Alltag – offline, an einem Ort.'
-
 /** Ordnernamen früherer App-Namen – für die einmalige userData-Migration, damit
  *  bestehende Einstellungen/Bibliotheken nach der Umbenennung erhalten bleiben. */
 export const PREVIOUS_APP_NAMES = ['AV Toolbox', 'MegaToolBox']
