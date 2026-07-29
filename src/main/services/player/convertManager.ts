@@ -42,13 +42,38 @@ type JobSink = (job: ConvertJob) => void
 type LibrarySink = () => void
 
 export interface ProbeInfo {
-  width: number | null
-  height: number | null
+  width: number | null // ANZEIGE-Breite (rotationskorrigiert)
+  height: number | null // ANZEIGE-Höhe (rotationskorrigiert)
   durationSec: number | null
   hasVideo: boolean
   hasAudio: boolean
   codecName: string | null
   pixFmt: string | null
+  rotated: boolean // Anzeige-Rotation ≠ 0 (z.B. Handy-Hochkant) -> kein Stream-Copy
+}
+
+/** Anzeige-Orientierung aus den codierten Maßen + Rotations-Metadaten ableiten.
+ *  Handy-Videos sind oft codiert 1920×1080, per 90°-Matrix aber hochkant (1080×1920).
+ *  Exportiert für Tests. */
+export function orient(
+  codedW: number | null,
+  codedH: number | null,
+  video: { side_data_list?: { rotation?: number }[]; tags?: { rotate?: string } }
+): { width: number | null; height: number | null; rotated: boolean } {
+  let deg: number | null = null
+  const sd = video.side_data_list?.find((s) => typeof s?.rotation === 'number')
+  if (sd) deg = sd.rotation as number
+  else if (video.tags?.rotate != null) {
+    const n = Number(video.tags.rotate)
+    if (Number.isFinite(n)) deg = n
+  }
+  const rot = deg == null ? 0 : ((Math.round(deg) % 360) + 360) % 360
+  const swap = rot === 90 || rot === 270
+  return {
+    width: swap ? codedH : codedW,
+    height: swap ? codedW : codedH,
+    rotated: rot !== 0
+  }
 }
 
 function readEntries(dir: string): Dirent<string>[] {
@@ -133,6 +158,8 @@ async function probeSource(path: string): Promise<ProbeInfo> {
       width?: number
       height?: number
       duration?: string
+      side_data_list?: { rotation?: number; side_data_type?: string }[]
+      tags?: { rotate?: string }
     }[]
     format?: { duration?: string }
   }
@@ -141,22 +168,30 @@ async function probeSource(path: string): Promise<ProbeInfo> {
   const hasAudio = streams.some((s) => s.codec_type === 'audio')
   const durStr = video?.duration ?? json.format?.duration
   const dur = durStr ? Number(durStr) : null
+  // Rotation berücksichtigen -> ANZEIGE-Maße (sonst gilt ein Hochkant-1080×1920,
+  // das codiert 1920×1080 ist, fälschlich als Querformat und wird nicht aufbereitet).
+  const o = orient(video?.width ?? null, video?.height ?? null, video ?? {})
   return {
-    width: video?.width ?? null,
-    height: video?.height ?? null,
+    width: o.width,
+    height: o.height,
     durationSec: dur && Number.isFinite(dur) ? dur : null,
     hasVideo: Boolean(video),
     hasAudio,
     codecName: video?.codec_name ?? null,
-    pixFmt: video?.pix_fmt ?? null
+    pixFmt: video?.pix_fmt ?? null,
+    rotated: o.rotated
   }
 }
 
 // Quelle liegt bereits exakt in Zielauflösung + browsertauglichem H.264 vor
-// -> kein Re-Encode nötig, nur Container-Copy.
+// -> kein Re-Encode nötig, nur Container-Copy. Rotierte Quellen NIE kopieren:
+// ein Stream-Copy behielte die Rotations-Metadaten, das Einbacken (Fit) rechnet
+// aber mit der Anzeige-Orientierung -> verzerrtes Bild. Re-Encode dreht (autorotate)
+// und bäckt die Ausrichtung fest ein.
 export function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): boolean {
   return (
     kind === 'video' &&
+    !info.rotated &&
     info.width === w &&
     info.height === h &&
     info.codecName === 'h264' &&

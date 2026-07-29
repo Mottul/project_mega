@@ -7,7 +7,7 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', isPackaged: false }
 }))
 
-const { analyzeFit, canStreamCopy } = await import('./convertManager')
+const { analyzeFit, canStreamCopy, orient } = await import('./convertManager')
 import type { ProbeInfo } from './convertManager'
 
 const probe = (over: Partial<ProbeInfo>): ProbeInfo => ({
@@ -18,6 +18,7 @@ const probe = (over: Partial<ProbeInfo>): ProbeInfo => ({
   hasAudio: false,
   codecName: 'h264',
   pixFmt: 'yuv420p',
+  rotated: false,
   ...over
 })
 
@@ -68,5 +69,37 @@ describe('convertManager – canStreamCopy (Re-Encode vermeiden)', () => {
   it('falsche Auflösung oder Bild -> kein Stream-Copy', () => {
     expect(canStreamCopy('video', probe({ width: 1280, height: 720 }), 1920, 1080)).toBe(false)
     expect(canStreamCopy('image', probe({}), 1920, 1080)).toBe(false)
+  })
+  it('rotierte Quelle nie kopieren (sonst kein Aufbereiten, verzerrt)', () => {
+    // Selbst wenn die (Anzeige-)Maße passen: rotiert -> Re-Encode erzwingen.
+    expect(canStreamCopy('video', probe({ rotated: true }), 1920, 1080)).toBe(false)
+  })
+})
+
+describe('convertManager – orient (Rotation der Handy-Videos)', () => {
+  it('90°-Displaymatrix: codiert 1920×1080 -> Anzeige 1080×1920, rotiert', () => {
+    expect(orient(1920, 1080, { side_data_list: [{ rotation: -90 }] })).toEqual({
+      width: 1080,
+      height: 1920,
+      rotated: true
+    })
+  })
+  it('270° und tags.rotate werden ebenfalls erkannt', () => {
+    expect(orient(1920, 1080, { side_data_list: [{ rotation: 270 }] })).toMatchObject({
+      width: 1080,
+      height: 1920,
+      rotated: true
+    })
+    expect(orient(1920, 1080, { tags: { rotate: '90' } })).toMatchObject({ rotated: true })
+  })
+  it('180° kippt die Maße nicht, gilt aber als rotiert (Ausrichtung einbacken)', () => {
+    expect(orient(1920, 1080, { side_data_list: [{ rotation: 180 }] })).toEqual({
+      width: 1920,
+      height: 1080,
+      rotated: true
+    })
+  })
+  it('keine Rotation -> Maße unverändert', () => {
+    expect(orient(1920, 1080, {})).toEqual({ width: 1920, height: 1080, rotated: false })
   })
 })
