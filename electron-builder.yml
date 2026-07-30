@@ -53,6 +53,11 @@ win:
   target:
     - nsis
   artifactName: ${productName}-${version}-setup.${ext}
+  # Fertige, mehrstufige .ico (16/24/32/48/64/128/256) statt aus icon.png ableiten:
+  # electron-builder legt eine selbst konvertierte Datei sonst unter
+  # dist/.icon-ico/ ab und verwendet sie WIEDER -- nach einem Logo-Wechsel steckt
+  # dort noch das alte Bild. Mit einer eigenen .ico ist das eindeutig.
+  icon: build/icon.ico
   # Keine Code-Signierung: ohne Zertifikat wuerde electron-builder dennoch jede .exe
   # signieren wollen (auch die gebuendelten ffmpeg.exe/ffprobe.exe) und dafuer das
   # winCodeSign-Paket laden, dessen Entpacken auf Windows an macOS-Symlinks scheitert
@@ -65,6 +70,12 @@ nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  # Icon der Setup-Datei selbst, des Deinstallers und im Assistenten-Kopf.
+  # NSIS bindet diese beim Kompilieren ein -- unabhaengig von rcedit, das wegen
+  # signAndEditExecutable:false uebersprungen wird.
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
 
 mac:
   target:

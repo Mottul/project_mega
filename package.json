@@ -31,6 +31,7 @@
     "rebuild:native": "node scripts/rebuild-native.mjs",
     "electron:bin": "node scripts/fetch-electron-bin.mjs",
     "postinstall": "node scripts/rebuild-native.mjs && node scripts/fetch-electron-bin.mjs",
+    "prepackage": "node -e \"for (const d of ['dist/.icon-ico','dist/.icon-set']) require('node:fs').rmSync(d,{recursive:true,force:true})\"",
     "package": "npm run ff:fetch && npm run build && npx --yes electron-builder@26",
     "package:dir": "npm run build && npx --yes electron-builder@26 --dir"
   },
