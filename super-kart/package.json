@@ -1,0 +1,29 @@
+{
+  "name": "super-kart-pwa",
+  "version": "1.0.0",
+  "private": false,
+  "description": "Retro Mode-7 Kart-Racer als installierbare PWA - Rennen & Battle, 2-Spieler-Splitscreen, offline spielbar",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run icons && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "icons": "node scripts/make-icons.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "check": "npm run format:check && npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "playwright": "^1.62.1",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.0",
+    "vitest": "^3.2.4"
+  }
+}

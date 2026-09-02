@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Super Kart — Mode-7-Rennspiel</title>
+    <meta
+      name="description"
+      content="Retro-Kart-Rennspiel als PWA: Rennen und Battle, Splitscreen für zwei Spieler, offline spielbar."
+    />
+    <meta name="theme-color" content="#05060c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Super Kart" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  </head>
+  <body>
+    <canvas id="screen"></canvas>
+    <div id="boot">
+      <h1>SUPER KART</h1>
+      <p>Lade Strecken …</p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+    <script>
+      // Ladeschirm ausblenden, sobald das Modul lief.
+      window.addEventListener('load', () => {
+        setTimeout(() => document.getElementById('boot')?.classList.add('hidden'), 120)
+      })
+    </script>
+  </body>
+</html>

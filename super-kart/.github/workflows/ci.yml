@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Formatierung
+        run: npm run format:check
+      - name: Typprüfung
+        run: npm run typecheck
+      - name: Unit-Tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Browser für den Rauchtest
+        run: npx playwright install --with-deps chromium
+      - name: Rauchtest
+        run: node scripts/smoke.mjs
+      - name: Screenshots sichern
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          if-no-files-found: ignore
