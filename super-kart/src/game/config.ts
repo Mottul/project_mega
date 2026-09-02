@@ -50,7 +50,7 @@ export const PHYSICS = {
 export const RACE = {
   countdownSeconds: 3.6,
   finishLingerSeconds: 3,
-  itemBoxRespawn: 6,
+  itemBoxRespawn: 8,
   maxItemBoxesPerRow: 5,
 } as const
 

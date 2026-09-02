@@ -56,8 +56,12 @@ function makeCanvas(size: number): { canvas: HTMLCanvasElement; ctx: CanvasRende
   return { canvas, ctx }
 }
 
-/** Verdichtet die Stützpunkte zu einer weichen, geschlossenen Mittellinie. */
-function buildCenterline(points: [number, number][], step = 26): Waypoint[] {
+/**
+ * Verdichtet die Stützpunkte zu einer weichen, geschlossenen Mittellinie.
+ * Exportiert, weil die Zufallsgenerierung dieselbe Kurve prüfen muss, die
+ * später gefahren wird.
+ */
+export function buildCenterline(points: [number, number][], step = 26): Waypoint[] {
   const n = points.length
   const raw: { x: number; y: number }[] = []
   const at = (i: number) => points[((i % n) + n) % n]!

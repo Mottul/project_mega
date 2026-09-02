@@ -64,6 +64,8 @@ export class AudioEngine {
   private musicPattern: Pattern | null = null
 
   muted = false
+  /** Anzahl gleichzeitig klingender Motoren - hält die Summe im Rahmen. */
+  engineCount = 1
 
   /** Muss aus einer Nutzergeste heraus laufen (Autoplay-Policy der Browser). */
   unlock(): void {
@@ -218,7 +220,7 @@ export class AudioEngine {
       this.engines[player] = slot
     }
     const t = ctx.currentTime
-    const target = active ? 0.055 + speed01 * 0.05 : 0
+    const target = active ? (0.055 + speed01 * 0.05) / Math.sqrt(Math.max(1, this.engineCount)) : 0
     slot.gain.gain.setTargetAtTime(target, t, 0.08)
     slot.osc.frequency.setTargetAtTime(48 + speed01 * 150, t, 0.05)
     slot.filter.frequency.setTargetAtTime(500 + speed01 * 2200, t, 0.1)

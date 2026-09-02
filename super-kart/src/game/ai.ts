@@ -84,12 +84,23 @@ function raceControl(kart: Kart, ctx: AiContext, dt: number): ControlState {
     kart.aiOffset = (Math.random() * 2 - 1) * track.def.roadWidth * 0.26
   }
 
-  const lookahead = Math.round(4 + clamp(speed / 90, 0, 9))
+  // Vorausschau wächst mit dem Tempo, wird in engen Kurven aber wieder kürzer -
+  // sonst zielt die KI quer über die Kurve hinweg ins Gelände.
+  const base = Math.round(4 + clamp(speed / 90, 0, 9))
+  const ahead = Math.abs(
+    angleDelta(wps[(kart.waypoint + 2) % n]!.dir, wps[(kart.waypoint + base * 2) % n]!.dir)
+  )
+  const lookahead = Math.max(3, Math.round(base * (1 - clamp(ahead / 1.4, 0, 0.55))))
   const targetWp = wps[(kart.waypoint + lookahead) % n]!
   const farWp = wps[(kart.waypoint + lookahead * 2) % n]!
 
-  let tx = targetWp.x + Math.cos(targetWp.dir + Math.PI / 2) * kart.aiOffset
-  let ty = targetWp.y + Math.sin(targetWp.dir + Math.PI / 2) * kart.aiOffset
+  const offroad = kart.surface === SURFACE.OFFROAD
+  // Im Gelände zählt nur der kürzeste Weg zurück auf die Bahn: nah zielen,
+  // Mitte der Fahrbahn, kein Versatz.
+  const aimWp = offroad ? wps[(kart.waypoint + 3) % n]! : targetWp
+  const offset = offroad ? 0 : kart.aiOffset
+  let tx = aimWp.x + Math.cos(aimWp.dir + Math.PI / 2) * offset
+  let ty = aimWp.y + Math.sin(aimWp.dir + Math.PI / 2) * offset
 
   for (const h of ctx.hazards) {
     const dodge = sidestep(kart, h.x, h.y, 340)
@@ -101,9 +112,11 @@ function raceControl(kart: Kart, ctx: AiContext, dt: number): ControlState {
   let steer = clamp(error * 2.6 * kart.aiSkill, -1, 1)
   steer = avoidWalls(kart, track, steer, 260)
 
+  // Kurvenrichtgeschwindigkeit statt fester Schwelle: je schärfer die Kurve,
+  // desto früher wird angebremst.
   const curve = Math.abs(angleDelta(targetWp.dir, farWp.dir))
-  const tooFast = speed > 300 && curve > 0.55
-  const offroad = kart.surface === SURFACE.OFFROAD
+  const cornerSpeed = clamp(PHYSICS.maxSpeed - curve * 520, 230, PHYSICS.maxSpeed)
+  const tooFast = speed > cornerSpeed
 
   const wantsDrift =
     speed > 260 && Math.abs(steer) > 0.55 && curve > 0.32 && kart.driftCharge < PHYSICS.miniTurboStage2 + 0.25
@@ -222,9 +235,11 @@ export function aiWantsItem(kart: Kart, ctx: AiContext, dt: number): boolean {
         const dx = o.x - kart.x
         const dy = o.y - kart.y
         const d = Math.hypot(dx, dy)
-        if (d > 1500 || d < 60) return false
+        // Nur schießen, wenn das Ziel wirklich vor einem liegt - sonst
+        // verpuffen die Items und alle rutschen nur noch durch die Gegend.
+        if (d > 1200 || d < 60) return false
         const ahead = (dx * cos + dy * sin) / d
-        return ahead > (kart.item === 'rakete' ? 0.45 : 0.85)
+        return ahead > (kart.item === 'rakete' ? 0.6 : 0.9)
       })
     case 'oel':
     case 'mine':

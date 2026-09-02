@@ -40,7 +40,7 @@ export interface TrackDef {
   blocks?: [number, number, number, number][]
 }
 
-const GRASS: Theme = {
+export const GRASS: Theme = {
   skyTop: '#1d3f8f',
   skyBottom: '#7fb6ef',
   ridge: '#2a6a3e',
@@ -52,7 +52,7 @@ const GRASS: Theme = {
   decor: 'trees',
 }
 
-const DESERT: Theme = {
+export const DESERT: Theme = {
   skyTop: '#2b5fa8',
   skyBottom: '#f3c98a',
   ridge: '#a97a4c',
@@ -64,7 +64,7 @@ const DESERT: Theme = {
   decor: 'cactus',
 }
 
-const SNOW: Theme = {
+export const SNOW: Theme = {
   skyTop: '#16244d',
   skyBottom: '#b8cfe6',
   ridge: '#7f95b5',
@@ -76,7 +76,7 @@ const SNOW: Theme = {
   decor: 'ice',
 }
 
-const VOLCANO: Theme = {
+export const VOLCANO: Theme = {
   skyTop: '#2a0b18',
   skyBottom: '#c4462a',
   ridge: '#5a2320',
@@ -88,7 +88,7 @@ const VOLCANO: Theme = {
   decor: 'rock',
 }
 
-const NEON: Theme = {
+export const NEON: Theme = {
   skyTop: '#05010f',
   skyBottom: '#20074a',
   ridge: null,
@@ -101,7 +101,7 @@ const NEON: Theme = {
   abyss: true,
 }
 
-const ARENA_THEME: Theme = {
+export const ARENA_THEME: Theme = {
   skyTop: '#101a33',
   skyBottom: '#4a6b9c',
   ridge: '#26364f',
@@ -290,6 +290,14 @@ export const BATTLE_ARENAS: TrackDef[] = [
       [2676, 2048, 90, 620],
     ],
   },
+]
+
+/** Farbthemen für die Zufallsgenerierung. */
+export const RACE_THEMES: Theme[] = [GRASS, DESERT, SNOW, VOLCANO, NEON]
+export const ARENA_THEMES: Theme[] = [
+  ARENA_THEME,
+  { ...ARENA_THEME, ground: ['#3a2a44', '#332440'], curb: ['#65e0a0', '#20202c'] },
+  { ...ARENA_THEME, ground: ['#2c3a30', '#26332a'], curb: ['#e0793f', '#241d19'] },
 ]
 
 export const ALL_TRACKS = [...RACE_TRACKS, ...BATTLE_ARENAS]

@@ -133,8 +133,12 @@ export class Menu {
     const sub = page.subtitle?.()
     if (sub) text(ctx, sub, w / 2, h * 0.09 + 26, 10, 'rgba(255,255,255,0.75)', 'center')
 
-    const startY = h * 0.34
-    const step = Math.min(24, (h * 0.52) / Math.max(1, page.items.length))
+    // Seiten mit eigener Zeichnung (Vorschau, Fahrerwerte, Pad-Liste) rücken
+    // die Liste nach oben und lassen die untere Bildhälfte frei.
+    const hasPanel = page.render !== undefined
+    const startY = h * (hasPanel ? 0.24 : 0.34)
+    const available = h * (hasPanel ? 0.3 : 0.52)
+    const step = Math.min(hasPanel ? 18 : 24, available / Math.max(1, page.items.length))
     const boxW = Math.min(w * 0.7, 300)
     const boxX = w / 2 - boxW / 2
 

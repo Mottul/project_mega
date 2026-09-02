@@ -1,35 +1,57 @@
 import { audio } from './core/audio'
-import { Input } from './core/input'
+import { Input, MAX_PLAYERS } from './core/input'
+import { DEFAULT_BINDING, type PadBinding, type PadBindings } from './core/gamepad'
 import { clamp } from './core/math'
 import { BATTLE_ARENAS, RACE_TRACKS, type TrackDef } from './game/tracks'
 import { DRIVERS } from './game/drivers'
 import { World, type Mode } from './game/world'
 import { buildResultRows, type ResultRow } from './game/results'
-import { drawHud, drawOverlays, drawPause, text } from './render/hud'
+import { drawHud, drawOverlays, drawPause, drawStandings, text } from './render/hud'
 import type { Viewport } from './render/mode7'
 import { createChaseCamera, SceneRenderer, updateChaseCamera, type ChaseCamera } from './render/scene'
 import { buildKartSprites, kartFrameIndex } from './render/sprites'
 import { Menu, type MenuPage } from './ui/menu'
 import { TouchControls, type Pointer } from './ui/touch'
 import { drawTrackPreview } from './ui/preview'
+import { generateTrack, randomSeed, trackName } from './game/procedural'
 
-type Screen = 'title' | 'menu' | 'playing' | 'paused' | 'results'
+type Screen = 'title' | 'menu' | 'playing' | 'paused' | 'results' | 'padlearn'
+
+/** Reihenfolge, in der die Pad-Tasten angelernt werden. */
+const LEARN_STEPS: { key: keyof PadBinding; label: string }[] = [
+  { key: 'accel', label: 'GAS' },
+  { key: 'brake', label: 'BREMSE' },
+  { key: 'drift', label: 'DRIFT' },
+  { key: 'item', label: 'ITEM' },
+]
 
 interface Settings {
   players: number
   mode: Mode
   trackIndex: number
   arenaIndex: number
-  drivers: [string, string]
+  drivers: string[]
   difficulty: number
   laps: number
   cpu: number
   muted: boolean
+  /** Zufallsstrecke statt einer festen Strecke fahren. */
+  randomTrack: boolean
+  /** Seed der Zufallsstrecke - dieselbe Zahl ergibt dieselbe Strecke. */
+  seed: number
+  /** Angelernte Tastenbelegung je Gamepad-Modell. */
+  padBindings: PadBindings
 }
 
 const SETTINGS_KEY = 'super-kart:settings'
 const BASE_HEIGHT = 240
 const DIFFICULTY_NAMES = ['LEICHT', 'NORMAL', 'SCHWER']
+const PLAYER_HINTS = [
+  'Einzelspieler gegen die KI',
+  'Splitscreen: P1 oben, P2 unten',
+  'Viererraster - das freie Feld zeigt die Rangliste',
+  'Viererraster: P1 P2 oben, P3 P4 unten',
+]
 
 function loadSettings(): Settings {
   const fallback: Settings = {
@@ -37,16 +59,23 @@ function loadSettings(): Settings {
     mode: 'race',
     trackIndex: 0,
     arenaIndex: 0,
-    drivers: ['rosso', 'blu'],
+    drivers: ['rosso', 'blu', 'verde', 'ocra'],
     difficulty: 1,
     laps: 3,
     cpu: 5,
     muted: false,
+    randomTrack: false,
+    seed: 1234,
+    padBindings: {},
   }
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
     if (!raw) return fallback
-    return { ...fallback, ...(JSON.parse(raw) as Partial<Settings>) }
+    const stored = { ...fallback, ...(JSON.parse(raw) as Partial<Settings>) }
+    // Ältere Stände kannten nur zwei Fahrer - Lücken auffüllen.
+    stored.drivers = fallback.drivers.map((d, i) => stored.drivers[i] ?? d)
+    stored.players = clamp(stored.players, 1, MAX_PLAYERS)
+    return stored
   } catch {
     return fallback
   }
@@ -84,6 +113,10 @@ export class Game {
   private previewSprites = new Map<string, HTMLCanvasElement[]>()
   private installPrompt: { prompt: () => void } | null = null
   private results: ResultRow[] = []
+  private generated: { key: string; def: TrackDef } | null = null
+  private learnStep = 0
+  private learnPad: string | null = null
+  private learnDraft: PadBinding = { ...DEFAULT_BINDING }
 
   constructor(display: HTMLCanvasElement) {
     this.display = display
@@ -96,6 +129,7 @@ export class Game {
 
     for (const d of DRIVERS) this.previewSprites.set(d.id, buildKartSprites(d.body, d.accent, d.skin).frames)
 
+    this.input.gamepads.bindings = this.settings.padBindings
     this.input.attach()
     this.bindPointer()
     this.bindInstallPrompt()
@@ -188,17 +222,44 @@ export class Game {
 
   // ------------------------------------------------------------- Ansichten
 
-  private viewports(): Viewport[] {
-    const players =
-      this.screen === 'playing' || this.screen === 'paused'
-        ? (this.world?.players.length ?? 1)
-        : this.settings.players
-    if (players < 2) return [{ x: 0, y: 0, w: this.width, h: this.height }]
-    const half = Math.floor(this.height / 2)
-    return [
-      { x: 0, y: 0, w: this.width, h: half },
-      { x: 0, y: half, w: this.width, h: this.height - half },
+  private activePlayers(): number {
+    if (this.screen === 'playing' || this.screen === 'paused') return this.world?.players.length ?? 1
+    return this.settings.players
+  }
+
+  /**
+   * Bildaufteilung: einer bekommt alles, zwei teilen sich waagerecht, drei und
+   * vier fahren im Viererraster. Bei drei Spielern bleibt ein Feld frei - dort
+   * steht die Rangliste.
+   */
+  private layout(): { views: Viewport[]; spare: Viewport | null } {
+    const players = this.activePlayers()
+    const W = this.width
+    const H = this.height
+    if (players < 2) return { views: [{ x: 0, y: 0, w: W, h: H }], spare: null }
+    if (players === 2) {
+      const half = Math.floor(H / 2)
+      return {
+        views: [
+          { x: 0, y: 0, w: W, h: half },
+          { x: 0, y: half, w: W, h: H - half },
+        ],
+        spare: null,
+      }
+    }
+    const hw = Math.floor(W / 2)
+    const hh = Math.floor(H / 2)
+    const quads: Viewport[] = [
+      { x: 0, y: 0, w: hw, h: hh },
+      { x: hw, y: 0, w: W - hw, h: hh },
+      { x: 0, y: hh, w: hw, h: H - hh },
+      { x: hw, y: hh, w: W - hw, h: H - hh },
     ]
+    return { views: quads.slice(0, players), spare: players === 3 ? quads[3]! : null }
+  }
+
+  private viewports(): Viewport[] {
+    return this.layout().views
   }
 
   // ------------------------------------------------------------------ Menüs
@@ -211,11 +272,10 @@ export class Game {
         {
           label: 'SPIELER',
           value: () => `${this.settings.players}`,
-          onLeft: () => this.setPlayers(1),
-          onRight: () => this.setPlayers(2),
-          onSelect: () => this.setPlayers(this.settings.players === 1 ? 2 : 1),
-          hint: () =>
-            this.settings.players === 2 ? 'Splitscreen: P1 oben, P2 unten' : 'Einzelspieler gegen die KI',
+          onLeft: () => this.setPlayers(this.settings.players - 1),
+          onRight: () => this.setPlayers(this.settings.players + 1),
+          onSelect: () => this.setPlayers((this.settings.players % MAX_PLAYERS) + 1),
+          hint: () => PLAYER_HINTS[this.settings.players - 1] ?? '',
         },
         {
           label: 'MODUS',
@@ -233,12 +293,19 @@ export class Game {
         { label: 'RENNEN STARTEN', onSelect: () => this.startMatch() },
         { label: 'EINSTELLUNGEN', onSelect: () => this.menu.push(this.buildOptionsPage()) },
         { label: 'STEUERUNG', onSelect: () => this.menu.push(this.buildControlsPage()) },
+        {
+          label: 'CONTROLLER',
+          onSelect: () => this.menu.push(this.buildPadPage()),
+          hint: () => `${this.input.gamepads.count()} Gamepad(s) erkannt`,
+        },
       ],
     }
   }
 
   private setPlayers(n: number): void {
-    this.settings.players = clamp(n, 1, 2)
+    this.settings.players = clamp(n, 1, MAX_PLAYERS)
+    // Doppelte Fahrer wären im Splitscreen nicht auseinanderzuhalten.
+    this.ensureUniqueDrivers()
     saveSettings(this.settings)
     this.touch.layout(this.viewports())
   }
@@ -248,20 +315,41 @@ export class Game {
     saveSettings(this.settings)
   }
 
+  /** Fahrer, die bereits ein anderer Spieler belegt. */
+  private takenDrivers(except: number): Set<string> {
+    const taken = new Set<string>()
+    for (let i = 0; i < this.settings.players; i++) {
+      if (i !== except) taken.add(this.settings.drivers[i]!)
+    }
+    return taken
+  }
+
+  private ensureUniqueDrivers(): void {
+    for (let i = 0; i < this.settings.players; i++) {
+      const taken = this.takenDrivers(i)
+      if (!taken.has(this.settings.drivers[i]!)) continue
+      const free = DRIVERS.find((d) => !taken.has(d.id))
+      if (free) this.settings.drivers[i] = free.id
+    }
+    saveSettings(this.settings)
+  }
+
   private buildDriverPage(player: number): MenuPage {
     const pick = (dir: number) => {
-      const list = DRIVERS
-      const cur = list.findIndex((d) => d.id === this.settings.drivers[player])
-      const next = list[(cur + dir + list.length) % list.length]!
-      this.settings.drivers[player] = next.id
+      const taken = this.takenDrivers(player)
+      let cur = DRIVERS.findIndex((d) => d.id === this.settings.drivers[player])
+      // Belegte Fahrer überspringen - jeder Spieler soll erkennbar bleiben.
+      for (let step = 0; step < DRIVERS.length; step++) {
+        cur = (cur + dir + DRIVERS.length) % DRIVERS.length
+        if (!taken.has(DRIVERS[cur]!.id)) break
+      }
+      this.settings.drivers[player] = DRIVERS[cur]!.id
       saveSettings(this.settings)
     }
+    const hasNext = player + 1 < this.settings.players
     return {
       title: `FAHRER · SPIELER ${player + 1}`,
-      subtitle: () => {
-        const d = DRIVERS.find((x) => x.id === this.settings.drivers[player])!
-        return `${d.name}`
-      },
+      subtitle: () => DRIVERS.find((x) => x.id === this.settings.drivers[player])!.name,
       items: [
         {
           label: 'FAHRER',
@@ -271,9 +359,9 @@ export class Game {
           onSelect: () => pick(1),
         },
         {
-          label: player === 0 && this.settings.players === 2 ? 'WEITER ZU SPIELER 2' : 'ZURÜCK',
+          label: hasNext ? `WEITER ZU SPIELER ${player + 2}` : 'ZURÜCK',
           onSelect: () => {
-            if (player === 0 && this.settings.players === 2) this.menu.push(this.buildDriverPage(1))
+            if (hasNext) this.menu.push(this.buildDriverPage(player + 1))
             else this.menu.pop()
           },
         },
@@ -295,7 +383,7 @@ export class Game {
       const frame = frames[kartFrameIndex(time * 1.6)]!
       const size = Math.min(h * 0.34, w * 0.3)
       ctx.imageSmoothingEnabled = false
-      ctx.drawImage(frame, w / 2 - size / 2, h * 0.58, size, size)
+      ctx.drawImage(frame, w / 2 - size / 2, h * 0.6, size, size)
     }
     const bars: [string, number][] = [
       ['TEMPO', driver.topSpeed],
@@ -305,7 +393,7 @@ export class Game {
     ]
     const bx = w / 2 + Math.min(w * 0.2, 110)
     bars.forEach(([label, value], i) => {
-      const y = h * 0.6 + i * 12
+      const y = h * 0.62 + i * 12
       text(ctx, label, bx, y, 8, 'rgba(255,255,255,0.7)')
       const filled = clamp((value - 0.8) / 0.5, 0.05, 1)
       ctx.fillStyle = 'rgba(255,255,255,0.18)'
@@ -319,41 +407,210 @@ export class Game {
     return this.settings.mode === 'race' ? RACE_TRACKS : BATTLE_ARENAS
   }
 
+  /**
+   * Die Zufallsstrecke wird gepuffert: Die Vorschau zeichnet jeden Frame, und
+   * das Erzeugen samt Prüfung kostet ein paar Millisekunden.
+   */
+  private generatedTrack(): TrackDef {
+    const key = `${this.settings.mode}:${this.settings.seed}`
+    if (!this.generated || this.generated.key !== key) {
+      this.generated = { key, def: generateTrack(this.settings.mode, this.settings.seed) }
+    }
+    return this.generated.def
+  }
+
   private currentTrack(): TrackDef {
+    if (this.settings.randomTrack) return this.generatedTrack()
     const list = this.currentTrackList()
     const idx = this.settings.mode === 'race' ? this.settings.trackIndex : this.settings.arenaIndex
     return list[idx % list.length]!
   }
 
   private buildTrackPage(): MenuPage {
+    // Die Zufallsstrecke hängt als zusätzlicher Eintrag hinter der Liste.
     const move = (dir: number) => {
       const list = this.currentTrackList()
-      if (this.settings.mode === 'race') {
-        this.settings.trackIndex = (this.settings.trackIndex + dir + list.length) % list.length
-      } else {
-        this.settings.arenaIndex = (this.settings.arenaIndex + dir + list.length) % list.length
+      const total = list.length + 1
+      const current = this.settings.randomTrack
+        ? list.length
+        : this.settings.mode === 'race'
+          ? this.settings.trackIndex
+          : this.settings.arenaIndex
+      const next = (current + dir + total) % total
+      this.settings.randomTrack = next === list.length
+      if (!this.settings.randomTrack) {
+        if (this.settings.mode === 'race') this.settings.trackIndex = next
+        else this.settings.arenaIndex = next
       }
+      saveSettings(this.settings)
+    }
+    const setSeed = (value: number) => {
+      this.settings.seed = ((value % 1000000) + 1000000) % 1000000
+      this.settings.randomTrack = true
       saveSettings(this.settings)
     }
     return {
       title: 'STRECKE',
-      subtitle: () => this.currentTrack().name,
+      subtitle: () =>
+        this.settings.randomTrack ? `Zufall · ${this.currentTrack().name}` : this.currentTrack().name,
       items: [
         {
           label: 'STRECKE',
-          value: () => this.currentTrack().name,
+          value: () => (this.settings.randomTrack ? 'ZUFALL' : this.currentTrack().name),
           onLeft: () => move(-1),
           onRight: () => move(1),
           onSelect: () => move(1),
+          hint: () => 'Hinter der Liste liegt die Zufallsstrecke',
+        },
+        {
+          label: 'SEED',
+          value: () => String(this.settings.seed),
+          onLeft: () => setSeed(this.settings.seed - 1),
+          onRight: () => setSeed(this.settings.seed + 1),
+          onSelect: () => setSeed(randomSeed()),
+          hint: () => 'Gleicher Seed = gleiche Strecke. Auswählen würfelt neu.',
+        },
+        {
+          label: 'NEU WÜRFELN',
+          onSelect: () => setSeed(randomSeed()),
+          hint: () =>
+            this.settings.randomTrack ? trackName(this.settings.seed) : 'Schaltet auf Zufallsstrecke um',
         },
         { label: 'STARTEN', onSelect: () => this.startMatch() },
         { label: 'ZURÜCK', onSelect: () => this.menu.pop() },
       ],
       render: (ctx, w, h) => {
-        const size = Math.min(h * 0.34, w * 0.32)
-        drawTrackPreview(ctx, this.currentTrack(), w / 2 - size / 2, h * 0.55, size)
+        const size = Math.min(h * 0.33, w * 0.3)
+        drawTrackPreview(ctx, this.currentTrack(), w / 2 - size / 2, h * 0.6, size)
       },
     }
+  }
+
+  // ------------------------------------------------------------- Controller
+
+  private buildPadPage(): MenuPage {
+    return {
+      title: 'CONTROLLER',
+      subtitle: () => `${this.input.gamepads.count()} Gamepad(s) erkannt`,
+      items: [
+        {
+          label: 'BELEGUNG ANLERNEN',
+          onSelect: () => this.startPadLearning(),
+          hint: () => 'Für USB-Pads, deren Tasten nicht zum Standard passen',
+        },
+        {
+          label: 'BELEGUNG ZURÜCKSETZEN',
+          onSelect: () => {
+            this.settings.padBindings = {}
+            this.input.gamepads.bindings = this.settings.padBindings
+            saveSettings(this.settings)
+          },
+        },
+        ...[0, 1, 2].map((i) => ({
+          label: `PLÄTZE TAUSCHEN P${i + 1} ↔ P${i + 2}`,
+          onSelect: () => this.input.gamepads.swap(i, i + 1),
+        })),
+        { label: 'ZURÜCK', onSelect: () => this.menu.pop() },
+      ],
+      render: (ctx, w, h) => this.drawPadList(ctx, w, h),
+    }
+  }
+
+  /** Live-Anzeige der erkannten Pads - zeigt sofort, ob ein Pad ankommt. */
+  private drawPadList(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+    const pads = this.input.gamepads.list()
+    const top = h * 0.62
+    if (pads.length === 0) {
+      text(ctx, 'Kein Gamepad erkannt.', w / 2, top, 9, 'rgba(255,255,255,0.7)', 'center')
+      text(ctx, 'Anstecken und eine Taste drücken.', w / 2, top + 12, 9, 'rgba(255,255,255,0.5)', 'center')
+      return
+    }
+    pads.forEach(({ player, state }, i) => {
+      const y = top + i * 13
+      const active = state.pressedCount > 0 || Math.abs(state.steer) > 0.2
+      text(ctx, `P${player + 1}`, w * 0.5 - 150, y, 9, active ? '#ffe14a' : 'rgba(255,255,255,0.8)')
+      text(ctx, state.id || 'Gamepad', w * 0.5 - 126, y, 9, 'rgba(255,255,255,0.8)')
+      // Lenkbalken als Sofortkontrolle für die Achse.
+      const bx = w * 0.5 + 30
+      ctx.fillStyle = 'rgba(255,255,255,0.16)'
+      ctx.fillRect(bx, y + 2, 56, 5)
+      ctx.fillStyle = '#7fd4ff'
+      ctx.fillRect(bx + 28, y + 2, state.steer * 28, 5)
+      text(
+        ctx,
+        state.standard ? 'Standard' : 'anlernen',
+        w * 0.5 + 150,
+        y,
+        8,
+        state.standard ? 'rgba(140,255,180,0.8)' : 'rgba(255,190,120,0.9)',
+        'right'
+      )
+    })
+  }
+
+  private startPadLearning(): void {
+    this.learnStep = 0
+    this.learnPad = null
+    this.learnDraft = { ...DEFAULT_BINDING }
+    this.screen = 'padlearn'
+  }
+
+  /** Nimmt die nächste gedrückte Taste als Belegung für den aktuellen Schritt. */
+  private updatePadLearning(): void {
+    if (this.input.wasPressed('Escape')) {
+      this.screen = 'menu'
+      return
+    }
+    const hit = this.input.gamepads.anyJustPressed()
+    if (!hit) return
+    // Das erste Pad, das reagiert, ist das Pad, das angelernt wird.
+    if (this.learnPad === null) this.learnPad = hit.state.id
+    else if (hit.state.id !== this.learnPad) return
+
+    const step = LEARN_STEPS[this.learnStep]
+    if (!step) return
+    this.learnDraft[step.key] = hit.button
+    audio.sfx('confirm')
+    this.learnStep++
+
+    if (this.learnStep >= LEARN_STEPS.length) {
+      this.settings.padBindings = { ...this.settings.padBindings, [this.learnPad]: { ...this.learnDraft } }
+      this.input.gamepads.bindings = this.settings.padBindings
+      saveSettings(this.settings)
+      this.screen = 'menu'
+    }
+  }
+
+  private drawPadLearning(ctx: CanvasRenderingContext2D): void {
+    const w = this.width
+    const h = this.height
+    ctx.fillStyle = 'rgba(6,8,18,0.8)'
+    ctx.fillRect(0, 0, w, h)
+    text(ctx, 'BELEGUNG ANLERNEN', w / 2, h * 0.22, 18, '#ffe14a', 'center')
+    const step = LEARN_STEPS[this.learnStep]
+    text(ctx, step ? `Taste für ${step.label} drücken` : 'Fertig', w / 2, h * 0.45, 14, '#ffffff', 'center')
+    text(
+      ctx,
+      this.learnPad ? this.learnPad : 'Beliebiges Pad drücken - es wird angelernt',
+      w / 2,
+      h * 0.45 + 22,
+      9,
+      'rgba(255,255,255,0.7)',
+      'center'
+    )
+    LEARN_STEPS.forEach((entry, i) => {
+      const done = i < this.learnStep
+      text(
+        ctx,
+        `${entry.label}${done ? ` = Taste ${this.learnDraft[entry.key]}` : ''}`,
+        w / 2,
+        h * 0.62 + i * 12,
+        9,
+        done ? 'rgba(140,255,180,0.9)' : 'rgba(255,255,255,0.45)',
+        'center'
+      )
+    })
+    text(ctx, 'ESC bricht ab', w / 2, h - 20, 9, 'rgba(255,255,255,0.5)', 'center')
   }
 
   private buildOptionsPage(): MenuPage {
@@ -367,10 +624,11 @@ export class Game {
       },
       {
         label: 'GEGNER',
-        value: () => `${this.settings.cpu}`,
-        onLeft: () => this.adjust('cpu', -1, 0, 6),
-        onRight: () => this.adjust('cpu', 1, 0, 6),
-        onSelect: () => this.adjust('cpu', 1, 0, 6),
+        value: () => `${Math.min(this.settings.cpu, this.maxCpu())}`,
+        onLeft: () => this.adjust('cpu', -1, 0, this.maxCpu()),
+        onRight: () => this.adjust('cpu', 1, 0, this.maxCpu()),
+        onSelect: () => this.adjust('cpu', 1, 0, this.maxCpu()),
+        hint: () => `Höchstens ${this.maxCpu()} bei ${this.settings.players} Spieler(n)`,
       },
       {
         label: 'SCHWIERIGKEIT',
@@ -410,6 +668,11 @@ export class Game {
     return { title: 'EINSTELLUNGEN', items }
   }
 
+  /** Es gibt genau acht Fahrer - die Spieler belegen davon schon welche. */
+  private maxCpu(): number {
+    return Math.max(0, DRIVERS.length - this.settings.players)
+  }
+
   private adjust(key: 'laps' | 'cpu' | 'difficulty', dir: number, lo: number, hi: number): void {
     this.settings[key] = clamp(this.settings[key] + dir, lo, hi)
     saveSettings(this.settings)
@@ -421,17 +684,17 @@ export class Game {
       items: [{ label: 'ZURÜCK', onSelect: () => this.menu.pop() }],
       render: (ctx, w, h) => {
         const lines = [
-          'SPIELER 1 · Pfeiltasten = Lenken/Gas/Bremse',
-          '           Leertaste = Drift · Enter = Item',
-          'SPIELER 2 · W A S D = Lenken/Gas/Bremse',
-          '           Shift links = Drift · E = Item',
-          'GAMEPAD  · Stick/Steuerkreuz, A = Gas, B = Bremse,',
-          '           L/R = Drift, X = Item (Pad 1 = P1, Pad 2 = P2)',
+          'SPIELER 1 · Pfeiltasten · Leertaste Drift · Enter Item',
+          'SPIELER 2 · W A S D · Shift links Drift · E Item',
+          'SPIELER 3 · I J K L · U Drift · O Item',
+          'SPIELER 4 · Ziffernblock 8 4 5 6 · 7 Drift · 9 Item',
+          'GAMEPAD  · Stick/Steuerkreuz, A Gas, B Bremse,',
+          '           L/R Drift, X Item - Pad 1..4 = Spieler 1..4',
           'TOUCH    · Lenkfeld links, Tasten rechts',
           'ESC      · Pause',
         ]
         lines.forEach((line, i) => {
-          text(ctx, line, w * 0.5, h * 0.3 + i * 13, 9, 'rgba(255,255,255,0.85)', 'center')
+          text(ctx, line, w * 0.5, h * 0.38 + i * 13, 9, 'rgba(255,255,255,0.85)', 'center')
         })
       },
     }
@@ -441,6 +704,7 @@ export class Game {
 
   private startMatch(): void {
     const trackDef = this.currentTrack()
+    this.ensureUniqueDrivers()
     const drivers = this.settings.drivers.slice(0, this.settings.players)
     const maxCpu = Math.min(this.settings.cpu, DRIVERS.length - drivers.length)
     this.world = new World({
@@ -506,9 +770,9 @@ export class Game {
         },
       ],
       render: (ctx, w, h) => {
-        const top = h * 0.3
+        const top = h * 0.5
         this.results.slice(0, 8).forEach((row, i) => {
-          const y = top + i * 11
+          const y = top + i * 12
           text(
             ctx,
             `${row.place}. ${row.name}`,
@@ -546,6 +810,11 @@ export class Game {
         audio.unlock()
         this.screen = 'menu'
       }
+      return
+    }
+
+    if (this.screen === 'padlearn') {
+      this.updatePadLearning()
       return
     }
 
@@ -595,6 +864,7 @@ export class Game {
       remaining -= step
     }
 
+    audio.engineCount = world.players.length
     world.players.forEach((kart, i) => {
       const cam = this.cameras[i]
       if (cam) updateChaseCamera(cam, kart, dt)
@@ -635,9 +905,11 @@ export class Game {
           break
         case 'hit':
           audio.sfx('hit')
+          if (kart.player >= 0) this.input.gamepads.rumble(kart.player, 0.8, 260)
           break
         case 'pop':
           audio.sfx('pop')
+          if (kart.player >= 0) this.input.gamepads.rumble(kart.player, 0.4, 140)
           break
         case 'lap':
           audio.sfx('lap')
@@ -661,6 +933,7 @@ export class Game {
     else this.renderMenuBackdrop(ctx)
 
     if (this.screen === 'title') this.renderTitle(ctx)
+    else if (this.screen === 'padlearn') this.drawPadLearning(ctx)
     else if (this.screen === 'menu' || this.screen === 'results')
       this.menu.draw(ctx, this.width, this.height, this.time)
     else if (this.screen === 'paused')
@@ -679,7 +952,7 @@ export class Game {
   private renderGame(ctx: CanvasRenderingContext2D): void {
     const world = this.world
     if (!world) return
-    const views = this.viewports()
+    const { views, spare } = this.layout()
 
     views.forEach((view, i) => {
       const cam = this.cameras[i]
@@ -695,12 +968,18 @@ export class Game {
       drawHud(ctx, view, world, kart, `P${i + 1}`, views.length > 1)
     })
 
-    if (views.length > 1) {
-      ctx.fillStyle = '#05060c'
-      ctx.fillRect(0, views[0]!.h - 1, this.width, 2)
-    }
-
+    if (spare) drawStandings(ctx, spare, world)
+    this.drawSplitBorders(ctx, views)
     drawOverlays(ctx, world, views)
+  }
+
+  /** Trennlinien zwischen den Splitscreen-Feldern. */
+  private drawSplitBorders(ctx: CanvasRenderingContext2D, views: Viewport[]): void {
+    if (views.length < 2) return
+    ctx.fillStyle = '#05060c'
+    const half = views[0]!.h
+    ctx.fillRect(0, half - 1, this.width, 2)
+    if (views.length > 2) ctx.fillRect(views[0]!.w - 1, 0, 2, this.height)
   }
 
   /** Hintergrund für Titel und Menü: eine ruhige Kamerafahrt über die Strecke. */

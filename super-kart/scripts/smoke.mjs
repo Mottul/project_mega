@@ -141,6 +141,114 @@ try {
     await shot('06-splitscreen')
   })
 
+  await step('4-Spieler-Viererraster', async () => {
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    await tap('ArrowDown')
+    await tap('ArrowDown')
+    await tap('Enter') // Hauptmenü
+    await page.waitForTimeout(300)
+    await tap('ArrowRight')
+    await tap('ArrowRight') // Spieler = 4
+    for (let i = 0; i < 4; i++) await tap('ArrowDown')
+    await tap('Enter')
+    await page.waitForTimeout(2200)
+    await shot('07-vier-spieler')
+  })
+
+  await step('Zufallsstrecke', async () => {
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    await tap('ArrowDown')
+    await tap('ArrowDown')
+    await tap('Enter')
+    await page.waitForTimeout(300)
+    await tap('ArrowLeft')
+    await tap('ArrowLeft')
+    await tap('ArrowLeft') // zurück auf 1 Spieler
+    await tap('ArrowDown')
+    await tap('ArrowDown')
+    await tap('ArrowDown') // Strecke wählen
+    await tap('Enter')
+    await page.waitForTimeout(300)
+    // Hinter der Streckenliste liegt die Zufallsstrecke.
+    for (let i = 0; i < 6; i++) await tap('ArrowRight')
+    await tap('ArrowDown')
+    await tap('ArrowDown')
+    await tap('Enter') // neu würfeln
+    await page.waitForTimeout(200)
+    await shot('08-zufallsstrecke-menue')
+    await tap('ArrowDown')
+    await tap('Enter') // starten
+    await page.waitForTimeout(2500)
+    await page.keyboard.down('ArrowUp')
+    await page.waitForTimeout(2000)
+    await page.keyboard.up('ArrowUp')
+    await shot('09-zufallsstrecke')
+  })
+
+  await step('Controller-Seite', async () => {
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    await tap('ArrowDown')
+    await tap('ArrowDown')
+    await tap('Enter')
+    await page.waitForTimeout(300)
+    for (let i = 0; i < 7; i++) await tap('ArrowDown')
+    await tap('Enter')
+    await page.waitForTimeout(300)
+    await shot('10-controller')
+
+    // Ein Gamepad lässt sich hier nicht anstecken - also eins vortäuschen.
+    // Bewusst ohne Standard-Layout und mit Hat-Achse, wie viele USB-Pads.
+    await page.evaluate(() => {
+      const pad = {
+        index: 0,
+        id: 'Test USB Pad (Vendor: 0001 Product: 0002)',
+        mapping: '',
+        connected: true,
+        timestamp: 0,
+        axes: [0, 0, 0, 0, 0, 0, 0, 0, 0, 3.28],
+        buttons: Array.from({ length: 12 }, () => ({ pressed: false, touched: false, value: 0 })),
+      }
+      window.__pad = pad
+      navigator.getGamepads = () => [pad]
+    })
+    await page.waitForTimeout(300)
+    await shot('11-controller-pad')
+
+    const detected = await page.evaluate(() => document.title !== '')
+    if (!detected) throw new Error('Seite reagiert nicht mehr')
+
+    await step('Belegung anlernen', async () => {
+      await tap('Enter') // BELEGUNG ANLERNEN
+      await page.waitForTimeout(200)
+      for (const button of [3, 2, 1, 0]) {
+        await page.evaluate((b) => {
+          window.__pad.buttons[b].pressed = true
+        }, button)
+        await page.waitForTimeout(120)
+        await page.evaluate((b) => {
+          window.__pad.buttons[b].pressed = false
+        }, button)
+        await page.waitForTimeout(120)
+      }
+      const stored = await page.evaluate(() =>
+        JSON.parse(localStorage.getItem('super-kart:settings') ?? '{}')
+      )
+      const learned = stored.padBindings?.['Test USB Pad']
+      const expected = { accel: 3, brake: 2, drift: 1, item: 0 }
+      if (JSON.stringify(learned) !== JSON.stringify(expected)) {
+        throw new Error(`Belegung nicht gespeichert: ${JSON.stringify(learned)}`)
+      }
+    })
+
+    await page.evaluate(() => {
+      navigator.getGamepads = () => []
+    })
+    await tap('Escape')
+  })
+
   await step('Battle-Modus', async () => {
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
@@ -148,13 +256,12 @@ try {
     await tap('ArrowDown')
     await tap('Enter')
     await page.waitForTimeout(300)
-    await tap('ArrowLeft') // zurück auf 1 Spieler
     await tap('ArrowDown') // Modus
     await tap('ArrowRight') // Battle
     for (let i = 0; i < 3; i++) await tap('ArrowDown')
     await tap('Enter')
     await page.waitForTimeout(2500)
-    await shot('07-battle')
+    await shot('12-battle')
   })
 } catch (err) {
   errors.push(`Ablauf abgebrochen: ${err.message}`)

@@ -4,11 +4,14 @@ Ein Retro-Kart-Rennspiel im Mode-7-Stil der 16-Bit-Ära – als installierbare P
 die auf Desktop, Tablet, Telefon und Konsolen-Browsern läuft und nach dem ersten
 Laden auch **offline** funktioniert.
 
-Zwei Modi, beide mit **Splitscreen für zwei Spieler**:
+Zwei Modi, beide mit **Splitscreen für bis zu vier Spieler**:
 
-- **Rennen** – Rundenrennen gegen bis zu sechs KI-Fahrer, mit Items, Drift-Turbo
-  und Boost-Feldern über fünf Strecken.
-- **Battle** – Ballonschlacht in zwei Arenen. Wer zuletzt noch Ballons hat, gewinnt.
+- **Rennen** – Rundenrennen gegen KI-Fahrer, mit Items, Drift-Turbo und
+  Boost-Feldern über fünf gebaute Strecken plus beliebig viele Zufallsstrecken.
+- **Battle** – Ballonschlacht in zwei Arenen (ebenfalls per Zufall erzeugbar).
+  Wer zuletzt noch Ballons hat, gewinnt.
+
+Gespielt wird mit Tastatur, Gamepad oder auf dem Touchscreen – auch gemischt.
 
 Das Spiel ist eine eigenständige Hommage an das Genre: eigene Strecken, eigene
 Fahrer, eigene Grafik und Musik. Es enthält keine Inhalte Dritter – **alle**
@@ -77,6 +80,31 @@ geladen hat, bekommt einen Mini-Turbo (zwei Stufen).
 Die Ziehwahrscheinlichkeit hängt von der Platzierung ab: Vorn gibt es
 hauptsächlich Defensivitems, hinten die starken Sachen.
 
+## Zufallsstrecken
+
+Unter _Strecke wählen_ liegt hinter der Streckenliste der Eintrag **ZUFALL**.
+Jede Zufallsstrecke ergibt sich vollständig aus ihrem **Seed** – dieselbe Zahl
+erzeugt immer dieselbe Strecke, Thema und Namen inklusive. Eine gelungene
+Strecke lässt sich damit wiederfinden und einfach als Zahl weitergeben.
+
+Erzeugt wird die Streckenmitte als Radiusfunktion über dem Winkel: eine Summe
+weniger Sinusschwingungen. Das hat zwei angenehme Eigenschaften – die Kurve
+liegt sternförmig um die Mitte und kann sich damit praktisch nicht selbst
+schneiden, und die Oberwellen erzeugen von allein Wechsel aus Geraden, weiten
+Bögen und engeren Kurven statt eines Kreises.
+
+Erzeugen allein reicht aber nicht: Jeder Vorschlag wird geprüft, bevor er
+angenommen wird – auf Selbstüberschneidung (sonst überlappt die Fahrbahn und
+die Rundenzählung bricht), auf Kurven, die enger sind als ein Kart fahren kann,
+und auf Abstand zum Weltrand. Fällt ein Vorschlag durch, wird flacher und
+glatter neu gewürfelt; erst wenn alles scheitert, greift eine garantiert
+fahrbare Ausweichstrecke. Über 400 Seeds gemessen braucht es dafür im Schnitt
+sechs Anläufe und die Ausweichstrecke kein einziges Mal.
+
+Arenen entstehen nach demselben Prinzip: Die Hindernisse liegen auf einem
+Raster und werden an beiden Achsen gespiegelt, damit kein Startplatz im
+Vorteil ist und zwischen den Blöcken garantiert Gassen bleiben.
+
 ## Installation als App
 
 Die Anwendung bringt ein Web-App-Manifest und einen Service Worker mit:
@@ -104,8 +132,9 @@ Reines TypeScript auf Canvas 2D, ohne Spiel-Framework. Build: Vite.
 
 ```
 src/
-  core/      Mathe, deterministischer Zufall, Eingabe, WebAudio-Synthese
-  game/      Regeln: Strecken, Streckenaufbau, Fahrphysik, Items, KI, Welt
+  core/      Mathe, deterministischer Zufall, Eingabe, Gamepads, WebAudio
+  game/      Regeln: Strecken, Streckenaufbau, Zufallsgenerator, Fahrphysik,
+             Items, KI, Welt
   render/    Mode-7-Renderer, Sprite-Erzeugung, Szene, HUD
   ui/        Menü, Touch-Steuerung, Streckenvorschau
   app.ts     Zustandsmaschine, Spielschleife, Splitscreen
@@ -135,20 +164,32 @@ Die tragenden Entscheidungen:
   Arenamauern werden deshalb zusätzlich als Reihe von Billboards aufgestellt,
   während die Kollision weiterhin aus der ID-Karte kommt.
 - **Trennung von Regel und Bild.** `game/world.ts` simuliert vollständig ohne
-  Renderer; die Rundenzählung, die Item-Verteilung und die Ergebnisliste liegen
-  in reinen Modulen (`progress.ts`, `items.ts`, `results.ts`) und sind ohne
-  Browser testbar.
+  Renderer; Rundenzählung, Item-Verteilung, Ergebnisliste und der
+  Zufallsgenerator liegen in reinen Modulen (`progress.ts`, `items.ts`,
+  `results.ts`, `procedural.ts`) und sind ohne Browser testbar.
+- **Gamepads getrennt von der Eingabe.** `core/gamepad.ts` normalisiert Pads
+  (Layout-Erkennung, Hat-Achse, Totzone, feste Spielerplätze, angelernte
+  Belegung) und liefert einen einheitlichen Zustand; `core/input.ts` mischt ihn
+  nur noch mit Tastatur und Touch zusammen.
 
 ## Tests
 
 - **Unit-Tests** (`npm test`) prüfen die reine Logik: Winkelmathematik,
-  Rundenzählung über die Ziellinie, Item-Wahrscheinlichkeiten, Streckendaten
-  und die Ergebnisliste.
-- **Rauchtest** (`npm run smoke`) startet den echten Build in Chromium, klickt
-  sich durch Titel, Menü, Einzelrennen, Splitscreen und Battle, prüft die
-  Browser-Konsole auf Fehler und dass tatsächlich ein Bild entsteht.
-  Screenshots landen in `screenshots/`. Ist bereits ein Chromium vorhanden,
-  kann er über `PLAYWRIGHT_CHROMIUM_PATH` genutzt werden.
+  Rundenzählung über die Ziellinie, Item-Wahrscheinlichkeiten, Streckendaten,
+  Ergebnisliste, die Gamepad-Normalisierung (mit simulierten Pads) und den
+  Zufallsgenerator. Letzterer wird gegen genau die Eigenschaften geprüft, die
+  eine Strecke unspielbar machen würden – Selbstüberschneidung, zu enge Kurven,
+  Weltgrenzen – und zusätzlich darauf, dass die Formen nicht in langweilige
+  Kreise zusammenfallen.
+- **Rauchtest** (`npm run smoke`) startet den echten Build in Chromium und
+  klickt sich durch Titel, Menü, Einzelrennen, Splitscreen, Viererraster,
+  Zufallsstrecke, Controller-Seite und Battle. Ein Gamepad lässt sich dabei
+  nicht anstecken, also wird eins vorgetäuscht – bewusst ohne Standard-Layout –
+  und das Anlernen der Belegung bis in den gespeicherten Zustand geprüft.
+  Nebenbei laufen die Browser-Konsole auf Fehler und die Prüfung, dass
+  tatsächlich ein Bild entsteht. Screenshots landen in `screenshots/`. Ist
+  bereits ein Chromium vorhanden, kann er über `PLAYWRIGHT_CHROMIUM_PATH`
+  genutzt werden.
 
 ## Lizenz
 

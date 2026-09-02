@@ -190,6 +190,45 @@ function drawMinimap(
 }
 
 /**
+ * Rangliste für das freie Feld im Viererraster (bei drei Spielern).
+ * Sonst bliebe dort ein toter schwarzer Block.
+ */
+export function drawStandings(ctx: CanvasRenderingContext2D, view: Viewport, world: World): void {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(view.x, view.y, view.w, view.h)
+  ctx.clip()
+  ctx.fillStyle = 'rgba(8,10,20,0.92)'
+  ctx.fillRect(view.x, view.y, view.w, view.h)
+
+  text(
+    ctx,
+    world.mode === 'race' ? 'RANGLISTE' : 'BALLONS',
+    view.x + view.w / 2,
+    view.y + 6,
+    11,
+    '#ffe14a',
+    'center'
+  )
+
+  const rows = [...world.karts].sort((a, b) => a.rank - b.rank)
+  const step = Math.min(12, (view.h - 26) / Math.max(1, rows.length))
+  rows.forEach((kart, i) => {
+    const y = view.y + 22 + i * step
+    const human = kart.player >= 0
+    const color = human ? '#ffffff' : 'rgba(255,255,255,0.55)'
+    text(ctx, `${kart.rank}.`, view.x + 6, y, 8, color)
+    ctx.fillStyle = kart.driver.body
+    ctx.fillRect(view.x + 18, y + 1, 5, 6)
+    text(ctx, `${kart.driver.name}${human ? ` P${kart.player + 1}` : ''}`, view.x + 27, y, 8, color)
+    const detail =
+      world.mode === 'race' ? `${displayLap(kart.lap, world.laps)}/${world.laps}` : `${kart.balloons}`
+    text(ctx, detail, view.x + view.w - 6, y, 8, 'rgba(255,255,255,0.7)', 'right')
+  })
+  ctx.restore()
+}
+
+/**
  * Startampel und Zieldurchfahrt - im Splitscreen pro Ansicht, damit die Ziffer
  * nicht ausgerechnet das eigene Kart verdeckt.
  */
@@ -197,7 +236,7 @@ export function drawOverlays(ctx: CanvasRenderingContext2D, world: World, views:
   for (const view of views) {
     const cx = view.x + view.w / 2
     // Tiefer als der Item-Kasten oben in der Mitte, sonst überdecken sie sich.
-    const cy = view.y + view.h * 0.34
+    const cy = view.y + view.h * 0.45
     const size = Math.min(40, view.h * 0.19)
     if (world.state === 'countdown') {
       const n = Math.ceil(world.countdown)

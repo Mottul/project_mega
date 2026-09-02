@@ -388,6 +388,10 @@ export class World {
 
     kart.itemUses--
     if (kart.itemUses <= 0) kart.item = null
+    // Die KI feuerte sonst in dem Moment, in dem sie ein Item bekommt. Mit
+    // acht Karts wurde daraus Dauerbeschuss, und das Rennen entschied nur noch
+    // das Item-Glück. Eine Pause danach macht daraus wieder ein Rennen.
+    if (kart.player < 0) kart.aiItemTimer = 1.4 + this.rng.next() * 1.8
   }
 
   /** Nächstes Kart in Fahrtrichtung - Ziel für die Rakete. */

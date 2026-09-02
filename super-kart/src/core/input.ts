@@ -1,3 +1,4 @@
+import { Gamepads, type PadState } from './gamepad'
 import { clamp } from './math'
 
 /** Ein Frame Steuerzustand für genau ein Kart. */
@@ -40,17 +41,21 @@ const EMPTY_CONTROL: ControlState = {
   itemPressed: false,
 }
 
-/** Tastenbelegung je Spieler. Mehrere Codes pro Aktion sind Absicht. */
-const KEYMAP: ReadonlyArray<
-  Record<keyof Omit<ControlState, 'steer' | 'itemPressed'> | 'left' | 'right', string[]>
-> = [
+type KeyBlock = Record<'left' | 'right' | 'accel' | 'brake' | 'drift' | 'item', string[]>
+
+/**
+ * Tastenbelegung je Spieler. Mehrere Codes pro Aktion sind Absicht.
+ * Für Spieler 3 und 4 wird es auf einer Tastatur eng - die beiden spielen
+ * üblicherweise mit Gamepad; die Belegung ist der Notnagel.
+ */
+export const KEYMAP: ReadonlyArray<KeyBlock> = [
   {
     left: ['ArrowLeft'],
     right: ['ArrowRight'],
     accel: ['ArrowUp'],
     brake: ['ArrowDown'],
     drift: ['Space', 'ShiftRight', 'Comma'],
-    item: ['Enter', 'Period', 'Numpad0', 'ControlRight'],
+    item: ['Enter', 'Period', 'ControlRight'],
   },
   {
     left: ['KeyA'],
@@ -58,40 +63,46 @@ const KEYMAP: ReadonlyArray<
     accel: ['KeyW'],
     brake: ['KeyS'],
     drift: ['ShiftLeft', 'KeyQ'],
-    item: ['KeyE', 'KeyR', 'Tab'],
+    item: ['KeyE', 'KeyR'],
+  },
+  {
+    left: ['KeyJ'],
+    right: ['KeyL'],
+    accel: ['KeyI'],
+    brake: ['KeyK'],
+    drift: ['KeyU'],
+    item: ['KeyO'],
+  },
+  {
+    left: ['Numpad4'],
+    right: ['Numpad6'],
+    accel: ['Numpad8'],
+    brake: ['Numpad5'],
+    drift: ['Numpad7'],
+    item: ['Numpad9'],
   },
 ]
 
-/** Standard-Gamepad-Belegung (Xbox-Layout). */
-const PAD = {
-  accel: [0, 7],
-  brake: [1, 6],
-  drift: [4, 5],
-  item: [2, 3],
-  left: [14],
-  right: [15],
-  up: [12],
-  down: [13],
-  confirm: [0, 9],
-  back: [1, 8],
-} as const
+export const MAX_PLAYERS = 4
 
 export class Input {
   private readonly down = new Set<string>()
   private readonly pressedThisFrame = new Set<string>()
   private readonly queued = new Set<string>()
-  private prevItem = [false, false]
+  private prevItem = new Array<boolean>(MAX_PLAYERS).fill(false)
   private prevMenu: Record<string, boolean> = {}
   private repeatAt: Record<string, number> = {}
-  readonly touch: TouchState[] = [
-    { steer: 0, accel: false, brake: false, drift: false, item: false },
-    { steer: 0, accel: false, brake: false, drift: false, item: false },
-  ]
+  readonly gamepads = new Gamepads()
+  readonly touch: TouchState[] = Array.from({ length: MAX_PLAYERS }, () => ({
+    steer: 0,
+    accel: false,
+    brake: false,
+    drift: false,
+    item: false,
+  }))
   /** Zeigt an, ob je eine Taste/ein Pad benutzt wurde (blendet Touch-UI aus). */
   usedKeyboard = false
   usedTouch = false
-
-  private pads: (Gamepad | null)[] = []
 
   attach(target: Window = window): () => void {
     const onDown = (e: KeyboardEvent) => {
@@ -122,18 +133,11 @@ export class Input {
     this.pressedThisFrame.clear()
     for (const code of this.queued) this.pressedThisFrame.add(code)
     this.queued.clear()
-    this.pads = typeof navigator !== 'undefined' && navigator.getGamepads ? [...navigator.getGamepads()] : []
+    this.gamepads.poll()
   }
 
-  private pad(player: number): Gamepad | null {
-    // Pads werden in Reihenfolge ihrer Slots auf die Spieler verteilt.
-    const connected = this.pads.filter((p): p is Gamepad => !!p && p.connected)
-    return connected[player] ?? null
-  }
-
-  private padButton(pad: Gamepad | null, indices: readonly number[]): boolean {
-    if (!pad) return false
-    return indices.some((i) => pad.buttons[i]?.pressed)
+  private pad(player: number): PadState | null {
+    return this.gamepads.forPlayer(player)
   }
 
   private key(codes: readonly string[]): boolean {
@@ -147,23 +151,20 @@ export class Input {
     const touch = this.touch[player]!
 
     let steer = 0
-    if (this.key(map.left) || this.padButton(pad, PAD.left)) steer -= 1
-    if (this.key(map.right) || this.padButton(pad, PAD.right)) steer += 1
-    if (pad) {
-      const axis = pad.axes[0] ?? 0
-      if (Math.abs(axis) > 0.18) steer += axis
-    }
+    if (this.key(map.left)) steer -= 1
+    if (this.key(map.right)) steer += 1
+    if (pad) steer += pad.steer
     steer = clamp(steer + touch.steer, -1, 1)
 
-    const item = this.key(map.item) || this.padButton(pad, PAD.item) || touch.item
+    const item = this.key(map.item) || pad?.item === true || touch.item
     const itemPressed = item && !this.prevItem[player]
     this.prevItem[player] = item
 
     return {
       steer,
-      accel: this.key(map.accel) || this.padButton(pad, PAD.accel) || touch.accel,
-      brake: this.key(map.brake) || this.padButton(pad, PAD.brake) || touch.brake,
-      drift: this.key(map.drift) || this.padButton(pad, PAD.drift) || touch.drift,
+      accel: this.key(map.accel) || pad?.accel === true || touch.accel,
+      brake: this.key(map.brake) || pad?.brake === true || touch.brake,
+      drift: this.key(map.drift) || pad?.drift === true || touch.drift,
       item,
       itemPressed,
     }
@@ -176,23 +177,17 @@ export class Input {
    * wiederholen nach kurzer Verzögerung.
    */
   menu(): MenuInput {
-    const padAny = (indices: readonly number[]) => [0, 1].some((p) => this.padButton(this.pad(p), indices))
-    const padAxis = (dir: -1 | 1) =>
-      [0, 1].some((p) => {
-        const pad = this.pad(p)
-        if (!pad) return false
-        const y = pad.axes[1] ?? 0
-        return dir < 0 ? y < -0.5 : y > 0.5
-      })
+    // Im Menü darf jedes angeschlossene Pad navigieren, nicht nur Pad 1.
+    const padAny = (field: keyof PadState) => this.gamepads.list().some(({ state }) => state[field] === true)
     const tapped = (codes: readonly string[]) => codes.some((c) => this.pressedThisFrame.has(c))
 
     const raw: Record<string, boolean> = {
-      up: this.key(MENU_KEYS.up) || tapped(MENU_KEYS.up) || padAny(PAD.up) || padAxis(-1),
-      down: this.key(MENU_KEYS.down) || tapped(MENU_KEYS.down) || padAny(PAD.down) || padAxis(1),
-      left: this.key(MENU_KEYS.left) || tapped(MENU_KEYS.left) || padAny(PAD.left),
-      right: this.key(MENU_KEYS.right) || tapped(MENU_KEYS.right) || padAny(PAD.right),
-      confirm: this.key(MENU_KEYS.confirm) || tapped(MENU_KEYS.confirm) || padAny(PAD.confirm),
-      back: this.key(MENU_KEYS.back) || tapped(MENU_KEYS.back) || padAny(PAD.back),
+      up: this.key(MENU_KEYS.up) || tapped(MENU_KEYS.up) || padAny('up'),
+      down: this.key(MENU_KEYS.down) || tapped(MENU_KEYS.down) || padAny('down'),
+      left: this.key(MENU_KEYS.left) || tapped(MENU_KEYS.left) || padAny('left'),
+      right: this.key(MENU_KEYS.right) || tapped(MENU_KEYS.right) || padAny('right'),
+      confirm: this.key(MENU_KEYS.confirm) || tapped(MENU_KEYS.confirm) || padAny('confirm'),
+      back: this.key(MENU_KEYS.back) || tapped(MENU_KEYS.back) || padAny('back'),
     }
 
     const now = performance.now()
@@ -224,7 +219,10 @@ export class Input {
       this.prevMenu[k] = true
     }
 
-    edge.any = this.pressedThisFrame.size > 0 || Object.values(edge).some(Boolean)
+    edge.any =
+      this.pressedThisFrame.size > 0 ||
+      Object.values(edge).some(Boolean) ||
+      this.gamepads.list().some(({ state }) => state.justPressed >= 0)
     return edge
   }
 
@@ -254,13 +252,4 @@ const MENU_KEYS = {
   back: ['Escape', 'Backspace'],
 } as const
 
-const SWALLOW = new Set([
-  'ArrowUp',
-  'ArrowDown',
-  'ArrowLeft',
-  'ArrowRight',
-  'Space',
-  'Tab',
-  'Enter',
-  'Backspace',
-])
+const SWALLOW = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter', 'Backspace'])
