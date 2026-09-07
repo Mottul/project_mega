@@ -1,6 +1,7 @@
-// YouTube-Downloader (yt-dlp). Lädt bei Bedarf die yt-dlp-Binary nach userData/
-// bin und hält sie per Knopf aktuell; Downloads laufen als Queue mit Fortschritt
-// (main-Prozess). Muxing über das gebündelte ffmpeg.
+// YouTube-Downloader (yt-dlp). Die Binary liegt in userData/bin und wird beim
+// App-Start automatisch geprüft und bei Bedarf ersetzt (geprüfte Prüfsumme, im
+// main-Prozess); der Knopf stößt dieselbe Prüfung von Hand an. Downloads laufen
+// als Queue mit Fortschritt. Muxing über das gebündelte ffmpeg.
 
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -45,6 +46,7 @@ export function YoutubeDownloader(): JSX.Element {
   const [url, setUrl] = useState('')
   const [cfg, setCfg] = useState<Settings>(loadSettings)
   const [jobs, setJobs] = useState<YtJob[]>([])
+  const [autoUpdate, setAutoUpdate] = useState(true)
   const jobMap = useRef<Map<string, YtJob>>(new Map())
 
   useEffect(() => {
@@ -53,10 +55,17 @@ export function YoutubeDownloader(): JSX.Element {
       jobMap.current = new Map(list.map((j) => [j.id, j]))
       setJobs([...jobMap.current.values()])
     })
-    return api.youtube.onJobUpdate((job) => {
+    const offJobs = api.youtube.onJobUpdate((job) => {
       jobMap.current.set(job.id, job)
       setJobs([...jobMap.current.values()].sort((a, b) => b.createdAt - a.createdAt))
     })
+    void api.getSettings().then((s) => setAutoUpdate(s.ytdlpAutoUpdate))
+    // Die Startprüfung läuft im main-Prozess und kann jederzeit fertig werden.
+    const offStatus = api.youtube.onStatusUpdate(setStatus)
+    return () => {
+      offJobs()
+      offStatus()
+    }
   }, [])
 
   useEffect(() => {
@@ -92,6 +101,8 @@ export function YoutubeDownloader(): JSX.Element {
     setUrl('')
   }
 
+  const busy = updating || !!status?.checking
+  const problem = updateError ?? status?.lastError ?? null
   const ready = status?.available && !!cfg.outputDir
   const active = jobs.some((j) => j.status === 'running' || j.status === 'queued')
 
@@ -99,17 +110,31 @@ export function YoutubeDownloader(): JSX.Element {
     <div className={toolPageClass('full')}>
       {/* yt-dlp-Status */}
       <Card className="flex flex-wrap items-center gap-3 p-4">
-        {status == null ? (
+        {status == null || busy ? (
           <span className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Prüfe yt-dlp…
+            <Loader2 className="size-4 animate-spin" />
+            {status?.available ? 'Prüfe auf neue Version…' : 'Lade yt-dlp…'}
           </span>
         ) : status.available ? (
           <span className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="size-4 text-emerald-400 light:text-emerald-700" />
+            {status.upToDate === false ? (
+              <AlertTriangle className="size-4 text-amber-400 light:text-amber-700" />
+            ) : (
+              <CheckCircle2 className="size-4 text-emerald-400 light:text-emerald-700" />
+            )}
             yt-dlp <span className="font-mono text-xs text-muted-foreground">{status.version}</span>
             <span className="text-xs text-muted-foreground">
               ({status.location === 'managed' ? 'verwaltet' : 'System-PATH'})
             </span>
+            {status.upToDate === true && (
+              <span className="text-xs text-emerald-400 light:text-emerald-700">aktuell</span>
+            )}
+            {status.upToDate === false && (
+              <span className="text-xs text-amber-400 light:text-amber-700">
+                neuer verfügbar: {status.latest}
+                {status.location === 'path' && ' (vom System verwaltet)'}
+              </span>
+            )}
           </span>
         ) : (
           <span className="flex items-center gap-2 text-sm">
@@ -121,21 +146,32 @@ export function YoutubeDownloader(): JSX.Element {
         <Button
           variant={status?.available ? 'outline' : 'default'}
           size="sm"
-          disabled={updating}
+          disabled={busy}
           onClick={() => void updateTool()}
         >
-          {updating ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <RefreshCw className="size-4" />
-          )}
-          {status?.available ? 'Aktualisieren' : 'yt-dlp herunterladen'}
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+          {status?.available ? 'Prüfen' : 'yt-dlp herunterladen'}
         </Button>
       </Card>
 
-      {updateError && (
+      <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          className="accent-primary"
+          checked={autoUpdate}
+          onChange={(e) => {
+            const on = e.target.checked
+            setAutoUpdate(on)
+            void api.setSettings({ ytdlpAutoUpdate: on })
+          }}
+        />
+        Beim Programmstart automatisch auf eine neue yt-dlp-Version prüfen
+      </label>
+
+      {problem && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          Download fehlgeschlagen: {updateError} – Internetverbindung prüfen.
+          Aktualisierung fehlgeschlagen: {problem} – Internetverbindung prüfen.
+          {status?.available && ' Der vorhandene Stand bleibt nutzbar.'}
         </p>
       )}
       {status && !status.ffmpeg && (

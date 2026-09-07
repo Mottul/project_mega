@@ -21,6 +21,7 @@ import { disposeTimer } from './services/stageTimer'
 import { closeTimerOutput } from './services/timerWindow'
 import { stopTimerNdi } from './services/timerNdi'
 import { stopPlayerNdi } from './services/playerNdi'
+import { checkOnStartup } from './services/ytdlp/ytDlp'
 
 const isDev = !app.isPackaged
 
@@ -184,6 +185,7 @@ app.whenReady().then(() => {
     createWindow({ hash: '/osc-monitor' })
   })
   attachWindow(createWindow({ isMain: true }))
+  checkOnStartup() // yt-dlp im Hintergrund prüfen, sobald das Fenster steht
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) attachWindow(createWindow({ isMain: true }))

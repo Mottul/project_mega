@@ -163,6 +163,10 @@ Ergebnis-Installer liegen unter `dist/`:
 | macOS   | `.dmg`      |
 | Linux   | AppImage    |
 
+> **Anleitung für Anwender:** [`docs/INSTALL.md`](docs/INSTALL.md) beschreibt Installation
+> und ersten Start unter Windows und macOS (inklusive der Warnungen von SmartScreen und
+> Gatekeeper bei unsignierten Paketen).
+
 > Die fertig gepackte (noch nicht installierte) App liegt zusätzlich unter
 > `dist/win-unpacked/` (bzw. `*-unpacked/`) und ist von dort direkt startbar – praktisch
 > zum Testen ohne Installation.

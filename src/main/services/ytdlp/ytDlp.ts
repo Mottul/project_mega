@@ -1,17 +1,37 @@
-// yt-dlp-Wrapper: findet die Binary (userData/bin oder System-PATH), kann sie
-// von GitHub nachladen/aktualisieren und führt Download-Jobs mit Fortschritt
-// aus. Muxing übernimmt das gebündelte ffmpeg (--ffmpeg-location). Bewusst
-// dependency-frei (Electron `net` für den Binary-Download).
+// yt-dlp-Wrapper: findet die Binary (userData/bin oder System-PATH), haelt sie
+// aktuell und fuehrt Download-Jobs mit Fortschritt aus. Muxing uebernimmt das
+// gebuendelte ffmpeg (--ffmpeg-location). Bewusst dependency-frei (Electron
+// `net` fuer die Netzzugriffe).
+//
+// Aktualisierung: beim App-Start wird die neueste stabile Version ermittelt und
+// die verwaltete Binary bei Bedarf ersetzt. Jeder Download wird VOR dem
+// Umbenennen gegen die SHA2-256SUMS des Releases geprueft -- eine abgeschnittene
+// oder unterwegs veraenderte Datei wird nie ausfuehrbar abgelegt. Das ersetzt
+// keine Signaturpruefung (dafuer braeuchte es den GPG-Schluessel des Projekts):
+// es sichert die Uebertragung, nicht das Release selbst.
 
 import { app, net } from 'electron'
 import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { randomUUID } from 'node:crypto'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
+import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import type { YtEnqueueRequest, YtJob, YtToolStatus } from '@shared/types'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
+import { getSettings } from '../store'
+import { logLine } from '../log'
 
 type Sink = (job: YtJob) => void
+
+const LATEST_URL = 'https://github.com/yt-dlp/yt-dlp/releases/latest'
+const USER_AGENT = 'MegaToolBox' // manche GitHub-CDN-Edges verlangen einen UA
 
 function binDir(): string {
   const dir = join(app.getPath('userData'), 'bin')
@@ -23,25 +43,71 @@ function managedBinary(): string {
   return join(binDir(), process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp')
 }
 
-/** GitHub-Release-Asset je Plattform (immer der "latest"-Kanal). Bewusst die
- *  EIGENSTÄNDIGEN Binaries (linux/macos), nicht das Python-zipapp 'yt-dlp'. */
-function assetUrl(): string {
-  const base = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/'
-  if (process.platform === 'win32') return base + 'yt-dlp.exe'
-  if (process.platform === 'darwin') return base + 'yt-dlp_macos'
-  return base + 'yt-dlp_linux'
+/** Asset des EIGENSTAENDIGEN Builds je Plattform (kein Python noetig). */
+function assetName(): string {
+  if (process.platform === 'win32') return 'yt-dlp.exe'
+  if (process.platform === 'darwin') return 'yt-dlp_macos'
+  return 'yt-dlp_linux'
 }
 
+function releaseUrl(tag: string, file: string): string {
+  return `https://github.com/yt-dlp/yt-dlp/releases/download/${tag}/${file}`
+}
+
+/** yt-dlp-Releases heissen 2025.01.26 (optional mit vierter Zahl). Streng
+ *  pruefen, denn der Tag wird in eine URL eingesetzt. */
+export function isValidTag(tag: string): boolean {
+  return /^\d{4}\.\d{2}\.\d{2}(\.\d+)?$/.test(tag)
+}
+
+/**
+ * Zieht die Version aus der Weiterleitung von /releases/latest, also z. B.
+ * ".../releases/tag/2025.01.26". Liefert null, wenn die Adresse nicht auf ein
+ * Release des yt-dlp-Projekts zeigt -- eine umgebogene Weiterleitung darf nie
+ * bestimmen, von wo geladen wird.
+ */
+export function tagFromReleaseUrl(url: string): string | null {
+  const m = /^https:\/\/github\.com\/yt-dlp\/yt-dlp\/releases\/tag\/([^/?#]+)$/.exec(url.trim())
+  const tag = m ? decodeURIComponent(m[1]) : ''
+  return isValidTag(tag) ? tag : null
+}
+
+/** SHA2-256SUMS des Releases: je Zeile "<hash>  <dateiname>". */
+export function parseChecksums(text: string): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const line of text.split('\n')) {
+    const m = /^([0-9a-f]{64})\s+\*?(\S+)$/i.exec(line.trim())
+    if (m) map.set(m[2], m[1].toLowerCase())
+  }
+  return map
+}
+
+// Version je Binary merken: `--version` startet einen Prozess, und der Status
+// wird bei jedem Fortschritt neu gebildet. Der Zeitstempel invalidiert den
+// Eintrag nach einer Aktualisierung.
+let versionCache: { bin: string; stamp: number; version: string | null } | null = null
+
 function versionOf(bin: string): string | null {
+  let stamp = 0
   try {
-    // Bare-Name auf dem System-PATH unter Windows nur via Shell auflösbar.
+    stamp = statSync(bin).mtimeMs
+  } catch {
+    // Bare-Name auf dem PATH -> kein Zeitstempel, Cache greift ueber den Namen
+  }
+  if (versionCache && versionCache.bin === bin && versionCache.stamp === stamp) {
+    return versionCache.version
+  }
+  let version: string | null = null
+  try {
+    // Bare-Name auf dem System-PATH unter Windows nur via Shell aufloesbar.
     const shell = process.platform === 'win32' && !/[\\/]/.test(bin)
     const res = spawnSync(bin, ['--version'], { windowsHide: true, timeout: 8000, shell })
-    if (res.status === 0) return res.stdout.toString().trim() || null
+    if (res.status === 0) version = res.stdout.toString().trim() || null
   } catch {
-    // nicht vorhanden / nicht ausführbar
+    // nicht vorhanden / nicht ausfuehrbar
   }
-  return null
+  versionCache = { bin, stamp, version }
+  return version
 }
 
 /** Bevorzugt die selbst verwaltete Binary, sonst PATH. */
@@ -57,47 +123,188 @@ function ffmpegAvailable(): boolean {
   return ff.includes('/') || ff.includes('\\') ? existsSync(ff) : true
 }
 
-export function getStatus(): YtToolStatus {
-  const found = locateBinary()
-  return {
-    available: found != null,
-    version: found ? versionOf(found.bin) : null,
-    location: found?.location ?? null,
-    ffmpeg: ffmpegAvailable()
-  }
-}
+/* ------------------------------ Netzzugriff ------------------------------ */
 
-function downloadTo(url: string, dest: string): Promise<void> {
+function fetchBuffer(url: string, timeoutMs: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const req = net.request(url) // folgt Redirects (GitHub -> CDN) standardmäßig
-    req.setHeader('User-Agent', 'av-toolbox') // manche GitHub-CDN-Edges verlangen UA
+    const req = net.request(url) // folgt Redirects (GitHub -> CDN) standardmaessig
+    req.setHeader('User-Agent', USER_AGENT)
+    let settled = false
+    const finish = (fn: () => void): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      fn()
+    }
+    const timer = setTimeout(() => {
+      req.abort()
+      finish(() => reject(new Error('Zeitüberschreitung beim Abruf')))
+    }, timeoutMs)
+
     req.on('response', (res) => {
       const status = res.statusCode ?? 0
       if (status !== 200) {
-        reject(new Error(`Download fehlgeschlagen (HTTP ${status})`))
+        res.on('data', () => {}) // Antwort leeren, sonst bleibt die Verbindung offen
+        res.on('end', () => finish(() => reject(new Error(`HTTP ${status} bei ${url}`))))
         return
       }
       const chunks: Buffer[] = []
       res.on('data', (c: Buffer) => chunks.push(c))
-      res.on('end', () => {
-        try {
-          writeFileSync(dest, Buffer.concat(chunks))
-          if (process.platform !== 'win32') chmodSync(dest, 0o755)
-          resolve()
-        } catch (err) {
-          reject(err instanceof Error ? err : new Error(String(err)))
-        }
-      })
-      res.on('error', reject)
+      res.on('end', () => finish(() => resolve(Buffer.concat(chunks))))
+      res.on('error', (err: Error) => finish(() => reject(err)))
     })
-    req.on('error', reject)
+    req.on('error', (err) => finish(() => reject(err)))
     req.end()
   })
 }
 
-export async function updateTool(): Promise<YtToolStatus> {
-  await downloadTo(assetUrl(), managedBinary())
+/**
+ * Neueste stabile Version ueber die Weiterleitung von /releases/latest.
+ * Bewusst NICHT ueber die GitHub-API: die ist ohne Anmeldung auf 60 Anfragen je
+ * Stunde und IP begrenzt, was hinter einem Firmen-NAT regelmaessig zuschlaegt.
+ * Der Weiterleitung wird nicht gefolgt -- ihre Zieladresse ist die Antwort.
+ */
+function fetchLatestTag(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const req = net.request({ url: LATEST_URL, redirect: 'manual' })
+    req.setHeader('User-Agent', USER_AGENT)
+    let settled = false
+    const finish = (fn: () => void): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      fn()
+    }
+    const timer = setTimeout(() => {
+      req.abort()
+      finish(() => reject(new Error('Zeitüberschreitung bei der Versionsprüfung')))
+    }, 12000)
+
+    req.on('redirect', (_status, _method, redirectUrl) => {
+      req.abort() // Seite selbst wird nicht gebraucht
+      const tag = tagFromReleaseUrl(redirectUrl)
+      finish(() =>
+        tag ? resolve(tag) : reject(new Error(`Unerwartete Release-Adresse: ${redirectUrl}`))
+      )
+    })
+    req.on('response', (res) => {
+      res.on('data', () => {})
+      res.on('end', () =>
+        finish(() => reject(new Error(`Keine Weiterleitung erhalten (HTTP ${res.statusCode})`)))
+      )
+    })
+    req.on('error', (err) => finish(() => reject(err)))
+    req.end()
+  })
+}
+
+/** Laedt das Release-Asset, prueft die Pruefsumme und legt es erst dann ab. */
+async function downloadVerified(tag: string): Promise<void> {
+  const name = assetName()
+  const sumsText = (await fetchBuffer(releaseUrl(tag, 'SHA2-256SUMS'), 20000)).toString('utf-8')
+  const expected = parseChecksums(sumsText).get(name)
+  if (!expected) throw new Error(`Keine Prüfsumme für ${name} im Release ${tag}`)
+
+  const data = await fetchBuffer(releaseUrl(tag, name), 300000)
+  const actual = createHash('sha256').update(data).digest('hex')
+  if (actual !== expected) {
+    throw new Error(`Prüfsumme stimmt nicht — Download verworfen (${actual.slice(0, 12)}…)`)
+  }
+
+  // Erst vollstaendig daneben schreiben, dann umbenennen: ein Abbruch darf nie
+  // eine halbe, ausfuehrbare Datei hinterlassen.
+  const target = managedBinary()
+  const tmp = `${target}.${randomUUID().slice(0, 8)}.part`
+  writeFileSync(tmp, data)
+  if (process.platform !== 'win32') chmodSync(tmp, 0o755)
+  try {
+    renameSync(tmp, target)
+  } catch (err) {
+    rmSync(tmp, { force: true })
+    throw err
+  }
+  logLine('[yt-dlp] aktualisiert auf', tag)
+}
+
+/* -------------------------------- Status -------------------------------- */
+
+const state: {
+  latest: string | null
+  checking: boolean
+  lastCheck: number | null
+  lastError: string | null
+} = { latest: null, checking: false, lastCheck: null, lastError: null }
+
+let statusSink: (status: YtToolStatus) => void = () => {}
+
+export function setStatusSink(sink: (status: YtToolStatus) => void): void {
+  statusSink = sink
+}
+
+export function getStatus(): YtToolStatus {
+  const found = locateBinary()
+  const version = found ? versionOf(found.bin) : null
+  return {
+    available: found != null,
+    version,
+    location: found?.location ?? null,
+    ffmpeg: ffmpegAvailable(),
+    latest: state.latest,
+    upToDate: state.latest == null || version == null ? null : version === state.latest,
+    checking: state.checking,
+    lastCheck: state.lastCheck,
+    lastError: state.lastError
+  }
+}
+
+function publish(): void {
+  statusSink(getStatus())
+}
+
+/**
+ * Prueft die neueste stabile Version und ersetzt die verwaltete Binary bei
+ * Bedarf. Eine per System-PATH installierte Binary wird nur gemeldet, nie
+ * angefasst -- die gehoert der Paketverwaltung.
+ */
+export async function ensureUpToDate(): Promise<YtToolStatus> {
+  if (state.checking) return getStatus()
+  state.checking = true
+  state.lastError = null
+  publish()
+  try {
+    const tag = await fetchLatestTag()
+    state.latest = tag
+    const found = locateBinary()
+    if (found?.location !== 'path' && (!found || versionOf(found.bin) !== tag)) {
+      // Waehrend eines laufenden Downloads laesst sich die Binary unter Windows
+      // nicht ersetzen -- dann beim naechsten Start bzw. per Knopf erneut.
+      if (ytManager.isBusy()) throw new Error('Download läuft — Aktualisierung später möglich')
+      await downloadVerified(tag)
+    }
+  } catch (err) {
+    state.lastError = err instanceof Error ? err.message : String(err)
+    logLine('[yt-dlp] Aktualisierung fehlgeschlagen:', state.lastError)
+  } finally {
+    state.checking = false
+    state.lastCheck = Date.now()
+    publish()
+  }
   return getStatus()
+}
+
+/** Frueher: reiner Download per Knopf. Jetzt derselbe gepruefte Weg. */
+export async function updateTool(): Promise<YtToolStatus> {
+  return ensureUpToDate()
+}
+
+/**
+ * Einmalige Pruefung kurz nach dem App-Start. Bewusst verzoegert und
+ * fehlertolerant: ohne Netz startet die App unveraendert, der Fehler steht nur
+ * im Status des Werkzeugs.
+ */
+export function checkOnStartup(): void {
+  if (!getSettings().ytdlpAutoUpdate) return
+  setTimeout(() => void ensureUpToDate(), 1500)
 }
 
 class YtManager {
@@ -113,6 +320,11 @@ class YtManager {
 
   list(): YtJob[] {
     return [...this.jobs.values()]
+  }
+
+  /** Laeuft gerade ein Job? Dann die Binary nicht ersetzen. */
+  isBusy(): boolean {
+    return this.active > 0
   }
 
   private update(job: YtJob, patch: Partial<YtJob>): void {

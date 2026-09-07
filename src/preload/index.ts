@@ -181,7 +181,8 @@ const api: ToolboxApi = {
     list: () => ipcRenderer.invoke(Channels.ytList),
     cancel: (id) => ipcRenderer.invoke(Channels.ytCancel, id),
     clearFinished: () => ipcRenderer.invoke(Channels.ytClearFinished),
-    onJobUpdate: (cb) => subscribe(Channels.ytJobUpdate, (j) => cb(j as never))
+    onJobUpdate: (cb) => subscribe(Channels.ytJobUpdate, (j) => cb(j as never)),
+    onStatusUpdate: (cb) => subscribe(Channels.ytStatusUpdate, (s) => cb(s as never))
   }
 }
 
