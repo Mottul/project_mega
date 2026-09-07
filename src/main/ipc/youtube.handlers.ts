@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { YtEnqueueRequest } from '@shared/types'
 import { broadcast } from '../services/broadcast'
-import { getStatus, updateTool, ytManager } from '../services/ytdlp/ytDlp'
+import { getStatus, setStatusSink, updateTool, ytManager } from '../services/ytdlp/ytDlp'
 
 let wired = false
 
@@ -10,6 +10,7 @@ export function registerYoutubeHandlers(): void {
   if (!wired) {
     wired = true
     ytManager.setSink((job) => broadcast(Channels.ytJobUpdate, job))
+    setStatusSink((status) => broadcast(Channels.ytStatusUpdate, status))
   }
 
   ipcMain.handle(Channels.ytStatus, () => getStatus())

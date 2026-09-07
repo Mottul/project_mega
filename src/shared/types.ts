@@ -620,6 +620,16 @@ export interface YtToolStatus {
   version: string | null
   location: 'managed' | 'path' | null // userData/bin oder System-PATH
   ffmpeg: boolean
+  /** Neueste stabile Version laut GitHub. null = noch nicht ermittelt. */
+  latest: string | null
+  /** null = unbekannt (offline oder keine Binary), sonst Version === latest. */
+  upToDate: boolean | null
+  /** Prüfung/Aktualisierung läuft gerade. */
+  checking: boolean
+  /** Zeitstempel der letzten Prüfung, null = noch keine. */
+  lastCheck: number | null
+  /** Fehler der letzten Prüfung (z. B. kein Netz), sonst null. */
+  lastError: string | null
 }
 
 export interface YtEnqueueRequest {
@@ -860,6 +870,8 @@ export interface AppSettings {
   favoriteToolIds: string[]
   /** UI-Dichte (Normal/Kompakt) der Bedienoberfläche. */
   uiDensity: UiDensity
+  /** yt-dlp beim Start prüfen und bei Bedarf aktualisieren. */
+  ytdlpAutoUpdate: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -873,5 +885,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   osc: DEFAULT_OSC_SETTINGS,
   kioskToolId: null,
   favoriteToolIds: [],
-  uiDensity: 'normal'
+  uiDensity: 'normal',
+  ytdlpAutoUpdate: true
 }

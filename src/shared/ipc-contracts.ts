@@ -203,7 +203,8 @@ export const Channels = {
   ytList: 'yt:list',
   ytCancel: 'yt:cancel',
   ytClearFinished: 'yt:clearFinished',
-  ytJobUpdate: 'yt:jobUpdate' // Event: YtJob
+  ytJobUpdate: 'yt:jobUpdate', // Event: YtJob
+  ytStatusUpdate: 'yt:statusUpdate' // Event: YtToolStatus (Prüfung/Aktualisierung)
 } as const
 
 export type ChannelName = (typeof Channels)[keyof typeof Channels]
@@ -460,12 +461,14 @@ export interface ToolboxApi {
   youtube: {
     /** yt-dlp-Status (vorhanden? Version? ffmpeg?). */
     status(): Promise<YtToolStatus>
-    /** yt-dlp-Binary herunterladen/aktualisieren. Liefert den neuen Status. */
+    /** Auf die neueste Version prüfen und bei Bedarf laden. Neuer Status. */
     updateTool(): Promise<YtToolStatus>
     enqueue(req: YtEnqueueRequest): Promise<{ jobId: string }>
     list(): Promise<YtJob[]>
     cancel(id: string): Promise<void>
     clearFinished(): Promise<void>
     onJobUpdate(cb: (job: YtJob) => void): () => void
+    /** Statusänderungen (Startprüfung, Aktualisierung) beobachten. */
+    onStatusUpdate(cb: (status: YtToolStatus) => void): () => void
   }
 }
