@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '@renderer/lib/api'
 import { windowTitle } from '@shared/brand'
 import type { PatternConfig } from '@shared/types'
-import { drawPattern, isAnimated } from './patterns'
+import { drawPattern, frameKey, isAnimated } from './patterns'
 
 // Inhalt des rahmenlosen Vollbild-Ausgabefensters (#/output). Rendert das Testbild
 // in der NATIVEN Pixelauflösung des Monitors. Animierte Muster (Farbzyklus etc.)
@@ -37,8 +37,14 @@ export function OutputView(): JSX.Element {
       const ctx = canvas.getContext('2d')
       if (ctx) drawPattern(ctx, { ...config, width: w, height: h }, Date.now())
     }
+    // Nur neu zeichnen, wenn sich das Bild ändert (Mapping-Testbild: sekündlich).
+    let lastKey = NaN
     const loop = (): void => {
-      draw()
+      const key = frameKey(config.pattern, Date.now())
+      if (key !== lastKey) {
+        lastKey = key
+        draw()
+      }
       raf = requestAnimationFrame(loop)
     }
     if (isAnimated(config.pattern)) raf = requestAnimationFrame(loop)

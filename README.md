@@ -294,8 +294,10 @@ src/
   Trefferboxen, **Kategorien** (Filter), In-App-PDF-Viewer (Scroll, Zoom/Pinch, Seiten-Sprung,
   **Suche im PDF**).
 - **Testbildgenerator** – Muster (Gitter/Module, Geometrie, Farbbalken, Graustufen, Siemensstern,
-  Konvergenz), **bewegte** Muster (Pixelcheck-Loop, Scroll, Timecode), **Vollbild-Ausgabe** auf
-  gewähltem Monitor (pixelgenau, live), PNG- + Video-Export, **Presets**.
+  Konvergenz), **Mapping-Testbild** im MadMapper-Stil (Raster, Eckmarken, Farb-/Graufelder,
+  Spektrum, live laufende Uhrzeit, eigene Texte + Farben), **bewegte** Muster (Pixelcheck-Loop,
+  Scroll, Timecode), **Vollbild-Ausgabe** auf gewähltem Monitor (pixelgenau, live), PNG- +
+  Video-Export, **Presets**.
 - **Video-Player / LED-Wall-Player** – Playlist-Player für LED-Wände/Beamer. Medien werden auf die
   **Wand-Auflösung eingebacken** (Fit-Modi **Blur-Fill / Schwarze Ränder / Strecken**) und nach
   **H.264/MP4** konvertiert (Chromium dekodiert das hardwarebeschleunigt; **GPU-Encoder** wie

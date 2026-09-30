@@ -3,10 +3,12 @@
 // Annahme: das Canvas ist bereits auf config.width x config.height gesetzt.
 
 import type { PatternConfig, PatternId, SolidColor } from '@shared/types'
+import { drawMappingCard } from './mappingCard'
 
 type Ctx = CanvasRenderingContext2D
 
 export const PATTERN_OPTIONS: { value: PatternId; label: string }[] = [
+  { value: 'mapping', label: 'Mapping-Testbild (MadMapper-Stil)' },
   { value: 'grid', label: 'Gitter / Kreuzraster' },
   { value: 'checkerboard', label: 'Schachbrett' },
   { value: 'geometry', label: 'Geometrie (Kreise/Diagonalen)' },
@@ -25,10 +27,20 @@ export const PATTERN_OPTIONS: { value: PatternId; label: string }[] = [
 
 // Muster, die ueber die Zeit animiert werden (Output-Fenster + Vorschau laufen dann
 // in einer Animationsschleife).
-const ANIMATED = new Set<PatternId>(['colorcycle', 'scroll', 'timecode'])
+const ANIMATED = new Set<PatternId>(['colorcycle', 'scroll', 'timecode', 'mapping'])
 
 export function isAnimated(pattern: PatternId): boolean {
   return ANIMATED.has(pattern)
+}
+
+/**
+ * Schlüssel, an dem sich ein animiertes Muster sichtbar ändert: gleicher Schlüssel =
+ * gleiches Bild, die Animationsschleife darf das Neuzeichnen dann überspringen. Das
+ * Mapping-Testbild ändert sich nur sekündlich (Uhrzeit) -> kein Vollbild-Neuaufbau
+ * mit 60 fps (spart GPU/CPU bei 4K-Ausgaben).
+ */
+export function frameKey(pattern: PatternId, timeMs: number): number {
+  return pattern === 'mapping' ? Math.floor(timeMs / 1000) : timeMs
 }
 
 export const SOLID_OPTIONS: { value: SolidColor; label: string }[] = [
@@ -275,9 +287,17 @@ function drawFrameInfo(ctx: Ctx, cfg: PatternConfig): void {
   ctx.stroke()
 }
 
-function drawInfoLabel(ctx: Ctx, cfg: PatternConfig): void {
+// Angezeigte Auflösung: die Vorschau zeichnet verkleinert, nennt aber die Zielgröße.
+interface Nominal {
+  width: number
+  height: number
+}
+
+function drawInfoLabel(ctx: Ctx, cfg: PatternConfig, nominal: Nominal): void {
   const { width: w, height: h } = cfg
-  const text = [cfg.label.trim(), `${w} × ${h}`].filter(Boolean).join('   ·   ')
+  const text = [cfg.label.trim(), `${nominal.width} × ${nominal.height}`]
+    .filter(Boolean)
+    .join('   ·   ')
   const fontPx = Math.max(14, Math.round(h * 0.035))
   ctx.font = `600 ${fontPx}px system-ui, sans-serif`
   ctx.textAlign = 'center'
@@ -384,8 +404,14 @@ function cycleColor(cfg: PatternConfig, timeMs: number): string {
 /**
  * Zeichnet das gewaehlte Testbild in den (auf width x height gesetzten) Kontext.
  * timeMs steuert animierte Muster (z.B. Farbzyklus); statische ignorieren es.
+ * `nominal` = angezeigte Auflösung, falls verkleinert gezeichnet wird (Vorschau).
  */
-export function drawPattern(ctx: Ctx, cfg: PatternConfig, timeMs = 0): void {
+export function drawPattern(
+  ctx: Ctx,
+  cfg: PatternConfig,
+  timeMs = 0,
+  nominal: Nominal = { width: cfg.width, height: cfg.height }
+): void {
   const { width: w, height: h, pattern } = cfg
   ctx.clearRect(0, 0, w, h)
   switch (pattern) {
@@ -431,8 +457,11 @@ export function drawPattern(ctx: Ctx, cfg: PatternConfig, timeMs = 0): void {
     case 'timecode':
       drawTimecode(ctx, w, h, timeMs)
       return
+    case 'mapping':
+      drawMappingCard(ctx, cfg, timeMs, nominal)
+      return // Auflösung/Label stehen bereits im Bild
   }
-  if (cfg.showInfo) drawInfoLabel(ctx, cfg)
+  if (cfg.showInfo) drawInfoLabel(ctx, cfg, nominal)
 }
 
 /** Rendert ein Pattern in ein neues Offscreen-Canvas in voller Zielauflösung. */
