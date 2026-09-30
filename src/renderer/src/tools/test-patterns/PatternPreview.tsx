@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { PatternConfig } from '@shared/types'
-import { drawPattern, isAnimated, moduleCells } from './patterns'
+import { drawPattern, frameKey, isAnimated, moduleCells } from './patterns'
 
 const MAX_PREVIEW = 1600 // groesse Kante des Vorschau-Canvas begrenzen
 
@@ -28,16 +28,24 @@ export function PatternPreview({ config }: { config: PatternConfig }): JSX.Eleme
       height: ph,
       gridSpacing: Math.max(2, config.gridSpacing * s)
     }
+    // Verkleinert gezeichnet, Texte nennen aber die Zielauflösung.
+    const nominal = { width: config.width, height: config.height }
     let raf = 0
     if (isAnimated(config.pattern)) {
       // Gemeinsame Wanduhr (Date.now()) -> Vorschau und Vollbild-Ausgabe laufen synchron.
+      let lastKey = NaN
       const loop = (): void => {
-        drawPattern(ctx, previewCfg, Date.now())
+        const now = Date.now()
+        const key = frameKey(config.pattern, now)
+        if (key !== lastKey) {
+          lastKey = key
+          drawPattern(ctx, previewCfg, now, nominal)
+        }
         raf = requestAnimationFrame(loop)
       }
       raf = requestAnimationFrame(loop)
     } else {
-      drawPattern(ctx, previewCfg, 0)
+      drawPattern(ctx, previewCfg, 0, nominal)
     }
     return () => cancelAnimationFrame(raf)
   }, [config])

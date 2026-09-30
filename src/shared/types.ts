@@ -135,6 +135,7 @@ export type PatternId =
   | 'convergence'
   | 'scroll'
   | 'timecode'
+  | 'mapping'
 
 export type SolidColor =
   'white' | 'black' | 'red' | 'green' | 'blue' | 'cyan' | 'magenta' | 'yellow' | 'gray18' | 'gray50'
@@ -149,9 +150,18 @@ export interface PatternConfig {
   cycleColors: string[] // fuer 'colorcycle' (Pixelcheck): Hex-Farben in Reihenfolge
   cycleSeconds: number // fuer 'colorcycle': Dauer je Farbe
   scrollSpeed: number // fuer 'scroll' (Tearing): Geschwindigkeitsfaktor (1 = Standard)
-  label: string // frei waehlbarer Output-Name (frame-info)
+  label: string // frei waehlbarer Output-Name (Info-Label; 'mapping': Text über der Auflösung)
   showInfo: boolean // Auflösung/Label einblenden
+  // 'mapping' (Mapping-Testbild): Text rechts neben dem Logo + einstellbare Farben.
+  // Optional, damit ältere Presets ohne diese Felder gültig bleiben (Fallback: Standard).
+  mappingTitle?: string
+  mappingAccent?: string // Hex: Eckfelder, Hauptraster, Halo
+  mappingBackground?: string // Hex: Grundfläche
 }
+
+/** Standardfarben des Mapping-Testbilds (angelehnt an das MadMapper-Testbild). */
+export const MAPPING_DEFAULT_ACCENT = '#34c7db'
+export const MAPPING_DEFAULT_BACKGROUND = '#545454'
 
 export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   pattern: 'grid',
@@ -164,7 +174,10 @@ export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   cycleSeconds: 2,
   scrollSpeed: 1,
   label: '',
-  showInfo: true
+  showInfo: true,
+  mappingTitle: APP_NAME.toUpperCase(),
+  mappingAccent: MAPPING_DEFAULT_ACCENT,
+  mappingBackground: MAPPING_DEFAULT_BACKGROUND
 }
 
 export interface ColorLoopRequest {
