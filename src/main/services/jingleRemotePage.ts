@@ -1,6 +1,9 @@
 // Mobile Steuerseite des Jingle-Players (eine selbständige HTML-Seite). Zeigt die
 // Pads der aktuellen Bank als Raster; Tippen feuert den Jingle, großer Stopp-
 // Button faded alles aus. Live-Updates per SSE. Bewusst ohne Framework/Build.
+// API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App läuft.
+
+import { PWA_SCRIPT, pwaHead } from './remotePwa'
 
 export const JINGLE_MOBILE_PAGE = `<!DOCTYPE html>
 <html lang="de">
@@ -8,6 +11,7 @@ export const JINGLE_MOBILE_PAGE = `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Jingles</title>
+${pwaHead()}
 <style>
 :root{--bg:#0f0f12;--card:#1b1b20;--border:#2c2c34;--text:#e8e8ec;--dim:#8a8a99;--gold:#eab308}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -28,16 +32,17 @@ footer{position:sticky;bottom:0;padding:12px 14px;background:var(--bg);border-to
 #dot.ok{background:#34d399}
 .hbtn{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;padding:7px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .hbtn:active{filter:brightness(1.3)}
+.hbtn.home{margin-left:0}
 </style>
 </head>
 <body>
-<header><span id="dot"></span><b>Jingles</b><span id="bank"></span><button id="fs" class="hbtn" aria-label="Vollbild"></button></header>
+<header><a href="../" class="hbtn home" data-home aria-label="Alle Fernsteuerungen"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a><span id="dot"></span><b>Jingles</b><span id="bank"></span><button class="hbtn" data-fs="20" aria-label="Vollbild"></button></header>
 <div id="warn">Jingle-Player ist nicht geöffnet. Auf dem Rechner das Werkzeug „Jingle-Player" öffnen.</div>
 <div id="grid"></div>
 <footer><button id="stop">■ Alles stoppen</button></footer>
 <script>
 var state={connected:false,bankName:'',columns:2,pads:[],playing:[]};
-function post(cmd){fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cmd)}).catch(function(){});}
+function post(cmd){fetch('api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cmd)}).catch(function(){});}
 function render(){
   document.getElementById('bank').textContent=state.bankName||'';
   document.getElementById('dot').className=state.connected?'ok':'';
@@ -56,21 +61,13 @@ function render(){
 }
 document.getElementById('stop').onclick=function(){post({type:'stopAll'});};
 function applyState(s){state=s;render();}
-fetch('/api/state').then(function(r){return r.json();}).then(applyState).catch(function(){});
+fetch('api/state').then(function(r){return r.json();}).then(applyState).catch(function(){});
 try{
-  var es=new EventSource('/api/events');
+  var es=new EventSource('api/events');
   es.onmessage=function(e){try{var m=JSON.parse(e.data);if(m.type==='state')applyState(m.payload);}catch(_){}};
 }catch(_){}
 render();
-(function(){var de=document.documentElement,b=document.getElementById('fs');if(!b)return;
-var MAX='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
-var MIN='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
-function fs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
-function u(){b.innerHTML=fs()?MIN:MAX;}
-if(!(de.requestFullscreen||de.webkitRequestFullscreen)){b.style.display='none';return;}
-b.onclick=function(){if(fs()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}else{(de.requestFullscreen||de.webkitRequestFullscreen).call(de);}};
-document.addEventListener('fullscreenchange',u);document.addEventListener('webkitfullscreenchange',u);u();
-})();
 </script>
+${PWA_SCRIPT}
 </body>
 </html>`

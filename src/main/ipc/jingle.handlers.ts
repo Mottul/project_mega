@@ -10,6 +10,7 @@ import {
   startJingleRemote,
   stopJingleRemote
 } from '../services/jingleRemoteServer'
+import { syncedRemoteStatus, withAppLink } from '../services/remoteAppServer'
 
 let wired = false
 
@@ -38,15 +39,16 @@ export function registerJingleHandlers(): void {
 
   // Fernsteuerung
   ipcMain.handle(Channels.jinglePublish, (_e, snap: JingleRemoteSnapshot) => publishSnapshot(snap))
-  ipcMain.handle(Channels.jingleRemoteStatus, () => getJingleRemoteStatus())
+  ipcMain.handle(Channels.jingleRemoteStatus, () => withAppLink('jingle', getJingleRemoteStatus()))
   ipcMain.handle(Channels.jingleRemoteStart, async (_e, port: number) => {
-    const status = await startJingleRemote(port)
+    await startJingleRemote(port)
+    const status = await syncedRemoteStatus('jingle', getJingleRemoteStatus)
     broadcast(Channels.jingleRemoteChanged, status)
     return status
   })
-  ipcMain.handle(Channels.jingleRemoteStop, () => {
+  ipcMain.handle(Channels.jingleRemoteStop, async () => {
     stopJingleRemote()
-    const status = getJingleRemoteStatus()
+    const status = await syncedRemoteStatus('jingle', getJingleRemoteStatus)
     broadcast(Channels.jingleRemoteChanged, status)
     return status
   })

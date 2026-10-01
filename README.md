@@ -217,6 +217,29 @@ Hinweis: NDI ist eine Marke von Vizrt/NewTek; SDK-Lizenzbedingungen beachten.
 
 ---
 
+## Fernsteuer-App (Handy/Tablet)
+
+Video-Player, Jingle-Player und OSC-Steuerung lassen sich per Handy/Tablet im selben WLAN
+fernsteuern (im jeweiligen Werkzeug unter „Fernsteuerung" einschalten; ohne Passwort,
+standardmäßig aus). Sobald mindestens eine Fernsteuerung läuft, bündelt die **Fernsteuer-App**
+alle unter einer festen Adresse:
+
+- **`http://<IP-des-Rechners>:8090`** – Startseite mit großen Kacheln für alle Fernsteuerungen
+  (ausgeschaltete sind ausgegraut, mit Hinweis, wo man sie einschaltet); die Steuerseiten liegen
+  unter `/player/`, `/jingle/` und `/osc/`. Der QR-Code im Werkzeug zeigt direkt dorthin.
+- **Vollbild:** Auf dem iPhone geht das nur als Web-App vom Home-Bildschirm – in Safari _Teilen →
+  „Zum Home-Bildschirm"_. Die App startet dann ohne Browserleiste und wechselt zwischen allen
+  Steuerseiten, ohne sie zu verlassen (deshalb EIN Port für alle). Auf Android/iPad gibt es
+  zusätzlich den Vollbild-Knopf; die Seite merkt sich den Wunsch und holt das Vollbild nach einem
+  App-Wechsel beim nächsten Tippen zurück.
+- **Grenzen von http im LAN:** Echte App-Installation (Android-Vollbild-App) und das Wachhalten
+  des Displays (Wake Lock) erlauben Browser nur über HTTPS – für die Show deshalb am Gerät die
+  automatische Bildschirmsperre abschalten. Die App-Adresse antwortet nur, solange am Rechner eine
+  Fernsteuerung läuft.
+- Die Einzeladressen der Fernsteuerungen (Ports 8088/8089/8091) funktionieren weiter.
+
+---
+
 ## Projektstruktur
 
 ```
@@ -231,6 +254,7 @@ src/
 │       ├── manuals/          # manualsService, pdfText (pdfjs)
 │       ├── player/           # mediaLibrary, encoder (Fit/GPU), convertManager, playerState
 │       ├── osc/ + oscRemoteServer  # OSC-Codec (UDP) + Handy-Fernsteuer-Server
+│       ├── remoteHttp/remoteApp/remotePwa  # Fernsteuer-Server-Basis, Fernsteuer-App (:8090), Web-App-Teile
 │       ├── novastar/         # TCP-Codec (gegen Companion-Modul verifiziert)
 │       └── netscan/          # Subnetz-Scan: TCP-Sweep + ARP/OUI + mDNS + ATEM
 ├── preload/index.ts          # contextBridge -> window.api (typisiert)

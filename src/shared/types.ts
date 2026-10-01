@@ -296,6 +296,17 @@ export interface RemoteStatus {
   running: boolean
   port: number
   urls: string[] // erreichbare http://<lan-ip>:<port>-Adressen
+  /** Dieselbe Steuerseite über die Fernsteuer-App (gemeinsame Startseite aller
+   *  Fernsteuerungen auf festem Port, als Web-App installierbar). Fehlt, solange
+   *  diese Fernsteuerung aus ist. */
+  app?: RemoteAppLink
+}
+
+export interface RemoteAppLink {
+  /** http://<lan-ip>:<app-port>/<id>/ – leer, wenn die App nicht starten konnte. */
+  urls: string[]
+  /** Grund, falls die Fernsteuer-App nicht läuft (z. B. Port belegt). */
+  error?: string
 }
 
 export interface EncoderInfo {

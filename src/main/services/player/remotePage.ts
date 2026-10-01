@@ -1,16 +1,19 @@
 // Eigenständige mobile Steuerseite (vom Fernsteuerungs-Server ausgeliefert).
-// Bewusst Vanilla-HTML/CSS/JS ohne Build-Schritt. Spricht /api/state, /api/library,
-// /api/command (POST), /api/upload und /api/events (SSE für Live-Updates). Kein
+// Bewusst Vanilla-HTML/CSS/JS ohne Build-Schritt. Spricht api/state, api/library,
+// api/command (POST), api/upload und api/events (SSE für Live-Updates) – RELATIV,
+// damit die Seite auch unter der Fernsteuer-App (/player/) läuft. Kein
 // Template-Literal und kein ${} im Client-JS, da diese Datei selbst ein Template-
 // Literal ist (Icons daher als zusammengesetzte SVG-Strings).
+
+import { PWA_SCRIPT, pwaHead } from '../remotePwa'
 
 export const MOBILE_PAGE = `<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<meta name="theme-color" content="#09090b" />
 <title>Player-Fernsteuerung</title>
+${pwaHead('#09090b')}
 <style>
   :root { --bg:#09090b; --card:#18181b; --muted:#27272a; --fg:#fafafa; --sub:#a1a1aa; --gold:#ffce2c; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -97,10 +100,13 @@ export const MOBILE_PAGE = `<!doctype html>
     min-height:0; display:flex; align-items:center; justify-content:center; border-radius:50%;
     background:var(--card); border:1px solid var(--muted); color:var(--sub);
     box-shadow:0 2px 10px rgba(0,0,0,0.45); }
+  .backlink { display:flex; align-items:center; gap:4px; width:max-content; margin:-4px 0 10px -4px;
+    padding:6px 8px 6px 4px; color:var(--sub); font-size:14px; text-decoration:none; }
 </style>
 </head>
 <body>
-  <button id="fs-btn" class="fsbtn" aria-label="Vollbild"></button>
+  <a href="../" class="backlink" data-home><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Alle Fernsteuerungen</a>
+  <button class="fsbtn" data-fs="22" aria-label="Vollbild"></button>
   <details class="setpanel">
     <summary><span class="caret"></span>Einstellungen</summary>
     <div class="card setcard">
@@ -201,7 +207,7 @@ export const MOBILE_PAGE = `<!doctype html>
   try{ var lv=localStorage.getItem('av-libview'); if(lv==='grid'||lv==='list') libView=lv; }catch(_e){}
 
   function el(id){ return document.getElementById(id); }
-  function api(cmd){ fetch('/api/command',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(cmd)}); }
+  function api(cmd){ fetch('api/command',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(cmd)}); }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
   function fmt(t){ t=Math.max(0,t||0); var m=Math.floor(t/60), s=Math.floor(t%60); return m+':'+(s<10?'0':'')+s; }
 
@@ -219,9 +225,7 @@ export const MOBILE_PAGE = `<!doctype html>
     list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3.5" y1="6" x2="3.51" y2="6"/><line x1="3.5" y1="12" x2="3.51" y2="12"/><line x1="3.5" y1="18" x2="3.51" y2="18"/>',
     grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
     cam:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.2"/>',
-    video:'<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
-    maximize:'<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
-    minimize:'<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>'
+    video:'<path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/>'
   };
 
   function curItem(){ return state && state.index>=0 ? state.playlist[state.index] : null; }
@@ -417,7 +421,7 @@ export const MOBILE_PAGE = `<!doctype html>
       var f=files.shift();
       prog.textContent='Lade '+(done+1)+'/'+total+': '+f.name;
       var xhr=new XMLHttpRequest();
-      xhr.open('POST','/api/upload');
+      xhr.open('POST','api/upload');
       xhr.setRequestHeader('x-filename', encodeURIComponent(f.name));
       xhr.setRequestHeader('content-type','application/octet-stream');
       xhr.onload=function(){ done++; next(); };
@@ -427,11 +431,11 @@ export const MOBILE_PAGE = `<!doctype html>
     next();
   }
 
-  function loadState(){ fetch('/api/state').then(function(r){return r.json();}).then(function(s){ state=s; render(); }); }
-  function loadLib(){ fetch('/api/library').then(function(r){return r.json();}).then(function(l){ lib=l; renderLib(); }); }
+  function loadState(){ fetch('api/state').then(function(r){return r.json();}).then(function(s){ state=s; render(); }); }
+  function loadLib(){ fetch('api/library').then(function(r){return r.json();}).then(function(l){ lib=l; renderLib(); }); }
 
   function connect(){
-    var es=new EventSource('/api/events');
+    var es=new EventSource('api/events');
     es.onopen=function(){ el('dot').className='on'; };
     es.onerror=function(){ el('dot').className=''; };
     es.onmessage=function(e){
@@ -450,22 +454,9 @@ export const MOBILE_PAGE = `<!doctype html>
   el('vid-ic').innerHTML = svg(IC.video,20);
   updateViewToggle();
 
-  // Vollbild-Umschalter (Fullscreen-API des Browsers; mehr Platz auf dem Gerät)
-  var fsBtn=el('fs-btn');
-  var docEl=document.documentElement;
-  function isFs(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
-  function updateFs(){ fsBtn.innerHTML=svg(isFs()?IC.minimize:IC.maximize,22); }
-  if(!(docEl.requestFullscreen||docEl.webkitRequestFullscreen)){ fsBtn.style.display='none'; }
-  fsBtn.addEventListener('click',function(){
-    if(isFs()){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
-    else { (docEl.requestFullscreen||docEl.webkitRequestFullscreen).call(docEl); }
-  });
-  document.addEventListener('fullscreenchange',updateFs);
-  document.addEventListener('webkitfullscreenchange',updateFs);
-  updateFs();
-
   loadState(); loadLib(); connect();
 })();
 </script>
+${PWA_SCRIPT}
 </body>
 </html>`

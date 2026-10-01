@@ -2,7 +2,8 @@
 // (nur node:http). Liefert eine mobile Steuerseite, eine kleine JSON-API
 // (Zustand/Bibliothek/Befehle) und einen SSE-Stream für Live-Updates. Medien
 // werden über /media/<datei> ausgeliefert; die media://-URLs im JSON werden
-// dafür auf /media/ umgeschrieben.
+// dafür auf das RELATIVE media/ umgeschrieben (gilt so auch unter der
+// Fernsteuer-App, wo die Seite unter /player/ liegt).
 //
 // Sicherheit: Bindet ans LAN (0.0.0.0) OHNE Authentifizierung – als bewusst
 // einschaltbare Komfortfunktion fürs lokale Netz. Standardmäßig AUS.
@@ -25,9 +26,9 @@ const host = createRemoteHost('remote', 8088)
 
 export const getRemoteStatus = host.status
 
-// media://library/<x> -> /media/<x>, damit das Tablet die Dateien per HTTP lädt.
+// media://library/<x> -> media/<x>, damit das Tablet die Dateien per HTTP lädt.
 function rewriteJson(value: unknown): string {
-  return JSON.stringify(value).split('media://library/').join('/media/')
+  return JSON.stringify(value).split('media://library/').join('media/')
 }
 
 // Zustand fürs Tablet: Player-State + gespeicherte Playlists (zum Umschalten) und
@@ -157,7 +158,8 @@ function serveMedia(req: IncomingMessage, res: ServerResponse, name: string): vo
   createReadStream(abs).pipe(res)
 }
 
-function handle(req: IncomingMessage, res: ServerResponse): void {
+/** Request-Handler (auch von der Fernsteuer-App unter /player/ genutzt). */
+export function handleRemote(req: IncomingMessage, res: ServerResponse): void {
   const url = new URL(req.url ?? '/', 'http://localhost')
   const path = url.pathname
 
@@ -205,7 +207,8 @@ export function pushRemoteLibrary(): void {
 }
 
 export function startRemote(port: number): Promise<RemoteStatus> {
-  return host.start(port, handle)
+  return host.start(port, handleRemote)
 }
 
 export const stopRemote = host.stop
+export const isRemoteRunning = host.isRunning
