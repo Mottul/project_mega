@@ -19,6 +19,7 @@ import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
 import { stopRemote } from './services/player/remoteServer'
 import { stopRemoteApp } from './services/remoteAppServer'
+import { stopTimerRemote } from './services/timerRemoteServer'
 import { disposeTimer } from './services/stageTimer'
 import { closeTimerOutput } from './services/timerWindow'
 import { stopTimerNdi } from './services/timerNdi'
@@ -220,6 +221,7 @@ app.on('will-quit', () => {
   stopRemote()
   stopJingleRemote()
   stopOscRemote()
+  stopTimerRemote()
   stopRemoteApp()
   disposeOsc()
   disposeTimer()

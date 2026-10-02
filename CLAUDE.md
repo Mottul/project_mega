@@ -41,7 +41,7 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   BrowserWindows auf Renderer-Routen (`#/output`, `#/player-output`,
   `#/timer-output`, `#/osc-monitor`); der main-Prozess bleibt autoritativ
   (Player-/Timer-Zustand tickt im main, Renderer spiegeln).
-- **Handy-Fernsteuerungen** (Player/Jingle/OSC): dependency-freie HTTP-Server je Tool
+- **Handy-Fernsteuerungen** (Player/Jingle/OSC/Timer): dependency-freie HTTP-Server je Tool
   (`services/remoteHttp.ts`), Steuerseiten als HTML-Strings. Die Fernsteuer-App
   (`remoteApp*.ts`, fester Port 8090) bindet laufende Fernsteuerungen unter `/<id>/` ein ->
   Steuerseiten sprechen ihre API IMMER relativ an (`api/…`, nie `/api/…`); PWA-Kopf und

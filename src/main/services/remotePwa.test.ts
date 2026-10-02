@@ -4,11 +4,13 @@ import { OSC_MOBILE_PAGE } from './oscRemotePage'
 import { MOBILE_PAGE } from './player/remotePage'
 import { REMOTE_APP_PAGE } from './remoteAppPage'
 import { pwaManifest } from './remotePwa'
+import { TIMER_MOBILE_PAGE } from './timerRemotePage'
 
 const PAGES = {
   jingle: JINGLE_MOBILE_PAGE,
   osc: OSC_MOBILE_PAGE,
   player: MOBILE_PAGE,
+  timer: TIMER_MOBILE_PAGE,
   app: REMOTE_APP_PAGE
 }
 
@@ -41,7 +43,7 @@ describe('Steuerseiten als Web-App', () => {
   }
 
   it('Steuerseiten bieten den Weg zurück zur Startseite', () => {
-    for (const html of [JINGLE_MOBILE_PAGE, OSC_MOBILE_PAGE, MOBILE_PAGE]) {
+    for (const html of [JINGLE_MOBILE_PAGE, OSC_MOBILE_PAGE, MOBILE_PAGE, TIMER_MOBILE_PAGE]) {
       expect(html).toMatch(/<a href="\.\.\/" [^>]*data-home/)
     }
   })

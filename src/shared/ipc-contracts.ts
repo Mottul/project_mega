@@ -139,6 +139,11 @@ export const Channels = {
   timerNdiStop: 'timer:ndiStop',
   timerNdiStatus: 'timer:ndiStatus',
   timerNdiChanged: 'timer:ndiChanged', // Event: TimerNdiStatus
+  // Stage-Timer – Fernsteuerung (eingebetteter Webserver)
+  timerRemoteStatus: 'timer:remoteStatus',
+  timerRemoteStart: 'timer:remoteStart',
+  timerRemoteStop: 'timer:remoteStop',
+  timerRemoteChanged: 'timer:remoteChanged', // Event: RemoteStatus
   playerNdiStart: 'player:ndiStart',
   playerNdiStop: 'player:ndiStop',
   playerNdiStatus: 'player:ndiStatus',
@@ -356,6 +361,11 @@ export interface ToolboxApi {
     ndiStop(): Promise<TimerNdiStatus>
     ndiStatus(): Promise<TimerNdiStatus>
     onNdiChanged(cb: (status: TimerNdiStatus) => void): () => void
+    /** Fernsteuerung per Handy/Tablet (Webserver). */
+    remoteStatus(): Promise<RemoteStatus>
+    remoteStart(port: number): Promise<RemoteStatus>
+    remoteStop(): Promise<RemoteStatus>
+    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
   }
 
   util: {

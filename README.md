@@ -219,14 +219,18 @@ Hinweis: NDI ist eine Marke von Vizrt/NewTek; SDK-Lizenzbedingungen beachten.
 
 ## Fernsteuer-App (Handy/Tablet)
 
-Video-Player, Jingle-Player und OSC-Steuerung lassen sich per Handy/Tablet im selben WLAN
+Video-Player, Jingle-Player, OSC-Steuerung und Stage-Timer lassen sich per Handy/Tablet im selben WLAN
 fernsteuern (im jeweiligen Werkzeug unter „Fernsteuerung" einschalten; ohne Passwort,
 standardmäßig aus). Sobald mindestens eine Fernsteuerung läuft, bündelt die **Fernsteuer-App**
 alle unter einer festen Adresse:
 
 - **`http://<IP-des-Rechners>:8090`** – Startseite mit großen Kacheln für alle Fernsteuerungen
   (ausgeschaltete sind ausgegraut, mit Hinweis, wo man sie einschaltet); die Steuerseiten liegen
-  unter `/player/`, `/jingle/` und `/osc/`. Der QR-Code im Werkzeug zeigt direkt dorthin.
+  unter `/player/`, `/jingle/`, `/osc/` und `/timer/`. Der QR-Code im Werkzeug zeigt direkt dorthin.
+- **Stage-Timer am Handy:** große Restzeit in den Farben der Bühnenanzeige, Start/Pause,
+  Abschnitt vor/zurück/springen, ±1 Minute, Timer/Uhr umschalten und Nachrichten an die Bühne.
+  Abschnitte und Schwellen werden weiter am Rechner bearbeitet. Der Timer läuft im main-Prozess,
+  die Fernsteuerung funktioniert daher auch bei geschlossenem Werkzeug.
 - **Vollbild:** Auf dem iPhone geht das nur als Web-App vom Home-Bildschirm – in Safari _Teilen →
   „Zum Home-Bildschirm"_. Die App startet dann ohne Browserleiste und wechselt zwischen allen
   Steuerseiten, ohne sie zu verlassen (deshalb EIN Port für alle). Auf Android/iPad gibt es
@@ -236,7 +240,7 @@ alle unter einer festen Adresse:
   des Displays (Wake Lock) erlauben Browser nur über HTTPS – für die Show deshalb am Gerät die
   automatische Bildschirmsperre abschalten. Die App-Adresse antwortet nur, solange am Rechner eine
   Fernsteuerung läuft.
-- Die Einzeladressen der Fernsteuerungen (Ports 8088/8089/8091) funktionieren weiter.
+- Die Einzeladressen der Fernsteuerungen (Ports 8088/8089/8091/8092) funktionieren weiter.
 
 ---
 

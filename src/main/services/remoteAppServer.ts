@@ -1,5 +1,5 @@
-// Die Fernsteuer-App dieser Mottulbox: bindet Video-Player-, Jingle- und OSC-
-// Fernsteuerung unter EINER Adresse (http://<ip>:8090) ein. Der Port ist bewusst
+// Die Fernsteuer-App dieser Mottulbox: bindet Video-Player-, Jingle-, OSC- und
+// Timer-Fernsteuerung unter EINER Adresse (http://<ip>:8090) ein. Der Port ist bewusst
 // fest – die als Web-App abgelegte Adresse muss von Show zu Show gleich bleiben.
 // Die IPC-Handler rufen nach jedem Start/Stopp einer Fernsteuerung syncRemoteApp().
 
@@ -10,10 +10,11 @@ import { handleOscRemote, isOscRemoteRunning } from './oscRemoteServer'
 import { handleRemote, isRemoteRunning } from './player/remoteServer'
 import { createRemoteApp } from './remoteApp'
 import { setPwaIconSource } from './remotePwa'
+import { handleTimerRemote, isTimerRemoteRunning } from './timerRemoteServer'
 
 export const REMOTE_APP_PORT = 8090
 
-export type RemoteAppId = 'player' | 'jingle' | 'osc'
+export type RemoteAppId = 'player' | 'jingle' | 'osc' | 'timer'
 
 // Alle Fernsteuer-Server (auch die eigenen Ports) liefern das App-Icon aus.
 setPwaIconSource(appIconPng)
@@ -51,6 +52,17 @@ const remoteApp = createRemoteApp(
         '<line x1="18" x2="22" y1="16" y2="16"/>',
       isRunning: isOscRemoteRunning,
       handle: handleOscRemote
+    },
+    {
+      id: 'timer',
+      name: 'Stage-Timer',
+      tool: 'Stage-Timer & Uhr',
+      description: 'Sprechzeit starten/pausieren, Abschnitte, Nachrichten an die Bühne',
+      icon:
+        '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/>' +
+        '<circle cx="12" cy="14" r="8"/>',
+      isRunning: isTimerRemoteRunning,
+      handle: handleTimerRemote
     }
   ],
   REMOTE_APP_PORT
