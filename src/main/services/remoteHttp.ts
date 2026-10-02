@@ -11,11 +11,16 @@
 //     veröffentlicht einen Zustand (publish), der per SSE an alle Clients gepusht
 //     wird; ein /api/command-Endpunkt nimmt geprüfte Befehle entgegen. Genutzt
 //     von OSC- und Jingle-Fernsteuerung.
+//
+// Jeder Server beantwortet zusätzlich Manifest/Icons (remotePwa). Die Steuerseiten
+// sprechen ihre API RELATIV an (api/…), damit dieselbe Seite auch unter der
+// Fernsteuer-App (/<id>/…, remoteApp) funktioniert.
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { networkInterfaces } from 'node:os'
 import type { RemoteStatus } from '@shared/types'
 import { logLine } from './log'
+import { servePwaAsset } from './remotePwa'
 
 /** 169.254.x.x = automatische Link-Local-Adresse (APIPA): wird vergeben, wenn
  *  eine (oft virtuelle oder getrennte) Schnittstelle keine DHCP-Adresse bekommt.
@@ -67,6 +72,9 @@ export function readBody(req: IncomingMessage, maxBytes = 100_000): Promise<stri
   })
 }
 
+/** Request-Handler eines Fernsteuer-Servers (auch von der Fernsteuer-App genutzt). */
+export type RemoteHandler = (req: IncomingMessage, res: ServerResponse) => void
+
 export interface RemoteHost {
   readonly clients: Set<ServerResponse>
   isRunning(): boolean
@@ -75,10 +83,7 @@ export interface RemoteHost {
   openSse(req: IncomingMessage, res: ServerResponse, initial: () => unknown): void
   /** Event an alle verbundenen Clients pushen (no-op ohne Clients). */
   broadcast(type: string, payload: unknown): void
-  start(
-    port: number,
-    handle: (req: IncomingMessage, res: ServerResponse) => void
-  ): Promise<RemoteStatus>
+  start(port: number, handle: RemoteHandler): Promise<RemoteStatus>
   stop(): void
 }
 
@@ -117,14 +122,13 @@ export function createRemoteHost(logTag: string, defaultPort = 0): RemoteHost {
     req.on('close', () => clients.delete(res))
   }
 
-  function start(
-    port: number,
-    handle: (req: IncomingMessage, res: ServerResponse) => void
-  ): Promise<RemoteStatus> {
+  function start(port: number, handle: RemoteHandler): Promise<RemoteStatus> {
     return new Promise((resolve, reject) => {
       stop()
       currentPort = Math.max(1, Math.min(65535, Math.round(port)))
-      const s = createServer(handle)
+      const s = createServer((req, res) => {
+        if (!servePwaAsset(req, res)) handle(req, res)
+      })
       s.on('error', (err) => {
         server = null
         logLine(`[${logTag}] Serverfehler:`, err.message)
@@ -161,6 +165,9 @@ export function createRemoteHost(logTag: string, defaultPort = 0): RemoteHost {
 
 export interface SnapshotServer<Snap, Cmd> {
   getStatus(): RemoteStatus
+  isRunning(): boolean
+  /** Request-Handler (für die Einbindung in die Fernsteuer-App). */
+  handle: RemoteHandler
   publish(snap: Snap): void
   start(port: number): Promise<RemoteStatus>
   stop(): void
@@ -206,6 +213,8 @@ export function createSnapshotServer<Snap, Cmd>(opts: {
 
   return {
     getStatus: host.status,
+    isRunning: host.isRunning,
+    handle,
     start: (port) => host.start(port, handle),
     stop: host.stop,
     setCommandSink: (sink) => {

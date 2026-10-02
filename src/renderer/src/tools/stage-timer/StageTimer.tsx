@@ -18,18 +18,23 @@ import {
   RotateCcw,
   Square,
   Trash2,
+  Wifi,
   X
 } from 'lucide-react'
+import { RemoteAccess } from '@renderer/components/RemoteAccess'
+import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { toast } from '@renderer/lib/toast'
 import { useDraft } from '@renderer/lib/useDraft'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import {
   DEFAULT_TIMER_NDI,
   type DisplayInfo,
+  type RemoteStatus,
   type StageTimerState,
   type TimerCommand,
   type TimerNdiConfig,
@@ -122,6 +127,74 @@ function SegText({
       }}
     />
   )
+}
+
+/** Fernsteuerung per Handy/Tablet: der Timer läuft im main-Prozess, die Steuerseite
+ *  funktioniert daher auch, wenn dieses Werkzeug danach geschlossen wird. */
+function RemotePanel(): JSX.Element {
+  const [remote, setRemote] = useState<RemoteStatus | null>(null)
+  const [port, setPort] = useState(8092)
+
+  useEffect(() => {
+    void api.timer.remoteStatus().then((s) => {
+      setRemote(s)
+      if (s.running) setPort(s.port)
+    })
+    return api.timer.onRemoteChanged(setRemote)
+  }, [])
+
+  async function toggle(): Promise<void> {
+    if (remote?.running) setRemote(await api.timer.remoteStop())
+    else {
+      try {
+        setRemote(await api.timer.remoteStart(port))
+      } catch (e) {
+        toast.error(
+          `Fernsteuerung konnte nicht starten (Port ${port} belegt?)`,
+          e instanceof Error ? e.message : undefined
+        )
+      }
+    }
+  }
+
+  return (
+    <>
+      <p className="text-xs text-muted-foreground">
+        Handy/Tablet im selben WLAN startet/pausiert den Timer, wechselt Abschnitte und schickt
+        Nachrichten an die Bühne (ohne Passwort).
+      </p>
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          Port
+          <Input
+            className="h-8 w-20"
+            type="number"
+            value={port}
+            onChange={(e) => setPort(Number(e.target.value) || 8092)}
+            disabled={remote?.running}
+          />
+        </label>
+        <Button
+          variant={remote?.running ? 'outline' : 'default'}
+          size="sm"
+          onClick={() => void toggle()}
+        >
+          <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
+        </Button>
+      </div>
+      {remote && <RemoteAccess status={remote} />}
+    </>
+  )
+}
+
+/** Fernsteuer-Status fürs Panel-Badge (eigener kleiner Abo-Hook). */
+function useRemoteRunning(): boolean {
+  const [running, setRunning] = useState(false)
+  useEffect(() => {
+    void api.timer.remoteStatus().then((s) => setRunning(s.running))
+    return api.timer.onRemoteChanged((s) => setRunning(s.running))
+  }, [])
+  return running
 }
 
 const NDI_LS_KEY = 'stage-timer-ndi'
@@ -261,6 +334,7 @@ export function StageTimer(): JSX.Element {
   const [msgText, setMsgText] = useState('')
   const [msgFlash, setMsgFlash] = useState(false)
   const seeded = useRef(false)
+  const remoteRunning = useRemoteRunning()
 
   useEffect(() => {
     void api.timer.getState().then((s) => {
@@ -465,6 +539,15 @@ export function StageTimer(): JSX.Element {
 
           <PanelSection id="ndi" title="NDI-Ausgabe (Netzwerk)" defaultOpen={false}>
             <NdiPanel />
+          </PanelSection>
+
+          <PanelSection
+            id="remote"
+            title="Fernsteuerung"
+            defaultOpen={false}
+            right={remoteRunning ? <Badge tone="success">an</Badge> : undefined}
+          >
+            <RemotePanel />
           </PanelSection>
         </>
       }

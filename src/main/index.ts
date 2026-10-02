@@ -10,6 +10,7 @@ import {
   registerManualProtocol,
   registerMediaProtocol
 } from './ipc/registry'
+import { appIconPath } from './services/appIcon'
 import { logLine } from './services/log'
 import { disposeOsc } from './services/osc/oscService'
 import { stopJingleRemote } from './services/jingleRemoteServer'
@@ -17,6 +18,8 @@ import { stopOscRemote } from './services/oscRemoteServer'
 import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
 import { stopRemote } from './services/player/remoteServer'
+import { stopRemoteApp } from './services/remoteAppServer'
+import { stopTimerRemote } from './services/timerRemoteServer'
 import { disposeTimer } from './services/stageTimer'
 import { closeTimerOutput } from './services/timerWindow'
 import { stopTimerNdi } from './services/timerNdi'
@@ -64,15 +67,6 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
   }
 ])
-
-/** App-Icon für die laufenden Fenster (Taskleiste/Titelleiste). Auf macOS kommt
- *  das Icon aus dem Bundle, daher dort ohne Effekt. */
-function appIconPath(): string | undefined {
-  const candidate = app.isPackaged
-    ? join(process.resourcesPath, 'icon.png')
-    : join(app.getAppPath(), 'build', 'icon.png')
-  return existsSync(candidate) ? candidate : undefined
-}
 
 // Erstellt ein App-Fenster. `hash` = Start-Route (z.B. "/tool/jingle-player");
 // `isMain` = das Hauptfenster, das beim Schließen die Vollbild-Ausgaben mitnimmt.
@@ -227,6 +221,8 @@ app.on('will-quit', () => {
   stopRemote()
   stopJingleRemote()
   stopOscRemote()
+  stopTimerRemote()
+  stopRemoteApp()
   disposeOsc()
   disposeTimer()
 })

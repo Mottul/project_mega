@@ -27,7 +27,7 @@ import { toast } from '@renderer/lib/toast'
 import { useDraft } from '@renderer/lib/useDraft'
 import type { JingleRemoteSnapshot, RemoteStatus } from '@shared/types'
 import { selectClass } from '../_calc/ui'
-import { QrCode } from '@renderer/components/QrCode'
+import { RemoteAccess } from '@renderer/components/RemoteAccess'
 import { useJingleEngine } from './engine'
 import { Waveform } from './Waveform'
 import { HOTKEYS, PAD_COLORS, useJingles, type Pad } from './store'
@@ -393,18 +393,7 @@ export function JinglePlayer(): JSX.Element {
             <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
           </Button>
         </div>
-        {remote?.running && remote.urls[0] && (
-          <div className="flex items-center gap-3 rounded-md border border-border bg-muted/30 p-2">
-            <QrCode text={remote.urls[0]} size={96} />
-            <div className="min-w-0">
-              {remote.urls.map((u) => (
-                <p key={u} className="truncate font-mono text-[11px] text-foreground">
-                  {u}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
+        {remote && <RemoteAccess status={remote} />}
       </PanelSection>
 
       <PanelSection id="set" title="Set" icon={Music} defaultOpen={false}>

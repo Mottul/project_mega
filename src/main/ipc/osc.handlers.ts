@@ -17,6 +17,7 @@ import {
   startOscRemote,
   stopOscRemote
 } from '../services/oscRemoteServer'
+import { syncedRemoteStatus, withAppLink } from '../services/remoteAppServer'
 
 let wired = false
 
@@ -37,15 +38,16 @@ export function registerOscHandlers(): void {
 
   // Fernsteuerung (eingebetteter Webserver)
   ipcMain.handle(Channels.oscPublish, (_e, snap: OscRemoteSnapshot) => publishOscSnapshot(snap))
-  ipcMain.handle(Channels.oscRemoteStatus, () => getOscRemoteStatus())
+  ipcMain.handle(Channels.oscRemoteStatus, () => withAppLink('osc', getOscRemoteStatus()))
   ipcMain.handle(Channels.oscRemoteStart, async (_e, port: number) => {
-    const status = await startOscRemote(port)
+    await startOscRemote(port)
+    const status = await syncedRemoteStatus('osc', getOscRemoteStatus)
     broadcast(Channels.oscRemoteChanged, status)
     return status
   })
-  ipcMain.handle(Channels.oscRemoteStop, () => {
+  ipcMain.handle(Channels.oscRemoteStop, async () => {
     stopOscRemote()
-    const status = getOscRemoteStatus()
+    const status = await syncedRemoteStatus('osc', getOscRemoteStatus)
     broadcast(Channels.oscRemoteChanged, status)
     return status
   })
