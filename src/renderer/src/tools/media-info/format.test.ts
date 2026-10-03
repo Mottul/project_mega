@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   aspectLabel,
   codecLine,
+  errorText,
   fmtBitrate,
   fmtBytes,
   fmtDuration,
@@ -9,6 +10,7 @@ import {
   fmtFps,
   fmtMBps,
   hapRateEstimate,
+  plural,
   resolutionClass,
   sampleRateLabel,
   shortFormat,
@@ -102,5 +104,32 @@ describe('Formatierung (de-DE)', () => {
     // 1080p25 HAP Q: 1920 × 1080 × 1 Byte × 25 fps × 8 ≈ 415 Mbit/s (Obergrenze vor Snappy)
     expect(hapRateEstimate(1920, 1080, 25, 'hap_q')).toBe(414_720_000)
     expect(hapRateEstimate(1920, 1080, 25, 'hap')).toBe(207_360_000)
+  })
+
+  it('Einheiten-Grenzen: erst runden, dann die Einheit wählen', () => {
+    expect(fmtBytes(999)).toBe('999 B')
+    expect(fmtBytes(999_600)).toBe('1,0 MB')
+    expect(fmtBytes(99_960_000)).toBe('100 MB')
+    expect(fmtBytes(999_600_000)).toBe('1,00 GB')
+    expect(fmtBitrate(999_700)).toBe('1,0 Mbit/s')
+    expect(fmtBitrate(99_960_000)).toBe('100 Mbit/s')
+    expect(fmtBitrate(999_600_000)).toBe('1,00 Gbit/s')
+  })
+
+  it('Seitenverhältnis: das nächstgelegene bekannte Verhältnis gewinnt', () => {
+    // 2,387:1 liegt auch innerhalb 1 % von 21:9 (2,370), ist aber DCI-Scope
+    expect(aspectLabel(2048, 858)).toBe('≈ 2,39:1')
+  })
+
+  it('Einzahl/Mehrzahl und Fehlertexte ohne Electron-Präfix', () => {
+    expect(plural(1, 'Datei', 'Dateien')).toBe('1 Datei')
+    expect(plural(1200, 'Datei', 'Dateien')).toBe('1.200 Dateien')
+    expect(
+      errorText(
+        new Error(
+          "Error invoking remote method 'util:saveText': Error: EBUSY: resource busy or locked"
+        )
+      )
+    ).toBe('EBUSY: resource busy or locked')
   })
 })

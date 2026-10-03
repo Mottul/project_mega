@@ -42,12 +42,15 @@ import { PROBE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type { MediaInfo as MediaInfoData } from '@shared/types'
 import {
   channelLabel,
+  errorText,
   fmtBitrate,
   fmtBytes,
   fmtDuration,
   fmtDurationShort,
   fmtFps,
+  fpsLabel,
   nf,
+  plural,
   sampleRateLabel,
   splitPath
 } from './format'
@@ -189,12 +192,14 @@ export function MediaInfo(): JSX.Element {
     return { duration, size, ...levels }
   }, [entries, hintsByPath])
 
-  const rows: ReportRow[] = entries
-    .filter((e) => e.info)
-    .map((e) => ({
-      info: e.info as NonNullable<MediaEntry['info']>,
-      hints: hintsByPath.get(e.path) ?? []
-    }))
+  // Export: analysierte UND nicht lesbare Dateien (sonst fehlen kaputte Clips still)
+  const rows: ReportRow[] = entries.flatMap((e): ReportRow[] =>
+    e.info
+      ? [{ info: e.info, hints: hintsByPath.get(e.path) ?? [] }]
+      : e.status === 'error'
+        ? [{ info: null, path: e.path, error: e.error ?? 'Fehler', detail: e.detail }]
+        : []
+  )
 
   async function addFiles(): Promise<void> {
     const paths = await api.selectPaths({
@@ -253,18 +258,30 @@ export function MediaInfo(): JSX.Element {
     )
   }
 
-  async function saveCsv(): Promise<void> {
-    if (!rows.length) return
-    const path = await api.util.saveText(toCsv(rows, true), `medien-info_${dateStamp()}.csv`, [
-      { name: 'CSV (Excel)', extensions: ['csv'] }
-    ])
-    if (path) toast.success('CSV gespeichert', path)
+  // Laufende Analysen fehlen im Export -> sagen statt still weglassen
+  function warnPending(): void {
+    if (!pending) return
+    toast.warning(
+      `${plural(pending, 'Datei wird', 'Dateien werden')} noch analysiert`,
+      'Sie fehlen im Export – nach Abschluss erneut exportieren.'
+    )
   }
 
-  async function saveJson(): Promise<void> {
+  async function saveExport(
+    kind: 'CSV' | 'JSON',
+    text: string,
+    filters?: { name: string; extensions: string[] }[]
+  ): Promise<void> {
     if (!rows.length) return
-    const path = await api.util.saveText(toJson(rows, profile), `medien-info_${dateStamp()}.json`)
-    if (path) toast.success('JSON gespeichert', path)
+    warnPending()
+    try {
+      const name = `medien-info_${dateStamp()}.${kind.toLowerCase()}`
+      const path = await api.util.saveText(text, name, filters)
+      if (path) toast.success(`${kind} gespeichert`, path)
+    } catch (e) {
+      // z.B. Datei in Excel geöffnet (Windows sperrt sie) oder Stick schreibgeschützt
+      toast.error(`${kind} konnte nicht gespeichert werden`, errorText(e))
+    }
   }
 
   const currentHints = current ? (hintsByPath.get(current.path) ?? []) : []
@@ -375,7 +392,10 @@ export function MediaInfo(): JSX.Element {
                 size="sm"
                 className="justify-start"
                 disabled={!rows.length}
-                onClick={() => void copyText(toTsv(rows), 'Tabelle')}
+                onClick={() => {
+                  warnPending()
+                  void copyText(toTsv(rows), 'Tabelle')
+                }}
               >
                 <ListChecks className="size-4" /> Tabelle kopieren (für Excel)
               </Button>
@@ -384,7 +404,11 @@ export function MediaInfo(): JSX.Element {
                 size="sm"
                 className="justify-start"
                 disabled={!rows.length}
-                onClick={() => void saveCsv()}
+                onClick={() =>
+                  void saveExport('CSV', toCsv(rows, true), [
+                    { name: 'CSV (Excel)', extensions: ['csv'] }
+                  ])
+                }
               >
                 <FileDown className="size-4" /> CSV speichern …
               </Button>
@@ -393,7 +417,7 @@ export function MediaInfo(): JSX.Element {
                 size="sm"
                 className="justify-start"
                 disabled={!rows.length}
-                onClick={() => void saveJson()}
+                onClick={() => void saveExport('JSON', toJson(rows, profile))}
               >
                 <FileDown className="size-4" /> JSON speichern …
               </Button>
@@ -570,13 +594,15 @@ function SummaryBar(props: {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        <span className="font-medium">
-          {nf(props.count)} {props.count === 1 ? 'Datei' : 'Dateien'}
-        </span>
+        <span className="font-medium">{plural(props.count, 'Datei', 'Dateien')}</span>
         <span className="text-muted-foreground">Gesamt {fmtDuration(props.duration)}</span>
         <span className="text-muted-foreground">{fmtBytes(props.size)}</span>
-        {props.problems > 0 && <Badge tone="danger">{nf(props.problems)} Probleme</Badge>}
-        {props.warnings > 0 && <Badge tone="warning">{nf(props.warnings)} Warnungen</Badge>}
+        {props.problems > 0 && (
+          <Badge tone="danger">{plural(props.problems, 'Problem', 'Probleme')}</Badge>
+        )}
+        {props.warnings > 0 && (
+          <Badge tone="warning">{plural(props.warnings, 'Warnung', 'Warnungen')}</Badge>
+        )}
         {props.errors > 0 && <Badge tone="danger">{nf(props.errors)} nicht lesbar</Badge>}
       </div>
       {props.pending > 0 && (
@@ -632,6 +658,34 @@ const ROW_H = 34
 const VIRTUAL_FROM = 150
 const OVERSCAN = 12
 
+// Spaltenbreiten in rem. Feste Spalten: Status, Auflösung, fps, Codec, Dauer. Die
+// optionalen weichen bei schmalem Fenster in dieser Reihenfolge (zuletzt genannte
+// zuerst) – sonst fiele der Dateiname bei 1240 px mit offener Seitenleiste auf 0 px.
+type OptCol = 'depth' | 'bitrate' | 'audio' | 'size'
+const OPTIONAL_COLS: [OptCol, number][] = [
+  ['depth', 7.75],
+  ['bitrate', 5.5],
+  ['audio', 7.5],
+  ['size', 5]
+]
+const BASE_REM = 24.5
+// Platz, der dem Namen bleiben soll, bevor eine optionale Spalte eingeblendet wird …
+const NAME_WANT_REM = 11
+// … und darunter lieber waagerecht scrollen als den Namen weiter zu stauchen.
+const NAME_MIN_REM = 8
+
+function fitColumns(widthPx: number): string {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  let free = widthPx / rem - BASE_REM - NAME_WANT_REM
+  const out: OptCol[] = []
+  for (const [k, w] of OPTIONAL_COLS) {
+    if (w > free) continue
+    out.push(k)
+    free -= w
+  }
+  return out.join(',')
+}
+
 function MediaTable({
   rows,
   hintsByPath,
@@ -650,8 +704,18 @@ function MediaTable({
   const scrollRef = useRef<HTMLDivElement>(null)
   const headRef = useRef<HTMLTableSectionElement>(null)
   const [view, setView] = useState({ top: 0, height: 400 })
+  // sichtbare optionale Spalten als String („depth,bitrate") -> stabil für React.memo
+  const [cols, setCols] = useState('depth,bitrate,audio,size')
   const frame = useRef(0)
   const virtual = rows.length > VIRTUAL_FROM
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setCols(fitColumns(el.clientWidth)))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   function onScroll(): void {
     if (frame.current) return
@@ -692,29 +756,32 @@ function MediaTable({
     ? Math.min(rows.length, Math.ceil((view.top + view.height) / ROW_H) + OVERSCAN)
     : rows.length
   const select = useMediaInfo.getState().select
+  const shown = OPTIONAL_COLS.filter(([k]) => cols.split(',').includes(k))
+  const has = (k: OptCol): boolean => shown.some(([x]) => x === k)
+  const minRem = BASE_REM + NAME_MIN_REM + shown.reduce((sum, [, w]) => sum + w, 0)
 
   return (
     <Card className="overflow-hidden p-0">
       <div
         ref={scrollRef}
-        className="max-h-[45vh] overflow-auto focus:outline-none"
+        className="max-h-[45vh] overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70"
         tabIndex={0}
         onKeyDown={onKey}
         onScroll={virtual ? onScroll : undefined}
         aria-label="Dateiliste (Pfeiltasten wechseln die Auswahl)"
       >
-        <table className="w-full table-fixed text-[13px]">
+        <table className="w-full table-fixed text-[13px]" style={{ minWidth: `${minRem}rem` }}>
           <colgroup>
             <col className="w-8" />
             <col />
-            <col className="w-[6.5rem]" />
-            <col className="w-[6.5rem]" />
-            <col className="w-[8.5rem]" />
+            <col className="w-[6rem]" />
+            <col className="w-[5.25rem]" />
             <col className="w-[7rem]" />
-            <col className="w-[4rem]" />
-            <col className="w-[6.5rem]" />
-            <col className="w-[5rem]" />
-            <col className="w-[8rem]" />
+            {has('depth') && <col className="w-[7.75rem]" />}
+            <col className="w-[4.25rem]" />
+            {has('bitrate') && <col className="w-[5.5rem]" />}
+            {has('size') && <col className="w-[5rem]" />}
+            {has('audio') && <col className="w-[7.5rem]" />}
           </colgroup>
           <thead ref={headRef} className="sticky top-0 z-[1] bg-card">
             <tr className="text-left text-[10px] uppercase tracking-wider text-primary">
@@ -723,11 +790,15 @@ function MediaTable({
               <Th label={COMPARE_LABELS.resolution} k="resolution" sort={sort} onSort={onSort} />
               <Th label="fps" k="fps" sort={sort} onSort={onSort} />
               <Th label="Codec" k="codec" sort={sort} onSort={onSort} />
-              <th className="px-1.5 py-2 font-medium">Bit/Chroma</th>
+              {has('depth') && <th className="px-1.5 py-2 font-medium">Bit/Chroma</th>}
               <Th label="Dauer" k="duration" sort={sort} onSort={onSort} align="right" />
-              <Th label="Bitrate" k="bitrate" sort={sort} onSort={onSort} align="right" />
-              <Th label="Größe" k="size" sort={sort} onSort={onSort} align="right" />
-              <th className="px-1.5 py-2 font-medium">Ton</th>
+              {has('bitrate') && (
+                <Th label="Bitrate" k="bitrate" sort={sort} onSort={onSort} align="right" />
+              )}
+              {has('size') && (
+                <Th label="Größe" k="size" sort={sort} onSort={onSort} align="right" />
+              )}
+              {has('audio') && <th className="px-1.5 py-2 font-medium">Ton</th>}
             </tr>
           </thead>
           <tbody>
@@ -738,6 +809,7 @@ function MediaTable({
                 entry={e}
                 hints={hintsByPath.get(e.path) ?? NO_HINTS}
                 devInfo={devInfoFor(deviations, e.path)}
+                cols={cols}
                 active={e.path === currentPath}
                 onSelect={select}
               />
@@ -754,40 +826,42 @@ function MediaTable({
 
 const NO_HINTS: MediaHint[] = []
 
-// Abweichungen einer Zeile als stabiler String („fps=25|resolution=1920x1080") ->
-// React.memo erkennt unveränderte Zeilen, obwohl die Gesamtauswertung neu läuft.
+// Abweichungen einer Zeile als stabiler String (JSON der Paare Spalte -> Mehrheitswert
+// in Anzeigeform) -> React.memo erkennt unveränderte Zeilen, obwohl die
+// Gesamtauswertung neu läuft.
 function devInfoFor(d: ReturnType<typeof findDeviations>, path: string): string {
   const keys = d.byPath.get(path)
   if (!keys) return ''
-  return [...keys]
-    .sort()
-    .map((k) => `${k}=${d.majority[k] ?? '?'}`)
-    .join('|')
+  return JSON.stringify([...keys].sort().map((k) => [k, d.majorityLabel[k] ?? '?']))
 }
 
 const Row = memo(function Row({
   entry,
   hints,
   devInfo,
+  cols,
   active,
   onSelect
 }: {
   entry: MediaEntry
   hints: MediaHint[]
   devInfo: string
+  cols: string
   active: boolean
   onSelect: (path: string) => void
 }): JSX.Element {
   const info = entry.info
   const v = info ? mainVideo(info) : null
   const a = info?.audio[0]
-  const devMap = new Map(
-    devInfo ? devInfo.split('|').map((x) => x.split('=') as [CompareKey, string]) : []
+  const devMap = new Map<CompareKey, string>(
+    devInfo ? (JSON.parse(devInfo) as [CompareKey, string][]) : []
   )
   const dev = (k: CompareKey): string | undefined =>
     devMap.has(k) ? 'bg-amber-500/10 text-amber-400 light:text-amber-700' : undefined
   const devTitle = (k: CompareKey): string | undefined =>
     devMap.has(k) ? `Weicht ab – Mehrheit: ${devMap.get(k)}` : undefined
+  const show = cols.split(',')
+  const has = (k: OptCol): boolean => show.includes(k)
 
   let status: JSX.Element
   if (entry.status === 'pending' || entry.status === 'loading') {
@@ -801,19 +875,35 @@ const Row = memo(function Row({
     const Icon = meta.icon
     const c = countLevels(hints)
     status = (
-      <span title={`${c.problem} Problem(e), ${c.warning} Warnung(en), ${c.info} Hinweis(e)`}>
+      <span
+        title={[
+          plural(c.problem, 'Problem', 'Probleme'),
+          plural(c.warning, 'Warnung', 'Warnungen'),
+          plural(c.info, 'Hinweis', 'Hinweise')
+        ].join(', ')}
+      >
         <Icon className={cn('size-4', meta.className)} aria-label={meta.label} />
       </span>
     )
   }
 
+  const variable = v?.fpsMode === 'vfr' || v?.fpsMode === 'vfr-suspect'
   const fps =
     v && v.fpsMode !== 'still' && v.fps
-      ? `${fmtFps(v.fps)}${v.scan === 'tff' || v.scan === 'bff' ? 'i' : v.scan === 'progressive' ? 'p' : ''}${v.fpsMode === 'vfr' || v.fpsMode === 'vfr-suspect' ? ' VFR' : ''}`
+      ? variable
+        ? // Durchschnitt: drei Nachkommastellen täuschten Präzision vor (und „VFR" fiele weg)
+          `${nf(v.fps, 1)} VFR`
+        : `${fmtFps(v.fps)}${v.scan === 'tff' || v.scan === 'bff' ? 'i' : v.scan === 'progressive' ? 'p' : ''}`
       : v?.fpsMode === 'still'
         ? 'Bild'
         : '–'
+  const depth = v
+    ? `${v.bitDepth ?? '?'} · ${v.chroma ?? '?'}${v.alpha ? ' · α' : ''}${v.hdr ? ' · HDR' : ''}`
+    : '–'
+  const audio = a ? `${sampleRateLabel(a.sampleRate)} · ${channelLabel(a)}` : '–'
   const cell = 'truncate whitespace-nowrap px-1.5'
+  // Datenspalten: Auflösung, fps, Codec, Dauer + eingeblendete optionale
+  const dataCols = 4 + show.filter(Boolean).length
 
   return (
     <tr
@@ -831,7 +921,7 @@ const Row = memo(function Row({
       </td>
       {entry.status === 'error' ? (
         // Fehlertext einzeilig über die Datenspalten (feste Zeilenhöhe)
-        <td colSpan={8} className={cn(cell, 'text-red-400 light:text-red-600')}>
+        <td colSpan={dataCols} className={cn(cell, 'text-red-400 light:text-red-600')}>
           {entry.error}
         </td>
       ) : (
@@ -844,28 +934,37 @@ const Row = memo(function Row({
           </td>
           <td
             className={cn(cell, 'tabular-nums', dev('fps') ?? dev('scan'))}
-            title={devTitle('fps') ?? devTitle('scan')}
+            title={devTitle('fps') ?? devTitle('scan') ?? (v ? fpsLabel(v) : undefined)}
           >
             {fps}
           </td>
           <td className={cn(cell, dev('codec'))} title={devTitle('codec') ?? v?.codec}>
             {v?.codec ?? a?.codec ?? '–'}
           </td>
-          <td className={cn(cell, 'tabular-nums', dev('depth'))} title={devTitle('depth')}>
-            {v
-              ? `${v.bitDepth ?? '?'} · ${v.chroma ?? '?'}${v.alpha ? ' · α' : ''}${v.hdr ? ' · HDR' : ''}`
-              : '–'}
-          </td>
+          {has('depth') && (
+            <td
+              className={cn(cell, 'tabular-nums', dev('depth'))}
+              title={devTitle('depth') ?? depth}
+            >
+              {depth}
+            </td>
+          )}
           <td className={cn(cell, 'text-right tabular-nums')}>
             {info?.isStill ? '–' : fmtDurationShort(info?.durationSec)}
           </td>
-          <td className={cn(cell, 'text-right tabular-nums')}>
-            {info?.bitRate ? fmtBitrate(info.bitRate) : '–'}
-          </td>
-          <td className={cn(cell, 'text-right tabular-nums')}>{fmtBytes(info?.sizeBytes)}</td>
-          <td className={cn(cell, dev('audio'))} title={devTitle('audio')}>
-            {a ? `${sampleRateLabel(a.sampleRate)} · ${channelLabel(a)}` : '–'}
-          </td>
+          {has('bitrate') && (
+            <td className={cn(cell, 'text-right tabular-nums')}>
+              {info?.bitRate ? fmtBitrate(info.bitRate) : '–'}
+            </td>
+          )}
+          {has('size') && (
+            <td className={cn(cell, 'text-right tabular-nums')}>{fmtBytes(info?.sizeBytes)}</td>
+          )}
+          {has('audio') && (
+            <td className={cn(cell, dev('audio'))} title={devTitle('audio') ?? audio}>
+              {audio}
+            </td>
+          )}
         </>
       )}
     </tr>

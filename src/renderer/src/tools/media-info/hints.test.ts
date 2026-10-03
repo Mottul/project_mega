@@ -61,10 +61,29 @@ describe('analyzeMedia – Profilabhängigkeit', () => {
     expect(ids(analyzeMedia(mediaInfo(), profile({ target: 'laptop' })))).not.toContain('longgop')
   })
 
-  it('FAT32-Grenze: USB = Problem, sonst Warnung', () => {
+  it('FAT32-Grenze: USB = Problem, Medienserver/schnelle Datenträger = Info, sonst Warnung', () => {
     const big = mediaInfo({ sizeBytes: 5_000_000_000 })
-    expect(level(analyzeMedia(big, DEFAULT_PROFILE), 'fat32')).toBe('warning')
-    expect(level(analyzeMedia(big, profile({ target: 'usb' })), 'fat32')).toBe('problem')
+    const fat = (p: Partial<CheckProfile>): string | undefined =>
+      level(analyzeMedia(big, profile(p)), 'fat32')
+    expect(fat({})).toBe('warning')
+    expect(fat({ target: 'usb' })).toBe('problem')
+    expect(fat({ medium: 'usb-stick' })).toBe('problem')
+    expect(fat({ target: 'mediaserver' })).toBe('info')
+    expect(fat({ medium: 'nvme' })).toBe('info')
+    // Stick schlägt Medienserver: auf FAT32 passt die Datei schlicht nicht drauf
+    expect(fat({ target: 'mediaserver', medium: 'usb-stick' })).toBe('problem')
+  })
+
+  it('USB-Player: Pixelrate über 1080p60 bzw. unnötig hohes H.264-Level', () => {
+    const usb = profile({ target: 'usb' })
+    const title = (info: ReturnType<typeof mediaInfo>): string | undefined =>
+      analyzeMedia(info, usb).find((h) => h.id === 'usb-level')?.title
+    const uhd = videoTrack({ width: 3840, height: 2160, displayWidth: 3840, displayHeight: 2160 })
+    expect(title(mediaInfo({ video: [uhd] }))).toBe('Über 1080p60 für USB-Player')
+    expect(title(mediaInfo({ video: [videoTrack({ level: '5.1' })] }))).toBe(
+      'H.264 Level 5.1 – viele USB-Player können höchstens 4.2'
+    )
+    expect(title(mediaInfo())).toBeUndefined()
   })
 
   it('MKV: macOS = Problem, Medienserver = Warnung', () => {
@@ -104,6 +123,25 @@ describe('analyzeMedia – Show-Raster', () => {
     expect(h?.text).toMatch(/16,7 s/)
   })
 
+  it('29,97 bei 30/60 Hz und 23,976 bei 24/48: minimaler Versatz statt „passt nicht"', () => {
+    const ntsc = at(30000 / 1001, '30').find((h) => h.id === 'fps-raster')
+    expect(ntsc?.title).toMatch(/minimal/)
+    expect(ntsc?.text).toMatch(/16,7 s/)
+    expect(at(24000 / 1001, 'film').find((h) => h.id === 'fps-raster')?.text).toMatch(/20,9 s/)
+  })
+
+  it('15 fps auf 30/60 Hz ist ein sauberer Teiler (nur Info: niedrige Bildrate)', () => {
+    const got = at(15, '30')
+    expect(ids(got)).not.toContain('fps-raster')
+    expect(ids(got)).not.toContain('fps-unusual')
+    expect(level(got, 'fps-low')).toBe('info')
+  })
+
+  it('ungewöhnliche Bildrate nur, wenn sie zu keinem Ausgang passt', () => {
+    expect(level(at(20.463, 'none'), 'fps-unusual')).toBe('warning')
+    expect(ids(at(12.5, 'none'))).not.toContain('fps-unusual')
+  })
+
   it('ohne Raster: NTSC-Rate als Info', () => {
     expect(level(at(30000 / 1001, 'none'), 'fps-ntsc')).toBe('info')
   })
@@ -137,6 +175,40 @@ describe('analyzeMedia – Bild, Ton, Metadaten', () => {
     const got = ids(analyzeMedia(info, DEFAULT_PROFILE))
     for (const id of ['interlaced', 'vfr', 'rotation', 'sar', 'hdr', 'alpha-expected', 'portrait'])
       expect(got).toContain(id)
+  })
+
+  it('Rec.-601-Matrix bei HD: Hinweis, außer bei Motion-JPEG (dort Norm)', () => {
+    const v601 = { colorSpace: 'smpte170m' }
+    const hd = mediaInfo({ video: [videoTrack(v601)] })
+    expect(level(analyzeMedia(hd, DEFAULT_PROFILE), 'color-601')).toBe('info')
+    const mjpeg = mediaInfo({
+      video: [
+        videoTrack({ ...v601, codecName: 'mjpeg', codec: 'Motion JPEG', codecClass: 'intra' })
+      ]
+    })
+    expect(ids(analyzeMedia(mjpeg, DEFAULT_PROFILE))).not.toContain('color-601')
+  })
+
+  it('Standbild: keine HAP-Teilbarkeit (wird nicht als Video konvertiert)', () => {
+    const still = mediaInfo({
+      isStill: true,
+      durationSec: null,
+      audio: [],
+      video: [
+        videoTrack({
+          codecName: 'png',
+          codec: 'PNG',
+          codecClass: 'image',
+          fpsMode: 'still',
+          fps: null,
+          width: 1918,
+          height: 1078,
+          displayWidth: 1918,
+          displayHeight: 1078
+        })
+      ]
+    })
+    expect(ids(analyzeMedia(still, DEFAULT_PROFILE))).not.toContain('hap-mod4')
   })
 
   it('HAP-Teilbarkeit und ungerade Maße', () => {
@@ -274,8 +346,11 @@ describe('mehrere Dateien', () => {
   })
 
   it('Abweichungen gegen den Mehrheitswert', () => {
-    const { byPath, majority } = findDeviations([a, b, c])
+    const { byPath, majority, majorityLabel } = findDeviations([a, b, c])
     expect(majority.resolution).toBe('1920x1080')
+    // Tooltip-Text in Anzeigeform statt interner Schlüssel („8-4:2:0")
+    expect(majorityLabel.resolution).toBe('1920×1080')
+    expect(majorityLabel.fps).toBe('25 fps')
     expect([...(byPath.get('/c.mp4') ?? [])].sort()).toEqual(['fps', 'resolution'])
     expect(byPath.has('/a.mp4')).toBe(false)
   })

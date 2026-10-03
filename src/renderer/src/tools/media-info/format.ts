@@ -31,24 +31,46 @@ export function fmtDurationShort(sec: number | null | undefined): string {
   return h > 0 ? `${h}:${p(m)}:${p(s % 60)}` : `${m}:${p(s % 60)}`
 }
 
+// Stufen (Grenze, Teiler, Nachkommastellen, Einheit). Die Stufe wird nach dem RUNDEN
+// gewählt: 999.600 B sind „1,0 MB" und nicht „1.000 KB".
+type Step = [limit: number, div: number, digits: number, unit: string]
+
+function scaled(value: number, steps: Step[]): string {
+  for (const [limit, div, digits, unit] of steps) {
+    const f = 10 ** digits
+    const rounded = Math.round((value / div) * f) / f
+    if (rounded * div < limit) return `${de(digits).format(rounded)} ${unit}`
+  }
+  const [, div, digits, unit] = steps[steps.length - 1]
+  return `${de(digits).format(value / div)} ${unit}`
+}
+
+const BYTE_STEPS: Step[] = [
+  [1e3, 1, 0, 'B'],
+  [1e6, 1e3, 0, 'KB'],
+  [1e8, 1e6, 1, 'MB'],
+  [1e9, 1e6, 0, 'MB'],
+  [1e12, 1e9, 2, 'GB'],
+  [Infinity, 1e12, 2, 'TB']
+]
+
+const BITRATE_STEPS: Step[] = [
+  [1e6, 1e3, 0, 'kbit/s'],
+  [1e8, 1e6, 1, 'Mbit/s'],
+  [1e9, 1e6, 0, 'Mbit/s'],
+  [Infinity, 1e9, 2, 'Gbit/s']
+]
+
 /** Dateigröße dezimal (1 GB = 10⁹ Byte) wie Finder/Hersteller-Angaben. */
 export function fmtBytes(bytes: number | null | undefined): string {
   if (bytes === null || bytes === undefined || !Number.isFinite(bytes)) return '–'
-  if (bytes < 1000) return `${nf(bytes)} B`
-  if (bytes < 1e6) return `${nf(bytes / 1e3)} KB`
-  if (bytes < 1e8) return `${de(1).format(bytes / 1e6)} MB`
-  if (bytes < 1e9) return `${nf(bytes / 1e6)} MB`
-  if (bytes < 1e12) return `${de(2).format(bytes / 1e9)} GB`
-  return `${de(2).format(bytes / 1e12)} TB`
+  return scaled(bytes, BYTE_STEPS)
 }
 
 /** Bitrate: kbit/s · Mbit/s · Gbit/s. */
 export function fmtBitrate(bps: number | null | undefined): string {
   if (bps === null || bps === undefined || !Number.isFinite(bps) || bps <= 0) return '–'
-  if (bps < 1e6) return `${nf(bps / 1e3)} kbit/s`
-  if (bps < 1e8) return `${de(1).format(bps / 1e6)} Mbit/s`
-  if (bps < 1e9) return `${nf(bps / 1e6)} Mbit/s`
-  return `${de(2).format(bps / 1e9)} Gbit/s`
+  return scaled(bps, BITRATE_STEPS)
 }
 
 /** Datenrate in MB/s (Bitrate / 8) – so stehen Lesewerte auf Datenträgern. */
@@ -132,7 +154,13 @@ export function aspectLabel(w: number, h: number): string {
   if (!w || !h) return '–'
   const r = w / h
   for (const [a, b, label] of RATIOS) if (w * b === h * a) return label
-  for (const [a, b, label] of RATIOS) if (Math.abs(r - a / b) / (a / b) <= 0.01) return `≈ ${label}`
+  // nächstgelegenes bekanntes Verhältnis (DCI-Scope 2,387 ist 2,39:1, nicht 21:9)
+  let best: { label: string; dev: number } | null = null
+  for (const [a, b, label] of RATIOS) {
+    const dev = Math.abs(r - a / b) / (a / b)
+    if (dev <= 0.01 && (!best || dev < best.dev)) best = { label, dev }
+  }
+  if (best) return `≈ ${best.label}`
   return r >= 1 ? `${de(2).format(r)}:1` : `1:${de(2).format(1 / r)}`
 }
 
@@ -331,6 +359,17 @@ export function fmtDate(v: number | string | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+/** „1 Datei" / „3 Dateien" (mit Tausenderpunkt). */
+export function plural(n: number, one: string, many: string): string {
+  return `${nf(n)} ${n === 1 ? one : many}`
+}
+
+/** Fehlertext für Nutzer: Electron-Präfix „Error invoking remote method …" ist nur Rauschen. */
+export function errorText(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  return msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 }
 
 /** Ordner + Dateiname aus einem Pfad (Windows/macOS/Linux). */

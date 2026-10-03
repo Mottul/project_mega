@@ -1,7 +1,7 @@
 // Text-/Export-Formate der Medien-Info: Kurzzeile (Chat), Steckbrief (E-Mail/Doku),
 // TSV (Einfügen in Excel), CSV (Excel-Deutsch mit BOM) und JSON. Rein -> testbar.
 
-import type { MediaInfo } from '@shared/types'
+import type { MediaAudioTrack, MediaInfo, MediaScanType, MediaVideoTrack } from '@shared/types'
 import {
   audioLine,
   channelLabel,
@@ -15,7 +15,8 @@ import {
   fmtResolution,
   aspectLabel,
   fpsLabel,
-  scanLabel,
+  hdrLabel,
+  languageLabel,
   splitPath
 } from './format'
 import {
@@ -34,14 +35,25 @@ const LEVEL_TEXT: Record<MediaHint['level'], string> = {
   ok: 'OK'
 }
 
-/** Eine Zeile für Chat/Messenger: „clip.mov — HAP Q · 1920 × 1080 · 25p · …". */
+// Kurzform für Fließtext („25 fps · progressiv"); „unbekannt" allein wäre mehrdeutig.
+const SCAN_SHORT: Record<MediaScanType, string> = {
+  progressive: 'progressiv',
+  tff: 'interlaced (TFF)',
+  bff: 'interlaced (BFF)',
+  unknown: 'Scan unbekannt'
+}
+
+const isInterlaced = (v: MediaVideoTrack): boolean => v.scan === 'tff' || v.scan === 'bff'
+
+/** Eine Zeile für Chat/Messenger: „clip.mov — HAP Q · 1.920 × 1.080 · 25 fps · …". */
 export function shortLine(info: MediaInfo): string {
   const v = mainVideo(info)
   const parts: string[] = []
   if (v) {
     parts.push(v.codec)
     parts.push(fmtResolution(v.displayWidth, v.displayHeight))
-    if (v.fpsMode !== 'still') parts.push(fpsLabel(v))
+    // Interlaced gehört in die Kurzzeile – „25 fps" allein klingt nach fertigem Show-Material
+    if (v.fpsMode !== 'still') parts.push(`${fpsLabel(v)}${isInterlaced(v) ? ' interlaced' : ''}`)
   }
   if (info.durationSec) parts.push(fmtDuration(info.durationSec))
   if (info.sizeBytes) parts.push(fmtBytes(info.sizeBytes))
@@ -73,15 +85,17 @@ export function factSheet(info: MediaInfo, hints: MediaHint[], profile: CheckPro
     const label = i === 0 ? L('Video') : pad
     lines.push(`${label}${codecLine(v)}`)
     const geo = `${fmtResolution(v.displayWidth, v.displayHeight)} (${aspectLabel(v.displayWidth, v.displayHeight)})`
-    const fps =
-      v.fpsMode === 'still' ? 'Standbild' : `${fpsLabel(v)} ${scanLabel(v.scan).toLowerCase()}`
+    const fps = v.fpsMode === 'still' ? 'Standbild' : `${fpsLabel(v)} · ${SCAN_SHORT[v.scan]}`
     lines.push(`${pad}${geo} · ${fps}`)
     lines.push(`${pad}Farbe: ${colorLabel(v)}${v.bitRate ? ` · ${fmtBitrate(v.bitRate)}` : ''}`)
   })
   if (!info.audio.length) lines.push(`${L('Audio')}keine Tonspur`)
   info.audio.forEach((a, i) => {
-    const extra = [a.bitDepth ? `${a.bitDepth} bit` : null, a.language].filter(Boolean).join(' · ')
-    lines.push(`${i === 0 ? L('Audio') : pad}${audioLine(a)}${extra ? ` · ${extra}` : ''}`)
+    const line = audioLine(a)
+    // PCM trägt die Bittiefe schon im Codec-Namen („PCM 24 bit") -> nicht doppelt
+    const depth = a.bitDepth && !line.includes(`${a.bitDepth} bit`) ? `${a.bitDepth} bit` : null
+    const extra = [depth, languageLabel(a.language)].filter(Boolean).join(' · ')
+    lines.push(`${i === 0 ? L('Audio') : pad}${line}${extra ? ` · ${extra}` : ''}`)
   })
   if (info.timecode) lines.push(`${L('Timecode')}${info.timecode}`)
   const relevant = hints.filter((h) => h.level !== 'ok')
@@ -93,14 +107,67 @@ export function factSheet(info: MediaInfo, hints: MediaHint[], profile: CheckPro
   return lines.join('\n')
 }
 
-export interface ReportRow {
+/** Analysierte Datei … */
+export interface ReportOk {
   info: MediaInfo
   hints: MediaHint[]
 }
 
-const COLUMNS: { head: string; value: (r: ReportRow) => string | number | null }[] = [
-  { head: 'Datei', value: (r) => r.info.name },
-  { head: 'Ordner', value: (r) => splitPath(r.info.path).dir },
+/** … oder nicht lesbare Datei: gehört trotzdem in die Liste (sonst fehlt sie stillschweigend). */
+export interface ReportFailed {
+  info: null
+  path: string
+  error: string
+  detail?: string | null
+}
+
+export type ReportRow = ReportOk | ReportFailed
+
+type Cell = string | number | null
+
+// Excel deutet „4:2:0" als Uhrzeit (04:02:00) und „5.1" als Datum (5. Januar) – solche
+// Werte eindeutig als Text formulieren, statt sie beim Öffnen still umdeuten zu lassen.
+const TIME_LIKE = /^\d+:\d+(:\d+)?$/
+
+function chromaText(v: MediaVideoTrack): string | null {
+  if (!v.chroma) return null
+  return TIME_LIKE.test(v.chroma) ? `YUV ${v.chroma}` : v.chroma
+}
+
+function videoProfileText(v: MediaVideoTrack): string | null {
+  if (!v.profile) return null
+  return TIME_LIKE.test(v.profile) ? `${v.profile} Profile` : v.profile
+}
+
+function channelsText(a: MediaAudioTrack): string {
+  const label = channelLabel(a)
+  return /^\d+\.\d+$/.test(label) ? `${a.channels ?? '?'} Kanäle (${label})` : label
+}
+
+const FPS_MODE_TEXT: Record<MediaVideoTrack['fpsMode'], string> = {
+  cfr: 'konstant',
+  vfr: 'variabel',
+  'vfr-suspect': 'variabel?',
+  still: 'Standbild',
+  unknown: 'unbekannt'
+}
+
+const COLUMNS: {
+  head: string
+  value: (r: ReportOk) => Cell
+  failed?: (r: ReportFailed) => Cell
+}[] = [
+  {
+    head: 'Datei',
+    value: (r) => r.info.name,
+    failed: (r) => splitPath(r.path).name
+  },
+  {
+    head: 'Ordner',
+    value: (r) => splitPath(r.info.path).dir,
+    failed: (r) => splitPath(r.path).dir
+  },
+  { head: 'Status', value: () => 'analysiert', failed: () => 'Fehler' },
   { head: 'Probleme', value: (r) => r.hints.filter((h) => h.level === 'problem').length },
   { head: 'Warnungen', value: (r) => r.hints.filter((h) => h.level === 'warning').length },
   { head: 'Container', value: (r) => r.info.container },
@@ -112,19 +179,19 @@ const COLUMNS: { head: string; value: (r: ReportRow) => string | number | null }
     value: (r) => (r.info.bitRate ? Math.round(r.info.bitRate / 1000) : null)
   },
   { head: 'Video_Codec', value: (r) => mainVideo(r.info)?.codec ?? null },
-  { head: 'Profil', value: (r) => mainVideo(r.info)?.profile ?? null },
+  { head: 'Profil', value: (r) => vid(r, videoProfileText) },
   { head: 'Breite', value: (r) => mainVideo(r.info)?.displayWidth ?? null },
   { head: 'Hoehe', value: (r) => mainVideo(r.info)?.displayHeight ?? null },
   { head: 'fps', value: (r) => mainVideo(r.info)?.fps ?? null },
-  { head: 'fps_Modus', value: (r) => mainVideo(r.info)?.fpsMode ?? null },
-  { head: 'Scan', value: (r) => mainVideo(r.info)?.scan ?? null },
-  { head: 'Bittiefe', value: (r) => mainVideo(r.info)?.bitDepth ?? null },
-  { head: 'Chroma', value: (r) => mainVideo(r.info)?.chroma ?? null },
+  { head: 'fps_Modus', value: (r) => vid(r, (v) => FPS_MODE_TEXT[v.fpsMode]) },
   {
-    head: 'Alpha',
-    value: (r) => (mainVideo(r.info) ? (mainVideo(r.info)?.alpha ? 'ja' : 'nein') : null)
+    head: 'Scan',
+    value: (r) => vid(r, (v) => (v.fpsMode === 'still' ? null : SCAN_SHORT[v.scan]))
   },
-  { head: 'HDR', value: (r) => mainVideo(r.info)?.hdr ?? null },
+  { head: 'Bittiefe', value: (r) => mainVideo(r.info)?.bitDepth ?? null },
+  { head: 'Chroma', value: (r) => vid(r, chromaText) },
+  { head: 'Alpha', value: (r) => vid(r, (v) => (v.alpha ? 'ja' : 'nein')) },
+  { head: 'HDR', value: (r) => vid(r, (v) => hdrLabel(v) ?? 'SDR') },
   {
     head: 'Video_kbps',
     value: (r) => {
@@ -136,16 +203,26 @@ const COLUMNS: { head: string; value: (r: ReportRow) => string | number | null }
   { head: 'Audio_Spuren', value: (r) => r.info.audio.length },
   { head: 'Audio_Codec', value: (r) => r.info.audio[0]?.codec ?? null },
   { head: 'Samplerate_Hz', value: (r) => r.info.audio[0]?.sampleRate ?? null },
-  { head: 'Kanaele', value: (r) => (r.info.audio[0] ? channelLabel(r.info.audio[0]) : null) },
+  { head: 'Kanaele', value: (r) => (r.info.audio[0] ? channelsText(r.info.audio[0]) : null) },
   {
     head: 'Hinweise',
     value: (r) =>
       r.hints
         .filter((h) => h.level !== 'ok')
         .map((h) => h.title)
-        .join(' | ')
+        .join(' | '),
+    failed: (r) => (r.detail ? `${r.error} (${r.detail})` : r.error)
   }
 ]
+
+function vid(r: ReportOk, f: (v: MediaVideoTrack) => Cell): Cell {
+  const v = mainVideo(r.info)
+  return v ? f(v) : null
+}
+
+function cells(r: ReportRow): Cell[] {
+  return COLUMNS.map((c) => (r.info ? c.value(r) : (c.failed?.(r) ?? null)))
+}
 
 /**
  * Formel-Injektion verhindern: Excel/Numbers werten Zellen, die mit = + - @ (oder Tab/CR)
@@ -158,7 +235,7 @@ export function safeCell(s: string): string {
 
 /** Tabulator-getrennt mit Kopfzeile – direkt in Excel/Sheets einfügbar. */
 export function toTsv(rows: ReportRow[]): string {
-  const clean = (v: string | number | null): string =>
+  const clean = (v: Cell): string =>
     v === null
       ? ''
       : typeof v === 'number'
@@ -166,7 +243,7 @@ export function toTsv(rows: ReportRow[]): string {
         : safeCell(v.replace(/[\t\r\n]+/g, ' '))
   return [
     COLUMNS.map((c) => c.head).join('\t'),
-    ...rows.map((r) => COLUMNS.map((c) => clean(c.value(r))).join('\t'))
+    ...rows.map((r) => cells(r).map(clean).join('\t'))
   ].join('\n')
 }
 
@@ -181,7 +258,7 @@ function fmtNumber(n: number, german: boolean): string {
  */
 export function toCsv(rows: ReportRow[], german = true): string {
   const sep = german ? ';' : ','
-  const cell = (v: string | number | null): string => {
+  const cell = (v: Cell): string => {
     if (v === null) return ''
     const s = typeof v === 'number' ? fmtNumber(v, german) : safeCell(v)
     // Nur quoten, was das Trennzeichen/Anführungszeichen/Umbrüche enthält – „192,4"
@@ -191,7 +268,7 @@ export function toCsv(rows: ReportRow[], german = true): string {
   }
   const lines = [
     COLUMNS.map((c) => c.head).join(sep),
-    ...rows.map((r) => COLUMNS.map((c) => cell(c.value(r))).join(sep))
+    ...rows.map((r) => cells(r).map(cell).join(sep))
   ]
   return (german ? '\uFEFF' : '') + lines.join('\r\n') + '\r\n'
 }
@@ -204,7 +281,11 @@ export function toJson(rows: ReportRow[], profile: CheckProfile): string {
       version: 1,
       createdAt: new Date().toISOString(),
       profile,
-      files: rows.map((r) => ({ info: r.info, hints: r.hints }))
+      files: rows.map((r) =>
+        r.info
+          ? { info: r.info, hints: r.hints }
+          : { path: r.path, error: r.error, detail: r.detail ?? null }
+      )
     },
     null,
     2

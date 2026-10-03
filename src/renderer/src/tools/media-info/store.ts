@@ -10,6 +10,7 @@ import { persist } from 'zustand/middleware'
 import type { MediaInfo } from '@shared/types'
 import { api } from '@renderer/lib/api'
 import { debouncedStorage } from '@renderer/lib/persistStorage'
+import { errorText } from './format'
 import { DEFAULT_PROFILE, type CheckProfile } from './hints'
 
 export type EntryStatus = 'pending' | 'loading' | 'done' | 'error'
@@ -131,14 +132,11 @@ function pump(): void {
       })
       .catch((err: unknown) => {
         if (gen !== generation) return
-        const msg = err instanceof Error ? err.message : String(err)
-        // Electron-Präfix „Error invoking remote method …" ist für Nutzer nur Rauschen
-        const clean = msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
         patchEntry(next.path, {
           status: 'error',
           info: null,
           error: 'Analyse fehlgeschlagen',
-          detail: clean,
+          detail: errorText(err),
           force: false
         })
       })
@@ -200,9 +198,7 @@ export const useMediaInfo = create<MediaInfoState>((set, get) => ({
         notice: notes.length ? notes.join(' ') : null
       }))
     } catch (err) {
-      set({
-        notice: `Einlesen fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`
-      })
+      set({ notice: `Einlesen fehlgeschlagen: ${errorText(err)}` })
     } finally {
       set({ collecting: false })
     }

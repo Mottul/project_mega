@@ -44,7 +44,8 @@ import {
   sampleRateLabel,
   scanLabel,
   shortFormat,
-  splitPath
+  splitPath,
+  errorText
 } from './format'
 import { countLevels, mainVideo, worstLevel, type HintLevel, type MediaHint } from './hints'
 import { LEVEL_META } from './levels'
@@ -94,7 +95,16 @@ const TILE_HINTS: Record<string, string[]> = {
     'h264-4096',
     'hevc-size'
   ],
-  fps: ['vfr', 'fps-unusual', 'fps-high', 'fps-raster', 'fps-ntsc', 'interlaced', 'scan-unknown'],
+  fps: [
+    'vfr',
+    'fps-unusual',
+    'fps-low',
+    'fps-high',
+    'fps-raster',
+    'fps-ntsc',
+    'interlaced',
+    'scan-unknown'
+  ],
   codec: [
     'codec-unknown',
     'codec-legacy',
@@ -768,33 +778,44 @@ function HintList({ hints }: { hints: MediaHint[] }): JSX.Element {
 }
 
 function RawSection({ path, name }: { path: string; name: string }): JSX.Element {
-  const [raw, setRaw] = useState<string | null>(null)
+  // undefined = noch nicht geladen, null = ffprobe lieferte nichts
+  const [raw, setRaw] = useState<string | null | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   async function load(): Promise<void> {
     setLoading(true)
     try {
-      setRaw((await api.mediaInfo.raw(path)) ?? 'Keine Rohdaten verfügbar.')
+      setRaw(await api.mediaInfo.raw(path))
+    } catch (e) {
+      toast.error('Rohdaten konnten nicht geladen werden', errorText(e))
     } finally {
       setLoading(false)
     }
   }
+  async function save(text: string): Promise<void> {
+    try {
+      const saved = await api.util.saveText(text, `${name}.ffprobe.json`)
+      if (saved) toast.success('Rohdaten gespeichert', saved)
+    } catch (e) {
+      toast.error('Speichern fehlgeschlagen', errorText(e))
+    }
+  }
   return (
     <Section title="Rohdaten (ffprobe JSON)" defaultOpen={false}>
-      {raw === null ? (
+      {raw === undefined ? (
         <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
           {loading ? 'Lade …' : 'Rohdaten laden'}
         </Button>
+      ) : raw === null ? (
+        <p className="text-sm text-muted-foreground">
+          Keine Rohdaten verfügbar – Datei inzwischen verschoben oder nicht mehr lesbar.
+        </p>
       ) : (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={() => void copyText(raw, 'JSON')}>
               <Copy className="size-4" /> JSON kopieren
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void api.util.saveText(raw, `${name}.ffprobe.json`)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => void save(raw)}>
               Als .json speichern
             </Button>
           </div>

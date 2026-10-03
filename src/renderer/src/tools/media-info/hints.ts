@@ -105,6 +105,17 @@ const STANDARD_FPS = [
   120
 ]
 const isStandardFps = (f: number): boolean => STANDARD_FPS.some((s) => Math.abs(f - s) / s < 0.0005)
+
+// Ausgabe-Bildwiederholraten von Wänden/Beamern/Prozessoren
+const OUTPUT_HZ = [24, 25, 30, 48, 50, 60, 24000 / 1001, 30000 / 1001, 60000 / 1001]
+
+/** Ganzzahliger Teiler oder Vielfaches einer üblichen Ausgaberate (15 fps auf 60 Hz). */
+function fitsSomeOutput(f: number): boolean {
+  return OUTPUT_HZ.some((hz) => {
+    const r = f <= hz ? hz / f : f / hz
+    return Math.abs(r - Math.round(r)) < 1e-4
+  })
+}
 const NTSC_FPS = [24000 / 1001, 30000 / 1001, 60000 / 1001]
 const RASTER_BASE: Record<Exclude<ShowRaster, 'none'>, { base: number; label: string }> = {
   '25': { base: 25, label: '25/50 Hz' },
@@ -160,9 +171,17 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
     )
   }
   if (info.sizeBytes && info.sizeBytes > 4294967295) {
+    // Auf NVMe/SSD/Netz und für Medienserver sind große Dateien normal (HAP Q ab ~3 min)
+    const m = profile.medium
+    const fatLevel: HintLevel =
+      t === 'usb' || m === 'usb-stick'
+        ? 'problem'
+        : t === 'mediaserver' || m === 'ssd' || m === 'nvme' || m === 'net-1g'
+          ? 'info'
+          : 'warning'
     add(
       'fat32',
-      t === 'usb' ? 'problem' : 'warning',
+      fatLevel,
       'Größer als 4 GB – nicht FAT32-tauglich',
       'USB-Sticks, SD-Karten und viele LED-, Beamer- und TV-Player nutzen FAT32; Dateien ab 4 GiB lassen sich dort nicht speichern. Stick mit exFAT/NTFS formatieren (Player-Kompatibilität prüfen) oder kleiner kodieren.'
     )
@@ -348,12 +367,20 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
     }
     if (t === 'usb' && c === 'h264' && moving.fps) {
       const rate = moving.width * moving.height * moving.fps
-      if (rate > 1920 * 1080 * 60 * 1.01 || Number(moving.level ?? 0) > 4.2) {
+      if (rate > 1920 * 1080 * 60 * 1.01) {
         add(
           'usb-level',
           'warning',
           'Über 1080p60 für USB-Player',
           'Viele Player-Boxen schaffen höchstens 1080p60 (H.264 Level 4.2). Datenblatt prüfen.'
+        )
+      } else if (Number(moving.level ?? 0) > 4.2) {
+        // x264 „slower/veryslow" hebt das Level wegen vieler Referenzbilder an
+        add(
+          'usb-level',
+          'warning',
+          `H.264 Level ${moving.level} – viele USB-Player können höchstens 4.2`,
+          'Das Level ist höher als für die Auflösung nötig (viele Referenzbilder). Mit „-level 4.2" neu kodieren, falls der Player die Datei ablehnt.'
         )
       }
     }
@@ -401,7 +428,7 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
   if (v) {
     const w = v.width
     const h = v.height
-    if (w && h && (w % 4 || h % 4)) {
+    if (moving && w && h && (w % 4 || h % 4)) {
       const pw = Math.ceil(w / 4) * 4
       const ph = Math.ceil(h / 4) * 4
       add(
@@ -445,9 +472,9 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
     if (v.sar) {
       add(
         'sar',
-        t === 'laptop' ? 'info' : 'warning',
+        'warning',
         `Anamorphe Pixel (SAR ${v.sar})`,
-        `Gespeichert ${fmtResolution(w, h)}, Anzeige ${fmtResolution(v.displayWidth, v.displayHeight)}. Viele Medienserver und der HAP-Pfad ignorieren das Pixel-Seitenverhältnis – das Bild erscheint gestaucht. Vor der Show auf quadratische Pixel skalieren.`
+        `Gespeichert ${fmtResolution(w, h)}, Anzeige ${fmtResolution(v.displayWidth, v.displayHeight)}. Viele Medienserver, der HAP-Pfad und der Mottulbox-Player ignorieren das Pixel-Seitenverhältnis – das Bild erscheint verzerrt (gestaucht bzw. gedehnt). Vor der Show auf quadratische Pixel skalieren.`
       )
     }
     if (v.rotation || v.mirrored) {
@@ -481,21 +508,29 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
   /* ---------------------------- Bildrate & Scan ---------------------------- */
   if (moving) {
     const f = moving.fps
-    if (moving.fpsMode === 'vfr' || moving.fpsMode === 'vfr-suspect') {
+    // Bei (vermuteter) VFR ist die Durchschnittsrate kein Bildtakt -> kein Raster-Vergleich
+    const variable = moving.fpsMode === 'vfr' || moving.fpsMode === 'vfr-suspect'
+    if (variable) {
       add(
         'vfr',
         'warning',
         moving.fpsMode === 'vfr' ? 'Variable Bildrate (VFR)' : 'Variable Bildrate vermutet',
         'Typisch für Handy- und Bildschirmaufnahmen. Medienserver und Timecode-Shows erwarten konstante Bildraten – Folgen: Ruckler, Ton-Versatz, falsche Clip-Länge. Beim Konvertieren auf eine feste Bildrate bringen.'
       )
-    } else if (f && !isStandardFps(f)) {
+    } else if (f && !isStandardFps(f) && !fitsSomeOutput(f)) {
       add(
         'fps-unusual',
         'warning',
         `Ungewöhnliche Bildrate (${fmtFps(f)} fps)`,
-        f < 20
-          ? 'Sehr niedrige Bildrate (Screen-Recording/Animation?) – Bewegung wirkt ruckelig und passt zu keinem Ausgaberaster.'
-          : 'Passt zu keinem Ausgaberaster, Bewegungen werden ungleichmäßig. Auf 25/50 bzw. 30/60 fps konvertieren.'
+        'Passt zu keinem Ausgaberaster, Bewegungen werden ungleichmäßig. Auf 25/50 bzw. 30/60 fps konvertieren.'
+      )
+    }
+    if (f && f < 20 && !variable) {
+      add(
+        'fps-low',
+        'info',
+        `Niedrige Bildrate (${fmtFps(f)} fps)`,
+        'Bewegung wirkt ruckelig (Screen-Recording/Animation?).'
       )
     }
     if (f && f > 60.5) {
@@ -506,22 +541,23 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
         'Ausgänge und LED-Prozessoren laufen meist mit 50/60 Hz – überzählige Bilder werden verworfen, die Datenrate ist unnötig hoch.'
       )
     }
-    // Bei (vermuteter) VFR ist die Durchschnittsrate kein Bildtakt -> kein Raster-Vergleich
-    const variable = moving.fpsMode === 'vfr' || moving.fpsMode === 'vfr-suspect'
     if (f && profile.raster !== 'none' && !variable) {
       const { base, label } = RASTER_BASE[profile.raster]
-      const k = Math.round(f / base)
-      const exact = k >= 1 && Math.abs(f / base - k) < 0.001
-      // Raster-Vielfache und Teiler (z.B. 25 fps auf 50 Hz) sind sauber
-      const divisor = base / f >= 1 && Math.abs(base / f - Math.round(base / f)) < 0.001
-      if (!exact && !divisor) {
-        const drift = k >= 1 ? Math.abs(f - k * base) : Infinity
-        if (drift / f < 0.002) {
+      // Gegen die tatsächliche Ausgaberate rechnen (25/50-Raster = 50 Hz usw.).
+      // Toleranz nur für Rundungsrauschen: 29,97 gegen 30 (1/1001) ist KEIN Treffer.
+      const hz = 2 * base
+      const ratio = f <= hz ? hz / f : f / hz
+      const n = Math.round(ratio)
+      const clean = n >= 1 && Math.abs(ratio - n) < 1e-5
+      if (!clean) {
+        // Bild-Verdopplung/-Auslassung pro Sekunde -> Abstand der Sprünge
+        const slipPerSec = f <= hz ? Math.abs(hz - n * f) : Math.abs(f - n * hz) / n
+        if (n >= 1 && slipPerSec / hz < 0.002) {
           add(
             'fps-raster',
             'warning',
             `Bildrate weicht minimal vom Raster ab (${fmtFps(f)} fps bei ${label})`,
-            `Etwa alle ${nf(1 / drift, 1)} s wird ein Bild doppelt gezeigt oder ausgelassen – bei Schwenks sichtbar. Clip auf das Show-Raster konvertieren.`
+            `Etwa alle ${nf(1 / slipPerSec, 1)} s wird ein Bild doppelt gezeigt oder ausgelassen – bei Schwenks sichtbar. Clip auf das Show-Raster konvertieren.`
           )
         } else {
           add(
@@ -622,7 +658,13 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
         'Auf Rec.-709-Ausspielung entsättigt oder farblich verfälscht.'
       )
     }
-    if ((v.colorSpace === 'smpte170m' || v.colorSpace === 'bt470bg') && v.height >= 720) {
+    // JPEG/MJPEG nutzen per Norm BT.601 – dort ist das kein Kennzeichnungsfehler
+    const jpegLike = v.codecName === 'mjpeg' || info.isStill
+    if (
+      !jpegLike &&
+      (v.colorSpace === 'smpte170m' || v.colorSpace === 'bt470bg') &&
+      v.height >= 720
+    ) {
       add(
         'color-601',
         'info',
@@ -651,7 +693,9 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
           'alpha',
           'info',
           `Alpha-Kanal vorhanden (${v.codec})`,
-          'Transparenz bleibt nur in Alpha-fähigen Codecs erhalten (HAP Alpha, ProRes 4444, PNG, QuickTime Animation) – im HAP-Konverter „HAP Alpha" wählen.'
+          info.isStill
+            ? 'Transparenz bleibt nur in Alpha-fähigen Formaten erhalten (PNG, TIFF, WebP) – nicht als JPEG speichern.'
+            : 'Transparenz bleibt nur in Alpha-fähigen Codecs erhalten (HAP Alpha, ProRes 4444, PNG, QuickTime Animation) – im HAP-Konverter „HAP Alpha" wählen.'
         )
       }
     } else if (/alpha|transparent|rgba|keyed|overlay/i.test(name) && !info.isStill) {
@@ -796,18 +840,49 @@ export function compareValues(info: MediaInfo): Record<CompareKey, string | null
   }
 }
 
+/** Vergleichswert so, wie ihn die Tabelle zeigt („1920×1080", „8 bit · 4:2:0"). */
+function compareDisplay(info: MediaInfo, key: CompareKey): string {
+  const v = mainVideo(info)
+  const a = info.audio[0]
+  switch (key) {
+    case 'resolution':
+      return v ? `${v.displayWidth}×${v.displayHeight}` : '–'
+    case 'fps':
+      return v?.fps ? `${fmtFps(v.fps)} fps` : '–'
+    case 'scan':
+      return v?.scan === 'progressive' ? 'progressiv' : 'interlaced'
+    case 'codec':
+      return v?.codec ?? '–'
+    case 'depth':
+      return v
+        ? [
+            v.bitDepth ? `${v.bitDepth} bit` : 'Bittiefe ?',
+            v.chroma ?? 'Chroma ?',
+            v.alpha ? 'Alpha' : null
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        : '–'
+    case 'audio':
+      return a ? `${sampleRateLabel(a.sampleRate)} · ${channelLabel(a)}` : '–'
+  }
+}
+
 /**
  * Abweichungen vom Mehrheitswert je Spalte (Playlist-Konsistenz). Bei Gleichstand
- * gilt der Wert der ersten Datei als Referenz.
+ * gilt der Wert der ersten Datei als Referenz. `majorityLabel` = Anzeigeform für
+ * Tooltips (die Vergleichswerte selbst sind interne Schlüssel wie „8-4:2:0").
  */
 export function findDeviations(infos: MediaInfo[]): {
   byPath: Map<string, Set<CompareKey>>
   majority: Partial<Record<CompareKey, string>>
+  majorityLabel: Partial<Record<CompareKey, string>>
 } {
   const byPath = new Map<string, Set<CompareKey>>()
   const majority: Partial<Record<CompareKey, string>> = {}
-  if (infos.length < 2) return { byPath, majority }
-  const values = infos.map((i) => ({ path: i.path, vals: compareValues(i) }))
+  const majorityLabel: Partial<Record<CompareKey, string>> = {}
+  if (infos.length < 2) return { byPath, majority, majorityLabel }
+  const values = infos.map((i) => ({ info: i, path: i.path, vals: compareValues(i) }))
   for (const key of Object.keys(COMPARE_LABELS) as CompareKey[]) {
     const counts = new Map<string, number>()
     for (const { vals } of values) {
@@ -816,15 +891,17 @@ export function findDeviations(infos: MediaInfo[]): {
     }
     if (counts.size < 2) continue
     let best: string | null = null
+    let bestInfo: MediaInfo | null = null
     let bestN = 0
-    for (const { vals } of values) {
+    for (const { info, vals } of values) {
       const val = vals[key]
       if (val === null) continue
       const n = counts.get(val) ?? 0
-      if (n > bestN) [best, bestN] = [val, n]
+      if (n > bestN) [best, bestInfo, bestN] = [val, info, n]
     }
-    if (best === null) continue
+    if (best === null || !bestInfo) continue
     majority[key] = best
+    majorityLabel[key] = compareDisplay(bestInfo, key)
     for (const { path, vals } of values) {
       if (vals[key] !== null && vals[key] !== best) {
         const set = byPath.get(path) ?? new Set<CompareKey>()
@@ -833,7 +910,7 @@ export function findDeviations(infos: MediaInfo[]): {
       }
     }
   }
-  return { byPath, majority }
+  return { byPath, majority, majorityLabel }
 }
 
 const FPS_FAMILIES: [string, number[]][] = [
@@ -1001,7 +1078,7 @@ export function hapInputHints(info: MediaInfo, format: HapFormat): MediaHint[] {
       id: 'hap-sar',
       level: 'warning',
       title: 'Anamorphe Pixel',
-      text: 'Das Pixel-Seitenverhältnis bleibt; Medienserver zeigen das Bild ggf. gestaucht.'
+      text: 'Das Pixel-Seitenverhältnis bleibt; Medienserver zeigen das Bild ggf. verzerrt (gestaucht bzw. gedehnt).'
     })
   }
   if (v.hdr) {

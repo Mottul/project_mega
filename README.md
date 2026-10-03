@@ -330,7 +330,8 @@ src/
   VFR-Nachweis, Scan-Typ, HDR10-Metadaten), **Ampel-Hinweise** je Prüfprofil (Zielsystem,
   Show-Raster, Datenträger), Playlist-Vergleich mit hervorgehobenen Abweichungen, Kopieren
   (Steckbrief/Kurzzeile/Tabelle) und Export (CSV für Excel, JSON). Übergabe an den HAP-Konverter
-  und zurück. Parser gegen ~140 echte ffprobe-Ausgaben geprüft (Fixture-Tests).
+  und zurück. Parser an ~140 echten Testdateien geprüft; 29 typische ffprobe-Ausgaben
+  sind als Fixture-Tests hinterlegt.
 - **Manuals-Bibliothek** – PDF-Import (SHA-256-Dedup), FTS5-Volltextsuche mit aufklappbaren
   Trefferboxen, **Kategorien** (Filter), In-App-PDF-Viewer (Scroll, Zoom/Pinch, Seiten-Sprung,
   **Suche im PDF**).

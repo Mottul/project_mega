@@ -33,7 +33,13 @@ import type {
   HapJob,
   JobStatus
 } from '@shared/types'
-import { fmtBitrate, fmtDurationShort, fmtFps, hapRateEstimate } from '../media-info/format'
+import {
+  errorText,
+  fmtBitrate,
+  fmtDurationShort,
+  fmtFps,
+  hapRateEstimate
+} from '../media-info/format'
 import { hapInputHints, mainVideo, worstLevel, type MediaHint } from '../media-info/hints'
 import { LEVEL_META } from '../media-info/levels'
 import { useHapInputMeta, useHapInputs, type InputMeta } from './store'
@@ -83,6 +89,8 @@ export function HapConverter(): JSX.Element {
   const [jobs, setJobs] = useState<Record<string, HapJob>>({})
   const [dragOver, setDragOver] = useState(false)
   const [startNote, setStartNote] = useState<string | null>(null)
+  // Einreihen kann bei großen Ordnern/Netzlaufwerken dauern -> kein Doppelklick-Doppelstart
+  const [starting, setStarting] = useState(false)
 
   // Drag&Drop: Dateien UND Ordner – webUtils liefert auch für Ordner den Pfad,
   // die Queue (collectVideos) durchsucht Ordner rekursiv.
@@ -175,27 +183,35 @@ export function HapConverter(): JSX.Element {
   }
 
   async function start(): Promise<void> {
-    if (!inputs.length) return
+    if (!inputs.length || starting) return
     const chunks: ChunksMode = autoChunks
       ? { kind: 'auto' }
       : { kind: 'manual', value: Math.max(1, Math.min(64, manualChunks)) }
     // erwartete Jobs: Einzeldateien je 1, Ordner mit ihrer Video-Anzahl
     const expected = fileCount
-    const res = await api.hap.enqueue({
-      inputs,
-      format,
-      chunks,
-      outputDir,
-      concurrency,
-      compressor
-    })
-    useHapInputs.getState().clear()
-    if (!res.jobIds.length) setStartNote('Keine Videodateien gefunden – nichts eingereiht.')
-    else if (res.jobIds.length < expected) {
-      setStartNote(
-        `${res.jobIds.length} von ${expected} Dateien eingereiht – übrige nicht gefunden oder nicht lesbar.`
-      )
-    } else setStartNote(null)
+    setStarting(true)
+    try {
+      const res = await api.hap.enqueue({
+        inputs,
+        format,
+        chunks,
+        outputDir,
+        concurrency,
+        compressor
+      })
+      useHapInputs.getState().clear()
+      if (!res.jobIds.length) setStartNote('Keine Videodateien gefunden – nichts eingereiht.')
+      else if (res.jobIds.length < expected) {
+        setStartNote(
+          `${res.jobIds.length} von ${expected} erwarteten Dateien eingereiht – die übrigen waren nicht mehr auffindbar (verschoben oder Laufwerk getrennt?).`
+        )
+      } else setStartNote(null)
+    } catch (e) {
+      // Auswahl bleibt erhalten -> nach Behebung erneut starten
+      setStartNote(`Start fehlgeschlagen: ${errorText(e)}`)
+    } finally {
+      setStarting(false)
+    }
   }
 
   // Hinweise je Eingabedatei für das gewählte Format + Sammelzeile über dem Start
@@ -217,9 +233,17 @@ export function HapConverter(): JSX.Element {
         counts.set(h.id, c)
       }
     }
-    return [...counts.values()]
+    // Probleme zuerst
+    return [...counts.values()].sort(
+      (a, b) => Number(b.level === 'problem') - Number(a.level === 'problem')
+    )
   }, [inputHints])
+  const summaryLevel = summary.some((c) => c.level === 'problem') ? 'problem' : 'warning'
+  // Ordner (rekursiv gezählt) und darin liegende Dateien/Unterordner nur einmal zählen –
+  // die Warteschlange im main entfernt solche Dubletten ebenfalls.
+  const folders = inputs.filter((p) => meta[p]?.kind === 'folder')
   const fileCount = inputs.reduce((sum, p) => {
+    if (folders.some((f) => f !== p && isInside(p, f))) return sum
     const mt = meta[p]
     return sum + (mt?.kind === 'folder' ? mt.videos : 1)
   }, 0)
@@ -369,8 +393,13 @@ export function HapConverter(): JSX.Element {
                 <FolderOpen className="size-4" /> Ordner hinzufügen
               </Button>
               <div className="flex-1" />
-              <Button onClick={start} disabled={!inputs.length}>
-                <Play className="size-4" /> Konvertierung starten
+              <Button onClick={() => void start()} disabled={!inputs.length || starting}>
+                {starting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Play className="size-4" />
+                )}
+                Konvertierung starten
                 {inputs.length > 0 ? ` (${fileCount})` : ''}
               </Button>
             </div>
@@ -398,15 +427,25 @@ export function HapConverter(): JSX.Element {
             )}
 
             {summary.length > 0 && (
-              <div className="space-y-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
-                {summary.map((c) => (
-                  <p key={c.title} className="flex items-center gap-1.5">
-                    <AlertTriangle
-                      className={cn('size-3.5 shrink-0', LEVEL_META[c.level].className)}
-                    />
-                    {c.n === 1 ? '1 Datei' : `${c.n} Dateien`}: {c.title}
-                  </p>
-                ))}
+              <div
+                className={cn(
+                  'space-y-1 rounded-md border px-3 py-2 text-xs',
+                  summaryLevel === 'problem'
+                    ? 'border-red-500/40 bg-red-500/10'
+                    : 'border-amber-500/40 bg-amber-500/10'
+                )}
+              >
+                {summary.map((c) => {
+                  const lm = LEVEL_META[c.level]
+                  const Icon = lm.icon
+                  return (
+                    <p key={c.title} className="flex items-center gap-1.5">
+                      <Icon className={cn('size-3.5 shrink-0', lm.className)} aria-hidden />
+                      <span className="sr-only">{lm.label}:</span>
+                      {c.n === 1 ? '1 Datei' : `${c.n} Dateien`}: {c.title}
+                    </p>
+                  )
+                })}
               </div>
             )}
             {startNote && <p className="text-xs text-muted-foreground">{startNote}</p>}
@@ -620,4 +659,10 @@ function InputRow({
       </div>
     </div>
   )
+}
+
+/** Liegt `p` in Ordner `dir` (oder darunter)? Beide Trenner, da Pfade vom OS kommen. */
+function isInside(p: string, dir: string): boolean {
+  const d = dir.replace(/[\\/]+$/, '')
+  return p.startsWith(`${d}/`) || p.startsWith(`${d}\\`)
 }
