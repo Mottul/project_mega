@@ -206,8 +206,7 @@ export function gopLabel(v: MediaVideoTrack): string | null {
   if (g.allIntra) return 'nur Keyframes (Intra)'
   if (!g.keyframeInterval) return null
   // Kurzer Clip komplett gescannt und nur EIN Keyframe -> „mindestens" wäre irreführend
-  if (g.keyframeIntervalAtLeast && v.frames && g.packets >= v.frames)
-    return 'nur ein Keyframe (Clipanfang)'
+  if (g.keyframeIntervalAtLeast && g.complete) return 'nur ein Keyframe (Clipanfang)'
   const sec = v.fps ? g.keyframeInterval / v.fps : null
   const pre = g.keyframeIntervalAtLeast ? 'mindestens ' : ''
   return `Keyframe ${pre}alle ${nf(g.keyframeInterval)} Bilder${sec ? ` (${nf(sec, 1)} s)` : ''}`

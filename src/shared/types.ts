@@ -51,6 +51,10 @@ export interface MediaGopInfo {
   allIntra: boolean
   /** Bildabstände uneinheitlich (bestätigte variable Bildrate). */
   vfr: boolean
+  /** Scan lief bis zum Dateiende (ganzer Clip geprüft), sonst nur der Anfang. */
+  complete: boolean
+  /** Bildrate aus dem Median der Bildabstände. */
+  fps: number | null
 }
 
 export interface MediaVideoTrack {

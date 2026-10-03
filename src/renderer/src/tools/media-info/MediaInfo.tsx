@@ -2,7 +2,15 @@
 // Auflösung, Format, Codec, Bitrate, Ton – plus Ampel-Hinweise für den Show-
 // Einsatz und ein Playlist-Vergleich bei mehreren Dateien.
 
-import { useEffect, useMemo, useState, type DragEvent, type KeyboardEvent } from 'react'
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent
+} from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowDown,
@@ -26,10 +34,12 @@ import { Progress } from '@renderer/components/ui/progress'
 import { selectClass } from '@renderer/components/ui/select'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { useKiosk } from '@renderer/launcher/kiosk'
 import { useHandoff } from '@renderer/lib/handoff'
 import { toast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
 import { PROBE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
+import type { MediaInfo as MediaInfoData } from '@shared/types'
 import {
   channelLabel,
   fmtBitrate,
@@ -38,7 +48,8 @@ import {
   fmtDurationShort,
   fmtFps,
   nf,
-  sampleRateLabel
+  sampleRateLabel,
+  splitPath
 } from './format'
 import {
   analyzeMedia,
@@ -51,6 +62,7 @@ import {
   RASTER_OPTIONS,
   TARGET_OPTIONS,
   worstLevel,
+  type CheckProfile,
   type CompareKey,
   type MediaHint,
   type ShowRaster,
@@ -67,6 +79,19 @@ type SortKey =
 
 const LEVEL_RANK = { problem: 3, warning: 2, info: 1, ok: 0 } as const
 
+// Hinweise je MediaInfo-Objekt merken: sie ändern sich nur mit dem Objekt oder dem
+// Profil – sonst liefe analyzeMedia bei jedem Update erneut für ALLE Dateien.
+const hintCache = new WeakMap<MediaInfoData, { key: string; hints: MediaHint[] }>()
+
+function hintsFor(info: MediaInfoData, profile: CheckProfile): MediaHint[] {
+  const key = `${profile.target}|${profile.raster}|${profile.medium}`
+  const hit = hintCache.get(info)
+  if (hit && hit.key === key) return hit.hints
+  const hints = analyzeMedia(info, profile)
+  hintCache.set(info, { key, hints })
+  return hints
+}
+
 function sortValue(
   e: MediaEntry,
   hints: MediaHint[],
@@ -78,7 +103,7 @@ function sortValue(
     case 'status':
       return e.status === 'error' ? 4 : LEVEL_RANK[worstLevel(hints)]
     case 'name':
-      return e.info?.name ?? e.path
+      return e.info?.name ?? splitPath(e.path).name
     case 'resolution':
       return v ? v.displayWidth * v.displayHeight : -1
     case 'fps':
@@ -100,6 +125,8 @@ const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' })
 
 export function MediaInfo(): JSX.Element {
   const navigate = useNavigate()
+  // Kundenansicht: keine Sprünge in andere (ungesperrte) Tools anbieten
+  const locked = useKiosk()
   const entries = useMediaInfo((s) => s.entries)
   const selected = useMediaInfo((s) => s.selected)
   const collecting = useMediaInfo((s) => s.collecting)
@@ -118,7 +145,7 @@ export function MediaInfo(): JSX.Element {
   // Hinweise je Datei – bei Profilwechsel sofort neu bewertet, ohne neuen ffprobe-Lauf
   const hintsByPath = useMemo(() => {
     const m = new Map<string, MediaHint[]>()
-    for (const e of entries) if (e.info) m.set(e.path, analyzeMedia(e.info, profile))
+    for (const e of entries) if (e.info) m.set(e.path, hintsFor(e.info, profile))
     return m
   }, [entries, profile])
 
@@ -224,15 +251,6 @@ export function MediaInfo(): JSX.Element {
     setSort((s) =>
       s.key !== key ? { key, dir: 1 } : s.dir === 1 ? { key, dir: -1 } : { key: 'order', dir: 1 }
     )
-  }
-
-  function onTableKey(e: KeyboardEvent): void {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
-    e.preventDefault()
-    const idx = sorted.findIndex((x) => x.path === current?.path)
-    const next =
-      sorted[Math.max(0, Math.min(sorted.length - 1, idx + (e.key === 'ArrowDown' ? 1 : -1)))]
-    if (next) useMediaInfo.getState().select(next.path)
   }
 
   async function saveCsv(): Promise<void> {
@@ -424,7 +442,7 @@ export function MediaInfo(): JSX.Element {
                 </span>
               )}
               <div className="flex-1" />
-              {hapCandidates.length > 0 && (
+              {hapCandidates.length > 0 && !locked && (
                 <Button variant="outline" onClick={() => sendToHap(hapCandidates)}>
                   <FileCog className="size-4" /> An HAP-Konverter ({hapCandidates.length})
                 </Button>
@@ -474,70 +492,24 @@ export function MediaInfo(): JSX.Element {
                 )}
 
                 {entries.length > 1 && (
-                  <Card className="overflow-hidden p-0">
-                    <div
-                      className="max-h-[45vh] overflow-auto focus:outline-none"
-                      tabIndex={0}
-                      onKeyDown={onTableKey}
-                    >
-                      <table className="w-full text-[13px]">
-                        <thead className="sticky top-0 z-[1] bg-card">
-                          <tr className="text-left text-[10px] uppercase tracking-wider text-primary">
-                            <Th label="" k="status" sort={sort} onSort={toggleSort} />
-                            <Th label="Datei" k="name" sort={sort} onSort={toggleSort} />
-                            <Th
-                              label={COMPARE_LABELS.resolution}
-                              k="resolution"
-                              sort={sort}
-                              onSort={toggleSort}
-                            />
-                            <Th label="fps" k="fps" sort={sort} onSort={toggleSort} />
-                            <Th label="Codec" k="codec" sort={sort} onSort={toggleSort} />
-                            <th className="px-1.5 py-2 font-medium">Bit/Chroma</th>
-                            <Th
-                              label="Dauer"
-                              k="duration"
-                              sort={sort}
-                              onSort={toggleSort}
-                              align="right"
-                            />
-                            <Th
-                              label="Bitrate"
-                              k="bitrate"
-                              sort={sort}
-                              onSort={toggleSort}
-                              align="right"
-                            />
-                            <Th
-                              label="Größe"
-                              k="size"
-                              sort={sort}
-                              onSort={toggleSort}
-                              align="right"
-                            />
-                            <th className="px-1.5 py-2 font-medium">Ton</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sorted.map((e) => (
-                            <Row
-                              key={e.path}
-                              entry={e}
-                              hints={hintsByPath.get(e.path) ?? []}
-                              deviating={deviations.byPath.get(e.path)}
-                              majority={deviations.majority}
-                              active={e.path === current?.path}
-                              onSelect={() => useMediaInfo.getState().select(e.path)}
-                            />
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </Card>
+                  <MediaTable
+                    rows={sorted}
+                    hintsByPath={hintsByPath}
+                    deviations={deviations}
+                    currentPath={current?.path ?? null}
+                    sort={sort}
+                    onSort={toggleSort}
+                  />
                 )}
 
                 {current && (
-                  <MediaDetail entry={current} hints={currentHints} onSendToHap={sendToHap} />
+                  // key: Detailzustand (Rohdaten, Abschnitte) gehört zur Datei
+                  <MediaDetail
+                    key={current.path}
+                    entry={current}
+                    hints={currentHints}
+                    onSendToHap={locked ? null : sendToHap}
+                  />
                 )}
               </>
             )}
@@ -641,7 +613,13 @@ function Th({
         className={cn('inline-flex items-center gap-0.5 uppercase', active && 'text-foreground')}
         title="Sortieren"
       >
-        {label || 'Status'}
+        {/* schmale Statusspalte: Symbol statt Text, Name für Screenreader */}
+        {label || (
+          <>
+            <ListChecks className="size-3" aria-hidden />
+            <span className="sr-only">Status</span>
+          </>
+        )}
         {active &&
           (sort.dir === 1 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
       </button>
@@ -649,28 +627,167 @@ function Th({
   )
 }
 
-function Row({
+// Feste Zeilenhöhe -> einfache Virtualisierung großer Listen (nur sichtbare Zeilen)
+const ROW_H = 34
+const VIRTUAL_FROM = 150
+const OVERSCAN = 12
+
+function MediaTable({
+  rows,
+  hintsByPath,
+  deviations,
+  currentPath,
+  sort,
+  onSort
+}: {
+  rows: MediaEntry[]
+  hintsByPath: Map<string, MediaHint[]>
+  deviations: ReturnType<typeof findDeviations>
+  currentPath: string | null
+  sort: { key: SortKey; dir: 1 | -1 }
+  onSort: (k: SortKey) => void
+}): JSX.Element {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const headRef = useRef<HTMLTableSectionElement>(null)
+  const [view, setView] = useState({ top: 0, height: 400 })
+  const frame = useRef(0)
+  const virtual = rows.length > VIRTUAL_FROM
+
+  function onScroll(): void {
+    if (frame.current) return
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0
+      const el = scrollRef.current
+      if (el) setView({ top: el.scrollTop, height: el.clientHeight })
+    })
+  }
+  useEffect(() => () => cancelAnimationFrame(frame.current), [])
+
+  // gewählte Zeile sichtbar halten (Pfeiltasten); Kopfzeile ist „sticky"
+  function ensureVisible(index: number): void {
+    const el = scrollRef.current
+    if (!el) return
+    const head = headRef.current?.offsetHeight ?? 0
+    const top = index * ROW_H
+    const bottom = top + ROW_H
+    if (top < el.scrollTop) el.scrollTop = top
+    else if (bottom > el.scrollTop + el.clientHeight - head) {
+      el.scrollTop = bottom - el.clientHeight + head
+    }
+  }
+
+  function onKey(e: KeyboardEvent): void {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const idx = rows.findIndex((x) => x.path === currentPath)
+    const nextIdx = Math.max(0, Math.min(rows.length - 1, idx + (e.key === 'ArrowDown' ? 1 : -1)))
+    const next = rows[nextIdx]
+    if (!next) return
+    useMediaInfo.getState().select(next.path)
+    ensureVisible(nextIdx)
+  }
+
+  const start = virtual ? Math.max(0, Math.floor(view.top / ROW_H) - OVERSCAN) : 0
+  const end = virtual
+    ? Math.min(rows.length, Math.ceil((view.top + view.height) / ROW_H) + OVERSCAN)
+    : rows.length
+  const select = useMediaInfo.getState().select
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <div
+        ref={scrollRef}
+        className="max-h-[45vh] overflow-auto focus:outline-none"
+        tabIndex={0}
+        onKeyDown={onKey}
+        onScroll={virtual ? onScroll : undefined}
+        aria-label="Dateiliste (Pfeiltasten wechseln die Auswahl)"
+      >
+        <table className="w-full table-fixed text-[13px]">
+          <colgroup>
+            <col className="w-8" />
+            <col />
+            <col className="w-[6.5rem]" />
+            <col className="w-[6.5rem]" />
+            <col className="w-[8.5rem]" />
+            <col className="w-[7rem]" />
+            <col className="w-[4rem]" />
+            <col className="w-[6.5rem]" />
+            <col className="w-[5rem]" />
+            <col className="w-[8rem]" />
+          </colgroup>
+          <thead ref={headRef} className="sticky top-0 z-[1] bg-card">
+            <tr className="text-left text-[10px] uppercase tracking-wider text-primary">
+              <Th label="" k="status" sort={sort} onSort={onSort} />
+              <Th label="Datei" k="name" sort={sort} onSort={onSort} />
+              <Th label={COMPARE_LABELS.resolution} k="resolution" sort={sort} onSort={onSort} />
+              <Th label="fps" k="fps" sort={sort} onSort={onSort} />
+              <Th label="Codec" k="codec" sort={sort} onSort={onSort} />
+              <th className="px-1.5 py-2 font-medium">Bit/Chroma</th>
+              <Th label="Dauer" k="duration" sort={sort} onSort={onSort} align="right" />
+              <Th label="Bitrate" k="bitrate" sort={sort} onSort={onSort} align="right" />
+              <Th label="Größe" k="size" sort={sort} onSort={onSort} align="right" />
+              <th className="px-1.5 py-2 font-medium">Ton</th>
+            </tr>
+          </thead>
+          <tbody>
+            {start > 0 && <tr style={{ height: start * ROW_H }} aria-hidden />}
+            {rows.slice(start, end).map((e) => (
+              <Row
+                key={e.path}
+                entry={e}
+                hints={hintsByPath.get(e.path) ?? NO_HINTS}
+                devInfo={devInfoFor(deviations, e.path)}
+                active={e.path === currentPath}
+                onSelect={select}
+              />
+            ))}
+            {end < rows.length && (
+              <tr style={{ height: (rows.length - end) * ROW_H }} aria-hidden />
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+}
+
+const NO_HINTS: MediaHint[] = []
+
+// Abweichungen einer Zeile als stabiler String („fps=25|resolution=1920x1080") ->
+// React.memo erkennt unveränderte Zeilen, obwohl die Gesamtauswertung neu läuft.
+function devInfoFor(d: ReturnType<typeof findDeviations>, path: string): string {
+  const keys = d.byPath.get(path)
+  if (!keys) return ''
+  return [...keys]
+    .sort()
+    .map((k) => `${k}=${d.majority[k] ?? '?'}`)
+    .join('|')
+}
+
+const Row = memo(function Row({
   entry,
   hints,
-  deviating,
-  majority,
+  devInfo,
   active,
   onSelect
 }: {
   entry: MediaEntry
   hints: MediaHint[]
-  deviating: Set<CompareKey> | undefined
-  majority: Partial<Record<CompareKey, string>>
+  devInfo: string
   active: boolean
-  onSelect: () => void
+  onSelect: (path: string) => void
 }): JSX.Element {
   const info = entry.info
   const v = info ? mainVideo(info) : null
   const a = info?.audio[0]
+  const devMap = new Map(
+    devInfo ? devInfo.split('|').map((x) => x.split('=') as [CompareKey, string]) : []
+  )
   const dev = (k: CompareKey): string | undefined =>
-    deviating?.has(k) ? 'bg-amber-500/10 text-amber-400 light:text-amber-700' : undefined
+    devMap.has(k) ? 'bg-amber-500/10 text-amber-400 light:text-amber-700' : undefined
   const devTitle = (k: CompareKey): string | undefined =>
-    deviating?.has(k) ? `Weicht ab – Mehrheit: ${majority[k] ?? '?'}` : undefined
+    devMap.has(k) ? `Weicht ab – Mehrheit: ${devMap.get(k)}` : undefined
 
   let status: JSX.Element
   if (entry.status === 'pending' || entry.status === 'loading') {
@@ -685,7 +802,7 @@ function Row({
     const c = countLevels(hints)
     status = (
       <span title={`${c.problem} Problem(e), ${c.warning} Warnung(en), ${c.info} Hinweis(e)`}>
-        <Icon className={cn('size-4', meta.className)} />
+        <Icon className={cn('size-4', meta.className)} aria-label={meta.label} />
       </span>
     )
   }
@@ -696,62 +813,61 @@ function Row({
       : v?.fpsMode === 'still'
         ? 'Bild'
         : '–'
+  const cell = 'truncate whitespace-nowrap px-1.5'
 
   return (
     <tr
-      onClick={onSelect}
+      onClick={() => onSelect(entry.path)}
+      style={{ height: ROW_H }}
+      title={entry.status === 'error' ? `${entry.error}` : undefined}
       className={cn(
         'cursor-pointer border-t border-border hover:bg-muted/40',
         active && 'bg-primary/10 hover:bg-primary/15'
       )}
     >
-      <td className="px-1.5 py-1.5">{status}</td>
-      <td className="max-w-[14rem] truncate px-1.5 py-1.5 font-medium" title={entry.path}>
-        {info?.name ?? entry.path.split(/[\\/]/).pop()}
-        {entry.status === 'error' && (
-          <span className="block truncate text-xs font-normal text-red-400 light:text-red-600">
-            {entry.error}
-          </span>
-        )}
+      <td className="px-1.5">{status}</td>
+      <td className={cn(cell, 'font-medium')} title={entry.path}>
+        {info?.name ?? splitPath(entry.path).name}
       </td>
-      <td
-        className={cn('whitespace-nowrap px-1.5 py-1.5 tabular-nums', dev('resolution'))}
-        title={devTitle('resolution')}
-      >
-        {v ? `${v.displayWidth}×${v.displayHeight}` : '–'}
-      </td>
-      <td
-        className={cn('whitespace-nowrap px-1.5 py-1.5 tabular-nums', dev('fps') ?? dev('scan'))}
-        title={devTitle('fps') ?? devTitle('scan')}
-      >
-        {fps}
-      </td>
-      <td
-        className={cn('max-w-[9rem] truncate px-1.5 py-1.5', dev('codec'))}
-        title={devTitle('codec')}
-      >
-        {v?.codec ?? a?.codec ?? '–'}
-      </td>
-      <td
-        className={cn('whitespace-nowrap px-1.5 py-1.5 tabular-nums', dev('depth'))}
-        title={devTitle('depth')}
-      >
-        {v
-          ? `${v.bitDepth ?? '?'} · ${v.chroma ?? '?'}${v.alpha ? ' · α' : ''}${v.hdr ? ' · HDR' : ''}`
-          : '–'}
-      </td>
-      <td className="whitespace-nowrap px-1.5 py-1.5 text-right tabular-nums">
-        {info?.isStill ? '–' : fmtDurationShort(info?.durationSec)}
-      </td>
-      <td className="whitespace-nowrap px-1.5 py-1.5 text-right tabular-nums">
-        {info?.bitRate ? fmtBitrate(info.bitRate) : '–'}
-      </td>
-      <td className="whitespace-nowrap px-1.5 py-1.5 text-right tabular-nums">
-        {fmtBytes(info?.sizeBytes)}
-      </td>
-      <td className={cn('whitespace-nowrap px-1.5 py-1.5', dev('audio'))} title={devTitle('audio')}>
-        {a ? `${sampleRateLabel(a.sampleRate)} · ${channelLabel(a)}` : '–'}
-      </td>
+      {entry.status === 'error' ? (
+        // Fehlertext einzeilig über die Datenspalten (feste Zeilenhöhe)
+        <td colSpan={8} className={cn(cell, 'text-red-400 light:text-red-600')}>
+          {entry.error}
+        </td>
+      ) : (
+        <>
+          <td
+            className={cn(cell, 'tabular-nums', dev('resolution'))}
+            title={devTitle('resolution')}
+          >
+            {v ? `${v.displayWidth}×${v.displayHeight}` : '–'}
+          </td>
+          <td
+            className={cn(cell, 'tabular-nums', dev('fps') ?? dev('scan'))}
+            title={devTitle('fps') ?? devTitle('scan')}
+          >
+            {fps}
+          </td>
+          <td className={cn(cell, dev('codec'))} title={devTitle('codec') ?? v?.codec}>
+            {v?.codec ?? a?.codec ?? '–'}
+          </td>
+          <td className={cn(cell, 'tabular-nums', dev('depth'))} title={devTitle('depth')}>
+            {v
+              ? `${v.bitDepth ?? '?'} · ${v.chroma ?? '?'}${v.alpha ? ' · α' : ''}${v.hdr ? ' · HDR' : ''}`
+              : '–'}
+          </td>
+          <td className={cn(cell, 'text-right tabular-nums')}>
+            {info?.isStill ? '–' : fmtDurationShort(info?.durationSec)}
+          </td>
+          <td className={cn(cell, 'text-right tabular-nums')}>
+            {info?.bitRate ? fmtBitrate(info.bitRate) : '–'}
+          </td>
+          <td className={cn(cell, 'text-right tabular-nums')}>{fmtBytes(info?.sizeBytes)}</td>
+          <td className={cn(cell, dev('audio'))} title={devTitle('audio')}>
+            {a ? `${sampleRateLabel(a.sampleRate)} · ${channelLabel(a)}` : '–'}
+          </td>
+        </>
+      )}
     </tr>
   )
-}
+})

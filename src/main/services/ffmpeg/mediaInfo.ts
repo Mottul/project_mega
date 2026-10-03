@@ -3,9 +3,9 @@
 // Die eigentlichen Regeln stecken in mediaInfoParse.ts (rein, getestet).
 
 import { execFile } from 'node:child_process'
-import { readdir, stat } from 'node:fs/promises'
+import { open, readdir, stat } from 'node:fs/promises'
 import { extname, isAbsolute, join } from 'node:path'
-import { dotted, PROBE_EXTENSIONS } from '@shared/mediaExtensions'
+import { dotted, PROBE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type {
   MediaCollectResult,
   MediaInfo,
@@ -20,6 +20,7 @@ import {
   applyDeepAnalysis,
   describeProbeError,
   lastLine,
+  PACKET_SCAN_LIMIT,
   parseFirstFrame,
   parseMediaInfo,
   type FfprobeJson
@@ -32,6 +33,7 @@ const MAX_PARALLEL = 4
 const CACHE_MAX = 500
 const COLLECT_MAX = 5000
 const PROBE_EXT = new Set(dotted(PROBE_EXTENSIONS))
+const VIDEO_EXT = new Set(dotted(VIDEO_EXTENSIONS))
 // Systemmüll auf Show-Sticks (macOS AppleDouble „._clip.mov", Windows-Papierkorb …)
 const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information'])
 const SKIP_FILES = new Set(['thumbs.db', 'desktop.ini'])
@@ -61,6 +63,12 @@ interface RunResult {
   /** Prozess konnte nicht starten (ffprobe fehlt) */
   missing: boolean
   timedOut: boolean
+  /** anderer Startfehler (EACCES, EBADARCH …) – Werkzeug defekt, nicht die Datei */
+  startError: string | null
+  /** per Signal beendet (Absturz), ohne Zeitüberschreitung */
+  signal: string | null
+  tooLarge: boolean
+  message: string | null
 }
 
 function runFfprobe(args: string[]): Promise<RunResult> {
@@ -70,17 +78,68 @@ function runFfprobe(args: string[]): Promise<RunResult> {
       args,
       { timeout: TIMEOUT_MS, maxBuffer: 16 * 1024 * 1024, windowsHide: true },
       (err, stdout, stderr) => {
-        const e = err as (NodeJS.ErrnoException & { killed?: boolean }) | null
+        const e = err as (NodeJS.ErrnoException & { killed?: boolean; signal?: string }) | null
+        const code = typeof e?.code === 'string' ? e.code : null
+        const tooLarge = code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'
+        const timedOut = Boolean(e?.killed) && !tooLarge
         resolve({
           ok: !e,
           stdout: String(stdout ?? ''),
           stderr: String(stderr ?? ''),
-          missing: e?.code === 'ENOENT',
-          timedOut: Boolean(e?.killed)
+          missing: code === 'ENOENT',
+          timedOut,
+          startError: code && code !== 'ENOENT' && !tooLarge ? code : null,
+          signal: !timedOut && !tooLarge && e?.signal ? e.signal : null,
+          tooLarge,
+          message: e?.message ?? null
         })
       }
     )
   })
+}
+
+/** Probleme mit ffprobe selbst (nicht mit der Datei) -> eigene, ehrliche Meldung. */
+function toolProblem(run: RunResult): { error: string; detail: string | null } | null {
+  if (run.missing) {
+    return {
+      error: 'ffprobe nicht gefunden',
+      detail: 'ffmpeg/ffprobe fehlt (scripts/download-ffmpeg.mjs)'
+    }
+  }
+  if (run.tooLarge) return { error: 'Antwort von ffprobe zu groß', detail: null }
+  if (run.timedOut) {
+    return {
+      error: `Zeitüberschreitung (${TIMEOUT_MS / 1000} s)`,
+      detail:
+        'Sehr langsamer Datenträger oder Netzlaufwerk – Datei lokal kopieren und erneut versuchen.'
+    }
+  }
+  if (run.startError) {
+    return {
+      error: `ffprobe konnte nicht gestartet werden (${run.startError})`,
+      detail: run.message
+    }
+  }
+  if (run.signal) {
+    return { error: `ffprobe abgestürzt (${run.signal})`, detail: lastLine(run.stderr) }
+  }
+  return null
+}
+
+/** Erste Bytes der Datei (Signatur), z.B. um AppleDouble-„._"-Dateien zu erkennen. */
+async function readHead(path: string): Promise<Uint8Array | undefined> {
+  try {
+    const fh = await open(path, 'r')
+    try {
+      const buf = Buffer.alloc(16)
+      const { bytesRead } = await fh.read(buf, 0, 16, 0)
+      return buf.subarray(0, bytesRead)
+    } finally {
+      await fh.close()
+    }
+  } catch {
+    return undefined
+  }
 }
 
 const BASE_ARGS = [
@@ -155,9 +214,9 @@ async function deepAnalyze(path: string, info: MediaInfo): Promise<MediaInfo> {
           '-select_streams',
           idx,
           '-read_intervals',
-          '%+#300',
+          `%+#${PACKET_SCAN_LIMIT}`,
           '-show_entries',
-          'packet=pts,duration,flags',
+          'packet=pts_time,flags',
           '-of',
           'csv=p=0',
           '-i',
@@ -183,7 +242,7 @@ async function deepAnalyze(path: string, info: MediaInfo): Promise<MediaInfo> {
         ])
       : null
   ])
-  const gop = packets?.ok ? analyzePackets(packets.stdout) : null
+  const gop = packets?.ok ? analyzePackets(packets.stdout, PACKET_SCAN_LIMIT) : null
   let frameInfo = null
   if (frame?.ok) {
     try {
@@ -238,17 +297,10 @@ export async function probeMediaInfo(
 
   return withSlot(async () => {
     let run = await runFfprobe([...BASE_ARGS, '-i', path])
-    if (run.missing) {
-      return fail('ffprobe nicht gefunden', 'ffmpeg/ffprobe fehlt (scripts/download-ffmpeg.mjs)')
-    }
-    if (run.timedOut) {
-      return fail(
-        `Zeitüberschreitung (${TIMEOUT_MS / 1000} s)`,
-        'Sehr langsamer Datenträger oder Netzlaufwerk – Datei lokal kopieren und erneut versuchen.'
-      )
-    }
+    const problem = toolProblem(run)
+    if (problem) return fail(problem.error, problem.detail)
     if (!run.ok) {
-      const d = describeProbeError(run.stdout, run.stderr, path)
+      const d = describeProbeError(run.stdout, run.stderr, path, await readHead(path))
       return fail(d.error, d.detail)
     }
     let json: FfprobeJson
@@ -331,7 +383,8 @@ const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' })
 /**
  * Eingaben (Dateien/Ordner) zu Mediendateien auflösen. Direkt gewählte Dateien
  * zählen immer (bewusst gewählt), in Ordnern nur bekannte Medien-Endungen.
- * Asynchron, folgt keinen Symlinks (Schleifen), überspringt Systemdateien.
+ * Asynchron, überspringt Systemdateien; verlinkte Dateien zählen, verlinkte Ordner
+ * nicht (sonst drohen Schleifen).
  */
 export async function collectMediaFiles(inputs: string[]): Promise<MediaCollectResult> {
   const files = new Set<string>()
@@ -360,7 +413,15 @@ export async function collectMediaFiles(inputs: string[]): Promise<MediaCollectR
       }
       const full = join(dir, e.name)
       if (e.isDirectory()) await walk(full)
-      else if (e.isFile() && PROBE_EXT.has(extname(e.name).toLowerCase())) files.add(full)
+      else if (!PROBE_EXT.has(extname(e.name).toLowerCase())) continue
+      else if (e.isFile()) files.add(full)
+      else if (e.isSymbolicLink()) {
+        try {
+          if ((await stat(full)).isFile()) files.add(full)
+        } catch {
+          // toter Link -> ignorieren
+        }
+      }
     }
   }
 
@@ -376,4 +437,16 @@ export async function collectMediaFiles(inputs: string[]): Promise<MediaCollectR
     }
   }
   return { files: [...files], ignored, unreadable, limited }
+}
+
+/**
+ * Eingaben der HAP-Warteschlange: dieselben Regeln wie die Medien-Info (keine
+ * ._-/Systemdateien), in Ordnern nur Video-Endungen. Direkt gewählte Dateien zählen
+ * unabhängig von der Endung (z.B. .dv/.gif aus der Medien-Info) – ob eine Videospur
+ * da ist, prüft der Job selbst.
+ */
+export async function collectVideoInputs(inputs: string[]): Promise<string[]> {
+  const direct = new Set(inputs)
+  const res = await collectMediaFiles(inputs)
+  return res.files.filter((f) => direct.has(f) || VIDEO_EXT.has(extname(f).toLowerCase()))
 }

@@ -382,7 +382,8 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
       const sec = moving.gop.keyframeInterval / moving.fps
       if (sec > 2) {
         const g = moving.gop
-        const wholeClip = g.keyframeIntervalAtLeast && moving.frames && g.packets >= moving.frames
+        // Scan lief bis zum Dateiende und fand nur EINEN Keyframe
+        const wholeClip = g.keyframeIntervalAtLeast && g.complete
         const atLeast = g.keyframeIntervalAtLeast ? 'mindestens ' : ''
         add(
           'gop-long',
@@ -505,7 +506,9 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
         'Ausgänge und LED-Prozessoren laufen meist mit 50/60 Hz – überzählige Bilder werden verworfen, die Datenrate ist unnötig hoch.'
       )
     }
-    if (f && profile.raster !== 'none' && moving.fpsMode !== 'vfr') {
+    // Bei (vermuteter) VFR ist die Durchschnittsrate kein Bildtakt -> kein Raster-Vergleich
+    const variable = moving.fpsMode === 'vfr' || moving.fpsMode === 'vfr-suspect'
+    if (f && profile.raster !== 'none' && !variable) {
       const { base, label } = RASTER_BASE[profile.raster]
       const k = Math.round(f / base)
       const exact = k >= 1 && Math.abs(f / base - k) < 0.001
@@ -529,7 +532,12 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
           )
         }
       }
-    } else if (f && profile.raster === 'none' && NTSC_FPS.some((n) => Math.abs(f - n) < 0.002)) {
+    } else if (
+      f &&
+      !variable &&
+      profile.raster === 'none' &&
+      NTSC_FPS.some((n) => Math.abs(f - n) < 0.002)
+    ) {
       add(
         'fps-ntsc',
         'info',

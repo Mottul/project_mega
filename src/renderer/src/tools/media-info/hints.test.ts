@@ -107,6 +107,14 @@ describe('analyzeMedia – Show-Raster', () => {
   it('ohne Raster: NTSC-Rate als Info', () => {
     expect(level(at(30000 / 1001, 'none'), 'fps-ntsc')).toBe('info')
   })
+
+  it('vermutete VFR: keine Raster-/NTSC-Bewertung der Durchschnittsrate', () => {
+    const info = mediaInfo({ video: [videoTrack({ fps: 20.463, fpsMode: 'vfr-suspect' })] })
+    const got = ids(analyzeMedia(info, profile({ raster: '25' })))
+    expect(got).toContain('vfr')
+    expect(got).not.toContain('fps-raster')
+    expect(got).not.toContain('fps-unusual')
+  })
 })
 
 describe('analyzeMedia – Bild, Ton, Metadaten', () => {
@@ -201,7 +209,9 @@ describe('analyzeMedia – Bild, Ton, Metadaten', () => {
             keyframeInterval: 300,
             keyframeIntervalAtLeast: true,
             allIntra: false,
-            vfr: false
+            vfr: false,
+            complete: false,
+            fps: 25
           }
         })
       ]
@@ -222,7 +232,9 @@ describe('analyzeMedia – Bild, Ton, Metadaten', () => {
             keyframeInterval: 75,
             keyframeIntervalAtLeast: true,
             allIntra: false,
-            vfr: false
+            vfr: false,
+            complete: true,
+            fps: 25
           }
         })
       ]

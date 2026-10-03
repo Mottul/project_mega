@@ -134,6 +134,27 @@ export function tag(tags: FfTags | undefined, ...keys: string[]): string | null 
   return null
 }
 
+/**
+ * mkvmerge-Statistik (BPS, NUMBER_OF_BYTES, NUMBER_OF_FRAMES) nur verwenden, wenn sie
+ * zu DIESER Datei gehört. ffmpeg kopiert die Tags beim Stream-Copy/Schneiden (z.B.
+ * LosslessCut) unverändert mit und schreibt nur DURATION neu -> sonst „Datei
+ * unvollständig" und falsche Bildzahlen nach jedem Schnitt.
+ */
+export function statsTrusted(fmt: FfFormat, s: FfStream): boolean {
+  const app = tag(s.tags, '_STATISTICS_WRITING_APP')
+  // Muxer = Datei-Tag „encoder" OHNE Ziel-Präfix („MOVIE/ENCODER" ist ein kopierter Tag)
+  const muxer =
+    Object.entries(fmt.tags ?? {}).find(([k]) => k.toLowerCase() === 'encoder')?.[1] ?? null
+  const muxerName = muxer === null ? null : String(muxer)
+  if (app && muxerName && /^lavf/i.test(muxerName) && !/^lavf/i.test(app)) return false
+  // Plausibilität: Bytes / (neu geschriebene) Dauer muss zur Bitrate passen
+  const bytes = pos(tag(s.tags, 'NUMBER_OF_BYTES'))
+  const bps = pos(tag(s.tags, 'BPS'))
+  const dur = hmsToSec(tag(s.tags, 'DURATION'))
+  if (bytes && bps && dur && Math.abs((bytes * 8) / dur - bps) / bps > 0.1) return false
+  return true
+}
+
 /** Matroska-Dauer „HH:MM:SS.nnnnnnnnn" -> Sekunden. */
 function hmsToSec(s: string | null): number | null {
   const m = s?.match(/^(\d+):(\d{2}):(\d{2}(?:\.\d+)?)$/)
@@ -316,20 +337,29 @@ const LONGGOP_CODECS = new Set([
   'wmv3',
   'theora'
 ])
-const LOSSY_AUDIO = new Set([
-  'aac',
-  'mp3',
-  'mp2',
-  'ac3',
-  'eac3',
-  'opus',
-  'vorbis',
-  'dts',
-  'wmav2',
-  'wmapro',
-  'amr_nb',
-  'amr_wb'
+// Verlustfreie Audio-Codecs. Alles andere gilt als verlustbehaftet – sonst erschiene
+// ein unbekannter komprimierter Codec (z.B. AAC-LATM aus DVB-Mitschnitten) mit dem
+// Decoder-Format fltp als „32 bit float".
+const LOSSLESS_AUDIO = new Set([
+  'flac',
+  'alac',
+  'truehd',
+  'mlp',
+  'wavpack',
+  'tta',
+  'ape',
+  'tak',
+  'wmalossless',
+  's302m',
+  'shorten'
 ])
+
+function isLosslessAudio(s: FfStream): boolean {
+  const n = s.codec_name ?? ''
+  return (
+    n.startsWith('pcm_') || LOSSLESS_AUDIO.has(n) || (n === 'dts' && /\bMA\b/.test(s.profile ?? '')) // DTS-HD Master Audio
+  )
+}
 // Bittiefe verlustfreier Codecs aus dem Sample-Format (wenn ffprobe sonst nichts nennt)
 const SAMPLE_FMT_BITS: Record<string, number> = {
   u8: 8,
@@ -550,6 +580,15 @@ export function extensionMismatch(formatName: string | undefined, ext: string): 
 
 /* ------------------------------- Timecode ------------------------------- */
 
+// HH:MM:SS:FF, Drop-Frame mit „;", BWF-Variante mit Millisekunden. Andere Werte
+// verwerfen: Tags sind frei beschreibbar (sonst landet z.B. eine Excel-Formel im Export).
+const TC_RE = /^\d{1,2}:\d{2}:\d{2}[:;.,]\d{2,3}$/
+
+export function validTimecode(v: string | null): string | null {
+  const t = v?.trim()
+  return t && TC_RE.test(t) ? t : null
+}
+
 function framesToTc(sec: number, fps: number | null): string {
   const p = (n: number): string => String(n).padStart(2, '0')
   const whole = Math.floor(sec)
@@ -611,8 +650,11 @@ export function parseMediaInfo(json: FfprobeJson, ctx: ParseContext): MediaInfo 
     pos(s.duration) ?? hmsToSec(tag(s.tags, 'DURATION')) ?? fmtDur
   // Bitrate: Stream -> mkvmerge-Statistik -> Bytes/Dauer (Rest-Schätzung später)
   const brOf = (s: FfStream): number | null => {
-    const direct = pos(s.bit_rate) ?? pos(tag(s.tags, 'BPS'))
+    const direct = pos(s.bit_rate)
     if (direct) return direct
+    if (!statsTrusted(fmt, s)) return null
+    const bps = pos(tag(s.tags, 'BPS'))
+    if (bps) return bps
     const bytes = pos(tag(s.tags, 'NUMBER_OF_BYTES'))
     const d = durOf(s)
     return bytes && d ? (bytes * 8) / d : null
@@ -640,7 +682,8 @@ export function parseMediaInfo(json: FfprobeJson, ctx: ParseContext): MediaInfo 
     }
     if (type === 'video') {
       const pf = s.pix_fmt ? parsePixFmt(s.pix_fmt) : null
-      const frames = pos(s.nb_frames) ?? pos(tag(s.tags, 'NUMBER_OF_FRAMES'))
+      const frames =
+        pos(s.nb_frames) ?? (statsTrusted(fmt, s) ? pos(tag(s.tags, 'NUMBER_OF_FRAMES')) : null)
       const isStill = stillContainer || frames === 1
       const { fps, mode } = isStill ? { fps: null, mode: 'still' as MediaFpsMode } : deriveFps(s)
       const { rotation, mirrored } = deriveRotation(s)
@@ -731,14 +774,14 @@ export function parseMediaInfo(json: FfprobeJson, ctx: ParseContext): MediaInfo 
         framesEstimated: false,
         durationSec: isStill ? null : dur,
         hasBFrames: (s.has_b_frames ?? 0) > 0,
-        timecode: tag(s.tags, 'timecode'),
+        timecode: validTimecode(tag(s.tags, 'timecode')),
         language: language(s.tags),
         title: tag(s.tags, 'title', 'name'),
         gop: null
       })
     } else if (type === 'audio') {
       const name = s.codec_name ?? ''
-      const lossy = LOSSY_AUDIO.has(name)
+      const lossy = !isLosslessAudio(s)
       // Bittiefe nur bei verlustfreien Codecs: fltp ist bei AAC nur das Decoder-Format.
       let bits: number | null = null
       if (!lossy) {
@@ -796,7 +839,7 @@ export function parseMediaInfo(json: FfprobeJson, ctx: ParseContext): MediaInfo 
         (s.codec_name === 'klv' ? 'KLV-Metadaten' : tg && !tg.includes('[') ? tg : null) ||
         s.codec_name ||
         'Daten'
-      data.push({ index, kind, timecode: tag(s.tags, 'timecode') })
+      data.push({ index, kind, timecode: validTimecode(tag(s.tags, 'timecode')) })
     } else if (type === 'attachment') {
       attachments++
     }
@@ -843,7 +886,7 @@ export function parseMediaInfo(json: FfprobeJson, ctx: ParseContext): MediaInfo 
   let timecodeSource: string | null = null
   const vtc = video.find((v) => v.timecode)
   const dtc = data.find((d) => d.timecode)
-  const ftc = tag(fmt.tags, 'timecode')
+  const ftc = validTimecode(tag(fmt.tags, 'timecode'))
   if (vtc) [timecode, timecodeSource] = [vtc.timecode, 'Videospur']
   else if (dtc) [timecode, timecodeSource] = [dtc.timecode, 'Timecode-Spur']
   else if (ftc) [timecode, timecodeSource] = [ftc, 'Container']
@@ -866,7 +909,7 @@ export function parseMediaInfo(json: FfprobeJson, ctx: ParseContext): MediaInfo 
       const b = pos(s.bit_rate)
       const d = pos(s.duration)
       if (b && d) expected += (b * d) / 8
-    } else {
+    } else if (statsTrusted(fmt, s)) {
       const nb = pos(tag(s.tags, 'NUMBER_OF_BYTES'))
       if (nb) expected += nb
     }
@@ -937,27 +980,37 @@ function validCreation(v: string | null): string | null {
 
 /* ---------------------------- Tiefenanalyse ------------------------------ */
 
+/** Anzahl Video-Pakete, die der Paket-Scan höchstens liest (~10 s bei 25 fps). */
+export const PACKET_SCAN_LIMIT = 300
+
 /**
- * Paket-Scan (`-show_entries packet=pts,duration,flags -of csv=p=0`) -> GOP + VFR.
+ * Paket-Scan (`-show_entries packet=pts_time,flags -of csv=p=0`) -> GOP + VFR.
  * VFR gilt als bestätigt, wenn > 2 % der Bildabstände > 10 % vom Median abweichen
- * (MKV rundet auf ms: 16/17 ms bei 59,94 fps sind KEIN VFR).
+ * oder ein Abstand um mehr als die Hälfte abweicht (gehaltenes/fehlendes Bild); der
+ * erste Abstand bleibt außen vor.
+ * MKV rundet auf ms: 16/17 ms bei 59,94 fps sind KEIN VFR.
  */
-export function analyzePackets(csv: string): MediaGopInfo | null {
+export function analyzePackets(csv: string, limit = PACKET_SCAN_LIMIT): MediaGopInfo | null {
   const rows = csv
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean)
     .map((l) => {
-      const [pts, , flags] = l.split(',')
-      return { pts: num(pts), key: (flags ?? '').startsWith('K') }
+      const cells = l.split(',')
+      // Flags = erstes nicht leeres Feld nach dem Zeitstempel (MPEG-TS hängt ein leeres
+      // Feld an: „1.440000,K__,")
+      const flags = cells.slice(1).find((c) => c.length > 0) ?? ''
+      return { pts: num(cells[0]), key: flags.startsWith('K') }
     })
   if (rows.length < 2) return null
+  // Scan bis zum Dateiende gelaufen (weniger Pakete als das Limit) -> ganzer Clip geprüft
+  const complete = rows.length < limit
   const keyIdx = rows.map((r, i) => (r.key ? i : -1)).filter((i) => i >= 0)
   const gaps = keyIdx.slice(1).map((v, i) => v - keyIdx[i])
   const median = (arr: number[]): number | null => {
     if (!arr.length) return null
-    const s = [...arr].sort((a, b) => a - b)
-    return s[Math.floor(s.length / 2)]
+    const sorted = [...arr].sort((a, b) => a - b)
+    return sorted[Math.floor(sorted.length / 2)]
   }
   const allIntra = keyIdx.length === rows.length
   let keyframeInterval: number | null
@@ -969,19 +1022,27 @@ export function analyzePackets(csv: string): MediaGopInfo | null {
     keyframeInterval = rows.length
     atLeast = true
   }
-  const pts = rows
+  let pts = rows
     .map((r) => r.pts)
     .filter((p): p is number => p !== null)
     .sort((a, b) => a - b)
+  // Abgebrochener Scan: am Ende fehlen B-Frames, die erst nach ihren Referenzen kommen
+  // (Decodier- ≠ Anzeigereihenfolge) -> letzte Zeitstempel hätten künstliche Lücken.
+  if (!complete) pts = pts.slice(0, Math.max(2, pts.length - 8))
   const deltas = pts
     .slice(1)
     .map((p, i) => p - pts[i])
-    .filter((d) => d > 0)
+    .filter((d) => d > 1e-7)
   const med = median(deltas)
   let vfr = false
-  if (med && deltas.length >= 10) {
-    const off = deltas.filter((d) => Math.abs(d - med) > Math.max(med * 0.1, 1)).length
-    vfr = off / deltas.length > 0.02
+  // Erster Abstand zählt nicht: MP4-Edit-Lists/AVI-Packed-Bitstream verschieben oft nur
+  // das erste Bild – das ist kein VFR (bei kurzen Clips wären das sonst schon > 2 %).
+  const inner = deltas.slice(1)
+  if (med && inner.length >= 10) {
+    // Toleranz mind. 1,5 µs (pts_time hat 6 Nachkommastellen)
+    const off = inner.filter((d) => Math.abs(d - med) > Math.max(med * 0.1, 1.5e-6)).length
+    const jump = inner.some((d) => d > med * 1.5 || d < med * 0.5)
+    vfr = off / inner.length > 0.02 || jump
   }
   return {
     packets: rows.length,
@@ -989,7 +1050,9 @@ export function analyzePackets(csv: string): MediaGopInfo | null {
     keyframeInterval,
     keyframeIntervalAtLeast: atLeast,
     allIntra,
-    vfr
+    vfr,
+    complete,
+    fps: med ? snapFps(1 / med) : null
   }
 }
 
@@ -1030,10 +1093,16 @@ export function applyDeepAnalysis(
   if (v) {
     if (gop) {
       v.gop = gop
-      if (v.fpsMode === 'vfr-suspect' || v.fpsMode === 'cfr') {
-        // Paket-Scan ist der Nachweis: bestätigen oder entwarnen
-        v.fpsMode = gop.vfr ? 'vfr' : 'cfr'
+      if (gop.vfr && (v.fpsMode === 'vfr-suspect' || v.fpsMode === 'cfr')) {
+        // Paket-Scan ist der Nachweis für variable Bildabstände
+        v.fpsMode = 'vfr'
+      } else if (!gop.vfr && v.fpsMode === 'vfr-suspect' && gop.complete) {
+        // Ganzer Clip gescannt, Abstände gleichmäßig -> doch konstant. Die Header-
+        // Durchschnittsrate war dann verzerrt; die Rate aus den Abständen stimmt.
+        v.fpsMode = 'cfr'
+        if (gop.fps) v.fps = gop.fps
       }
+      // Nur der Anfang war gleichmäßig: Verdacht bleibt (Unregelmäßigkeit später im Clip)
     }
     if (frame) {
       if (v.scan === 'unknown' && frame.interlaced !== null) {
@@ -1060,11 +1129,38 @@ export function lastLine(text: string, path?: string): string | null {
   return path && last?.startsWith(`${path}: `) ? last.slice(path.length + 2) : last
 }
 
-/** ffprobe-Fehler -> kurze deutsche Meldung (+ Originaltext als Detail). */
+const ISO_BMFF_BOXES = new Set([
+  'ftyp',
+  'wide',
+  'mdat',
+  'free',
+  'skip',
+  'moov',
+  'pnot',
+  'uuid',
+  'junk'
+])
+
+/** macOS-AppleDouble („._clip.mov" auf exFAT/FAT-Sticks): Magic 00 05 16 07. */
+export function isAppleDouble(head: Uint8Array): boolean {
+  return head.length >= 4 && head[0] === 0 && head[1] === 5 && head[2] === 0x16 && head[3] === 7
+}
+
+function looksLikeIsoBmff(head: Uint8Array): boolean {
+  if (head.length < 8) return false
+  return ISO_BMFF_BOXES.has(String.fromCharCode(head[4], head[5], head[6], head[7]))
+}
+
+/**
+ * ffprobe-Fehler -> kurze deutsche Meldung (+ Originaltext als Detail). `head` = erste
+ * Bytes der Datei: unterscheidet eine abgebrochene MP4/MOV-Kopie von einer Datei, die
+ * gar keine MP4/MOV ist (z.B. AppleDouble mit .mov-Endung).
+ */
 export function describeProbeError(
   stdout: string,
   stderr: string,
-  path?: string
+  path?: string,
+  head?: Uint8Array
 ): { error: string; detail: string | null } {
   let code: number | null = null
   let text: string | null = null
@@ -1077,8 +1173,15 @@ export function describeProbeError(
   }
   const detail = lastLine(stderr, path) ?? text
   const all = `${stderr}\n${text ?? ''}`
-  if (/moov atom not found/i.test(all))
+  if (head && isAppleDouble(head)) {
+    return { error: 'macOS-Zusatzdatei („._"-AppleDouble) – keine Mediendatei', detail }
+  }
+  if (/moov atom not found/i.test(all)) {
+    if (head && !looksLikeIsoBmff(head)) {
+      return { error: 'Keine MP4/MOV-Datei (Inhalt passt nicht zur Endung)', detail }
+    }
     return { error: 'MP4/MOV unvollständig – Aufnahme oder Kopiervorgang abgebrochen', detail }
+  }
   if (/EBML header parsing failed/i.test(all))
     return { error: 'Matroska/WebM-Datei beschädigt', detail }
   if (code === -2 || /No such file/i.test(all)) return { error: 'Datei nicht gefunden', detail }

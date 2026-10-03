@@ -147,10 +147,23 @@ const COLUMNS: { head: string; value: (r: ReportRow) => string | number | null }
   }
 ]
 
+/**
+ * Formel-Injektion verhindern: Excel/Numbers werten Zellen, die mit = + - @ (oder Tab/CR)
+ * beginnen, als Formel aus – Dateinamen und Tags kommen aber aus fremden Dateien
+ * („=HYPERLINK(…)"). Ein vorangestellter Apostroph macht sie zu reinem Text.
+ */
+export function safeCell(s: string): string {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s
+}
+
 /** Tabulator-getrennt mit Kopfzeile – direkt in Excel/Sheets einfügbar. */
 export function toTsv(rows: ReportRow[]): string {
   const clean = (v: string | number | null): string =>
-    v === null ? '' : typeof v === 'number' ? fmtNumber(v, true) : v.replace(/[\t\r\n]+/g, ' ')
+    v === null
+      ? ''
+      : typeof v === 'number'
+        ? fmtNumber(v, true)
+        : safeCell(v.replace(/[\t\r\n]+/g, ' '))
   return [
     COLUMNS.map((c) => c.head).join('\t'),
     ...rows.map((r) => COLUMNS.map((c) => clean(c.value(r))).join('\t'))
@@ -170,7 +183,7 @@ export function toCsv(rows: ReportRow[], german = true): string {
   const sep = german ? ';' : ','
   const cell = (v: string | number | null): string => {
     if (v === null) return ''
-    const s = typeof v === 'number' ? fmtNumber(v, german) : v
+    const s = typeof v === 'number' ? fmtNumber(v, german) : safeCell(v)
     // Nur quoten, was das Trennzeichen/Anführungszeichen/Umbrüche enthält – „192,4"
     // bleibt im deutschen CSV eine Zahl.
     const needsQuote = s.includes(sep) || /["\r\n]/.test(s)
@@ -180,7 +193,7 @@ export function toCsv(rows: ReportRow[], german = true): string {
     COLUMNS.map((c) => c.head).join(sep),
     ...rows.map((r) => COLUMNS.map((c) => cell(c.value(r))).join(sep))
   ]
-  return (german ? '﻿' : '') + lines.join('\r\n') + '\r\n'
+  return (german ? '\uFEFF' : '') + lines.join('\r\n') + '\r\n'
 }
 
 /** JSON-Export (Werte normalisiert, ohne ffprobe-Rohdaten). */

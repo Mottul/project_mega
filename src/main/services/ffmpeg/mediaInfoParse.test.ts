@@ -10,6 +10,7 @@ import {
   parseFirstFrame,
   parseMediaInfo,
   parsePixFmt,
+  validTimecode,
   type FfprobeJson
 } from './mediaInfoParse'
 
@@ -262,7 +263,7 @@ describe('Tiefenanalyse', () => {
   it('analyzePackets: Long-GOP mit Keyframe alle 50 Bilder, konstante Abstände', () => {
     const csv = Array.from(
       { length: 150 },
-      (_, i) => `${i * 512},512,${i % 50 === 0 ? 'K__' : '___'}`
+      (_, i) => `${(i * 0.04).toFixed(6)},${i % 50 === 0 ? 'K__' : '___'}`
     )
     expect(analyzePackets(csv.join('\n'))).toMatchObject({
       packets: 150,
@@ -275,41 +276,90 @@ describe('Tiefenanalyse', () => {
   })
 
   it('analyzePackets: nur ein Keyframe -> Mindestabstand; nur Keyframes -> Intra', () => {
-    const one = Array.from({ length: 40 }, (_, i) => `${i * 10},10,${i === 0 ? 'K_' : '__'}`)
+    const one = Array.from(
+      { length: 40 },
+      (_, i) => `${(i * 0.04).toFixed(6)},${i === 0 ? 'K_' : '__'}`
+    )
     expect(analyzePackets(one.join('\n'))).toMatchObject({
       keyframeInterval: 40,
       keyframeIntervalAtLeast: true
     })
-    const intra = Array.from({ length: 20 }, (_, i) => `${i * 10},10,K_`)
+    const intra = Array.from({ length: 20 }, (_, i) => `${(i * 0.04).toFixed(6)},K_`)
     expect(analyzePackets(intra.join('\n'))).toMatchObject({ allIntra: true, keyframeInterval: 1 })
   })
 
   it('analyzePackets: VFR erkannt, ms-Rundung (16/17) ist kein VFR', () => {
     const vfr = Array.from(
       { length: 60 },
-      (_, i) => `${i < 30 ? i * 512 : 30 * 512 + (i - 30) * 1536},,_`
+      (_, i) => `${(i < 30 ? i * 0.04 : 1.2 + (i - 30) * 0.12).toFixed(6)},__`
     )
     expect(analyzePackets(vfr.join('\n'))?.vfr).toBe(true)
     let t = 0
     const mkv = Array.from({ length: 60 }, (_, i) => {
-      const line = `${t},,_`
+      const line = `${(t / 1000).toFixed(6)},__`
       t += i % 3 === 0 ? 16 : 17
       return line
     })
     expect(analyzePackets(mkv.join('\n'))?.vfr).toBe(false)
   })
 
-  it('applyDeepAnalysis bestätigt bzw. entwarnt VFR und ergänzt den Scan-Typ', () => {
+  it('analyzePackets: ein gehaltenes Bild reicht für VFR (1 von 50 = 2 %)', () => {
+    let t = 0
+    const held = Array.from({ length: 51 }, (_, i) => {
+      const line = `${t.toFixed(6)},${i === 0 ? 'K_' : '__'}`
+      t += i === 49 ? 1 : 0.04
+      return line
+    })
+    expect(analyzePackets(held.join('\n'))).toMatchObject({ vfr: true, complete: true })
+  })
+
+  it('analyzePackets: verschobenes erstes Bild (Edit-List/AVI) ist kein VFR, TS-Flags mit Leerfeld', () => {
+    // fragmentiertes MP4: erster Abstand 61 ms statt 40 ms
+    const frag = [0, 0.061406, ...Array.from({ length: 40 }, (_, i) => 0.101406 + i * 0.04)]
+    const csv = frag.map((p, i) => `${p.toFixed(6)},${i === 0 ? 'K__' : '___'}`)
+    expect(analyzePackets(csv.join('\n'))).toMatchObject({ vfr: false, fps: 25 })
+    // MPEG-TS: „pts_time,flags," – Keyframes trotz angehängtem Leerfeld erkennen
+    const ts = Array.from(
+      { length: 30 },
+      (_, i) => `${(1.44 + i * 0.04).toFixed(6)},${i % 12 === 0 ? 'K__' : '___'},`
+    )
+    expect(analyzePackets(ts.join('\n'))).toMatchObject({ keyframes: 3, keyframeInterval: 12 })
+  })
+
+  it('analyzePackets: abgebrochener Scan – fehlende B-Frames am Ende sind kein VFR', () => {
+    // 300 Pakete (Limit erreicht); die letzten zwei Anzeige-Zeitpunkte fehlen, weil
+    // ihre B-Frames erst nach dem Scan-Ende gekommen wären
+    const pts = Array.from({ length: 302 }, (_, i) => i * 0.04).filter(
+      (_, i) => i !== 298 && i !== 299
+    )
+    const csv = pts.map((p, i) => `${p.toFixed(6)},${i % 50 === 0 ? 'K_' : '__'}`)
+    expect(analyzePackets(csv.join('\n'), 300)).toMatchObject({
+      packets: 300,
+      complete: false,
+      vfr: false,
+      fps: 25
+    })
+  })
+
+  it('applyDeepAnalysis bestätigt VFR, entwarnt nur bei ganz gescanntem Clip', () => {
     const base = info('vfr.mp4')
     const gopConst = {
-      packets: 90,
+      packets: 70,
       keyframes: 1,
-      keyframeInterval: 90,
+      keyframeInterval: 70,
       keyframeIntervalAtLeast: true,
       allIntra: false,
-      vfr: false
+      vfr: false,
+      complete: true,
+      fps: 30
     }
-    expect(applyDeepAnalysis(base, gopConst, null).video[0].fpsMode).toBe('cfr')
+    // ganzer Clip gleichmäßig -> doch CFR, Rate aus den Abständen statt Durchschnitt
+    const cfr = applyDeepAnalysis(base, gopConst, null).video[0]
+    expect(cfr.fpsMode).toBe('cfr')
+    expect(cfr.fps).toBe(30)
+    // nur der Anfang gleichmäßig -> Verdacht bleibt
+    const partial = applyDeepAnalysis(info('vfr.mp4'), { ...gopConst, complete: false }, null)
+    expect(partial.video[0].fpsMode).toBe('vfr-suspect')
     const confirmed = applyDeepAnalysis(info('vfr.mp4'), { ...gopConst, vfr: true }, null)
     expect(confirmed.video[0].fpsMode).toBe('vfr')
     expect(confirmed.deepAnalyzed).toBe(true)
@@ -364,5 +414,44 @@ describe('describeProbeError', () => {
     expect(describeProbeError('{"error":{"code":-1094995529}}', '').error).toMatch(/Keine lesbare/)
     expect(describeProbeError('{"error":{"code":-2}}', '').error).toBe('Datei nicht gefunden')
     expect(describeProbeError('kein json', 'x: Permission denied').error).toBe('Keine Leserechte')
+  })
+})
+
+describe('Review-Fälle', () => {
+  it('veraltete mkvmerge-Statistik nach ffmpeg -c copy wird verworfen', () => {
+    // 20-s-Datei mit mkvmerge, dann `ffmpeg -c copy -t 2`: Tags beschreiben noch 20 s
+    const i = info('stale_stats_cut.mkv')
+    expect(i.incomplete).toBe(false)
+    expect(i.video[0]).toMatchObject({ frames: 50, framesEstimated: true })
+    expect(i.video[0].bitRate).not.toBe(1748779)
+    // echte mkvmerge-Datei: Statistik bleibt gültig
+    expect(info('mkvmerge_h264_aac.mkv').video[0].bitRate).toBe(4963812)
+  })
+
+  it('unbekannte verlustbehaftete Codecs (AAC-LATM) bekommen keine Bittiefe', () => {
+    expect(info('aac_latm.ts').audio[0]).toMatchObject({
+      codecName: 'aac_latm',
+      lossy: true,
+      bitDepth: null,
+      float: false
+    })
+  })
+
+  it('Timecode nur in gültiger Form (Tags sind freie Texte)', () => {
+    expect(validTimecode('10:00:00:00')).toBe('10:00:00:00')
+    expect(validTimecode('01:00:00;00')).toBe('01:00:00;00')
+    expect(validTimecode('10:00:00.000')).toBe('10:00:00.000')
+    expect(validTimecode('=HYPERLINK("https://x.invalid";"Klick")')).toBeNull()
+  })
+
+  it('AppleDouble und Nicht-MP4 werden nicht als abgebrochene Kopie gemeldet', () => {
+    const out = '{"error":{"code":-1094995529}}'
+    const err = '[mov,mp4,m4a,3gp,3g2,mj2 @ 0x1] moov atom not found\n'
+    const appleDouble = new Uint8Array([0, 5, 0x16, 7, 0, 2, 0, 0])
+    expect(describeProbeError(out, err, '/x/._clip.mov', appleDouble).error).toMatch(/AppleDouble/)
+    const ftyp = new Uint8Array([0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70])
+    expect(describeProbeError(out, err, '/x/clip.mov', ftyp).error).toMatch(/unvollständig/)
+    const junk = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0, 0])
+    expect(describeProbeError(out, err, '/x/clip.mov', junk).error).toMatch(/Keine MP4\/MOV-Datei/)
   })
 })

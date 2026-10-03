@@ -67,18 +67,41 @@ const PARALLEL = 3
 let running = 0
 // Erhöht bei „Liste leeren" -> Antworten älterer Aufträge werden verworfen.
 let generation = 0
+// Pfade, deren Analyse gerade läuft (Status-Wechsel kommen gebündelt, siehe unten)
+const inFlight = new Set<string>()
+
+// Ergebnisse GEBÜNDELT übernehmen: bei hunderten Dateien wäre jedes einzelne set()
+// ein Neu-Rendern der ganzen Liste – quadratischer Aufwand, die Oberfläche fror ein.
+const pendingPatches = new Map<string, Partial<MediaEntry>>()
+let flushTimer: ReturnType<typeof setTimeout> | null = null
+
+function flushPatches(): void {
+  if (flushTimer) clearTimeout(flushTimer)
+  flushTimer = null
+  if (!pendingPatches.size) return
+  const patches = new Map(pendingPatches)
+  pendingPatches.clear()
+  useMediaInfo.setState((s) => ({
+    entries: s.entries.map((e) => {
+      const p = patches.get(e.path)
+      return p ? { ...e, ...p } : e
+    })
+  }))
+}
 
 function patchEntry(path: string, patch: Partial<MediaEntry>): void {
-  useMediaInfo.setState((s) => ({
-    entries: s.entries.map((e) => (e.path === path ? { ...e, ...patch } : e))
-  }))
+  pendingPatches.set(path, { ...pendingPatches.get(path), ...patch })
+  if (!flushTimer) flushTimer = setTimeout(flushPatches, 80)
 }
 
 function pump(): void {
   while (running < PARALLEL) {
-    const next = useMediaInfo.getState().entries.find((e) => e.status === 'pending')
+    const next = useMediaInfo
+      .getState()
+      .entries.find((e) => e.status === 'pending' && !inFlight.has(e.path))
     if (!next) return
     running++
+    inFlight.add(next.path)
     const gen = generation
     patchEntry(next.path, { status: 'loading' })
     const deep = useMediaInfoPrefs.getState().deep
@@ -87,8 +110,10 @@ function pump(): void {
       .then((res) => {
         if (gen !== generation) return
         if (res.ok) {
+          // Tiefenanalyse wurde eingeschaltet, während dieser Auftrag lief -> nachholen
+          const redo = useMediaInfoPrefs.getState().deep && !res.info.deepAnalyzed
           patchEntry(next.path, {
-            status: 'done',
+            status: redo ? 'pending' : 'done',
             info: res.info,
             error: null,
             detail: null,
@@ -119,6 +144,9 @@ function pump(): void {
       })
       .finally(() => {
         running--
+        inFlight.delete(next.path)
+        // Status sofort sichtbar machen, dann den nächsten Auftrag starten
+        flushPatches()
         pump()
       })
   }
@@ -132,10 +160,15 @@ export const useMediaInfo = create<MediaInfoState>((set, get) => ({
 
   addInputs: async (inputs, selectFirst = false) => {
     if (!inputs.length) return
+    const gen = generation
     set({ collecting: true, notice: null })
     try {
       const res = await api.mediaInfo.collect(inputs)
+      // „Liste leeren" während des Durchsuchens: Ergebnis verwerfen
+      if (gen !== generation) return
+      flushPatches()
       const known = new Set(get().entries.map((e) => e.path))
+      const again = new Set(res.files.filter((p) => known.has(p)))
       const fresh: MediaEntry[] = res.files
         .filter((p) => !known.has(p))
         .map((path) => ({
@@ -152,7 +185,16 @@ export const useMediaInfo = create<MediaInfoState>((set, get) => ({
       if (res.unreadable.length) notes.push(`${res.unreadable.length} Eingabe(n) nicht lesbar.`)
       if (res.limited) notes.push('Sehr viele Dateien – nur die ersten 5.000 übernommen.')
       set((s) => ({
-        entries: [...s.entries, ...fresh],
+        // Bekannte Dateien erneut prüfen (z.B. Stick wieder eingesteckt); unveränderte
+        // Dateien liefert der Cache im main sofort.
+        entries: [
+          ...s.entries.map((e) =>
+            again.has(e.path) && (e.status === 'done' || e.status === 'error')
+              ? { ...e, status: 'pending' as const, force: false }
+              : e
+          ),
+          ...fresh
+        ],
         selected:
           selectFirst && res.files[0] ? res.files[0] : (s.selected ?? fresh[0]?.path ?? null),
         notice: notes.length ? notes.join(' ') : null
@@ -167,7 +209,8 @@ export const useMediaInfo = create<MediaInfoState>((set, get) => ({
     pump()
   },
 
-  remove: (path) =>
+  remove: (path) => {
+    flushPatches()
     set((s) => {
       const idx = s.entries.findIndex((e) => e.path === path)
       const entries = s.entries.filter((e) => e.path !== path)
@@ -177,16 +220,19 @@ export const useMediaInfo = create<MediaInfoState>((set, get) => ({
           ? (entries[Math.min(idx, entries.length - 1)]?.path ?? null)
           : s.selected
       return { entries, selected }
-    }),
+    })
+  },
 
   clear: () => {
     generation++
-    set({ entries: [], selected: null, notice: null })
+    pendingPatches.clear()
+    set({ entries: [], selected: null, notice: null, collecting: false })
   },
 
   select: (path) => set({ selected: path }),
 
   reanalyze: (paths, force = true) => {
+    flushPatches()
     const want = paths ? new Set(paths) : null
     set((s) => ({
       entries: s.entries.map((e) =>

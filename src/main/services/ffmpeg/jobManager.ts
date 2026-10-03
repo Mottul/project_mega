@@ -1,45 +1,13 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { existsSync, readdirSync, rmSync, statSync, type Dirent } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
-import { extname, join } from 'node:path'
-import { dotted, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type { ChunksMode, HapEnqueueRequest, HapJob } from '@shared/types'
 import { ffmpegBinPath } from './ffmpegPath'
 import { buildHapArgs, computeChunks, hapOutputPath } from './hapEncoder'
+import { collectVideoInputs } from './mediaInfo'
 import { probe } from './probe'
 
-const VIDEO_EXT = new Set(dotted(VIDEO_EXTENSIONS))
-
 type Sink = (job: HapJob) => void
-
-function readEntries(dir: string): Dirent<string>[] {
-  try {
-    return readdirSync(dir, { withFileTypes: true })
-  } catch {
-    return []
-  }
-}
-
-function walk(dir: string, out: Set<string>): void {
-  for (const e of readEntries(dir)) {
-    const fp = join(dir, e.name)
-    if (e.isDirectory()) walk(fp, out)
-    else if (VIDEO_EXT.has(extname(e.name).toLowerCase())) out.add(fp)
-  }
-}
-
-function collectVideos(inputs: string[]): string[] {
-  const out = new Set<string>()
-  for (const p of inputs) {
-    try {
-      if (statSync(p).isDirectory()) walk(p, out)
-      else if (VIDEO_EXT.has(extname(p).toLowerCase())) out.add(p)
-    } catch {
-      // unzugaengliche Pfade ignorieren
-    }
-  }
-  return [...out]
-}
 
 class JobManager {
   private jobs = new Map<string, HapJob>()
@@ -68,9 +36,10 @@ class JobManager {
     this.sink({ ...job })
   }
 
-  enqueue(req: HapEnqueueRequest): { jobIds: string[] } {
+  async enqueue(req: HapEnqueueRequest): Promise<{ jobIds: string[] }> {
     this.concurrency = Math.max(1, Math.min(req.concurrency || 1, 8))
-    const files = collectVideos(req.inputs)
+    // gemeinsame Sammelregeln mit der Medien-Info (keine ._-/Systemdateien)
+    const files = await collectVideoInputs(req.inputs)
     const jobIds: string[] = []
     for (const input of files) {
       const id = randomUUID()

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeMedia, DEFAULT_PROFILE } from './hints'
-import { factSheet, shortLine, toCsv, toJson, toTsv, type ReportRow } from './report'
+import { factSheet, safeCell, shortLine, toCsv, toJson, toTsv, type ReportRow } from './report'
 import { audioTrack, mediaInfo, videoTrack } from './testFactory'
 
 const info = mediaInfo({
@@ -61,5 +61,17 @@ describe('report', () => {
     const json = JSON.parse(toJson(rows, DEFAULT_PROFILE))
     expect(json.files[0].info.name).toBe('Opener; v3.mov')
     expect(json.files[0].hints.some((h: { id: string }) => h.id === 'fat32')).toBe(true)
+  })
+
+  it('Formel-Injektion: Zellen mit = + - @ werden zu Text', () => {
+    expect(safeCell('=HYPERLINK("https://x.invalid";"Klick")')).toBe(
+      `'=HYPERLINK("https://x.invalid";"Klick")`
+    )
+    expect(safeCell('-6dB Mix.mov')).toBe("'-6dB Mix.mov")
+    expect(safeCell('Intro.mov')).toBe('Intro.mov')
+    const evil = mediaInfo({ name: '=1+1.mov', path: '/x/=1+1.mov' })
+    const row: ReportRow[] = [{ info: evil, hints: [] }]
+    expect(toCsv(row, true).split('\r\n')[1].startsWith("'=1+1.mov;")).toBe(true)
+    expect(toTsv(row).split('\n')[1].startsWith("'=1+1.mov\t")).toBe(true)
   })
 })

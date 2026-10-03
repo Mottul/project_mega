@@ -293,7 +293,8 @@ export function MediaDetail({
 }: {
   entry: MediaEntry
   hints: MediaHint[]
-  onSendToHap: (paths: string[]) => void
+  /** null = keine Weitergabe anbieten (Kundenansicht) */
+  onSendToHap: ((paths: string[]) => void) | null
 }): JSX.Element {
   const { dir, name } = splitPath(entry.path)
   const profile = useMediaInfoPrefs((s) => s.profile)
@@ -375,7 +376,7 @@ export function MediaDetail({
         >
           <Copy className="size-4" /> Steckbrief kopieren
         </Button>
-        {canHap && (
+        {canHap && onSendToHap && (
           <Button variant="outline" size="sm" onClick={() => onSendToHap([entry.path])}>
             <FileCog className="size-4" /> An HAP-Konverter
           </Button>
@@ -603,7 +604,8 @@ function Chips({ info }: { info: MediaInfo }): JSX.Element {
   if (info.timecode) chips.push(`TC ${info.timecode}`)
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
-      {chips.map((c) => (
+      {/* doppelte Merkmale (z.B. Container „GIF" + Codec „GIF") nur einmal */}
+      {[...new Set(chips)].map((c) => (
         <Badge key={c}>{c}</Badge>
       ))}
     </div>

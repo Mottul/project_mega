@@ -21,6 +21,7 @@ import { Progress } from '@renderer/components/ui/progress'
 import { selectClass } from '@renderer/components/ui/select'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { useKiosk } from '@renderer/launcher/kiosk'
 import { useHandoff } from '@renderer/lib/handoff'
 import { cn } from '@renderer/lib/utils'
 import { VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
@@ -70,11 +71,15 @@ export function HapConverter(): JSX.Element {
   const inputs = useHapInputs((s) => s.inputs)
   const meta = useHapInputMeta((s) => s.meta)
   const [format, setFormat] = useState<HapFormat>('hap_q')
-  const [autoChunks, setAutoChunks] = useState(true)
-  const [manualChunks, setManualChunks] = useState(4)
   const [outputDir, setOutputDir] = useState<string | null>(null)
-  const [concurrency, setConcurrency] = useState(1)
-  const [compressor, setCompressor] = useState<HapCompressor>('snappy')
+  // Kompressor/Parallelität/Chunks im Store: überstehen den Abstecher in die Medien-Info
+  const compressor = useHapInputs((s) => s.compressor)
+  const concurrency = useHapInputs((s) => s.concurrency)
+  const autoChunks = useHapInputs((s) => s.autoChunks)
+  const manualChunks = useHapInputs((s) => s.manualChunks)
+  const setOptions = useHapInputs((s) => s.setOptions)
+  // Kundenansicht: keine Sprünge in andere (ungesperrte) Tools anbieten
+  const locked = useKiosk()
   const [jobs, setJobs] = useState<Record<string, HapJob>>({})
   const [dragOver, setDragOver] = useState(false)
   const [startNote, setStartNote] = useState<string | null>(null)
@@ -174,6 +179,8 @@ export function HapConverter(): JSX.Element {
     const chunks: ChunksMode = autoChunks
       ? { kind: 'auto' }
       : { kind: 'manual', value: Math.max(1, Math.min(64, manualChunks)) }
+    // erwartete Jobs: Einzeldateien je 1, Ordner mit ihrer Video-Anzahl
+    const expected = fileCount
     const res = await api.hap.enqueue({
       inputs,
       format,
@@ -184,7 +191,11 @@ export function HapConverter(): JSX.Element {
     })
     useHapInputs.getState().clear()
     if (!res.jobIds.length) setStartNote('Keine Videodateien gefunden – nichts eingereiht.')
-    else setStartNote(null)
+    else if (res.jobIds.length < expected) {
+      setStartNote(
+        `${res.jobIds.length} von ${expected} Dateien eingereiht – übrige nicht gefunden oder nicht lesbar.`
+      )
+    } else setStartNote(null)
   }
 
   // Hinweise je Eingabedatei für das gewählte Format + Sammelzeile über dem Start
@@ -240,7 +251,7 @@ export function HapConverter(): JSX.Element {
               <select
                 className={selectClass}
                 value={compressor}
-                onChange={(e) => setCompressor(e.target.value as HapCompressor)}
+                onChange={(e) => setOptions({ compressor: e.target.value as HapCompressor })}
               >
                 <option value="snappy">Snappy (kleinere Dateien, Standard)</option>
                 <option value="none">Keiner (schneller, größere Dateien)</option>
@@ -257,7 +268,7 @@ export function HapConverter(): JSX.Element {
               <select
                 className={selectClass}
                 value={concurrency}
-                onChange={(e) => setConcurrency(Number(e.target.value))}
+                onChange={(e) => setOptions({ concurrency: Number(e.target.value) })}
               >
                 {CONCURRENCY_OPTIONS.map((n) => (
                   <option key={n} value={n}>
@@ -276,7 +287,7 @@ export function HapConverter(): JSX.Element {
                   <input
                     type="checkbox"
                     checked={autoChunks}
-                    onChange={(e) => setAutoChunks(e.target.checked)}
+                    onChange={(e) => setOptions({ autoChunks: e.target.checked })}
                     className="size-4 accent-[hsl(var(--primary))]"
                   />
                   Automatisch
@@ -287,7 +298,7 @@ export function HapConverter(): JSX.Element {
                     min={1}
                     max={64}
                     className="w-24"
-                    onCommit={setManualChunks}
+                    onCommit={(v) => setOptions({ manualChunks: v })}
                   />
                 )}
               </div>
@@ -379,7 +390,7 @@ export function HapConverter(): JSX.Element {
                     meta={meta[p]}
                     hints={inputHints.get(p) ?? []}
                     format={format}
-                    onInfo={() => showDetails(p)}
+                    onInfo={locked ? null : () => showDetails(p)}
                     onRemove={() => useHapInputs.getState().remove(p)}
                   />
                 ))}
@@ -442,7 +453,11 @@ export function HapConverter(): JSX.Element {
             ) : (
               <div className="space-y-2">
                 {jobList.map((job) => (
-                  <JobRow key={job.id} job={job} onInfo={() => showDetails(job.inputPath)} />
+                  <JobRow
+                    key={job.id}
+                    job={job}
+                    onInfo={locked ? null : () => showDetails(job.inputPath)}
+                  />
                 ))}
               </div>
             )}
@@ -453,7 +468,7 @@ export function HapConverter(): JSX.Element {
   )
 }
 
-function JobRow({ job, onInfo }: { job: HapJob; onInfo: () => void }): JSX.Element {
+function JobRow({ job, onInfo }: { job: HapJob; onInfo: (() => void) | null }): JSX.Element {
   const meta = STATUS_META[job.status]
   const resolution = job.width && job.height ? `${job.width}×${job.height}` : '–'
   const canCancel = job.status === 'queued' || job.status === 'running' || job.status === 'probing'
@@ -471,15 +486,17 @@ function JobRow({ job, onInfo }: { job: HapJob; onInfo: () => void }): JSX.Eleme
           </p>
         </div>
         <Badge tone={meta.tone}>{meta.label}</Badge>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onInfo}
-          aria-label="Details in Medien-Info"
-          title="Details in Medien-Info"
-        >
-          <FileSearch className="size-4" />
-        </Button>
+        {onInfo && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onInfo}
+            aria-label="Details in Medien-Info"
+            title="Details in Medien-Info"
+          >
+            <FileSearch className="size-4" />
+          </Button>
+        )}
         {canCancel && (
           <Button
             variant="ghost"
@@ -525,7 +542,7 @@ function InputRow({
   meta: InputMeta | undefined
   hints: MediaHint[]
   format: HapFormat
-  onInfo: () => void
+  onInfo: (() => void) | null
   onRemove: () => void
 }): JSX.Element {
   let line: JSX.Element | string
@@ -583,7 +600,7 @@ function InputRow({
             </Badge>
           </span>
         )}
-        {meta?.kind === 'file' && (
+        {meta?.kind === 'file' && onInfo && (
           <button
             className="text-muted-foreground hover:text-foreground"
             onClick={onInfo}
