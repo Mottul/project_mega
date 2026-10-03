@@ -1,9 +1,9 @@
 // Die Fernsteuer-App dieser Mottulbox: bindet Video-Player-, Jingle-, OSC- und
 // Timer-Fernsteuerung unter EINER Adresse (http://<ip>:8090) ein. Der Port ist bewusst
 // fest – die als Web-App abgelegte Adresse muss von Show zu Show gleich bleiben.
-// Die IPC-Handler rufen nach jedem Start/Stopp einer Fernsteuerung syncRemoteApp().
+// Start/Stopp laufen über ipc/remoteControls (gleicht danach syncRemoteApp() ab).
 
-import type { RemoteStatus } from '@shared/types'
+import type { RemoteAppStatus, RemoteControlId, RemoteStatus } from '@shared/types'
 import { appIconPng } from './appIcon'
 import { handleJingleRemote, isJingleRemoteRunning } from './jingleRemoteServer'
 import { handleOscRemote, isOscRemoteRunning } from './oscRemoteServer'
@@ -14,7 +14,7 @@ import { handleTimerRemote, isTimerRemoteRunning } from './timerRemoteServer'
 
 export const REMOTE_APP_PORT = 8090
 
-export type RemoteAppId = 'player' | 'jingle' | 'osc' | 'timer'
+export type RemoteAppId = RemoteControlId
 
 // Alle Fernsteuer-Server (auch die eigenen Ports) liefern das App-Icon aus.
 setPwaIconSource(appIconPng)
@@ -69,19 +69,23 @@ const remoteApp = createRemoteApp(
 )
 
 export const syncRemoteApp = remoteApp.sync
+
+/** Startseite + welche Fernsteuerungen laufen (Homescreen-Kacheln, QR-Code). */
+export function getRemoteAppStatus(): RemoteAppStatus {
+  return {
+    ...remoteApp.info(),
+    port: REMOTE_APP_PORT,
+    remotes: {
+      player: isRemoteRunning(),
+      jingle: isJingleRemoteRunning(),
+      osc: isOscRemoteRunning(),
+      timer: isTimerRemoteRunning()
+    }
+  }
+}
 export const stopRemoteApp = remoteApp.stop
 
 /** Ergänzt den Status einer Fernsteuerung um ihre Adressen in der App. */
 export function withAppLink(id: RemoteAppId, status: RemoteStatus): RemoteStatus {
   return status.running ? { ...status, app: remoteApp.link(id) } : status
-}
-
-/** Nach Start/Stopp einer Fernsteuerung: App abgleichen (starten/stoppen) und
- *  den Status inklusive App-Adressen liefern. */
-export async function syncedRemoteStatus(
-  id: RemoteAppId,
-  getStatus: () => RemoteStatus
-): Promise<RemoteStatus> {
-  await syncRemoteApp()
-  return withAppLink(id, getStatus())
 }

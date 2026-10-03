@@ -58,7 +58,11 @@ export function JinglePlayer(): JSX.Element {
 
   // Fernsteuerung: Status + Trigger vom Handy an die Engine geben.
   useEffect(() => {
-    void api.jingles.remoteStatus().then(setRemote)
+    // Status inkl. gemerktem Port (läuft sie nicht, steht dort der zuletzt benutzte)
+    void api.jingles.remoteStatus().then((s) => {
+      setRemote(s)
+      setRemotePort(s.port)
+    })
     const offChanged = api.jingles.onRemoteChanged(setRemote)
     const offCmd = api.jingles.onRemoteCommand((cmd) => {
       if (cmd.type === 'stopAll') engineRef.current.stopAll()

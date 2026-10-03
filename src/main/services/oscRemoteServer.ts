@@ -78,6 +78,7 @@ const srv = createSnapshotServer<OscRemoteSnapshot, OscRemoteCommand>({
 export const setOscCommandSink = srv.setCommandSink
 export const getOscRemoteStatus = srv.getStatus
 export const publishOscSnapshot = srv.publish
+export const forgetOscSnapshot = srv.forget
 export const startOscRemote = srv.start
 export const stopOscRemote = srv.stop
 export const isOscRemoteRunning = srv.isRunning

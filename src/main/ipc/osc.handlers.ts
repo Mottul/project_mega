@@ -11,13 +11,14 @@ import { broadcast } from '../services/broadcast'
 import { getSettings } from '../services/store'
 import { initOsc, oscSend, oscSetConfig, oscStatus } from '../services/osc/oscService'
 import {
+  forgetOscSnapshot,
   getOscRemoteStatus,
   publishOscSnapshot,
   setOscCommandSink,
   startOscRemote,
   stopOscRemote
 } from '../services/oscRemoteServer'
-import { syncedRemoteStatus, withAppLink } from '../services/remoteAppServer'
+import { publishFrom, registerRemoteControl, sendToSource } from './remoteControls'
 
 let wired = false
 
@@ -25,7 +26,7 @@ export function registerOscHandlers(): void {
   if (!wired) {
     wired = true
     // Steuerbefehle vom Handy an alle Fenster (der OSC-Tab wendet sie an + sendet OSC).
-    setOscCommandSink((cmd) => broadcast(Channels.oscRemoteCommand, cmd))
+    setOscCommandSink((cmd, source) => sendToSource(Channels.oscRemoteCommand, cmd, source))
   }
 
   ipcMain.handle(Channels.oscSend, (_e, msg: OscMessage) => oscSend(msg))
@@ -37,19 +38,20 @@ export function registerOscHandlers(): void {
   ipcMain.handle(Channels.oscConfigSet, (_e, patch: Partial<OscSettings>) => oscSetConfig(patch))
 
   // Fernsteuerung (eingebetteter Webserver)
-  ipcMain.handle(Channels.oscPublish, (_e, snap: OscRemoteSnapshot) => publishOscSnapshot(snap))
-  ipcMain.handle(Channels.oscRemoteStatus, () => withAppLink('osc', getOscRemoteStatus()))
-  ipcMain.handle(Channels.oscRemoteStart, async (_e, port: number) => {
-    await startOscRemote(port)
-    const status = await syncedRemoteStatus('osc', getOscRemoteStatus)
-    broadcast(Channels.oscRemoteChanged, status)
-    return status
-  })
-  ipcMain.handle(Channels.oscRemoteStop, async () => {
-    stopOscRemote()
-    const status = await syncedRemoteStatus('osc', getOscRemoteStatus)
-    broadcast(Channels.oscRemoteChanged, status)
-    return status
+  ipcMain.handle(Channels.oscPublish, (e, snap: OscRemoteSnapshot) =>
+    publishFrom(e.sender, snap, publishOscSnapshot, forgetOscSnapshot)
+  )
+  registerRemoteControl({
+    id: 'osc',
+    channels: {
+      status: Channels.oscRemoteStatus,
+      start: Channels.oscRemoteStart,
+      stop: Channels.oscRemoteStop,
+      changed: Channels.oscRemoteChanged
+    },
+    start: startOscRemote,
+    stop: stopOscRemote,
+    status: getOscRemoteStatus
   })
 
   // OSC-Monitor-Fenster: Aktivitäts-Log vom OSC-Tab an alle Fenster spiegeln.

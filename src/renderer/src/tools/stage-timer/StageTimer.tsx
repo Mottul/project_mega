@@ -138,7 +138,7 @@ function RemotePanel(): JSX.Element {
   useEffect(() => {
     void api.timer.remoteStatus().then((s) => {
       setRemote(s)
-      if (s.running) setPort(s.port)
+      setPort(s.port)
     })
     return api.timer.onRemoteChanged(setRemote)
   }, [])

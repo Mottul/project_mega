@@ -240,6 +240,11 @@ alle unter einer festen Adresse:
   des Displays (Wake Lock) erlauben Browser nur über HTTPS – für die Show deshalb am Gerät die
   automatische Bildschirmsperre abschalten. Die App-Adresse antwortet nur, solange am Rechner eine
   Fernsteuerung läuft.
+- **Zustand wird gemerkt:** Eingeschaltete Fernsteuerungen (samt Port) starten beim nächsten
+  App-Start automatisch wieder. Am Homescreen zeigt der Knopf mit dem Handy-Symbol den QR-Code der
+  Startseite; Kacheln von Werkzeugen mit laufender Fernsteuerung tragen den Hinweis „Fernsteuerung".
+- Ist ein Werkzeug in mehreren Fenstern offen, gehen Befehle vom Handy nur an das Fenster, dessen
+  Stand das Handy zeigt (kein doppeltes Abspielen).
 - Die Einzeladressen der Fernsteuerungen (Ports 8088/8089/8091/8092) funktionieren weiter.
 
 ---

@@ -168,17 +168,26 @@ export interface SnapshotServer<Snap, Cmd> {
   isRunning(): boolean
   /** Request-Handler (für die Einbindung in die Fernsteuer-App). */
   handle: RemoteHandler
-  publish(snap: Snap): void
+  /** Zustand eines Fensters (source = webContents-id) veröffentlichen. */
+  publish(snap: Snap, source?: number): void
+  /** Fenster ist weg (geschlossen/abgestürzt) -> dessen Stand vergessen. */
+  forget(source: number): void
   start(port: number): Promise<RemoteStatus>
   stop(): void
-  setCommandSink(sink: (cmd: Cmd) => void): void
+  /** Befehle vom Handy; `source` = Fenster, das den gezeigten Stand liefert. */
+  setCommandSink(sink: (cmd: Cmd, source: number | null) => void): void
 }
 
-/** Server für das verbreitete Muster: der Renderer-Tab veröffentlicht einen
+/** Server für das verbreitete Muster: ein Renderer-Tab veröffentlicht einen
  *  Zustand (publish), der per SSE an alle Clients gepusht wird; eingehende
  *  Befehle (/api/command) werden geprüft (parseCommand) und an den Command-Sink
- *  gereicht. Liefert außerdem die mobile Steuerseite unter '/'. */
-export function createSnapshotServer<Snap, Cmd>(opts: {
+ *  gereicht. Liefert außerdem die mobile Steuerseite unter '/'.
+ *
+ *  Der Stand wird JE FENSTER gemerkt: Ist dasselbe Werkzeug in mehreren Fenstern
+ *  offen (oder wechselt ein Fenster weg, während ein anderes es noch zeigt),
+ *  darf das „getrennt" des einen nicht das verbundene andere überschreiben.
+ *  Gezeigt wird der zuletzt veröffentlichte VERBUNDENE Stand. */
+export function createSnapshotServer<Snap extends { connected: boolean }, Cmd>(opts: {
   logTag: string
   page: string
   empty: Snap
@@ -186,8 +195,16 @@ export function createSnapshotServer<Snap, Cmd>(opts: {
   parseCommand: (body: string) => Cmd | null
 }): SnapshotServer<Snap, Cmd> {
   const host = createRemoteHost(opts.logTag, opts.defaultPort)
-  let snapshot: Snap = opts.empty
-  let commandSink: (cmd: Cmd) => void = () => {}
+  // Map behält die Einfügereihenfolge -> neu veröffentlichte Quellen ans Ende.
+  const bySource = new Map<number, Snap>()
+  let commandSink: (cmd: Cmd, source: number | null) => void = () => {}
+
+  function active(): { snap: Snap; source: number | null } {
+    let found: { snap: Snap; source: number | null } | null = null
+    for (const [source, snap] of bySource) if (snap.connected) found = { snap, source }
+    return found ?? { snap: opts.empty, source: null }
+  }
+  const snapshot = (): Snap => active().snap
 
   function handle(req: IncomingMessage, res: ServerResponse): void {
     const url = new URL(req.url ?? '/', 'http://localhost')
@@ -197,12 +214,12 @@ export function createSnapshotServer<Snap, Cmd>(opts: {
       res.end(opts.page)
       return
     }
-    if (path === '/api/state') return sendJson(res, snapshot)
-    if (path === '/api/events') return host.openSse(req, res, () => snapshot)
+    if (path === '/api/state') return sendJson(res, snapshot())
+    if (path === '/api/events') return host.openSse(req, res, snapshot)
     if (path === '/api/command' && req.method === 'POST') {
       void readBody(req).then((body) => {
         const cmd = opts.parseCommand(body)
-        if (cmd) commandSink(cmd)
+        if (cmd) commandSink(cmd, active().source)
         sendJson(res, { ok: true })
       })
       return
@@ -220,9 +237,13 @@ export function createSnapshotServer<Snap, Cmd>(opts: {
     setCommandSink: (sink) => {
       commandSink = sink
     },
-    publish: (snap) => {
-      snapshot = snap
-      host.broadcast('state', snap)
+    publish: (snap, source = 0) => {
+      bySource.delete(source)
+      bySource.set(source, snap)
+      host.broadcast('state', snapshot())
+    },
+    forget: (source) => {
+      if (bySource.delete(source)) host.broadcast('state', snapshot())
     }
   }
 }

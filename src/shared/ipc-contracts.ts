@@ -43,6 +43,7 @@ import type {
   PlayerState,
   PlayerTick,
   ProbeResult,
+  RemoteAppStatus,
   RemoteStatus,
   SelectPathsOptions,
   StageTimerState,
@@ -139,6 +140,9 @@ export const Channels = {
   timerNdiStop: 'timer:ndiStop',
   timerNdiStatus: 'timer:ndiStatus',
   timerNdiChanged: 'timer:ndiChanged', // Event: TimerNdiStatus
+  // Fernsteuer-App (Startseite aller Fernsteuerungen)
+  remoteAppStatus: 'remoteApp:status',
+  remoteAppChanged: 'remoteApp:changed', // Event: RemoteAppStatus
   // Stage-Timer – Fernsteuerung (eingebetteter Webserver)
   timerRemoteStatus: 'timer:remoteStatus',
   timerRemoteStart: 'timer:remoteStart',
@@ -345,6 +349,12 @@ export interface ToolboxApi {
     ndiAudio(chunk: NdiAudioChunk): void
     /** Vom NDI-Spiegelfenster: Fehler beim Aufbau des Audio-Taps melden. */
     ndiTapError(message: string): void
+  }
+
+  remoteApp: {
+    /** Startseite aller Fernsteuerungen: Adresse + welche Fernsteuerungen laufen. */
+    status(): Promise<RemoteAppStatus>
+    onChanged(cb: (status: RemoteAppStatus) => void): () => void
   }
 
   timer: {

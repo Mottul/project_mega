@@ -12,7 +12,7 @@ import {
   startTimerRemote,
   stopTimerRemote
 } from '../services/timerRemoteServer'
-import { syncedRemoteStatus, withAppLink } from '../services/remoteAppServer'
+import { registerRemoteControl } from './remoteControls'
 
 export function registerTimerHandlers(): void {
   // Zustand/Ticks an alle Fenster UND – falls aktiv – an die Handy-Clients (SSE).
@@ -38,17 +38,16 @@ export function registerTimerHandlers(): void {
   ipcMain.handle(Channels.timerNdiStatus, () => getTimerNdiStatus())
 
   // Fernsteuerung (Handy/Tablet)
-  ipcMain.handle(Channels.timerRemoteStatus, () => withAppLink('timer', getTimerRemoteStatus()))
-  ipcMain.handle(Channels.timerRemoteStart, async (_e, port: number) => {
-    await startTimerRemote(port)
-    const status = await syncedRemoteStatus('timer', getTimerRemoteStatus)
-    broadcast(Channels.timerRemoteChanged, status)
-    return status
-  })
-  ipcMain.handle(Channels.timerRemoteStop, async () => {
-    stopTimerRemote()
-    const status = await syncedRemoteStatus('timer', getTimerRemoteStatus)
-    broadcast(Channels.timerRemoteChanged, status)
-    return status
+  registerRemoteControl({
+    id: 'timer',
+    channels: {
+      status: Channels.timerRemoteStatus,
+      start: Channels.timerRemoteStart,
+      stop: Channels.timerRemoteStop,
+      changed: Channels.timerRemoteChanged
+    },
+    start: startTimerRemote,
+    stop: stopTimerRemote,
+    status: getTimerRemoteStatus
   })
 }

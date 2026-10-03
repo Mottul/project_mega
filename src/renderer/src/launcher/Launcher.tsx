@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ExternalLink, Search, Star } from 'lucide-react'
+import { ExternalLink, Search, Star, Wifi } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -16,6 +16,8 @@ import { CATEGORY_LABELS, type ToolModule } from '@renderer/tools/types'
 import type { ToolCategoryId } from '@shared/types'
 import { useToolActivity, type ToolActivity } from './useToolActivity'
 import { useToolFavorites } from './useToolFavorites'
+import { RemoteAppButton } from './RemoteAppButton'
+import { remoteToolIds, useRemoteApp } from './useRemoteApp'
 
 const CATEGORY_ORDER: ToolCategoryId[] = [
   'playback',
@@ -39,12 +41,15 @@ function matches(tool: ToolModule, q: string): boolean {
 function ToolCard({
   tool,
   activity,
+  remote,
   favorite,
   onOpen,
   onToggleFavorite
 }: {
   tool: ToolModule
   activity?: ToolActivity
+  /** Handy-Fernsteuerung dieses Werkzeugs läuft. */
+  remote?: boolean
   favorite: boolean
   onOpen: () => void
   onToggleFavorite: () => void
@@ -97,11 +102,16 @@ function ToolCard({
           <Icon className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 pr-6">
+          <div className="flex flex-wrap items-center gap-1.5 pr-6">
             <h3 className="truncate text-sm font-medium">{tool.name}</h3>
             {activity && (
               <Badge tone="success" dot className="shrink-0">
                 {activity.label}
+              </Badge>
+            )}
+            {remote && (
+              <Badge tone="info" className="shrink-0" title="Handy-Fernsteuerung ist aktiv">
+                <Wifi className="size-3" /> Fernsteuerung
               </Badge>
             )}
           </div>
@@ -116,6 +126,8 @@ export function Launcher(): JSX.Element {
   const [q, setQ] = useState('')
   const navigate = useNavigate()
   const activity = useToolActivity()
+  const remoteApp = useRemoteApp()
+  const remoteTools = remoteToolIds(remoteApp)
   const { favorites, isFavorite, toggle } = useToolFavorites()
 
   // Übersicht -> Fenstertitel zurück auf den App-Namen.
@@ -163,6 +175,7 @@ export function Launcher(): JSX.Element {
             <h1 className="text-2xl font-semibold tracking-tight">{APP_NAME}</h1>
           </div>
           <div className="flex items-center gap-1">
+            <RemoteAppButton status={remoteApp} />
             <AccentPicker />
             <DensityToggle />
             <ThemeToggle />
@@ -196,6 +209,7 @@ export function Launcher(): JSX.Element {
                       key={tool.id}
                       tool={tool}
                       activity={activity[tool.id]}
+                      remote={remoteTools.has(tool.id)}
                       favorite
                       onOpen={() => navigate(`/tool/${tool.id}`)}
                       onToggleFavorite={() => toggle(tool.id)}
@@ -215,6 +229,7 @@ export function Launcher(): JSX.Element {
                       key={tool.id}
                       tool={tool}
                       activity={activity[tool.id]}
+                      remote={remoteTools.has(tool.id)}
                       favorite={isFavorite(tool.id)}
                       onOpen={() => navigate(`/tool/${tool.id}`)}
                       onToggleFavorite={() => toggle(tool.id)}

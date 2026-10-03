@@ -433,7 +433,10 @@ export function OscControl(): JSX.Element {
   // Fernsteuerung: Status beobachten + Steuerbefehle vom Handy/Tablet anwenden
   // (Live-Wert aktualisieren UND OSC senden – wie eine lokale Bedienung).
   useEffect(() => {
-    void api.osc.remoteStatus().then(setRemote)
+    void api.osc.remoteStatus().then((s) => {
+      setRemote(s)
+      setRemotePort(s.port)
+    })
     const offChanged = api.osc.onRemoteChanged(setRemote)
     const offCmd = api.osc.onRemoteCommand((cmd) => {
       const st = useOscSurface.getState()
