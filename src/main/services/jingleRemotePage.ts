@@ -3,7 +3,7 @@
 // Button faded alles aus. Live-Updates per SSE. Bewusst ohne Framework/Build.
 // API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App läuft.
 
-import { PWA_SCRIPT, pwaHead } from './remotePwa'
+import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from './remotePwa'
 
 export const JINGLE_MOBILE_PAGE = `<!DOCTYPE html>
 <html lang="de">
@@ -16,7 +16,7 @@ ${pwaHead()}
 :root{--bg:#0f0f12;--card:#1b1b20;--border:#2c2c34;--text:#e8e8ec;--dim:#8a8a99;--gold:#eab308}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,'Segoe UI',sans-serif}
-header{position:sticky;top:0;background:var(--bg);padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+header{position:sticky;top:0;background:var(--bg);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
 header b{font-size:17px}
 #bank{color:var(--dim);font-size:13px}
 #warn{display:none;margin:10px 14px;padding:10px 12px;border-radius:8px;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);color:var(--gold);font-size:13px}
@@ -30,13 +30,10 @@ footer{position:sticky;bottom:0;padding:12px 14px;background:var(--bg);border-to
 #stop:active{filter:brightness(.9)}
 #dot{width:9px;height:9px;border-radius:50%;background:#ef4444;display:inline-block}
 #dot.ok{background:#34d399}
-.hbtn{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;padding:7px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.hbtn:active{filter:brightness(1.3)}
-.hbtn.home{margin-left:0}
 </style>
 </head>
 <body>
-<header><a href="../" class="hbtn home" data-home aria-label="Alle Fernsteuerungen"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a><span id="dot"></span><b>Jingles</b><span id="bank"></span><button class="hbtn" data-fs="20" aria-label="Vollbild"></button></header>
+<header>${HOME_BUTTON}<span id="dot"></span><b>Jingles</b><span id="bank"></span>${FS_BUTTON}</header>
 <div id="warn">Jingle-Player ist nicht geöffnet. Auf dem Rechner das Werkzeug „Jingle-Player" öffnen.</div>
 <div id="grid"></div>
 <footer><button id="stop">■ Alles stoppen</button></footer>

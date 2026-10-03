@@ -1,16 +1,16 @@
 import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { JingleImportResult, JingleRemoteSnapshot } from '@shared/types'
-import { broadcast } from '../services/broadcast'
 import { cleanupJingles, importJingle, readJingleBytes } from '../services/jingleLibrary'
 import {
+  forgetJingleSnapshot,
   getJingleRemoteStatus,
   publishSnapshot,
   setJingleCommandSink,
   startJingleRemote,
   stopJingleRemote
 } from '../services/jingleRemoteServer'
-import { syncedRemoteStatus, withAppLink } from '../services/remoteAppServer'
+import { publishFrom, registerRemoteControl, sendToSource } from './remoteControls'
 
 let wired = false
 
@@ -18,7 +18,7 @@ export function registerJingleHandlers(): void {
   if (!wired) {
     wired = true
     // Trigger/Stopp vom Handy an alle Fenster (der Jingle-Tab spielt das Audio).
-    setJingleCommandSink((cmd) => broadcast(Channels.jingleRemoteCommand, cmd))
+    setJingleCommandSink((cmd, source) => sendToSource(Channels.jingleRemoteCommand, cmd, source))
   }
 
   ipcMain.handle(Channels.jingleImport, (_e, paths: string[]) => {
@@ -38,18 +38,19 @@ export function registerJingleHandlers(): void {
   ipcMain.handle(Channels.jingleBytes, (_e, storedName: string) => readJingleBytes(storedName))
 
   // Fernsteuerung
-  ipcMain.handle(Channels.jinglePublish, (_e, snap: JingleRemoteSnapshot) => publishSnapshot(snap))
-  ipcMain.handle(Channels.jingleRemoteStatus, () => withAppLink('jingle', getJingleRemoteStatus()))
-  ipcMain.handle(Channels.jingleRemoteStart, async (_e, port: number) => {
-    await startJingleRemote(port)
-    const status = await syncedRemoteStatus('jingle', getJingleRemoteStatus)
-    broadcast(Channels.jingleRemoteChanged, status)
-    return status
-  })
-  ipcMain.handle(Channels.jingleRemoteStop, async () => {
-    stopJingleRemote()
-    const status = await syncedRemoteStatus('jingle', getJingleRemoteStatus)
-    broadcast(Channels.jingleRemoteChanged, status)
-    return status
+  ipcMain.handle(Channels.jinglePublish, (e, snap: JingleRemoteSnapshot) =>
+    publishFrom(e.sender, snap, publishSnapshot, forgetJingleSnapshot)
+  )
+  registerRemoteControl({
+    id: 'jingle',
+    channels: {
+      status: Channels.jingleRemoteStatus,
+      start: Channels.jingleRemoteStart,
+      stop: Channels.jingleRemoteStop,
+      changed: Channels.jingleRemoteChanged
+    },
+    start: startJingleRemote,
+    stop: stopJingleRemote,
+    status: getJingleRemoteStatus
   })
 }

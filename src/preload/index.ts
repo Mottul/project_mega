@@ -100,6 +100,10 @@ const api: ToolboxApi = {
     ndiTapError: (message) => ipcRenderer.send(Channels.playerNdiTapError, message)
   },
 
+  remoteApp: {
+    status: () => ipcRenderer.invoke(Channels.remoteAppStatus),
+    onChanged: (cb) => subscribe(Channels.remoteAppChanged, (s) => cb(s as never))
+  },
   timer: {
     getState: () => ipcRenderer.invoke(Channels.timerGetState),
     command: (cmd) => ipcRenderer.invoke(Channels.timerCommand, cmd),

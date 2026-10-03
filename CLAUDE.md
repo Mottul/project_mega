@@ -45,8 +45,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   (`services/remoteHttp.ts`), Steuerseiten als HTML-Strings. Die Fernsteuer-App
   (`remoteApp*.ts`, fester Port 8090) bindet laufende Fernsteuerungen unter `/<id>/` ein ->
   Steuerseiten sprechen ihre API IMMER relativ an (`api/…`, nie `/api/…`); PWA-Kopf und
-  Client-Skript kommen aus `remotePwa.ts`. Nach Start/Stopp einer Fernsteuerung
-  `syncedRemoteStatus()` aufrufen.
+  Client-Skript kommen aus `remotePwa.ts`. Start/Stopp/Merken/Autostart je Fernsteuerung
+  über `registerRemoteControl()` (`ipc/remoteControls.ts`).
 - **Native/optionale Module:** better-sqlite3 (Prebuild via
   `scripts/rebuild-native.mjs`, KEIN node-gyp im Baum); NDI-Binding
   `grandiose` ist optional + lazy (rollup-external, siehe README „NDI-Ausgabe").

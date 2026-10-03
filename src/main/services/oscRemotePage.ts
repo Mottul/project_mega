@@ -6,7 +6,7 @@
 // (kein Sprung auf den Berührungspunkt), wie auf dem Desktop.
 // API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App läuft.
 
-import { PWA_SCRIPT, pwaHead } from './remotePwa'
+import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from './remotePwa'
 
 export const OSC_MOBILE_PAGE = `<!DOCTYPE html>
 <html lang="de">
@@ -62,13 +62,10 @@ header b{font-size:16px}
 .knob{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;touch-action:none}
 .bknob{display:flex;align-items:center;justify-content:center;min-height:0;height:100%;touch-action:none}
 .knob svg,.bknob svg{height:100%;max-height:100%;width:auto;display:block}
-.hbtn{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;padding:6px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.hbtn:active{filter:brightness(1.3)}
-.hbtn.home{margin-left:0}
 </style>
 </head>
 <body>
-<header><div class="hrow"><a href="../" class="hbtn home" data-home aria-label="Alle Fernsteuerungen"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a><span id="dot"></span><b>OSC</b><span id="setName"></span><button class="hbtn" data-fs="19" aria-label="Vollbild"></button></div><div id="sets"></div></header>
+<header><div class="hrow">${HOME_BUTTON}<span id="dot"></span><b>OSC</b><span id="setName"></span>${FS_BUTTON}</div><div id="sets"></div></header>
 <div id="warn">OSC-Steuerung ist nicht geöffnet. Auf dem Rechner das Werkzeug „OSC-Steuerung" öffnen und die Fernsteuerung aktiv lassen.</div>
 <div id="grid"></div>
 <script>

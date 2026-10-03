@@ -53,10 +53,44 @@ export function pwaHead(themeColor: string = PWA_BACKGROUND): string {
     '<link rel="manifest" href="/manifest.webmanifest">',
     '<link rel="apple-touch-icon" href="/icon-180.png">',
     '<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">',
-    // Zurück-Knopf nur unter der Fernsteuer-App zeigen (Klasse setzt PWA_SCRIPT).
-    '<style>html:not(.in-app) [data-home]{display:none!important}</style>'
+    NAV_STYLE,
+    EVENTSOURCE_GUARD
   ].join('\n')
 }
+
+// Kopfzeilen-Knöpfe (Zurück zur Startseite, Vollbild) – auf allen Seiten gleich.
+// Der Zurück-Knopf erscheint nur unter der Fernsteuer-App (Klasse setzt PWA_SCRIPT).
+const NAV_STYLE =
+  '<style>' +
+  '.navbtn{display:flex;align-items:center;justify-content:center;flex:0 0 auto;width:40px;height:40px;' +
+  'min-height:0;padding:0;margin:0;border-radius:10px;background:#1b1b20;border:1px solid #2c2c34;' +
+  'color:#8a8a99;cursor:pointer;text-decoration:none;box-shadow:none;font:inherit}' +
+  '.navbtn:active{filter:brightness(1.3)}.navbtn.navright{margin-left:auto}' +
+  'html:not(.in-app) [data-home]{display:none!important}' +
+  '</style>'
+
+/** Zurück-Knopf (Pfeil) zur Startseite der Fernsteuer-App. */
+export const HOME_BUTTON =
+  '<a href="../" class="navbtn" data-home aria-label="Alle Fernsteuerungen" title="Alle Fernsteuerungen">' +
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a>'
+
+/** Vollbild-Knopf (rechts in der Kopfzeile); Icon setzt PWA_SCRIPT. */
+export const FS_BUTTON =
+  '<button class="navbtn navright" data-fs="20" aria-label="Vollbild"></button>'
+
+// Live-Verbindungen (EventSource) beim Verlassen der Seite AUSDRÜCKLICH schließen.
+// Browser erlauben pro Adresse nur ~6 gleichzeitige Verbindungen; bleibt beim
+// Seitenwechsel eine alte offen (z. B. iOS hält Seiten im Zurück-Cache), warten
+// neue Seiten auf eine freie Verbindung -> zähes Laden. Kommt eine Seite aus dem
+// Zurück-Cache wieder, wird sie neu geladen (frischer Stand + neue Verbindung).
+// Muss im <head> laufen, damit es die Seiten-Skripte schon nutzen.
+const EVENTSOURCE_GUARD =
+  '<script>(function(){var E=window.EventSource;if(!E)return;var open=[];' +
+  'function G(u,o){var es=new E(u,o);open.push(es);return es;}' +
+  'G.prototype=E.prototype;G.CONNECTING=0;G.OPEN=1;G.CLOSED=2;window.EventSource=G;' +
+  "addEventListener('pagehide',function(){for(var i=0;i<open.length;i++)open[i].close();open=[];});" +
+  "addEventListener('pageshow',function(e){if(e.persisted)location.reload();});})();</script>"
 
 /** Web-App-Manifest. display 'fullscreen' fällt auf iOS auf 'standalone' zurück
  *  (Statusleiste bleibt, Browserleiste weg). */

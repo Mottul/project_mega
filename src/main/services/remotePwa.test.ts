@@ -3,7 +3,7 @@ import { JINGLE_MOBILE_PAGE } from './jingleRemotePage'
 import { OSC_MOBILE_PAGE } from './oscRemotePage'
 import { MOBILE_PAGE } from './player/remotePage'
 import { REMOTE_APP_PAGE } from './remoteAppPage'
-import { pwaManifest } from './remotePwa'
+import { HOME_BUTTON, pwaManifest } from './remotePwa'
 import { TIMER_MOBILE_PAGE } from './timerRemotePage'
 
 const PAGES = {
@@ -44,7 +44,7 @@ describe('Steuerseiten als Web-App', () => {
 
   it('Steuerseiten bieten den Weg zurück zur Startseite', () => {
     for (const html of [JINGLE_MOBILE_PAGE, OSC_MOBILE_PAGE, MOBILE_PAGE, TIMER_MOBILE_PAGE]) {
-      expect(html).toMatch(/<a href="\.\.\/" [^>]*data-home/)
+      expect(html).toContain(HOME_BUTTON)
     }
   })
 

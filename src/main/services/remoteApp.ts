@@ -13,7 +13,7 @@
 
 import type { ServerResponse } from 'node:http'
 import type { RemoteAppLink } from '@shared/types'
-import { createRemoteHost, sendJson, type RemoteHandler } from './remoteHttp'
+import { createRemoteHost, lanUrls, sendJson, type RemoteHandler } from './remoteHttp'
 import { REMOTE_APP_PAGE } from './remoteAppPage'
 
 export interface AppRemote {
@@ -37,6 +37,8 @@ export interface RemoteApp {
   sync(): Promise<void>
   /** Adressen einer Steuerseite in der App (für die Anzeige am Rechner). */
   link(id: string): RemoteAppLink
+  /** Adressen der Startseite – läuft sie nicht, die künftigen (für den QR-Code). */
+  info(): { running: boolean; urls: string[]; error?: string }
   stop(): void
   handle: RemoteHandler
 }
@@ -140,6 +142,10 @@ export function createRemoteApp(remotes: AppRemote[], port: number): RemoteApp {
       host.isRunning()
         ? { urls: host.status().urls.map((u) => `${u}/${id}/`) }
         : { urls: [], error: lastError },
+    info: () =>
+      host.isRunning()
+        ? { running: true, urls: host.status().urls }
+        : { running: false, urls: lanUrls(port), error: lastError },
     stop: host.stop,
     handle
   }

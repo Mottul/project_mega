@@ -5,7 +5,7 @@
 // Template-Literal und kein ${} im Client-JS, da diese Datei selbst ein Template-
 // Literal ist (Icons daher als zusammengesetzte SVG-Strings).
 
-import { PWA_SCRIPT, pwaHead } from '../remotePwa'
+import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from '../remotePwa'
 
 export const MOBILE_PAGE = `<!doctype html>
 <html lang="de">
@@ -96,17 +96,13 @@ ${pwaHead('#09090b')}
   .grid .item img { width:100%; aspect-ratio:16/9; object-fit:cover; }
   .grid .item .t { white-space:normal; font-size:13px; }
   .grid .item .d { display:none; }
-  .fsbtn { position:fixed; right:14px; bottom:14px; z-index:60; width:44px; height:44px; padding:0;
-    min-height:0; display:flex; align-items:center; justify-content:center; border-radius:50%;
-    background:var(--card); border:1px solid var(--muted); color:var(--sub);
-    box-shadow:0 2px 10px rgba(0,0,0,0.45); }
-  .backlink { display:flex; align-items:center; gap:4px; width:max-content; margin:-4px 0 10px -4px;
-    padding:6px 8px 6px 4px; color:var(--sub); font-size:14px; text-decoration:none; }
+  .phead { position:sticky; top:0; z-index:50; display:flex; align-items:center; gap:10px;
+    margin:-14px -14px 14px; padding:10px 14px; background:var(--bg); border-bottom:1px solid var(--muted); }
+  .phead b { font-size:17px; }
 </style>
 </head>
 <body>
-  <a href="../" class="backlink" data-home><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Alle Fernsteuerungen</a>
-  <button class="fsbtn" data-fs="22" aria-label="Vollbild"></button>
+  <header class="phead">${HOME_BUTTON}<b>Video-Player</b>${FS_BUTTON}</header>
   <details class="setpanel">
     <summary><span class="caret"></span>Einstellungen</summary>
     <div class="card setcard">

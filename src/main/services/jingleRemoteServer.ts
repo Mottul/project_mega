@@ -38,6 +38,7 @@ const srv = createSnapshotServer<JingleRemoteSnapshot, JingleRemoteCommand>({
 export const setJingleCommandSink = srv.setCommandSink
 export const getJingleRemoteStatus = srv.getStatus
 export const publishSnapshot = srv.publish
+export const forgetJingleSnapshot = srv.forget
 export const startJingleRemote = srv.start
 export const stopJingleRemote = srv.stop
 export const isJingleRemoteRunning = srv.isRunning

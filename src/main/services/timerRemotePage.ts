@@ -5,7 +5,7 @@
 // API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App läuft.
 // Achtung Template-Literal: im Client-JS keine Backslashes, Backticks oder ${…}.
 
-import { PWA_SCRIPT, pwaHead } from './remotePwa'
+import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from './remotePwa'
 
 export const TIMER_MOBILE_PAGE = `<!DOCTYPE html>
 <html lang="de">
@@ -23,9 +23,6 @@ header b{font-size:17px}
 #pos{color:var(--dim);font-size:13px}
 #dot{width:9px;height:9px;border-radius:50%;background:#ef4444;display:inline-block}
 #dot.ok{background:#34d399}
-.hbtn{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;padding:7px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.hbtn.home{margin-left:0}
-.hbtn:active{filter:brightness(1.3)}
 main{padding:14px;max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
 #warn{display:none;padding:10px 12px;border-radius:10px;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);color:var(--warn);font-size:13px}
@@ -74,7 +71,7 @@ label.flash input{width:20px;height:20px}
 </style>
 </head>
 <body>
-<header><a href="../" class="hbtn home" data-home aria-label="Alle Fernsteuerungen"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a><span id="dot"></span><b>Timer</b><span id="pos"></span><button class="hbtn" data-fs="20" aria-label="Vollbild"></button></header>
+<header>${HOME_BUTTON}<span id="dot"></span><b>Timer</b><span id="pos"></span>${FS_BUTTON}</header>
 <main>
 <div id="warn">Noch keine Abschnitte – am Rechner im Werkzeug „Stage-Timer &amp; Uhr“ anlegen.</div>
 <div class="card disp">

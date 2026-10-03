@@ -6,7 +6,7 @@
 // Achtung Template-Literal: im Client-JS keine Backslashes, Backticks oder ${…}.
 
 import { APP_NAME } from '@shared/brand'
-import { PWA_SCRIPT, pwaHead } from './remotePwa'
+import { FS_BUTTON, PWA_SCRIPT, pwaHead } from './remotePwa'
 
 export const REMOTE_APP_PAGE = `<!DOCTYPE html>
 <html lang="de">
@@ -23,8 +23,6 @@ header{display:flex;align-items:center;gap:12px;padding:16px 16px 6px;max-width:
 .logo{width:44px;height:44px;border-radius:11px;flex:0 0 auto}
 h1{margin:0;font-size:20px;line-height:1.15}
 .sub{color:var(--dim);font-size:13px;margin-top:2px}
-.hbtn{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;padding:7px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.hbtn:active{filter:brightness(1.3)}
 main{padding:10px 16px 28px;max-width:960px;margin:0 auto}
 #offline{display:none;margin-bottom:12px;padding:10px 12px;border-radius:10px;background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);color:#eab308;font-size:13px}
 #list{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
@@ -47,7 +45,7 @@ a.tile:active{transform:scale(.985);border-color:var(--gold)}
 <header>
 <img class="logo" src="/icon-180.png" alt="" onerror="this.style.display='none'">
 <div><h1>${APP_NAME}</h1><div class="sub">Fernsteuerung</div></div>
-<button class="hbtn" data-fs="20" aria-label="Vollbild"></button>
+${FS_BUTTON}
 </header>
 <main>
 <div id="offline">Keine Verbindung zum Rechner. Läuft dort noch eine Fernsteuerung? Es wird automatisch erneut verbunden …</div>

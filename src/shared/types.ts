@@ -302,6 +302,26 @@ export interface RemoteStatus {
   app?: RemoteAppLink
 }
 
+/** Die Handy-Fernsteuerungen (= URL-Präfix in der Fernsteuer-App). */
+export type RemoteControlId = 'player' | 'jingle' | 'osc' | 'timer'
+
+/** Gemerkter Zustand einer Fernsteuerung (übersteht App-Neustarts). */
+export interface RemoteControlSetting {
+  enabled: boolean
+  port: number
+}
+
+/** Status der Fernsteuer-App (Startseite aller Fernsteuerungen, fester Port). */
+export interface RemoteAppStatus {
+  running: boolean
+  port: number
+  /** Adressen der Startseite (auch wenn sie gerade nicht läuft: so wird sie heißen). */
+  urls: string[]
+  error?: string
+  /** Welche Fernsteuerungen gerade laufen. */
+  remotes: Record<RemoteControlId, boolean>
+}
+
 export interface RemoteAppLink {
   /** http://<lan-ip>:<app-port>/<id>/ – leer, wenn die App nicht starten konnte. */
   urls: string[]
@@ -896,6 +916,15 @@ export interface AppSettings {
   uiDensity: UiDensity
   /** yt-dlp beim Start prüfen und bei Bedarf aktualisieren. */
   ytdlpAutoUpdate: boolean
+  /** Fernsteuerungen von Jingle-Player, OSC-Steuerung und Stage-Timer (der
+   *  Video-Player merkt sich seine unter player.remoteEnabled/remotePort). */
+  remoteControls: Record<Exclude<RemoteControlId, 'player'>, RemoteControlSetting>
+}
+
+export const DEFAULT_REMOTE_CONTROLS: AppSettings['remoteControls'] = {
+  jingle: { enabled: false, port: 8089 },
+  osc: { enabled: false, port: 8091 },
+  timer: { enabled: false, port: 8092 }
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -910,5 +939,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   kioskToolId: null,
   favoriteToolIds: [],
   uiDensity: 'normal',
-  ytdlpAutoUpdate: true
+  ytdlpAutoUpdate: true,
+  remoteControls: DEFAULT_REMOTE_CONTROLS
 }

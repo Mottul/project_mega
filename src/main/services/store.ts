@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import {
   DEFAULT_OSC_SETTINGS,
   DEFAULT_PLAYER_SETTINGS,
+  DEFAULT_REMOTE_CONTROLS,
   DEFAULT_SETTINGS,
   type AppSettings
 } from '@shared/types'
@@ -28,7 +29,8 @@ export function getSettings(): AppSettings {
         ...DEFAULT_SETTINGS,
         ...raw,
         player: { ...DEFAULT_PLAYER_SETTINGS, ...(raw.player ?? {}) },
-        osc: { ...DEFAULT_OSC_SETTINGS, ...(raw.osc ?? {}) }
+        osc: { ...DEFAULT_OSC_SETTINGS, ...(raw.osc ?? {}) },
+        remoteControls: { ...DEFAULT_REMOTE_CONTROLS, ...(raw.remoteControls ?? {}) }
       }
     } else {
       cache = { ...DEFAULT_SETTINGS }
