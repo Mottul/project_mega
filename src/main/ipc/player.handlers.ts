@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { dialog, ipcMain } from 'electron'
 import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
-import type { PlayerCommand, PlayerImportRequest } from '@shared/types'
+import type { PlayerCommand, PlayerImportRequest, RemoteStatus } from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { convertManager } from '../services/player/convertManager'
 import { detectEncoders } from '../services/player/encoder'
@@ -33,6 +33,7 @@ import {
   startRemote,
   stopRemote
 } from '../services/player/remoteServer'
+import { syncedRemoteStatus, withAppLink } from '../services/remoteAppServer'
 import { getSettings, setSettings } from '../services/store'
 
 let wired = false
@@ -159,21 +160,23 @@ export function registerPlayerHandlers(): void {
   ipcMain.handle(Channels.playerCloseOutput, () => closePlayerOutput())
 
   // Fernsteuerung (Tablet)
-  ipcMain.handle(Channels.playerRemoteStatus, () => getRemoteStatus())
-  ipcMain.handle(Channels.playerRemoteStart, async (_e, port: number) => {
-    const status = await startRemote(port)
-    setSettings({
-      player: { ...getSettings().player, remoteEnabled: true, remotePort: status.port }
-    })
+  const remoteChanged = async (): Promise<RemoteStatus> => {
+    const status = await syncedRemoteStatus('player', getRemoteStatus)
     broadcast(Channels.playerRemoteChanged, status)
     return status
+  }
+  ipcMain.handle(Channels.playerRemoteStatus, () => withAppLink('player', getRemoteStatus()))
+  ipcMain.handle(Channels.playerRemoteStart, async (_e, port: number) => {
+    const started = await startRemote(port)
+    setSettings({
+      player: { ...getSettings().player, remoteEnabled: true, remotePort: started.port }
+    })
+    return remoteChanged()
   })
   ipcMain.handle(Channels.playerRemoteStop, () => {
     stopRemote()
     setSettings({ player: { ...getSettings().player, remoteEnabled: false } })
-    const status = getRemoteStatus()
-    broadcast(Channels.playerRemoteChanged, status)
-    return status
+    return remoteChanged()
   })
 
   // NDI-Ausgabe (experimentell; ohne optionales Binding meldet Status "nicht verfügbar").
@@ -185,8 +188,8 @@ export function registerPlayerHandlers(): void {
   // Bei aktivierter Einstellung automatisch starten (best effort).
   const ps = getSettings().player
   if (ps.remoteEnabled) {
-    startRemote(ps.remotePort)
-      .then((s) => broadcast(Channels.playerRemoteChanged, s))
-      .catch(() => setSettings({ player: { ...getSettings().player, remoteEnabled: false } }))
+    startRemote(ps.remotePort).then(remoteChanged, () =>
+      setSettings({ player: { ...getSettings().player, remoteEnabled: false } })
+    )
   }
 }

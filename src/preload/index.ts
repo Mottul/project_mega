@@ -110,7 +110,11 @@ const api: ToolboxApi = {
     ndiStart: (config) => ipcRenderer.invoke(Channels.timerNdiStart, config),
     ndiStop: () => ipcRenderer.invoke(Channels.timerNdiStop),
     ndiStatus: () => ipcRenderer.invoke(Channels.timerNdiStatus),
-    onNdiChanged: (cb) => subscribe(Channels.timerNdiChanged, (s) => cb(s as never))
+    onNdiChanged: (cb) => subscribe(Channels.timerNdiChanged, (s) => cb(s as never)),
+    remoteStatus: () => ipcRenderer.invoke(Channels.timerRemoteStatus),
+    remoteStart: (port) => ipcRenderer.invoke(Channels.timerRemoteStart, port),
+    remoteStop: () => ipcRenderer.invoke(Channels.timerRemoteStop),
+    onRemoteChanged: (cb) => subscribe(Channels.timerRemoteChanged, (s) => cb(s as never))
   },
 
   util: {

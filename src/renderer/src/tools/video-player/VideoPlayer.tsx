@@ -66,7 +66,7 @@ import {
 } from '@shared/types'
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
-import { QrCode } from '@renderer/components/QrCode'
+import { RemoteAccess } from '@renderer/components/RemoteAccess'
 
 const selectClass =
   'h-9 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
@@ -843,30 +843,7 @@ export function VideoPlayer(): JSX.Element {
             >
               <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
             </Button>
-            {remote?.running && (
-              <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
-                {remote.urls[0] && (
-                  <div className="flex justify-center">
-                    <QrCode text={remote.urls[0]} />
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Im Browser des Tablets öffnen (QR scannen oder Adresse eintippen):
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {remote.urls.map((u) => (
-                    <button
-                      key={u}
-                      onClick={() => void navigator.clipboard?.writeText(u)}
-                      title="Adresse kopieren"
-                      className="rounded bg-background px-2 py-1 font-mono text-xs text-primary hover:bg-muted"
-                    >
-                      {u}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {remote && <RemoteAccess status={remote} />}
           </PanelSection>
         </>
       }

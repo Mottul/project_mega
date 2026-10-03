@@ -60,7 +60,7 @@ import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
 import { useHandoff } from '@renderer/lib/handoff'
-import { QrCode } from '@renderer/components/QrCode'
+import { RemoteAccess } from '@renderer/components/RemoteAccess'
 import {
   makeWidget,
   MAX_CH,
@@ -1114,23 +1114,7 @@ export function OscControl(): JSX.Element {
             <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
           </Button>
         </div>
-        {remote?.running && remote.urls[0] && (
-          <div className="flex items-start gap-3 rounded-md border border-border p-2">
-            <div className="shrink-0 rounded bg-white p-1">
-              <QrCode text={remote.urls[0]} size={96} />
-            </div>
-            <div className="min-w-0 text-xs">
-              <p className="mb-1 text-muted-foreground">
-                Im Browser öffnen (QR scannen oder eintippen):
-              </p>
-              {remote.urls.map((u) => (
-                <div key={u} className="truncate font-mono text-foreground">
-                  {u}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {remote && <RemoteAccess status={remote} />}
       </PanelSection>
 
       <PanelSection

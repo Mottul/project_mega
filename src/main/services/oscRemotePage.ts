@@ -4,6 +4,9 @@
 // XY/Farbe) reagieren auf Touch und schicken Steuerbefehle per POST; der Rechner
 // sendet daraufhin das OSC. Live-Updates per SSE. Fader/XY ziehen RELATIV
 // (kein Sprung auf den Berührungspunkt), wie auf dem Desktop.
+// API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App läuft.
+
+import { PWA_SCRIPT, pwaHead } from './remotePwa'
 
 export const OSC_MOBILE_PAGE = `<!DOCTYPE html>
 <html lang="de">
@@ -11,6 +14,7 @@ export const OSC_MOBILE_PAGE = `<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>OSC-Steuerung</title>
+${pwaHead()}
 <style>
 :root{--bg:#0f0f12;--card:#1b1b20;--border:#2c2c34;--muted:#26262e;--text:#e8e8ec;--dim:#8a8a99;--accent:#3b82f6}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -60,10 +64,11 @@ header b{font-size:16px}
 .knob svg,.bknob svg{height:100%;max-height:100%;width:auto;display:block}
 .hbtn{margin-left:auto;background:var(--card);border:1px solid var(--border);color:var(--dim);border-radius:9px;padding:6px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .hbtn:active{filter:brightness(1.3)}
+.hbtn.home{margin-left:0}
 </style>
 </head>
 <body>
-<header><div class="hrow"><span id="dot"></span><b>OSC</b><span id="setName"></span><button id="fs" class="hbtn" aria-label="Vollbild"></button></div><div id="sets"></div></header>
+<header><div class="hrow"><a href="../" class="hbtn home" data-home aria-label="Alle Fernsteuerungen"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></a><span id="dot"></span><b>OSC</b><span id="setName"></span><button class="hbtn" data-fs="19" aria-label="Vollbild"></button></div><div id="sets"></div></header>
 <div id="warn">OSC-Steuerung ist nicht geöffnet. Auf dem Rechner das Werkzeug „OSC-Steuerung" öffnen und die Fernsteuerung aktiv lassen.</div>
 <div id="grid"></div>
 <script>
@@ -73,7 +78,7 @@ var state={connected:false,setName:'',columns:24,widgets:[],sets:[],currentSetId
 var sig='',ssig='',updaters={},activeId=null;
 
 var lastSent=0,pendingCmd=null,timer=null;
-function postNow(cmd){fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cmd)}).catch(function(){});lastSent=Date.now();}
+function postNow(cmd){fetch('api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cmd)}).catch(function(){});lastSent=Date.now();}
 function postCmd(cmd){var now=Date.now();if(now-lastSent>=33){postNow(cmd);}else{pendingCmd=cmd;if(!timer){timer=setTimeout(function(){timer=null;if(pendingCmd){postNow(pendingCmd);pendingCmd=null;}},33-(now-lastSent));}}}
 
 function clamp(v,lo,hi){return v<lo?lo:(v>hi?hi:v);}
@@ -319,17 +324,9 @@ function apply(s){
   else{s.widgets.forEach(function(w){var u=updaters[w.id];if(u)u(w);});}
 }
 
-fetch('/api/state').then(function(r){return r.json();}).then(apply).catch(function(){});
-try{var es=new EventSource('/api/events');es.onmessage=function(e){try{var m=JSON.parse(e.data);if(m.type==='state')apply(m.payload);}catch(_){}};}catch(_){}
-(function(){var de=document.documentElement,b=document.getElementById('fs');if(!b)return;
-var MAX='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
-var MIN='<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
-function fs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
-function u(){b.innerHTML=fs()?MIN:MAX;}
-if(!(de.requestFullscreen||de.webkitRequestFullscreen)){b.style.display='none';return;}
-b.onclick=function(){if(fs()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);}else{(de.requestFullscreen||de.webkitRequestFullscreen).call(de);}};
-document.addEventListener('fullscreenchange',u);document.addEventListener('webkitfullscreenchange',u);u();
-})();
+fetch('api/state').then(function(r){return r.json();}).then(apply).catch(function(){});
+try{var es=new EventSource('api/events');es.onmessage=function(e){try{var m=JSON.parse(e.data);if(m.type==='state')apply(m.payload);}catch(_){}};}catch(_){}
 </script>
+${PWA_SCRIPT}
 </body>
 </html>`
