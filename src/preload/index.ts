@@ -34,6 +34,12 @@ const api: ToolboxApi = {
     onUpdate: (cb) => subscribe(Channels.hapUpdate, (job) => cb(job as never))
   },
 
+  mediaInfo: {
+    probe: (path, opts) => ipcRenderer.invoke(Channels.mediaInfoProbe, path, opts),
+    raw: (path) => ipcRenderer.invoke(Channels.mediaInfoRaw, path),
+    collect: (inputs) => ipcRenderer.invoke(Channels.mediaInfoCollect, inputs)
+  },
+
   manuals: {
     import: (paths) => ipcRenderer.invoke(Channels.manualsImport, paths),
     list: (query) => ipcRenderer.invoke(Channels.manualsList, query),
@@ -124,8 +130,8 @@ const api: ToolboxApi = {
   util: {
     exportPdf: (html, suggestedName, landscape) =>
       ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName, landscape ?? false),
-    saveText: (text, suggestedName) =>
-      ipcRenderer.invoke(Channels.utilSaveText, text, suggestedName),
+    saveText: (text, suggestedName, filters) =>
+      ipcRenderer.invoke(Channels.utilSaveText, text, suggestedName, filters),
     openText: () => ipcRenderer.invoke(Channels.utilOpenText),
     // Einweg (send): darf im Renderer nie werfen/hängen.
     log: (message) => ipcRenderer.send(Channels.utilLog, message)

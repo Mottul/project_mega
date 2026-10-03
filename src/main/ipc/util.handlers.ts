@@ -13,25 +13,35 @@ export function registerUtilHandlers(): void {
     logLine(typeof message === 'string' ? message : String(message))
   })
 
-  // Beliebigen Text (z.B. JSON) über einen Speichern-Dialog schreiben.
-  ipcMain.handle(Channels.utilSaveText, async (e, text: string, suggestedName: string) => {
-    const parent = BrowserWindow.fromWebContents(e.sender)
-    const opts = {
-      title: 'Speichern',
-      defaultPath: suggestedName,
-      filters: [
-        { name: 'JSON', extensions: ['json'] },
-        { name: 'Alle Dateien', extensions: ['*'] }
-      ]
+  // Beliebigen Text (z.B. JSON, CSV) über einen Speichern-Dialog schreiben.
+  ipcMain.handle(
+    Channels.utilSaveText,
+    async (
+      e,
+      text: string,
+      suggestedName: string,
+      filters?: { name: string; extensions: string[] }[]
+    ) => {
+      const parent = BrowserWindow.fromWebContents(e.sender)
+      const opts = {
+        title: 'Speichern',
+        defaultPath: suggestedName,
+        filters: [
+          ...(Array.isArray(filters) && filters.length
+            ? filters
+            : [{ name: 'JSON', extensions: ['json'] }]),
+          { name: 'Alle Dateien', extensions: ['*'] }
+        ]
+      }
+      const res = parent
+        ? await dialog.showSaveDialog(parent, opts)
+        : await dialog.showSaveDialog(opts)
+      if (res.canceled || !res.filePath) return null
+      await writeFile(res.filePath, text, 'utf8')
+      logLine('[util] Text gespeichert ->', res.filePath, `${text.length} Zeichen`)
+      return res.filePath
     }
-    const res = parent
-      ? await dialog.showSaveDialog(parent, opts)
-      : await dialog.showSaveDialog(opts)
-    if (res.canceled || !res.filePath) return null
-    await writeFile(res.filePath, text, 'utf8')
-    logLine('[util] Text gespeichert ->', res.filePath, `${text.length} Zeichen`)
-    return res.filePath
-  })
+  )
 
   // Textdatei über einen Öffnen-Dialog einlesen.
   ipcMain.handle(Channels.utilOpenText, async (e) => {

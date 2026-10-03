@@ -12,7 +12,7 @@ react-router 7, `better-sqlite3` 12.11 (FTS5), `pdfjs-dist` 6, gebündeltes `ffm
 
 ## Werkzeuge
 
-Derzeit **21 Werkzeuge**, im Launcher nach Kategorie sortiert und durchsuchbar. Jedes lässt
+Derzeit **22 Werkzeuge**, im Launcher nach Kategorie sortiert und durchsuchbar. Jedes lässt
 sich in einem eigenen Fenster parallel öffnen.
 
 **🎬 Wiedergabe & Show**
@@ -36,7 +36,8 @@ sich in einem eigenen Fenster parallel öffnen.
 
 **📚 Medien & Bibliothek**
 
-- **HAP-Konverter** – Batch nach HAP / HAP Q / HAP Alpha (z.B. Resolume).
+- **HAP-Konverter** – Batch nach HAP / HAP Q / HAP Alpha (z.B. Resolume), mit Eckdaten und Warnungen je Datei.
+- **Medien-Info** – Video-/Audio-Eckdaten per ffprobe (Auflösung, fps, Codec, Bitrate, Ton, Timecode …), Show-Check mit Ampel je Zielsystem, Playlist-Vergleich, CSV-/JSON-Export.
 - **Manuals-Bibliothek** – Geräte-Handbücher (PDF) mit Offline-Volltextsuche (FTS5) + In-App-Viewer.
 - **YouTube-Downloader** – yt-dlp-Wrapper (Video/Audio), Queue mit Fortschritt, Self-Update.
 
@@ -275,7 +276,7 @@ src/
     └── tools/
         ├── registry.ts       # ◀ EINZIGE Stelle zum Eintragen neuer Tools
         ├── video-player/     # Steuer-UI (VideoPlayer) + Vollbild-Ausgabe (PlayerOutput)
-        └── …                 # 21 Werkzeuge, je ein Ordner mit index.ts (ToolModule)
+        └── …                 # 22 Werkzeuge, je ein Ordner mit index.ts (ToolModule)
 ```
 
 ### Ein neues Tool hinzufügen
@@ -322,7 +323,14 @@ src/
   verlorenes Audiogerät), **Wiederherstellung** korrupter `settings.json`/`library.db` (sichern +
   neu anlegen statt still resetten) und versionierte, migrierbare Speicherstände.
 - **HAP-Konverter** – Batch nach HAP/HAP Q/HAP Alpha, gebündeltes ffmpeg, Parallel + Kompressor,
-  Auto-Padding auf ×4-Maße. End-to-end getestet.
+  Auto-Padding auf ×4-Maße. End-to-end getestet. Je Eingabedatei Eckdaten, HAP-Datenrate und
+  Warnungen (Alpha geht verloren, Interlaced, VFR, HDR …) aus der Medien-Info.
+- **Medien-Info** – ffprobe-Analyse im main (Timeout, lesbare Fehlermeldungen, Cache, Ordner
+  rekursiv ohne `._`-/Systemdateien), optionale **Tiefenanalyse** (Keyframe-Abstand/GOP,
+  VFR-Nachweis, Scan-Typ, HDR10-Metadaten), **Ampel-Hinweise** je Prüfprofil (Zielsystem,
+  Show-Raster, Datenträger), Playlist-Vergleich mit hervorgehobenen Abweichungen, Kopieren
+  (Steckbrief/Kurzzeile/Tabelle) und Export (CSV für Excel, JSON). Übergabe an den HAP-Konverter
+  und zurück. Parser gegen ~140 echte ffprobe-Ausgaben geprüft (Fixture-Tests).
 - **Manuals-Bibliothek** – PDF-Import (SHA-256-Dedup), FTS5-Volltextsuche mit aufklappbaren
   Trefferboxen, **Kategorien** (Filter), In-App-PDF-Viewer (Scroll, Zoom/Pinch, Seiten-Sprung,
   **Suche im PDF**).

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AUDIO_EXTENSIONS,
   dotted,
   IMAGE_EXTENSIONS,
+  PROBE_EXTENSIONS,
   MEDIA_EXTENSIONS,
   STILL_IMAGE_EXTENSIONS,
   VIDEO_EXTENSIONS
@@ -19,6 +21,12 @@ describe('mediaExtensions', () => {
   it('deckt die gängigen Profi-Formate ab (Regression gegen Drift)', () => {
     for (const ext of ['mxf', 'mpg', 'mpeg', 'wmv', 'mts', 'm2ts', 'ts', 'tif', 'tiff'])
       expect(MEDIA_EXTENSIONS).toContain(ext)
+  })
+  it('Medien-Info liest Video, Bild und Audio – ohne Dubletten', () => {
+    for (const ext of [...MEDIA_EXTENSIONS, ...AUDIO_EXTENSIONS])
+      expect(PROBE_EXTENSIONS).toContain(ext)
+    expect(new Set(PROBE_EXTENSIONS).size).toBe(PROBE_EXTENSIONS.length)
+    expect(AUDIO_EXTENSIONS.some((e) => VIDEO_EXTENSIONS.includes(e))).toBe(false)
   })
   it('dotted() ergänzt den führenden Punkt', () => {
     expect(dotted(['mp4', 'jpg'])).toEqual(['.mp4', '.jpg'])

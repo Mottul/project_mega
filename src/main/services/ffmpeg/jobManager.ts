@@ -117,6 +117,7 @@ class JobManager {
       this.update(job, { status: 'probing' })
       const info = await probe(job.inputPath)
       if (this.isCanceled(job)) return
+      if (!info.hasVideo) throw new Error('Keine Videospur gefunden')
       // Manuelle Chunks respektieren; sonst automatisch aus der Aufloesung ableiten.
       const mode = this.chunkModes.get(job.id)
       const chunks =

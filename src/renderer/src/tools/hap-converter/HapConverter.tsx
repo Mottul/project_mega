@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState, type DragEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
   Cpu,
   Film,
+  FileSearch,
   FolderOpen,
   FolderSearch,
+  Loader2,
   Play,
   Trash2,
   X,
@@ -18,6 +21,8 @@ import { Progress } from '@renderer/components/ui/progress'
 import { selectClass } from '@renderer/components/ui/select'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { useHandoff } from '@renderer/lib/handoff'
+import { cn } from '@renderer/lib/utils'
 import { VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type {
   ChunksMode,
@@ -27,6 +32,10 @@ import type {
   HapJob,
   JobStatus
 } from '@shared/types'
+import { fmtBitrate, fmtDurationShort, fmtFps, hapRateEstimate } from '../media-info/format'
+import { hapInputHints, mainVideo, worstLevel, type MediaHint } from '../media-info/hints'
+import { LEVEL_META } from '../media-info/levels'
+import { useHapInputMeta, useHapInputs, type InputMeta } from './store'
 
 // Sinnvolle Parallel-Stufen bis zur Kernzahl (ein einzelner HAP-Encode lastet die
 // CPU nicht voll aus -> mehrere gleichzeitig nutzen die Kerne besser).
@@ -55,8 +64,11 @@ function basename(p: string): string {
 }
 
 export function HapConverter(): JSX.Element {
+  const navigate = useNavigate()
   const [check, setCheck] = useState<HapCheckResult | null>(null)
-  const [inputs, setInputs] = useState<string[]>([])
+  // Eingabeliste im Store: übersteht den Abstecher in die Medien-Info
+  const inputs = useHapInputs((s) => s.inputs)
+  const meta = useHapInputMeta((s) => s.meta)
   const [format, setFormat] = useState<HapFormat>('hap_q')
   const [autoChunks, setAutoChunks] = useState(true)
   const [manualChunks, setManualChunks] = useState(4)
@@ -65,6 +77,7 @@ export function HapConverter(): JSX.Element {
   const [compressor, setCompressor] = useState<HapCompressor>('snappy')
   const [jobs, setJobs] = useState<Record<string, HapJob>>({})
   const [dragOver, setDragOver] = useState(false)
+  const [startNote, setStartNote] = useState<string | null>(null)
 
   // Drag&Drop: Dateien UND Ordner – webUtils liefert auch für Ordner den Pfad,
   // die Queue (collectVideos) durchsucht Ordner rekursiv.
@@ -74,11 +87,25 @@ export function HapConverter(): JSX.Element {
     const paths = Array.from(e.dataTransfer.files)
       .map((f) => api.pathForFile(f))
       .filter(Boolean)
-    if (paths.length) setInputs((prev) => [...new Set([...prev, ...paths])])
+    if (paths.length) useHapInputs.getState().add(paths)
+  }
+
+  // Eckdaten je Eingabe nachladen (Analyse läuft über die Medien-Info, Cache im main
+  // -> der spätere Konvertier-Job liest sie nicht erneut von der Platte)
+  useEffect(() => {
+    for (const p of inputs) useHapInputMeta.getState().load(p)
+  }, [inputs])
+
+  function showDetails(path: string): void {
+    useHandoff.getState().givePaths('media-info', [path])
+    navigate('/tool/media-info')
   }
 
   // Initialer Zustand: Settings, HAP-Verfügbarkeit, laufende Jobs + Live-Updates
   useEffect(() => {
+    // Übergabe aus der Medien-Info („An HAP-Konverter")
+    const handed = useHandoff.getState().takePaths('hap-converter')
+    if (handed.length) useHapInputs.getState().add(handed)
     void api.getSettings().then((s) => {
       setFormat(s.lastHapFormat)
       setOutputDir(s.lastHapOutputDir)
@@ -114,12 +141,12 @@ export function HapConverter(): JSX.Element {
       multi: true,
       filters: [{ name: 'Videos', extensions: VIDEO_EXTENSIONS }]
     })
-    if (paths.length) setInputs((prev) => [...new Set([...prev, ...paths])])
+    if (paths.length) useHapInputs.getState().add(paths)
   }
 
   async function addFolder(): Promise<void> {
     const paths = await api.selectPaths({ title: 'Ordner auswählen', directories: true })
-    if (paths.length) setInputs((prev) => [...new Set([...prev, ...paths])])
+    if (paths.length) useHapInputs.getState().add(paths)
   }
 
   async function chooseOutput(): Promise<void> {
@@ -147,9 +174,44 @@ export function HapConverter(): JSX.Element {
     const chunks: ChunksMode = autoChunks
       ? { kind: 'auto' }
       : { kind: 'manual', value: Math.max(1, Math.min(64, manualChunks)) }
-    await api.hap.enqueue({ inputs, format, chunks, outputDir, concurrency, compressor })
-    setInputs([])
+    const res = await api.hap.enqueue({
+      inputs,
+      format,
+      chunks,
+      outputDir,
+      concurrency,
+      compressor
+    })
+    useHapInputs.getState().clear()
+    if (!res.jobIds.length) setStartNote('Keine Videodateien gefunden – nichts eingereiht.')
+    else setStartNote(null)
   }
+
+  // Hinweise je Eingabedatei für das gewählte Format + Sammelzeile über dem Start
+  const inputHints = useMemo(() => {
+    const m = new Map<string, MediaHint[]>()
+    for (const p of inputs) {
+      const mt = meta[p]
+      if (mt?.kind === 'file' && mt.result.ok) m.set(p, hapInputHints(mt.result.info, format))
+    }
+    return m
+  }, [inputs, meta, format])
+  const summary = useMemo(() => {
+    const counts = new Map<string, { title: string; n: number; level: MediaHint['level'] }>()
+    for (const hints of inputHints.values()) {
+      for (const h of hints) {
+        if (h.level !== 'warning' && h.level !== 'problem') continue
+        const c = counts.get(h.id) ?? { title: h.title, n: 0, level: h.level }
+        c.n++
+        counts.set(h.id, c)
+      }
+    }
+    return [...counts.values()]
+  }, [inputHints])
+  const fileCount = inputs.reduce((sum, p) => {
+    const mt = meta[p]
+    return sum + (mt?.kind === 'folder' ? mt.videos : 1)
+  }, 0)
 
   const hapUnavailable = check && !check.available
 
@@ -298,7 +360,7 @@ export function HapConverter(): JSX.Element {
               <div className="flex-1" />
               <Button onClick={start} disabled={!inputs.length}>
                 <Play className="size-4" /> Konvertierung starten
-                {inputs.length > 0 ? ` (${inputs.length})` : ''}
+                {inputs.length > 0 ? ` (${fileCount})` : ''}
               </Button>
             </div>
 
@@ -311,24 +373,32 @@ export function HapConverter(): JSX.Element {
             {inputs.length > 0 && (
               <div className="space-y-1">
                 {inputs.map((p) => (
-                  <div
+                  <InputRow
                     key={p}
-                    className="flex items-center justify-between rounded-md bg-muted/40 px-3 py-1.5 text-sm"
-                  >
-                    <span className="truncate" title={p}>
-                      {basename(p)}
-                    </span>
-                    <button
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={() => setInputs((prev) => prev.filter((x) => x !== p))}
-                      aria-label="Entfernen"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </div>
+                    path={p}
+                    meta={meta[p]}
+                    hints={inputHints.get(p) ?? []}
+                    format={format}
+                    onInfo={() => showDetails(p)}
+                    onRemove={() => useHapInputs.getState().remove(p)}
+                  />
                 ))}
               </div>
             )}
+
+            {summary.length > 0 && (
+              <div className="space-y-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
+                {summary.map((c) => (
+                  <p key={c.title} className="flex items-center gap-1.5">
+                    <AlertTriangle
+                      className={cn('size-3.5 shrink-0', LEVEL_META[c.level].className)}
+                    />
+                    {c.n === 1 ? '1 Datei' : `${c.n} Dateien`}: {c.title}
+                  </p>
+                ))}
+              </div>
+            )}
+            {startNote && <p className="text-xs text-muted-foreground">{startNote}</p>}
           </Card>
 
           {/* Queue */}
@@ -372,7 +442,7 @@ export function HapConverter(): JSX.Element {
             ) : (
               <div className="space-y-2">
                 {jobList.map((job) => (
-                  <JobRow key={job.id} job={job} />
+                  <JobRow key={job.id} job={job} onInfo={() => showDetails(job.inputPath)} />
                 ))}
               </div>
             )}
@@ -383,7 +453,7 @@ export function HapConverter(): JSX.Element {
   )
 }
 
-function JobRow({ job }: { job: HapJob }): JSX.Element {
+function JobRow({ job, onInfo }: { job: HapJob; onInfo: () => void }): JSX.Element {
   const meta = STATUS_META[job.status]
   const resolution = job.width && job.height ? `${job.width}×${job.height}` : '–'
   const canCancel = job.status === 'queued' || job.status === 'running' || job.status === 'probing'
@@ -401,6 +471,15 @@ function JobRow({ job }: { job: HapJob }): JSX.Element {
           </p>
         </div>
         <Badge tone={meta.tone}>{meta.label}</Badge>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onInfo}
+          aria-label="Details in Medien-Info"
+          title="Details in Medien-Info"
+        >
+          <FileSearch className="size-4" />
+        </Button>
         {canCancel && (
           <Button
             variant="ghost"
@@ -428,6 +507,100 @@ function JobRow({ job }: { job: HapJob }): JSX.Element {
       {job.status === 'error' && job.error && (
         <p className="mt-2 text-xs text-destructive">{job.error}</p>
       )}
+    </div>
+  )
+}
+
+// Eingabezeile mit Eckdaten (Auflösung · fps · Codec · Dauer) und HAP-Hinweisen
+// für das gewählte Format; Ordner zeigen die Anzahl gefundener Videos.
+function InputRow({
+  path,
+  meta,
+  hints,
+  format,
+  onInfo,
+  onRemove
+}: {
+  path: string
+  meta: InputMeta | undefined
+  hints: MediaHint[]
+  format: HapFormat
+  onInfo: () => void
+  onRemove: () => void
+}): JSX.Element {
+  let line: JSX.Element | string
+  if (!meta || meta.kind === 'loading') {
+    line = (
+      <span className="flex items-center gap-1">
+        <Loader2 className="size-3 animate-spin" /> analysiere …
+      </span>
+    )
+  } else if (meta.kind === 'folder') {
+    line = (
+      <Badge tone={meta.videos ? 'neutral' : 'warning'}>
+        Ordner · {meta.videos === 1 ? '1 Video' : `${meta.videos} Videos`}
+      </Badge>
+    )
+  } else if (meta.kind === 'error') {
+    line = <span className="text-red-400 light:text-red-600">{meta.message}</span>
+  } else if (!meta.result.ok) {
+    line = <span className="text-red-400 light:text-red-600">{meta.result.error}</span>
+  } else {
+    const info = meta.result.info
+    const v = mainVideo(info)
+    // ffmpeg dreht beim Konvertieren automatisch -> Zielmaße sind die gedrehten
+    // gespeicherten Pixel (ein anamorphes SAR bleibt dagegen erhalten)
+    const turned = v && (v.rotation === 90 || v.rotation === 270)
+    const ow = v ? (turned ? v.height : v.width) : 0
+    const oh = v ? (turned ? v.width : v.height) : 0
+    const rate = v ? hapRateEstimate(ow, oh, v.fps, format) : null
+    line = [
+      v ? `${ow}×${oh}` : 'kein Video',
+      v?.fps ? `${fmtFps(v.fps)} fps` : null,
+      v?.codec ?? null,
+      info.durationSec ? fmtDurationShort(info.durationSec) : null,
+      // Obergrenze vor Snappy-Kompression (je nach Bildinhalt deutlich weniger)
+      rate ? `HAP ≤ ${fmtBitrate(rate)}` : null
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }
+  const worst = worstLevel(hints)
+  const shown = hints.filter((h) => h.level !== 'ok')
+  return (
+    <div className="rounded-md bg-muted/40 px-3 py-1.5 text-sm">
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate" title={path}>
+            {basename(path)}
+          </p>
+          <div className="truncate text-xs text-muted-foreground">{line}</div>
+        </div>
+        {shown.length > 0 && (
+          <span title={shown.map((h) => h.title).join('\n')}>
+            <Badge tone={LEVEL_META[worst].tone}>
+              {shown.length === 1 ? shown[0].title : `${shown.length} Hinweise`}
+            </Badge>
+          </span>
+        )}
+        {meta?.kind === 'file' && (
+          <button
+            className="text-muted-foreground hover:text-foreground"
+            onClick={onInfo}
+            aria-label="Details in Medien-Info"
+            title="Details in Medien-Info"
+          >
+            <FileSearch className="size-4" />
+          </button>
+        )}
+        <button
+          className="text-muted-foreground hover:text-foreground"
+          onClick={onRemove}
+          aria-label="Entfernen"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
     </div>
   )
 }
