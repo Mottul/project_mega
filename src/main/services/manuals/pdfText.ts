@@ -94,7 +94,7 @@ export async function extractPdfText(
   const doc = await pdfjs.getDocument({
     data: bytes,
     useSystemFonts: true,
-    isEvalSupported: false,
+    // (pdfjs 6 hat keinen eval-Pfad mehr -> die fruehere Option isEvalSupported entfaellt)
     // im Node-Kontext laeuft pdfjs ohne separaten Worker (Fake-Worker)
     disableFontFace: true
   }).promise

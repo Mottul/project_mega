@@ -48,7 +48,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   (`remoteApp*.ts`, fester Port 8090) bindet laufende Fernsteuerungen unter `/<id>/` ein ->
   Steuerseiten sprechen ihre API IMMER relativ an (`api/…`, nie `/api/…`); PWA-Kopf und
   Client-Skript kommen aus `remotePwa.ts`. Start/Stopp/Merken/Autostart je Fernsteuerung
-  über `registerRemoteControl()` (`ipc/remoteControls.ts`).
+  über `registerRemoteControl()` (`ipc/remoteControls.ts`). Befehle vom Handy sind fremde
+  Eingaben: feldweise prüfen (Allowlist, Werte begrenzen – Muster `player/remoteCommand.ts`).
 - **Konvertierung:** EIN Kern für Video-Konverter (Tool-id `hap-converter`), Player-Import
   und Testbild-Export: Analyse per `probeMediaInfo` (Cache), alle Entscheidungen in
   `shared/convertPlan.ts` (rein, getestet, auch Vorschau im Renderer), Argumente/Runner/

@@ -23,10 +23,18 @@ import {
 } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import type { YtEnqueueRequest, YtJob, YtToolStatus } from '@shared/types'
+import type { YtEnqueueRequest, YtJob, YtProbeResult, YtToolStatus } from '@shared/types'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 import { getSettings } from '../store'
 import { logLine } from '../log'
+import {
+  buildDownloadArgs,
+  buildProbeArgs,
+  normalizeUrl,
+  parseProbeJson,
+  sanitizeRequest,
+  ytErrorText
+} from './ytRequest'
 
 type Sink = (job: YtJob) => void
 
@@ -313,6 +321,8 @@ class YtManager {
   private sink: Sink = () => {}
   private active = 0
   private concurrency = 2
+  // streng steigend: mehrere Aufträge in derselben Millisekunde (Playlist) bleiben sortierbar
+  private lastCreated = 0
 
   setSink(sink: Sink): void {
     this.sink = sink
@@ -336,7 +346,9 @@ class YtManager {
     return job.status === 'canceled'
   }
 
-  enqueue(req: YtEnqueueRequest): { jobId: string } {
+  enqueue(request: YtEnqueueRequest): { jobId: string } {
+    // Fremde Eingabe (Adresse!) -> prüfen, bevor sie je an yt-dlp geht
+    const req = sanitizeRequest(request)
     const id = randomUUID()
     const job: YtJob = {
       id,
@@ -344,12 +356,12 @@ class YtManager {
       format: req.format,
       status: 'queued',
       progress: 0,
-      title: null,
+      title: req.title ?? null,
       speed: null,
       eta: null,
       outputDir: req.outputDir,
       outputFile: null,
-      createdAt: Date.now()
+      createdAt: (this.lastCreated = Math.max(Date.now(), this.lastCreated + 1))
     }
     this.jobs.set(id, job)
     this.params.set(id, req)
@@ -374,20 +386,6 @@ class YtManager {
     }
   }
 
-  private buildArgs(req: YtEnqueueRequest): string[] {
-    const args = ['--newline', '--no-playlist', '--ffmpeg-location', ffmpegBinPath('ffmpeg')]
-    if (req.format === 'video') {
-      const cap = req.maxHeight
-      args.push('-f', cap ? `bv*[height<=${cap}]+ba/b[height<=${cap}]/b` : 'bv*+ba/b')
-      args.push('--merge-output-format', 'mp4')
-    } else {
-      args.push('-x', '--audio-format', req.format === 'audio-mp3' ? 'mp3' : 'm4a')
-    }
-    args.push('-o', join(req.outputDir, '%(title)s.%(ext)s'))
-    args.push(req.url)
-    return args
-  }
-
   private run(job: YtJob): Promise<void> {
     return new Promise((resolve) => {
       if (this.isCanceled(job)) {
@@ -405,7 +403,9 @@ class YtManager {
         return
       }
       this.update(job, { status: 'running' })
-      const proc = spawn(found.bin, this.buildArgs(req), { windowsHide: true })
+      const proc = spawn(found.bin, buildDownloadArgs(req, ffmpegBinPath('ffmpeg')), {
+        windowsHide: true
+      })
       this.procs.set(job.id, proc)
       let outBuf = ''
       let errTail = ''
@@ -484,3 +484,71 @@ class YtManager {
 }
 
 export const ytManager = new YtManager()
+
+/* ---------------------------- Adress-Analyse ----------------------------- */
+
+const PROBE_TIMEOUT = 90_000
+/** Lange Playlists liefern viel JSON – mehr als das ist kein sinnvolles Ergebnis. */
+const PROBE_MAX_BYTES = 64 * 1024 * 1024
+
+/**
+ * Adresse vor dem Laden analysieren: einzelnes Video oder Playlist samt Einträgen.
+ * Flach (`--flat-playlist`): die Videos einer Playlist werden dabei nicht abgerufen.
+ */
+export function probeUrl(rawUrl: string): Promise<YtProbeResult> {
+  let url: string
+  try {
+    url = normalizeUrl(rawUrl)
+  } catch (err) {
+    return Promise.reject(err)
+  }
+  const found = locateBinary()
+  if (!found) return Promise.reject(new Error('yt-dlp nicht gefunden – zuerst herunterladen.'))
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(found.bin, buildProbeArgs(url), { windowsHide: true })
+    const chunks: Buffer[] = []
+    let size = 0
+    let errTail = ''
+    let settled = false
+    const finish = (fn: () => void): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      fn()
+    }
+    const timer = setTimeout(() => {
+      proc.kill('SIGKILL')
+      finish(() => reject(new Error('Zeitüberschreitung beim Prüfen der Adresse')))
+    }, PROBE_TIMEOUT)
+
+    proc.stdout.on('data', (c: Buffer) => {
+      size += c.length
+      if (size > PROBE_MAX_BYTES) {
+        proc.kill('SIGKILL')
+        finish(() => reject(new Error('Antwort von yt-dlp zu groß')))
+      } else chunks.push(c)
+    })
+    proc.stderr.on('data', (c: Buffer) => {
+      errTail = (errTail + c.toString()).slice(-4000)
+    })
+    proc.on('error', (err) => finish(() => reject(err)))
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        finish(() => reject(new Error(ytErrorText(errTail) ?? `yt-dlp beendet mit Code ${code}`)))
+        return
+      }
+      finish(() => {
+        try {
+          resolve(parseProbeJson(JSON.parse(Buffer.concat(chunks).toString('utf-8')), url))
+        } catch (err) {
+          logLine(
+            '[yt-dlp] Analyse nicht lesbar:',
+            err instanceof Error ? err.message : String(err)
+          )
+          reject(new Error('Antwort von yt-dlp nicht lesbar'))
+        }
+      })
+    })
+  })
+}

@@ -409,19 +409,29 @@ ${pwaHead('#09090b')}
   el('file').addEventListener('change', onPick);
   el('cam').addEventListener('change', onPick);
   el('vidcam').addEventListener('change', onPick);
+  // Abgewiesene Dateien (zu groß, kein Platz, Typ) werden mit Grund gemeldet und übersprungen.
   function uploadQueue(files){
-    var total=files.length, done=0, prog=el('uprog'); prog.className='uprog active';
+    var total=files.length, done=0, failed=[], prog=el('uprog'); prog.className='uprog active';
+    function skip(f,why){ failed.push(f.name); prog.textContent=f.name+': '+why; setTimeout(next,1800); }
     function next(){
-      if(!files.length){ prog.textContent='Fertig – '+done+'/'+total+' hochgeladen, wird konvertiert…';
-        setTimeout(function(){ prog.className='uprog'; prog.textContent=''; },5000); return; }
+      if(!files.length){
+        prog.textContent='Fertig – '+done+'/'+total+' hochgeladen'+(done?', wird konvertiert…':'')+(failed.length?' · nicht geladen: '+failed.join(', '):'');
+        setTimeout(function(){ prog.className='uprog'; prog.textContent=''; },failed.length?9000:5000); return; }
       var f=files.shift();
-      prog.textContent='Lade '+(done+1)+'/'+total+': '+f.name;
+      // Grenze des Rechners vorab prüfen – sonst ginge die Datei erst ganz über das WLAN.
+      var max=state&&state.maxUploadBytes;
+      if(max&&f.size>max){ skip(f,'zu groß (höchstens '+Math.round(max/1073741824)+' GB)'); return; }
+      prog.textContent='Lade '+(done+failed.length+1)+'/'+total+': '+f.name;
       var xhr=new XMLHttpRequest();
       xhr.open('POST','api/upload');
       xhr.setRequestHeader('x-filename', encodeURIComponent(f.name));
       xhr.setRequestHeader('content-type','application/octet-stream');
-      xhr.onload=function(){ done++; next(); };
-      xhr.onerror=function(){ prog.textContent='Fehler bei '+f.name; setTimeout(next,600); };
+      xhr.onload=function(){
+        if(xhr.status>=200&&xhr.status<300){ done++; next(); return; }
+        var msg=''; try{ msg=JSON.parse(xhr.responseText).error||''; }catch(_){}
+        skip(f,msg||('Fehler '+xhr.status));
+      };
+      xhr.onerror=function(){ skip(f,'Verbindung abgebrochen'); };
       xhr.send(f);
     }
     next();

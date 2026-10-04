@@ -30,17 +30,18 @@ Adresse antwortet, solange am Rechner mindestens eine Fernsteuerung läuft.
 
 - **Video-Player:** Transport, Playlists wechseln, Playlist ordnen (ziehen, entfernen), Medien aus
   der Bibliothek hinzufügen. **Hochladen** von Dateien sowie Fotos und Videos direkt mit der
-  Kamera – sie werden wie beim Import auf die Wand gerechnet. Dazu Übergang (Schnitt oder
-  Überblenden samt Dauer), Bild-Standzeit und Aufbereitung neuer Uploads (Letterbox, Blur,
-  Strecken).
+  Kamera – sie werden wie beim Import auf die Wand gerechnet. Höchstens 8 GB je Datei, und auf dem
+  Rechner müssen danach noch 2 GB frei bleiben; abgewiesene Dateien meldet die Seite mit Grund.
+  Dazu Übergang (Schnitt oder Überblenden samt Dauer), Bild-Standzeit und Aufbereitung neuer
+  Uploads (Letterbox, Blur, Strecken).
 - **Jingle-Player:** Pad-Raster der aktuellen Bank mit Live-Status und „Alles stoppen“. Der Ton
   kommt vom Rechner – dort muss der Jingle-Player geöffnet sein.
 - **OSC-Steuerung:** dieselbe Oberfläche wie am Rechner, Sets umschaltbar; gesendet wird vom
   Rechner aus, wo die OSC-Steuerung geöffnet sein muss.
 - **Stage-Timer:** große Restzeit in den Farben der Bühnenanzeige, Start/Pause/Stopp, Abschnitte
   vor, zurück, neu starten oder direkt anspringen, ±1 Minute, Timer/Uhr umschalten und Nachrichten
-  an die Bühne (mit Schnellnachrichten). Abschnitte und Schwellen werden am Rechner bearbeitet. Funktioniert auch
-  bei geschlossenem Werkzeug, weil der Timer im Hauptprozess läuft.
+  an die Bühne (mit Schnellnachrichten). Abschnitte und Schwellen werden am Rechner bearbeitet.
+  Funktioniert auch bei geschlossenem Werkzeug, weil der Timer im Hauptprozess läuft.
 
 Ist ein Werkzeug in mehreren Fenstern offen, gehen Befehle vom Handy nur an das Fenster, dessen
 Stand das Handy zeigt – nichts wird doppelt abgespielt.
@@ -59,4 +60,5 @@ Stand das Handy zeigt – nichts wird doppelt abgespielt.
   Wachhalten des Displays (Wake Lock). Für die Show am Gerät die automatische Bildschirmsperre
   abschalten.
 - Ohne Passwort kann jeder im selben Netz steuern – in fremden Netzen nur bei Bedarf einschalten
-  (siehe [SICHERHEIT.md](SICHERHEIT.md)).
+  (siehe [SICHERHEIT.md](SICHERHEIT.md)). Die Befehle werden dabei Feld für Feld geprüft;
+  Desktop-Einstellungen wie das Idle-Bild lassen sich vom Handy nicht ändern.

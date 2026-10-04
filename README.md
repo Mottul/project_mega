@@ -50,7 +50,7 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 - **Medien-Info** – Video-/Audio-Eckdaten per ffprobe, Show-Check mit Ampel, Playlist-Vergleich,
   CSV-/JSON-Export.
 - **Manuals-Bibliothek** – Geräte-Handbücher (PDF) mit Offline-Volltextsuche und Viewer.
-- **YouTube-Downloader** – yt-dlp mit Warteschlange und Selbst-Update.
+- **YouTube-Downloader** – yt-dlp mit Playlist-Auswahl, Warteschlange und Selbst-Update.
 
 **⚡ Strom, Rigging & Aufbau**
 

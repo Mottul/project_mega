@@ -16,15 +16,30 @@ const EMPTY: JingleRemoteSnapshot = {
   playing: []
 }
 
-/** Eingehende Befehle prüfen: nur Trigger/Stopp-Alle durchlassen. */
-function parseCommand(body: string): JingleRemoteCommand | null {
+/**
+ * Eingehende Befehle feldweise prüfen (fremde Eingaben aus dem LAN, ohne Passwort): nur
+ * Trigger/Stopp-Alle, nur die erwarteten Felder. Die Pad-Kennung ist eine kurze ID
+ * (UUID) – alles andere wird verworfen, statt ungeprüft an den Renderer zu gehen.
+ */
+export function parseJingleCommand(body: string): JingleRemoteCommand | null {
+  let raw: unknown
   try {
-    const cmd = JSON.parse(body) as JingleRemoteCommand
-    if (cmd && (cmd.type === 'trigger' || cmd.type === 'stopAll')) return cmd
+    raw = JSON.parse(body)
   } catch {
-    // ungültige Befehle ignorieren
+    return null
   }
-  return null
+  if (!raw || typeof raw !== 'object') return null
+  const c = raw as Record<string, unknown>
+  switch (c.type) {
+    case 'trigger':
+      return typeof c.padId === 'string' && /^[\w-]{1,64}$/.test(c.padId)
+        ? { type: 'trigger', padId: c.padId }
+        : null
+    case 'stopAll':
+      return { type: 'stopAll' }
+    default:
+      return null
+  }
 }
 
 const srv = createSnapshotServer<JingleRemoteSnapshot, JingleRemoteCommand>({
@@ -32,7 +47,7 @@ const srv = createSnapshotServer<JingleRemoteSnapshot, JingleRemoteCommand>({
   page: JINGLE_MOBILE_PAGE,
   empty: EMPTY,
   defaultPort: 8089,
-  parseCommand
+  parseCommand: parseJingleCommand
 })
 
 export const setJingleCommandSink = srv.setCommandSink

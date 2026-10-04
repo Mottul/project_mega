@@ -60,6 +60,7 @@ import type {
   JingleRemoteSnapshot,
   YtEnqueueRequest,
   YtJob,
+  YtProbeResult,
   YtToolStatus
 } from './types'
 
@@ -216,6 +217,7 @@ export const Channels = {
   // YouTube-Downloader (yt-dlp)
   ytStatus: 'yt:status',
   ytUpdate: 'yt:update', // yt-dlp-Binary herunterladen/aktualisieren
+  ytProbe: 'yt:probe', // Adresse analysieren: einzelnes Video oder Playlist (mit Einträgen)
   ytEnqueue: 'yt:enqueue',
   ytList: 'yt:list',
   ytCancel: 'yt:cancel',
@@ -503,6 +505,8 @@ export interface ToolboxApi {
     status(): Promise<YtToolStatus>
     /** Auf die neueste Version prüfen und bei Bedarf laden. Neuer Status. */
     updateTool(): Promise<YtToolStatus>
+    /** Adresse analysieren: einzelnes Video oder Playlist samt Einträgen (flach). */
+    probe(url: string): Promise<YtProbeResult>
     enqueue(req: YtEnqueueRequest): Promise<{ jobId: string }>
     list(): Promise<YtJob[]>
     cancel(id: string): Promise<void>

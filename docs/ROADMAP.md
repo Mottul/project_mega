@@ -17,14 +17,14 @@ beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
 Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
-1. **Kleine Härtungen** – Upload-Limit der Player-Fernsteuerung, `--` vor der yt-dlp-URL,
-   Jingle-Befehle feldweise prüfen, PDF-Viewer ohne `eval`.
-2. **Datenverlust ausschließen** – `setSettings` tief mergen, Werkzeug-Stores zwischen Fenstern
+1. **Datenverlust ausschließen** – `setSettings` tief mergen, Werkzeug-Stores zwischen Fenstern
    abgleichen (siehe [Robustheit](#robustheit)).
-3. **CI auf Windows und macOS** – das Versprechen „plattformübergreifend“ wird heute nur unter
+2. **CI auf Windows und macOS** – das Versprechen „plattformübergreifend“ wird heute nur unter
    Linux gebaut und getestet.
-4. **Abhängigkeiten aktuell halten** – Electron-Patches und `pdfjs-dist` regelmäßig mit Abstand
+3. **Abhängigkeiten aktuell halten** – Electron-Patches und `pdfjs-dist` regelmäßig mit Abstand
    nachziehen ([SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)).
+4. **Restliche Härtungen** – Fenster-Wächter, `shellOpenPath`-Allowlist, Prüfsummen für ffmpeg
+   und Electron (siehe [Sicherheit](#sicherheit)).
 
 ## Funktionen
 
@@ -89,19 +89,16 @@ NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Ge
 
 - **Letzte `npm audit`-Meldungen** (Tailwind-3-Kette, nur Build-Zeit) verschwinden mit
   [Tailwind 4](#upgrades).
-- **Upload der Player-Fernsteuerung begrenzen:** `/api/upload` schreibt ohne Größenlimit auf die
-  Platte und reicht die Datei an ffmpeg weiter → Byte-Grenze bzw. 413; optional PIN/Token in der
-  Fernsteuer-Adresse. (Die Fernsteuerung ist standardmäßig aus.)
-- **CSP ohne `unsafe-eval`** für den Produktiv-Build (den PDF-Viewer im Renderer mit
-  `isEvalSupported: false` betreiben), Dev-CSP getrennt.
+- **PIN/Token für die Fernsteuerungen** (optional): Sie sind ohne Passwort; Befehle werden
+  geprüft, Uploads begrenzt – wer im selben Netz ist, kann aber steuern.
+- **CSP ohne `'unsafe-inline'`** für Skripte im Produktiv-Build; braucht eine eigene Dev-CSP, weil
+  der Vite-Dev-Server eine Inline-Präambel lädt. (`'unsafe-eval'` ist bereits entfernt.)
 - **Zentrale Fenster-Wächter** (`web-contents-created`: Berechtigungen, `will-navigate`,
   `setWindowOpenHandler`) auch für Ausgabe-, NDI- und PDF-Fenster – heute nur in Haupt- und
   Werkzeugfenstern.
 - **`shellOpenPath`/`shellShowItem`** nur für App-Ablage und gewählte Ausgabeordner.
 - **Prüfsummen** für den ffmpeg- und den Electron-Download (yt-dlp prüft bereits gegen
   `SHA2-256SUMS`; das Electron-Paket bringt seine Prüfsummen in `checksums.json` mit).
-- **`--` vor die yt-dlp-URL**, damit Eingaben mit `-` nicht als Option gelesen werden.
-- **Jingle-Fernsteuerung:** Befehle feldweise prüfen wie bei OSC und Timer.
 
 ### Robustheit
 
@@ -174,6 +171,9 @@ Damit nichts doppelt geplant wird:
 - **Upgrades:** Electron 40 → 42, pdfjs-dist 4 → 6, react-router 6 → 7; Sicherheits-Updates vom
   4. Oktober 2026 (Electron 42.11.8, pdfjs-dist 6.3.289 u. a. – `npm audit --omit=dev` ohne
   Befund).
+- **Kleine Härtungen:** Uploads der Player-Fernsteuerung begrenzt (8 GB je Datei, 2 GB Reserve,
+  Aufräumen bei Abbruch), Fernsteuer-Befehle von Player und Jingle feldweise geprüft, CSP ohne
+  `unsafe-eval`, yt-dlp nur mit http(s)-Adressen hinter `--`.
 - **Konvertierung:** gemeinsamer Kern für Video-Konverter, Player-Import und Testbild-Export
   (ersetzt den alten HAP-Auftragsmanager), eigene Player-Spur, Medien-Info als Analyse-Werkzeug.
 - **Fernsteuerung:** Fernsteuer-App mit gemeinsamer Startseite (Port 8090), Stage-Timer am Handy,
@@ -183,5 +183,6 @@ Damit nichts doppelt geplant wird:
   `components/`.
 - **Werkzeuge:** OSC (Learn-Modus, Auswahl, Bank, Poti/Encoder, Anzeige, Label,
   Fader-Ausrichtung, Raster-Spalten, Auto-Nummerierung, Set-Wechsel am Handy), NovaStar
-  (Preset-Abruf, Blackout/Freeze), Video-Player (Lautheit nach EBU R128, NDI mit Ton),
-  LED-Wall-Vorlagen, yt-dlp-Download mit Prüfsumme.
+  (Preset-Abruf, Blackout/Freeze), Video-Player (Lautheit nach EBU R128, NDI mit Ton, „Ausgabe &
+  Wand“ als erste Sektion), LED-Wall-Vorlagen, YouTube-Downloader (yt-dlp mit Prüfsumme,
+  Playlist-Erkennung mit Auswahl).

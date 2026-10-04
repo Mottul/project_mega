@@ -65,9 +65,11 @@ Playlist-Player für LED-Wände und Beamer.
   warten nie auf einen Konverter-Stapel.
 - **Lautheit angleichen** (optional, EBU R128): Ziel −23, −16 oder −14 LUFS – gilt für neu oder
   erneut konvertierte Medien.
-- **Vollbild-Ausgabe** auf wählbarem Monitor mit doppelt gepuffertem Player: nahtlose Übergänge,
-  wahlweise Schnitt oder echtes Überblenden (das alte Video läuft weiter, Ton blendet mit).
-  Shuffle ist lückenlos – das nächste Zufallsmedium wird vorab geladen.
+- **Ausgabe & Wand** (erste Sektion im Seiten-Panel): Ausgabe-Monitor wählen, Vollbild öffnen
+  und die Wand-Auflösung festlegen – per Eingabe, Vorgabe oder „von Monitor“.
+- **Vollbild-Ausgabe** mit doppelt gepuffertem Player: nahtlose Übergänge, wahlweise Schnitt oder
+  echtes Überblenden (das alte Video läuft weiter, Ton blendet mit). Shuffle ist lückenlos – das
+  nächste Zufallsmedium wird vorab geladen.
 - **Bedienung:** Play/Pause, Skip, Seek, Loop, Shuffle, Stumm; Playlist per Drag & Drop,
   gespeicherte Playlists als Tabs.
 - **Bibliothek** mit Thumbnails, Import per Drag & Drop, Listen- und Kachelansicht;
@@ -252,7 +254,15 @@ Geräte-Handbücher (PDF) offline durchsuchen.
 Wrapper um yt-dlp.
 
 - Video (MP4) oder Audio (MP3/M4A) mit Auflösungsdeckel; Warteschlange mit Fortschritt, Tempo und
-  Restzeit; Muxing über das gebündelte ffmpeg.
+  Restzeit (zwei Downloads parallel, „Alle abbrechen“); Muxing über das gebündelte ffmpeg.
+- **Playlists werden erkannt:** Jede Adresse wird vor dem Laden geprüft. Ein Video startet sofort,
+  eine Playlist zeigt ihre Einträge mit Dauer zur Auswahl – „Alle/Keine“, Umschalt-Klick für
+  Bereiche; private oder gelöschte Einträge sind gesperrt, Unter-Playlists (z. B. Kanal-Reiter)
+  lassen sich einzeln öffnen. Jeder gewählte Eintrag wird ein eigener Download, in
+  Playlist-Reihenfolge; auf Wunsch in einem Unterordner mit dem Playlist-Namen und mit
+  vorangestellter Nummer („03 - Titel“). Sehr lange Playlists: die ersten 500 Einträge.
+- **Video in einer Playlist** (`watch?v=…&list=…`): nur dieses Video ist vorgewählt, „Nur dieses
+  Video laden“ startet es direkt.
 - yt-dlp lädt die App selbst als eigenständiges Programm (Prüfsumme wird verglichen) und prüft
   beim Start auf neue Versionen – abschaltbar, der Knopf **Prüfen** stößt es von Hand an.
 - Nur freigegebene oder eigene Inhalte laden.

@@ -366,11 +366,8 @@ export function plural(n: number, one: string, many: string): string {
   return `${nf(n)} ${n === 1 ? one : many}`
 }
 
-/** Fehlertext für Nutzer: Electron-Präfix „Error invoking remote method …" ist nur Rauschen. */
-export function errorText(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err)
-  return msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
-}
+// liegt jetzt in lib/utils (auch andere Werkzeuge brauchen ihn); hier weiter erreichbar
+export { errorText } from '@renderer/lib/utils'
 
 /** Ordner + Dateiname aus einem Pfad (Windows/macOS/Linux). */
 export function splitPath(p: string): { dir: string; name: string } {

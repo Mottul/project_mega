@@ -191,6 +191,7 @@ const api: ToolboxApi = {
   youtube: {
     status: () => ipcRenderer.invoke(Channels.ytStatus),
     updateTool: () => ipcRenderer.invoke(Channels.ytUpdate),
+    probe: (url) => ipcRenderer.invoke(Channels.ytProbe, url),
     enqueue: (req) => ipcRenderer.invoke(Channels.ytEnqueue, req),
     list: () => ipcRenderer.invoke(Channels.ytList),
     cancel: (id) => ipcRenderer.invoke(Channels.ytCancel, id),

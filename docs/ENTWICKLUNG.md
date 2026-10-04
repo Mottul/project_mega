@@ -118,7 +118,8 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Steuerseiten als HTML-Strings. Die Fernsteuer-App (fester Port 8090) bindet sie unter `/<id>/`
   ein – Steuerseiten sprechen ihre API deshalb **immer relativ** an (`api/…`, nie `/api/…`).
   Start, Stopp, Merken und Autostart laufen über `registerRemoteControl()`
-  (`ipc/remoteControls.ts`).
+  (`ipc/remoteControls.ts`). Befehle vom Handy sind fremde Eingaben: Feld für Feld prüfen, nur
+  bekannte Befehle durchlassen, Werte begrenzen (Muster: `player/remoteCommand.ts`).
 - **Konvertierung:** ein Kern für Video-Konverter, Player-Import und Testbild-Export. Analyse per
   `probeMediaInfo` (mit Cache), alle Entscheidungen in `shared/convertPlan.ts` (rein, getestet,
   auch für die Vorschau im Renderer), Argumente, Runner und Warteschlange in

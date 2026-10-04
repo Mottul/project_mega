@@ -921,7 +921,47 @@ export interface YtEnqueueRequest {
   format: YtFormatId
   maxHeight: number | null // Auflösungsdeckel (px) für 'video', null = beste
   outputDir: string
+  /** Titel vorab (aus der Analyse) – bis yt-dlp den Dateinamen meldet. */
+  title?: string
+  /** Unterordner im Zielordner (z. B. Playlist-Name); wird für das Dateisystem bereinigt. */
+  subfolder?: string
+  /** Playlist-Position voranstellen: 3 von 120 -> „003 - Titel“. */
+  number?: { index: number; digits: number }
 }
+
+/** Ein Eintrag einer Playlist (flache Analyse, ohne die Videos selbst abzurufen). */
+export interface YtPlaylistEntry {
+  /** Position in der Playlist, 1-basiert. */
+  index: number
+  id: string
+  /** Adresse zum Laden des einzelnen Eintrags; null = nicht ladbar. */
+  url: string | null
+  title: string
+  durationSec: number | null
+  /** Privat, gelöscht, nur für Mitglieder … -> nicht wählbar. */
+  unavailable: boolean
+  /** Selbst eine Playlist (z. B. Kanal-Reiter) -> einzeln öffnen statt laden. */
+  nested: boolean
+}
+
+/** Ergebnis der Adress-Analyse vor dem Laden. */
+export type YtProbeResult =
+  | { kind: 'video'; url: string; title: string | null; durationSec: number | null }
+  | {
+      kind: 'playlist'
+      url: string
+      title: string
+      uploader: string | null
+      entries: YtPlaylistEntry[]
+      /** Gesamtzahl laut Seite (kann über der Zahl geladener Einträge liegen). */
+      total: number | null
+      /** Nur die ersten Einträge analysiert (sehr lange Playlist). */
+      truncated: boolean
+      /** Die Adresse zeigt zusätzlich auf ein einzelnes Video (watch?v=…&list=…). */
+      currentId: string | null
+      /** Adresse genau dieses Videos (auch wenn es nicht unter den Einträgen ist). */
+      videoUrl: string | null
+    }
 
 export type YtJobStatus = 'queued' | 'running' | 'done' | 'error' | 'canceled'
 
