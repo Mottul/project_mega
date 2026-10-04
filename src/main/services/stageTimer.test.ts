@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TimerSegment } from '@shared/types'
-import { applyTimerCommand, disposeTimer, getTimerState, setTimerSinks } from './stageTimer'
+import {
+  applyTimerCommand,
+  disposeTimer,
+  getTimerState,
+  restoreTimerSetup,
+  sanitizeTimerSetup,
+  setTimerSetupSink,
+  setTimerSinks
+} from './stageTimer'
 
 const seg = (id: string, durationSec: number): TimerSegment => ({
   id,
@@ -134,5 +142,73 @@ describe('stageTimer – Ablauf (Wanduhr-Tick)', () => {
     vi.advanceTimersByTime(2000)
     expect(st().remainingSec).toBeLessThan(0)
     expect(st().running).toBe(true)
+  })
+})
+
+describe('Stage-Timer – Ablauf merken', () => {
+  afterEach(() => setTimerSetupSink(() => {}))
+
+  it('meldet Ablauf-Änderungen, nicht aber den Laufzustand', () => {
+    const seen: string[] = []
+    setTimerSetupSink((setup) => seen.push(setup.segments.map((x) => x.id).join(',')))
+    applyTimerCommand({ type: 'setSegments', segments: [seg('a', 60), seg('b', 30)] })
+    applyTimerCommand({ type: 'start' })
+    applyTimerCommand({ type: 'adjust', deltaSec: 60 })
+    applyTimerCommand({ type: 'pause' })
+    applyTimerCommand({ type: 'setThresholds', warnSec: 90, alertSec: 30 })
+    expect(seen).toEqual(['a,b', 'a,b'])
+  })
+
+  it('prüft gespeicherte Abläufe und übernimmt alte Felder', () => {
+    const setup = sanitizeTimerSetup({
+      segments: [
+        { id: 'x', label: 'Begrüßung', durationSec: 300 },
+        { id: 'y', speaker: 'Anna', title: 'Keynote', durationSec: 1200.4 },
+        { id: 'kaputt', durationSec: 0 },
+        'Unsinn'
+      ],
+      warnSec: 60,
+      alertSec: 120,
+      endBehavior: 'explodieren',
+      displayMode: 'clock',
+      clockShowDate: false
+    })
+    expect(setup?.segments).toEqual([
+      { id: 'x', speaker: '', title: 'Begrüßung', durationSec: 300 },
+      { id: 'y', speaker: 'Anna', title: 'Keynote', durationSec: 1200 }
+    ])
+    expect(setup).toMatchObject({
+      warnSec: 60,
+      alertSec: 60, // nie über der Warnschwelle
+      endBehavior: 'overtime',
+      displayMode: 'clock',
+      clockShowDate: false,
+      clockShowSeconds: true
+    })
+    expect(sanitizeTimerSetup(null)).toBeNull()
+  })
+
+  it('stellt einen gemerkten Ablauf gestoppt am ersten Abschnitt wieder her', () => {
+    applyTimerCommand({ type: 'setSegments', segments: [seg('alt', 10)] })
+    applyTimerCommand({ type: 'start' })
+    restoreTimerSetup({
+      segments: [seg('eins', 120), seg('zwei', 60)],
+      warnSec: 30,
+      alertSec: 10,
+      endBehavior: 'stop',
+      displayMode: 'timer',
+      showClockInTimer: false,
+      clockShowSeconds: true,
+      clockShowDate: true
+    })
+    expect(st()).toMatchObject({
+      running: false,
+      current: 0,
+      remainingSec: 120,
+      warnSec: 30,
+      endBehavior: 'stop',
+      showClockInTimer: false
+    })
+    expect(st().segments.map((x) => x.id)).toEqual(['eins', 'zwei'])
   })
 })

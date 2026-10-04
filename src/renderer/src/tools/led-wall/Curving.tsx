@@ -5,7 +5,6 @@
 //  Squircle    – Rechteck mit runden 90°-Ecken (Breite = Wandbreite)
 // Die hier gewählte/ermittelte Größe wird über computeCurve überall übernommen.
 
-import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Card } from '@renderer/components/ui/card'
 import { Readout, fmt, parseNum } from '../_calc/ui'
@@ -15,6 +14,7 @@ import { distributeAngles, type BuilderSegment } from './math'
 import { useLedWall, type CurveMode } from './store'
 import { TopDownSvg } from './TopDownSvg'
 import { LField, NumCommit } from './ui'
+import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 
 const US2_WEIGHT = MODULES['uS2+'].weight
 const MODE_LABELS = CURVE_MODE_LABELS
@@ -42,23 +42,9 @@ function AnglePills({ angles }: { angles: number[] }): JSX.Element {
 
 export function Curving(): JSX.Element {
   const s = useLedWall()
-  const [open, setOpen] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('led-wall:curving-open') !== '0'
-    } catch {
-      return true
-    }
-  })
+  const [open, setOpen] = usePersistentState('led-wall:curving-open', true, flag)
   function toggle(): void {
-    setOpen((o) => {
-      const next = !o
-      try {
-        localStorage.setItem('led-wall:curving-open', next ? '1' : '0')
-      } catch {
-        /* localStorage nicht verfügbar */
-      }
-      return next
-    })
+    setOpen((o) => !o)
   }
 
   return (

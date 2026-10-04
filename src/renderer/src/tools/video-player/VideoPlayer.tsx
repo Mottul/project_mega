@@ -40,16 +40,20 @@ import {
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
-import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
+import { TextField } from '@renderer/components/ui/text-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
 import {
   DEFAULT_PLAYER_NDI,
+  DEFAULT_PLAYER_SETTINGS,
+  type PlayerNdiMode,
+  type PlayerNdiPrefs,
   type PlayerNdiConfig,
   type PlayerNdiStatus,
   type ConvertJob,
@@ -69,6 +73,7 @@ import {
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
 import { RemoteAccess } from '@renderer/components/RemoteAccess'
+import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 
 const selectClass =
   'h-9 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
@@ -143,43 +148,16 @@ export function VideoPlayer(): JSX.Element {
   const [view, setView] = useState<ViewMode>('large')
   // Bewegte Live-Vorschau des Wandbilds AUCH bei offenem Ausgabefenster (passiver
   // Spiegel). Aus = statisches Standbild (spart Decodierung). Wahl wird gemerkt.
-  const [previewLive, setPreviewLive] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('player:previewLive') === '1'
-    } catch {
-      return false
-    }
-  })
+  const [previewLive, setPreviewLive] = usePersistentState('player:previewLive', false, flag)
   function togglePreviewLive(): void {
-    setPreviewLive((v) => {
-      const next = !v
-      try {
-        localStorage.setItem('player:previewLive', next ? '1' : '0')
-      } catch {
-        /* localStorage nicht verfügbar */
-      }
-      return next
-    })
+    setPreviewLive((v) => !v)
   }
   // FPS-Anzeige über der Vorschau (an/aus, gemerkt).
-  const [showFps, setShowFps] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('player:showFps') === '1'
-    } catch {
-      return false
-    }
-  })
+  const [showFps, setShowFps] = usePersistentState('player:showFps', false, flag)
   function toggleFps(): void {
-    setShowFps((v) => {
-      const next = !v
-      try {
-        localStorage.setItem('player:showFps', next ? '1' : '0')
-      } catch {
-        /* localStorage nicht verfügbar */
-      }
-      return next
-    })
+    setShowFps((v) => !v)
   }
+
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [remotePort, setRemotePort] = useState(8088)
   const [saved, setSaved] = useState<SavedPlaylist[]>([])
@@ -1526,8 +1504,19 @@ export function VideoPlayer(): JSX.Element {
 
 /* --------------------------- NDI-Ausgabe (Panel) ------------------------- */
 
-type NdiMode = 'wall' | 'half' | 'hd1080' | 'hd720'
-const NDI_LS_KEY = 'player:ndi'
+type NdiMode = PlayerNdiMode
+
+/** Frühere Versionen merkten sich das NDI-Panel nur im localStorage. */
+function legacyNdi(old: Record<string, unknown>): Partial<PlayerNdiPrefs> {
+  const out: Partial<PlayerNdiPrefs> = {}
+  if (typeof old.name === 'string' && old.name.trim()) out.name = old.name.trim()
+  if (old.mode === 'wall' || old.mode === 'half' || old.mode === 'hd1080' || old.mode === 'hd720') {
+    out.mode = old.mode
+  }
+  if (old.fps === 25 || old.fps === 30 || old.fps === 50) out.fps = old.fps
+  if (typeof old.audio === 'boolean') out.audio = old.audio
+  return out
+}
 
 // NDI mag gerade Maße; außerdem Untergrenze für sinnvolle Streams.
 function evenDim(n: number): number {
@@ -1559,24 +1548,11 @@ function ndiConfigFor(
  *  NDI-Quelle ins Netz. Ohne installiertes NDI-Modul nur ein Hinweis. */
 function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX.Element {
   const [status, setStatus] = useState<PlayerNdiStatus | null>(null)
-  const [prefs, setPrefs] = useState<{ name: string; mode: NdiMode; fps: number; audio: boolean }>(
-    () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(NDI_LS_KEY) ?? 'null')
-        if (saved && typeof saved.name === 'string') {
-          return {
-            name: saved.name,
-            mode: ['wall', 'half', 'hd1080', 'hd720'].includes(saved.mode) ? saved.mode : 'wall',
-            fps: [25, 30, 50].includes(saved.fps) ? saved.fps : 30,
-            audio: !!saved.audio
-          }
-        }
-      } catch {
-        /* defekter Eintrag -> Defaults */
-      }
-      return { name: DEFAULT_PLAYER_NDI.name, mode: 'wall', fps: 30, audio: true }
-    }
-  )
+  // gemerkt in settings.json (player.ndi), in allen Fenstern gleich
+  const prefs = useSettings((s) => s.player.ndi) ?? DEFAULT_PLAYER_SETTINGS.ndi
+  useEffect(() => {
+    migrateLocalStorage('player:ndi', (old) => ({ player: { ndi: legacyNdi(old) } }))
+  }, [])
 
   useEffect(() => {
     void api.player.ndiStatus().then(setStatus)
@@ -1590,16 +1566,8 @@ function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX
     return () => clearInterval(t)
   }, [status?.running])
 
-  function patch(p: Partial<typeof prefs>): void {
-    setPrefs((prev) => {
-      const next = { ...prev, ...p }
-      try {
-        localStorage.setItem(NDI_LS_KEY, JSON.stringify(next))
-      } catch {
-        /* localStorage nicht verfügbar */
-      }
-      return next
-    })
+  function patch(p: Partial<PlayerNdiPrefs>): void {
+    updateSettings({ player: { ndi: p } })
   }
 
   if (!status) return <p className="text-xs text-muted-foreground">Lade…</p>
@@ -1626,10 +1594,11 @@ function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX
     <>
       <label className="block">
         <span className="mb-1 block text-xs text-muted-foreground">Quellenname im Netz</span>
-        <Input
+        <TextField
           value={prefs.name}
           disabled={running}
-          onChange={(e) => patch({ name: e.target.value })}
+          maxLength={60}
+          onCommit={(name) => patch({ name })}
         />
       </label>
       <div className="grid grid-cols-2 gap-2">

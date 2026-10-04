@@ -2,10 +2,11 @@
 // Panel mit ausklappbaren Kategorien (PanelSection). Damit sehen alle Werkzeuge
 // gleich aus: links/mittig wird gearbeitet, rechts wird eingestellt. Der
 // Aufklapp-Zustand jeder Kategorie wird pro Tool im localStorage gemerkt.
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { ChevronDown, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
+import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 
 const ShellCtx = createContext<string>('tool')
 
@@ -23,23 +24,9 @@ export function ToolShell({
   asideWidth?: number
 }): JSX.Element {
   // Panel ein-/ausklappbar (Zustand pro Tool gemerkt) -> mehr Platz für den Inhalt.
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(`shell:${id}:aside`) === '1'
-    } catch {
-      return false
-    }
-  })
+  const [collapsed, setCollapsed] = usePersistentState(`shell:${id}:aside`, false, flag)
   function toggleAside(): void {
-    setCollapsed((c) => {
-      const next = !c
-      try {
-        localStorage.setItem(`shell:${id}:aside`, next ? '1' : '0')
-      } catch {
-        /* localStorage nicht verfügbar */
-      }
-      return next
-    })
+    setCollapsed((c) => !c)
   }
 
   return (
@@ -101,26 +88,10 @@ export function PanelSection({
   children: ReactNode
 }): JSX.Element {
   const toolId = useContext(ShellCtx)
-  const key = `panel:${toolId}:${id}`
-  const [open, setOpen] = useState<boolean>(() => {
-    try {
-      const v = localStorage.getItem(key)
-      return v === null ? defaultOpen : v === '1'
-    } catch {
-      return defaultOpen
-    }
-  })
+  const [open, setOpen] = usePersistentState(`panel:${toolId}:${id}`, defaultOpen, flag)
 
   function toggle(): void {
-    setOpen((o) => {
-      const next = !o
-      try {
-        localStorage.setItem(key, next ? '1' : '0')
-      } catch {
-        // localStorage nicht verfügbar -> Zustand nur für diese Sitzung
-      }
-      return next
-    })
+    setOpen((o) => !o)
   }
 
   return (

@@ -67,11 +67,14 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 - Theme: Dunkel ist Standard, Hell über `.light` am `<html>`; Akzentfarbe über
   CSS-Variablen (`@renderer/lib/accent`). Farben immer über Tailwind-Tokens
   (`primary`, `border`, …), nie hart kodieren.
-- settings.json (main, `services/store.ts`) ist Quelle der Wahrheit für
-  App-Einstellungen; localStorage nur als Boot-Spiegel (Theme/Akzent/Dichte).
-  `setSettings` nur mit den geänderten Feldern aufrufen (feldweise gemergt, Listen ersetzt) –
-  nie `{ ...getSettings().player, … }`; Einstellungen im eigenen Zustand per
-  `api.onSettingsChanged` aktuell halten.
+- **Speichern – drei Orte, nie eigener localStorage-Parser** (Tabelle in docs/ENTWICKLUNG.md):
+  Einstellungen (Pfade, Geräte/Ausgaben, Player/Timer, alles, was main braucht) in
+  settings.json – Renderer: `useSettings(sel)` + `updateSettings(patch)` aus
+  `@renderer/lib/settings`; Arbeitsdaten eines Werkzeugs im zustand-Store (s. o.);
+  Bedien-Kleinigkeiten per `usePersistentState(key, vorgabe, codec)`. localStorage sonst nur als
+  Boot-Spiegel (Theme/Akzent/Dichte). `setSettings`/`updateSettings` nur mit geänderten Feldern
+  (feldweise gemergt, Listen ersetzt) – nie `{ ...getSettings().player, … }`; Textfelder für
+  Einstellungen puffern (`TextField`/`NumberField`); Umzüge per `migrateLocalStorage`.
 
 ## Doku
 

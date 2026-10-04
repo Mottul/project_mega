@@ -19,42 +19,34 @@ import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
+import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { errorText } from '@renderer/lib/utils'
-import type { YtEnqueueRequest, YtFormatId, YtJob, YtToolStatus } from '@shared/types'
+import {
+  DEFAULT_YOUTUBE_SETTINGS,
+  type YoutubeSettings,
+  type YtEnqueueRequest,
+  type YtFormatId,
+  type YtJob,
+  type YtToolStatus
+} from '@shared/types'
 import { selectClass } from '../_calc/ui'
 import { toolPageClass } from '@renderer/lib/toolPage'
 import { PlaylistPicker } from './PlaylistPicker'
 import { initialSelection, playlistRequests, urlProblem, type YtPlaylist } from './playlist'
 
-const LS = 'youtube-dl-settings'
-
-interface Settings {
-  format: YtFormatId
-  maxHeight: number | null
-  outputDir: string
-  /** Playlists in einen Unterordner mit ihrem Namen laden. */
-  playlistFolder: boolean
-  /** Playlist-Position voranstellen („03 - Titel“). */
-  playlistNumbers: boolean
-}
-
-const DEFAULTS: Settings = {
-  format: 'video',
-  maxHeight: 1080,
-  outputDir: '',
-  playlistFolder: true,
-  playlistNumbers: true
-}
-
-function loadSettings(): Settings {
-  try {
-    const s = JSON.parse(localStorage.getItem(LS) ?? '') as Partial<Settings>
-    // ältere Stände ohne Playlist-Optionen -> Vorgaben ergänzen
-    if (s && typeof s.format === 'string') return { ...DEFAULTS, ...s }
-  } catch {
-    /* leer/defekt */
+/** Frühere Versionen merkten sich die Vorgaben (samt Zielordner) nur im localStorage. */
+function legacySettings(old: Record<string, unknown>): Partial<YoutubeSettings> {
+  const out: Partial<YoutubeSettings> = {}
+  if (typeof old.outputDir === 'string') out.outputDir = old.outputDir
+  if (old.format === 'video' || old.format === 'audio-mp3' || old.format === 'audio-m4a') {
+    out.format = old.format
   }
-  return { ...DEFAULTS }
+  if (old.maxHeight === null || (typeof old.maxHeight === 'number' && old.maxHeight > 0)) {
+    out.maxHeight = old.maxHeight
+  }
+  if (typeof old.playlistFolder === 'boolean') out.playlistFolder = old.playlistFolder
+  if (typeof old.playlistNumbers === 'boolean') out.playlistNumbers = old.playlistNumbers
+  return out
 }
 
 export function YoutubeDownloader(): JSX.Element {
@@ -62,9 +54,11 @@ export function YoutubeDownloader(): JSX.Element {
   const [updating, setUpdating] = useState(false)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [url, setUrl] = useState('')
-  const [cfg, setCfg] = useState<Settings>(loadSettings)
+  // Vorgaben + Zielordner liegen in settings.json (bleiben über Fenster hinweg aktuell)
+  const cfg = useSettings((s) => s.youtube) ?? DEFAULT_YOUTUBE_SETTINGS
+  const setCfg = (patch: Partial<YoutubeSettings>): void => updateSettings({ youtube: patch })
+  const autoUpdate = useSettings((s) => s.ytdlpAutoUpdate) ?? true
   const [jobs, setJobs] = useState<YtJob[]>([])
-  const [autoUpdate, setAutoUpdate] = useState(true)
   const jobMap = useRef<Map<string, YtJob>>(new Map())
   // Adress-Analyse: läuft / Fehler / erkannte Playlist samt Auswahl
   const [probing, setProbing] = useState(false)
@@ -84,7 +78,7 @@ export function YoutubeDownloader(): JSX.Element {
       jobMap.current.set(job.id, job)
       setJobs([...jobMap.current.values()].sort((a, b) => b.createdAt - a.createdAt))
     })
-    void api.getSettings().then((s) => setAutoUpdate(s.ytdlpAutoUpdate))
+    migrateLocalStorage('youtube-dl-settings', (old) => ({ youtube: legacySettings(old) }))
     // Die Startprüfung läuft im main-Prozess und kann jederzeit fertig werden.
     const offStatus = api.youtube.onStatusUpdate(setStatus)
     return () => {
@@ -93,13 +87,9 @@ export function YoutubeDownloader(): JSX.Element {
     }
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem(LS, JSON.stringify(cfg))
-  }, [cfg])
-
   async function pickDir(): Promise<void> {
     const paths = await api.selectPaths({ title: 'Zielordner wählen', directories: true })
-    if (paths[0]) setCfg((c) => ({ ...c, outputDir: paths[0] }))
+    if (paths[0]) setCfg({ outputDir: paths[0] })
   }
 
   async function updateTool(): Promise<void> {
@@ -244,8 +234,7 @@ export function YoutubeDownloader(): JSX.Element {
           checked={autoUpdate}
           onChange={(e) => {
             const on = e.target.checked
-            setAutoUpdate(on)
-            void api.setSettings({ ytdlpAutoUpdate: on })
+            updateSettings({ ytdlpAutoUpdate: on })
           }}
         />
         Beim Programmstart automatisch auf eine neue yt-dlp-Version prüfen
@@ -302,7 +291,7 @@ export function YoutubeDownloader(): JSX.Element {
             <select
               className={`${selectClass} w-auto`}
               value={cfg.format}
-              onChange={(e) => setCfg((c) => ({ ...c, format: e.target.value as YtFormatId }))}
+              onChange={(e) => setCfg({ format: e.target.value as YtFormatId })}
             >
               <option value="video">Video (MP4)</option>
               <option value="audio-mp3">Nur Audio (MP3)</option>
@@ -316,10 +305,7 @@ export function YoutubeDownloader(): JSX.Element {
                 className={`${selectClass} w-auto`}
                 value={cfg.maxHeight ?? 'best'}
                 onChange={(e) =>
-                  setCfg((c) => ({
-                    ...c,
-                    maxHeight: e.target.value === 'best' ? null : Number(e.target.value)
-                  }))
+                  setCfg({ maxHeight: e.target.value === 'best' ? null : Number(e.target.value) })
                 }
               >
                 <option value="best">Beste</option>
@@ -364,11 +350,10 @@ export function YoutubeDownloader(): JSX.Element {
           onSelected={setSelected}
           options={{ folder: cfg.playlistFolder, numbers: cfg.playlistNumbers }}
           onOptions={(o) =>
-            setCfg((c) => ({
-              ...c,
+            setCfg({
               ...(o.folder !== undefined ? { playlistFolder: o.folder } : {}),
               ...(o.numbers !== undefined ? { playlistNumbers: o.numbers } : {})
-            }))
+            })
           }
           ready={!!ready}
           onDownload={downloadSelection}

@@ -108,6 +108,8 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
   Hauptprozess. Alternativ eine große Uhr mit Sekunden.
 - **NDI-Ausgabe** (optional): [NDI.md](NDI.md). **Handy-Fernsteuerung**, die auch bei
   geschlossenem Werkzeug funktioniert.
+- **Ablauf bleibt erhalten:** Abschnitte, Schwellen, Ende-Verhalten und Anzeige merkt sich die App
+  über Neustarts – auch wenn der Timer nur vom Handy aus bedient wurde.
 
 ### Testbildgenerator
 
@@ -316,7 +318,7 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 
 | Pfad                    | Inhalt                                                                   |
 | ----------------------- | ------------------------------------------------------------------------ |
-| `settings.json`         | App-Einstellungen (Quelle der Wahrheit)                                  |
+| `settings.json`         | App-Einstellungen inkl. Zielordner, NDI und Timer-Ablauf                 |
 | `library.db`            | Bibliothek von Manuals und Video-Player (SQLite)                         |
 | `player-media/`         | konvertierte Player-Medien und Thumbnails                                |
 | `player-uploads/`       | vom Handy hochgeladene Originale                                         |
