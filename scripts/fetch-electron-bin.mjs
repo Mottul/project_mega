@@ -24,6 +24,7 @@ import { Buffer } from 'node:buffer'
 import https from 'node:https'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 const require = createRequire(import.meta.url)
 
@@ -168,9 +169,27 @@ function unzip(zip, destDir) {
     if (!t.error && t.status === 0) return Promise.resolve()
     console.warn('[electron-bin] tar nicht nutzbar, versuche extract-zip …')
   }
-  // extract-zip ist eine Dependency von electron (fuer dessen install.js) -> vorhanden.
-  const extract = require(require.resolve('extract-zip', { paths: [elDir] }))
-  return withTimeout(extract(zip, { dir: destDir }), 180000, 'Entpacken (extract-zip)')
+  return loadExtract().then((extract) =>
+    withTimeout(extract(zip, { dir: destDir }), 180000, 'Entpacken (extract-zip)')
+  )
+}
+
+/** Den Zip-Entpacker aus electrons eigenen Abhängigkeiten holen (für dessen install.js
+ *  ohnehin vorhanden). Neuere Electron-Versionen bringen statt `extract-zip` den
+ *  Ersatz `@electron-internal/extract-zip` mit (ESM, gleiche Signatur) -> beide versuchen. */
+async function loadExtract() {
+  for (const name of ['@electron-internal/extract-zip', 'extract-zip']) {
+    let file
+    try {
+      file = require.resolve(name, { paths: [elDir] })
+    } catch {
+      continue
+    }
+    const mod = await import(pathToFileURL(file).href)
+    const fn = mod.default ?? mod.extract
+    if (typeof fn === 'function') return fn
+  }
+  throw new Error('kein Zip-Entpacker gefunden (@electron-internal/extract-zip bzw. extract-zip)')
 }
 
 async function main() {
