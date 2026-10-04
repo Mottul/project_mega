@@ -1136,6 +1136,18 @@ export type AccentId = 'gold' | 'amber' | 'teal' | 'blue' | 'violet' | 'pink' | 
  *  Maße (Höhen, Abstände, Text) schrumpfen proportional -> mehr passt aufs Bild. */
 export type UiDensity = 'normal' | 'compact'
 
+/** Selbst benannte Favoriten-Kategorie im Startbildschirm. */
+export interface FavoriteGroup {
+  id: string
+  name: string
+  /** Breite in Zwölfteln einer Zeile: 12 = ganze Breite, 6 = halb, 4 = Drittel, 3 = Viertel … */
+  span: number
+  /** Werkzeuge in eigener Reihenfolge */
+  toolIds: string[]
+}
+
+export type LauncherTileSize = 'small' | 'medium' | 'large'
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
@@ -1154,6 +1166,11 @@ export interface AppSettings {
   favoriteToolIds: string[]
   /** Startbildschirm zeigt nur die Favoriten (Suche findet trotzdem alle). */
   launcherFavoritesOnly: boolean
+  /** Eigene Kategorien der Favoriten (Name, Breite, Reihenfolge). Quelle der Wahrheit
+   *  für die Anordnung; favoriteToolIds bleibt als flache Liste synchron. */
+  favoriteGroups: FavoriteGroup[]
+  /** Kachelgröße im Startbildschirm */
+  launcherTileSize: LauncherTileSize
   /** UI-Dichte (Normal/Kompakt) der Bedienoberfläche. */
   uiDensity: UiDensity
   /** yt-dlp beim Start prüfen und bei Bedarf aktualisieren. */
@@ -1181,6 +1198,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   kioskToolId: null,
   favoriteToolIds: [],
   launcherFavoritesOnly: false,
+  favoriteGroups: [],
+  launcherTileSize: 'medium',
   uiDensity: 'normal',
   ytdlpAutoUpdate: true,
   remoteControls: DEFAULT_REMOTE_CONTROLS
