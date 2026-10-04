@@ -545,45 +545,82 @@ export function VideoPlayer(): JSX.Element {
       id="video-player"
       aside={
         <>
-          {!locked && (
-            <PanelSection id="wall" title="Wand / Auflösung" icon={Ratio}>
-              <div className="flex items-center gap-2">
-                <NumberField
-                  value={wallW}
-                  min={2}
-                  max={16384}
-                  onCommit={(v) => setWall(v, wallH)}
-                />
-                <span className="text-muted-foreground">×</span>
-                <NumberField
-                  value={wallH}
-                  min={2}
-                  max={16384}
-                  onCommit={(v) => setWall(wallW, v)}
-                />
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {RES_PRESETS.map((r) => (
-                  <Button
-                    key={r.label}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setWall(r.w, r.h)}
-                  >
-                    {r.label}
-                  </Button>
+          {/* Ausgabe zuerst: Monitor wählen und die Wand-Auflösung festlegen gehören
+              zusammen („von Monitor“ übernimmt die Auflösung des gewählten Monitors). */}
+          <PanelSection
+            id="output"
+            title={locked ? 'Ausgabe-Monitor' : 'Ausgabe & Wand'}
+            icon={MonitorPlay}
+            right={pstate.outputOpen ? <Badge tone="success">aktiv</Badge> : undefined}
+          >
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Ausgabe-Monitor</span>
+              <select
+                className={selectClass}
+                value={displayId ?? ''}
+                onChange={(e) => setDisplayId(Number(e.target.value))}
+              >
+                {displays.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.label}
+                  </option>
                 ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fromMonitor}
-                  disabled={displayId == null}
-                >
-                  von Monitor
+              </select>
+            </label>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => void openOutput()} disabled={displayId == null}>
+                <MonitorPlay className="size-4" /> {pstate.outputOpen ? 'Auf Monitor' : 'Vollbild'}
+              </Button>
+              {pstate.outputOpen && (
+                <Button size="sm" variant="outline" onClick={() => void api.player.closeOutput()}>
+                  <MonitorX className="size-4" /> Schließen
                 </Button>
+              )}
+            </div>
+            {!locked && (
+              <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+                <span className="flex items-center gap-1.5 text-sm font-medium">
+                  <Ratio className="size-3.5 text-muted-foreground" /> Wand-Auflösung
+                </span>
+                <div className="flex items-center gap-2">
+                  <NumberField
+                    value={wallW}
+                    min={2}
+                    max={16384}
+                    onCommit={(v) => setWall(v, wallH)}
+                  />
+                  <span className="text-muted-foreground">×</span>
+                  <NumberField
+                    value={wallH}
+                    min={2}
+                    max={16384}
+                    onCommit={(v) => setWall(wallW, v)}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {RES_PRESETS.map((r) => (
+                    <Button
+                      key={r.label}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setWall(r.w, r.h)}
+                    >
+                      {r.label}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={fromMonitor}
+                    disabled={displayId == null}
+                    title="Auflösung des gewählten Ausgabe-Monitors übernehmen"
+                  >
+                    von Monitor
+                  </Button>
+                </div>
               </div>
-            </PanelSection>
-          )}
+            )}
+          </PanelSection>
 
           <PanelSection id="prep" title="Aufbereitung" icon={SlidersHorizontal}>
             <label className="flex flex-col gap-1.5">
@@ -740,35 +777,6 @@ export function VideoPlayer(): JSX.Element {
                 </span>
               </div>
             )}
-          </PanelSection>
-
-          <PanelSection
-            id="output"
-            title="Ausgabe-Monitor"
-            icon={MonitorPlay}
-            right={pstate.outputOpen ? <Badge tone="success">aktiv</Badge> : undefined}
-          >
-            <select
-              className={selectClass}
-              value={displayId ?? ''}
-              onChange={(e) => setDisplayId(Number(e.target.value))}
-            >
-              {displays.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => void openOutput()} disabled={displayId == null}>
-                <MonitorPlay className="size-4" /> {pstate.outputOpen ? 'Auf Monitor' : 'Vollbild'}
-              </Button>
-              {pstate.outputOpen && (
-                <Button size="sm" variant="outline" onClick={() => void api.player.closeOutput()}>
-                  <MonitorX className="size-4" /> Schließen
-                </Button>
-              )}
-            </div>
           </PanelSection>
 
           <PanelSection id="ndi" title="NDI-Ausgabe (Netzwerk)" icon={Radio} defaultOpen={false}>

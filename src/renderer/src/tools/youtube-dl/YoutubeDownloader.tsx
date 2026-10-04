@@ -1,7 +1,8 @@
 // YouTube-Downloader (yt-dlp). Die Binary liegt in userData/bin und wird beim
 // App-Start automatisch geprüft und bei Bedarf ersetzt (geprüfte Prüfsumme, im
-// main-Prozess); der Knopf stößt dieselbe Prüfung von Hand an. Downloads laufen
-// als Queue mit Fortschritt. Muxing über das gebündelte ffmpeg.
+// main-Prozess); der Knopf stößt dieselbe Prüfung von Hand an. Jede Adresse wird
+// vor dem Laden analysiert: ein Video geht direkt in die Queue, eine Playlist zeigt
+// ihre Einträge zur Auswahl (je Eintrag ein Download). Muxing über das gebündelte ffmpeg.
 
 import { useEffect, useRef, useState } from 'react'
 import {
@@ -17,9 +18,13 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { api } from '@renderer/lib/api'
-import type { YtFormatId, YtJob, YtToolStatus } from '@shared/types'
+import { toast } from '@renderer/lib/toast'
+import { errorText } from '@renderer/lib/utils'
+import type { YtEnqueueRequest, YtFormatId, YtJob, YtToolStatus } from '@shared/types'
 import { selectClass } from '../_calc/ui'
 import { toolPageClass } from '@renderer/lib/toolPage'
+import { PlaylistPicker } from './PlaylistPicker'
+import { initialSelection, playlistRequests, urlProblem, type YtPlaylist } from './playlist'
 
 const LS = 'youtube-dl-settings'
 
@@ -27,16 +32,29 @@ interface Settings {
   format: YtFormatId
   maxHeight: number | null
   outputDir: string
+  /** Playlists in einen Unterordner mit ihrem Namen laden. */
+  playlistFolder: boolean
+  /** Playlist-Position voranstellen („03 - Titel“). */
+  playlistNumbers: boolean
+}
+
+const DEFAULTS: Settings = {
+  format: 'video',
+  maxHeight: 1080,
+  outputDir: '',
+  playlistFolder: true,
+  playlistNumbers: true
 }
 
 function loadSettings(): Settings {
   try {
-    const s = JSON.parse(localStorage.getItem(LS) ?? '') as Settings
-    if (s && typeof s.format === 'string') return s
+    const s = JSON.parse(localStorage.getItem(LS) ?? '') as Partial<Settings>
+    // ältere Stände ohne Playlist-Optionen -> Vorgaben ergänzen
+    if (s && typeof s.format === 'string') return { ...DEFAULTS, ...s }
   } catch {
     /* leer/defekt */
   }
-  return { format: 'video', maxHeight: 1080, outputDir: '' }
+  return { ...DEFAULTS }
 }
 
 export function YoutubeDownloader(): JSX.Element {
@@ -48,6 +66,13 @@ export function YoutubeDownloader(): JSX.Element {
   const [jobs, setJobs] = useState<YtJob[]>([])
   const [autoUpdate, setAutoUpdate] = useState(true)
   const jobMap = useRef<Map<string, YtJob>>(new Map())
+  // Adress-Analyse: läuft / Fehler / erkannte Playlist samt Auswahl
+  const [probing, setProbing] = useState(false)
+  const [probeError, setProbeError] = useState<string | null>(null)
+  const [playlist, setPlaylist] = useState<YtPlaylist | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  // Zähler gegen veraltete Antworten (neue Analyse oder Abbruch während eine läuft)
+  const probeSeq = useRef(0)
 
   useEffect(() => {
     void api.youtube.status().then(setStatus)
@@ -89,22 +114,80 @@ export function YoutubeDownloader(): JSX.Element {
     }
   }
 
-  function enqueue(): void {
-    const u = url.trim()
-    if (!u || !cfg.outputDir) return
-    void api.youtube.enqueue({
-      url: u,
-      format: cfg.format,
-      maxHeight: cfg.format === 'video' ? cfg.maxHeight : null,
-      outputDir: cfg.outputDir
+  const base = (): Pick<YtEnqueueRequest, 'format' | 'maxHeight' | 'outputDir'> => ({
+    format: cfg.format,
+    maxHeight: cfg.format === 'video' ? cfg.maxHeight : null,
+    outputDir: cfg.outputDir
+  })
+
+  /** Nacheinander einreihen: so laufen Playlist-Einträge in ihrer Reihenfolge. */
+  async function enqueueAll(reqs: YtEnqueueRequest[]): Promise<void> {
+    let failed: unknown = null
+    for (const r of reqs) {
+      try {
+        await api.youtube.enqueue(r)
+      } catch (err) {
+        failed ??= err
+      }
+    }
+    if (failed) toast.error('Download nicht gestartet', errorText(failed))
+  }
+
+  /** Adresse analysieren: Video -> sofort laden, Playlist -> Auswahl zeigen. */
+  async function submit(target = url): Promise<void> {
+    const u = target.trim()
+    const problem = urlProblem(u)
+    if (!u || problem) {
+      setProbeError(problem)
+      return
+    }
+    if (!ready) return
+    const seq = ++probeSeq.current
+    setProbing(true)
+    setProbeError(null)
+    try {
+      const res = await api.youtube.probe(u)
+      if (seq !== probeSeq.current) return
+      if (res.kind === 'video') {
+        setPlaylist(null)
+        await enqueueAll([{ ...base(), url: res.url, ...(res.title ? { title: res.title } : {}) }])
+      } else {
+        setPlaylist(res)
+        setSelected(initialSelection(res))
+      }
+      setUrl('')
+    } catch (err) {
+      if (seq === probeSeq.current) setProbeError(errorText(err))
+    } finally {
+      if (seq === probeSeq.current) setProbing(false)
+    }
+  }
+
+  function cancelProbe(): void {
+    probeSeq.current++ // laufende Antwort verwerfen
+    setProbing(false)
+  }
+
+  function downloadSelection(selection: Set<number>): void {
+    if (!playlist) return
+    const reqs = playlistRequests(playlist, selection, base(), {
+      folder: cfg.playlistFolder,
+      numbers: cfg.playlistNumbers
     })
-    setUrl('')
+    if (!reqs.length) return
+    void enqueueAll(reqs)
+    toast.success(
+      reqs.length === 1 ? '1 Download eingereiht' : `${reqs.length} Downloads eingereiht`,
+      playlist.title
+    )
+    setPlaylist(null)
   }
 
   const busy = updating || !!status?.checking
   const problem = updateError ?? status?.lastError ?? null
   const ready = status?.available && !!cfg.outputDir
-  const active = jobs.some((j) => j.status === 'running' || j.status === 'queued')
+  const pending = jobs.filter((j) => j.status === 'running' || j.status === 'queued')
+  const active = pending.length > 0
 
   return (
     <div className={toolPageClass('full')}>
@@ -185,16 +268,33 @@ export function YoutubeDownloader(): JSX.Element {
         <div className="flex gap-2">
           <Input
             value={url}
-            placeholder="YouTube-URL einfügen…"
-            onChange={(e) => setUrl(e.target.value)}
+            placeholder="Adresse eines Videos oder einer Playlist einfügen…"
+            onChange={(e) => {
+              setUrl(e.target.value)
+              setProbeError(null)
+            }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && ready) enqueue()
+              if (e.key === 'Enter' && ready && !probing) void submit()
             }}
           />
-          <Button disabled={!ready || !url.trim()} onClick={enqueue}>
-            <Download className="size-4" /> Laden
-          </Button>
+          {probing ? (
+            <Button variant="outline" onClick={cancelProbe} title="Analyse abbrechen">
+              <Loader2 className="size-4 animate-spin" /> Prüfe…
+            </Button>
+          ) : (
+            <Button disabled={!ready || !url.trim()} onClick={() => void submit()}>
+              <Download className="size-4" /> Laden
+            </Button>
+          )}
         </div>
+        {probeError && (
+          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {probeError}
+          </p>
+        )}
+        {!cfg.outputDir && status?.available && (
+          <p className="text-xs text-muted-foreground">Zuerst einen Zielordner wählen.</p>
+        )}
 
         <div className="flex flex-wrap items-end gap-3">
           <label className="block">
@@ -251,11 +351,36 @@ export function YoutubeDownloader(): JSX.Element {
           </label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Nur Inhalte herunterladen, für die du die Rechte/Erlaubnis hast
-          (YouTube-Nutzungsbedingungen beachten). yt-dlp regelmäßig aktualisieren, wenn Downloads
-          scheitern.
+          Playlists werden erkannt – dann lassen sich die gewünschten Einträge auswählen. Nur
+          Inhalte herunterladen, für die du die Rechte/Erlaubnis hast (YouTube-Nutzungsbedingungen
+          beachten). yt-dlp regelmäßig aktualisieren, wenn Downloads scheitern.
         </p>
       </Card>
+
+      {playlist && (
+        <PlaylistPicker
+          playlist={playlist}
+          selected={selected}
+          onSelected={setSelected}
+          options={{ folder: cfg.playlistFolder, numbers: cfg.playlistNumbers }}
+          onOptions={(o) =>
+            setCfg((c) => ({
+              ...c,
+              ...(o.folder !== undefined ? { playlistFolder: o.folder } : {}),
+              ...(o.numbers !== undefined ? { playlistNumbers: o.numbers } : {})
+            }))
+          }
+          ready={!!ready}
+          onDownload={downloadSelection}
+          onDownloadVideo={() => {
+            if (!playlist.videoUrl) return
+            void enqueueAll([{ ...base(), url: playlist.videoUrl }])
+            setPlaylist(null)
+          }}
+          onClose={() => setPlaylist(null)}
+          onOpenNested={(nested) => void submit(nested)}
+        />
+      )}
 
       {/* Jobs */}
       {jobs.length > 0 && (
@@ -264,14 +389,25 @@ export function YoutubeDownloader(): JSX.Element {
             <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
               Downloads
             </h2>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={active}
-              onClick={() => void api.youtube.clearFinished()}
-            >
-              Erledigte entfernen
-            </Button>
+            <div className="flex gap-1">
+              {pending.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => pending.forEach((j) => void api.youtube.cancel(j.id))}
+                >
+                  Alle abbrechen
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={active}
+                onClick={() => void api.youtube.clearFinished()}
+              >
+                Erledigte entfernen
+              </Button>
+            </div>
           </div>
           {jobs.map((j) => (
             <JobRow key={j.id} job={j} />

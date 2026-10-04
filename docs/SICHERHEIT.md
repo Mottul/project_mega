@@ -82,9 +82,17 @@ react-router-dom 7.18.4, vitest 4.1.11, postcss 8.5.28 und vite 7.3.6 (samt Unte
   Fenster (`window.open` gesperrt); externe Links gehen an den Standardbrowser.
 - **Eigene Protokolle** für Handbücher, Player-Medien und Jingles (`manual:`, `media:`, `jingle:`)
   liefern nur Dateien aus den App-Ablagen – der Renderer braucht keinen `file://`-Zugriff.
-- **PDF-Text** wird im Hauptprozess mit `isEvalSupported: false` gelesen (der PDF-Viewer im
-  Renderer noch nicht – siehe Roadmap).
+- **Kein `eval` im Renderer:** Die Content-Security-Policy verbietet `unsafe-eval`; pdfjs 6 kommt
+  ohne eval aus – präparierte PDFs können darüber keinen Code ausführen. (`'unsafe-inline'` für
+  Skripte braucht noch der Vite-Dev-Server, siehe Roadmap.)
 - **Fernsteuerungen** sind standardmäßig aus, im lokalen Netz erreichbar und ohne Passwort – in
-  fremden Netzen nur bei Bedarf einschalten. Nutzertexte werden in den Steuerseiten escaped.
+  fremden Netzen nur bei Bedarf einschalten. Befehle vom Handy werden Feld für Feld geprüft (nur
+  bekannte Befehle, Werte begrenzt; das Idle-Bild bleibt dem Rechner vorbehalten), Nutzertexte in
+  den Steuerseiten escaped.
+- **Uploads vom Handy** (Video-Player): höchstens 8 GB je Datei, danach müssen 2 GB frei bleiben –
+  geprüft vorab und beim Schreiben, denn die Größenangabe kann fehlen oder falsch sein.
+  Abgebrochene oder abgewiesene Uploads hinterlassen keine Dateien.
+- **yt-dlp-Aufrufe** nehmen nur http(s)-Adressen an, und die Adresse steht immer hinter `--`: eine
+  Eingabe, die mit „-“ beginnt, wird nie als Option gelesen.
 - **Robust bei Fehlern:** Fehlergrenze je Werkzeug, globale Fehler-Handler mit Debug-Log und
   Wiederherstellung korrupter `settings.json`/`library.db` (Kopie sichern, neu anlegen, melden).

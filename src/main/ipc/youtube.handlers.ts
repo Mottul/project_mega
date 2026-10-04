@@ -2,7 +2,7 @@ import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { YtEnqueueRequest } from '@shared/types'
 import { broadcast } from '../services/broadcast'
-import { getStatus, setStatusSink, updateTool, ytManager } from '../services/ytdlp/ytDlp'
+import { getStatus, probeUrl, setStatusSink, updateTool, ytManager } from '../services/ytdlp/ytDlp'
 
 let wired = false
 
@@ -15,6 +15,7 @@ export function registerYoutubeHandlers(): void {
 
   ipcMain.handle(Channels.ytStatus, () => getStatus())
   ipcMain.handle(Channels.ytUpdate, () => updateTool())
+  ipcMain.handle(Channels.ytProbe, (_e, url: string) => probeUrl(url))
   ipcMain.handle(Channels.ytEnqueue, (_e, req: YtEnqueueRequest) => ytManager.enqueue(req))
   ipcMain.handle(Channels.ytList, () => ytManager.list())
   ipcMain.handle(Channels.ytCancel, (_e, id: string) => ytManager.cancel(id))

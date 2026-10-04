@@ -3,9 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Kein 'unsafe-eval': nichts im Renderer braucht eval, auch pdfjs 6 nicht mehr – also
+         verbieten. 'unsafe-inline' braucht der Vite-Dev-Server (React-Refresh-Präambel). -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: manual: media: jingle:; font-src 'self' data:; media-src 'self' blob: manual: media: jingle:; object-src 'self' blob: manual:; frame-src 'self' blob: manual:; worker-src 'self' blob:; connect-src 'self' ws: wss: manual: media: jingle:;"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: manual: media: jingle:; font-src 'self' data:; media-src 'self' blob: manual: media: jingle:; object-src 'self' blob: manual:; frame-src 'self' blob: manual:; worker-src 'self' blob:; connect-src 'self' ws: wss: manual: media: jingle:;"
     />
     <title>Mottulbox</title>
   </head>
