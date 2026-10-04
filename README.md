@@ -36,7 +36,7 @@ sich in einem eigenen Fenster parallel öffnen.
 
 **📚 Medien & Bibliothek**
 
-- **HAP-Konverter** – Batch nach HAP / HAP Q / HAP Alpha (z.B. Resolume), mit Eckdaten und Warnungen je Datei.
+- **Video-Konverter** – Clips passend fürs Zielsystem: HAP/HAP Q/HAP Alpha (Medienserver), H.264 (Player-Boxen, Laptop), H.265, ProRes (QLab), WAV – mit Deinterlace, Show-Raster, HDR → SDR und Vorschau je Datei.
 - **Medien-Info** – Video-/Audio-Eckdaten per ffprobe (Auflösung, fps, Codec, Bitrate, Ton, Timecode …), Show-Check mit Ampel je Zielsystem, Playlist-Vergleich, CSV-/JSON-Export.
 - **Manuals-Bibliothek** – Geräte-Handbücher (PDF) mit Offline-Volltextsuche (FTS5) + In-App-Viewer.
 - **YouTube-Downloader** – yt-dlp-Wrapper (Video/Audio), Queue mit Fortschritt, Self-Update.
@@ -81,7 +81,7 @@ npm install
 # App im Entwicklungsmodus starten (Hot Reload)
 npm run dev
 
-# Nur für den HAP-Konverter: einmalig HAP-fähiges ffmpeg holen
+# Für Video-Konverter, Player-Import & Co.: einmalig HAP-fähiges ffmpeg holen
 # (ohne dies zeigt das Tool eine Hinweis-Warnung; im fertigen Paket ist es enthalten)
 npm run ff:fetch
 ```
@@ -256,19 +256,21 @@ alle unter einer festen Adresse:
 src/
 ├── main/                     # Electron Main-Prozess
 │   ├── index.ts              # App-Lifecycle, Fenster (sichere Defaults), globale Fehler-Handler
-│   ├── ipc/                  # IPC-Handler (dialog, ffmpeg, manuals, player, osc, novastar, netscan …) + Registry
+│   ├── ipc/                  # IPC-Handler (dialog, ffmpeg/Konverter, manuals, player, osc, novastar, netscan …) + Registry
 │   └── services/
 │       ├── db.ts             # SQLite (better-sqlite3) + FTS5; Wiederherstellung bei Korruption
 │       ├── store.ts          # settings.json (Quelle der Wahrheit; Backup bei Korruption)
-│       ├── ffmpeg/           # ffmpegPath, probe, hapEncoder, jobManager (Queue)
+│       ├── ffmpeg/           # ffmpegPath, Medien-Info (ffprobe-Analyse + Parser, Cache)
+│       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Runner, Warteschlange
+│       │                     #   (Spuren Player/Konverter), Fähigkeiten, Encoder, Konverter-Aufträge
 │       ├── manuals/          # manualsService, pdfText (pdfjs)
-│       ├── player/           # mediaLibrary, encoder (Fit/GPU), convertManager, playerState
+│       ├── player/           # mediaLibrary, convertManager (Import über den Kern), playerPlan, playerState
 │       ├── osc/ + oscRemoteServer  # OSC-Codec (UDP) + Handy-Fernsteuer-Server
 │       ├── remoteHttp/remoteApp/remotePwa  # Fernsteuer-Server-Basis, Fernsteuer-App (:8090), Web-App-Teile
 │       ├── novastar/         # TCP-Codec (gegen Companion-Modul verifiziert)
 │       └── netscan/          # Subnetz-Scan: TCP-Sweep + ARP/OUI + mDNS + ATEM
 ├── preload/index.ts          # contextBridge -> window.api (typisiert)
-├── shared/                   # ipc-contracts.ts, types.ts, mediaExtensions.ts (single source of truth)
+├── shared/                   # ipc-contracts.ts, types.ts, mediaExtensions.ts, convertPlan.ts (Konvertierungs-Plan)
 └── renderer/src/
     ├── launcher/             # Launcher + ToolHost (Router, mit Fehlergrenze pro Tool)
     ├── components/           # ErrorBoundary, Toaster, QrCode + ui/ (Button, Card, Select, …)
@@ -322,16 +324,29 @@ src/
   **In-App-Benachrichtigungen** (stille Fehler werden sichtbar – z.B. defekte Jingle-Datei oder
   verlorenes Audiogerät), **Wiederherstellung** korrupter `settings.json`/`library.db` (sichern +
   neu anlegen statt still resetten) und versionierte, migrierbare Speicherstände.
-- **HAP-Konverter** – Batch nach HAP/HAP Q/HAP Alpha, gebündeltes ffmpeg, Parallel + Kompressor,
-  Auto-Padding auf ×4-Maße. End-to-end getestet. Je Eingabedatei Eckdaten, HAP-Datenrate und
-  Warnungen (Alpha geht verloren, Interlaced, VFR, HDR …) aus der Medien-Info.
+- **Gemeinsamer Konvertierungs-Kern** – Video-Konverter und Player-Import nutzen dieselbe Analyse
+  (Medien-Info), denselben **Plan** (`shared/convertPlan.ts`, rein und getestet) und denselben
+  ffmpeg-Runner. Der Plan entscheidet je Datei: Drehung/Spiegelung und anamorphe Pixel fest
+  einrechnen, **Deinterlace** (25i → 50p), variable → konstante Bildrate, **Show-Raster**
+  (29,97 ↔ 30 und 23,976 ↔ 24 per minimaler Tempo-Anpassung statt Bildsprung), **HDR → SDR**,
+  Alpha-Automatik (HAP Alpha/ProRes 4444) bzw. sauber auf Schwarz, Größe (Original/höchstens/
+  genau mit Letterbox/Füllen/Blur/Strecken), gerade bzw. ×4-Maße, Farbmatrix/Range, Ton
+  (48 kHz, AAC/PCM, Stereo, Lautheit) und unverändertes H.264 nur umverpacken. Gemeinsame
+  Warteschlange mit eigener Spur für den Player (Importe warten nie auf einen Konverter-Stapel).
+  Geprüft mit über 60 echten Konvertierungen über das Testmaterial (ffprobe-Kontrolle).
+- **Video-Konverter** (früher HAP-Konverter) – Zielsystem-Vorgaben wie im Prüfprofil der
+  Medien-Info (Medienserver → HAP Q, USB-/LED-Player → H.264 mit Level 4.2 und Bitraten-Deckel,
+  QLab/macOS → ProRes 422, Laptop/Allgemein → H.264), Format frei wählbar (HAP, HAP Q, HAP Alpha,
+  H.264, H.265, ProRes Proxy…4444, WAV), Vorschau je Datei („→ 1920×1080 · 50 fps · HAP Q"),
+  Parallel-Läufe, HAP-Chunks/Kompressor, nie überschreiben (`…_2`), halbfertige Dateien werden
+  entfernt, „Ergebnis prüfen" öffnet die fertige Datei in der Medien-Info.
 - **Medien-Info** – ffprobe-Analyse im main (Timeout, lesbare Fehlermeldungen, Cache, Ordner
   rekursiv ohne `._`-/Systemdateien), optionale **Tiefenanalyse** (Keyframe-Abstand/GOP,
   VFR-Nachweis, Scan-Typ, HDR10-Metadaten), **Ampel-Hinweise** je Prüfprofil (Zielsystem,
   Show-Raster, Datenträger), Playlist-Vergleich mit hervorgehobenen Abweichungen, Kopieren
-  (Steckbrief/Kurzzeile/Tabelle) und Export (CSV für Excel, JSON). Übergabe an den HAP-Konverter
-  und zurück. Parser an ~140 echten Testdateien geprüft; 29 typische ffprobe-Ausgaben
-  sind als Fixture-Tests hinterlegt.
+  (Steckbrief/Kurzzeile/Tabelle) und Export (CSV für Excel, JSON). „Konvertieren" übergibt die
+  Dateien samt Zielsystem und Show-Raster an den Video-Konverter (und zurück). Parser an ~140
+  echten Testdateien geprüft; 29 typische ffprobe-Ausgaben sind als Fixture-Tests hinterlegt.
 - **Manuals-Bibliothek** – PDF-Import (SHA-256-Dedup), FTS5-Volltextsuche mit aufklappbaren
   Trefferboxen, **Kategorien** (Filter), In-App-PDF-Viewer (Scroll, Zoom/Pinch, Seiten-Sprung,
   **Suche im PDF**).
@@ -339,12 +354,15 @@ src/
   Konvergenz), **Mapping-Testbild** im MadMapper-Stil (Raster, Eckmarken, Farb-/Graufelder,
   Spektrum, live laufende Uhrzeit, eigene Texte + Farben), **bewegte** Muster (Pixelcheck-Loop,
   Scroll, Timecode), **Vollbild-Ausgabe** auf gewähltem Monitor (pixelgenau, live), PNG- +
-  Video-Export, **Presets**.
+  Video-Export (H.264 mit festgelegter Rec.-709-Farbmatrix – farbtreu auf HD-Playern – oder HAP Q),
+  **Presets**.
 - **Video-Player / LED-Wall-Player** – Playlist-Player für LED-Wände/Beamer. Medien werden auf die
   **Wand-Auflösung eingebacken** (Fit-Modi **Blur-Fill / Schwarze Ränder / Strecken**) und nach
   **H.264/MP4** konvertiert (Chromium dekodiert das hardwarebeschleunigt; **GPU-Encoder** wie
-  NVENC/QSV/AMF/VideoToolbox werden erkannt **und validiert**, sonst libx264-Fallback). Bilder
-  werden gebacken (freie Standzeit), GIFs zu Loop-Videos. **Vollbild-Ausgabe** auf gewähltem
+  NVENC/QSV/AMF/VideoToolbox werden erkannt **und validiert**, sonst libx264-Fallback) – über den
+  gemeinsamen Konvertierungs-Kern, also mit Deinterlace, HDR → SDR, konstanter Bildrate und
+  korrekt eingerechneten anamorphen Pixeln. Bilder werden gebacken (freie Standzeit), GIFs zu
+  Loop-Videos. **Vollbild-Ausgabe** auf gewähltem
   Monitor mit **doppelt gepuffertem** HTML5-Player (nahtlose Übergänge), wahlweise **Schnitt oder
   echtes Overlap-Überblenden** zwischen Medien (das alte Video läuft durch die Blende weiter,
   mit Audio-Crossfade); **Shuffle ist gapless** (das nächste Zufallsmedium wird vorab bestimmt

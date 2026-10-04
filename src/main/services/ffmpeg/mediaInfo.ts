@@ -5,7 +5,12 @@
 import { execFile } from 'node:child_process'
 import { open, readdir, stat } from 'node:fs/promises'
 import { extname, isAbsolute, join } from 'node:path'
-import { dotted, PROBE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
+import {
+  AUDIO_EXTENSIONS,
+  dotted,
+  PROBE_EXTENSIONS,
+  VIDEO_EXTENSIONS
+} from '@shared/mediaExtensions'
 import type {
   MediaCollectResult,
   MediaInfo,
@@ -34,6 +39,7 @@ const CACHE_MAX = 500
 const COLLECT_MAX = 5000
 const PROBE_EXT = new Set(dotted(PROBE_EXTENSIONS))
 const VIDEO_EXT = new Set(dotted(VIDEO_EXTENSIONS))
+const AUDIO_EXT = new Set(dotted(AUDIO_EXTENSIONS))
 // Systemmüll auf Show-Sticks (macOS AppleDouble „._clip.mov", Windows-Papierkorb …)
 const SKIP_DIRS = new Set(['$recycle.bin', 'system volume information'])
 const SKIP_FILES = new Set(['thumbs.db', 'desktop.ini'])
@@ -440,13 +446,14 @@ export async function collectMediaFiles(inputs: string[]): Promise<MediaCollectR
 }
 
 /**
- * Eingaben der HAP-Warteschlange: dieselben Regeln wie die Medien-Info (keine
- * ._-/Systemdateien), in Ordnern nur Video-Endungen. Direkt gewählte Dateien zählen
- * unabhängig von der Endung (z.B. .dv/.gif aus der Medien-Info) – ob eine Videospur
- * da ist, prüft der Job selbst.
+ * Eingaben des Video-Konverters auflösen: direkt gewählte Dateien immer (auch ohne
+ * bekannte Endung), aus Ordnern nur Videos – bei „nur Ton" auch Ton-Dateien.
  */
-export async function collectVideoInputs(inputs: string[]): Promise<string[]> {
+export async function collectConvertInputs(inputs: string[], withAudio = false): Promise<string[]> {
   const direct = new Set(inputs)
   const res = await collectMediaFiles(inputs)
-  return res.files.filter((f) => direct.has(f) || VIDEO_EXT.has(extname(f).toLowerCase()))
+  return res.files.filter((f) => {
+    const ext = extname(f).toLowerCase()
+    return direct.has(f) || VIDEO_EXT.has(ext) || (withAudio && AUDIO_EXT.has(ext))
+  })
 }

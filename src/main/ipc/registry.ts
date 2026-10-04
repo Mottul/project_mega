@@ -6,7 +6,7 @@ import { Readable } from 'node:stream'
 import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import type { AppSettings } from '@shared/types'
 import { broadcast } from '../services/broadcast'
-import { jobManager } from '../services/ffmpeg/jobManager'
+import { converterJobs } from '../services/convert/converterJobs'
 import { jingleContentType, resolveJingleFile } from '../services/jingleLibrary'
 import { logFilePath, logLine } from '../services/log'
 import { resolveManualFile } from '../services/manuals/manualsService'
@@ -223,8 +223,8 @@ export function registerIpcHandlers(): void {
   registerNetscanHandlers()
 }
 
-/** Verbindet die Live-Job-Updates mit ALLEN Fenstern (Multi-Window: ein HAP-
+/** Verbindet die Live-Job-Updates mit ALLEN Fenstern (Multi-Window: ein Video-
  *  Konverter in einem Zweitfenster bekommt dieselben Updates). */
 export function attachWindow(_win: BrowserWindow): void {
-  jobManager.setSink((job) => broadcast(Channels.hapUpdate, job))
+  converterJobs.setSink((job) => broadcast(Channels.converterUpdate, job))
 }

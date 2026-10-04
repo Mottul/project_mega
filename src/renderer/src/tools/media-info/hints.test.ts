@@ -3,7 +3,6 @@ import {
   analyzeMedia,
   DEFAULT_PROFILE,
   findDeviations,
-  hapInputHints,
   playlistHints,
   worstLevel,
   type CheckProfile,
@@ -358,24 +357,5 @@ describe('mehrere Dateien', () => {
   it('Playlist-Hinweise: gemischte Auflösungen und Bildraten', () => {
     expect(ids(playlistHints([a, b, c]))).toEqual(['mix-res', 'mix-fps'])
     expect(playlistHints([a, b])).toEqual([])
-  })
-})
-
-describe('hapInputHints', () => {
-  it('Alpha-Quelle mit HAP Q -> Warnung, ungerade Maße -> Auffüllen', () => {
-    const info = mediaInfo({
-      video: [videoTrack({ alpha: true, width: 1918, height: 1080, displayWidth: 1918 })]
-    })
-    const got = hapInputHints(info, 'hap_q')
-    expect(ids(got)).toEqual(['hap-alpha-lost', 'hap-pad'])
-    expect(got[1].title).toBe('Wird auf 1.920 × 1.080 aufgefüllt')
-  })
-
-  it('reine Audiodatei ist nicht konvertierbar, HAP-Quelle wird erkannt', () => {
-    expect(ids(hapInputHints(mediaInfo({ video: [] }), 'hap_q'))).toEqual(['hap-novideo'])
-    const hap = mediaInfo({
-      video: [videoTrack({ codecName: 'hap', codec: 'HAP Q', codecClass: 'gpu' })]
-    })
-    expect(ids(hapInputHints(hap, 'hap_q'))).toEqual(['hap-already'])
   })
 })

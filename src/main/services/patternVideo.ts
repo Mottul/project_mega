@@ -1,43 +1,29 @@
 // Exportiert ein Testbild-Standbild als Video-Loop (MP4/H.264 oder HAP Q) ueber
 // das gebuendelte ffmpeg -- z.B. fuer Dauerschleifen im Medienserver.
 
-import { spawn } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { setparamsFor, tagsFor } from '@shared/convertPlan'
 import type { ColorLoopRequest, PatternVideoRequest } from '@shared/types'
-import { ffmpegBinPath } from './ffmpeg/ffmpegPath'
+import { runFfmpeg } from './convert/runFfmpeg'
 
-function runFfmpeg(
-  args: string[],
-  totalSec: number,
-  onProgress: (p: number) => void
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn(ffmpegBinPath('ffmpeg'), args, { windowsHide: true })
-    let stderrTail = ''
-    proc.stdout.on('data', (chunk: Buffer) => {
-      for (const line of chunk.toString().split('\n')) {
-        const [key, value] = line.split('=')
-        if (key === 'out_time_us') {
-          const us = Number(value)
-          if (Number.isFinite(us))
-            onProgress(Math.min(0.99, Math.max(0, us / 1_000_000 / totalSec)))
-        }
-      }
-    })
-    proc.stderr.on('data', (chunk: Buffer) => {
-      stderrTail = (stderrTail + chunk.toString()).slice(-2000)
-    })
-    proc.on('error', reject)
-    proc.on('close', (code) => {
-      if (code === 0) resolve()
-      else
-        reject(
-          new Error(`ffmpeg beendet mit Code ${code}. ${stderrTail.trim().split('\n').pop() ?? ''}`)
-        )
-    })
-  })
+/** Breite/Höhe aus dem IHDR-Block einer PNG (Bytes 16–23, Big Endian). */
+export function pngSize(png: Uint8Array): { width: number; height: number } | null {
+  if (png.length < 24) return null
+  const dv = new DataView(png.buffer, png.byteOffset, png.byteLength)
+  return { width: dv.getUint32(16), height: dv.getUint32(20) }
+}
+
+/**
+ * RGB -> YUV mit festgelegter Farbmatrix (+ Kennzeichnung per setparams, siehe
+ * setparamsFor). Ohne Angabe rechnet swscale mit Rec. 601, HD-Player zeigen aber
+ * Rec. 709 -> Grün um 16 % zu dunkel, Rot/Blau mit Farbstich. Für ein Testbild
+ * (Farbkontrolle der LED-Wand) inakzeptabel.
+ */
+export function yuvColor(height: number): string {
+  const matrix = height >= 720 ? 'bt709' : 'bt601'
+  return `scale=out_color_matrix=${matrix}:out_range=tv,${setparamsFor(tagsFor(matrix, height))},format=yuv420p`
 }
 
 export async function exportPatternVideo(
@@ -53,10 +39,11 @@ export async function exportPatternVideo(
   const fps = Math.max(1, Math.min(60, req.fps))
   // HAP/x264 brauchen gerade bzw. durch 4 teilbare Maße -> auffuellen.
   const pad = 'pad=ceil(iw/4)*4:ceil(ih/4)*4:0:0'
+  const color = yuvColor(pngSize(req.png)?.height ?? 1080)
   const codec =
     req.format === 'hap_q'
       ? ['-vf', pad, '-c:v', 'hap', '-format', 'hap_q', '-compressor', 'snappy']
-      : ['-vf', `${pad},format=yuv420p`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18']
+      : ['-vf', `${pad},${color}`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18']
 
   const args = [
     '-hide_banner',
@@ -77,7 +64,7 @@ export async function exportPatternVideo(
   ]
 
   try {
-    await runFfmpeg(args, dur, onProgress)
+    await runFfmpeg(args, { durationSec: dur, onProgress })
   } finally {
     try {
       rmSync(dir, { recursive: true, force: true })
@@ -104,14 +91,17 @@ export function exportColorLoop(
   const inputs: string[] = []
   for (const c of colors) {
     const hex = '0x' + c.replace('#', '').slice(0, 6).padStart(6, '0')
-    inputs.push('-f', 'lavfi', '-i', `color=c=${hex}:s=${w}x${h}:r=${fps}:d=${sec}`)
+    // als RGB erzeugen: die Wandlung nach YUV (H.264) bzw. RGBA (HAP) passiert dann mit
+    // festgelegter Matrix statt mit dem Rec.-601-Standard der Farbquelle
+    inputs.push('-f', 'lavfi', '-i', `color=c=${hex}:s=${w}x${h}:r=${fps}:d=${sec},format=rgb24`)
   }
   const labels = colors.map((_, i) => `[${i}:v]`).join('')
   const pad = 'pad=ceil(iw/4)*4:ceil(ih/4)*4:0:0'
   const isHap = req.format === 'hap_q'
+  const color = yuvColor(h)
   const chain = isHap
     ? `${labels}concat=n=${colors.length}:v=1:a=0,${pad}[v]`
-    : `${labels}concat=n=${colors.length}:v=1:a=0,${pad},format=yuv420p[v]`
+    : `${labels}concat=n=${colors.length}:v=1:a=0,${pad},${color}[v]`
   const codec = isHap
     ? ['-c:v', 'hap', '-format', 'hap_q', '-compressor', 'snappy']
     : ['-c:v', 'libx264', '-preset', 'medium', '-crf', '18']
@@ -132,5 +122,5 @@ export function exportColorLoop(
     '-y',
     outputPath
   ]
-  return runFfmpeg(args, total, onProgress)
+  return runFfmpeg(args, { durationSec: total, onProgress })
 }
