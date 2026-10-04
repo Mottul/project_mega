@@ -1,519 +1,99 @@
-# Mottulbox (project_mega)
+# Mottulbox
 
-Plattformübergreifende Desktop-App (Windows / macOS / Linux), die kleine AV-Arbeitswerkzeuge
-unter einem Dach bündelt und über einen Launcher auswählbar macht. Läuft **offline**. Tools lassen
-sich **in eigenen Fenstern parallel** öffnen (z.B. Video-Player + Jingles + Rechner gleichzeitig),
-und ein Tool kann als **gesperrte Kundenansicht** beim Start direkt angezeigt werden (z.B. nur der
-Video-Player ohne Konfiguration; Verlassen mit Strg+Shift+K). Der Homescreen zeigt je Tool an, was
-gerade läuft (Konvertierungen, Downloads, Timer, Player-Ausgabe).
+Desktop-App für Veranstaltungstechnik (Windows, macOS, Linux): 22 AV-Werkzeuge unter einem Dach –
+vom Video-Player für LED-Wände über Jingles, Stage-Timer und OSC-Pult bis zu Rechnern für Strom,
+Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Downloader.
 
-**Tech-Stack:** Electron 42 + React 18 + TypeScript (electron-vite), Tailwind CSS,
-react-router 7, `better-sqlite3` 12.11 (FTS5), `pdfjs-dist` 6, gebündeltes `ffmpeg`.
+- **Parallel arbeiten:** Jedes Werkzeug lässt sich auch im eigenen Fenster öffnen; der
+  Startbildschirm zeigt, was gerade läuft, und ordnet Favoriten in eigenen Kategorien.
+- **Show-tauglich:** Vollbild-Ausgaben auf wählbarem Monitor, optional NDI, eine Fehlergrenze je
+  Werkzeug und eine gesperrte Kundenansicht (Start direkt in einem Werkzeug, Strg+Shift+K beendet
+  sie).
+- **Handy als Fernbedienung:** Video-Player, Jingles, OSC-Pult und Stage-Timer im WLAN steuern.
+- **Ein Konvertierungs-Kern:** Video-Konverter, Player-Import und Testbild-Export nutzen dieselbe
+  Analyse und dieselben Korrekturen (Deinterlace, HDR → SDR, Bildraten-Raster, anamorphe Pixel …).
 
 ## Werkzeuge
 
-Derzeit **22 Werkzeuge**, im Launcher nach Kategorie sortiert und durchsuchbar. Jedes lässt
-sich in einem eigenen Fenster parallel öffnen.
-
-Der Startbildschirm lässt sich anpassen: **Kachelgröße** klein/mittel/groß, Ansicht **„Alle“ oder
-„Nur Favoriten“** und Favoriten in **eigenen Kategorien** – selbst benannt, frei angeordnet und mit
-eigener Breite (ganze Zeile, ½, ⅓, ¼, ⅔, ¾), sodass eine bis vier Kategorien nebeneinander stehen.
-Kacheln und Kategorien werden per Ziehen oder Pfeil-Knöpfen sortiert; eine Kachel aus „Alle“ in
-eine Kategorie zu ziehen macht sie zum Favoriten.
-
 **🎬 Wiedergabe & Show**
 
-- **Video-Player** – Playlist-Player für LED-Wände/Beamer: Medien auf Wand-Auflösung eingebacken (Blur/Ränder/Strecken), H.264, Vollbild-Ausgabe, Überblenden, Handy-Fernsteuerung.
-- **Jingle-Player** – belegbare Audio-Pads mit Waveform-Editor, Sets, wählbarem Ausgabegerät, Handy-Fernsteuerung.
-- **Stage-Timer & Uhr** – Sprechzeit-Timer mit Abschnitten, Farbwarnung, Bühnen-Nachrichten, Vollbild-Ausgabe.
-- **Testbildgenerator** – statische + bewegte Muster, pixelgenaue Vollbild-Ausgabe, PNG-/Video-Export.
+- **Video-Player** – Playlist-Player für LED-Wände/Beamer: Medien auf Wand-Auflösung eingebacken,
+  Vollbild-Ausgabe mit Überblenden, NDI, Handy-Fernsteuerung mit Upload.
+- **Jingle-Player** – Audio-Pads mit Waveform-Editor, Sets, wählbarem Ausgabegerät,
+  Handy-Fernsteuerung.
+- **Stage-Timer & Uhr** – Sprechzeit-Timer mit Abschnitten, Farbwarnung, Bühnen-Nachrichten,
+  Vollbild-Anzeige, NDI, Handy-Fernsteuerung.
+- **Testbildgenerator** – statische, bewegte und Mapping-Testbilder, pixelgenaue Vollbild-Ausgabe,
+  PNG-/Video-Export.
 
 **🎛️ Steuerung**
 
-- **OSC-Steuerung** – frei belegbares Steuerpult (Fader/Taster/XY/Farbe/Bank …), Feedback/Learn, Handy-Fernsteuerung, NovaStar-Widgets.
-- **NovaStar-Steuerung** – LED-Prozessor über TCP 5200: Helligkeit, Fade-to-Black, Blackout/Freeze, Presets.
-- **Netzwerk-Scanner** – Geräte im LAN finden (IP/Hersteller/Typ): ATEM, PTZ-Kameras, NovaStar u.a.; IP-Übergabe an NovaStar/OSC.
+- **OSC-Steuerung** – frei belegbares Steuerpult (Fader, Taster, XY, Farbe, Bank …) mit
+  Feedback/Learn, NovaStar-Kacheln und Handy-Fernsteuerung.
+- **NovaStar-Steuerung** – LED-Prozessor über TCP 5200: Helligkeit, Fade-to-Black,
+  Blackout/Freeze, Presets.
+- **Netzwerk-Scanner** – Geräte im LAN finden (IP, Hersteller, Typ): ATEM, PTZ-Kameras, NovaStar
+  u. a.
 - **DMX-Dip-Schalter** – DMX-Startadresse ↔ Dip-Schalterbild.
 
 **📽️ Bild & Projektion**
 
-- **LED-Wall-Konfigurator** – Auflösung/Gewicht/Strom/Ballast, zeichenbare Verkabelungspläne, Curving-Planung, PDF-Doku.
-- **Projektionsverhältnis** / **Kameraobjektiv** / **Beamer-Lumen** – Objektiv-, Bildausschnitt- und Lumen-Bedarf-Rechner.
+- **LED-Wall-Konfigurator** – Auflösung, Gewicht, Strom, Ballast, Verkabelungspläne,
+  Curving-Planung, PDF-Doku.
+- **Projektionsverhältnis**, **Kameraobjektiv**, **Beamer-Lumen** – Objektiv-, Bildausschnitt-
+  und Lumen-Rechner.
 
 **📚 Medien & Bibliothek**
 
-- **Video-Konverter** – Clips passend fürs Zielsystem: HAP/HAP Q/HAP Alpha (Medienserver), H.264 (Player-Boxen, Laptop), H.265, ProRes (QLab), WAV – mit Deinterlace, Show-Raster, HDR → SDR und Vorschau je Datei.
-- **Medien-Info** – Video-/Audio-Eckdaten per ffprobe (Auflösung, fps, Codec, Bitrate, Ton, Timecode …), Show-Check mit Ampel je Zielsystem, Playlist-Vergleich, CSV-/JSON-Export.
-- **Manuals-Bibliothek** – Geräte-Handbücher (PDF) mit Offline-Volltextsuche (FTS5) + In-App-Viewer.
-- **YouTube-Downloader** – yt-dlp-Wrapper (Video/Audio), Queue mit Fortschritt, Self-Update.
+- **Video-Konverter** – Clips fürs Zielsystem: HAP/HAP Q/HAP Alpha, H.264, H.265, ProRes, WAV –
+  mit Deinterlace, Show-Raster, HDR → SDR und Vorschau je Datei.
+- **Medien-Info** – Video-/Audio-Eckdaten per ffprobe, Show-Check mit Ampel, Playlist-Vergleich,
+  CSV-/JSON-Export.
+- **Manuals-Bibliothek** – Geräte-Handbücher (PDF) mit Offline-Volltextsuche und Viewer.
+- **YouTube-Downloader** – yt-dlp mit Warteschlange und Selbst-Update.
 
 **⚡ Strom, Rigging & Aufbau**
 
-- **Packliste** – Material-Checkliste (aus LED-Wall befüllbar), speicherbare Jobs, PDF-/JSON-Export.
-- **Stromlast & Absicherung** / **Rigging-Last** – Stromkreise/Absicherung bzw. Auflager- und Bridle-Strangkräfte.
+- **Packliste** – Material-Checkliste, aus der LED-Wall befüllbar, PDF-/JSON-Export.
+- **Stromlast & Absicherung**, **Rigging-Last** – Stromkreise bzw. Auflager- und
+  Bridle-Strangkräfte.
 
 **🧮 Rechner**
 
-- **Kreisrechner**, **Audio-Delay & SPL**, **Timecode-Rechner** (SMPTE ↔ Frames ↔ Echtzeit, Drop-Frame).
+- **Kreisrechner**, **Audio-Delay & SPL**, **Timecode-Rechner** (SMPTE ↔ Frames ↔ Echtzeit,
+  Drop-Frame).
 
----
+Alles im Detail: [docs/WERKZEUGE.md](docs/WERKZEUGE.md)
 
-## Voraussetzungen
+## Schnellstart
 
-- **Node.js `≥ 22.12`** und npm (von Electron 42 vorgegeben; `engine-strict=true` in
-  `.npmrc` erzwingt es – ein zu altes Node bricht den Install mit klarer Meldung ab statt
-  später kryptisch).
-- **Kein C++-Compiler nötig.** Das einzige native Modul (`better-sqlite3`) wird beim `npm install`
-  **nicht kompiliert**, sondern als geprüftes **Prebuild** für die Electron-ABI geladen
-  (`postinstall` → `scripts/rebuild-native.mjs`).
-  - _Fallback_ (nur falls für eine exotische Plattform/Arch kein Prebuild existiert): lokale
-    Build-Werkzeuge – Windows „Desktop development with C++" (VS Build Tools) + Python 3,
-    macOS `xcode-select --install`, Linux `build-essential python3`. Dann `npm run rebuild:native`.
+**Anwender:** Installer ausführen – Schritte und die Warnungen bei unsignierten Paketen stehen in
+[docs/INSTALL.md](docs/INSTALL.md). ffmpeg ist im Paket enthalten.
 
----
-
-## Installation & Entwicklung
+**Entwicklung** (Node.js ≥ 22.12, kein C++-Compiler nötig):
 
 ```bash
-git clone <repo-url>
-cd project_mega
-
-# Abhängigkeiten installieren. Der postinstall erledigt OHNE Compiler:
-#   1. better-sqlite3-Prebuild für die Electron-ABI laden
-#   2. die Electron-Laufzeit-Binary laden (in reinem Node – funktioniert auch in
-#      gehärteten Umgebungen, die electrons eigenen install.js blockieren)
-npm install
-
-# App im Entwicklungsmodus starten (Hot Reload)
-npm run dev
-
-# Für Video-Konverter, Player-Import & Co.: einmalig HAP-fähiges ffmpeg holen
-# (ohne dies zeigt das Tool eine Hinweis-Warnung; im fertigen Paket ist es enthalten)
-npm run ff:fetch
+npm ci              # Abhängigkeiten exakt aus dem Lockfile (lädt Prebuild + Electron)
+npm run ff:fetch    # einmalig: HAP-fähiges ffmpeg
+npm run dev         # App mit Hot Reload
+npm run package     # Installer fürs aktuelle Betriebssystem nach dist/
 ```
 
-> Hinweis: `npm run ff:fetch` lädt ein **HAP-fähiges** ffmpeg (mit libsnappy) aus offiziellen
-> Quellen – BtbN (Windows + Linux), evermeet.cx (macOS). Die gängigen npm-ffmpeg-Pakete
-> enthalten **kein** HAP. Die Binaries landen in `resources/ffmpeg/<os>/` und sind aus dem Git
-> ausgenommen.
+Weiter in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
----
+## Dokumentation
 
-## Sicherheit (npm / supply-chain)
+| Dokument                                  | Inhalt                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------- |
+| [INSTALL.md](docs/INSTALL.md)             | Installation und erster Start (Windows, macOS, Linux)            |
+| [WERKZEUGE.md](docs/WERKZEUGE.md)         | Alle Werkzeuge, Startbildschirm, Kundenansicht, Datenablage      |
+| [FERNSTEUERUNG.md](docs/FERNSTEUERUNG.md) | Handy-/Tablet-Fernsteuerung und Fernsteuer-App                   |
+| [NDI.md](docs/NDI.md)                     | Optionale NDI-Ausgabe von Video-Player und Stage-Timer           |
+| [ENTWICKLUNG.md](docs/ENTWICKLUNG.md)     | Einrichtung, Skripte, Aufbau, neues Werkzeug, Tests, Paketierung |
+| [SICHERHEIT.md](docs/SICHERHEIT.md)       | Supply Chain, bekannte Lücken, Härtung der App                   |
+| [ROADMAP.md](docs/ROADMAP.md)             | Geplante Funktionen und technische Verbesserungen                |
 
-Angesichts der jüngsten npm-Angriffe (selbstreplizierende Worms über gekaperte Maintainer-Tokens,
-bösartige Lifecycle-Scripts, Typosquatting) ist dieses Projekt bewusst defensiv aufgesetzt:
+## Technik
 
-- **`package-lock.json` ist eingecheckt** – mit sha512-Integrity je Paket.
-- **`better-sqlite3` ist exakt gepinnt** (`12.11.1`) und bewusst mit „Cooldown" nachgezogen –
-  kompromittierte Releases fallen meist in den ersten Tagen auf.
-- **`.npmrc`**: `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
-- **Schlanker Install-Baum:** `electron-builder` ist **keine** Standard-Abhängigkeit, sondern wird
-  beim Paketieren on-demand via `npx` geladen. Dadurch bleibt die gesamte
-  `node-gyp` / `tar` / `app-builder`-Kette aus `npm ci` heraus. Der native Rebuild läuft über
-  `prebuild-install` (Prebuild-Download) statt über node-gyp.
-- Die App läuft offline.
-
-**Empfohlene Installation:**
-
-```bash
-# installiert exakt aus dem Lockfile und verifiziert die Integrity-Hashes
-npm ci
-npm audit signatures   # optional: Registry-Signaturen prüfen
-```
-
-> `npm audit` meldet aktuell **1 Low** (`esbuild` ≤0.28 – Datei-Lesen im **Dev-Server**, nur
-> **Windows**, nur bei `npm run dev`; via `vite`). Nichts Laufzeit-Relevantes. Erreicht durch:
-> Electron auf eine **im Support befindliche** Version (**42.x**), `pdfjs-dist` auf **6.x**
-> (parst importierte Fremd-PDFs), `react-router` auf **7.x** (behob zwei moderate Advisories der
-> 6er-Linie), `electron-builder` aus den Standard-Deps heraus (eliminiert die `node-gyp`/`tar`-Kette)
-> und das Dev-Tooling auf aktuelle Stände.
-
-**Maximal vorsichtig** (blockiert den häufigsten Vektor – Install-Scripts beliebiger Transitive-Deps):
-
-```bash
-npm ci --ignore-scripts   # kein Paket-Script läuft automatisch
-npm run rebuild:native    # better-sqlite3-Prebuild für die Electron-ABI (reines Node)
-npm run electron:bin      # Electron-Laufzeit-Binary laden (reines Node; sonst "Electron uninstall")
-```
-
-> Beide Skripte laufen in reinem Node und laden nur geprüfte Prebuilds (kein Compiler, keine
-> Transitive-Install-Scripts). `npm run electron:bin` umgeht bewusst electrons eigenen
-> `install.js` – der wird von manchen Security-Wrappern abgefangen.
-
-> Bei `--ignore-scripts` läuft auch Electrons eigener postinstall **nicht** – ohne den manuellen
-> `electron/install.js`-Schritt fehlt die Electron-Binary und `npm run dev` bricht mit
-> **„Electron uninstall"** ab. Die beiden Folge-Befehle laden nur geprüfte Prebuilds (kein Compiler).
-
-> Tipp: `npm install <pkg> --before 2026-05-01` installiert nur Versionen vor einem Datum –
-> praktisch, um brandneue (potenziell kompromittierte) Releases zu meiden.
-
----
-
-## Build & Paketierung
-
-```bash
-# Typecheck + Bundles bauen
-npm run build
-
-# Installer für das aktuelle Betriebssystem erzeugen
-#   - holt ffmpeg (ff:fetch), baut, und ruft electron-builder on-demand via npx
-#   - der erste Lauf lädt electron-builder einmalig in den npx-Cache (nicht in node_modules)
-npm run package
-```
-
-Ergebnis-Installer liegen unter `dist/`:
-
-| OS      | Target      |
-| ------- | ----------- |
-| Windows | NSIS `.exe` |
-| macOS   | `.dmg`      |
-| Linux   | AppImage    |
-
-> **Anleitung für Anwender:** [`docs/INSTALL.md`](docs/INSTALL.md) beschreibt Installation
-> und ersten Start unter Windows und macOS (inklusive der Warnungen von SmartScreen und
-> Gatekeeper bei unsignierten Paketen).
-
-> Die fertig gepackte (noch nicht installierte) App liegt zusätzlich unter
-> `dist/win-unpacked/` (bzw. `*-unpacked/`) und ist von dort direkt startbar – praktisch
-> zum Testen ohne Installation.
-
-**Code-Signierung ist absichtlich deaktiviert** (`win.signAndEditExecutable: false` in
-`electron-builder.yml`). Sonst würde electron-builder **jede** `.exe` signieren wollen (auch die
-gebündelten `ffmpeg.exe`/`ffprobe.exe`) und dafür das `winCodeSign`-Paket laden, dessen Entpacken
-auf Windows an macOS-Symlinks scheitert („Dem Client fehlt ein erforderliches Recht"). Ein
-Zertifikat ist für den privaten Gebrauch nicht nötig; Kosten sind nur fehlende
-Icon-/Versions-Metadaten in der `.exe` (kosmetisch).
-
-## NDI-Ausgabe des Stage-Timers (experimentell, optional)
-
-Der Stage-Timer kann seine Anzeige als **NDI-Quelle** ins Netz senden (Panel
-„NDI-Ausgabe (Netzwerk)" im Timer). Das dafür nötige native Binding ist **bewusst
-keine reguläre Abhängigkeit** – ohne Modul läuft die App unverändert und das Panel
-zeigt „nicht verfügbar". Einmalige Einrichtung; Voraussetzungen: Internet, git,
-**Python 3** (python.org, „Add to PATH" anhaken – node-gyp braucht es) und
-C++-Build-Tools (Windows: Visual Studio „Desktop development with C++"):
-
-```bash
-npm run ndi:setup               # Neu-Bau erzwingen: npm run ndi:setup -- --force
-```
-
-Das Script legt den sende-fähigen Fork `rse/grandiose` unter `vendor/grandiose` ab,
-lädt das NDI-SDK (und prüft das Ergebnis – der Upstream-Downloader meldet Fehler
-sonst nicht) und kompiliert gegen die Electron-ABI der App. Nach einem
-Electron-Upgrade genügt ein erneuter Lauf – die ABI-Abweichung wird erkannt und
-automatisch neu gebaut. Danach App neu starten. `npm run package` nimmt nur die
-Laufzeitdateien mit (Binary + NDI-DLL + `bindings`; nicht SDK/.git/Build-Reste).
-Die NDI-Runtime-DLL wird beim Build neben das Binary kopiert – der Sender braucht
-keine separate NDI-Installation.
-
-> **Warum kein `npm install github:rse/grandiose`?** Neuere npm-Versionen blockieren
-> Install-Scripts fremder Pakete (allow-scripts) – das Paket landet dann ohne
-> NDI-SDK und unkompiliert in `node_modules`, und electron-builder packt
-> undeklarierte Module nicht mit. Das Setup-Script führt die nötigen Schritte
-> deshalb explizit und kontrolliert aus.
-
-Hinweis: NDI ist eine Marke von Vizrt/NewTek; SDK-Lizenzbedingungen beachten.
-
-> `npm run ff:fetch` lädt ffmpeg nur, wenn es noch nicht in `resources/ffmpeg/<os>/` liegt
-> (mit `--force` erzwingbar) – wiederholte `npm run package`-Läufe sind dadurch schnell.
-
-> Plattform-Hinweis: Installer baut man jeweils **auf dem Zielbetriebssystem**, weil `ff:fetch`
-> und der native Rebuild plattformspezifisch sind. Für macOS liefert evermeet getrennte
-> x64/arm64-Binaries (für Universal-Builds beide nötig).
-
----
-
-## Fernsteuer-App (Handy/Tablet)
-
-Video-Player, Jingle-Player, OSC-Steuerung und Stage-Timer lassen sich per Handy/Tablet im selben WLAN
-fernsteuern (im jeweiligen Werkzeug unter „Fernsteuerung" einschalten; ohne Passwort,
-standardmäßig aus). Sobald mindestens eine Fernsteuerung läuft, bündelt die **Fernsteuer-App**
-alle unter einer festen Adresse:
-
-- **`http://<IP-des-Rechners>:8090`** – Startseite mit großen Kacheln für alle Fernsteuerungen
-  (ausgeschaltete sind ausgegraut, mit Hinweis, wo man sie einschaltet); die Steuerseiten liegen
-  unter `/player/`, `/jingle/`, `/osc/` und `/timer/`. Der QR-Code im Werkzeug zeigt direkt dorthin.
-- **Stage-Timer am Handy:** große Restzeit in den Farben der Bühnenanzeige, Start/Pause,
-  Abschnitt vor/zurück/springen, ±1 Minute, Timer/Uhr umschalten und Nachrichten an die Bühne.
-  Abschnitte und Schwellen werden weiter am Rechner bearbeitet. Der Timer läuft im main-Prozess,
-  die Fernsteuerung funktioniert daher auch bei geschlossenem Werkzeug.
-- **Vollbild:** Auf dem iPhone geht das nur als Web-App vom Home-Bildschirm – in Safari _Teilen →
-  „Zum Home-Bildschirm"_. Die App startet dann ohne Browserleiste und wechselt zwischen allen
-  Steuerseiten, ohne sie zu verlassen (deshalb EIN Port für alle). Auf Android/iPad gibt es
-  zusätzlich den Vollbild-Knopf; die Seite merkt sich den Wunsch und holt das Vollbild nach einem
-  App-Wechsel beim nächsten Tippen zurück.
-- **Grenzen von http im LAN:** Echte App-Installation (Android-Vollbild-App) und das Wachhalten
-  des Displays (Wake Lock) erlauben Browser nur über HTTPS – für die Show deshalb am Gerät die
-  automatische Bildschirmsperre abschalten. Die App-Adresse antwortet nur, solange am Rechner eine
-  Fernsteuerung läuft.
-- **Zustand wird gemerkt:** Eingeschaltete Fernsteuerungen (samt Port) starten beim nächsten
-  App-Start automatisch wieder. Am Homescreen zeigt der Knopf mit dem Handy-Symbol den QR-Code der
-  Startseite; Kacheln von Werkzeugen mit laufender Fernsteuerung tragen den Hinweis „Fernsteuerung".
-- Ist ein Werkzeug in mehreren Fenstern offen, gehen Befehle vom Handy nur an das Fenster, dessen
-  Stand das Handy zeigt (kein doppeltes Abspielen).
-- Die Einzeladressen der Fernsteuerungen (Ports 8088/8089/8091/8092) funktionieren weiter.
-
----
-
-## Projektstruktur
-
-```
-src/
-├── main/                     # Electron Main-Prozess
-│   ├── index.ts              # App-Lifecycle, Fenster (sichere Defaults), globale Fehler-Handler
-│   ├── ipc/                  # IPC-Handler (dialog, ffmpeg/Konverter, manuals, player, osc, novastar, netscan …) + Registry
-│   └── services/
-│       ├── db.ts             # SQLite (better-sqlite3) + FTS5; Wiederherstellung bei Korruption
-│       ├── store.ts          # settings.json (Quelle der Wahrheit; Backup bei Korruption)
-│       ├── ffmpeg/           # ffmpegPath, Medien-Info (ffprobe-Analyse + Parser, Cache)
-│       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Runner, Warteschlange
-│       │                     #   (Spuren Player/Konverter), Fähigkeiten, Encoder, Konverter-Aufträge
-│       ├── manuals/          # manualsService, pdfText (pdfjs)
-│       ├── player/           # mediaLibrary, convertManager (Import über den Kern), playerPlan, playerState
-│       ├── osc/ + oscRemoteServer  # OSC-Codec (UDP) + Handy-Fernsteuer-Server
-│       ├── remoteHttp/remoteApp/remotePwa  # Fernsteuer-Server-Basis, Fernsteuer-App (:8090), Web-App-Teile
-│       ├── novastar/         # TCP-Codec (gegen Companion-Modul verifiziert)
-│       └── netscan/          # Subnetz-Scan: TCP-Sweep + ARP/OUI + mDNS + ATEM
-├── preload/index.ts          # contextBridge -> window.api (typisiert)
-├── shared/                   # ipc-contracts.ts, types.ts, mediaExtensions.ts, convertPlan.ts (Konvertierungs-Plan)
-└── renderer/src/
-    ├── launcher/             # Launcher + ToolHost (Router, mit Fehlergrenze pro Tool)
-    ├── components/           # ErrorBoundary, Toaster, QrCode + ui/ (Button, Card, Select, …)
-    ├── lib/                  # api, toast, handoff, persistStorage, useDraft …
-    └── tools/
-        ├── registry.ts       # ◀ EINZIGE Stelle zum Eintragen neuer Tools
-        ├── video-player/     # Steuer-UI (VideoPlayer) + Vollbild-Ausgabe (PlayerOutput)
-        └── …                 # 22 Werkzeuge, je ein Ordner mit index.ts (ToolModule)
-```
-
-Außerhalb von `src/`: `build/` (Installer-Icons), `assets/brand/` (Logo-Quellen, nicht im
-Build), `scripts/` (ffmpeg holen, native Module, NDI), `docs/` (Installation, Planung).
-
-### Ein neues Tool hinzufügen
-
-1. Ordner unter `src/renderer/src/tools/<mein-tool>/` anlegen mit einer Komponente und einer
-   `index.ts`, die ein `ToolModule` exportiert (siehe `tools/hap-converter/index.ts`).
-2. In `src/renderer/src/tools/registry.ts` **eine Zeile** ergänzen:
-   ```ts
-   export const tools: ToolModule[] = [hapConverterTool, manualsTool, meinTool]
-   ```
-3. Braucht das Tool Main-Prozess-Logik: Kanäle in `src/shared/ipc-contracts.ts` ergänzen,
-   Handler in `src/main/ipc/` registrieren.
-
----
-
-## NPM-Skripte
-
-| Skript              | Zweck                                                        |
-| ------------------- | ------------------------------------------------------------ |
-| `npm run dev`       | Entwicklungsmodus (electron-vite, Hot Reload)                |
-| `npm run build`     | Typecheck + Produktions-Bundles (`out/`)                     |
-| `npm run typecheck`     | TypeScript-Prüfung (main/preload/shared **und** renderer)    |
-| `npm run ff:fetch`      | HAP-fähiges ffmpeg holen (`--all` / `--platform <os>` mögl.) |
-| `npm run rebuild:native`| better-sqlite3-Prebuild für die Electron-ABI laden (kein Compiler) |
-| `npm run electron:bin`  | Electron-Laufzeit-Binary laden (reines Node; Fix für „Electron uninstall") |
-| `npm run package`       | Installer fürs aktuelle OS (inkl. ff:fetch, electron-builder via npx) |
-| `npm run start`         | Produktions-Build lokal previewen                            |
-
----
-
-## Status
-
-**Umgesetzt:**
-
-- **Fundament** – electron-vite (main/preload/renderer), sichere Fenster-Defaults, typisierte
-  IPC-Brücke, Tool-Modulsystem, Launcher mit Suche, Gold-Akzent (#ffce2c) auf kühlem Dark-Theme,
-  App-Icon, **nur 1 Low-Finding (Dev-Server)** in den Abhängigkeiten, schlanker Install ohne Compiler
-  (Prebuilds). **Unit-Tests (Vitest, 174)** für Rechenkerne **und main-Reducer** (Stage-Timer-Ablauf,
-  Konvertier-Entscheidung des Players) und eine **CI** (Format + Lint + Typecheck + Tests + Build je
-  Push, Node 22).
-- **Robustheit (Show-Härtung)** – **Fehlergrenzen** um jedes Werkzeug (ein Absturz reißt nicht die
-  ganze App in einen weißen Bildschirm), globale Fehler-Handler + Renderer-Fehler im Debug-Log,
-  **In-App-Benachrichtigungen** (stille Fehler werden sichtbar – z.B. defekte Jingle-Datei oder
-  verlorenes Audiogerät), **Wiederherstellung** korrupter `settings.json`/`library.db` (sichern +
-  neu anlegen statt still resetten) und versionierte, migrierbare Speicherstände.
-- **Gemeinsamer Konvertierungs-Kern** – Video-Konverter und Player-Import nutzen dieselbe Analyse
-  (Medien-Info), denselben **Plan** (`shared/convertPlan.ts`, rein und getestet) und denselben
-  ffmpeg-Runner. Der Plan entscheidet je Datei: Drehung/Spiegelung und anamorphe Pixel fest
-  einrechnen, **Deinterlace** (25i → 50p), variable → konstante Bildrate, **Show-Raster**
-  (29,97 ↔ 30 und 23,976 ↔ 24 per minimaler Tempo-Anpassung statt Bildsprung), **HDR → SDR**,
-  Alpha-Automatik (HAP Alpha/ProRes 4444) bzw. sauber auf Schwarz, Größe (Original/höchstens/
-  genau mit Letterbox/Füllen/Blur/Strecken), gerade bzw. ×4-Maße, Farbmatrix/Range, Ton
-  (48 kHz, AAC/PCM, Stereo, Lautheit) und unverändertes H.264 nur umverpacken. Gemeinsame
-  Warteschlange mit eigener Spur für den Player (Importe warten nie auf einen Konverter-Stapel).
-  Geprüft mit über 60 echten Konvertierungen über das Testmaterial (ffprobe-Kontrolle).
-- **Video-Konverter** (früher HAP-Konverter) – Zielsystem-Vorgaben wie im Prüfprofil der
-  Medien-Info (Medienserver → HAP Q, USB-/LED-Player → H.264 mit Level 4.2 und Bitraten-Deckel,
-  QLab/macOS → ProRes 422, Laptop/Allgemein → H.264), Format frei wählbar (HAP, HAP Q, HAP Alpha,
-  H.264, H.265, ProRes Proxy…4444, WAV), Vorschau je Datei („→ 1920×1080 · 50 fps · HAP Q"),
-  Parallel-Läufe, HAP-Chunks/Kompressor, nie überschreiben (`…_2`), halbfertige Dateien werden
-  entfernt, „Ergebnis prüfen" öffnet die fertige Datei in der Medien-Info.
-- **Medien-Info** – ffprobe-Analyse im main (Timeout, lesbare Fehlermeldungen, Cache, Ordner
-  rekursiv ohne `._`-/Systemdateien), optionale **Tiefenanalyse** (Keyframe-Abstand/GOP,
-  VFR-Nachweis, Scan-Typ, HDR10-Metadaten), **Ampel-Hinweise** je Prüfprofil (Zielsystem,
-  Show-Raster, Datenträger), Playlist-Vergleich mit hervorgehobenen Abweichungen, Kopieren
-  (Steckbrief/Kurzzeile/Tabelle) und Export (CSV für Excel, JSON). „Konvertieren" übergibt die
-  Dateien samt Zielsystem und Show-Raster an den Video-Konverter (und zurück). Parser an ~140
-  echten Testdateien geprüft; 29 typische ffprobe-Ausgaben sind als Fixture-Tests hinterlegt.
-- **Manuals-Bibliothek** – PDF-Import (SHA-256-Dedup), FTS5-Volltextsuche mit aufklappbaren
-  Trefferboxen, **Kategorien** (Filter), In-App-PDF-Viewer (Scroll, Zoom/Pinch, Seiten-Sprung,
-  **Suche im PDF**).
-- **Testbildgenerator** – Muster (Gitter/Module, Geometrie, Farbbalken, Graustufen, Siemensstern,
-  Konvergenz), **Mapping-Testbild** im MadMapper-Stil (Raster, Eckmarken, Farb-/Graufelder,
-  Spektrum, live laufende Uhrzeit, eigene Texte + Farben), **bewegte** Muster (Pixelcheck-Loop,
-  Scroll, Timecode), **Vollbild-Ausgabe** auf gewähltem Monitor (pixelgenau, live), PNG- +
-  Video-Export (H.264 mit festgelegter Rec.-709-Farbmatrix – farbtreu auf HD-Playern – oder HAP Q),
-  **Presets**.
-- **Video-Player / LED-Wall-Player** – Playlist-Player für LED-Wände/Beamer. Medien werden auf die
-  **Wand-Auflösung eingebacken** (Fit-Modi **Blur-Fill / Schwarze Ränder / Strecken**) und nach
-  **H.264/MP4** konvertiert (Chromium dekodiert das hardwarebeschleunigt; **GPU-Encoder** wie
-  NVENC/QSV/AMF/VideoToolbox werden erkannt **und validiert**, sonst libx264-Fallback) – über den
-  gemeinsamen Konvertierungs-Kern, also mit Deinterlace, HDR → SDR, konstanter Bildrate und
-  korrekt eingerechneten anamorphen Pixeln. Bilder werden gebacken (freie Standzeit), GIFs zu
-  Loop-Videos. **Vollbild-Ausgabe** auf gewähltem
-  Monitor mit **doppelt gepuffertem** HTML5-Player (nahtlose Übergänge), wahlweise **Schnitt oder
-  echtes Overlap-Überblenden** zwischen Medien (das alte Video läuft durch die Blende weiter,
-  mit Audio-Crossfade); **Shuffle ist gapless** (das nächste Zufallsmedium wird vorab bestimmt
-  und vorgeladen). Transport
-  (Play/Pause/Skip/**Seek**/**Loop**/**Shuffle**/Stumm), **Playlist** mit Drag&Drop, verwaltete
-  Bibliothek (Thumbnails, Datei-**Drag&Drop**-Import, Listen-/Kachelansichten) und eine **In-App-Vorschau**
-  (treibt die Wiedergabe auch ohne geöffnetes Ausgabefenster – praktisch ohne zweiten Bildschirm).
-  **Fernsteuerung per Tablet/Handy** über einen eingebetteten, dependency-freien Webserver
-  (mobile Steuerseite + Live-Sync via SSE, LAN, einschaltbar, mit **QR-Code**). Dazu
-  **gespeicherte Playlists** (als Tabs), **Idle-/Fallback-Testbild** auf der Ausgabe (nutzt den
-  vorhandenen Generator), **Batch-Reconvert** bei Auflösungswechsel und optionale **Lautheits-
-  Angleichung (EBU R128 / ffmpeg loudnorm)** beim Einbacken. Adaptiert den bestehenden
-  „LED Wall Player V4" (Python/mpv) in die Electron/React-Suite – nutzt das
-  Multi-Monitor-Ausgabefenster und das gebündelte ffmpeg.
-- **LED-Wall-Konfigurator** – Wandgröße + Modultyp (Bestand: 496-2,0 / uS2+ / rX3ioBF) ->
-  Auflösung, **16:9-Einpassung**, Gewicht, Strom, **Ballast-Rechnung** (LSU-Füße); **zeichenbare
-  Signal-/Strom-Verkabelungspläne** (farbcodierte Ketten), **Curving-Planung** für uS2+
-  (Vollkreis-Tabelle mit **auswählbaren Kreisen**, Kreissegment aus Sehne+Stichhöhe – auch als
-  Startpunkt **in den Segment-Builder übernehmbar** –, freier Segment-Builder, Squircle; je mit
-  Draufsicht-SVG, Winkelverteilung und **belegter Grundfläche B×T**). Die Curving-Form bestimmt
-  Modulzahl/Breite der Wand mit (Sehne/Squircle-Breite = Wandbreite, Vollkreis gibt seine Größe
-  vor) und wandert **inkl. Draufsicht und Winkeln in die PDF-Projektdoku**. Konfiguration bleibt
-  über App-Neustarts erhalten. Ersetzt den bisherigen Einzeldatei-HTML-Konfigurator (und behebt
-  dessen Messfehler bei der „erreichten Stichhöhe").
-- **Jingle-Player** – kurze Audios (Auftrittsmusik/Stinger) auf **belegbaren Pads**, mit
-  **Edit-/Live-Modus**: in Live spielt ein Klick/Hotkey (1–9, q…) ab, im Edit-Modus wählt der Klick
-  ein Pad aus und seine Einstellungen erscheinen im **Seiten-Panel** (wie in den anderen Tools).
-  Je Pad Farbe/Lautstärke/**Loop**/Modus (One-Shot oder Toggle) und **Fade-Out**. Je Pad ein
-  **Start-/Stopp-Ausschnitt** mit **Waveform-Editor** (Datei wird per Web Audio dekodiert,
-  **zoombar**, Marker **millisekundengenau** ziehbar, Vorschau-Wiedergabe mit Abspielkopf,
-  **„Stille trimmen"** schneidet Pausen am Anfang/Ende automatisch weg). **Audio-Ausgabegerät wählbar** (`setSinkId` →
-  Interface/Pult statt Laptop-Lautsprecher), **Solo-Modus** (nur einer gleichzeitig), großer
-  **Fade-All-Stopp** (Esc), mehrere **Sets/Bänke**. **Fernsteuerung per Handy/Tablet** über einen eingebetteten, dependency-
-  freien Webserver (Pad-Raster + Live-Status via SSE, LAN, mit QR-Code; der Jingle-Tab spielt das
-  Audio). Dateien werden nach userData kopiert und über das `jingle://`-Protocol abgespielt (kein
-  file://-Zugriff); Belegung übersteht App-Neustarts.
-- **YouTube-Downloader** – Wrapper um **yt-dlp** (Video MP4 / Audio MP3 / M4A, Auflösungsdeckel),
-  Queue mit **Fortschritt/Speed/ETA**, Muxing über das gebündelte ffmpeg. yt-dlp wird bei Bedarf
-  als **eigenständige Binary nach userData/bin geladen** und per Knopf **aktualisiert** (YouTube
-  ändert ständig etwas). Hinweis im UI: nur freigegebene/eigene Inhalte laden.
-- **Packliste** – Material-Checkliste mit Mengen/Einheiten/Notizen, abhakbar, gruppiert nach
-  Kategorie. **Aus der LED-Wall-Konfiguration befüllbar** (Module, Standfüße, Ballast und
-  Kabelmengen aus den gezeichneten Ketten), Export als PDF. Übersteht App-Neustarts.
-- **Stage-Timer & Uhr** – Sprechzeit-Timer mit **mehreren Abschnitten** (laufen nacheinander),
-  **Farbwarnung nach Restzeit** (weiß → gelb → rot, Schwellen einstellbar), wählbarem
-  **Ablauf-Verhalten** (stehen bleiben / Überziehung rot blinkend / automatisch weiter),
-  **±1-Minute-Korrektur live**, **Nachrichten an die Bühne** (mit Blink-Option und
-  Schnellnachrichten) und **Vollbild-Anzeige** auf gewähltem Monitor – synchron zur Vorschau,
-  da der main-Prozess autoritativ tickt. Alternativ **große Uhr mit Sekundenanzeige**.
-- **OSC-Steuerung** – frei belegbares **Steuerpult** für MadMapper & Co.: Kacheln vom Typ **Fader**
-  (horizontal/vertikal), **Knopf** (Poti oder Endlos-Encoder), **Taster, Schalter, XY-Pad, Farbe,
-  Anzeige/Meter, Label, Auswahl (1-aus-n)** und **Bank** (umschaltbar Taster/Schalter/Knopf, Spalten
-  einstellbar) auf einem **feinen, im Edit-Modus sichtbaren Raster** – per
-  Drag **frei positionierbar** (Kacheln **überlappen nicht**: beim Loslassen rückt eine Kachel auf die
-  nächste freie Stelle) und **per Eckgriff in der Größe** veränderbar (mit **Mindestgrößen je
-  Typ**, damit Regler/Pads nicht verschwinden), je mit eigener **OSC-Adresse** (gleiche Typen werden
-  beim Hinzufügen automatisch durchnummeriert). Eine **Geräte-Vorschau**
-  (Handy/Tablet, dreh­bar) zeigt die Fläche im **Geräterahmen**. Wie der Jingle-Player mit
-  **Sets** (mehrere gespeicherte Setups als Tabs in der Kopfzeile) und **Edit-/Live-Umschalter
-  rechts in der Kopfzeile**: im Edit-Modus wählt der Klick eine Kachel und ihre Einstellungen
-  erscheinen im **Seiten-Panel**, im Live-Modus sendet die Kachel. **Fader, XY-Pad und Farb-Regler
-  ziehen relativ** ab der aktuellen Position (springen nicht auf den Klickpunkt); die **Farb-Kachel**
-  zeigt alle Regler dauerhaft (Hue, R/G/B und **Pipette**/EyeDropper). Gesendet wird über einen **UDP-Socket im
-  main-Prozess** (`node:dgram`) mit **eigenem, abhängigkeitsfreiem OSC-Codec**; **Host/Ports** sind
-  einstellbar (MadMapper-Standard out 8000 / in 9000). Optional **Feedback empfangen** (lauscht auf
-  dem Eingangs-Port und **spiegelt** Werte zurück in passende Kacheln) samt **OSC-Monitor** und
-  **Learn-Modus** (die nächste eingehende Adresse wird ins gewählte Widget übernommen).
-  **Fernsteuerung per Handy/Tablet**: ein eingebetteter Webserver (nur im LAN, ohne Passwort, wie beim
-  Jingle-Player) zeigt dieselbe Oberfläche im Browser – Tippen/Ziehen dort löst den **OSC-Versand am
-  Rechner** aus (QR-Code zum Öffnen); **Sets lassen sich auch am Handy/Tablet umschalten**. Sets und
-  Oberfläche überstehen App-Neustarts.
-- **Netzwerk-Scanner** – findet Geräte im lokalen Subnetz und zeigt **IP, Hersteller (aus der
-  MAC/ARP) und geratenen Gerätetyp**: aktiver TCP-Sweep über typische AV-Ports (NovaStar 5200,
-  RTSP/ONVIF, PJLink, HTTP/SSH/RDP …), **ATEM per UDP-Handshake** und **Bonjour/mDNS**-Namen.
-  Gerätetyp/-symbol **manuell überschreibbar** (an der MAC gespeichert), eigene Bezeichnungen,
-  Web-Oberfläche öffnen und **IP direkt an NovaStar-/OSC-Tool übergeben**. Alles abhängigkeitsfrei
-  im main-Prozess (`node:net`/`dgram`).
-- **NovaStar-Steuerung** – steuert einen **NovaStar-Prozessor** (NovaPro UHD Jr & Co.) über
-  **TCP 5200** mit eigenem, abhängigkeitsfreiem **Paket-Codec** (Header 0x55AA + Prüfsumme).
-  **Helligkeit**, **Fade-to-Black** (weiche Rampe), **Blackout** und **Freeze** (ein gemeinsamer
-  Anzeigemodus, schließen sich aus) und **Preset-/Szenen-Abruf** – Befehls-Bytes gegen das
-  praxiserprobte **Bitfocus-Companion-Modul** abgeglichen (Prüfsummen per Unit-Test). Dazu ein
-  **Roh-Befehl-Sender** für andere Modelle. Zusätzlich als **NovaStar-Widgets in der OSC-Steuerung**
-  nutzbar (Helligkeits-Fader, Fade/Freeze/Blackout, Preset-Auswahl) – auch über die Handy-Fernsteuerung.
-- **Rechner-Tools** – kleine Helfer für den Event-Alltag: **Kreisrechner**, **Projektionsverhältnis**
-  (Throw Ratio / Objektivwahl), **Kameraobjektiv** (Bildausschnitt bei Personen aus
-  Brennweite/Sensor/Telekonverter, mit Visualisierung des sichtbaren Anteils),
-  **Beamer-Lumen** (Bedarf aus Bildgröße + Umgebungslicht),
-  **DMX-Dip-Schalter**, **Stromlast & Absicherung** (1∼/3∼, Geräte pro Stromkreis),
-  **Audio-Delay & SPL** (Laufzeit aus Distanz, Pegelabfall über Entfernung), **Rigging-Last**
-  (Auflagerkräfte einer Traverse auf 2 Punkten + Bridle-Strangkräfte nach Anschlagwinkel, mit
-  Warnstufen – Richtwerte, ersetzt keinen Sachkundigen) und **Timecode-Rechner** (SMPTE-Timecode ↔
-  Frames ↔ Echtzeit inkl. **Drop-Frame** 29,97/59,94, Dauer zwischen In/Out). Berechnete Werte
-  sind farblich markiert (Gold = Ergebnis), Kernaussagen als hervorgehobene Ergebniszeilen.
-- **PDF-Export** – LED-Wall-Doku und Packliste werden über ein verstecktes Fenster (`printToPDF`)
-  gespeichert; die LED-Wall-Doku wahlweise im **Querformat**.
-- **Theme** – umschaltbarer **Hell-/Dunkelmodus** (System/Hell/Dunkel) in allen Werkzeugen.
-
-## Roadmap
-
-- **OSC-Steuerung – Ausbaustufen**: **MadMapper-Vorlagen** (Surfaces/Medien/Cues),
-  **tool-übergreifende OSC-Trigger** (z. B. aus Jingle-/Timer-/Video-Player) und **„Restzeit aus
-  OSC-Position"** – ein Anzeige-Kachel-Modus, der aus der eingehenden MadMapper-Position (0–1) und
-  einer eingetragenen Clip-Dauer die verbleibende Zeit als **mm:ss** berechnet und auf einem Monitor
-  zeigt (MadMapper liefert nur die Position, keine Restzeit). _(Erledigt: Learn-Modus, Widgets
-  Auswahl/1-aus-n + Bank Taster/Schalter/Knopf + Knopf/Endlos-Encoder + Anzeige/Meter + Label,
-  Fader-Ausrichtung, Raster-Spalten, Auto-Nummerierung, Handy-Hue, Set-Wechsel am Handy.)_
-- **Weitere OSC-Bedienelemente** (vorgemerkt): **Auto-Center-Fader/Wippe** (federt nach dem Loslassen
-  in die Mitte – Jog/PTZ/Speed), **Tap-Tempo/BPM** (aus mehreren Taps ein Tempo mitteln),
-  **Set-Wechsel-Button** (per Tipp ein anderes Set aktivieren) und **Farb-Regler horizontal/vertikal**
-  umstellbar.
-- **NovaStar-Steuerung – Ausbau**: _(Erledigt: Preset-Abruf, Blackout/Freeze und Display-Mode –
-  Bytes gegen das Companion-Modul `novastar-controller` verifiziert.)_ Offen: **Testbild**,
-  **Ist-Zustand vom Gerät lesen** (statt optimistischer UI) und optional weitere Modelle
-  (VX-Serie, MCTRL).
-- **Logo-Overlay** im Video-Player (PNG mit Alpha, Größe/Position/Deckkraft, als Overlay – nicht
-  eingebacken).
-- **Stecker-/Kabel-Kompendium** mit Pin-Layouts, Steckertypen und technischen Daten (evtl. in der
-  Manuals-Bibliothek).
-- **Teleprompter** im Stage-Timer (scrollender Text auf dem Referentenmonitor).
-- **ArtNet/sACN-Tester** (DMX über Netzwerk senden + Node-Discovery) und **DMX-Universum-Planer**
-  (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem Dip-Schalter-Rechner.
-- Kleinere Event-Rechner: **Edge-Blend** (Beamer-Softedge), **Video-Datenrate/Dateigröße**,
-  **Funkfrequenz-Planer**, **Sonnenstand/Dämmerung** für Open-Air.
-- **Verbesserungen bestehender Tools**: **Audio-Test-Töne** im Testbildgenerator (Sinus/Rosa/Sweep,
-  Kanal-ID), **Ducking + MIDI-Pads** im Jingle-Player, **OCR** für gescannte PDFs in der
-  Manuals-Bibliothek, **Prozessor-Presets** (Novastar/Brompton) im LED-Wall-Konfigurator.
-  _(Erledigt: Loudness-Normalisierung EBU R128 beim Einbacken im Video-Player.)_
-- **Neue Rechner (klein)**: **IP-/Subnetz-Rechner** (Dante/NDI/AV-over-IP), **Gel-/Farbfilter-
-  Konverter** (Lee↔Rosco↔RGB), **Spannungsabfall/Kabelquerschnitt** (an die Stromlast angedockt).
-- **Mobile Manuals-Companion** (Idee) – die Manuals-Bibliothek ließe sich als Tablet-/Handy-App
-  (Capacitor) umsetzen; HAP/Testbilder bleiben Desktop (siehe Diskussion).
-- **Tool-Verzahnung** (baut auf den bestehenden Übergaben LED-Wall→Packliste und
-  Netzwerk-Scanner→NovaStar/OSC auf):
-  - **Fertiger Job → Player-Bibliothek** (YouTube-/HAP-Ergebnis mit einem Klick in den Video-Player).
-  - **LED-Wall → Player/Testbild** (Wandauflösung übernehmen) sowie **→ Stromlast/Rigging**
-    (Gewicht + Stromaufnahme sind bereits berechnet).
-  - **Netzwerk-Scanner → Manuals** (erkannten Hersteller direkt als Handbuch-Suche öffnen).
-  - **Stage-Timer per OSC steuerbar** (Start/Pause/±1 min – aus Companion/Streamdeck).
-  - **Übergreifendes „Show-Profil"** – Wandauflösung, Geräte-IPs und Ziele tool-übergreifend
-    speichern und als „Event" laden.
-
-> **Interne Qualitäts-/Architektur-Roadmap:** technische Verbesserungen (Konsolidierung von
-> Duplikaten, geteilte Bausteine, Testausbau, weitere Modernisierung) sind separat in
-> [`docs/optimierungsplan.md`](docs/optimierungsplan.md) priorisiert dokumentiert.
+Electron 42, React 18 und TypeScript (electron-vite), Tailwind CSS, zustand, react-router 7,
+`better-sqlite3` (FTS5), `pdfjs-dist`, gebündeltes ffmpeg mit HAP.

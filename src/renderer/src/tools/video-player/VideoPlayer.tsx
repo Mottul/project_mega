@@ -1604,7 +1604,7 @@ function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX
       <div className="space-y-2 text-xs text-muted-foreground">
         <p>
           NDI-Modul nicht verfügbar – die App läuft normal weiter. Zum Aktivieren einmalig
-          <span className="font-mono"> npm run ndi:setup</span> ausführen (siehe README).
+          <span className="font-mono"> npm run ndi:setup</span> ausführen (siehe docs/NDI.md).
         </p>
         {status.error && <p className="break-words font-mono text-[10px]">{status.error}</p>}
       </div>

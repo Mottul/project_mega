@@ -9,7 +9,7 @@
 // ueber den .cmd-Shim mit shell:true). Sonst zerlegt cmd.exe Projektpfade mit
 // Leerzeichen (z.B. "E:\Meine Programme\...") und der Aufruf schlaegt fehl.
 //
-// Fallback bei fehlendem Prebuild: lokale Build-Tools noetig (siehe README).
+// Fallback bei fehlendem Prebuild: lokale Build-Tools noetig (siehe docs/ENTWICKLUNG.md).
 
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'

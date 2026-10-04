@@ -6,7 +6,7 @@
 // Das NDI-Binding ist BEWUSST optional und wird erst zur Laufzeit geladen:
 // ohne Modul läuft die App unverändert, die UI zeigt "nicht verfügbar".
 //
-// Einrichtung: `npm run ndi:setup` (siehe scripts/setup-ndi.mjs + README).
+// Einrichtung: `npm run ndi:setup` (siehe scripts/setup-ndi.mjs + docs/NDI.md).
 // Das Binding liegt danach unter vendor/grandiose (NICHT in node_modules --
 // npm-Lifecycle-Scripts sind bei neueren npm-Versionen blockiert und
 // electron-builder packt undeklarierte node_modules nicht mit). Geladen wird

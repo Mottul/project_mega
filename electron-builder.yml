@@ -40,7 +40,7 @@ extraResources:
   # grandioses node_modules (electron-builder kopiert node_modules in
   # extraResources ohnehin nicht mit). index.js/package.json nur zur Doku,
   # LICENSE fuer die Apache-2.0-Weitergabe. Ohne Setup matcht der Filter
-  # nichts; `from: vendor` existiert immer (README).
+  # nichts; `from: vendor` existiert immer (vendor/README.md).
   - from: vendor
     to: vendor
     filter:
