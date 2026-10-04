@@ -13,6 +13,9 @@ import type {
   HapEnqueueRequest,
   HapJob,
   ImportProgress,
+  MediaCollectResult,
+  MediaInfoResult,
+  MediaProbeOptions,
   ImportSummary,
   ManualDetail,
   InDocHit,
@@ -81,6 +84,10 @@ export const Channels = {
   hapCancelAll: 'hap:cancelAll',
   hapClearFinished: 'hap:clearFinished',
   hapUpdate: 'hap:update', // Event: HapJob
+  // Medien-Info (ffprobe)
+  mediaInfoProbe: 'mediaInfo:probe',
+  mediaInfoRaw: 'mediaInfo:raw',
+  mediaInfoCollect: 'mediaInfo:collect',
   // Manuals
   manualsImport: 'manuals:import',
   manualsList: 'manuals:list',
@@ -263,6 +270,15 @@ export interface ToolboxApi {
     onUpdate(cb: (job: HapJob) => void): () => void
   }
 
+  mediaInfo: {
+    /** Eckdaten einer Datei (ffprobe). Wirft NICHT bei Datei-/Formatfehlern -> ok:false. */
+    probe(path: string, opts?: MediaProbeOptions): Promise<MediaInfoResult>
+    /** ffprobe-Rohausgabe (formatiertes JSON) oder null. */
+    raw(path: string): Promise<string | null>
+    /** Dateien/Ordner (rekursiv) zu Mediendateien auflösen. */
+    collect(inputs: string[]): Promise<MediaCollectResult>
+  }
+
   manuals: {
     import(paths: string[]): Promise<ImportSummary>
     list(query?: string): Promise<ManualMeta[]>
@@ -383,8 +399,12 @@ export interface ToolboxApi {
      *  Liefert den gewählten Pfad oder null (abgebrochen). */
     exportPdf(html: string, suggestedName: string, landscape?: boolean): Promise<string | null>
     /** Text (z.B. JSON) über einen Speichern-Dialog in eine Datei schreiben.
-     *  Liefert den gewählten Pfad oder null (abgebrochen). */
-    saveText(text: string, suggestedName: string): Promise<string | null>
+     *  Liefert den gewählten Pfad oder null (abgebrochen). Ohne filters: JSON. */
+    saveText(
+      text: string,
+      suggestedName: string,
+      filters?: { name: string; extensions: string[] }[]
+    ): Promise<string | null>
     /** Textdatei über einen Öffnen-Dialog einlesen. Liefert den Inhalt oder null. */
     openText(): Promise<string | null>
     /** Eine Zeile ins Debug-Log des main-Prozesses schreiben (Feld-Diagnose von

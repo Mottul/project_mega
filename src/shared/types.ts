@@ -30,6 +30,186 @@ export interface ProbeResult {
   hasVideo: boolean
 }
 
+/* ------------------------------ Medien-Info ------------------------------ */
+// Normalisierte ffprobe-Auswertung einer Datei. Der main-Prozess liest und
+// normalisiert (alle ffprobe-Eigenheiten an EINER Stelle), der Renderer formatiert
+// nur noch und bewertet für den Show-Einsatz.
+
+export type MediaScanType = 'progressive' | 'tff' | 'bff' | 'unknown'
+// vfr-suspect: Header-Angaben widersprechen sich, Paket-Scan (Tiefenanalyse) fehlt
+export type MediaFpsMode = 'cfr' | 'vfr' | 'vfr-suspect' | 'still' | 'unknown'
+// gpu = Textur-Codec (HAP, DXV, NotchLC); longgop = Bilder hängen voneinander ab
+export type MediaCodecClass = 'gpu' | 'intra' | 'longgop' | 'image' | 'unknown'
+
+export interface MediaGopInfo {
+  packets: number // ausgewertete Video-Pakete (Anfang der Datei)
+  keyframes: number
+  /** Medianer Keyframe-Abstand in Bildern; bei nur einem Keyframe: Mindestwert. */
+  keyframeInterval: number | null
+  /** true = im Scan nur EIN Keyframe -> Abstand ist mindestens keyframeInterval. */
+  keyframeIntervalAtLeast: boolean
+  allIntra: boolean
+  /** Bildabstände uneinheitlich (bestätigte variable Bildrate). */
+  vfr: boolean
+  /** Scan lief bis zum Dateiende (ganzer Clip geprüft), sonst nur der Anfang. */
+  complete: boolean
+  /** Bildrate aus dem Median der Bildabstände. */
+  fps: number | null
+}
+
+export interface MediaVideoTrack {
+  index: number
+  codecName: string | null // ffprobe codec_name (h264, hevc, prores, hap …)
+  codec: string // Anzeigename: „H.264", „ProRes 422 HQ", „HAP Q"
+  profile: string | null // „High", „Main 10" (bei ProRes/DNx/HAP im Namen enthalten)
+  level: string | null // „4.1", „5.1"
+  fourcc: string | null // avc1, hvc1, HapY, apch (nur druckbare Kennungen)
+  codecClass: MediaCodecClass
+  width: number // gespeicherte Pixel
+  height: number
+  displayWidth: number // Anzeige nach Pixel-Seitenverhältnis + Rotation
+  displayHeight: number
+  sar: string | null // „64:45" – nur wenn nicht quadratisch
+  dar: string | null // „16:9" laut Datei
+  rotation: number // Anzeige-Drehung im Uhrzeigersinn: 0 | 90 | 180 | 270
+  mirrored: boolean
+  fps: number | null
+  fpsRational: string | null // „30000/1001" (r_frame_rate)
+  fpsMode: MediaFpsMode
+  scan: MediaScanType
+  pixFmt: string | null
+  bitDepth: number | null
+  chroma: string | null // „4:2:0" | „4:2:2" | „4:4:4" | „RGB" | „Graustufen" …
+  alpha: boolean
+  alphaNote: string | null // Herkunft/Einschränkung, z.B. „WebM alpha_mode", „GIF: 1-bit möglich"
+  colorRange: 'tv' | 'pc' | null
+  colorSpace: string | null
+  colorTransfer: string | null
+  colorPrimaries: string | null
+  hdr: 'pq' | 'hlg' | null
+  dolbyVision: string | null // Profil, z.B. „8.4"
+  masteringMaxNits: number | null
+  maxCll: number | null
+  maxFall: number | null
+  bitRate: number | null // bit/s
+  bitRateEstimated: boolean
+  frames: number | null
+  framesEstimated: boolean
+  durationSec: number | null
+  hasBFrames: boolean
+  timecode: string | null
+  language: string | null
+  title: string | null
+  gop: MediaGopInfo | null // nur nach Tiefenanalyse (Long-GOP / VFR-Verdacht)
+}
+
+export interface MediaAudioTrack {
+  index: number
+  codecName: string | null
+  codec: string // „AAC", „PCM 24 bit", „Dolby Digital (AC-3)"
+  profile: string | null
+  channels: number | null
+  channelLayout: string | null // ffprobe-Layout („5.1(side)") oder abgeleitet („stereo")
+  layoutKnown: boolean // false = nur aus der Kanalzahl abgeleitet
+  sampleRate: number | null // Hz
+  bitDepth: number | null // nur verlustfreie Codecs
+  float: boolean
+  lossy: boolean
+  bitRate: number | null
+  bitRateEstimated: boolean
+  durationSec: number | null
+  language: string | null
+  title: string | null
+  isDefault: boolean
+}
+
+export interface MediaSubtitleTrack {
+  index: number
+  codecName: string | null
+  codec: string
+  bitmap: boolean // Bild-Untertitel (PGS/VobSub/DVB)
+  language: string | null
+  title: string | null
+  forced: boolean
+  isDefault: boolean
+}
+
+export interface MediaDataTrack {
+  index: number
+  kind: string // „Timecode", „GoPro-Telemetrie", FourCC …
+  timecode: string | null
+}
+
+export interface MediaCover {
+  index: number
+  codec: string
+  width: number | null
+  height: number | null
+}
+
+export interface MediaChapter {
+  startSec: number
+  endSec: number
+  title: string | null
+}
+
+export interface MediaTag {
+  scope: string // „Datei" oder „Spur 2 (Audio)"
+  key: string
+  value: string
+}
+
+export interface MediaInfo {
+  path: string
+  name: string
+  sizeBytes: number | null
+  modifiedMs: number | null
+  formatName: string | null // ffprobe format_name (Rohwert)
+  container: string // Anzeigename: „QuickTime (MOV)", „MPEG-4 (MP4)", „Matroska (MKV)"
+  containerLong: string | null
+  extensionMismatch: boolean // Endung passt nicht zum erkannten Container
+  probeScore: number | null
+  isStill: boolean // Einzelbild (PNG/JPG …)
+  durationSec: number | null
+  startTimeSec: number | null
+  bitRate: number | null // Gesamt-Bitrate bit/s
+  bitRateEstimated: boolean
+  timecode: string | null // Start-Timecode, Drop-Frame mit „;"
+  timecodeSource: string | null
+  title: string | null
+  encoder: string | null
+  creationTime: string | null // ISO-8601
+  camera: string | null // „Apple iPhone 17"
+  location: string | null // ISO-6709-Rohwert
+  incomplete: boolean // Index verspricht mehr Daten als vorhanden (abgebrochene Kopie)
+  video: MediaVideoTrack[]
+  audio: MediaAudioTrack[]
+  subtitles: MediaSubtitleTrack[]
+  data: MediaDataTrack[]
+  covers: MediaCover[] // eingebettete Coverbilder (kein Video!)
+  attachments: number
+  chapters: MediaChapter[]
+  tags: MediaTag[]
+  deepAnalyzed: boolean // Tiefenanalyse (Paket-/Frame-Scan) ist gelaufen
+}
+
+export type MediaInfoResult =
+  { ok: true; info: MediaInfo } | { ok: false; path: string; error: string; detail: string | null }
+
+export interface MediaProbeOptions {
+  /** Paket-/Frame-Scan für GOP, VFR-Nachweis, HDR-Metadaten, Scan-Typ (ms bis ~1 s). */
+  deep?: boolean
+  /** Cache ignorieren und neu einlesen. */
+  force?: boolean
+}
+
+export interface MediaCollectResult {
+  files: string[] // gefundene Mediendateien (sortiert, ohne Duplikate)
+  ignored: number // übersprungene System-/._-Dateien
+  unreadable: string[] // nicht lesbare Eingaben
+  limited: boolean // Obergrenze erreicht -> Liste unvollständig
+}
+
 export type ChunksMode = { kind: 'auto' } | { kind: 'manual'; value: number }
 
 export interface HapEnqueueRequest {

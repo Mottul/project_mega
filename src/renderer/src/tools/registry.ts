@@ -6,6 +6,7 @@ import { hapConverterTool } from './hap-converter'
 import { jinglePlayerTool } from './jingle-player'
 import { ledWallTool } from './led-wall'
 import { manualsTool } from './manuals'
+import { mediaInfoTool } from './media-info'
 import { netscanTool } from './netscan'
 import { novastarTool } from './novastar'
 import { oscControlTool } from './osc-control'
@@ -24,6 +25,7 @@ import type { ToolModule } from './types'
 // EINZIGE Stelle zum Eintragen neuer Tools.
 export const tools: ToolModule[] = [
   hapConverterTool,
+  mediaInfoTool,
   manualsTool,
   testPatternsTool,
   videoPlayerTool,

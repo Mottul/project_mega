@@ -17,3 +17,6 @@ package-lock.json
 
 # Fremdcode (geklonte native Bindings)
 vendor/
+
+# Testdaten: echte ffprobe-Ausgaben, bewusst unverändert (kompakt)
+**/__fixtures__/
