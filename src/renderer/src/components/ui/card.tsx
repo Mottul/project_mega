@@ -11,18 +11,3 @@ export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   )
 )
 Card.displayName = 'Card'
-
-export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>): JSX.Element {
-  return <div className={cn('flex flex-col gap-1 p-4', className)} {...props} />
-}
-
-export function CardTitle({
-  className,
-  ...props
-}: HTMLAttributes<HTMLHeadingElement>): JSX.Element {
-  return <h3 className={cn('font-semibold leading-none tracking-tight', className)} {...props} />
-}
-
-export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>): JSX.Element {
-  return <div className={cn('p-4 pt-0', className)} {...props} />
-}

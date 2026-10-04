@@ -143,6 +143,8 @@ Keine veralteten APIs gefunden (createRoot+StrictMode, keine Klassen/`ReactDOM.r
 - **Reducer zuerst** (DOM-frei, sofort lauffähig, höchster Wert, weil main-autoritativ):
   - `stageTimer.applyTimerCommand` ✅ (10 Tests inkl. Wanduhr-Countdown + End-Verhalten stop/next/overtime).
   - `convertManager.analyzeFit`/`canStreamCopy` ✅ (7 Tests; die „Warum-neu-konvertieren?"-Logik).
+    _Später:_ ersetzt durch den gemeinsamen Konvertierungs-Plan (`shared/convertPlan.ts`, eigene
+    Tests) – `analyzeFit` lebt in `player/playerPlan.ts`, die Kopier-Entscheidung im Plan.
     Dabei etabliert: ein schlanker `vi.mock('electron', …)` reicht, um main-Services **ohne** natives
     Modul zu testen (Muster für die nächsten).
   - Offen: `playerState` (importiert `db` → better-sqlite3, braucht mehr Mock-Aufwand),

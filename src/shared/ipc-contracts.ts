@@ -224,8 +224,6 @@ export const Channels = {
   ytStatusUpdate: 'yt:statusUpdate' // Event: YtToolStatus (Prüfung/Aktualisierung)
 } as const
 
-export type ChannelName = (typeof Channels)[keyof typeof Channels]
-
 /** Custom-Protocol, ueber das der renderer importierte PDFs laden darf. */
 export const MANUAL_PROTOCOL = 'manual'
 

@@ -23,25 +23,6 @@ export const PROBE_PORTS = [
   8443 // HTTPS-alt
 ]
 
-export const PORT_LABEL: Record<number, string> = {
-  22: 'SSH',
-  23: 'Telnet',
-  80: 'HTTP',
-  443: 'HTTPS',
-  445: 'SMB',
-  554: 'RTSP',
-  1935: 'RTMP',
-  3389: 'RDP',
-  4352: 'PJLink',
-  5200: 'NovaStar',
-  5900: 'VNC',
-  7000: 'AirPlay',
-  8000: 'ONVIF',
-  8080: 'HTTP',
-  8443: 'HTTPS',
-  9910: 'ATEM'
-}
-
 const CAMERA_VENDOR =
   /axis|sony|panasonic|canon|bosch|hikvision|dahua|ptzoptics|birddog|lumens|marshall|vaddio/
 
