@@ -1,16 +1,6 @@
-import { useEffect, useMemo, useState, type DragEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ArrowDownAZ,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  LayoutGrid,
-  Search,
-  Star,
-  Wifi
-} from 'lucide-react'
-import { Badge } from '@renderer/components/ui/badge'
+import { Grid2x2, Grid3x3, LayoutGrid, Search, Square, Star } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
@@ -23,10 +13,12 @@ import { MottulboxLogo } from '@renderer/components/MottulboxLogo'
 import { cn } from '@renderer/lib/utils'
 import { findTool, tools } from '@renderer/tools/registry'
 import { CATEGORY_LABELS, type ToolModule } from '@renderer/tools/types'
-import type { ToolCategoryId } from '@shared/types'
-import { dropOn, moveBy, sortByName } from './favoritesOrder'
-import { useToolActivity, type ToolActivity } from './useToolActivity'
-import { useToolFavorites } from './useToolFavorites'
+import type { LauncherTileSize, ToolCategoryId } from '@shared/types'
+import { FavoritesBoard, type DragItem } from './FavoritesBoard'
+import { flatten } from './favoriteGroups'
+import { ToolCard, tileGridStyle, type TileDrag, type TileDrop, type TileMove } from './ToolCard'
+import { useLauncherPrefs } from './useLauncherPrefs'
+import { useToolActivity } from './useToolActivity'
 import { RemoteAppButton } from './RemoteAppButton'
 import { remoteToolIds, useRemoteApp } from './useRemoteApp'
 
@@ -39,6 +31,12 @@ const CATEGORY_ORDER: ToolCategoryId[] = [
   'calc'
 ]
 
+const TILE_SIZES: { value: LauncherTileSize; label: string; Icon: typeof Square }[] = [
+  { value: 'small', label: 'Kleine Kacheln', Icon: Grid3x3 },
+  { value: 'medium', label: 'Mittlere Kacheln', Icon: Grid2x2 },
+  { value: 'large', label: 'Große Kacheln', Icon: Square }
+]
+
 function matches(tool: ToolModule, q: string): boolean {
   if (!q) return true
   const hay = [tool.name, tool.description, ...(tool.keywords ?? [])].join(' ').toLowerCase()
@@ -48,159 +46,44 @@ function matches(tool: ToolModule, q: string): boolean {
     .every((term) => hay.includes(term))
 }
 
-/** Sortier-Fähigkeiten einer Favoriten-Kachel (Ziehen & Ablegen + Pfeile). */
-interface Reorder {
-  dragging: boolean
-  /** Einfügemarke beim Ziehen über dieser Kachel */
-  dropSide: 'before' | 'after' | null
-  canPrev: boolean
-  canNext: boolean
-  onMove: (delta: -1 | 1) => void
-  onDragStart: (e: DragEvent) => void
-  onDragOver: (e: DragEvent) => void
-  onDrop: (e: DragEvent) => void
-  onDragEnd: () => void
-}
-
-/** Eine Werkzeug-Kachel (Homescreen). Stern = Favorit, Pfeil = eigenes Fenster. */
-function ToolCard({
-  tool,
-  activity,
-  remote,
-  favorite,
-  reorder,
-  onOpen,
-  onToggleFavorite
+/** Umschalter aus mehreren Knöpfen (Ansicht, Kachelgröße). */
+function Segmented<T extends string | boolean>({
+  label,
+  value,
+  options,
+  onChange
 }: {
-  tool: ToolModule
-  activity?: ToolActivity
-  /** Handy-Fernsteuerung dieses Werkzeugs läuft. */
-  remote?: boolean
-  favorite: boolean
-  /** nur in der Favoriten-Reihe (und nicht während einer Suche) */
-  reorder?: Reorder
-  onOpen: () => void
-  onToggleFavorite: () => void
+  label: string
+  value: T
+  options: { value: T; label: string; Icon: typeof Square; text?: string; activeIcon?: string }[]
+  onChange: (v: T) => void
 }): JSX.Element {
-  const Icon = tool.icon
   return (
-    <Card
-      role="button"
-      tabIndex={0}
-      // eigener Name: sonst flössen die Beschriftungen der inneren Knöpfe mit ein
-      aria-label={tool.name}
-      aria-describedby={`tool-desc-${tool.id}`}
-      onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return
-        if (e.key === 'Enter' || e.key === ' ') onOpen()
-      }}
-      draggable={Boolean(reorder)}
-      onDragStart={reorder?.onDragStart}
-      onDragOver={reorder?.onDragOver}
-      onDrop={reorder?.onDrop}
-      onDragEnd={reorder?.onDragEnd}
-      className={cn(
-        'group relative cursor-pointer p-4 transition-colors hover:border-primary/50 hover:bg-muted/40',
-        reorder?.dragging && 'opacity-40'
-      )}
+    <div
+      role="group"
+      aria-label={label}
+      className="flex rounded-md border border-border bg-muted/30 p-0.5"
     >
-      {/* Einfügemarke beim Sortieren: Balken an der Seite, an der abgelegt wird */}
-      {reorder?.dropSide && (
-        <span
-          aria-hidden
-          className={cn(
-            'pointer-events-none absolute inset-y-2 w-1 rounded-full bg-primary',
-            reorder.dropSide === 'before' ? '-left-2' : '-right-2'
-          )}
-        />
-      )}
-      {/* Aktionen oben rechts: Favorit umschalten + in neuem Fenster öffnen. Der
-          Stern bleibt bei Favoriten sichtbar, sonst erscheint alles beim Hover. */}
-      <div className="absolute right-2 top-2 flex items-center gap-0.5">
+      {options.map((o) => (
         <button
+          key={String(o.value)}
           type="button"
-          title={favorite ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen'}
-          aria-pressed={favorite}
-          onClick={(e) => {
-            e.stopPropagation()
-            onToggleFavorite()
-          }}
+          aria-pressed={value === o.value}
+          title={o.label}
+          aria-label={o.text ? undefined : o.label}
+          onClick={() => onChange(o.value)}
           className={cn(
-            'rounded-md p-1.5 transition-opacity hover:bg-muted focus-visible:opacity-100',
-            favorite
-              ? 'text-primary opacity-100'
-              : 'text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100'
+            'flex items-center gap-1.5 rounded px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+            value === o.value
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
-          <Star className={cn('size-4', favorite && 'fill-current')} />
+          <o.Icon className={cn('size-4', value === o.value && o.activeIcon)} />
+          {o.text}
         </button>
-        <button
-          type="button"
-          title="In neuem Fenster öffnen"
-          onClick={(e) => {
-            e.stopPropagation()
-            void api.openToolWindow(tool.id)
-          }}
-          className="rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-        >
-          <ExternalLink className="size-4" />
-        </button>
-      </div>
-      <div className="flex items-start gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
-          <Icon className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5 pr-6">
-            <h3 className="truncate text-sm font-medium">{tool.name}</h3>
-            {activity && (
-              <Badge tone="success" dot className="shrink-0">
-                {activity.label}
-              </Badge>
-            )}
-            {remote && (
-              <Badge tone="info" className="shrink-0" title="Handy-Fernsteuerung ist aktiv">
-                <Wifi className="size-3" /> Fernsteuerung
-              </Badge>
-            )}
-          </div>
-          {/* sortierbar: rechts unten Platz für die Pfeile lassen */}
-          <p
-            id={`tool-desc-${tool.id}`}
-            className={cn('mt-0.5 line-clamp-2 text-xs text-muted-foreground', reorder && 'pr-11')}
-          >
-            {tool.description}
-          </p>
-        </div>
-      </div>
-      {/* Sortieren ohne Ziehen (Tastatur, Touch): erscheint bei Hover/Fokus */}
-      {reorder && (
-        <div className="absolute bottom-1.5 right-2 flex items-center gap-0.5">
-          {(
-            [
-              [-1, reorder.canPrev, ChevronLeft, 'Nach vorne'],
-              [1, reorder.canNext, ChevronRight, 'Nach hinten']
-            ] as const
-          ).map(([delta, enabled, Arrow, label]) => (
-            <button
-              key={delta}
-              type="button"
-              disabled={!enabled}
-              title={`${label} verschieben`}
-              aria-label={`${tool.name} ${label.toLowerCase()} verschieben`}
-              onClick={(e) => {
-                e.stopPropagation()
-                reorder.onMove(delta)
-              }}
-              className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 disabled:pointer-events-none disabled:opacity-0 group-hover:opacity-100 group-hover:disabled:opacity-30"
-            >
-              <Arrow className="size-3.5" />
-            </button>
-          ))}
-        </div>
-      )}
-    </Card>
+      ))}
+    </div>
   )
 }
 
@@ -210,10 +93,10 @@ export function Launcher(): JSX.Element {
   const activity = useToolActivity()
   const remoteApp = useRemoteApp()
   const remoteTools = remoteToolIds(remoteApp)
-  const { favorites, isFavorite, toggle, reorder, favoritesOnly, setFavoritesOnly } =
-    useToolFavorites()
-  const [dragId, setDragId] = useState<string | null>(null)
-  const [drop, setDrop] = useState<{ id: string; after: boolean } | null>(null)
+  const prefs = useLauncherPrefs()
+  const { groups, favoritesOnly, tileSize } = prefs
+  // Zieh-Zustand für Board UND Kacheln aus „Alle" (Ziehen in eine Kategorie = Favorit)
+  const [drag, setDrag] = useState<DragItem | null>(null)
   // Ansage für Screenreader nach dem Verschieben per Pfeil
   const [announce, setAnnounce] = useState('')
 
@@ -232,16 +115,7 @@ export function Launcher(): JSX.Element {
   }, [navigate])
 
   const filtered = useMemo(() => tools.filter((t) => matches(t, q)), [q])
-  // Favoriten in eigener Reihenfolge (nur noch existierende Werkzeuge)
-  const favTools = useMemo(
-    () =>
-      favorites
-        .map((id) => tools.find((t) => t.id === id))
-        .filter((t): t is ToolModule => t != null),
-    [favorites]
-  )
-  const favItems = useMemo(() => favTools.filter((t) => matches(t, q)), [favTools, q])
-  const groups = useMemo(
+  const groupsByCategory = useMemo(
     () =>
       CATEGORY_ORDER.map((cat) => ({
         cat,
@@ -249,79 +123,51 @@ export function Launcher(): JSX.Element {
       })).filter((g) => g.items.length > 0),
     [filtered]
   )
+  const favIds = useMemo(() => new Set(flatten(groups)), [groups])
+  const favCount = useMemo(() => [...favIds].filter((id) => findTool(id)).length, [favIds])
+  const favHits = useMemo(() => filtered.filter((t) => favIds.has(t.id)).length, [filtered, favIds])
   // „Nur Favoriten" + Suche: weitere Treffer trotzdem zeigen (sonst wirkt die Suche kaputt)
   const otherHits = useMemo(
-    () => (favoritesOnly && q ? filtered.filter((t) => !favorites.includes(t.id)) : []),
-    [favoritesOnly, q, filtered, favorites]
+    () => (favoritesOnly && q ? filtered.filter((t) => !favIds.has(t.id)) : []),
+    [favoritesOnly, q, filtered, favIds]
   )
 
-  // Sortieren nur ohne Suche: sonst wären Nachbarn unsichtbar und die Ziele mehrdeutig
-  const sortable = !q && favTools.length > 1
-  const visibleIds = favTools.map((t) => t.id)
-
-  function reorderFor(tool: ToolModule, index: number): Reorder | undefined {
-    if (!sortable) return undefined
-    return {
-      dragging: dragId === tool.id,
-      dropSide:
-        drop?.id === tool.id && dragId && dragId !== tool.id
-          ? drop.after
-            ? 'after'
-            : 'before'
-          : null,
-      canPrev: index > 0,
-      canNext: index < favTools.length - 1,
-      onMove: (delta) => {
-        reorder(moveBy(favorites, visibleIds, tool.id, delta))
-        setAnnounce(`${tool.name} an Position ${index + 1 + delta} verschoben`)
-      },
-      onDragStart: (e) => {
-        e.dataTransfer.effectAllowed = 'move'
-        e.dataTransfer.setData('text/plain', tool.id)
-        setDragId(tool.id)
-      },
-      onDragOver: (e) => {
-        if (!dragId) return
-        e.preventDefault()
-        e.dataTransfer.dropEffect = 'move'
-        const r = e.currentTarget.getBoundingClientRect()
-        const after = e.clientX > r.left + r.width / 2
-        if (drop?.id !== tool.id || drop.after !== after) setDrop({ id: tool.id, after })
-      },
-      onDrop: (e) => {
-        e.preventDefault()
-        // Seite aus dem Ablegepunkt selbst bestimmen (nicht aus evtl. veraltetem State)
-        const r = e.currentTarget.getBoundingClientRect()
-        const after = e.clientX > r.left + r.width / 2
-        if (dragId) reorder(dropOn(favorites, dragId, tool.id, after))
-        setDragId(null)
-        setDrop(null)
-      },
-      onDragEnd: () => {
-        setDragId(null)
-        setDrop(null)
-      }
-    }
-  }
-
-  const gridClass = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'
-  const showCategories = !favoritesOnly
-  const nothing = favoritesOnly
-    ? q !== '' && favItems.length === 0 && otherHits.length === 0
-    : groups.length === 0 && favItems.length === 0
-
-  const card = (tool: ToolModule, reorderProps?: Reorder): JSX.Element => (
+  const card = (
+    tool: ToolModule,
+    extras: { drag?: TileDrag; drop?: TileDrop; move?: TileMove } = {}
+  ): JSX.Element => (
     <ToolCard
       key={tool.id}
       tool={tool}
+      size={tileSize}
       activity={activity[tool.id]}
       remote={remoteTools.has(tool.id)}
-      favorite={isFavorite(tool.id)}
-      reorder={reorderProps}
+      favorite={prefs.isFavorite(tool.id)}
+      {...extras}
       onOpen={() => navigate(`/tool/${tool.id}`)}
-      onToggleFavorite={() => toggle(tool.id)}
+      onToggleFavorite={() => prefs.toggle(tool.id)}
     />
   )
+
+  // Kacheln aus „Alle" lassen sich in eine Favoriten-Kategorie ziehen
+  const catalogDrag = (tool: ToolModule): TileDrag | undefined =>
+    q
+      ? undefined
+      : {
+          dragging: drag?.kind === 'tool' && drag.id === tool.id,
+          onDragStart: (e) => {
+            e.dataTransfer.effectAllowed = 'move'
+            e.dataTransfer.setData('text/plain', tool.id)
+            setDrag({ kind: 'tool', id: tool.id })
+          },
+          onDragEnd: () => setDrag(null)
+        }
+
+  const showBoard = groups.length > 0 && (!q || favHits > 0)
+  const nothing = favoritesOnly
+    ? q !== '' && favHits === 0 && otherHits.length === 0
+    : groupsByCategory.length === 0
+  const grid = 'grid gap-3'
 
   return (
     <div className="flex h-full flex-col">
@@ -351,36 +197,27 @@ export function Launcher(): JSX.Element {
             />
           </div>
           {/* Ansicht: alle Werkzeuge nach Kategorie oder nur die Favoriten */}
-          <div
-            role="group"
-            aria-label="Ansicht"
-            className="flex rounded-md border border-border bg-muted/30 p-0.5"
-          >
-            {(
-              [
-                [false, 'Alle', LayoutGrid],
-                [true, 'Favoriten', Star]
-              ] as const
-            ).map(([only, label, Icon]) => (
-              <button
-                key={label}
-                type="button"
-                aria-pressed={favoritesOnly === only}
-                onClick={() => setFavoritesOnly(only)}
-                className={cn(
-                  'flex items-center gap-1.5 rounded px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
-                  favoritesOnly === only
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Icon
-                  className={cn('size-4', only && favoritesOnly && 'fill-current text-primary')}
-                />
-                {label}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label="Ansicht"
+            value={favoritesOnly}
+            onChange={prefs.setFavoritesOnly}
+            options={[
+              { value: false, label: 'Alle Werkzeuge', Icon: LayoutGrid, text: 'Alle' },
+              {
+                value: true,
+                label: 'Nur Favoriten',
+                Icon: Star,
+                text: 'Favoriten',
+                activeIcon: 'fill-current text-primary'
+              }
+            ]}
+          />
+          <Segmented
+            label="Kachelgröße"
+            value={tileSize}
+            onChange={prefs.setTileSize}
+            options={TILE_SIZES}
+          />
         </div>
       </header>
 
@@ -392,62 +229,52 @@ export function Launcher(): JSX.Element {
           <p className="text-sm text-muted-foreground">Kein Werkzeug gefunden.</p>
         ) : (
           <div className="space-y-8">
-            {favoritesOnly && favTools.length === 0 && !q && (
+            {favoritesOnly && favCount === 0 && !q && groups.length === 0 && (
               <Card className="flex flex-col items-center gap-3 border-dashed px-6 py-12 text-center">
                 <Star className="size-8 text-muted-foreground" />
                 <p className="font-medium">Noch keine Favoriten</p>
                 <p className="max-w-sm text-sm text-muted-foreground">
                   In der Ansicht „Alle“ den Stern an einer Kachel antippen – die Werkzeuge
-                  erscheinen dann hier, in eigener Reihenfolge.
+                  erscheinen dann hier. Mit eigenen Kategorien lassen sie sich frei anordnen.
                 </p>
-                <Button variant="secondary" onClick={() => setFavoritesOnly(false)}>
+                <Button variant="secondary" onClick={() => prefs.setFavoritesOnly(false)}>
                   <LayoutGrid className="size-4" /> Alle Werkzeuge zeigen
                 </Button>
               </Card>
             )}
-            {favItems.length > 0 && (
-              <section>
-                <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-                  <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <Star className="size-3.5 fill-current text-primary" /> Favoriten
-                  </h2>
-                  {sortable && (
-                    <>
-                      <span className="text-xs text-muted-foreground">
-                        Zum Sortieren ziehen oder die Pfeile an der Kachel nutzen
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-auto h-7 text-xs"
-                        title="Favoriten alphabetisch sortieren"
-                        onClick={() => reorder(sortByName(favorites, (id) => findTool(id)?.name))}
-                      >
-                        <ArrowDownAZ className="size-3.5" /> A–Z
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <div className={gridClass}>
-                  {favItems.map((tool, i) => card(tool, reorderFor(tool, i)))}
-                </div>
-              </section>
+            {showBoard && (
+              <FavoritesBoard
+                groups={groups}
+                toolById={findTool}
+                visible={(t) => matches(t, q)}
+                searching={q !== ''}
+                size={tileSize}
+                drag={drag}
+                setDrag={setDrag}
+                renderTile={card}
+                update={prefs.updateGroups}
+                announce={setAnnounce}
+              />
             )}
             {otherHits.length > 0 && (
               <section>
                 <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Weitere Treffer
                 </h2>
-                <div className={gridClass}>{otherHits.map((tool) => card(tool))}</div>
+                <div className={grid} style={tileGridStyle(tileSize)}>
+                  {otherHits.map((tool) => card(tool))}
+                </div>
               </section>
             )}
-            {showCategories &&
-              groups.map((g) => (
+            {!favoritesOnly &&
+              groupsByCategory.map((g) => (
                 <section key={g.cat}>
                   <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {CATEGORY_LABELS[g.cat]}
                   </h2>
-                  <div className={gridClass}>{g.items.map((tool) => card(tool))}</div>
+                  <div className={grid} style={tileGridStyle(tileSize)}>
+                    {g.items.map((tool) => card(tool, { drag: catalogDrag(tool) }))}
+                  </div>
                 </section>
               ))}
           </div>

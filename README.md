@@ -15,6 +15,12 @@ react-router 7, `better-sqlite3` 12.11 (FTS5), `pdfjs-dist` 6, gebündeltes `ffm
 Derzeit **22 Werkzeuge**, im Launcher nach Kategorie sortiert und durchsuchbar. Jedes lässt
 sich in einem eigenen Fenster parallel öffnen.
 
+Der Startbildschirm lässt sich anpassen: **Kachelgröße** klein/mittel/groß, Ansicht **„Alle“ oder
+„Nur Favoriten“** und Favoriten in **eigenen Kategorien** – selbst benannt, frei angeordnet und mit
+eigener Breite (ganze Zeile, ½, ⅓, ¼, ⅔, ¾), sodass eine bis vier Kategorien nebeneinander stehen.
+Kacheln und Kategorien werden per Ziehen oder Pfeil-Knöpfen sortiert; eine Kachel aus „Alle“ in
+eine Kategorie zu ziehen macht sie zum Favoriten.
+
 **🎬 Wiedergabe & Show**
 
 - **Video-Player** – Playlist-Player für LED-Wände/Beamer: Medien auf Wand-Auflösung eingebacken (Blur/Ränder/Strecken), H.264, Vollbild-Ausgabe, Überblenden, Handy-Fernsteuerung.
@@ -280,6 +286,9 @@ src/
         ├── video-player/     # Steuer-UI (VideoPlayer) + Vollbild-Ausgabe (PlayerOutput)
         └── …                 # 22 Werkzeuge, je ein Ordner mit index.ts (ToolModule)
 ```
+
+Außerhalb von `src/`: `build/` (Installer-Icons), `assets/brand/` (Logo-Quellen, nicht im
+Build), `scripts/` (ffmpeg holen, native Module, NDI), `docs/` (Installation, Planung).
 
 ### Ein neues Tool hinzufügen
 
