@@ -35,8 +35,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).
 - **Zustand:** zustand-Stores je Tool; persistierte Stores (OSC, Jingle, LED-Wall, Packliste,
   Netzwerk-Scanner, Medien-Info, Video-Konverter) nutzen `debouncedStorage()` aus
-  `@renderer/lib/persistStorage` (NIE die synchrone Default-Storage – Tipp-Lag) und tragen
-  eine `version` (migrierbar).
+  `@renderer/lib/persistStorage` (NIE die synchrone Default-Storage – Tipp-Lag), tragen
+  eine `version` (migrierbar) und rufen `syncAcrossWindows(store)` (Fenster-Abgleich).
 - **Eingabefelder mit Puffer:** immer `useDraft()` aus `@renderer/lib/useDraft`
   verwenden (externer Wert wird nur unfokussiert übernommen).
 - **Ausgabefenster** (Testbild, Player, Timer, OSC-Monitor) sind eigene
@@ -69,6 +69,9 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   (`primary`, `border`, …), nie hart kodieren.
 - settings.json (main, `services/store.ts`) ist Quelle der Wahrheit für
   App-Einstellungen; localStorage nur als Boot-Spiegel (Theme/Akzent/Dichte).
+  `setSettings` nur mit den geänderten Feldern aufrufen (feldweise gemergt, Listen ersetzt) –
+  nie `{ ...getSettings().player, … }`; Einstellungen im eigenen Zustand per
+  `api.onSettingsChanged` aktuell halten.
 
 ## Doku
 

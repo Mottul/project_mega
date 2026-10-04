@@ -8,6 +8,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { api } from '@renderer/lib/api'
+import { flushStore } from '@renderer/lib/persistStorage'
 import { deriveFromLedWall } from '../packing-list/derive'
 import { usePacking } from '../packing-list/store'
 import { Readout, fmt } from '../_calc/ui'
@@ -218,6 +219,9 @@ export function LedWall(): JSX.Element {
               title="Material in die Packliste übernehmen und in neuem Fenster öffnen"
               onClick={() => {
                 usePacking.getState().mergeItems(deriveFromLedWall())
+                // sofort speichern: das neue Fenster liest den Stand beim Öffnen (offene
+                // Packlisten übernehmen ihn über syncAcrossWindows)
+                flushStore(usePacking)
                 void api.openToolWindow('packing-list')
               }}
             >

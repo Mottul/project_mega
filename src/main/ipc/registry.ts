@@ -4,14 +4,14 @@ import { readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
 import { Readable } from 'node:stream'
 import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
-import type { AppSettings } from '@shared/types'
-import { broadcast } from '../services/broadcast'
+import type { SettingsPatch } from '@shared/types'
+import { broadcast, broadcastExcept } from '../services/broadcast'
 import { converterJobs } from '../services/convert/converterJobs'
 import { jingleContentType, resolveJingleFile } from '../services/jingleLibrary'
 import { logFilePath, logLine } from '../services/log'
 import { resolveManualFile } from '../services/manuals/manualsService'
 import { resolveMediaFile } from '../services/player/mediaLibrary'
-import { getSettings, setSettings } from '../services/store'
+import { getSettings, onSettingsChange, setSettings } from '../services/store'
 import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
 import { registerJingleHandlers } from './jingle.handlers'
@@ -206,7 +206,10 @@ export function registerIpcHandlers(): void {
   handlersRegistered = true
 
   ipcMain.handle(Channels.settingsGet, () => getSettings())
-  ipcMain.handle(Channels.settingsSet, (_e, patch: Partial<AppSettings>) => setSettings(patch))
+  ipcMain.handle(Channels.settingsSet, (e, patch: SettingsPatch) => setSettings(patch, e.sender.id))
+  // Änderungen an alle übrigen Fenster melden: wer Listen (Favoriten, Playlists, Presets)
+  // im eigenen Zustand hält, übernimmt sie – statt sie später mit altem Stand zu überschreiben.
+  onSettingsChange((s, origin) => broadcastExcept(origin, Channels.settingsChanged, s))
   ipcMain.handle(Channels.appLogPath, () => logFilePath())
 
   registerDialogHandlers()

@@ -113,11 +113,17 @@ export function TestPatterns(): JSX.Element {
       setDisplayId(target?.id ?? null)
     })
     void api.getSettings().then((s) => setPresets(s.patternPresets ?? []))
+    // Presets aus einem anderen Testbild-Fenster übernehmen (sonst überschriebe dieses sie)
+    const offSettings = api.onSettingsChanged((s) => setPresets(s.patternPresets ?? []))
     // nur Fortschritt; Endzustand (Erfolg/Abbruch/Fehler) regelt der Export ueber
     // das Promise-Ergebnis (sonst bleibt der Button nach Dialog-Abbruch haengen).
-    return api.patterns.onVideoProgress((p) => {
+    const offProgress = api.patterns.onVideoProgress((p) => {
       if (!p.done) setVideoProgress(p.progress)
     })
+    return () => {
+      offSettings()
+      offProgress()
+    }
   }, [])
 
   // Aenderungen live ins offene Ausgabefenster spiegeln

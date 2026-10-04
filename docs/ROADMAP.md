@@ -9,21 +9,19 @@ beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
   [neue Werkzeuge](#neue-werkzeuge), [Verzahnung](#verzahnung), [Ideen](#ideen)
 - [Technik & Qualität](#technik--qualität) – [Sicherheit](#sicherheit),
-  [Robustheit](#robustheit), [Konsolidierung](#konsolidierung), [Große Umbauten](#große-umbauten),
-  [Tests & CI](#tests--ci), [Upgrades](#upgrades)
+  [Konsolidierung](#konsolidierung), [Große Umbauten](#große-umbauten), [Tests & CI](#tests--ci),
+  [Upgrades](#upgrades)
 - [Bereits erledigt](#bereits-erledigt)
 
 ## Als Nächstes
 
 Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
-1. **Datenverlust ausschließen** – `setSettings` tief mergen, Werkzeug-Stores zwischen Fenstern
-   abgleichen (siehe [Robustheit](#robustheit)).
-2. **CI auf Windows und macOS** – das Versprechen „plattformübergreifend“ wird heute nur unter
+1. **CI auf Windows und macOS** – das Versprechen „plattformübergreifend“ wird heute nur unter
    Linux gebaut und getestet.
-3. **Abhängigkeiten aktuell halten** – Electron-Patches und `pdfjs-dist` regelmäßig mit Abstand
+2. **Abhängigkeiten aktuell halten** – Electron-Patches und `pdfjs-dist` regelmäßig mit Abstand
    nachziehen ([SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)).
-4. **Restliche Härtungen** – Fenster-Wächter, `shellOpenPath`-Allowlist, Prüfsummen für ffmpeg
+3. **Restliche Härtungen** – Fenster-Wächter, `shellOpenPath`-Allowlist, Prüfsummen für ffmpeg
    und Electron (siehe [Sicherheit](#sicherheit)).
 
 ## Funktionen
@@ -100,17 +98,6 @@ NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Ge
 - **Prüfsummen** für den ffmpeg- und den Electron-Download (yt-dlp prüft bereits gegen
   `SHA2-256SUMS`; das Electron-Paket bringt seine Prüfsummen in `checksums.json` mit).
 
-### Robustheit
-
-- **`setSettings` bereichsweise tief mergen** (`player`, `osc` …): Heute ersetzt ein Patch den
-  ganzen Bereich. Patcht der Renderer mit einem veralteten Stand, kann er parallele Änderungen
-  des Hauptprozesses überschreiben. Danach entfallen auch die `{ ...getSettings().player, … }`-
-  Kopien.
-- **Werkzeug-Stores zwischen Fenstern abgleichen:** Ist ein Werkzeug in zwei Fenstern offen,
-  gewinnt das zuletzt schreibende (kein `storage`-Abgleich). Beispiel: „Packliste“ im
-  LED-Wall-Konfigurator schreibt die Übernahme verzögert und öffnet ein neues Fenster; eine schon
-  offene Packliste sieht die Übernahme nicht und kann sie später überschreiben.
-
 ### Konsolidierung
 
 - **NDI:** `timerNdi.ts` und `playerNdi.ts` zu einem gemeinsamen Offscreen-Sender zusammenführen –
@@ -168,6 +155,9 @@ Damit nichts doppelt geplant wird:
 
 - **Show-Härtung:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, In-App-Hinweise statt
   stiller Fehler, Wiederherstellung von `settings.json`/`library.db`, versionierte Stores.
+- **Kein Datenverlust zwischen Fenstern:** `settings.json` nimmt Teiländerungen (feldweise
+  zusammengeführt, atomar geschrieben) und meldet Änderungen an alle Fenster; Werkzeug-Stände
+  gleichen sich zwischen Fenstern ab (eigene, noch ungespeicherte Eingaben gewinnen).
 - **Upgrades:** Electron 40 → 42, pdfjs-dist 4 → 6, react-router 6 → 7; Sicherheits-Updates vom
   4. Oktober 2026 (Electron 42.11.8, pdfjs-dist 6.3.289 u. a. – `npm audit --omit=dev` ohne
   Befund).

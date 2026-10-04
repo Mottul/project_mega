@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { FavoriteGroup, LauncherTileSize } from '@shared/types'
+import type { AppSettings, FavoriteGroup, LauncherTileSize } from '@shared/types'
 import { api } from '@renderer/lib/api'
 import { flatten, normalizeGroups, toggleTool } from './favoriteGroups'
 
@@ -26,14 +26,19 @@ export function useLauncherPrefs(): LauncherPrefs {
 
   useEffect(() => {
     let alive = true
-    void api.getSettings().then((s) => {
+    const apply = (s: AppSettings): void => {
       if (!alive) return
       setGroups(normalizeGroups(s.favoriteGroups, s.favoriteToolIds))
       setOnly(s.launcherFavoritesOnly ?? false)
       setSize(s.launcherTileSize ?? 'medium')
-    })
+    }
+    void api.getSettings().then(apply)
+    // Startbildschirm in einem zweiten Fenster geändert -> übernehmen, sonst überschriebe
+    // dieses Fenster die Favoriten beim nächsten Ziehen mit seinem alten Stand.
+    const off = api.onSettingsChanged(apply)
     return () => {
       alive = false
+      off()
     }
   }, [])
 

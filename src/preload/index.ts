@@ -16,6 +16,7 @@ const api: ToolboxApi = {
   showItemInFolder: (target) => ipcRenderer.invoke(Channels.shellShowItem, target),
   getSettings: () => ipcRenderer.invoke(Channels.settingsGet),
   setSettings: (patch) => ipcRenderer.invoke(Channels.settingsSet, patch),
+  onSettingsChanged: (cb) => subscribe(Channels.settingsChanged, (s) => cb(s as never)),
   getLogPath: () => ipcRenderer.invoke(Channels.appLogPath),
   pathForFile: (file) => webUtils.getPathForFile(file),
   openToolWindow: (id) => ipcRenderer.invoke(Channels.windowOpenTool, id),

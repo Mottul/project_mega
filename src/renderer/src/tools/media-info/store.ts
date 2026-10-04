@@ -9,7 +9,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { MediaInfo } from '@shared/types'
 import { api } from '@renderer/lib/api'
-import { debouncedStorage } from '@renderer/lib/persistStorage'
+import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
 import { errorText } from './format'
 import { DEFAULT_PROFILE, type CheckProfile } from './hints'
 
@@ -240,3 +240,7 @@ export const useMediaInfo = create<MediaInfoState>((set, get) => ({
     pump()
   }
 }))
+
+// Ein Werkzeug in mehreren Fenstern: Änderungen der anderen übernehmen, statt sie
+// beim nächsten Speichern mit altem Stand zu überschreiben (siehe persistStorage.ts).
+syncAcrossWindows(useMediaInfoPrefs)

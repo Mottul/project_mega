@@ -1,19 +1,36 @@
 import { app } from 'electron'
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
 import {
-  DEFAULT_OSC_SETTINGS,
-  DEFAULT_PLAYER_SETTINGS,
-  DEFAULT_REMOTE_CONTROLS,
-  DEFAULT_SETTINGS,
-  type AppSettings
-} from '@shared/types'
+  closeSync,
+  existsSync,
+  fsyncSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+  writeSync
+} from 'node:fs'
+import { join } from 'node:path'
+import { mergeSettings } from '@shared/settingsMerge'
+import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/types'
 import { logLine } from './log'
 
 // Schlanker Settings-Store: eine JSON-Datei in userData. Bewusst ohne externe
 // Abhaengigkeit (electron-store ist ESM-only und macht im CJS-main Aerger).
+// Aenderungen werden feldweise zusammengefuehrt (settingsMerge.ts) und die Datei
+// atomar ersetzt -- ein Absturz mitten im Schreiben kostet nie alle Einstellungen.
 
 let cache: AppSettings | null = null
+
+/** origin = webContents-ID des auslösenden Fensters (null = main/Handy). */
+type ChangeListener = (settings: AppSettings, origin: number | null) => void
+const listeners = new Set<ChangeListener>()
+
+/** Benachrichtigung nach jeder Änderung (z. B. an die übrigen Fenster weiterreichen). */
+export function onSettingsChange(fn: ChangeListener): () => void {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
 
 function settingsFile(): string {
   return join(app.getPath('userData'), 'settings.json')
@@ -23,15 +40,10 @@ export function getSettings(): AppSettings {
   if (cache) return cache
   try {
     if (existsSync(settingsFile())) {
-      const raw = JSON.parse(readFileSync(settingsFile(), 'utf-8')) as Partial<AppSettings>
-      // verschachtelte Bereiche -> tief mergen, damit neue Felder nicht wegfallen
-      cache = {
-        ...DEFAULT_SETTINGS,
-        ...raw,
-        player: { ...DEFAULT_PLAYER_SETTINGS, ...(raw.player ?? {}) },
-        osc: { ...DEFAULT_OSC_SETTINGS, ...(raw.osc ?? {}) },
-        remoteControls: { ...DEFAULT_REMOTE_CONTROLS, ...(raw.remoteControls ?? {}) }
-      }
+      const raw: unknown = JSON.parse(readFileSync(settingsFile(), 'utf-8'))
+      // tief mit den Vorgaben zusammenfuehren: neue Felder (auch in player/osc/…)
+      // bekommen ihren Standard, Bereiche mit falschem Typ fallen auf ihn zurueck
+      cache = mergeSettings(DEFAULT_SETTINGS, raw)
     } else {
       cache = { ...DEFAULT_SETTINGS }
     }
@@ -53,13 +65,46 @@ export function getSettings(): AppSettings {
   return cache
 }
 
-export function setSettings(patch: Partial<AppSettings>): AppSettings {
-  const next = { ...getSettings(), ...patch }
+/**
+ * Atomar schreiben: erst vollstaendig (und auf den Datentraeger) in eine Nachbardatei,
+ * dann umbenennen. Bricht der Strom mitten im Schreiben weg, bleibt die alte Datei heil.
+ */
+function writeFileAtomic(file: string, text: string): void {
+  const tmp = `${file}.tmp`
+  const fd = openSync(tmp, 'w')
+  try {
+    writeSync(fd, text, null, 'utf-8')
+    fsyncSync(fd)
+  } finally {
+    closeSync(fd)
+  }
+  try {
+    renameSync(tmp, file)
+  } catch (err) {
+    // Windows: Virenscanner/Indexer halten die Datei kurz -> dann eben direkt schreiben
+    logLine('[settings] Umbenennen fehlgeschlagen, schreibe direkt:', String(err))
+    writeFileSync(file, text, 'utf-8')
+    rmSync(tmp, { force: true })
+  }
+}
+
+/**
+ * Teiländerung übernehmen: nur die übergebenen Felder – auch innerhalb von player/osc/… –,
+ * Listen werden ganz ersetzt. Kein Lesen-Ändern-Schreiben mehr nötig (das konnte parallele
+ * Änderungen anderer Fenster oder des Handys überschreiben).
+ */
+export function setSettings(patch: SettingsPatch, origin: number | null = null): AppSettings {
+  const next = mergeSettings(getSettings(), patch)
   cache = next
   try {
-    writeFileSync(settingsFile(), JSON.stringify(next, null, 2), 'utf-8')
-  } catch {
+    writeFileAtomic(settingsFile(), JSON.stringify(next, null, 2))
+  } catch (err) {
     // nicht kritisch -- Settings bleiben zumindest im Cache
+    logLine(
+      '[settings] Speichern fehlgeschlagen:',
+      err instanceof Error ? err.message : String(err)
+    )
   }
+  for (const fn of listeners) fn(next, origin)
   return next
 }

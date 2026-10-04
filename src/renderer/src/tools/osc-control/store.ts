@@ -8,7 +8,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { APP_SLUG } from '@shared/brand'
-import { debouncedStorage } from '@renderer/lib/persistStorage'
+import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
 
 export type OscWidgetType =
   'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter' | 'select' | 'bank' | 'knob'
@@ -947,3 +947,7 @@ export const useOscSurface = create<OscStoreState>()(
     }
   )
 )
+
+// Ein Werkzeug in mehreren Fenstern: Änderungen der anderen übernehmen, statt sie
+// beim nächsten Speichern mit altem Stand zu überschreiben (siehe persistStorage.ts).
+syncAcrossWindows(useOscSurface)
