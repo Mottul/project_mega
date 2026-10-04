@@ -281,6 +281,9 @@ src/
         └── …                 # 22 Werkzeuge, je ein Ordner mit index.ts (ToolModule)
 ```
 
+Außerhalb von `src/`: `build/` (Installer-Icons), `assets/brand/` (Logo-Quellen, nicht im
+Build), `scripts/` (ffmpeg holen, native Module, NDI), `docs/` (Installation, Planung).
+
 ### Ein neues Tool hinzufügen
 
 1. Ordner unter `src/renderer/src/tools/<mein-tool>/` anlegen mit einer Komponente und einer
