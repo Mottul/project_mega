@@ -479,7 +479,7 @@ export function planConversion(
   if (!v.codecName) return { ok: false, error: 'Videospur nicht decodierbar (unbekannter Codec)' }
   if (!v.width || !v.height) return { ok: false, error: 'Bildgröße unbekannt' }
   const still = info.isStill || v.fpsMode === 'still'
-  if (fi.family === 'image' && !still) return { ok: false, error: 'Kein Standbild' }
+  // JPG aus einem Video = erstes Bild (z.B. animiertes PNG/WebP in der Player-Bibliothek)
   if (fi.family !== 'image' && still) return { ok: false, error: 'Standbild – kein Video' }
 
   /* Alpha: Alpha-Quellen automatisch in die Alpha-Variante der Formatfamilie */

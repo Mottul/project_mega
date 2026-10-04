@@ -1,24 +1,24 @@
 // Konvertierungs-Queue des Players: sammelt Quelldateien, backt sie in die
 // Wand-Auflösung ein (Fit-Modus) und legt sie als abspielbereite Medien in der
-// Bibliothek ab. Aufbau analog zum HAP-jobManager (Map + sequentielle Queue).
+// Bibliothek ab. Analyse, Plan (Drehung, Pixel, Halbbilder, Bildrate, HDR, Fit, Ton,
+// Umverpacken) und ffmpeg-Ausführung kommen aus dem gemeinsamen Konvertierungs-Kern
+// (wie beim Video-Konverter); hier bleibt nur, was die Bibliothek braucht.
 
-import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { existsSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { basename, extname, join } from 'node:path'
-import { promisify } from 'node:util'
+import { planConversion, type ConvertPlan } from '@shared/convertPlan'
 import { dotted, STILL_IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
-import type { ConvertJob, MediaKind, PlayerImportRequest } from '@shared/types'
-import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
+import type { ConvertJob, ConvertOptions, MediaKind, PlayerImportRequest } from '@shared/types'
+import { buildConvertArgs } from '../convert/args'
+import { getConvertCapabilities } from '../convert/capabilities'
+import { convertQueue } from '../convert/queue'
+import { FfmpegCanceledError, runFfmpeg } from '../convert/runFfmpeg'
+import { probeMediaInfo } from '../ffmpeg/mediaInfo'
 import { logLine } from '../log'
 import { getSettings } from '../store'
-import {
-  buildCopyArgs,
-  buildImageArgs,
-  buildThumbArgs,
-  buildVideoArgs,
-  resolveEncoder
-} from './encoder'
+import { buildThumbArgs, resolveEncoder } from './encoder'
+import { analyzeFit, playerOptions, type PlayerSpec } from './playerPlan'
 import {
   convKeyFor,
   deleteMedia,
@@ -31,8 +31,6 @@ import {
   updateMediaConversion
 } from './mediaLibrary'
 
-const pexecFile = promisify(execFile)
-
 const VIDEO_EXT = new Set(dotted(VIDEO_EXTENSIONS))
 const IMAGE_EXT = new Set(dotted(STILL_IMAGE_EXTENSIONS))
 const MEDIA_EXT = new Set([...VIDEO_EXT, ...IMAGE_EXT, '.gif'])
@@ -40,67 +38,6 @@ export const ALLOWED_MEDIA_EXT = MEDIA_EXT
 
 type JobSink = (job: ConvertJob) => void
 type LibrarySink = () => void
-
-export interface ProbeInfo {
-  width: number | null // ANZEIGE-Breite (rotations- und SAR-korrigiert, quadratische Pixel)
-  height: number | null // ANZEIGE-Höhe (rotations- und SAR-korrigiert, quadratische Pixel)
-  sar: number // Pixel-Seitenverhältnis der Quelle (1 = quadratisch; unbekannt -> 1)
-  durationSec: number | null
-  hasVideo: boolean
-  hasAudio: boolean
-  codecName: string | null
-  pixFmt: string | null
-  rotated: boolean // Anzeige-Rotation ≠ 0 (z.B. Handy-Hochkant) -> kein Stream-Copy
-}
-
-/** Anzeige-Orientierung aus den codierten Maßen + Rotations-Metadaten ableiten.
- *  Handy-Videos sind oft codiert 1920×1080, per 90°-Matrix aber hochkant (1080×1920).
- *  Exportiert für Tests. */
-export function orient(
-  codedW: number | null,
-  codedH: number | null,
-  video: { side_data_list?: { rotation?: number }[]; tags?: { rotate?: string } }
-): { width: number | null; height: number | null; rotated: boolean } {
-  let deg: number | null = null
-  const sd = video.side_data_list?.find((s) => typeof s?.rotation === 'number')
-  if (sd) deg = sd.rotation as number
-  else if (video.tags?.rotate != null) {
-    const n = Number(video.tags.rotate)
-    if (Number.isFinite(n)) deg = n
-  }
-  const rot = deg == null ? 0 : ((Math.round(deg) % 360) + 360) % 360
-  const swap = rot === 90 || rot === 270
-  return {
-    width: swap ? codedH : codedW,
-    height: swap ? codedW : codedH,
-    rotated: rot !== 0
-  }
-}
-
-/** ffprobe sample_aspect_ratio („4:3", „0:1", „N/A") -> Zahl; unbekannt/ungültig = 1. */
-export function parseSar(s: string | undefined): number {
-  const m = /^(\d+):(\d+)$/.exec(s ?? '')
-  if (!m) return 1
-  const num = Number(m[1])
-  const den = Number(m[2])
-  return num > 0 && den > 0 ? num / den : 1
-}
-
-/**
- * Maße in quadratischen Pixeln – exakt dieselbe Rechnung wie der Filter SQUARE_PIXELS
- * (encoder.ts), damit „passt schon"/Stream-Copy-Entscheidungen zum Ergebnis passen.
- * Nur vergrößern: SAR > 1 verbreitert, SAR < 1 erhöht.
- */
-export function squarePixelSize(
-  w: number | null,
-  h: number | null,
-  sar: number
-): { width: number | null; height: number | null } {
-  if (!w || !h || sar === 1) return { width: w, height: h }
-  return sar > 1
-    ? { width: Math.trunc((w * sar) / 2) * 2, height: h }
-    : { width: w, height: Math.trunc(h / sar / 2) * 2 }
-}
 
 function readEntries(dir: string): Dirent<string>[] {
   try {
@@ -136,105 +73,8 @@ function kindOf(path: string): MediaKind {
   return 'video'
 }
 
-// Dieselbe Quelle kann mit unterschiedlicher Aufbereitung mehrfach in der
-// Bibliothek liegen (eigene conv_key je Fit-Modus). Damit die Einträge nicht
-// gleich aussehen, wandert der Fit in den Titel (das Thumbnail wird ohnehin aus
-// dem aufbereiteten Ergebnis erzeugt, zeigt also Blur/Balken/Streckung direkt).
-type Fit = PlayerImportRequest['fitMode']
-const FIT_TITLE: Record<Fit, string> = {
-  blur: 'Blur',
-  bars: 'Letterbox',
-  stretch: 'Stretch'
-}
-
-// Namens-Zusatz + tatsächlich nötiger Fit ergeben sich erst NACH dem Prüfen der
-// Quell-Auflösung -- nicht aus dem gewählten Fit-Modus allein:
-//  - gleiche Auflösung  -> nichts verändert            -> „Original" (Stream-Copy)
-//  - gleiches Seitenverh.-> reine Skalierung, Fit egal -> „Scale" (billiger Scale
-//                                                          statt Blur-Graph)
-//  - anderes Seitenverh. -> Fit greift sichtbar        -> Blur/Letterbox/Stretch
-// srcW/srcH sind Anzeige-Maße in quadratischen Pixeln. Anamorphe Quellen sind auch bei
-// passenden Anzeige-Maßen nie „Original": sie werden auf quadratische Pixel umgerechnet.
-export function analyzeFit(
-  fit: Fit,
-  srcW: number | null,
-  srcH: number | null,
-  tgtW: number,
-  tgtH: number,
-  anamorphic = false
-): { suffix: string; effectiveFit: Fit } {
-  const known = !!srcW && !!srcH
-  const exact = known && srcW === tgtW && srcH === tgtH
-  const sameAspect = known && Math.abs(srcW! / srcH! - tgtW / tgtH) < 0.01
-  if (exact && !anamorphic) return { suffix: 'Original', effectiveFit: 'stretch' }
-  if (sameAspect) return { suffix: 'Scale', effectiveFit: 'stretch' }
-  return { suffix: FIT_TITLE[fit], effectiveFit: fit }
-}
 function titleWithSuffix(base: string, suffix: string): string {
   return `${base} · ${suffix}`
-}
-
-async function probeSource(path: string): Promise<ProbeInfo> {
-  const args = ['-v', 'quiet', '-print_format', 'json', '-show_streams', '-show_format', path]
-  const { stdout } = await pexecFile(ffmpegBinPath('ffprobe'), args, {
-    maxBuffer: 16 * 1024 * 1024
-  })
-  const json = JSON.parse(stdout) as {
-    streams?: {
-      codec_type?: string
-      codec_name?: string
-      pix_fmt?: string
-      width?: number
-      height?: number
-      duration?: string
-      sample_aspect_ratio?: string
-      side_data_list?: { rotation?: number; side_data_type?: string }[]
-      tags?: { rotate?: string }
-    }[]
-    format?: { duration?: string }
-  }
-  const streams = json.streams ?? []
-  const video = streams.find((s) => s.codec_type === 'video')
-  const hasAudio = streams.some((s) => s.codec_type === 'audio')
-  const durStr = video?.duration ?? json.format?.duration
-  const dur = durStr ? Number(durStr) : null
-  // Erst die SAR (bezieht sich auf die gespeicherte Ausrichtung), dann die Rotation ->
-  // ANZEIGE-Maße (sonst gilt ein Hochkant-1080×1920, das codiert 1920×1080 ist,
-  // fälschlich als Querformat, und HDV 1440×1080 als 4:3 statt 16:9).
-  const sar = parseSar(video?.sample_aspect_ratio)
-  const sq = squarePixelSize(video?.width ?? null, video?.height ?? null, sar)
-  const o = orient(sq.width, sq.height, video ?? {})
-  return {
-    width: o.width,
-    height: o.height,
-    sar,
-    durationSec: dur && Number.isFinite(dur) ? dur : null,
-    hasVideo: Boolean(video),
-    hasAudio,
-    codecName: video?.codec_name ?? null,
-    pixFmt: video?.pix_fmt ?? null,
-    rotated: o.rotated
-  }
-}
-
-// Quelle liegt bereits exakt in Zielauflösung + browsertauglichem H.264 vor
-// -> kein Re-Encode nötig, nur Container-Copy. Anamorphe Quellen ebenso wenig: die
-// Kopie behielte die gestauchten Pixel. Rotierte Quellen NIE kopieren:
-// ein Stream-Copy behielte die Rotations-Metadaten, das Einbacken (Fit) rechnet
-// aber mit der Anzeige-Orientierung -> verzerrtes Bild. Re-Encode dreht (autorotate)
-// und bäckt die Ausrichtung fest ein.
-export function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: number): boolean {
-  return (
-    kind === 'video' &&
-    !info.rotated &&
-    info.sar === 1 &&
-    info.width === w &&
-    info.height === h &&
-    info.codecName === 'h264' &&
-    // 8-Bit-4:2:0 spielt Chromium direkt -- yuvj420p (Full-Range) ebenso wie
-    // yuv420p. 10-Bit (yuv420p10le) o.ä. würde nicht spielen -> Re-Encode.
-    (info.pixFmt === 'yuv420p' || info.pixFmt === 'yuvj420p')
-  )
 }
 
 /** Aktive Loudness-Normalisierung aus den Einstellungen (undefined = aus). */
@@ -259,24 +99,53 @@ function blurVariant(spec: {
   return spec.fit === 'blur' ? `b${spec.blurStrength}d${spec.blurDarken}` : undefined
 }
 
+interface Spec extends PlayerSpec {
+  reconvertId?: string
+}
+
+interface Prepared {
+  kind: MediaKind
+  plan: ConvertPlan
+  options: ConvertOptions
+  suffix: string
+  durationSec: number | null
+}
+
+/** Quelle analysieren (Medien-Info, mit Cache) und planen – gemeinsamer Kern. */
+async function prepare(sourcePath: string, kindIn: MediaKind, spec: Spec): Promise<Prepared> {
+  const res = await probeMediaInfo(sourcePath, { deep: true })
+  if (!res.ok) throw new Error(res.detail ? `${res.error} (${res.detail})` : res.error)
+  const v = res.info.video[0]
+  if (!v) throw new Error('Keine Videospur gefunden')
+  // GIF mit nur einem Bild ist ein Standbild -> als JPG statt als 1-Bild-Video
+  const still = res.info.isStill || v.fpsMode === 'still'
+  const kind: MediaKind = kindIn === 'gif' && still ? 'image' : kindIn
+  const options = playerOptions(kind, spec, currentLoudnorm())
+  const planned = planConversion(res.info, options, await getConvertCapabilities())
+  if (!planned.ok) throw new Error(planned.error)
+  const { suffix } = analyzeFit(
+    spec.fit,
+    v.displayWidth,
+    v.displayHeight,
+    spec.width,
+    spec.height,
+    Boolean(v.sar)
+  )
+  return {
+    kind,
+    plan: planned.plan,
+    options,
+    suffix,
+    durationSec: kind === 'image' ? null : res.info.durationSec
+  }
+}
+
 class ConvertManager {
   private jobs = new Map<string, ConvertJob>()
-  private procs = new Map<string, ChildProcessWithoutNullStreams>()
-  private specs = new Map<
-    string,
-    {
-      fit: PlayerImportRequest['fitMode']
-      width: number
-      height: number
-      blurStrength: number
-      blurDarken: number
-      reconvertId?: string
-    }
-  >()
+  private aborts = new Map<string, AbortController>()
+  private specs = new Map<string, Spec>()
   private sink: JobSink = () => {}
   private librarySink: LibrarySink = () => {}
-  private active = 0
-  private readonly concurrency = 1 // GPU-Encode bewusst sequentiell
 
   setSink(sink: JobSink): void {
     this.sink = sink
@@ -296,6 +165,11 @@ class ConvertManager {
   private update(job: ConvertJob, patch: Partial<ConvertJob>): void {
     Object.assign(job, patch)
     this.sink({ ...job })
+  }
+
+  // Eigene Spur der gemeinsamen Warteschlange: Importe warten nie auf den Video-Konverter
+  private queue(job: ConvertJob): void {
+    convertQueue.add(job.id, 'player', () => this.run(job))
   }
 
   enqueue(req: PlayerImportRequest): { jobIds: string[] } {
@@ -324,9 +198,9 @@ class ConvertManager {
       this.jobs.set(id, job)
       this.specs.set(id, { fit: req.fitMode, width, height, ...currentBlur() })
       this.sink({ ...job })
+      this.queue(job)
       jobIds.push(id)
     }
-    this.schedule()
     return { jobIds }
   }
 
@@ -367,32 +241,71 @@ class ConvertManager {
         reconvertId: it.reconvertId
       })
       this.sink({ ...job })
+      this.queue(job)
       jobIds.push(id)
     }
-    this.schedule()
     return { jobIds }
   }
 
-  private schedule(): void {
-    if (this.active >= this.concurrency) return
-    for (const job of this.jobs.values()) {
-      if (this.active >= this.concurrency) break
-      if (job.status === 'queued') {
-        this.active++
-        void this.run(job).finally(() => {
-          this.active--
-          this.schedule()
-        })
+  /** Plan ausführen (Fortschritt am Auftrag, Abbrechen über den AbortController). */
+  private async convert(job: ConvertJob, p: Prepared, output: string): Promise<void> {
+    const copy = Boolean(p.plan.video?.copy)
+    const encoder =
+      p.kind === 'image' || copy ? undefined : await resolveEncoder(getSettings().player.encoder)
+    this.update(job, { status: 'converting', encoder: copy ? 'copy' : (encoder ?? null) })
+    const args = buildConvertArgs(p.plan, p.options, {
+      input: job.sourcePath,
+      output,
+      h264Encoder: encoder
+    })
+    await runFfmpeg(args, {
+      durationSec: p.plan.durationSec,
+      signal: this.aborts.get(job.id)?.signal,
+      onProgress: (v) => this.update(job, { progress: v })
+    })
+  }
+
+  /** Vorschaubild aus dem AUFBEREITETEN Ergebnis (zeigt Blur-Rand/Letterbox/Streckung). */
+  private async thumbnail(
+    job: ConvertJob,
+    input: string,
+    output: string,
+    p: Prepared
+  ): Promise<boolean> {
+    this.update(job, { status: 'thumbnail' })
+    try {
+      const seek = Math.min(1, (p.durationSec ?? 1) * 0.1)
+      await runFfmpeg(
+        buildThumbArgs({ input, output, seekSec: seek, isVideo: p.kind !== 'image' }),
+        { signal: this.aborts.get(job.id)?.signal }
+      )
+      return existsSync(output)
+    } catch (thumbErr) {
+      // best effort -> ein fehlendes Vorschaubild darf den Import nicht versenken
+      if (!(thumbErr instanceof FfmpegCanceledError)) {
+        logLine(
+          '[player] Thumbnail fehlgeschlagen:',
+          thumbErr instanceof Error ? thumbErr.message : String(thumbErr)
+        )
       }
+      return false
     }
   }
 
   private async run(job: ConvertJob): Promise<void> {
     if (this.isCanceled(job)) return
     const spec = this.specs.get(job.id)!
-    if (spec.reconvertId) return this.runReconvert(job, spec.reconvertId)
+    this.aborts.set(job.id, new AbortController())
     try {
-      const kind = job.kind ?? kindOf(job.sourcePath)
+      if (spec.reconvertId) await this.runReconvert(job, spec, spec.reconvertId)
+      else await this.runImport(job, spec)
+    } finally {
+      this.aborts.delete(job.id)
+    }
+  }
+
+  private async runImport(job: ConvertJob, spec: Spec): Promise<void> {
+    try {
       const convKey = convKeyFor(
         job.sourcePath,
         spec.fit,
@@ -404,113 +317,25 @@ class ConvertManager {
       // Dedup: gleiche Quelle, gleicher Fit, gleiche Auflösung, gleicher Blur-Look.
       const existing = findByConvKey(convKey)
       if (existing) {
-        this.update(job, { status: 'done', progress: 1, kind, mediaId: existing.id })
+        this.update(job, { status: 'done', progress: 1, mediaId: existing.id })
         return
       }
 
-      this.update(job, { status: 'probing', kind })
-      const info = await probeSource(job.sourcePath)
+      this.update(job, { status: 'probing' })
+      const p = await prepare(job.sourcePath, job.kind ?? kindOf(job.sourcePath), spec)
       if (this.isCanceled(job)) return
-      if (kind !== 'image' && !info.hasVideo) {
-        throw new Error('Keine Videospur gefunden')
-      }
+      const title = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), p.suffix)
+      this.update(job, { title, kind: p.kind })
 
-      // Namens-Zusatz + tatsächlich nötiger Fit aus der Quell-Auflösung ableiten.
-      const { suffix, effectiveFit } = analyzeFit(
-        spec.fit,
-        info.width,
-        info.height,
-        spec.width,
-        spec.height,
-        info.sar !== 1
-      )
-      const title = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), suffix)
-      this.update(job, { title })
-
-      const storedName = `${job.id}${storedExtFor(kind)}`
+      const storedName = `${job.id}${storedExtFor(p.kind)}`
       const output = mediaFilePath(storedName)
       // eigener Suffix -> kollidiert nicht mit der gebackenen Bild-Datei (${id}.jpg)
       const thumbName = `${job.id}_thumb.jpg`
       const thumbPath = mediaFilePath(thumbName)
 
-      const blur = { strength: spec.blurStrength, darken: spec.blurDarken }
-      const loudnorm = currentLoudnorm()
-      if (kind === 'image') {
-        this.update(job, { status: 'converting' })
-        await this.spawnFf(
-          job,
-          buildImageArgs({
-            input: job.sourcePath,
-            output,
-            fit: effectiveFit,
-            width: spec.width,
-            height: spec.height,
-            blur
-          }),
-          null
-        )
-      } else if (
-        canStreamCopy(kind, info, spec.width, spec.height) &&
-        !(loudnorm && info.hasAudio)
-      ) {
-        // Schon passend -> nur kopieren, kein Re-Encode. (Bei aktiver Loudness +
-        // Audiospur NICHT kopieren, da -c:a copy nicht filtern kann.)
-        this.update(job, { status: 'converting', encoder: 'copy' })
-        await this.spawnFf(
-          job,
-          buildCopyArgs({
-            input: job.sourcePath,
-            output,
-            hasAudio: info.hasAudio
-          }),
-          info.durationSec
-        )
-      } else {
-        const encoder = await resolveEncoder(getSettings().player.encoder)
-        this.update(job, { status: 'converting', encoder })
-        await this.spawnFf(
-          job,
-          buildVideoArgs({
-            input: job.sourcePath,
-            output,
-            encoder,
-            fit: effectiveFit,
-            width: spec.width,
-            height: spec.height,
-            hasAudio: info.hasAudio,
-            blur,
-            loudnorm
-          }),
-          info.durationSec
-        )
-      }
+      await this.convert(job, p, output)
       if (this.isCanceled(job)) return
-
-      // Thumbnail (best effort -> Fehler hier darf den Import nicht versenken).
-      this.update(job, { status: 'thumbnail' })
-      let thumbOk = false
-      try {
-        const seek = Math.min(1, (info.durationSec ?? 1) * 0.1)
-        // Aus dem AUFBEREITETEN Ergebnis (output) miniaturisieren -> das Thumbnail
-        // zeigt den tatsächlichen Fit (Blur-Rand / Letterbox / Streckung).
-        await this.spawnFf(
-          job,
-          buildThumbArgs({
-            input: output,
-            output: thumbPath,
-            seekSec: seek,
-            isVideo: kind !== 'image'
-          }),
-          null,
-          true
-        )
-        thumbOk = existsSync(thumbPath)
-      } catch (thumbErr) {
-        logLine(
-          '[player] Thumbnail fehlgeschlagen:',
-          thumbErr instanceof Error ? thumbErr.message : String(thumbErr)
-        )
-      }
+      const thumbOk = await this.thumbnail(job, output, thumbPath, p)
       if (this.isCanceled(job)) return
 
       const sizeBytes = (() => {
@@ -523,16 +348,16 @@ class ConvertManager {
 
       const item = insertMedia({
         id: job.id,
-        kind,
+        kind: p.kind,
         title: job.title,
         originalName: basename(job.sourcePath),
         storedName,
         thumbName: thumbOk ? thumbName : null,
         width: spec.width,
         height: spec.height,
-        durationSec: kind === 'image' ? null : info.durationSec,
+        durationSec: p.durationSec,
         fitMode: spec.fit,
-        hasAudio: kind === 'image' ? false : info.hasAudio,
+        hasAudio: p.kind !== 'image' && Boolean(p.plan.audio),
         convKey,
         sizeBytes,
         sourcePath: job.sourcePath
@@ -540,7 +365,7 @@ class ConvertManager {
       this.update(job, { status: 'done', progress: 1, mediaId: item.id })
       this.librarySink()
     } catch (err) {
-      if (!this.isCanceled(job)) {
+      if (!this.isCanceled(job) && !(err instanceof FfmpegCanceledError)) {
         this.update(job, {
           status: 'error',
           error: err instanceof Error ? err.message : String(err)
@@ -562,11 +387,9 @@ class ConvertManager {
 
   // Neu-Konvertierung eines vorhandenen Mediums (gleiche id). In Temp-Dateien
   // konvertieren, dann die alten ersetzen -> die laufende Wiedergabe bricht nicht ab.
-  private async runReconvert(job: ConvertJob, id: string): Promise<void> {
-    const spec = this.specs.get(job.id)!
+  private async runReconvert(job: ConvertJob, spec: Spec, id: string): Promise<void> {
     const ext = storedExtFor(job.kind ?? kindOf(job.sourcePath))
     try {
-      const kind = job.kind ?? kindOf(job.sourcePath)
       const convKey = convKeyFor(
         job.sourcePath,
         spec.fit,
@@ -576,7 +399,7 @@ class ConvertManager {
       )
       const collision = findByConvKey(convKey)
       if (collision && collision.id === id) {
-        this.update(job, { status: 'done', progress: 1, kind, mediaId: id }) // bereits in dieser Auflösung
+        this.update(job, { status: 'done', progress: 1, mediaId: id }) // bereits in dieser Auflösung
         return
       }
       if (collision && collision.id !== id) deleteMedia(collision.id) // Duplikat -> UNIQUE frei
@@ -584,94 +407,16 @@ class ConvertManager {
       const tmpStored = mediaFilePath(`${id}__re${ext}`)
       const tmpThumb = mediaFilePath(`${id}__re_thumb.jpg`)
 
-      this.update(job, { status: 'probing', kind })
-      const info = await probeSource(job.sourcePath)
+      this.update(job, { status: 'probing' })
+      // Art der gespeicherten Datei bleibt (sonst passte die Endung nicht mehr)
+      const p = await prepare(job.sourcePath, job.kind ?? kindOf(job.sourcePath), spec)
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
-      if (kind !== 'image' && !info.hasVideo) throw new Error('Keine Videospur gefunden')
+      if (storedExtFor(p.kind) !== ext) throw new Error('Art des Mediums hat sich geändert')
+      const reTitle = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), p.suffix)
 
-      const { suffix, effectiveFit } = analyzeFit(
-        spec.fit,
-        info.width,
-        info.height,
-        spec.width,
-        spec.height,
-        info.sar !== 1
-      )
-      const reTitle = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), suffix)
-
-      const blur = { strength: spec.blurStrength, darken: spec.blurDarken }
-      const loudnorm = currentLoudnorm()
-      if (kind === 'image') {
-        this.update(job, { status: 'converting' })
-        await this.spawnFf(
-          job,
-          buildImageArgs({
-            input: job.sourcePath,
-            output: tmpStored,
-            fit: effectiveFit,
-            width: spec.width,
-            height: spec.height,
-            blur
-          }),
-          null
-        )
-      } else if (
-        canStreamCopy(kind, info, spec.width, spec.height) &&
-        !(loudnorm && info.hasAudio)
-      ) {
-        this.update(job, { status: 'converting', encoder: 'copy' })
-        await this.spawnFf(
-          job,
-          buildCopyArgs({
-            input: job.sourcePath,
-            output: tmpStored,
-            hasAudio: info.hasAudio
-          }),
-          info.durationSec
-        )
-      } else {
-        const encoder = await resolveEncoder(getSettings().player.encoder)
-        this.update(job, { status: 'converting', encoder })
-        await this.spawnFf(
-          job,
-          buildVideoArgs({
-            input: job.sourcePath,
-            output: tmpStored,
-            encoder,
-            fit: effectiveFit,
-            width: spec.width,
-            height: spec.height,
-            hasAudio: info.hasAudio,
-            blur,
-            loudnorm
-          }),
-          info.durationSec
-        )
-      }
+      await this.convert(job, p, tmpStored)
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
-
-      this.update(job, { status: 'thumbnail' })
-      let thumbOk = false
-      try {
-        const seek = Math.min(1, (info.durationSec ?? 1) * 0.1)
-        await this.spawnFf(
-          job,
-          buildThumbArgs({
-            input: tmpStored,
-            output: tmpThumb,
-            seekSec: seek,
-            isVideo: kind !== 'image'
-          }),
-          null,
-          true
-        )
-        thumbOk = existsSync(tmpThumb)
-      } catch (thumbErr) {
-        logLine(
-          '[player] Thumbnail (reconvert) fehlgeschlagen:',
-          thumbErr instanceof Error ? thumbErr.message : String(thumbErr)
-        )
-      }
+      const thumbOk = await this.thumbnail(job, tmpStored, tmpThumb, p)
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
 
       // Dateien tauschen
@@ -703,20 +448,20 @@ class ConvertManager {
       updateMediaConversion(id, {
         width: spec.width,
         height: spec.height,
-        durationSec: kind === 'image' ? null : info.durationSec,
+        durationSec: p.durationSec,
         fitMode: spec.fit,
-        hasAudio: kind === 'image' ? false : info.hasAudio,
+        hasAudio: p.kind !== 'image' && Boolean(p.plan.audio),
         convKey,
         sizeBytes,
         thumbName: existsSync(finalThumb) ? `${id}_thumb.jpg` : null,
         // Namens-Zusatz an das tatsächliche Ergebnis anpassen (Original/Scale/Fit).
         title: reTitle
       })
-      this.update(job, { status: 'done', progress: 1, kind, mediaId: id })
+      this.update(job, { status: 'done', progress: 1, mediaId: id })
       this.librarySink()
     } catch (err) {
       this.cleanupReconvertTmp(id, ext)
-      if (!this.isCanceled(job)) {
+      if (!this.isCanceled(job) && !(err instanceof FfmpegCanceledError)) {
         this.update(job, {
           status: 'error',
           error: err instanceof Error ? err.message : String(err)
@@ -725,66 +470,13 @@ class ConvertManager {
     }
   }
 
-  // Spawnt ffmpeg; durationSec!=null -> Fortschritt aus -progress. silent -> keine
-  // Job-Fehlermeldung setzen (für best-effort-Schritte wie Thumbnails).
-  private spawnFf(
-    job: ConvertJob,
-    args: string[],
-    durationSec: number | null,
-    silent = false
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const proc = spawn(ffmpegBinPath('ffmpeg'), args, { windowsHide: true })
-      this.procs.set(job.id, proc)
-      let stdoutBuf = ''
-      let stderrTail = ''
-
-      proc.stdout.on('data', (chunk: Buffer) => {
-        stdoutBuf += chunk.toString()
-        const lines = stdoutBuf.split('\n')
-        stdoutBuf = lines.pop() ?? ''
-        for (const line of lines) {
-          const [key, value] = line.split('=')
-          if (key === 'out_time_us' && durationSec && durationSec > 0) {
-            const us = Number(value)
-            if (Number.isFinite(us)) {
-              const p = Math.min(0.999, Math.max(0, us / 1_000_000 / durationSec))
-              if (p - job.progress >= 0.01) this.update(job, { progress: p })
-            }
-          }
-        }
-      })
-      proc.stderr.on('data', (chunk: Buffer) => {
-        stderrTail = (stderrTail + chunk.toString()).slice(-2000)
-      })
-      proc.on('error', (err) => {
-        this.procs.delete(job.id)
-        reject(err)
-      })
-      proc.on('close', (code) => {
-        this.procs.delete(job.id)
-        if (this.isCanceled(job)) {
-          resolve()
-          return
-        }
-        if (code === 0) resolve()
-        else if (silent) resolve()
-        else
-          reject(
-            new Error(
-              `ffmpeg beendet mit Code ${code}. ${stderrTail.trim().split('\n').pop() ?? ''}`
-            )
-          )
-      })
-    })
-  }
-
   cancel(id: string): void {
     const job = this.jobs.get(id)
     if (!job) return
     if (job.status === 'done' || job.status === 'error' || job.status === 'canceled') return
+    convertQueue.remove(id)
     this.update(job, { status: 'canceled' })
-    this.procs.get(id)?.kill('SIGKILL')
+    this.aborts.get(id)?.abort()
     // unfertige Ausgaben aufräumen
     for (const name of [`${id}.mp4`, `${id}.jpg`, `${id}_thumb.jpg`]) {
       try {
@@ -811,55 +503,23 @@ class ConvertManager {
    * der Ausgabe sauber und formatfüllend. Legt KEINEN DB-Eintrag an, nur die Datei.
    */
   async convertIdle(sourcePath: string): Promise<{ storedName: string; kind: 'image' | 'video' }> {
-    const p = getSettings().player
-    const width = Math.max(2, Math.round(p.wallWidth))
-    const height = Math.max(2, Math.round(p.wallHeight))
-    const fit = p.defaultFit
-    const blur = { strength: p.blurStrength ?? 50, darken: p.blurDarken ?? 0 }
-    const kind = kindOf(sourcePath)
-    const storedName = `__idle-${Date.now()}${storedExtFor(kind)}`
-    const output = mediaFilePath(storedName)
-    if (kind === 'image') {
-      await this.spawnRaw(buildImageArgs({ input: sourcePath, output, fit, width, height, blur }))
-      return { storedName, kind: 'image' }
+    const s = getSettings().player
+    const spec: Spec = {
+      fit: s.defaultFit,
+      width: Math.max(2, Math.round(s.wallWidth)),
+      height: Math.max(2, Math.round(s.wallHeight)),
+      ...currentBlur()
     }
-    // Video/GIF -> auf Wand-Auflösung gebackenes H.264-MP4 (GIF wird zur Loop-Datei).
-    const info = await probeSource(sourcePath)
-    if (!info.hasVideo) throw new Error('Keine Videospur in der Idle-Datei gefunden')
-    const encoder = await resolveEncoder(p.encoder)
-    await this.spawnRaw(
-      buildVideoArgs({
-        input: sourcePath,
-        output,
-        encoder,
-        fit,
-        width,
-        height,
-        hasAudio: info.hasAudio,
-        blur,
-        loudnorm: currentLoudnorm()
-      })
+    const p = await prepare(sourcePath, kindOf(sourcePath), spec)
+    const kind = p.kind === 'image' ? 'image' : 'video'
+    const storedName = `__idle-${Date.now()}${storedExtFor(p.kind)}`
+    const output = mediaFilePath(storedName)
+    const encoder =
+      kind === 'image' || p.plan.video?.copy ? undefined : await resolveEncoder(s.encoder)
+    await runFfmpeg(
+      buildConvertArgs(p.plan, p.options, { input: sourcePath, output, h264Encoder: encoder })
     )
-    return { storedName, kind: 'video' }
-  }
-
-  // Schlanker ffmpeg-Lauf ohne Job-/Fortschritts-Anbindung (Einzelfälle wie Idle).
-  private spawnRaw(args: string[]): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const proc = spawn(ffmpegBinPath('ffmpeg'), args, { windowsHide: true })
-      let tail = ''
-      proc.stderr.on('data', (c: Buffer) => {
-        tail = (tail + c.toString()).slice(-2000)
-      })
-      proc.on('error', reject)
-      proc.on('close', (code) =>
-        code === 0
-          ? resolve()
-          : reject(
-              new Error(`ffmpeg beendet mit Code ${code}. ${tail.trim().split('\n').pop() ?? ''}`)
-            )
-      )
-    })
+    return { storedName, kind }
   }
 }
 
