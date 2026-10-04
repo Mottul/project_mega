@@ -42,8 +42,9 @@ type JobSink = (job: ConvertJob) => void
 type LibrarySink = () => void
 
 export interface ProbeInfo {
-  width: number | null // ANZEIGE-Breite (rotationskorrigiert)
-  height: number | null // ANZEIGE-Höhe (rotationskorrigiert)
+  width: number | null // ANZEIGE-Breite (rotations- und SAR-korrigiert, quadratische Pixel)
+  height: number | null // ANZEIGE-Höhe (rotations- und SAR-korrigiert, quadratische Pixel)
+  sar: number // Pixel-Seitenverhältnis der Quelle (1 = quadratisch; unbekannt -> 1)
   durationSec: number | null
   hasVideo: boolean
   hasAudio: boolean
@@ -74,6 +75,31 @@ export function orient(
     height: swap ? codedW : codedH,
     rotated: rot !== 0
   }
+}
+
+/** ffprobe sample_aspect_ratio („4:3", „0:1", „N/A") -> Zahl; unbekannt/ungültig = 1. */
+export function parseSar(s: string | undefined): number {
+  const m = /^(\d+):(\d+)$/.exec(s ?? '')
+  if (!m) return 1
+  const num = Number(m[1])
+  const den = Number(m[2])
+  return num > 0 && den > 0 ? num / den : 1
+}
+
+/**
+ * Maße in quadratischen Pixeln – exakt dieselbe Rechnung wie der Filter SQUARE_PIXELS
+ * (encoder.ts), damit „passt schon"/Stream-Copy-Entscheidungen zum Ergebnis passen.
+ * Nur vergrößern: SAR > 1 verbreitert, SAR < 1 erhöht.
+ */
+export function squarePixelSize(
+  w: number | null,
+  h: number | null,
+  sar: number
+): { width: number | null; height: number | null } {
+  if (!w || !h || sar === 1) return { width: w, height: h }
+  return sar > 1
+    ? { width: Math.trunc((w * sar) / 2) * 2, height: h }
+    : { width: w, height: Math.trunc(h / sar / 2) * 2 }
 }
 
 function readEntries(dir: string): Dirent<string>[] {
@@ -127,17 +153,20 @@ const FIT_TITLE: Record<Fit, string> = {
 //  - gleiches Seitenverh.-> reine Skalierung, Fit egal -> „Scale" (billiger Scale
 //                                                          statt Blur-Graph)
 //  - anderes Seitenverh. -> Fit greift sichtbar        -> Blur/Letterbox/Stretch
+// srcW/srcH sind Anzeige-Maße in quadratischen Pixeln. Anamorphe Quellen sind auch bei
+// passenden Anzeige-Maßen nie „Original": sie werden auf quadratische Pixel umgerechnet.
 export function analyzeFit(
   fit: Fit,
   srcW: number | null,
   srcH: number | null,
   tgtW: number,
-  tgtH: number
+  tgtH: number,
+  anamorphic = false
 ): { suffix: string; effectiveFit: Fit } {
   const known = !!srcW && !!srcH
   const exact = known && srcW === tgtW && srcH === tgtH
   const sameAspect = known && Math.abs(srcW! / srcH! - tgtW / tgtH) < 0.01
-  if (exact) return { suffix: 'Original', effectiveFit: 'stretch' }
+  if (exact && !anamorphic) return { suffix: 'Original', effectiveFit: 'stretch' }
   if (sameAspect) return { suffix: 'Scale', effectiveFit: 'stretch' }
   return { suffix: FIT_TITLE[fit], effectiveFit: fit }
 }
@@ -158,6 +187,7 @@ async function probeSource(path: string): Promise<ProbeInfo> {
       width?: number
       height?: number
       duration?: string
+      sample_aspect_ratio?: string
       side_data_list?: { rotation?: number; side_data_type?: string }[]
       tags?: { rotate?: string }
     }[]
@@ -168,12 +198,16 @@ async function probeSource(path: string): Promise<ProbeInfo> {
   const hasAudio = streams.some((s) => s.codec_type === 'audio')
   const durStr = video?.duration ?? json.format?.duration
   const dur = durStr ? Number(durStr) : null
-  // Rotation berücksichtigen -> ANZEIGE-Maße (sonst gilt ein Hochkant-1080×1920,
-  // das codiert 1920×1080 ist, fälschlich als Querformat und wird nicht aufbereitet).
-  const o = orient(video?.width ?? null, video?.height ?? null, video ?? {})
+  // Erst die SAR (bezieht sich auf die gespeicherte Ausrichtung), dann die Rotation ->
+  // ANZEIGE-Maße (sonst gilt ein Hochkant-1080×1920, das codiert 1920×1080 ist,
+  // fälschlich als Querformat, und HDV 1440×1080 als 4:3 statt 16:9).
+  const sar = parseSar(video?.sample_aspect_ratio)
+  const sq = squarePixelSize(video?.width ?? null, video?.height ?? null, sar)
+  const o = orient(sq.width, sq.height, video ?? {})
   return {
     width: o.width,
     height: o.height,
+    sar,
     durationSec: dur && Number.isFinite(dur) ? dur : null,
     hasVideo: Boolean(video),
     hasAudio,
@@ -184,7 +218,8 @@ async function probeSource(path: string): Promise<ProbeInfo> {
 }
 
 // Quelle liegt bereits exakt in Zielauflösung + browsertauglichem H.264 vor
-// -> kein Re-Encode nötig, nur Container-Copy. Rotierte Quellen NIE kopieren:
+// -> kein Re-Encode nötig, nur Container-Copy. Anamorphe Quellen ebenso wenig: die
+// Kopie behielte die gestauchten Pixel. Rotierte Quellen NIE kopieren:
 // ein Stream-Copy behielte die Rotations-Metadaten, das Einbacken (Fit) rechnet
 // aber mit der Anzeige-Orientierung -> verzerrtes Bild. Re-Encode dreht (autorotate)
 // und bäckt die Ausrichtung fest ein.
@@ -192,6 +227,7 @@ export function canStreamCopy(kind: MediaKind, info: ProbeInfo, w: number, h: nu
   return (
     kind === 'video' &&
     !info.rotated &&
+    info.sar === 1 &&
     info.width === w &&
     info.height === h &&
     info.codecName === 'h264' &&
@@ -385,7 +421,8 @@ class ConvertManager {
         info.width,
         info.height,
         spec.width,
-        spec.height
+        spec.height,
+        info.sar !== 1
       )
       const title = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), suffix)
       this.update(job, { title })
@@ -557,7 +594,8 @@ class ConvertManager {
         info.width,
         info.height,
         spec.width,
-        spec.height
+        spec.height,
+        info.sar !== 1
       )
       const reTitle = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), suffix)
 

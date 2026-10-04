@@ -157,9 +157,22 @@ export async function resolveEncoder(setting: string): Promise<string> {
 }
 
 /**
+ * Auf quadratische Pixel bringen (SAR 1:1). Anamorphes Material (HDV 1440×1080, DV,
+ * DVD) ist gestaucht gespeichert und erst mit dem Pixel-Seitenverhältnis richtig
+ * proportioniert. force_original_aspect_ratio rechnet aber mit den GESPEICHERTEN Maßen
+ * und setsar=1 verwirft die Angabe -> ohne diesen Schritt wäre das Bild verzerrt.
+ * Es wird nur vergrößert (keine Details verschenkt); bei SAR 1 oder unbekannter SAR
+ * (ffmpeg setzt dann sar=1) bleibt das Bild unverändert. Die Rechnung entspricht
+ * squarePixelSize() in convertManager.
+ */
+export const SQUARE_PIXELS =
+  "scale='if(gte(sar,1),trunc(iw*sar/2)*2,iw)':'if(gte(sar,1),ih,trunc(ih/sar/2)*2)',setsar=1"
+
+/**
  * Fit-Filtergraph für die Ziel-/Wand-Auflösung. Ein-/Ausgang sind je genau einer
  * (auch der blur-Graph via split/overlay), daher überall als -vf nutzbar.
  * pixFmt=null -> kein format-Suffix (für Standbild-/JPG-Ausgabe).
+ * „stretch" füllt die Fläche ohnehin vollständig – dort spielt die SAR keine Rolle.
  */
 export function buildFitFilter(
   fit: FitMode,
@@ -177,7 +190,7 @@ export function buildFitFilter(
   }
   if (fit === 'bars') {
     return (
-      `scale=${W}:${H}:force_original_aspect_ratio=decrease,` +
+      `${SQUARE_PIXELS},scale=${W}:${H}:force_original_aspect_ratio=decrease,` +
       `pad=${W}:${H}:(${W}-iw)/2:(${H}-ih)/2:color=black,setsar=1${suffix}`
     )
   }
@@ -191,7 +204,7 @@ export function buildFitFilter(
   const dimChain =
     dim > 0 ? `,drawbox=x=0:y=0:w=${W}:h=${H}:color=black@${dim.toFixed(3)}:t=fill` : ''
   return (
-    `split=2[bg][fg];` +
+    `${SQUARE_PIXELS},split=2[bg][fg];` +
     `[bg]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},boxblur=${radius}:1${dimChain}[bgb];` +
     `[fg]scale=${W}:${H}:force_original_aspect_ratio=decrease[fgs];` +
     `[bgb][fgs]overlay=(W-w)/2:(H-h)/2,setsar=1${suffix}`

@@ -7,7 +7,9 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', isPackaged: false }
 }))
 
-const { analyzeFit, canStreamCopy, orient } = await import('./convertManager')
+const { analyzeFit, canStreamCopy, orient, parseSar, squarePixelSize } =
+  await import('./convertManager')
+const { buildFitFilter, SQUARE_PIXELS } = await import('./encoder')
 import type { ProbeInfo } from './convertManager'
 
 const probe = (over: Partial<ProbeInfo>): ProbeInfo => ({
@@ -19,6 +21,7 @@ const probe = (over: Partial<ProbeInfo>): ProbeInfo => ({
   codecName: 'h264',
   pixFmt: 'yuv420p',
   rotated: false,
+  sar: 1,
   ...over
 })
 
@@ -70,6 +73,9 @@ describe('convertManager – canStreamCopy (Re-Encode vermeiden)', () => {
     expect(canStreamCopy('video', probe({ width: 1280, height: 720 }), 1920, 1080)).toBe(false)
     expect(canStreamCopy('image', probe({}), 1920, 1080)).toBe(false)
   })
+  it('anamorphe Quelle nie kopieren (die Kopie behielte gestauchte Pixel)', () => {
+    expect(canStreamCopy('video', probe({ sar: 4 / 3 }), 1920, 1080)).toBe(false)
+  })
   it('rotierte Quelle nie kopieren (sonst kein Aufbereiten, verzerrt)', () => {
     // Selbst wenn die (Anzeige-)Maße passen: rotiert -> Re-Encode erzwingen.
     expect(canStreamCopy('video', probe({ rotated: true }), 1920, 1080)).toBe(false)
@@ -101,5 +107,37 @@ describe('convertManager – orient (Rotation der Handy-Videos)', () => {
   })
   it('keine Rotation -> Maße unverändert', () => {
     expect(orient(1920, 1080, {})).toEqual({ width: 1920, height: 1080, rotated: false })
+  })
+})
+
+describe('anamorphe Pixel (SAR)', () => {
+  it('parseSar: ffprobe-Schreibweisen, unbekannt = 1', () => {
+    expect(parseSar('4:3')).toBeCloseTo(4 / 3)
+    expect(parseSar('1:1')).toBe(1)
+    expect(parseSar('0:1')).toBe(1)
+    expect(parseSar('N/A')).toBe(1)
+    expect(parseSar(undefined)).toBe(1)
+  })
+  it('squarePixelSize: nur vergrößern (HDV breiter, NTSC-4:3 höher)', () => {
+    expect(squarePixelSize(1440, 1080, 4 / 3)).toEqual({ width: 1920, height: 1080 })
+    expect(squarePixelSize(720, 576, 64 / 45)).toEqual({ width: 1024, height: 576 })
+    expect(squarePixelSize(720, 480, 8 / 9)).toEqual({ width: 720, height: 540 })
+    expect(squarePixelSize(1920, 1080, 1)).toEqual({ width: 1920, height: 1080 })
+  })
+  it('analyzeFit: HDV mit passender Anzeige-Größe ist „Scale" statt „Original"', () => {
+    expect(analyzeFit('bars', 1920, 1080, 1920, 1080, true)).toEqual({
+      suffix: 'Scale',
+      effectiveFit: 'stretch'
+    })
+  })
+  it('buildFitFilter: Letterbox/Blur rechnen zuerst auf quadratische Pixel um', () => {
+    expect(buildFitFilter('bars', 1920, 1080, 'yuv420p').startsWith(`${SQUARE_PIXELS},`)).toBe(true)
+    expect(buildFitFilter('blur', 1920, 1080, 'yuv420p').startsWith(`${SQUARE_PIXELS},split`)).toBe(
+      true
+    )
+    // Stretch füllt ohnehin die ganze Fläche
+    expect(buildFitFilter('stretch', 1920, 1080, 'yuv420p')).toBe(
+      'scale=1920:1080,setsar=1,format=yuv420p'
+    )
   })
 })

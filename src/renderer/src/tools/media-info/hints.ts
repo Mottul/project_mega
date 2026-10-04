@@ -470,11 +470,12 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
       )
     }
     if (v.sar) {
+      // Laptop-Playout (Mottulbox-Player, VLC, PowerPoint) rechnet die SAR ein
       add(
         'sar',
-        'warning',
+        t === 'laptop' ? 'info' : 'warning',
         `Anamorphe Pixel (SAR ${v.sar})`,
-        `Gespeichert ${fmtResolution(w, h)}, Anzeige ${fmtResolution(v.displayWidth, v.displayHeight)}. Viele Medienserver, der HAP-Pfad und der Mottulbox-Player ignorieren das Pixel-Seitenverhältnis – das Bild erscheint verzerrt (gestaucht bzw. gedehnt). Vor der Show auf quadratische Pixel skalieren.`
+        `Gespeichert ${fmtResolution(w, h)}, Anzeige ${fmtResolution(v.displayWidth, v.displayHeight)}. Viele Medienserver und Player-Boxen ignorieren das Pixel-Seitenverhältnis – das Bild erscheint verzerrt (gestaucht bzw. gedehnt). Der Mottulbox-Player rechnet es beim Import ein; für andere Systeme vorher auf quadratische Pixel skalieren.`
       )
     }
     if (v.rotation || v.mirrored) {
