@@ -139,7 +139,7 @@ export function MediaInfo(): JSX.Element {
   const [dragOver, setDragOver] = useState(false)
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'order', dir: 1 })
 
-  // Übergabe aus anderen Tools (z.B. HAP-Konverter: „Details in Medien-Info")
+  // Übergabe aus anderen Tools (z.B. Video-Konverter: „Details in Medien-Info")
   useEffect(() => {
     const handed = useHandoff.getState().takePaths('media-info')
     if (handed.length) void useMediaInfo.getState().addInputs(handed, true)
@@ -228,17 +228,20 @@ export function MediaInfo(): JSX.Element {
     if (paths.length) void useMediaInfo.getState().addInputs(paths)
   }
 
-  function sendToHap(paths: string[]): void {
+  // An den Video-Konverter – mit Prüfprofil, damit Zielsystem und Show-Raster dort
+  // gleich vorausgewählt sind
+  function sendToConverter(paths: string[]): void {
     if (!paths.length) return
     useHandoff.getState().givePaths('hap-converter', paths)
+    useHandoff.getState().giveConvertProfile({ target: profile.target, raster: profile.raster })
     navigate('/tool/hap-converter')
   }
 
-  // Videos, für die eine HAP-Konvertierung sinnvoll ist (nicht schon HAP)
-  const hapCandidates = entries
+  // konvertierbare Videos (keine Standbilder/reinen Tondateien)
+  const convertCandidates = entries
     .filter((e) => {
       const v = e.info ? mainVideo(e.info) : null
-      return v && v.fpsMode !== 'still' && v.codecName && v.codecName !== 'hap'
+      return v && v.fpsMode !== 'still' && v.codecName
     })
     .map((e) => e.path)
 
@@ -466,9 +469,13 @@ export function MediaInfo(): JSX.Element {
                 </span>
               )}
               <div className="flex-1" />
-              {hapCandidates.length > 0 && !locked && (
-                <Button variant="outline" onClick={() => sendToHap(hapCandidates)}>
-                  <FileCog className="size-4" /> An HAP-Konverter ({hapCandidates.length})
+              {convertCandidates.length > 0 && !locked && (
+                <Button
+                  variant="outline"
+                  onClick={() => sendToConverter(convertCandidates)}
+                  title="Im Video-Konverter passend zum gewählten Zielsystem aufbereiten"
+                >
+                  <FileCog className="size-4" /> Konvertieren ({convertCandidates.length})
                 </Button>
               )}
               {entries.length > 0 && (
@@ -532,7 +539,7 @@ export function MediaInfo(): JSX.Element {
                     key={current.path}
                     entry={current}
                     hints={currentHints}
-                    onSendToHap={locked ? null : sendToHap}
+                    onConvert={locked ? null : sendToConverter}
                   />
                 )}
               </>

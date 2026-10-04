@@ -1,10 +1,16 @@
 // Kleiner, nicht persistierter Übergabe-Speicher: ein Tool legt einen Wert ab,
 // ein anderes übernimmt ihn beim Öffnen. So kann der Netzwerk-Scanner „diese IP
-// im NovaStar-Tool verwenden" anbieten und die Medien-Info Dateien an den
-// HAP-Konverter geben (und zurück), ohne die Tools direkt zu koppeln.
+// im NovaStar-Tool verwenden" anbieten und die Medien-Info Dateien samt Prüfprofil an
+// den Video-Konverter geben (und zurück), ohne die Tools direkt zu koppeln.
 // Gilt pro Fenster (jedes Fenster hat seinen eigenen Renderer-Zustand).
 
 import { create } from 'zustand'
+
+/** Prüfprofil der Medien-Info für den Video-Konverter (Zielsystem + Show-Raster). */
+export interface ConvertProfileHandoff {
+  target: string
+  raster: string
+}
 
 interface HandoffState {
   novastarHost: string | null
@@ -16,6 +22,9 @@ interface HandoffState {
   givePaths: (toolId: string, paths: string[]) => void
   /** Pfade für ein Tool einmalig abholen (danach leer). */
   takePaths: (toolId: string) => string[]
+  convertProfile: ConvertProfileHandoff | null
+  giveConvertProfile: (p: ConvertProfileHandoff) => void
+  takeConvertProfile: () => ConvertProfileHandoff | null
 }
 
 export const useHandoff = create<HandoffState>((set, get) => ({
@@ -41,5 +50,12 @@ export const useHandoff = create<HandoffState>((set, get) => ({
       })
     }
     return list
+  },
+  convertProfile: null,
+  giveConvertProfile: (p) => set({ convertProfile: p }),
+  takeConvertProfile: () => {
+    const p = get().convertProfile
+    if (p) set({ convertProfile: null })
+    return p
   }
 }))

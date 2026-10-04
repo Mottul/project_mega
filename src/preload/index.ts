@@ -21,17 +21,17 @@ const api: ToolboxApi = {
   openToolWindow: (id) => ipcRenderer.invoke(Channels.windowOpenTool, id),
 
   ffmpeg: {
-    checkHap: () => ipcRenderer.invoke(Channels.ffmpegCheckHap),
     probe: (path) => ipcRenderer.invoke(Channels.ffmpegProbe, path)
   },
 
-  hap: {
-    enqueue: (req) => ipcRenderer.invoke(Channels.hapEnqueue, req),
-    list: () => ipcRenderer.invoke(Channels.hapList),
-    cancel: (id) => ipcRenderer.invoke(Channels.hapCancel, id),
-    cancelAll: () => ipcRenderer.invoke(Channels.hapCancelAll),
-    clearFinished: () => ipcRenderer.invoke(Channels.hapClearFinished),
-    onUpdate: (cb) => subscribe(Channels.hapUpdate, (job) => cb(job as never))
+  converter: {
+    capabilities: () => ipcRenderer.invoke(Channels.converterCapabilities),
+    enqueue: (req) => ipcRenderer.invoke(Channels.converterEnqueue, req),
+    list: () => ipcRenderer.invoke(Channels.converterList),
+    cancel: (id) => ipcRenderer.invoke(Channels.converterCancel, id),
+    cancelAll: () => ipcRenderer.invoke(Channels.converterCancelAll),
+    clearFinished: () => ipcRenderer.invoke(Channels.converterClearFinished),
+    onUpdate: (cb) => subscribe(Channels.converterUpdate, (job) => cb(job as never))
   },
 
   mediaInfo: {

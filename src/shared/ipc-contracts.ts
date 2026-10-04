@@ -9,9 +9,9 @@ import type {
   ConvertJob,
   DisplayInfo,
   FitMode,
-  HapCheckResult,
-  HapEnqueueRequest,
-  HapJob,
+  ConvertCapabilities,
+  ConverterEnqueueRequest,
+  ConverterJob,
   ImportProgress,
   MediaCollectResult,
   MediaInfoResult,
@@ -75,15 +75,16 @@ export const Channels = {
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   appLogPath: 'app:logPath',
-  // ffmpeg / HAP
-  ffmpegCheckHap: 'ffmpeg:checkHap',
+  // ffmpeg
   ffmpegProbe: 'ffmpeg:probe',
-  hapEnqueue: 'hap:enqueue',
-  hapList: 'hap:list',
-  hapCancel: 'hap:cancel',
-  hapCancelAll: 'hap:cancelAll',
-  hapClearFinished: 'hap:clearFinished',
-  hapUpdate: 'hap:update', // Event: HapJob
+  // Video-Konverter (gemeinsamer Konvertierungs-Kern, früher HAP-Konverter)
+  converterCapabilities: 'converter:capabilities',
+  converterEnqueue: 'converter:enqueue',
+  converterList: 'converter:list',
+  converterCancel: 'converter:cancel',
+  converterCancelAll: 'converter:cancelAll',
+  converterClearFinished: 'converter:clearFinished',
+  converterUpdate: 'converter:update', // Event: ConverterJob
   // Medien-Info (ffprobe)
   mediaInfoProbe: 'mediaInfo:probe',
   mediaInfoRaw: 'mediaInfo:raw',
@@ -256,18 +257,19 @@ export interface ToolboxApi {
   openToolWindow(id: string): Promise<void>
 
   ffmpeg: {
-    checkHap(): Promise<HapCheckResult>
     probe(path: string): Promise<ProbeResult>
   }
 
-  hap: {
-    enqueue(req: HapEnqueueRequest): Promise<{ jobIds: string[] }>
-    list(): Promise<HapJob[]>
+  converter: {
+    /** Was kann das gebündelte ffmpeg (Formate, HDR -> SDR)? */
+    capabilities(): Promise<ConvertCapabilities>
+    enqueue(req: ConverterEnqueueRequest): Promise<{ jobIds: string[] }>
+    list(): Promise<ConverterJob[]>
     cancel(id: string): Promise<void>
     cancelAll(): Promise<void>
     clearFinished(): Promise<void>
-    /** Live-Updates einzelner Jobs. Liefert eine Cleanup-Funktion. */
-    onUpdate(cb: (job: HapJob) => void): () => void
+    /** Live-Updates einzelner Aufträge. Liefert eine Cleanup-Funktion. */
+    onUpdate(cb: (job: ConverterJob) => void): () => void
   }
 
   mediaInfo: {

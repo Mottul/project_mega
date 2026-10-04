@@ -3,7 +3,7 @@
 // Profilwechsel sofort neu bewertet (kein neuer ffprobe-Lauf) und testbar.
 // Schwellen/Grenzen: Stand 2026, bewusst als Hinweis („prüfen") formuliert.
 
-import type { HapFormat, MediaInfo, MediaVideoTrack } from '@shared/types'
+import type { MediaInfo, MediaVideoTrack } from '@shared/types'
 import {
   channelLabel,
   fmtBitrate,
@@ -294,7 +294,7 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
         'longgop',
         t === 'mediaserver' ? 'warning' : t === 'general' ? 'info' : null,
         'Long-GOP-Codec',
-        'Bilder hängen voneinander ab: Scrubbing, Rückwärts-/Speed-Wiedergabe, schnelle Cue-Wechsel und viele Layer belasten den Decoder. Für Medienserver HAP, ProRes oder DNxHR verwenden (→ HAP-Konverter).'
+        'Bilder hängen voneinander ab: Scrubbing, Rückwärts-/Speed-Wiedergabe, schnelle Cue-Wechsel und viele Layer belasten den Decoder. Für Medienserver HAP, ProRes oder DNxHR verwenden (→ Video-Konverter).'
       )
     }
     if (LEGACY_CODECS.has(c)) {
@@ -435,7 +435,7 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
         'hap-mod4',
         'info',
         `Für HAP nicht durch 4 teilbar (→ ${fmtResolution(pw, ph)})`,
-        `HAP komprimiert 4×4-Pixelblöcke; der HAP-Konverter füllt rechts/unten schwarz auf (+${pw - w}/${ph - h} px). Bei pixelgenauem LED-Mapping als Linie sichtbar – besser vorher passend skalieren oder zuschneiden.`
+        `HAP komprimiert 4×4-Pixelblöcke; der Video-Konverter füllt rechts/unten schwarz auf (+${pw - w}/${ph - h} px). Bei pixelgenauem LED-Mapping als Linie sichtbar – besser vorher passend skalieren oder zuschneiden.`
       )
     }
     if ((w % 2 || h % 2) && !info.isStill) {
@@ -475,7 +475,7 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
         'sar',
         t === 'laptop' ? 'info' : 'warning',
         `Anamorphe Pixel (SAR ${v.sar})`,
-        `Gespeichert ${fmtResolution(w, h)}, Anzeige ${fmtResolution(v.displayWidth, v.displayHeight)}. Viele Medienserver und Player-Boxen ignorieren das Pixel-Seitenverhältnis – das Bild erscheint verzerrt (gestaucht bzw. gedehnt). Der Mottulbox-Player rechnet es beim Import ein; für andere Systeme vorher auf quadratische Pixel skalieren.`
+        `Gespeichert ${fmtResolution(w, h)}, Anzeige ${fmtResolution(v.displayWidth, v.displayHeight)}. Viele Medienserver und Player-Boxen ignorieren das Pixel-Seitenverhältnis – das Bild erscheint verzerrt (gestaucht bzw. gedehnt). Mottulbox-Player und Video-Konverter rechnen es ein – für andere Systeme vorher konvertieren.`
       )
     }
     if (v.rotation || v.mirrored) {
@@ -485,7 +485,7 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
         v.mirrored && !v.rotation
           ? 'Spiegelung per Metadaten'
           : `Drehung per Metadaten (${v.rotation}°)`,
-        'Das Bild wird nur per Metadaten gedreht/gespiegelt. Medienserver und LED-Player ignorieren das teils – dann liegt das Bild falsch. HAP-Konverter und Mottulbox-Player rechnen die Drehung fest ein.'
+        'Das Bild wird nur per Metadaten gedreht/gespiegelt. Medienserver und LED-Player ignorieren das teils – dann liegt das Bild falsch. Video-Konverter und Mottulbox-Player rechnen die Drehung fest ein.'
       )
     }
     if (v.displayHeight > v.displayWidth) {
@@ -696,7 +696,7 @@ export function analyzeMedia(info: MediaInfo, profile: CheckProfile): MediaHint[
           `Alpha-Kanal vorhanden (${v.codec})`,
           info.isStill
             ? 'Transparenz bleibt nur in Alpha-fähigen Formaten erhalten (PNG, TIFF, WebP) – nicht als JPEG speichern.'
-            : 'Transparenz bleibt nur in Alpha-fähigen Codecs erhalten (HAP Alpha, ProRes 4444, PNG, QuickTime Animation) – im HAP-Konverter „HAP Alpha" wählen.'
+            : 'Transparenz bleibt nur in Alpha-fähigen Codecs erhalten (HAP Alpha, ProRes 4444, PNG, QuickTime Animation) – der Video-Konverter erhält sie automatisch (HAP Alpha bzw. ProRes 4444).'
         )
       }
     } else if (/alpha|transparent|rgba|keyed|overlay/i.test(name) && !info.isStill) {
@@ -991,104 +991,4 @@ export function playlistHints(infos: MediaInfo[]): MediaHint[] {
     })
   }
   return out
-}
-
-/* ----------------------------- HAP-Konverter ------------------------------ */
-
-/** Kurz-Hinweise für eine Eingabedatei des HAP-Konverters (gewähltes Format). */
-export function hapInputHints(info: MediaInfo, format: HapFormat): MediaHint[] {
-  const out: MediaHint[] = []
-  const v = mainVideo(info)
-  if (!v || v.fpsMode === 'still') {
-    out.push({
-      id: 'hap-novideo',
-      level: 'problem',
-      title: 'Keine Videospur',
-      text: 'Reine Audio-/Bilddatei – nicht als HAP konvertierbar.'
-    })
-    return out
-  }
-  if (!v.codecName) {
-    out.push({
-      id: 'hap-undecodable',
-      level: 'problem',
-      title: 'Codec nicht decodierbar',
-      text: 'ffmpeg kann diese Videospur nicht lesen.'
-    })
-  }
-  if (v.codecName === 'hap') {
-    out.push({
-      id: 'hap-already',
-      level: 'info',
-      title: `Bereits ${v.codec}`,
-      text: 'Eine erneute Konvertierung ist meist nicht nötig.'
-    })
-  }
-  if (v.width % 4 || v.height % 4) {
-    const pw = Math.ceil(v.width / 4) * 4
-    const ph = Math.ceil(v.height / 4) * 4
-    out.push({
-      id: 'hap-pad',
-      level: 'info',
-      title: `Wird auf ${fmtResolution(pw, ph)} aufgefüllt`,
-      text: 'Schwarzer Rand rechts/unten, weil HAP durch 4 teilbare Maße braucht.'
-    })
-  }
-  if (v.alpha && format !== 'hap_alpha') {
-    out.push({
-      id: 'hap-alpha-lost',
-      level: 'warning',
-      title: 'Alpha geht verloren',
-      text: 'Die Quelle hat Transparenz – Format „HAP Alpha" wählen.'
-    })
-  }
-  if (!v.alpha && format === 'hap_alpha') {
-    out.push({
-      id: 'hap-alpha-none',
-      level: 'info',
-      title: 'Quelle ohne Alpha',
-      text: 'HAP Alpha bringt hier nichts – HAP Q reicht.'
-    })
-  }
-  if (v.scan === 'tff' || v.scan === 'bff') {
-    out.push({
-      id: 'hap-interlaced',
-      level: 'warning',
-      title: 'Interlaced',
-      text: 'Wird nicht deinterlaced – Kammeffekte bleiben im HAP-Clip.'
-    })
-  }
-  if (v.fpsMode === 'vfr' || v.fpsMode === 'vfr-suspect') {
-    out.push({
-      id: 'hap-vfr',
-      level: 'warning',
-      title: 'Variable Bildrate',
-      text: 'Bleibt im HAP-Clip erhalten – Ruckler im Medienserver möglich.'
-    })
-  }
-  if (v.rotation === 90 || v.rotation === 270) {
-    out.push({
-      id: 'hap-rotation',
-      level: 'info',
-      title: `Drehung wird eingerechnet (→ ${fmtResolution(v.height, v.width)})`,
-      text: 'Der HAP-Clip wird hochkant gespeichert – Medienserver brauchen das Flag dann nicht mehr.'
-    })
-  }
-  if (v.sar) {
-    out.push({
-      id: 'hap-sar',
-      level: 'warning',
-      title: 'Anamorphe Pixel',
-      text: 'Das Pixel-Seitenverhältnis bleibt; Medienserver zeigen das Bild ggf. verzerrt (gestaucht bzw. gedehnt).'
-    })
-  }
-  if (v.hdr) {
-    out.push({
-      id: 'hap-hdr',
-      level: 'warning',
-      title: 'HDR-Quelle',
-      text: 'Wird nicht nach SDR gewandelt – Farben/Helligkeit prüfen.'
-    })
-  }
-  return sortHints(out)
 }

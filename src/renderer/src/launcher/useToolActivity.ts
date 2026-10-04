@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/api'
 
-// Live-Status je Tool für den Homescreen: zeigt, was gerade läuft (HAP-Jobs,
+// Live-Status je Tool für den Homescreen: zeigt, was gerade läuft (Konverter-Aufträge,
 // YouTube-Downloads, laufender Timer, offene Player-Ausgabe). Tools ohne
 // Aktivität fehlen einfach in der Map.
 
@@ -11,7 +11,7 @@ export interface ToolActivity {
 }
 
 export function useToolActivity(): Record<string, ToolActivity> {
-  const [hap, setHap] = useState(0)
+  const [conv, setConv] = useState(0)
   const [yt, setYt] = useState(0)
   const [timer, setTimer] = useState(false)
   const [player, setPlayer] = useState<{ playing: boolean; output: boolean; items: number }>({
@@ -20,19 +20,19 @@ export function useToolActivity(): Record<string, ToolActivity> {
     items: 0
   })
 
-  // HAP-Jobs
+  // Video-Konverter
   useEffect(() => {
     const jobs = new Map<string, string>()
     const recompute = (): void =>
-      setHap(
+      setConv(
         [...jobs.values()].filter((s) => s === 'running' || s === 'queued' || s === 'probing')
           .length
       )
-    void api.hap.list().then((list) => {
+    void api.converter.list().then((list) => {
       for (const j of list) jobs.set(j.id, j.status)
       recompute()
     })
-    return api.hap.onUpdate((job) => {
+    return api.converter.onUpdate((job) => {
       jobs.set(job.id, job.status)
       recompute()
     })
@@ -72,7 +72,7 @@ export function useToolActivity(): Record<string, ToolActivity> {
   }, [])
 
   const out: Record<string, ToolActivity> = {}
-  if (hap > 0) out['hap-converter'] = { count: hap, label: `konvertiert · ${hap}` }
+  if (conv > 0) out['hap-converter'] = { count: conv, label: `konvertiert · ${conv}` }
   if (yt > 0) out['youtube-dl'] = { count: yt, label: `lädt · ${yt}` }
   if (timer) out['stage-timer'] = { count: 1, label: 'läuft' }
   if (player.playing)

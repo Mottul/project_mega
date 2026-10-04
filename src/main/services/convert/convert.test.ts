@@ -9,6 +9,7 @@ const { buildConvertArgs, h264Level } = await import('./args')
 const { capabilitiesFrom, parseEncoderNames, parseFilterNames } = await import('./capabilities')
 const { ConvertQueue } = await import('./queue')
 const { ffmpegErrorText } = await import('./runFfmpeg')
+const { computeChunks, uniqueOutputPath } = await import('./converterJobs')
 import { planConversion, type ConvertPlan } from '@shared/convertPlan'
 import type { ConvertOptions, MediaInfo } from '@shared/types'
 import {
@@ -153,5 +154,24 @@ describe('Fähigkeiten, Fehlertexte, Warteschlange', () => {
     expect(started).toEqual(['k1', 'p1', 'k2'])
     q.setLimit('converter', 2)
     expect(q.runningCount('converter')).toBe(1)
+  })
+})
+
+describe('Auftragsliste', () => {
+  it('Ausgabename: nie überschreiben, Groß/klein egal, nie die Quelle selbst', () => {
+    const taken = new Set(['/out/clip_hap_q.mov', '/out/clip_hap_q_2.mov'])
+    const has = (p: string): boolean => taken.has(p.toLowerCase())
+    expect(uniqueOutputPath('/in/clip.mp4', '/out', 'hap_q', '.mov', has)).toBe(
+      '/out/clip_hap_q_3.mov'
+    )
+    expect(uniqueOutputPath('/in/clip.mp4', null, 'h264', '.mp4', () => false)).toBe(
+      '/in/clip_h264.mp4'
+    )
+  })
+
+  it('HAP-Chunks aus der Fläche, mindestens 1', () => {
+    expect(computeChunks(null, null)).toBe(1)
+    expect(computeChunks(1280, 720)).toBe(1)
+    expect(computeChunks(1920, 1080)).toBeGreaterThanOrEqual(1)
   })
 })

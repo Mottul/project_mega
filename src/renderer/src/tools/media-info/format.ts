@@ -1,5 +1,5 @@
 // Anzeige-Formatierung der Medien-Info (de-DE). Rein: kein React, kein api-Import
-// -> testbar und vom HAP-Konverter mitnutzbar.
+// -> testbar und vom Video-Konverter mitnutzbar.
 
 import type { MediaAudioTrack, MediaScanType, MediaVideoTrack } from '@shared/types'
 

@@ -1,50 +1,104 @@
-// Eingabeliste + Einstellungen des HAP-Konverters in einem (nicht persistierten)
-// Store: beides soll den Wechsel zur Medien-Info und zurück überstehen („Details
-// ansehen" darf weder die vorbereitete Auswahl noch Kompressor/Parallelität/Chunks
-// verwerfen). Format und Ausgabeordner stehen zusätzlich in settings.json; die Jobs
-// selbst leben im main. Dazu ein kleiner Analyse-Cache für die Eckdaten je Eingabe.
+// Zustand des Video-Konverters. Eingabeliste (nicht persistiert) übersteht den Wechsel
+// zur Medien-Info und zurück; Zielsystem, Format-Einstellungen und Parallelität werden
+// gemerkt (debouncedStorage, Projekt-Konvention). Der Ausgabeordner steht in
+// settings.json (lastHapOutputDir); die Aufträge selbst leben im main.
 
 import { create } from 'zustand'
-import type { HapCompressor, MediaInfoResult } from '@shared/types'
+import { persist } from 'zustand/middleware'
+import type { ConvertOptions, HapFormat, MediaInfoResult } from '@shared/types'
 import { dotted, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import { api } from '@renderer/lib/api'
+import { debouncedStorage } from '@renderer/lib/persistStorage'
+import { DEFAULT_OPTIONS, presetOptions, type ConverterTarget } from './presets'
 
-interface HapInputsState {
-  inputs: string[]
-  compressor: HapCompressor
+interface PrefsState {
+  target: ConverterTarget
+  options: ConvertOptions
   concurrency: number
-  autoChunks: boolean
-  manualChunks: number
+  /** einmalige Übernahme des zuletzt genutzten HAP-Formats (vor dem Umbau) */
+  migrated: boolean
+  /** Zielsystem wählen -> Vorgabe anwenden */
+  applyTarget: (target: ConverterTarget) => void
+  /** Einstellungen ändern; preset=true: zählt zur Vorgabe -> Zielsystem „Eigene" */
+  setOptions: (patch: Partial<ConvertOptions>, preset?: boolean) => void
+  setConcurrency: (n: number) => void
+  migrateFrom: (lastHapFormat: HapFormat) => void
+}
+
+export const useConverterPrefs = create<PrefsState>()(
+  persist(
+    (set) => ({
+      target: 'mediaserver',
+      options: DEFAULT_OPTIONS,
+      concurrency: 1,
+      migrated: false,
+      applyTarget: (target) => set((s) => ({ target, options: presetOptions(target, s.options) })),
+      setOptions: (patch, preset = false) =>
+        set((s) => ({
+          options: { ...s.options, ...patch },
+          target: preset ? 'custom' : s.target
+        })),
+      setConcurrency: (concurrency) => set({ concurrency }),
+      // Nur eine bewusst geänderte frühere Wahl übernehmen: HAP Q war der Standard und
+      // darf eine inzwischen gewählte Vorgabe (z.B. aus der Medien-Info) nicht überschreiben
+      migrateFrom: (fmt) =>
+        set((s) =>
+          s.migrated
+            ? s
+            : fmt === 'hap_q'
+              ? { migrated: true }
+              : { migrated: true, options: { ...s.options, format: fmt }, target: 'custom' }
+        )
+    }),
+    {
+      name: 'converter-prefs',
+      storage: debouncedStorage(),
+      version: 1,
+      migrate: (persisted) => persisted as PrefsState,
+      partialize: (s) =>
+        ({
+          target: s.target,
+          options: s.options,
+          concurrency: s.concurrency,
+          migrated: s.migrated
+        }) as PrefsState,
+      // neue Optionsfelder späterer Versionen mit Standardwerten auffüllen
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<PrefsState>
+        return {
+          ...current,
+          ...p,
+          options: { ...DEFAULT_OPTIONS, ...(p.options ?? {}) }
+        }
+      }
+    }
+  )
+)
+
+interface InputsState {
+  inputs: string[]
   add: (paths: string[]) => void
   remove: (path: string) => void
   clear: () => void
-  setOptions: (
-    p: Partial<Pick<HapInputsState, 'compressor' | 'concurrency' | 'autoChunks' | 'manualChunks'>>
-  ) => void
 }
 
-export const useHapInputs = create<HapInputsState>((set) => ({
+export const useConverterInputs = create<InputsState>((set) => ({
   inputs: [],
-  compressor: 'snappy',
-  concurrency: 1,
-  autoChunks: true,
-  manualChunks: 4,
   add: (paths) => {
     // Erneut hinzugefügt = Eckdaten neu lesen (Datei kann neu gerendert, der Stick
     // wieder eingesteckt sein); unveränderte Dateien liefert der Cache im main sofort.
-    useHapInputMeta.getState().forget(paths)
+    useInputMeta.getState().forget(paths)
     set((s) => ({ inputs: [...new Set([...s.inputs, ...paths])] }))
   },
   remove: (path) => {
-    useHapInputMeta.getState().forget([path])
+    useInputMeta.getState().forget([path])
     set((s) => ({ inputs: s.inputs.filter((p) => p !== path) }))
   },
   clear: () =>
     set((s) => {
-      useHapInputMeta.getState().forget(s.inputs)
+      useInputMeta.getState().forget(s.inputs)
       return { inputs: [] }
-    }),
-  setOptions: (p) => set(p)
+    })
 }))
 
 /** Eckdaten einer Eingabe: Datei (Analyse) oder Ordner (Anzahl Videos). */
@@ -66,7 +120,7 @@ const isVideo = (p: string): boolean => {
   return i >= 0 && VIDEO_EXT.has(p.slice(i).toLowerCase())
 }
 
-export const useHapInputMeta = create<MetaState>((set, get) => ({
+export const useInputMeta = create<MetaState>((set, get) => ({
   meta: {},
   forget: (paths) =>
     set((s) => {
@@ -87,11 +141,13 @@ export const useHapInputMeta = create<MetaState>((set, get) => ({
         }
         const isFile = col.files.length === 1 && col.files[0] === path
         if (!isFile) {
-          // Ordner: dieselben Regeln wie die Warteschlange (collectVideoInputs im main)
+          // Ordner: dieselben Regeln wie die Aufträge im main (collectConvertInputs)
           put({ kind: 'folder', videos: col.files.filter(isVideo).length })
           return
         }
-        put({ kind: 'file', result: await api.mediaInfo.probe(path) })
+        // Tiefenanalyse wie im Auftrag: erkennt Halbbilder/variable Bildrate für die
+        // Vorschau – und füllt den Cache, den der Auftrag danach nutzt
+        put({ kind: 'file', result: await api.mediaInfo.probe(path, { deep: true }) })
       } catch (e) {
         put({ kind: 'error', message: e instanceof Error ? e.message : String(e) })
       }

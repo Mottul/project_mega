@@ -299,12 +299,13 @@ function videoRows(v: MediaVideoTrack): [string, ReactNode | null][] {
 export function MediaDetail({
   entry,
   hints,
-  onSendToHap
+  onConvert
 }: {
   entry: MediaEntry
   hints: MediaHint[]
   /** null = keine Weitergabe anbieten (Kundenansicht) */
-  onSendToHap: ((paths: string[]) => void) | null
+  /** an den Video-Konverter (null = Kundenansicht) */
+  onConvert: ((paths: string[]) => void) | null
 }): JSX.Element {
   const { dir, name } = splitPath(entry.path)
   const profile = useMediaInfoPrefs((s) => s.profile)
@@ -361,7 +362,7 @@ export function MediaDetail({
   }
 
   const v = mainVideo(info)
-  const canHap = Boolean(v && v.fpsMode !== 'still' && v.codecName && v.codecName !== 'hap')
+  const canConvert = Boolean(v && v.fpsMode !== 'still' && v.codecName)
 
   return (
     <Card className="space-y-4 p-5">
@@ -386,9 +387,9 @@ export function MediaDetail({
         >
           <Copy className="size-4" /> Steckbrief kopieren
         </Button>
-        {canHap && onSendToHap && (
-          <Button variant="outline" size="sm" onClick={() => onSendToHap([entry.path])}>
-            <FileCog className="size-4" /> An HAP-Konverter
+        {canConvert && onConvert && (
+          <Button variant="outline" size="sm" onClick={() => onConvert([entry.path])}>
+            <FileCog className="size-4" /> Konvertieren …
           </Button>
         )}
         <Button variant="ghost" size="sm" onClick={() => void api.showItemInFolder(entry.path)}>

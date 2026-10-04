@@ -1,5 +1,5 @@
 // Darstellung der Ampel-Stufen (Badge-Ton, Icon, Textfarbe) – gemeinsam für
-// Medien-Info und HAP-Konverter.
+// Medien-Info und Video-Konverter.
 
 import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react'
 import type { BadgeTone } from '@renderer/components/ui/badge'

@@ -12,14 +12,6 @@ export type HapFormat = 'hap' | 'hap_alpha' | 'hap_q'
 // snappy = kleinere Dateien (Standard), none = schnelleres Encoding, groessere Dateien
 export type HapCompressor = 'snappy' | 'none'
 
-export interface HapCheckResult {
-  available: boolean
-  ffmpegFound: boolean
-  version: string | null
-  hapEncoders: string[] // z.B. ['hap']
-  error?: string
-}
-
 export interface ProbeResult {
   path: string
   width: number | null
@@ -212,32 +204,7 @@ export interface MediaCollectResult {
 
 export type ChunksMode = { kind: 'auto' } | { kind: 'manual'; value: number }
 
-export interface HapEnqueueRequest {
-  inputs: string[] // Dateien und/oder Ordner (Ordner werden rekursiv durchsucht)
-  format: HapFormat
-  chunks: ChunksMode
-  outputDir: string | null // null => neben der Quelldatei ablegen
-  concurrency: number // 1 = sequentiell (Default)
-  compressor: HapCompressor // snappy (kleiner) | none (schneller)
-}
-
 export type JobStatus = 'queued' | 'probing' | 'running' | 'done' | 'error' | 'canceled'
-
-export interface HapJob {
-  id: string
-  inputPath: string
-  outputPath: string
-  format: HapFormat
-  compressor: HapCompressor
-  status: JobStatus
-  progress: number // 0..1
-  width: number | null
-  height: number | null
-  chunks: number | null
-  durationSec: number | null
-  error?: string
-  createdAt: number
-}
 
 /* ------------------------------ Konvertierung ------------------------------ */
 // Gemeinsamer Kern für Video-Konverter und Player-Import (Plan: shared/convertPlan.ts).
@@ -491,7 +458,7 @@ export interface PatternVideoProgress {
 // LED-Wall-/Playlist-Player. Medien werden auf die Wand-Auflösung "eingebacken"
 // (Fit-Modus) und nach H.264/MP4 konvertiert -> Chromium spielt das
 // hardwarebeschleunigt ab (HAP kann der Browser NICHT dekodieren, das bleibt
-// dem HAP-Konverter/MadMapper vorbehalten). Stehende Bilder werden als JPG in
+// Video-Konverter/Medienservern vorbehalten). Stehende Bilder werden als JPG in
 // Wand-Auflösung gebacken und mit einstellbarer Standzeit gezeigt.
 
 export type MediaKind = 'video' | 'image' | 'gif'
