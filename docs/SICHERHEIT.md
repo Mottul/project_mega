@@ -10,9 +10,9 @@ Maintainer-Tokens, bösartige Install-Skripte, Typosquatting) ist das Projekt be
 aufgesetzt:
 
 - **`package-lock.json` ist eingecheckt** – mit sha512-Integrity je Paket.
-- **Nur zwei Laufzeit-Abhängigkeiten:** `better-sqlite3` (exakt gepinnt und mit „Cooldown“
-  nachgezogen – kompromittierte Releases fallen meist in den ersten Tagen auf) und `pdfjs-dist`.
-  Alles andere ist Build-Werkzeug.
+- **Nur zwei Laufzeit-Abhängigkeiten:** `better-sqlite3` und `pdfjs-dist` – beide exakt gepinnt
+  und mit Abstand nachgezogen (siehe [Updates einspielen](#updates-einspielen)). Alles andere ist
+  Build-Werkzeug.
 - **`.npmrc`:** `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
 - **Schlanker Install-Baum:** `electron-builder` ist keine Abhängigkeit, sondern wird beim
   Paketieren per `npx` geholt. So bleibt die `node-gyp`/`tar`/`app-builder`-Kette aus `npm ci`
@@ -42,22 +42,37 @@ Ohne die beiden Folgeschritte fehlen Prebuild und Electron-Binary – `npm run d
 offizielle Binary und brauchen keinen Compiler. `electron:bin` umgeht bewusst electrons eigenes
 `install.js`, das manche Sicherheits-Wrapper abfangen.
 
-> Tipp: `npm install <paket> --before <Datum>` installiert nur Versionen vor einem Stichtag –
-> praktisch, um brandneue (potenziell kompromittierte) Releases zu meiden.
+### Updates einspielen
+
+Mit Abstand: nur Versionen, die schon rund eine Woche draußen sind – kompromittierte Releases
+fallen meist in den ersten Tagen auf.
+
+```bash
+npm install <paket>@<version> --before <Datum vor 7 Tagen>   # direkte Abhängigkeiten
+npm audit fix --before <Datum vor 7 Tagen>                    # Unterabhängigkeiten
+npm ci                                                        # frisch installieren wie die CI
+```
+
+Danach alle Prüfungen (`format:check`, `lint`, `typecheck`, `typecheck:test`, `test`, `build`)
+und ein kurzer App-Start. `save-exact` pinnt dabei auf die genaue Version.
+
+> **npm 10 und vitest:** Updates von vitest brechen mit „Cannot read properties of null (reading
+> 'edgesOut')“ ab – ein npm-Fehler beim Auflösen von vitests optionalen Peer-Abhängigkeiten.
+> Abhilfe: `--legacy-peer-deps` anhängen. Die Lock-Datei bleibt gleichwertig, weil im Baum keine
+> automatisch installierten Peers stecken; `npm ci` danach prüft das.
 
 ### Stand der bekannten Lücken
 
 Prüfen mit `npm audit` (alles) bzw. `npm audit --omit=dev` (nur Laufzeit-Abhängigkeiten – Electron
 selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
 
-**Stand 4. Oktober 2026** – Updates stehen aus (siehe [Roadmap](ROADMAP.md#sicherheit)):
+**Stand 4. Oktober 2026** – nach den Updates auf Electron 42.11.8, pdfjs-dist 6.3.289,
+react-router-dom 7.18.4, vitest 4.1.11, postcss 8.5.28 und vite 7.3.6 (samt Unterabhängigkeiten):
 
-| Paket                     | Installiert | Behoben ab | Bedeutung für die App                                                     |
-| ------------------------- | ----------- | ---------- | ------------------------------------------------------------------------- |
-| `pdfjs-dist`              | 6.1.200     | 6.2.108    | **hoch** – JavaScript-Ausführung beim Öffnen eines präparierten PDFs (Manuals) |
-| `electron`                | 42.7.1      | 42.10.0    | **hoch** – mehrere Sandbox-/Protokoll-Lücken in der Laufzeit              |
-| `react-router-dom`        | 7.18.1      | 7.18.4     | gering – betrifft nur den RSC-Modus, die App nutzt den HashRouter         |
-| Dev-Werkzeuge             | –           | –          | keine Laufzeit-Wirkung: `vitest`, `postcss`, `undici` (Electron-Download), `esbuild` (Dev-Server), Tailwind-3-Kette (`braces` → nur mit Tailwind 4 behoben) u. a. |
+- `npm audit --omit=dev`: **keine Lücken**; Electron selbst ist ebenfalls ohne bekannte Meldung.
+- `npm audit`: **5 Meldungen der Tailwind-3-Kette** (`braces` → `micromatch`/`fast-glob`/`chokidar`
+  → `tailwindcss`). Sie betreffen nur den Build, der ausschließlich die eigenen Quelldateien
+  durchsucht, und verschwinden erst mit Tailwind 4 (siehe [Roadmap](ROADMAP.md#upgrades)).
 
 ## Die App
 

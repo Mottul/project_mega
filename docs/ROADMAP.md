@@ -17,15 +17,14 @@ beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
 Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
-1. **Sicherheits-Updates** – `pdfjs-dist` ≥ 6.2.108 (JavaScript-Ausführung über präparierte PDFs)
-   und Electron ≥ 42.10 (Sandbox-/Protokoll-Lücken), dazu `react-router-dom`, `vitest`, `postcss`.
-   Kleiner Aufwand, größter Nutzen ([SICHERHEIT.md](SICHERHEIT.md#stand-der-bekannten-lücken)).
-2. **Kleine Härtungen** – Upload-Limit der Player-Fernsteuerung, `--` vor der yt-dlp-URL,
+1. **Kleine Härtungen** – Upload-Limit der Player-Fernsteuerung, `--` vor der yt-dlp-URL,
    Jingle-Befehle feldweise prüfen, PDF-Viewer ohne `eval`.
-3. **Datenverlust ausschließen** – `setSettings` tief mergen, Werkzeug-Stores zwischen Fenstern
+2. **Datenverlust ausschließen** – `setSettings` tief mergen, Werkzeug-Stores zwischen Fenstern
    abgleichen (siehe [Robustheit](#robustheit)).
-4. **CI auf Windows und macOS** – das Versprechen „plattformübergreifend“ wird heute nur unter
+3. **CI auf Windows und macOS** – das Versprechen „plattformübergreifend“ wird heute nur unter
    Linux gebaut und getestet.
+4. **Abhängigkeiten aktuell halten** – Electron-Patches und `pdfjs-dist` regelmäßig mit Abstand
+   nachziehen ([SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)).
 
 ## Funktionen
 
@@ -88,8 +87,8 @@ NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Ge
 
 ### Sicherheit
 
-- **Abhängigkeiten aktualisieren** – siehe [Als Nächstes](#als-nächstes); Tailwind-3-Meldungen
-  (`braces`) verschwinden erst mit Tailwind 4.
+- **Letzte `npm audit`-Meldungen** (Tailwind-3-Kette, nur Build-Zeit) verschwinden mit
+  [Tailwind 4](#upgrades).
 - **Upload der Player-Fernsteuerung begrenzen:** `/api/upload` schreibt ohne Größenlimit auf die
   Platte und reicht die Datei an ffmpeg weiter → Byte-Grenze bzw. 413; optional PIN/Token in der
   Fernsteuer-Adresse. (Die Fernsteuerung ist standardmäßig aus.)
@@ -100,7 +99,7 @@ NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Ge
   Werkzeugfenstern.
 - **`shellOpenPath`/`shellShowItem`** nur für App-Ablage und gewählte Ausgabeordner.
 - **Prüfsummen** für den ffmpeg- und den Electron-Download (yt-dlp prüft bereits gegen
-  `SHA2-256SUMS`).
+  `SHA2-256SUMS`; das Electron-Paket bringt seine Prüfsummen in `checksums.json` mit).
 - **`--` vor die yt-dlp-URL**, damit Eingaben mit `-` nicht als Option gelesen werden.
 - **Jingle-Fernsteuerung:** Befehle feldweise prüfen wie bei OSC und Timer.
 
@@ -161,7 +160,8 @@ NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Ge
 
 - **React 18 → 19** – mechanisch: 160× globales `JSX.Element` → `React.JSX.Element`.
 - **Tailwind 3 → 4** – eigene Tokens und die `light:`-Variante auf `@theme`/`@custom-variant`
-  umstellen; postcss/autoprefixer entfallen.
+  umstellen; postcss/autoprefixer entfallen, ebenso die letzten `npm audit`-Meldungen
+  (`braces`-Kette).
 - **lucide-react 0.469 → 1.x** – Icon-Umbenennungen prüfen.
 - **Beobachten:** Vite 8 (electron-vite unterstützt bis Vite 7), TypeScript 7 („tsgo“).
 
@@ -171,7 +171,9 @@ Damit nichts doppelt geplant wird:
 
 - **Show-Härtung:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, In-App-Hinweise statt
   stiller Fehler, Wiederherstellung von `settings.json`/`library.db`, versionierte Stores.
-- **Upgrades:** Electron 40 → 42, pdfjs-dist 4 → 6, react-router 6 → 7.
+- **Upgrades:** Electron 40 → 42, pdfjs-dist 4 → 6, react-router 6 → 7; Sicherheits-Updates vom
+  4. Oktober 2026 (Electron 42.11.8, pdfjs-dist 6.3.289 u. a. – `npm audit --omit=dev` ohne
+  Befund).
 - **Konvertierung:** gemeinsamer Kern für Video-Konverter, Player-Import und Testbild-Export
   (ersetzt den alten HAP-Auftragsmanager), eigene Player-Spur, Medien-Info als Analyse-Werkzeug.
 - **Fernsteuerung:** Fernsteuer-App mit gemeinsamer Startseite (Port 8090), Stage-Timer am Handy,
