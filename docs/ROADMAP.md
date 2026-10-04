@@ -1,0 +1,185 @@
+# Roadmap
+
+Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
+beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
+
+**Stand:** 4. Oktober 2026
+
+- [Als Nächstes](#als-nächstes)
+- [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
+  [neue Werkzeuge](#neue-werkzeuge), [Verzahnung](#verzahnung), [Ideen](#ideen)
+- [Technik & Qualität](#technik--qualität) – [Sicherheit](#sicherheit),
+  [Robustheit](#robustheit), [Konsolidierung](#konsolidierung), [Große Umbauten](#große-umbauten),
+  [Tests & CI](#tests--ci), [Upgrades](#upgrades)
+- [Bereits erledigt](#bereits-erledigt)
+
+## Als Nächstes
+
+Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
+
+1. **Sicherheits-Updates** – `pdfjs-dist` ≥ 6.2.108 (JavaScript-Ausführung über präparierte PDFs)
+   und Electron ≥ 42.10 (Sandbox-/Protokoll-Lücken), dazu `react-router-dom`, `vitest`, `postcss`.
+   Kleiner Aufwand, größter Nutzen ([SICHERHEIT.md](SICHERHEIT.md#stand-der-bekannten-lücken)).
+2. **Kleine Härtungen** – Upload-Limit der Player-Fernsteuerung, `--` vor der yt-dlp-URL,
+   Jingle-Befehle feldweise prüfen, PDF-Viewer ohne `eval`.
+3. **Datenverlust ausschließen** – `setSettings` tief mergen, Werkzeug-Stores zwischen Fenstern
+   abgleichen (siehe [Robustheit](#robustheit)).
+4. **CI auf Windows und macOS** – das Versprechen „plattformübergreifend“ wird heute nur unter
+   Linux gebaut und getestet.
+
+## Funktionen
+
+### Bestehende Werkzeuge ausbauen
+
+- **OSC-Steuerung**
+  - **MadMapper-Vorlagen** (Surfaces, Medien, Cues) – bisher gibt es nur Beispiel-Kacheln.
+  - **„Restzeit aus OSC-Position“:** Anzeige-Modus, der aus der eingehenden MadMapper-Position
+    (0–1) und einer eingetragenen Clip-Dauer die Restzeit als mm:ss errechnet – MadMapper liefert
+    nur die Position. (Die Restzeit des eigenen Video-Players kann die Anzeige schon.)
+  - **OSC-Trigger aus anderen Werkzeugen** (Jingle-Player, Stage-Timer, Video-Player senden OSC).
+  - **Weitere Bedienelemente:** Auto-Center-Fader/Wippe (federt in die Mitte zurück – Jog, PTZ,
+    Speed), Tap-Tempo/BPM, Set-Wechsel-Knopf, Farbregler wahlweise vertikal.
+- **NovaStar-Steuerung:** Testbild, Ist-Zustand vom Gerät lesen (heute zeigt die Oberfläche den
+  zuletzt gesendeten Stand), weitere Modelle (VX-Serie, MCTRL).
+- **Video-Player:** Logo-Overlay (PNG mit Alpha; Größe, Position, Deckkraft – als Ebene, nicht
+  eingebacken).
+- **Stage-Timer:** Teleprompter (scrollender Text auf dem Referentenmonitor); Steuerung per OSC
+  (Start/Pause/±1 min aus Companion oder Stream Deck – heute nur über die HTTP-Fernsteuerung).
+- **Testbildgenerator:** Audio-Testtöne (Sinus, Rosa Rauschen, Sweep, Kanal-Identifikation).
+- **Jingle-Player:** Ducking, MIDI-Pads.
+- **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
+  Steckertypen und technischen Daten.
+- **LED-Wall-Konfigurator:** Prozessor-Presets (NovaStar, Brompton).
+
+### Neue Werkzeuge
+
+- **ArtNet/sACN-Tester** (DMX übers Netz senden, Node-Discovery) und **DMX-Universum-Planer**
+  (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem DMX-Dip-Schalter.
+- **Rechner:** IP-/Subnetz (Dante, NDI, AV-over-IP – passend zum Netzwerk-Scanner),
+  Spannungsabfall/Kabelquerschnitt (an die Stromlast angedockt), Edge-Blend (Beamer-Softedge),
+  Video-Datenrate/Dateigröße, Gel-/Farbfilter (Lee ↔ Rosco ↔ RGB), Funkfrequenz-Planer,
+  Sonnenstand/Dämmerung für Open-Air.
+
+### Verzahnung
+
+Heute gibt es Medien-Info ↔ Video-Konverter, LED-Wall → Packliste und Netzwerk-Scanner →
+NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Geplant:
+
+- **Übergabe-Speicher verallgemeinern** – heute gibt es nur einen NovaStar-IP-Slot. Deshalb setzt
+  „IP in der OSC-Steuerung verwenden“ nur die NovaStar-IP, nicht das OSC-Ziel. Ein Slot „Wert +
+  Zielwerkzeug“ ist die Grundlage für alles Weitere.
+- **Fertiger Auftrag → Player-Bibliothek:** Download oder Konvertierung mit einem Klick in den
+  Video-Player (spart den Umweg über den Dateimanager kurz vor der Show).
+- **LED-Wall → Video-Player/Testbild:** Wandauflösung übernehmen; das Testbild-Gitter im echten
+  Modulraster der Wand (Pixelfehlersuche je Modul).
+- **LED-Wall → Stromlast/Rigging:** Gewicht und Stromaufnahme sind schon berechnet.
+- **Netzwerk-Scanner → Manuals:** den erkannten Hersteller als Handbuch-Suche öffnen.
+- **Packliste aus mehr Quellen:** Rigging (Anschlagmittel je Bridle) und Stromlast (Kabel und
+  Verteiler je Kreis).
+- **Show-Profil:** Wandauflösung, Geräte-IPs, NovaStar-/OSC-Ziele und Packliste
+  werkzeugübergreifend speichern und als „Event“ laden.
+
+### Ideen
+
+- **Manuals am Tablet/Handy** als eigene App (z. B. Capacitor); Konverter und Testbilder bleiben
+  am Desktop.
+
+## Technik & Qualität
+
+### Sicherheit
+
+- **Abhängigkeiten aktualisieren** – siehe [Als Nächstes](#als-nächstes); Tailwind-3-Meldungen
+  (`braces`) verschwinden erst mit Tailwind 4.
+- **Upload der Player-Fernsteuerung begrenzen:** `/api/upload` schreibt ohne Größenlimit auf die
+  Platte und reicht die Datei an ffmpeg weiter → Byte-Grenze bzw. 413; optional PIN/Token in der
+  Fernsteuer-Adresse. (Die Fernsteuerung ist standardmäßig aus.)
+- **CSP ohne `unsafe-eval`** für den Produktiv-Build (den PDF-Viewer im Renderer mit
+  `isEvalSupported: false` betreiben), Dev-CSP getrennt.
+- **Zentrale Fenster-Wächter** (`web-contents-created`: Berechtigungen, `will-navigate`,
+  `setWindowOpenHandler`) auch für Ausgabe-, NDI- und PDF-Fenster – heute nur in Haupt- und
+  Werkzeugfenstern.
+- **`shellOpenPath`/`shellShowItem`** nur für App-Ablage und gewählte Ausgabeordner.
+- **Prüfsummen** für den ffmpeg- und den Electron-Download (yt-dlp prüft bereits gegen
+  `SHA2-256SUMS`).
+- **`--` vor die yt-dlp-URL**, damit Eingaben mit `-` nicht als Option gelesen werden.
+- **Jingle-Fernsteuerung:** Befehle feldweise prüfen wie bei OSC und Timer.
+
+### Robustheit
+
+- **`setSettings` bereichsweise tief mergen** (`player`, `osc` …): Heute ersetzt ein Patch den
+  ganzen Bereich. Patcht der Renderer mit einem veralteten Stand, kann er parallele Änderungen
+  des Hauptprozesses überschreiben. Danach entfallen auch die `{ ...getSettings().player, … }`-
+  Kopien.
+- **Werkzeug-Stores zwischen Fenstern abgleichen:** Ist ein Werkzeug in zwei Fenstern offen,
+  gewinnt das zuletzt schreibende (kein `storage`-Abgleich). Beispiel: „Packliste“ im
+  LED-Wall-Konfigurator schreibt die Übernahme verzögert und öffnet ein neues Fenster; eine schon
+  offene Packliste sieht die Übernahme nicht und kann sie später überschreiben.
+
+### Konsolidierung
+
+- **NDI:** `timerNdi.ts` und `playerNdi.ts` zu einem gemeinsamen Offscreen-Sender zusammenführen –
+  sonst müssen Absturz-Korrekturen doppelt gepflegt werden.
+- **Auftrags-Warteschlangen:** Konverter und Player-Import teilen sich die Spuren-Warteschlange,
+  halten aber je eigene Auftragslisten; der YouTube-Downloader hat eine ganz eigene. Eine
+  gemeinsame `JobQueue<T>`-Basis.
+- **Fernsteuer-Panel im Renderer** (Port, Start/Stopp, QR) als gemeinsame Komponente – heute vier
+  Kopien.
+- **Eine Persistenz-Regel:** ein `useLocalStorage<T>(key, validate)`-Hook statt der
+  Ad-hoc-Parser (yt-dlp-Einstellungen, NDI-Einstellungen, Timer-Setup); der yt-dlp-Zielordner
+  gehört nach `settings.json`.
+- **Statusfarben als Tokens** `success`/`warning` statt rund 30 kopierter
+  `emerald`-/`amber`-Paare.
+- **UI-Bausteine konsequent nutzen:** YouTube-Downloader auf `Progress`/`Badge`; `Select` als
+  echte Komponente mit Größen-Varianten (heute eine Klassen-Konstante, dazu abgewandelte Kopien
+  in Video-Player, Netzwerk-Scanner, OSC-Steuerung, Packliste und Startbildschirm).
+- **`main/services` ordnen:** Jingle-, Timer-, NDI- und Fernsteuer-Dateien in Unterordner
+  (heute 24 lose Dateien neben den Ordnern).
+- **Kleinkram:** Fenster-Handler aus `main/index.ts` in eine `window.handlers.ts`;
+  `"types": ["node"]` aus `tsconfig.web.json` entfernen.
+
+### Große Umbauten
+
+- **IPC-Vertrag generieren:** ein generischer Preload-Proxy aus `Channels` und ein typisierter
+  `handle(Channels.x, fn)`-Wrapper. Neue Kanäle brauchen dann zwei statt vier Stellen, die 26
+  `as never`-Casts im Preload entfallen, falsche Handler-Signaturen werden zu Compile-Fehlern.
+  Größter langfristiger Gewinn.
+- **Große Dateien teilen:** `OscControl.tsx` (~3.300 Zeilen) in Kacheln, Editor, Panels und
+  Fläche; `VideoPlayer.tsx` (~1.700 Zeilen) in NDI-Panel, Bibliothek/Konvertier-Liste, Playlist
+  und Fernsteuer-Panel.
+- **Handy-Steuerseiten** (~1.200 Zeilen HTML/CSS/JS in Template-Strings, ungelintet) als echte
+  Build-Artefakte bzw. `?raw`-Importe.
+
+### Tests & CI
+
+- **Tests** für `playerState` (braucht einen DB-Mock), yt-dlp-Argumente und -Ausgabezeilen
+  sowie die Fernsteuer-Parser (Body, OSC-/Jingle-Befehle, Upload).
+- **Komponententests:** jsdom und @testing-library ergänzen (`*.test.tsx` werden schon
+  eingesammelt, laufen aber ohne DOM).
+- **CI-Matrix** um Windows und macOS erweitern (natives Modul und Electron-Paketierung).
+
+### Upgrades
+
+- **React 18 → 19** – mechanisch: 160× globales `JSX.Element` → `React.JSX.Element`.
+- **Tailwind 3 → 4** – eigene Tokens und die `light:`-Variante auf `@theme`/`@custom-variant`
+  umstellen; postcss/autoprefixer entfallen.
+- **lucide-react 0.469 → 1.x** – Icon-Umbenennungen prüfen.
+- **Beobachten:** Vite 8 (electron-vite unterstützt bis Vite 7), TypeScript 7 („tsgo“).
+
+## Bereits erledigt
+
+Damit nichts doppelt geplant wird:
+
+- **Show-Härtung:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, In-App-Hinweise statt
+  stiller Fehler, Wiederherstellung von `settings.json`/`library.db`, versionierte Stores.
+- **Upgrades:** Electron 40 → 42, pdfjs-dist 4 → 6, react-router 6 → 7.
+- **Konvertierung:** gemeinsamer Kern für Video-Konverter, Player-Import und Testbild-Export
+  (ersetzt den alten HAP-Auftragsmanager), eigene Player-Spur, Medien-Info als Analyse-Werkzeug.
+- **Fernsteuerung:** Fernsteuer-App mit gemeinsamer Startseite (Port 8090), Stage-Timer am Handy,
+  Zustand wird gemerkt, Start/Stopp über `registerRemoteControl()`.
+- **Startbildschirm:** Favoriten in eigenen Kategorien, Kachelgröße, Ansicht „Favoriten“.
+- **Gemeinsame Bausteine:** Medien-Endungen in `shared/`, QR-Code und `selectClass` in
+  `components/`.
+- **Werkzeuge:** OSC (Learn-Modus, Auswahl, Bank, Poti/Encoder, Anzeige, Label,
+  Fader-Ausrichtung, Raster-Spalten, Auto-Nummerierung, Set-Wechsel am Handy), NovaStar
+  (Preset-Abruf, Blackout/Freeze), Video-Player (Lautheit nach EBU R128, NDI mit Ton),
+  LED-Wall-Vorlagen, yt-dlp-Download mit Prüfsumme.

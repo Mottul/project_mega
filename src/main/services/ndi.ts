@@ -4,7 +4,7 @@
 // grandioses node_modules (bindings) nicht -- electron-builder kopiert
 // node_modules in extraResources nämlich nicht mit. Der Verzeichnis-/Paket-
 // Require bleibt als Fallback für ein regulär installiertes Modul.
-// Einrichtung: `npm run ndi:setup` (siehe scripts/setup-ndi.mjs + README).
+// Einrichtung: `npm run ndi:setup` (siehe scripts/setup-ndi.mjs + docs/NDI.md).
 
 import { app } from 'electron'
 import { join } from 'node:path'

@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-MegaToolBox: plattformübergreifende AV-Werkzeug-App (Electron + React + TypeScript).
+Mottulbox (Repo `project_mega`, früher „MegaToolBox“): plattformübergreifende AV-Werkzeug-App
+(Electron + React + TypeScript).
 UI-Sprache und Code-Kommentare sind Deutsch.
 
 ## Kommandos
@@ -30,11 +31,12 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   Handler in `src/main/ipc/*.handlers.ts` (Registrierung: `registry.ts`).
 - **Renderer-Zugriff nur über `api`** (`@renderer/lib/api`), nie direkt ipcRenderer.
 - **Tools** liegen unter `src/renderer/src/tools/<id>/` und registrieren sich
-  über `index.ts` (ToolDef) in `tools/registry.ts`; Kategorien/Labels in
+  über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).
-- **Zustand:** zustand-Stores je Tool; persistierte Stores (OSC, Jingle,
-  LED-Wall, Packliste, Medien-Info, Video-Konverter) nutzen `debouncedStorage()` aus
-  `@renderer/lib/persistStorage` (NIE die synchrone Default-Storage – Tipp-Lag).
+- **Zustand:** zustand-Stores je Tool; persistierte Stores (OSC, Jingle, LED-Wall, Packliste,
+  Netzwerk-Scanner, Medien-Info, Video-Konverter) nutzen `debouncedStorage()` aus
+  `@renderer/lib/persistStorage` (NIE die synchrone Default-Storage – Tipp-Lag) und tragen
+  eine `version` (migrierbar).
 - **Eingabefelder mit Puffer:** immer `useDraft()` aus `@renderer/lib/useDraft`
   verwenden (externer Wert wird nur unfokussiert übernommen).
 - **Ausgabefenster** (Testbild, Player, Timer, OSC-Monitor) sind eigene
@@ -54,7 +56,7 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   und Formate dort einbauen, nicht je Tool; ffmpeg immer über `runFfmpeg()`.
 - **Native/optionale Module:** better-sqlite3 (Prebuild via
   `scripts/rebuild-native.mjs`, KEIN node-gyp im Baum); NDI-Binding
-  `grandiose` ist optional + lazy (rollup-external, siehe README „NDI-Ausgabe").
+  `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`).
 
 ## Konventionen
 
@@ -65,4 +67,11 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   CSS-Variablen (`@renderer/lib/accent`). Farben immer über Tailwind-Tokens
   (`primary`, `border`, …), nie hart kodieren.
 - settings.json (main, `services/store.ts`) ist Quelle der Wahrheit für
-  App-Einstellungen; localStorage nur als Boot-Spiegel (Theme/Akzent).
+  App-Einstellungen; localStorage nur als Boot-Spiegel (Theme/Akzent/Dichte).
+
+## Doku
+
+README = kurzer Einstieg; Details in `docs/`: WERKZEUGE (Funktionen je Tool), FERNSTEUERUNG,
+NDI, ENTWICKLUNG (Setup, Aufbau, Paketierung), SICHERHEIT, ROADMAP, INSTALL (Anwender).
+Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
+nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.

@@ -1,16 +1,17 @@
-# Installation unter Windows und macOS
+# Installation
 
 Kurzanleitung für Anwender. Wer die Pakete selbst erzeugt, findet den Weg dorthin
-im [README](../README.md#build--paketierung) (`npm run package`, Ergebnis in `dist/`).
+in [ENTWICKLUNG.md](ENTWICKLUNG.md#build--paketierung) (`npm run package`, Ergebnis in `dist/`).
 
 **Vorab nichts installieren.** ffmpeg ist im Paket enthalten, yt-dlp lädt die App
 beim ersten Start selbst — weder Python noch eine der beiden Anwendungen müssen
 von Hand eingerichtet werden.
 
-| System         | Datei                            |
-| -------------- | -------------------------------- |
-| Windows 10/11  | `Mottulbox-<Version>-setup.exe`   |
-| macOS          | `Mottulbox-<Version>.dmg`         |
+| System        | Datei                           |
+| ------------- | ------------------------------- |
+| Windows 10/11 | `Mottulbox-<Version>-setup.exe` |
+| macOS         | `Mottulbox-<Version>.dmg`       |
+| Linux         | `Mottulbox-<Version>.AppImage`  |
 
 ---
 
@@ -23,7 +24,7 @@ von Hand eingerichtet werden.
    der Zielordner lässt sich im Assistenten ändern.
 4. Start über das Startmenü, Deinstallation über *Einstellungen → Apps → Mottulbox*.
 
-Einstellungen und geladene Werkzeuge liegen unter `%APPDATA%\Mottulbox`.
+Einstellungen, Bibliotheken und yt-dlp liegen unter `%APPDATA%\Mottulbox`.
 
 ## macOS
 
@@ -39,7 +40,7 @@ Einstellungen und geladene Werkzeuge liegen unter `%APPDATA%\Mottulbox`.
      `xattr -dr com.apple.quarantine /Applications/Mottulbox.app`
 3. Ab dem zweiten Start genügt ein Doppelklick.
 
-Einstellungen und geladene Werkzeuge liegen unter
+Einstellungen, Bibliotheken und yt-dlp liegen unter
 `~/Library/Application Support/Mottulbox`.
 
 > **Prozessor beachten:** Das DMG passt zu dem Mac, auf dem es gebaut wurde. Ein
@@ -48,7 +49,15 @@ Einstellungen und geladene Werkzeuge liegen unter
 
 ---
 
-## Erster Start des Video-Downloaders
+## Linux
+
+Das AppImage ausführbar machen und starten:
+`chmod +x Mottulbox-<Version>.AppImage && ./Mottulbox-<Version>.AppImage`.
+Einstellungen, Bibliotheken und yt-dlp liegen unter `~/.config/Mottulbox`.
+
+---
+
+## Erster Start des YouTube-Downloaders
 
 - Die App ermittelt im Hintergrund die neueste stabile yt-dlp-Version und lädt sie
   bei Bedarf nach `<Datenordner>/bin` (rund 18 MB unter Windows, 37 MB unter
@@ -64,13 +73,14 @@ Einstellungen und geladene Werkzeuge liegen unter
 ## Aktualisieren
 
 Neue Version installieren: unter Windows den neuen Installer ausführen, unter
-macOS die App aus dem neuen DMG über die alte in *Programme* kopieren.
-Einstellungen, Projekte und die geladene yt-dlp-Binary bleiben erhalten.
+macOS die App aus dem neuen DMG über die alte in *Programme* kopieren, unter Linux
+das neue AppImage verwenden. Einstellungen, Projekte und die geladene yt-dlp-Binary
+bleiben erhalten.
 
 ## Warum die Sicherheitswarnungen?
 
 Die Pakete tragen keine Code-Signatur — für den privaten Gebrauch ist ein
 Zertifikat (jährliche Kosten bei Microsoft bzw. Apple) nicht vorgesehen. Die
 Warnungen beider Systeme besagen genau das und nichts über den Inhalt der App.
-Hintergrund und die Auswirkungen auf den Build stehen im
-[README](../README.md#build--paketierung).
+Hintergrund und die Auswirkungen auf den Build stehen in
+[ENTWICKLUNG.md](ENTWICKLUNG.md#build--paketierung).
