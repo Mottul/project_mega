@@ -33,7 +33,7 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   über `index.ts` (ToolDef) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).
 - **Zustand:** zustand-Stores je Tool; persistierte Stores (OSC, Jingle,
-  LED-Wall, Packliste) nutzen `debouncedStorage()` aus
+  LED-Wall, Packliste, Medien-Info, Video-Konverter) nutzen `debouncedStorage()` aus
   `@renderer/lib/persistStorage` (NIE die synchrone Default-Storage – Tipp-Lag).
 - **Eingabefelder mit Puffer:** immer `useDraft()` aus `@renderer/lib/useDraft`
   verwenden (externer Wert wird nur unfokussiert übernommen).
@@ -47,6 +47,11 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   Steuerseiten sprechen ihre API IMMER relativ an (`api/…`, nie `/api/…`); PWA-Kopf und
   Client-Skript kommen aus `remotePwa.ts`. Start/Stopp/Merken/Autostart je Fernsteuerung
   über `registerRemoteControl()` (`ipc/remoteControls.ts`).
+- **Konvertierung:** EIN Kern für Video-Konverter (Tool-id `hap-converter`), Player-Import
+  und Testbild-Export: Analyse per `probeMediaInfo` (Cache), alle Entscheidungen in
+  `shared/convertPlan.ts` (rein, getestet, auch Vorschau im Renderer), Argumente/Runner/
+  Warteschlange (Spuren `player`/`converter`) in `main/services/convert/`. Neue Korrekturen
+  und Formate dort einbauen, nicht je Tool; ffmpeg immer über `runFfmpeg()`.
 - **Native/optionale Module:** better-sqlite3 (Prebuild via
   `scripts/rebuild-native.mjs`, KEIN node-gyp im Baum); NDI-Binding
   `grandiose` ist optional + lazy (rollup-external, siehe README „NDI-Ausgabe").

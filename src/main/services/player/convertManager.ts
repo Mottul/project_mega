@@ -411,7 +411,12 @@ class ConvertManager {
       // Art der gespeicherten Datei bleibt (sonst passte die Endung nicht mehr)
       const p = await prepare(job.sourcePath, job.kind ?? kindOf(job.sourcePath), spec)
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
-      if (storedExtFor(p.kind) !== ext) throw new Error('Art des Mediums hat sich geändert')
+      // z.B. früher als Video übernommenes Einzelbild-GIF, das jetzt als Standbild gilt
+      if (storedExtFor(p.kind) !== ext) {
+        throw new Error(
+          'Art des Mediums hat sich geändert – bitte aus der Bibliothek entfernen und neu importieren'
+        )
+      }
       const reTitle = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), p.suffix)
 
       await this.convert(job, p, tmpStored)

@@ -360,7 +360,7 @@ function sourceMatrix(v: MediaVideoTrack): 'bt709' | 'bt601' | 'bt2020' | null {
 }
 
 /** Kennung für YUV-Ausgaben: HD = Rec. 709, SD = Rec. 601 (PAL/NTSC-Primaries). */
-function tagsFor(matrix: 'bt709' | 'bt601', height: number): ColorTags {
+export function tagsFor(matrix: 'bt709' | 'bt601', height: number): ColorTags {
   if (matrix === 'bt709') return { primaries: 'bt709', trc: 'bt709', space: 'bt709', range: 'tv' }
   const pal = height === 576
   return {
