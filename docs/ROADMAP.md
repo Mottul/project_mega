@@ -107,9 +107,6 @@ NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Ge
   gemeinsame `JobQueue<T>`-Basis.
 - **Fernsteuer-Panel im Renderer** (Port, Start/Stopp, QR) als gemeinsame Komponente – heute vier
   Kopien.
-- **Eine Persistenz-Regel:** ein `useLocalStorage<T>(key, validate)`-Hook statt der
-  Ad-hoc-Parser (yt-dlp-Einstellungen, NDI-Einstellungen, Timer-Setup); der yt-dlp-Zielordner
-  gehört nach `settings.json`.
 - **Statusfarben als Tokens** `success`/`warning` statt rund 30 kopierter
   `emerald`-/`amber`-Paare.
 - **UI-Bausteine konsequent nutzen:** YouTube-Downloader auf `Progress`/`Badge`; `Select` als
@@ -155,6 +152,9 @@ Damit nichts doppelt geplant wird:
 
 - **Show-Härtung:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, In-App-Hinweise statt
   stiller Fehler, Wiederherstellung von `settings.json`/`library.db`, versionierte Stores.
+- **Eine Persistenz-Regel:** Einstellungen in `settings.json` (jetzt auch Downloader-Zielordner,
+  NDI und Timer-Ablauf, den der main selbst speichert), Arbeitsdaten im Werkzeug-Store,
+  Bedien-Kleinigkeiten über `usePersistentState` – keine eigenen localStorage-Parser mehr.
 - **Kein Datenverlust zwischen Fenstern:** `settings.json` nimmt Teiländerungen (feldweise
   zusammengeführt, atomar geschrieben) und meldet Änderungen an alle Fenster; Werkzeug-Stände
   gleichen sich zwischen Fenstern ab (eigene, noch ungespeicherte Eingaben gewinnen).

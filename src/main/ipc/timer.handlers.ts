@@ -1,8 +1,15 @@
-import { ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
-import type { TimerCommand, TimerNdiConfig } from '@shared/types'
+import type { TimerCommand, TimerNdiConfig, TimerSetup } from '@shared/types'
 import { broadcast } from '../services/broadcast'
-import { applyTimerCommand, getTimerState, setTimerSinks } from '../services/stageTimer'
+import {
+  applyTimerCommand,
+  getTimerState,
+  restoreTimerSetup,
+  setTimerSetupSink,
+  setTimerSinks
+} from '../services/stageTimer'
+import { getSettings, setSettings } from '../services/store'
 import { closeTimerOutput, openTimerOutput } from '../services/timerWindow'
 import { getTimerNdiStatus, startTimerNdi, stopTimerNdi } from '../services/timerNdi'
 import {
@@ -26,6 +33,25 @@ export function registerTimerHandlers(): void {
       pushTimerRemoteTick(tick)
     }
   )
+
+  // Ablauf (Abschnitte, Schwellen, Anzeige) führt der main selbst: beim Start laden, nach
+  // Änderungen gebündelt speichern – unabhängig davon, ob das Werkzeug je geöffnet war
+  // (auch reine Handy-Bedienung bleibt erhalten).
+  restoreTimerSetup(getSettings().timer.setup)
+  let pending: TimerSetup | null = null
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const flush = (): void => {
+    if (timer) clearTimeout(timer)
+    timer = null
+    if (pending) setSettings({ timer: { setup: pending } })
+    pending = null
+  }
+  setTimerSetupSink((setup) => {
+    pending = setup
+    // Tippen im Titel erzeugt viele Änderungen -> nicht jede einzeln auf die Platte
+    timer ??= setTimeout(flush, 500)
+  })
+  app.once('will-quit', flush)
 
   ipcMain.handle(Channels.timerGetState, () => getTimerState())
   ipcMain.handle(Channels.timerCommand, (_e, cmd: TimerCommand) => applyTimerCommand(cmd))

@@ -3,7 +3,7 @@
 // Nachrichten an die Bühne und das Vollbild-Ausgabefenster. Der main-Prozess
 // tickt autoritativ -> Vorschau hier und Ausgabefenster sind immer synchron.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
@@ -26,13 +26,15 @@ import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { TextField } from '@renderer/components/ui/text-field'
 import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { toast } from '@renderer/lib/toast'
 import { useDraft } from '@renderer/lib/useDraft'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import {
-  DEFAULT_TIMER_NDI,
+  DEFAULT_TIMER_SETTINGS,
   type DisplayInfo,
   type RemoteStatus,
   type StageTimerState,
@@ -45,16 +47,27 @@ import { selectClass } from '../_calc/ui'
 import { fmtTimer, parseDuration } from './format'
 import { TimerDisplay } from './TimerDisplay'
 
-const LS_KEY = 'stage-timer-setup'
-
-interface SavedSetup {
-  segments: TimerSegment[]
-  warnSec: number
-  alertSec: number
-  endBehavior: StageTimerState['endBehavior']
-}
-
 const QUICK_MESSAGES = ['Bitte zum Ende kommen', 'Letzte Minute!', 'Zeit ist um']
+
+/** Abschnitte aus einem alten localStorage-Stand (ältere kannten nur `label`). */
+function legacySegments(raw: unknown): TimerSegment[] {
+  if (!Array.isArray(raw)) return []
+  const out: TimerSegment[] = []
+  for (const x of raw) {
+    if (!x || typeof x !== 'object') continue
+    const seg = x as Record<string, unknown>
+    if (typeof seg.id !== 'string' || typeof seg.durationSec !== 'number') continue
+    if (!(seg.durationSec > 0)) continue
+    out.push({
+      id: seg.id,
+      speaker: typeof seg.speaker === 'string' ? seg.speaker : '',
+      title:
+        typeof seg.title === 'string' ? seg.title : typeof seg.label === 'string' ? seg.label : '',
+      durationSec: seg.durationSec
+    })
+  }
+  return out
+}
 
 function cmd(c: TimerCommand): void {
   void api.timer.command(c)
@@ -197,7 +210,6 @@ function useRemoteRunning(): boolean {
   return running
 }
 
-const NDI_LS_KEY = 'stage-timer-ndi'
 const NDI_RESOLUTIONS: [number, number][] = [
   [1920, 1080],
   [1280, 720]
@@ -207,15 +219,19 @@ const NDI_RESOLUTIONS: [number, number][] = [
  *  Ohne installiertes NDI-Modul zeigt das Panel nur einen Hinweis. */
 function NdiPanel(): JSX.Element {
   const [status, setStatus] = useState<TimerNdiStatus | null>(null)
-  const [cfg, setCfg] = useState<TimerNdiConfig>(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(NDI_LS_KEY) ?? 'null') as TimerNdiConfig | null
-      if (saved && typeof saved.name === 'string') return { ...DEFAULT_TIMER_NDI, ...saved }
-    } catch {
-      /* defekter Eintrag -> Defaults */
-    }
-    return { ...DEFAULT_TIMER_NDI }
-  })
+  // gemerkt in settings.json (timer.ndi), in allen Fenstern gleich
+  const cfg = useSettings((s) => s.timer.ndi) ?? DEFAULT_TIMER_SETTINGS.ndi
+  useEffect(() => {
+    // frühere Versionen: nur im localStorage
+    migrateLocalStorage('stage-timer-ndi', (old) => {
+      const ndi: Partial<TimerNdiConfig> = {}
+      if (typeof old.name === 'string' && old.name.trim()) ndi.name = old.name.trim()
+      if (old.width === 1920 || old.width === 1280) ndi.width = old.width
+      if (old.height === 1080 || old.height === 720) ndi.height = old.height
+      if (old.fps === 25 || old.fps === 30 || old.fps === 50) ndi.fps = old.fps
+      return { timer: { ndi } }
+    })
+  }, [])
 
   useEffect(() => {
     void api.timer.ndiStatus().then(setStatus)
@@ -230,15 +246,7 @@ function NdiPanel(): JSX.Element {
   }, [status?.running])
 
   function patchCfg(patch: Partial<TimerNdiConfig>): void {
-    setCfg((prev) => {
-      const next = { ...prev, ...patch }
-      try {
-        localStorage.setItem(NDI_LS_KEY, JSON.stringify(next))
-      } catch {
-        /* localStorage nicht verfügbar */
-      }
-      return next
-    })
+    updateSettings({ timer: { ndi: patch } })
   }
 
   if (!status) return <p className="text-xs text-muted-foreground">Lade…</p>
@@ -260,10 +268,11 @@ function NdiPanel(): JSX.Element {
     <>
       <label className="block">
         <span className="mb-1 block text-xs text-muted-foreground">Quellenname im Netz</span>
-        <Input
+        <TextField
           value={cfg.name}
           disabled={running}
-          onChange={(e) => patchCfg({ name: e.target.value })}
+          maxLength={60}
+          onCommit={(name) => patchCfg({ name })}
         />
       </label>
       <div className="grid grid-cols-2 gap-2">
@@ -333,36 +342,28 @@ export function StageTimer(): JSX.Element {
   const [displayId, setDisplayId] = useState<number | null>(null)
   const [msgText, setMsgText] = useState('')
   const [msgFlash, setMsgFlash] = useState(false)
-  const seeded = useRef(false)
   const remoteRunning = useRemoteRunning()
 
   useEffect(() => {
     void api.timer.getState().then((s) => {
-      // Letzte Konfiguration wiederherstellen, falls der Timer noch "leer" ist.
-      if (!seeded.current && s.segments.length === 0) {
-        seeded.current = true
-        try {
-          const saved = JSON.parse(localStorage.getItem(LS_KEY) ?? 'null') as SavedSetup | null
-          if (saved && saved.segments.length > 0) {
-            // Migration alter Daten: einzelnes `label` -> `title`.
-            const segments = saved.segments.map((seg) => {
-              const old = seg as TimerSegment & { label?: string }
-              return {
-                id: old.id,
-                speaker: old.speaker ?? '',
-                title: old.title ?? old.label ?? '',
-                durationSec: old.durationSec
-              }
-            })
-            cmd({ type: 'setSegments', segments })
-            cmd({ type: 'setThresholds', warnSec: saved.warnSec, alertSec: saved.alertSec })
-            cmd({ type: 'setEndBehavior', behavior: saved.endBehavior })
-            cmd({ type: 'resetAll' })
-            return
-          }
-        } catch {
-          /* defekter Eintrag -> ignorieren */
+      // Den Ablauf merkt sich der main-Prozess selbst (settings.json). Frühere Versionen
+      // hielten ihn nur im localStorage dieses Fensters -> einmalig übergeben.
+      const legacy = migrateLocalStorage('stage-timer-setup', () => null)
+      const segments = legacySegments(legacy?.segments)
+      if (legacy && s.segments.length === 0 && segments.length > 0) {
+        cmd({ type: 'setSegments', segments })
+        if (typeof legacy.warnSec === 'number' && typeof legacy.alertSec === 'number') {
+          cmd({ type: 'setThresholds', warnSec: legacy.warnSec, alertSec: legacy.alertSec })
         }
+        if (
+          legacy.endBehavior === 'stop' ||
+          legacy.endBehavior === 'overtime' ||
+          legacy.endBehavior === 'next'
+        ) {
+          cmd({ type: 'setEndBehavior', behavior: legacy.endBehavior })
+        }
+        cmd({ type: 'resetAll' })
+        return
       }
       setState(s)
       setRemaining(s.remainingSec)
@@ -381,18 +382,6 @@ export function StageTimer(): JSX.Element {
       offTick()
     }
   }, [])
-
-  // Konfiguration für den nächsten Start merken.
-  useEffect(() => {
-    if (!state || state.segments.length === 0) return
-    const save: SavedSetup = {
-      segments: state.segments,
-      warnSec: state.warnSec,
-      alertSec: state.alertSec,
-      endBehavior: state.endBehavior
-    }
-    localStorage.setItem(LS_KEY, JSON.stringify(save))
-  }, [state])
 
   // Container-basiertes Layout: Abschnitte neben die Vorschau, sobald genug Breite
   // da ist (auch nach dem Einklappen der Einstellungen) -> Vorschau wird dann kleiner.

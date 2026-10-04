@@ -106,17 +106,9 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
 - **Der Hauptprozess ist autoritativ** für alles, was fensterübergreifend laufen muss: Player- und
   Timer-Zustand ticken im main; Ausgabefenster (`#/output`, `#/player-output`, `#/timer-output`,
   `#/osc-monitor`) und Handy-Seiten spiegeln nur.
-- **Einstellungen:** `settings.json` (`services/store.ts`) ist die Quelle der Wahrheit für
-  App-Einstellungen. `setSettings` bekommt nur die geänderten Felder – auch innerhalb von
-  `player`, `osc` … – und führt sie zusammen (Listen werden als Ganzes ersetzt); nie erst lesen
-  und dann alles zurückschreiben. Die Datei wird atomar ersetzt. Wer Einstellungen im eigenen
-  Zustand hält (Favoriten, Playlists, Presets), abonniert `api.onSettingsChanged`, sonst
-  überschreibt das Fenster Änderungen anderer Fenster. localStorage dient den Werkzeug-Stores,
-  Bedien-Kleinigkeiten (z. B. aufgeklappte Panels) und als Boot-Spiegel für Theme und Akzentfarbe.
-- **Werkzeug-Zustand:** ein zustand-Store je Werkzeug. Persistierte Stores nutzen
-  `debouncedStorage()` aus `@renderer/lib/persistStorage` und tragen eine `version` (migrierbar) –
-  nie die synchrone Standard-Storage, sonst ruckeln Eingabefelder. Dazu `syncAcrossWindows(store)`:
-  ist das Werkzeug in mehreren Fenstern offen, übernehmen sie gegenseitig ihre Änderungen.
+- **Speichern – eine Regel, drei Orte** (siehe [Was wohin gehört](#was-wohin-gehört)):
+  Einstellungen in `settings.json`, Arbeitsdaten im Werkzeug-Store, Bedien-Kleinigkeiten über
+  `usePersistentState`. Nie direkt `localStorage` mit eigenem Parser.
 - **Eingabefelder mit Puffer:** `useDraft()` (`@renderer/lib/useDraft`) übernimmt den externen
   Wert nur, solange das Feld nicht fokussiert ist.
 - **Fernsteuerungen:** abhängigkeitsfreie HTTP-Server je Werkzeug (`services/remoteHttp.ts`),
@@ -134,6 +126,29 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   aus CSS-Variablen (`@renderer/lib/accent`). Farben immer über Tailwind-Tokens (`primary`,
   `border`, …), nie hart kodiert.
 
+### Was wohin gehört
+
+| Was | Wo | Wie |
+| --- | --- | --- |
+| **Einstellungen** – alles, was der Hauptprozess führt oder braucht und was ein Neustart nie verlieren darf: Pfade und Zielordner, Ausgabe und Geräte (Monitor, NDI, Ports, Fernsteuerungen), Player- und Timer-Ablauf | `settings.json` (`services/store.ts`) | im Renderer `useSettings(auswahl)` + `updateSettings(teiländerung)` aus `@renderer/lib/settings`; im main `getSettings`/`setSettings` |
+| **Arbeitsdaten eines Werkzeugs**, die nur im Renderer leben: OSC-Projekte, Jingle-Bänke, LED-Wand-Planungen, Packlisten … | zustand-Store je Werkzeug | `persist` mit `debouncedStorage()`, `version` + `migrate`, `syncAcrossWindows(store)` |
+| **Bedien-Kleinigkeiten** pro Rechner, deren Verlust nicht weh tut: aufgeklappte Panels, Vorschau an/aus, FPS-Anzeige | localStorage | `usePersistentState(key, vorgabe, codec)` aus `@renderer/lib/usePersistentState` |
+
+Dazu gilt:
+
+- **Teiländerungen statt Lesen-Ändern-Schreiben.** `setSettings`/`updateSettings` bekommen nur die
+  geänderten Felder – auch innerhalb von `player`, `osc` … – und führen sie zusammen; Listen werden
+  als Ganzes ersetzt. Die Datei wird atomar geschrieben.
+- **Fenster bleiben aktuell.** `useSettings` gleicht sich über `api.onSettingsChanged` ab;
+  Werkzeug-Stores über `syncAcrossWindows`. Wer Einstellungen anders im eigenen Zustand hält,
+  abonniert `api.onSettingsChanged` selbst – sonst überschreibt das Fenster fremde Änderungen.
+- **Textfelder puffern.** Eingaben, die in `settings.json` landen, über `TextField`/`NumberField`
+  (übernommen beim Verlassen bzw. mit Enter), nicht bei jedem Tastendruck.
+- **Alte Speicherorte einmalig übernehmen.** Zieht ein Wert um, liest
+  `migrateLocalStorage(key, …)` den alten Eintrag, speichert ihn am neuen Ort und löscht ihn.
+- **Ausnahme Boot-Spiegel:** Theme, Akzentfarbe und Dichte stehen zusätzlich im localStorage,
+  damit das Fenster ohne Flackern startet; maßgeblich bleibt `settings.json`.
+
 ## Ein neues Werkzeug
 
 1. Ordner `src/renderer/src/tools/<id>/` mit Komponente und `index.ts`, die ein `ToolModule`
@@ -147,7 +162,9 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
 
 - Layout über `ToolShell` (Inhalt + Seiten-Panel) bzw. `toolPageClass()` für schmale Seiten;
 - Bausteine aus `components/ui` (Select, Progress, Badge, NumberField …) statt eigener Varianten;
-- Persistenz über `debouncedStorage()` **mit `version`** bzw. über `settings.json`;
+- Speichern nach [Was wohin gehört](#was-wohin-gehört): Einstellungen in `settings.json`,
+  Arbeitsdaten im Store **mit `version`** und `syncAcrossWindows`, Kleinigkeiten per
+  `usePersistentState`;
 - Fehler werden sichtbar (Toast über `@renderer/lib/toast`) – nichts wird still geschluckt;
 - reine Logik in eigenen Modulen mit Unit-Tests (`*.test.ts` daneben);
 - UI-Texte und Kommentare auf Deutsch, Kommentare erklären das Warum;

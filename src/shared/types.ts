@@ -1141,6 +1141,18 @@ export interface PlayerSettings {
   remoteEnabled: boolean
   remotePort: number
   savedPlaylists: SavedPlaylist[]
+  /** NDI-Panel: Quellenname, Auflösung, Bildrate, Ton mitsenden */
+  ndi: PlayerNdiPrefs
+}
+
+/** Auflösung der Player-NDI-Ausgabe: Wand 1:1 / halbe Wand / eingebettet in HD. */
+export type PlayerNdiMode = 'wall' | 'half' | 'hd1080' | 'hd720'
+
+export interface PlayerNdiPrefs {
+  name: string
+  mode: PlayerNdiMode
+  fps: number
+  audio: boolean
 }
 
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
@@ -1163,8 +1175,50 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   loudnormLra: 11,
   remoteEnabled: false,
   remotePort: 8088,
-  savedPlaylists: []
+  savedPlaylists: [],
+  ndi: { name: DEFAULT_PLAYER_NDI.name, mode: 'wall', fps: 30, audio: true }
 }
+
+/** YouTube-Downloader: Zielordner und Vorgaben für neue Downloads. */
+export interface YoutubeSettings {
+  /** Zielordner; leer bis zur ersten Wahl */
+  outputDir: string
+  format: YtFormatId
+  /** Auflösungsdeckel (px) für Video, null = beste */
+  maxHeight: number | null
+  /** Playlists in einen Unterordner mit ihrem Namen laden */
+  playlistFolder: boolean
+  /** Playlist-Position voranstellen („03 - Titel“) */
+  playlistNumbers: boolean
+}
+
+export const DEFAULT_YOUTUBE_SETTINGS: YoutubeSettings = {
+  outputDir: '',
+  format: 'video',
+  maxHeight: 1080,
+  playlistFolder: true,
+  playlistNumbers: true
+}
+
+/** Eingerichteter Ablauf des Stage-Timers (ohne Laufzustand) – übersteht Neustarts. */
+export interface TimerSetup {
+  segments: TimerSegment[]
+  warnSec: number
+  alertSec: number
+  endBehavior: TimerEndBehavior
+  displayMode: TimerDisplayMode
+  showClockInTimer: boolean
+  clockShowSeconds: boolean
+  clockShowDate: boolean
+}
+
+export interface TimerSettings {
+  /** Zuletzt eingerichteter Ablauf; null = noch keiner. Führt der main-Prozess. */
+  setup: TimerSetup | null
+  ndi: TimerNdiConfig
+}
+
+export const DEFAULT_TIMER_SETTINGS: TimerSettings = { setup: null, ndi: DEFAULT_TIMER_NDI }
 
 /** Farbschema der Oberfläche. 'system' folgt der OS-Einstellung. */
 export type ThemeMode = 'system' | 'light' | 'dark'
@@ -1215,6 +1269,10 @@ export interface AppSettings {
   uiDensity: UiDensity
   /** yt-dlp beim Start prüfen und bei Bedarf aktualisieren. */
   ytdlpAutoUpdate: boolean
+  /** YouTube-Downloader: Zielordner und Vorgaben */
+  youtube: YoutubeSettings
+  /** Stage-Timer: gemerkter Ablauf und NDI-Ausgabe */
+  timer: TimerSettings
   /** Fernsteuerungen von Jingle-Player, OSC-Steuerung und Stage-Timer (der
    *  Video-Player merkt sich seine unter player.remoteEnabled/remotePort). */
   remoteControls: Record<Exclude<RemoteControlId, 'player'>, RemoteControlSetting>
@@ -1252,5 +1310,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   launcherTileSize: 'medium',
   uiDensity: 'normal',
   ytdlpAutoUpdate: true,
+  youtube: DEFAULT_YOUTUBE_SETTINGS,
+  timer: DEFAULT_TIMER_SETTINGS,
   remoteControls: DEFAULT_REMOTE_CONTROLS
 }
