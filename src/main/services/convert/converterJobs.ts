@@ -118,6 +118,7 @@ class ConverterJobs {
       if (this.isCanceled(job)) return
       if (!res.ok) throw new Error(res.detail ? `${res.error} (${res.detail})` : res.error)
       const caps = await getConvertCapabilities()
+      if (this.isCanceled(job)) return
       const planned = planConversion(res.info, spec.options, caps)
       if (!planned.ok) throw new Error(planned.error)
       const plan = planned.plan

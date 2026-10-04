@@ -10,7 +10,7 @@ import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 
 const pexecFile = promisify(execFile)
 
-/** Namen aus `ffmpeg -encoders` („ V....D hap   Vidvox Hap"). */
+/** Namen aus `ffmpeg -encoders`/`-decoders` („ V....D hap   Vidvox Hap"). */
 export function parseEncoderNames(listing: string): Set<string> {
   const out = new Set<string>()
   for (const line of listing.split('\n')) {
@@ -33,7 +33,8 @@ export function parseFilterNames(listing: string): Set<string> {
 export function capabilitiesFrom(
   encoders: Set<string>,
   filters: Set<string>,
-  version: string | null
+  version: string | null,
+  decoders: Set<string> = new Set()
 ): ConvertCapabilities {
   const formats = {} as Record<ConvertFormat, boolean>
   for (const [id, f] of Object.entries(CONVERT_FORMATS)) {
@@ -43,7 +44,8 @@ export function capabilitiesFrom(
     ffmpegFound: true,
     version,
     formats,
-    tonemap: filters.has('zscale') && filters.has('tonemap')
+    tonemap: filters.has('zscale') && filters.has('tonemap'),
+    vpxAlpha: decoders.has('libvpx-vp9') && decoders.has('libvpx')
   }
 }
 
@@ -53,14 +55,20 @@ async function detect(): Promise<ConvertCapabilities> {
   const ff = ffmpegBinPath('ffmpeg')
   const opts = { maxBuffer: 8 * 1024 * 1024, windowsHide: true }
   try {
-    const [enc, fil] = await Promise.all([
+    const [enc, fil, dec] = await Promise.all([
       pexecFile(ff, ['-hide_banner', '-encoders'], opts),
-      pexecFile(ff, ['-hide_banner', '-filters'], opts)
+      pexecFile(ff, ['-hide_banner', '-filters'], opts),
+      pexecFile(ff, ['-hide_banner', '-decoders'], opts)
     ])
     const version = await pexecFile(ff, ['-version'], opts)
       .then((r) => r.stdout.split('\n')[0]?.trim() ?? null)
       .catch(() => null)
-    return capabilitiesFrom(parseEncoderNames(enc.stdout), parseFilterNames(fil.stdout), version)
+    return capabilitiesFrom(
+      parseEncoderNames(enc.stdout),
+      parseFilterNames(fil.stdout),
+      version,
+      parseEncoderNames(dec.stdout)
+    )
   } catch (err) {
     // nicht dauerhaft „nicht gefunden" merken (ffmpeg kann nachträglich bereitgestellt werden)
     cached = null
@@ -71,7 +79,8 @@ async function detect(): Promise<ConvertCapabilities> {
       version: null,
       error: err instanceof Error ? err.message : String(err),
       formats,
-      tonemap: false
+      tonemap: false,
+      vpxAlpha: false
     }
   }
 }

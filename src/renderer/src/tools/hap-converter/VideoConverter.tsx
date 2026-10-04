@@ -213,7 +213,7 @@ export function VideoConverter(): JSX.Element {
 
   // Plan je Eingabedatei: dieselbe Funktion, die später im main die Argumente liefert
   const plans = useMemo(() => {
-    const planCaps = { tonemap: caps?.tonemap ?? true }
+    const planCaps = { tonemap: caps?.tonemap ?? true, vpxAlpha: caps?.vpxAlpha ?? true }
     const m = new Map<string, ConvertPlanResult>()
     for (const p of inputs) {
       const mt = meta[p]

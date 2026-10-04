@@ -270,6 +270,8 @@ export interface ConvertCapabilities {
   formats: Record<ConvertFormat, boolean>
   /** HDR -> SDR (Filter zscale + tonemap) */
   tonemap: boolean
+  /** libvpx-Decoder: nur sie lesen den Alpha-Kanal von VP8/VP9-WebM */
+  vpxAlpha: boolean
 }
 
 export interface ConverterEnqueueRequest {

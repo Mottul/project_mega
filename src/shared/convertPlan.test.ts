@@ -110,12 +110,30 @@ describe('planConversion – Korrekturen', () => {
     expect(pr.video?.pixFmt).toBe('yuva444p10le')
     // RGB-Quelle -> YUV: Matrix festgelegt und gekennzeichnet
     expect(pr.video?.filters).toContain('scale=out_color_matrix=bt709:out_range=tv')
-    expect(pr.video?.colorTags?.space).toBe('bt709')
+    expect(pr.video?.filters).toContain(
+      'setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv'
+    )
     const h264 = plan(alpha)
     expect(h264.video?.filters).toContain('premultiply=inplace=1')
     expect(ids(h264)).toContain('alpha-lost')
     // „Alpha erhalten" aus: HAP Q bleibt HAP Q, Transparenz wird schwarz
     expect(plan(alpha, { format: 'hap_q', keepAlpha: false }).format).toBe('hap_q')
+  })
+
+  it('WebM mit Alpha: libvpx-Decoder erzwingen, ohne ihn ehrlich deckend', () => {
+    const webm = video({ codecName: 'vp9', codec: 'VP9', alpha: true, chroma: '4:2:0' })
+    const p = plan(webm, { format: 'hap_q' })
+    expect(p.video?.decoder).toBe('libvpx-vp9')
+    expect(p.format).toBe('hap_alpha')
+    const no = plan(webm, { format: 'hap_q' }, { tonemap: true, vpxAlpha: false })
+    expect(no.format).toBe('hap_q')
+    expect(no.video?.decoder).toBeNull()
+    expect(ids(no)).toContain('webm-alpha')
+  })
+
+  it('gedreht + anamorph: SAR exakt umgekehrt (wie ffmpeg, ohne 2-px-Rundungsfehler)', () => {
+    const p = plan(video({ width: 720, height: 480, sar: '10:11', rotation: 90 }))
+    expect([p.video?.width, p.video?.height]).toEqual([528, 720])
   })
 
   it('Drehung 90°: Maße getauscht (ffmpeg dreht vor der Kette)', () => {
@@ -182,12 +200,8 @@ describe('planConversion – Korrekturen', () => {
     })
     const p = plan(hdr)
     expect(p.video?.filters.some((f) => f.includes('tonemap=tonemap=hable'))).toBe(true)
-    expect(p.video?.colorTags).toEqual({
-      primaries: 'bt709',
-      trc: 'bt709',
-      space: 'bt709',
-      range: 'tv'
-    })
+    // zscale kennzeichnet selbst als Rec. 709 – keine zusätzliche Kennzeichnung nötig
+    expect(p.video?.filters.some((f) => f.startsWith('setparams'))).toBe(false)
     expect(p.steps).toContain('HDR (PQ) → SDR')
     expect(ids(plan(hdr, {}, { tonemap: false }))).toContain('hdr-kept')
     expect(ids(plan(hdr, { toSdr: false }))).toContain('hdr-kept')
@@ -251,7 +265,10 @@ describe('planConversion – Korrekturen', () => {
         colorTransfer: null
       })
     )
-    expect(sd.video?.colorTags).toMatchObject({ space: 'bt470bg', primaries: 'bt470bg' })
+    // nur kennzeichnen (setparams), nicht umrechnen – Pixel bleiben, wie Player sie lesen
+    expect(sd.video?.filters.at(-1)).toBe(
+      'setparams=colorspace=bt470bg:color_primaries=bt470bg:color_trc=bt709:range=tv'
+    )
   })
 
   it('Ton: 44,1 -> 48 kHz, Stereo-Downmix, 24 bit bleibt 24 bit, ohne Ton', () => {

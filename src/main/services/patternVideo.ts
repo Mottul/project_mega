@@ -4,7 +4,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { tagsFor } from '@shared/convertPlan'
+import { setparamsFor, tagsFor } from '@shared/convertPlan'
 import type { ColorLoopRequest, PatternVideoRequest } from '@shared/types'
 import { runFfmpeg } from './convert/runFfmpeg'
 
@@ -16,26 +16,14 @@ export function pngSize(png: Uint8Array): { width: number; height: number } | nu
 }
 
 /**
- * RGB -> YUV mit festgelegter Farbmatrix (+ Kennzeichnung). Ohne Angabe rechnet swscale
- * mit Rec. 601, HD-Player zeigen aber Rec. 709 -> Grün um 16 % zu dunkel, Rot/Blau mit
- * Farbstich. Für ein Testbild (Farbkontrolle der LED-Wand) inakzeptabel.
+ * RGB -> YUV mit festgelegter Farbmatrix (+ Kennzeichnung per setparams, siehe
+ * setparamsFor). Ohne Angabe rechnet swscale mit Rec. 601, HD-Player zeigen aber
+ * Rec. 709 -> Grün um 16 % zu dunkel, Rot/Blau mit Farbstich. Für ein Testbild
+ * (Farbkontrolle der LED-Wand) inakzeptabel.
  */
-export function yuvColor(height: number): { filter: string; tags: string[] } {
+export function yuvColor(height: number): string {
   const matrix = height >= 720 ? 'bt709' : 'bt601'
-  const t = tagsFor(matrix, height)
-  return {
-    filter: `scale=out_color_matrix=${matrix}:out_range=tv,format=yuv420p`,
-    tags: [
-      '-color_primaries',
-      t.primaries,
-      '-color_trc',
-      t.trc,
-      '-colorspace',
-      t.space,
-      '-color_range',
-      t.range
-    ]
-  }
+  return `scale=out_color_matrix=${matrix}:out_range=tv,${setparamsFor(tagsFor(matrix, height))},format=yuv420p`
 }
 
 export async function exportPatternVideo(
@@ -55,17 +43,7 @@ export async function exportPatternVideo(
   const codec =
     req.format === 'hap_q'
       ? ['-vf', pad, '-c:v', 'hap', '-format', 'hap_q', '-compressor', 'snappy']
-      : [
-          '-vf',
-          `${pad},${color.filter}`,
-          '-c:v',
-          'libx264',
-          '-preset',
-          'medium',
-          '-crf',
-          '18',
-          ...color.tags
-        ]
+      : ['-vf', `${pad},${color}`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18']
 
   const args = [
     '-hide_banner',
@@ -123,10 +101,10 @@ export function exportColorLoop(
   const color = yuvColor(h)
   const chain = isHap
     ? `${labels}concat=n=${colors.length}:v=1:a=0,${pad}[v]`
-    : `${labels}concat=n=${colors.length}:v=1:a=0,${pad},${color.filter}[v]`
+    : `${labels}concat=n=${colors.length}:v=1:a=0,${pad},${color}[v]`
   const codec = isHap
     ? ['-c:v', 'hap', '-format', 'hap_q', '-compressor', 'snappy']
-    : ['-c:v', 'libx264', '-preset', 'medium', '-crf', '18', ...color.tags]
+    : ['-c:v', 'libx264', '-preset', 'medium', '-crf', '18']
 
   const args = [
     '-hide_banner',

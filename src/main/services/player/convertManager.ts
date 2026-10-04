@@ -252,6 +252,8 @@ class ConvertManager {
     const copy = Boolean(p.plan.video?.copy)
     const encoder =
       p.kind === 'image' || copy ? undefined : await resolveEncoder(getSettings().player.encoder)
+    // während der (ersten, langsamen) GPU-Erkennung abgebrochen -> „canceled" nicht überschreiben
+    if (this.isCanceled(job)) throw new FfmpegCanceledError()
     this.update(job, { status: 'converting', encoder: copy ? 'copy' : (encoder ?? null) })
     const args = buildConvertArgs(p.plan, p.options, {
       input: job.sourcePath,
@@ -365,12 +367,16 @@ class ConvertManager {
       this.update(job, { status: 'done', progress: 1, mediaId: item.id })
       this.librarySink()
     } catch (err) {
-      if (!this.isCanceled(job) && !(err instanceof FfmpegCanceledError)) {
-        this.update(job, {
-          status: 'error',
-          error: err instanceof Error ? err.message : String(err)
-        })
+      if (this.isCanceled(job) || err instanceof FfmpegCanceledError) {
+        // erst jetzt ist ffmpeg beendet -> Reste sicher löschbar (Windows sperrt offene Dateien)
+        this.removeOutputs(job.id)
+        if (!this.isCanceled(job)) this.update(job, { status: 'canceled' })
+        return
       }
+      this.update(job, {
+        status: 'error',
+        error: err instanceof Error ? err.message : String(err)
+      })
     }
   }
 
@@ -466,12 +472,14 @@ class ConvertManager {
       this.librarySink()
     } catch (err) {
       this.cleanupReconvertTmp(id, ext)
-      if (!this.isCanceled(job) && !(err instanceof FfmpegCanceledError)) {
-        this.update(job, {
-          status: 'error',
-          error: err instanceof Error ? err.message : String(err)
-        })
+      if (this.isCanceled(job) || err instanceof FfmpegCanceledError) {
+        if (!this.isCanceled(job)) this.update(job, { status: 'canceled' })
+        return
       }
+      this.update(job, {
+        status: 'error',
+        error: err instanceof Error ? err.message : String(err)
+      })
     }
   }
 
@@ -482,13 +490,17 @@ class ConvertManager {
     convertQueue.remove(id)
     this.update(job, { status: 'canceled' })
     this.aborts.get(id)?.abort()
-    // unfertige Ausgaben aufräumen
+    // unfertige Ausgaben aufräumen (ein noch laufender Import räumt nach Prozessende nach)
+    this.removeOutputs(id)
+  }
+
+  private removeOutputs(id: string): void {
     for (const name of [`${id}.mp4`, `${id}.jpg`, `${id}_thumb.jpg`]) {
       try {
         const f = mediaFilePath(name)
         if (existsSync(f)) rmSync(f)
       } catch {
-        // ignorieren
+        // ignorieren (z.B. unter Windows noch geöffnet)
       }
     }
   }

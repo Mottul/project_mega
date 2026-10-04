@@ -120,13 +120,19 @@ export const PRORES_PROFILE: Partial<Record<ConvertFormat, number>> = {
 export const SQUARE_PIXELS =
   "scale='if(gte(sar,1),trunc(iw*sar/2)*2,iw)':'if(gte(sar,1),ih,trunc(ih/sar/2)*2)',setsar=1"
 
-/** ffprobe sample_aspect_ratio („4:3", „0:1", „N/A") -> Zahl; unbekannt/ungültig = 1. */
-export function parseSar(s: string | null | undefined): number {
+/** SAR als Bruch [Zähler, Nenner]; unbekannt/ungültig = [1, 1]. */
+export function sarParts(s: string | null | undefined): [number, number] {
   const m = /^(\d+)[:/](\d+)$/.exec(s ?? '')
-  if (!m) return 1
+  if (!m) return [1, 1]
   const num = Number(m[1])
   const den = Number(m[2])
-  return num > 0 && den > 0 ? num / den : 1
+  return num > 0 && den > 0 ? [num, den] : [1, 1]
+}
+
+/** ffprobe sample_aspect_ratio („4:3", „0:1", „N/A") -> Zahl; unbekannt/ungültig = 1. */
+export function parseSar(s: string | null | undefined): number {
+  const [num, den] = sarParts(s)
+  return num / den
 }
 
 /** Maße in quadratischen Pixeln (dieselbe Rechnung wie SQUARE_PIXELS). */
@@ -233,6 +239,8 @@ function decideRate(f: number, variable: boolean, opt: ConvertFps): RateChange {
 export interface PlanCaps {
   /** HDR -> SDR möglich (Filter zscale + tonemap im gebündelten ffmpeg) */
   tonemap: boolean
+  /** libvpx-Decoder vorhanden (nur sie lesen den Alpha-Kanal von VP8/VP9-WebM) */
+  vpxAlpha?: boolean
 }
 
 export interface ConvertIssue {
@@ -259,8 +267,8 @@ export interface ConvertPlanVideo {
   filters: string[]
   /** Ziel-Pixelformat (null = Encoder wählt, z.B. JPG) */
   pixFmt: string | null
-  /** explizit zu setzende Farbkennung (null = von der Quelle übernehmen) */
-  colorTags: ColorTags | null
+  /** Decoder für die Quelle erzwingen (z.B. libvpx-vp9 für WebM mit Alpha) */
+  decoder: string | null
   /** Keyframe-Abstand in Bildern für Long-GOP-Encoder (2 s) */
   gop: number | null
 }
@@ -357,6 +365,16 @@ function sourceMatrix(v: MediaVideoTrack): 'bt709' | 'bt601' | 'bt2020' | null {
     default:
       return null
   }
+}
+
+/**
+ * Farbkennung als Filter. NICHT als Encoder-Option (-colorspace …): aktuelles ffmpeg
+ * versteht die als Umrechnungsziel und wandelt ungekennzeichnete Bilder dann von Rec. 601
+ * nach Rec. 709 – sichtbare Farbverschiebung; -color_primaries/-color_trc allein werden
+ * sogar ignoriert. setparams kennzeichnet nur und landet vollständig in der Datei.
+ */
+export function setparamsFor(t: ColorTags): string {
+  return `setparams=colorspace=${t.space}:color_primaries=${t.primaries}:color_trc=${t.trc}:range=${t.range}`
 }
 
 /** Kennung für YUV-Ausgaben: HD = Rec. 709, SD = Rec. 601 (PAL/NTSC-Primaries). */
@@ -482,8 +500,26 @@ export function planConversion(
   // JPG aus einem Video = erstes Bild (z.B. animiertes PNG/WebP in der Player-Bibliothek)
   if (fi.family !== 'image' && still) return { ok: false, error: 'Standbild – kein Video' }
 
-  /* Alpha: Alpha-Quellen automatisch in die Alpha-Variante der Formatfamilie */
-  if (v.alpha && opts.keepAlpha && !fi.alpha) {
+  /* Alpha. VP8/VP9-WebM tragen Alpha in Zusatzdaten, die nur die libvpx-Decoder lesen –
+     ffmpegs eigener Decoder verwirft sie still (alles würde deckend) */
+  const vpx = v.alpha && (v.codecName === 'vp9' || v.codecName === 'vp8')
+  let decoder: string | null = null
+  let srcAlpha = v.alpha
+  if (vpx) {
+    if (caps.vpxAlpha === false) {
+      srcAlpha = false
+      issues.push({
+        id: 'webm-alpha',
+        level: 'warning',
+        title: 'Transparenz der WebM nicht lesbar',
+        text: 'Dem gebündelten ffmpeg fehlt der libvpx-Decoder – die Datei wird deckend übernommen.'
+      })
+    } else {
+      decoder = v.codecName === 'vp9' ? 'libvpx-vp9' : 'libvpx'
+    }
+  }
+  /* Alpha-Quellen automatisch in die Alpha-Variante der Formatfamilie */
+  if (srcAlpha && opts.keepAlpha && !fi.alpha) {
     const alt: ConvertFormat | null =
       fi.family === 'hap' ? 'hap_alpha' : fi.family === 'prores' ? 'prores_4444' : null
     if (alt) {
@@ -492,8 +528,8 @@ export function planConversion(
       steps.push(`Alpha erkannt → ${fi.label}`)
     }
   }
-  const alphaOut = v.alpha && fi.alpha
-  if (v.alpha && !fi.alpha) {
+  const alphaOut = srcAlpha && fi.alpha
+  if (srcAlpha && !fi.alpha) {
     issues.push({
       id: 'alpha-lost',
       level: 'warning',
@@ -510,7 +546,9 @@ export function planConversion(
   const turned = rot === 90 || rot === 270
   let w = turned ? v.height : v.width
   let h = turned ? v.width : v.height
-  const sar = turned ? 1 / parseSar(v.sar) : parseSar(v.sar)
+  // gedreht: ffmpeg vertauscht Zähler/Nenner exakt -> ebenso rechnen (1/x rundet anders)
+  const [sarNum, sarDen] = sarParts(v.sar)
+  const sar = turned ? sarDen / sarNum : sarNum / sarDen
   // rot ist im Uhrzeigersinn gespeichert; „270°" läse sich wie ein Fehler
   if (rot) {
     steps.push(
@@ -608,7 +646,7 @@ export function planConversion(
   }
 
   /* Alpha flach rechnen (vor jeder Formatwandlung, die Alpha verwirft) */
-  if (v.alpha && !alphaOut) {
+  if (srcAlpha && !alphaOut) {
     filters.push('premultiply=inplace=1')
     steps.push('Transparenz auf Schwarz')
   }
@@ -744,7 +782,7 @@ export function planConversion(
     !structural &&
     !rot &&
     !v.mirrored &&
-    !v.alpha &&
+    !srcAlpha &&
     !v.hdr &&
     (v.pixFmt === 'yuv420p' || v.pixFmt === 'yuvj420p')
   if (structural) filters.push('setsar=1')
@@ -755,7 +793,6 @@ export function planConversion(
   // Ungekennzeichnet: HD wie Rec. 709, SD wie Rec. 601 (so zeigen es Player auch an)
   const assumed: 'bt709' | 'bt601' =
     srcMatrix === 'bt601' ? 'bt601' : srcMatrix ? 'bt709' : v.height >= 720 ? 'bt709' : 'bt601'
-  let colorTags: ColorTags | null = null
   if (!copy && !tonemapped) {
     if (rgbOut && srcYuv) {
       // YUV -> RGB: ohne Angabe nähme swscale Rec. 601 -> HD-Material farbverschoben
@@ -767,16 +804,15 @@ export function planConversion(
         filters.push('scale=in_range=pc:out_range=tv')
         steps.push('Full Range → Limited')
       }
-      if (!srcMatrix) colorTags = tagsFor(assumed, v.height)
+      // ungekennzeichnet: so kennzeichnen, wie Player es ohnehin lesen (Pixel unverändert)
+      if (!srcMatrix) filters.push(setparamsFor(tagsFor(assumed, v.height)))
     } else if (yuvOut && !srcYuv) {
       // RGB-Quelle (PNG, Animation, 4444-RGB): Matrix der Ausgabe festlegen und kennzeichnen
       const out: 'bt709' | 'bt601' = h >= 720 ? 'bt709' : 'bt601'
-      filters.push(`scale=out_color_matrix=${out}:out_range=tv`)
-      colorTags = tagsFor(out, h)
+      filters.push(`scale=out_color_matrix=${out}:out_range=tv`, setparamsFor(tagsFor(out, h)))
     }
-  } else if (tonemapped && yuvOut) {
-    colorTags = { primaries: 'bt709', trc: 'bt709', space: 'bt709', range: 'tv' }
   }
+  // HDR -> SDR: zscale kennzeichnet die Bilder selbst als Rec. 709
 
   if (fi.family === 'h264' && opts.compat && (w * h > 1920 * 1088 || (outRate ?? 0) > 60.5)) {
     issues.push({
@@ -816,7 +852,7 @@ export function planConversion(
         fps: still ? null : outRate,
         filters: copy ? [] : filters,
         pixFmt: copy ? null : pixFmt,
-        colorTags: copy ? null : colorTags,
+        decoder,
         gop:
           (fi.family === 'h264' || fi.family === 'hevc') && outRate ? Math.round(outRate * 2) : null
       },

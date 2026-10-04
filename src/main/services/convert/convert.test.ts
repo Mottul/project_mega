@@ -74,8 +74,11 @@ describe('buildConvertArgs', () => {
       video: [videoTrack({ colorSpace: null, colorPrimaries: null, colorTransfer: null })]
     })
     const a = argsFor(untagged)
-    expect(after(a, '-colorspace')).toBe('bt709')
-    expect(after(a, '-color_range')).toBe('tv')
+    // per setparams (Encoder-Optionen würden ffmpeg 601 -> 709 umrechnen lassen)
+    expect(after(a, '-vf')).toContain(
+      'setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv'
+    )
+    expect(a).not.toContain('-colorspace')
     const q = argsFor(
       mediaInfo({ video: [videoTrack({ scan: 'tff' })] }),
       {},
@@ -106,6 +109,21 @@ describe('buildConvertArgs', () => {
     expect(copy).not.toContain('-vf')
   })
 
+  it('WebM mit Alpha: Decoder vor -i erzwungen', () => {
+    const webm = mediaInfo({
+      video: [videoTrack({ codecName: 'vp9', codec: 'VP9', alpha: true })]
+    })
+    const a = argsFor(webm, { format: 'hap_alpha' })
+    expect(a.slice(0, 6)).toEqual([
+      '-hide_banner',
+      '-nostdin',
+      '-c:v',
+      'libvpx-vp9',
+      '-i',
+      'in.mov'
+    ])
+  })
+
   it('H.264-Level nach Tabelle A-1', () => {
     expect(h264Level(1920, 1080, 25)).toBe('4.1')
     expect(h264Level(1920, 1080, 60)).toBe('4.2')
@@ -123,6 +141,9 @@ describe('Fähigkeiten, Fehlertexte, Warteschlange', () => {
     expect(caps.formats.hap_q).toBe(true)
     expect(caps.formats.hevc).toBe(false)
     expect(caps.tonemap).toBe(false) // tonemap fehlt
+    expect(caps.vpxAlpha).toBe(false)
+    const dec = parseEncoderNames(' V....D libvpx   libvpx VP8\n V..... libvpx-vp9  libvpx VP9\n')
+    expect(capabilitiesFrom(enc, fil, null, dec).vpxAlpha).toBe(true)
   })
 
   it('Fehlertext: Ursache statt „Conversion failed!", ohne [codec @ 0x…]', () => {

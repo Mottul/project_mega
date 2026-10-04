@@ -107,9 +107,12 @@ function videoEncoderArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo
 
 /** Vollständige ffmpeg-Argumente (Fortschritt über -progress pipe:1). */
 export function buildConvertArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo): string[] {
-  const args = ['-hide_banner', '-nostdin', '-i', io.input]
   const v = plan.video
   const a = plan.audio
+  const args = ['-hide_banner', '-nostdin']
+  // Decoder erzwingen (WebM mit Alpha: nur libvpx liest den Alpha-Kanal)
+  if (v?.decoder && !v.copy) args.push('-c:v', v.decoder)
+  args.push('-i', io.input)
   // Spuren ausdrücklich wählen: Cover-Bilder, Untertitel, Daten- und weitere Tonspuren
   // bleiben weg (die erste Spur ist z.B. bei MP4 mit Cover nicht immer das Video)
   if (v) args.push('-map', `0:${v.streamIndex}`)
@@ -128,19 +131,6 @@ export function buildConvertArgs(plan: ConvertPlan, opts: ConvertOptions, io: Co
       // Konstante Bildrate erzwingen: alte AVIs/Streams haben Zeitstempel-Lücken (fehlende
       // Bilder) -> sonst entstünde trotz „konstanter" Quelle eine variable Ausgabe
       if (v.fps && plan.formatInfo.family !== 'image') args.push('-fps_mode', 'cfr')
-      if (v.colorTags) {
-        const t = v.colorTags
-        args.push(
-          '-color_primaries',
-          t.primaries,
-          '-color_trc',
-          t.trc,
-          '-colorspace',
-          t.space,
-          '-color_range',
-          t.range
-        )
-      }
     }
   }
 
