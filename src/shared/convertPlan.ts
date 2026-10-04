@@ -129,12 +129,6 @@ export function sarParts(s: string | null | undefined): [number, number] {
   return num > 0 && den > 0 ? [num, den] : [1, 1]
 }
 
-/** ffprobe sample_aspect_ratio („4:3", „0:1", „N/A") -> Zahl; unbekannt/ungültig = 1. */
-export function parseSar(s: string | null | undefined): number {
-  const [num, den] = sarParts(s)
-  return num / den
-}
-
 /** Maße in quadratischen Pixeln (dieselbe Rechnung wie SQUARE_PIXELS). */
 export function squarePixelSize(
   w: number | null,

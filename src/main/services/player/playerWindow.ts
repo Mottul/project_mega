@@ -62,7 +62,3 @@ export function closePlayerOutput(emit = true): void {
   win = null
   if (emit) setOutputOpen(false)
 }
-
-export function isPlayerOutputOpen(): boolean {
-  return win !== null && !win.isDestroyed()
-}

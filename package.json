@@ -3,7 +3,7 @@
   "productName": "Mottulbox",
   "version": "0.1.0",
   "private": true,
-  "description": "Plattformuebergreifende AV-Werkzeug-App (HAP-Konverter, Manuals-Bibliothek, ...)",
+  "description": "Plattformuebergreifende AV-Werkzeug-App (Video-Player, Video-Konverter, Medien-Info, Testbild, ...)",
   "author": "Matthias",
   "license": "MIT",
   "main": "./out/main/index.js",

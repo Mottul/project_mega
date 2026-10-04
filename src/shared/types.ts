@@ -1149,9 +1149,11 @@ export interface AppSettings {
    *  Zurück). null = normaler Start mit Übersicht. Exit per Strg+Shift+K. */
   kioskToolId: string | null
   /** Als Favorit markierte Werkzeuge (Tool-IDs) -> eigene Reihe oben im
-   *  Startbildschirm für schnellen Zugriff. Reihenfolge = Reihenfolge des
-   *  Markierens. */
+   *  Startbildschirm für schnellen Zugriff. Reihenfolge = eigene Sortierung
+   *  (Ziehen/Pfeile im Startbildschirm); neu markierte kommen ans Ende. */
   favoriteToolIds: string[]
+  /** Startbildschirm zeigt nur die Favoriten (Suche findet trotzdem alle). */
+  launcherFavoritesOnly: boolean
   /** UI-Dichte (Normal/Kompakt) der Bedienoberfläche. */
   uiDensity: UiDensity
   /** yt-dlp beim Start prüfen und bei Bedarf aktualisieren. */
@@ -1178,6 +1180,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   osc: DEFAULT_OSC_SETTINGS,
   kioskToolId: null,
   favoriteToolIds: [],
+  launcherFavoritesOnly: false,
   uiDensity: 'normal',
   ytdlpAutoUpdate: true,
   remoteControls: DEFAULT_REMOTE_CONTROLS

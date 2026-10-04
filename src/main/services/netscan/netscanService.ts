@@ -36,10 +36,6 @@ export function setNetscanSinks(
   deviceSink = onDevice
 }
 
-export function getNetscanProgress(): NetScanProgress {
-  return progress
-}
-
 function emitProgress(force = false): void {
   const now = Date.now()
   if (!force && now - lastProgressEmit < 120) return
