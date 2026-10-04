@@ -239,6 +239,97 @@ export interface HapJob {
   createdAt: number
 }
 
+/* ------------------------------ Konvertierung ------------------------------ */
+// Gemeinsamer Kern für Video-Konverter und Player-Import (Plan: shared/convertPlan.ts).
+
+export type ConvertFormat =
+  | 'hap'
+  | 'hap_alpha'
+  | 'hap_q'
+  | 'h264'
+  | 'hevc'
+  | 'prores_proxy'
+  | 'prores_lt'
+  | 'prores_422'
+  | 'prores_hq'
+  | 'prores_4444'
+  | 'wav' // nur Ton
+  | 'jpg' // Standbild (Player-Bibliothek)
+
+// bars = Letterbox/Pillarbox, crop = füllen und Ränder abschneiden, blur = unscharfer
+// Hintergrund (Player)
+export type ConvertFit = 'bars' | 'crop' | 'stretch' | 'blur'
+
+export type ConvertSize =
+  | { mode: 'original' }
+  // höchstens so groß (Hochkant passt in die gedrehte Box), nie vergrößern
+  | { mode: 'max'; width: number; height: number }
+  | { mode: 'exact'; width: number; height: number; fit: ConvertFit }
+
+export type ConvertRaster = '25' | '30' | 'ntsc' | 'film'
+
+export type ConvertFps =
+  | { mode: 'original' } // variable Bildrate wird trotzdem konstant
+  | { mode: 'raster'; raster: ConvertRaster } // 25/50, 30/60, 29,97/59,94, 24/48
+  | { mode: 'fixed'; fps: number }
+
+export type ConvertQuality = 'high' | 'standard' | 'small'
+
+export interface ConvertOptions {
+  format: ConvertFormat
+  quality: ConvertQuality // H.264/H.265
+  compat: boolean // H.264: Level + Bitraten-Deckel für Player-Boxen/TVs
+  keepAlpha: boolean // Alpha-Quelle: HAP/HAP Q -> HAP Alpha, ProRes 422 -> 4444
+  size: ConvertSize
+  fps: ConvertFps
+  deinterlace: boolean // erkannte Halbbilder -> Vollbilder mit doppelter Rate (25i -> 50p)
+  toSdr: boolean // HDR (PQ/HLG) -> SDR
+  audio: 'auto' | 'stereo' | 'none'
+  hapCompressor: HapCompressor
+  hapChunks: ChunksMode
+  /** Player: Lautheit angleichen (EBU R128). */
+  loudnorm?: { i: number; tp: number; lra: number } | null
+  /** Player: Blur-Rand (nur fit 'blur'). */
+  blur?: { strength: number; darken: number }
+  /** Player: unverändertes H.264 nur umverpacken statt neu kodieren. */
+  allowCopy?: boolean
+}
+
+export interface ConvertCapabilities {
+  ffmpegFound: boolean
+  version: string | null
+  error?: string
+  /** je Format: kann das gebündelte ffmpeg es schreiben? (HAP braucht libsnappy) */
+  formats: Record<ConvertFormat, boolean>
+  /** HDR -> SDR (Filter zscale + tonemap) */
+  tonemap: boolean
+}
+
+export interface ConverterEnqueueRequest {
+  inputs: string[] // Dateien und/oder Ordner (Ordner werden rekursiv durchsucht)
+  options: ConvertOptions
+  outputDir: string | null // null => neben der Quelldatei ablegen
+  concurrency: number // gleichzeitige Konvertierungen (1 = sequentiell)
+}
+
+export interface ConverterJob {
+  id: string
+  inputPath: string
+  outputPath: string | null // steht erst nach der Planung fest (Alpha-Automatik, Nummerierung)
+  format: ConvertFormat // nach der Planung das tatsächliche Format
+  formatLabel: string
+  status: JobStatus
+  progress: number // 0..1
+  width: number | null // Ausgabe
+  height: number | null
+  fps: number | null
+  chunks: number | null // nur HAP
+  steps: string[] // angewendete Korrekturen („Deinterlaced (25i → 50p)" …)
+  durationSec: number | null
+  error?: string
+  createdAt: number
+}
+
 /* ------------------------------- Manuals -------------------------------- */
 
 export interface ManualMeta {
