@@ -4,7 +4,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { debouncedStorage } from '@renderer/lib/persistStorage'
+import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
 
 export interface PackItem {
   id: string
@@ -226,3 +226,7 @@ export const usePacking = create<PackState>()(
     }
   )
 )
+
+// Ein Werkzeug in mehreren Fenstern: Änderungen der anderen übernehmen, statt sie
+// beim nächsten Speichern mit altem Stand zu überschreiben (siehe persistStorage.ts).
+syncAcrossWindows(usePacking)

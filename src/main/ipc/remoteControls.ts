@@ -31,8 +31,7 @@ function settingsStore(id: Exclude<RemoteControlId, 'player'>): {
 } {
   return {
     persisted: () => getSettings().remoteControls[id],
-    persist: (value) =>
-      setSettings({ remoteControls: { ...getSettings().remoteControls, [id]: value } })
+    persist: (value) => setSettings({ remoteControls: { [id]: value } })
   }
 }
 

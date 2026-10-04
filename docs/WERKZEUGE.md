@@ -33,7 +33,8 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   zeigt den QR-Code der [Fernsteuer-App](FERNSTEUERUNG.md).
 - **Eigene Fenster:** Jedes Werkzeug lässt sich zusätzlich in einem eigenen Fenster öffnen
   („In neuem Fenster öffnen“ an der Kachel oder in der Kopfzeile) – etwa Video-Player, Jingles
-  und Rechner gleichzeitig.
+  und Rechner gleichzeitig. Ist ein Werkzeug in mehreren Fenstern offen, zeigen alle denselben
+  Stand; Änderungen kommen nach spätestens einer halben Sekunde in den anderen Fenstern an.
 - **Kundenansicht:** „Als Kundenansicht starten“ in der Kopfzeile eines Werkzeugs sperrt es
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,
@@ -45,8 +46,8 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   Akzentfarbe.
 - **Robust in der Show:** Ein abstürzendes Werkzeug bleibt in seinem Bereich (Fehlergrenze), die
   App läuft weiter. Stille Fehler werden als Hinweis sichtbar (z. B. defekte Jingle-Datei,
-  verlorenes Audiogerät). Eine beschädigte `settings.json` oder `library.db` wird gesichert und
-  neu angelegt statt still zurückgesetzt.
+  verlorenes Audiogerät). `settings.json` wird atomar gespeichert; eine beschädigte
+  `settings.json` oder `library.db` wird gesichert und neu angelegt statt still zurückgesetzt.
 
 ## Wiedergabe & Show
 

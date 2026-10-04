@@ -129,8 +129,7 @@ function startRecv(): void {
 }
 
 export function oscSetConfig(patch: Partial<OscSettings>): OscStatus {
-  const next = { ...cfg(), ...patch }
-  setSettings({ osc: next })
+  setSettings({ osc: patch })
   // Feedback-Socket nur bei relevanter Änderung neu binden.
   if (patch.inPort !== undefined || patch.feedbackEnabled !== undefined) startRecv()
   emitStatus()

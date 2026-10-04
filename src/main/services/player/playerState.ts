@@ -192,27 +192,21 @@ export function applyCommand(cmd: PlayerCommand): void {
       break
     case 'setImageDuration':
       state.imageDurationSec = Math.max(1, Math.min(3600, Math.round(cmd.seconds)))
-      setSettings({ player: { ...getSettings().player, imageDurationSec: state.imageDurationSec } })
+      setSettings({ player: { imageDurationSec: state.imageDurationSec } })
       break
     case 'setTransition':
       state.transition = cmd.transition
       if (cmd.transitionMs != null)
         state.transitionMs = Math.max(100, Math.min(5000, Math.round(cmd.transitionMs)))
-      setSettings({
-        player: {
-          ...getSettings().player,
-          transition: state.transition,
-          transitionMs: state.transitionMs
-        }
-      })
+      setSettings({ player: { transition: state.transition, transitionMs: state.transitionMs } })
       break
     case 'setDefaultFit':
       // Reine Einstellung (kein Wiedergabe-Zustand) – wirkt auf neue Importe/Uploads.
-      setSettings({ player: { ...getSettings().player, defaultFit: cmd.fit } })
+      setSettings({ player: { defaultFit: cmd.fit } })
       break
     case 'setIdlePattern':
       state.idlePattern = cmd.pattern
-      setSettings({ player: { ...getSettings().player, idlePattern: state.idlePattern } })
+      setSettings({ player: { idlePattern: state.idlePattern } })
       break
     case 'setIdleMedia':
       if (cmd.url) {
@@ -226,7 +220,6 @@ export function applyCommand(cmd: PlayerCommand): void {
       }
       setSettings({
         player: {
-          ...getSettings().player,
           idlePattern: state.idlePattern,
           idleMediaUrl: state.idleMediaUrl,
           idleMediaKind: state.idleMediaKind

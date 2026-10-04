@@ -154,7 +154,7 @@ export function registerPlayerHandlers(): void {
     reportPlayback(positionSec, durationSec)
   )
   ipcMain.handle(Channels.playerOpenOutput, (_e, displayId: number) => {
-    setSettings({ player: { ...getSettings().player, outputDisplayId: displayId } })
+    setSettings({ player: { outputDisplayId: displayId } })
     openPlayerOutput(displayId)
   })
   ipcMain.handle(Channels.playerCloseOutput, () => closePlayerOutput())
@@ -176,7 +176,7 @@ export function registerPlayerHandlers(): void {
       return { enabled: p.remoteEnabled, port: p.remotePort }
     },
     persist: ({ enabled, port }) =>
-      setSettings({ player: { ...getSettings().player, remoteEnabled: enabled, remotePort: port } })
+      setSettings({ player: { remoteEnabled: enabled, remotePort: port } })
   })
 
   // NDI-Ausgabe (experimentell; ohne optionales Binding meldet Status "nicht verfügbar").

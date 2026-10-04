@@ -5,7 +5,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { NetDeviceType } from '@shared/types'
-import { debouncedStorage } from '@renderer/lib/persistStorage'
+import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
 
 interface NetLabelState {
   labels: Record<string, string> // key (mac||ip) -> Bezeichnung
@@ -51,3 +51,7 @@ export const useNetLabels = create<NetLabelState>()(
     }
   )
 )
+
+// Ein Werkzeug in mehreren Fenstern: Änderungen der anderen übernehmen, statt sie
+// beim nächsten Speichern mit altem Stand zu überschreiben (siehe persistStorage.ts).
+syncAcrossWindows(useNetLabels)

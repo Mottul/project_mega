@@ -1220,6 +1220,16 @@ export interface AppSettings {
   remoteControls: Record<Exclude<RemoteControlId, 'player'>, RemoteControlSetting>
 }
 
+/** Teiländerung: Objekte feldweise optional, Listen immer ganz (siehe settingsMerge.ts). */
+export type DeepPartial<T> = T extends readonly unknown[]
+  ? T
+  : T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : T
+
+/** Was `setSettings` annimmt: nur die zu ändernden Felder, auch in player/osc/… */
+export type SettingsPatch = DeepPartial<AppSettings>
+
 export const DEFAULT_REMOTE_CONTROLS: AppSettings['remoteControls'] = {
   jingle: { enabled: false, port: 8089 },
   osc: { enabled: false, port: 8091 },

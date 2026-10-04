@@ -107,11 +107,16 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Timer-Zustand ticken im main; Ausgabefenster (`#/output`, `#/player-output`, `#/timer-output`,
   `#/osc-monitor`) und Handy-Seiten spiegeln nur.
 - **Einstellungen:** `settings.json` (`services/store.ts`) ist die Quelle der Wahrheit für
-  App-Einstellungen. localStorage dient den Werkzeug-Stores, Bedien-Kleinigkeiten (z. B.
-  aufgeklappte Panels) und als Boot-Spiegel für Theme und Akzentfarbe.
+  App-Einstellungen. `setSettings` bekommt nur die geänderten Felder – auch innerhalb von
+  `player`, `osc` … – und führt sie zusammen (Listen werden als Ganzes ersetzt); nie erst lesen
+  und dann alles zurückschreiben. Die Datei wird atomar ersetzt. Wer Einstellungen im eigenen
+  Zustand hält (Favoriten, Playlists, Presets), abonniert `api.onSettingsChanged`, sonst
+  überschreibt das Fenster Änderungen anderer Fenster. localStorage dient den Werkzeug-Stores,
+  Bedien-Kleinigkeiten (z. B. aufgeklappte Panels) und als Boot-Spiegel für Theme und Akzentfarbe.
 - **Werkzeug-Zustand:** ein zustand-Store je Werkzeug. Persistierte Stores nutzen
   `debouncedStorage()` aus `@renderer/lib/persistStorage` und tragen eine `version` (migrierbar) –
-  nie die synchrone Standard-Storage, sonst ruckeln Eingabefelder.
+  nie die synchrone Standard-Storage, sonst ruckeln Eingabefelder. Dazu `syncAcrossWindows(store)`:
+  ist das Werkzeug in mehreren Fenstern offen, übernehmen sie gegenseitig ihre Änderungen.
 - **Eingabefelder mit Puffer:** `useDraft()` (`@renderer/lib/useDraft`) übernimmt den externen
   Wert nur, solange das Feld nicht fokussiert ist.
 - **Fernsteuerungen:** abhängigkeitsfreie HTTP-Server je Werkzeug (`services/remoteHttp.ts`),

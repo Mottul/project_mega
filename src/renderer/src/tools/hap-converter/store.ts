@@ -8,7 +8,7 @@ import { persist } from 'zustand/middleware'
 import type { ConvertOptions, HapFormat, MediaInfoResult } from '@shared/types'
 import { dotted, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import { api } from '@renderer/lib/api'
-import { debouncedStorage } from '@renderer/lib/persistStorage'
+import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
 import { DEFAULT_OPTIONS, presetOptions, type ConverterTarget } from './presets'
 
 interface PrefsState {
@@ -154,3 +154,7 @@ export const useInputMeta = create<MetaState>((set, get) => ({
     })()
   }
 }))
+
+// Ein Werkzeug in mehreren Fenstern: Änderungen der anderen übernehmen, statt sie
+// beim nächsten Speichern mit altem Stand zu überschreiben (siehe persistStorage.ts).
+syncAcrossWindows(useConverterPrefs)

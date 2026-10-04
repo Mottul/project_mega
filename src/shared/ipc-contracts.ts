@@ -3,6 +3,7 @@
 
 import type {
   AppSettings,
+  SettingsPatch,
   ColorLoopRequest,
   ConfirmOptions,
   NotifyOptions,
@@ -75,6 +76,7 @@ export const Channels = {
   // Settings / App
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
+  settingsChanged: 'settings:changed', // Event: AppSettings (von einem anderen Fenster/main geändert)
   appLogPath: 'app:logPath',
   // ffmpeg
   ffmpegProbe: 'ffmpeg:probe',
@@ -248,7 +250,11 @@ export interface ToolboxApi {
   openPath(target: string): Promise<void>
   showItemInFolder(target: string): Promise<void>
   getSettings(): Promise<AppSettings>
-  setSettings(patch: Partial<AppSettings>): Promise<AppSettings>
+  /** Nur die zu ändernden Felder schicken – auch in player/osc/… (wird feldweise
+   *  zusammengeführt); Listen werden als Ganzes ersetzt. */
+  setSettings(patch: SettingsPatch): Promise<AppSettings>
+  /** Einstellungen wurden anderswo geändert (anderes Fenster, Handy, main). Liefert Cleanup. */
+  onSettingsChanged(cb: (settings: AppSettings) => void): () => void
   /** Pfad zur Debug-Logdatei (zum Anzeigen/Mitschicken). */
   getLogPath(): Promise<string>
   /** Absoluter Pfad einer per Drag&Drop fallengelassenen Datei (Electron webUtils). */

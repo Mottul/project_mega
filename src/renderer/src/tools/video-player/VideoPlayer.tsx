@@ -62,7 +62,9 @@ import {
   type PlayerState,
   type RemoteStatus,
   type SavedPlaylist,
-  type TransitionMode
+  type SettingsPatch,
+  type TransitionMode,
+  type AppSettings
 } from '@shared/types'
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
@@ -199,7 +201,10 @@ export function VideoPlayer(): JSX.Element {
       setDisplays(list)
       setDisplayId((cur) => cur ?? (list.find((d) => !d.primary) ?? list[0])?.id ?? null)
     })
-    void api.getSettings().then((s) => {
+    // Einstellungen übernehmen – beim Start und wenn ein anderes Fenster oder das Handy sie
+    // ändert (z. B. gespeicherte Playlists, Fit-Modus): sonst schriebe dieses Fenster später
+    // seinen veralteten Stand zurück.
+    const applySettings = (s: AppSettings): void => {
       setWallW(s.player.wallWidth)
       setWallH(s.player.wallHeight)
       setFit(s.player.defaultFit)
@@ -211,7 +216,9 @@ export function VideoPlayer(): JSX.Element {
       setRemotePort(s.player.remotePort)
       setSaved(s.player.savedPlaylists ?? [])
       if (s.player.outputDisplayId != null) setDisplayId(s.player.outputDisplayId)
-    })
+    }
+    void api.getSettings().then(applySettings)
+    const offSettings = api.onSettingsChanged(applySettings)
     void api.player.remoteStatus().then(setRemote)
 
     const offJob = api.player.onConvertUpdate((job) => {
@@ -223,6 +230,7 @@ export function VideoPlayer(): JSX.Element {
     const offTick = api.player.onTick((t) => setTick(t))
     const offRemote = api.player.onRemoteChanged(setRemote)
     return () => {
+      offSettings()
       offJob()
       offLib()
       offState()
@@ -365,20 +373,9 @@ export function VideoPlayer(): JSX.Element {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  async function persistPlayer(
-    patch: Partial<{
-      wallWidth: number
-      wallHeight: number
-      defaultFit: FitMode
-      encoder: string
-      blurStrength: number
-      blurDarken: number
-      loudnormEnabled: boolean
-      loudnormI: number
-    }>
-  ): Promise<void> {
-    const s = await api.getSettings()
-    await api.setSettings({ player: { ...s.player, ...patch } })
+  // Nur die geänderten Felder schicken – main führt sie feldweise zusammen.
+  async function persistPlayer(patch: NonNullable<SettingsPatch['player']>): Promise<void> {
+    await api.setSettings({ player: patch })
   }
 
   function setWall(w: number, h: number): void {
@@ -468,8 +465,7 @@ export function VideoPlayer(): JSX.Element {
 
   async function persistSaved(next: SavedPlaylist[]): Promise<void> {
     setSaved(next)
-    const s = await api.getSettings()
-    await api.setSettings({ player: { ...s.player, savedPlaylists: next } })
+    await api.setSettings({ player: { savedPlaylists: next } })
   }
 
   function confirmSavePlaylist(): void {
