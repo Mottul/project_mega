@@ -10,6 +10,7 @@
 import {
   LOGO_ASPECT,
   LOGO_HEAD_STROKE,
+  LOGO_MITER_LIMIT,
   LOGO_PARTS,
   LOGO_STROKE,
   LOGO_VIEWBOX
@@ -38,7 +39,13 @@ export function MottulboxLogo({
       aria-label={title || undefined}
       aria-hidden={title ? undefined : true}
     >
-      <g fill="currentColor" stroke="currentColor" strokeWidth={LOGO_STROKE} strokeLinecap="round">
+      <g
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth={LOGO_STROKE}
+        strokeLinecap="round"
+        strokeMiterlimit={LOGO_MITER_LIMIT}
+      >
         {LOGO_PARTS.map((p, i) =>
           p.head ? (
             // Kopf: Fläche folgt --logo-paper (Standard: offen)

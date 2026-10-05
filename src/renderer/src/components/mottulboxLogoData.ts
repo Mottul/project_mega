@@ -9,6 +9,13 @@ export const LOGO_ASPECT = LOGO_VIEWBOX.width / LOGO_VIEWBOX.height
 export const LOGO_STROKE = 15
 export const LOGO_HEAD_STROKE = 10
 
+/**
+ * Spitze Ecken ab dem 4-Fachen der Strichbreite kappen (SVG-Standard). Canvas kappt erst
+ * beim 10-Fachen – ohne diesen Wert wüchsen dort lange Zacken aus Kopf und Hörnern, und
+ * das Logo im Testbild sähe anders aus als auf dem Startbildschirm und im App-Icon.
+ */
+export const LOGO_MITER_LIMIT = 4
+
 export interface LogoPart {
   d: string
   /** Kopfkontur: nur Umriss, Fläche bleibt offen (bzw. „Papier"-Farbe). */

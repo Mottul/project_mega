@@ -12,6 +12,7 @@ import {
 } from '@shared/types'
 import {
   LOGO_HEAD_STROKE,
+  LOGO_MITER_LIMIT,
   LOGO_PARTS,
   LOGO_STROKE,
   LOGO_VIEWBOX
@@ -162,7 +163,8 @@ function clampText(text: string | undefined): string {
   return [...(text ?? '').trim()].slice(0, 120).join('')
 }
 
-// Mottulbox-Logo (Linien gefüllt + Kontur, Kopffläche offen) mittig bei (x, y).
+// Mottulbox-Logo (Linien gefüllt + Kontur, Kopffläche offen) mittig bei (x, y) – mit
+// denselben Strich-Regeln wie die SVG-Komponente, damit es dem Startbildschirm gleicht.
 let logoPaths: { path: Path2D; head: boolean }[] | null = null
 function drawLogo(ctx: Ctx, x: number, y: number, height: number, color: string): void {
   logoPaths ??= LOGO_PARTS.map((p) => ({ path: new Path2D(p.d), head: !!p.head }))
@@ -175,6 +177,7 @@ function drawLogo(ctx: Ctx, x: number, y: number, height: number, color: string)
   ctx.strokeStyle = color
   ctx.lineCap = 'round'
   ctx.lineJoin = 'miter'
+  ctx.miterLimit = LOGO_MITER_LIMIT
   for (const { path, head } of logoPaths) {
     ctx.lineWidth = head ? LOGO_HEAD_STROKE : LOGO_STROKE
     if (!head) ctx.fill(path)
