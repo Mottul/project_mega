@@ -46,7 +46,7 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 **📚 Medien & Bibliothek**
 
 - **Video-Konverter** – Clips fürs Zielsystem: HAP/HAP Q/HAP Alpha, H.264, H.265, ProRes, WAV –
-  mit Deinterlace, Show-Raster, HDR → SDR und Vorschau je Datei.
+  mit Deinterlace, Show-Raster, HDR → SDR, Vorschau je Datei und GPU für H.264/H.265.
 - **Medien-Info** – Video-/Audio-Eckdaten per ffprobe, Show-Check mit Ampel, Playlist-Vergleich,
   CSV-/JSON-Export.
 - **Manuals-Bibliothek** – Geräte-Handbücher (PDF) mit Offline-Volltextsuche und Viewer.

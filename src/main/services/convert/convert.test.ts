@@ -82,9 +82,7 @@ describe('buildConvertArgs', () => {
     const q = argsFor(
       mediaInfo({ video: [videoTrack({ scan: 'tff' })] }),
       {},
-      {
-        h264Encoder: 'h264_qsv'
-      }
+      { encoder: 'h264_qsv' }
     )
     expect(after(q, '-vf')?.endsWith('format=nv12')).toBe(true)
     expect(after(q, '-c:v')).toBe('h264_qsv')
@@ -107,6 +105,39 @@ describe('buildConvertArgs', () => {
     expect(after(copy, '-c:v')).toBe('copy')
     expect(after(copy, '-c:a')).toBe('copy')
     expect(copy).not.toContain('-vf')
+  })
+
+  it('GPU-Encoder: H.264 mit Player-Box-Grenzen, H.265 mit hvc1, ProRes schnell', () => {
+    const info = mediaInfo({ video: [videoTrack({ fps: 50 })] })
+    const nv = argsFor(info, { compat: true }, { encoder: 'h264_nvenc' })
+    expect(after(nv, '-c:v')).toBe('h264_nvenc')
+    expect(after(nv, '-level:v')).toBe('4.2')
+    expect(after(nv, '-maxrate')).toBe('25M')
+    expect(after(nv, '-g')).toBe('100')
+    expect(nv).not.toContain('-crf')
+    // Player-Import (Standard, ohne Grenzen): die bewährten Werte wie bisher
+    const player = argsFor(info, {}, { encoder: 'h264_nvenc' })
+    expect(after(player, '-cq')).toBe('23')
+    expect(player).not.toContain('-maxrate')
+    const hevc = argsFor(info, { format: 'hevc' }, { encoder: 'hevc_videotoolbox' })
+    expect(after(hevc, '-c:v')).toBe('hevc_videotoolbox')
+    expect(after(hevc, '-tag:v')).toBe('hvc1')
+    expect(hevc).not.toContain('-x265-params')
+    const qsv = argsFor(info, { format: 'hevc' }, { encoder: 'hevc_qsv' })
+    expect(after(qsv, '-vf')?.endsWith('format=nv12')).toBe(true)
+    // ProRes 4444 mit Alpha über prores_aw: Alpha-Format und Hersteller-Kennung bleiben
+    const alpha = mediaInfo({ video: [videoTrack({ alpha: true, chroma: 'RGB' })] })
+    const aw = argsFor(alpha, { format: 'prores_4444' }, { encoder: 'prores_aw' })
+    expect(after(aw, '-c:v')).toBe('prores_aw')
+    expect(after(aw, '-profile:v')).toBe('4')
+    expect(after(aw, '-vendor')).toBe('apl0')
+    expect(after(aw, '-vf')?.endsWith('format=yuva444p10le')).toBe(true)
+    const vt = argsFor(mediaInfo(), { format: 'prores_hq' }, { encoder: 'prores_videotoolbox' })
+    expect(after(vt, '-c:v')).toBe('prores_videotoolbox')
+    expect(after(vt, '-profile:v')).toBe('3')
+    expect(vt).not.toContain('-vendor')
+    // ohne Encoder-Angabe: die klassischen CPU-Encoder
+    expect(after(argsFor(mediaInfo(), { format: 'prores_hq' }), '-c:v')).toBe('prores_ks')
   })
 
   it('WebM mit Alpha: Decoder vor -i erzwungen', () => {

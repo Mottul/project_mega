@@ -27,6 +27,7 @@ const api: ToolboxApi = {
 
   converter: {
     capabilities: () => ipcRenderer.invoke(Channels.converterCapabilities),
+    encoders: () => ipcRenderer.invoke(Channels.converterEncoders),
     enqueue: (req) => ipcRenderer.invoke(Channels.converterEnqueue, req),
     list: () => ipcRenderer.invoke(Channels.converterList),
     cancel: (id) => ipcRenderer.invoke(Channels.converterCancel, id),

@@ -32,6 +32,7 @@ import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { useKiosk } from '@renderer/launcher/kiosk'
 import { useHandoff } from '@renderer/lib/handoff'
+import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { cn } from '@renderer/lib/utils'
 import { PROBE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import {
@@ -47,6 +48,7 @@ import type {
   ConvertFormat,
   ConvertOptions,
   ConvertQuality,
+  ConverterEncoderStatus,
   ConverterJob,
   HapCompressor,
   JobStatus
@@ -68,6 +70,7 @@ import {
   type ConverterTarget
 } from './presets'
 import { useConverterInputs, useConverterPrefs, useInputMeta, type InputMeta } from './store'
+import { ENCODER_MODE_LABELS, encoderView, type EncoderMode } from './encoder'
 
 // Sinnvolle Parallel-Stufen bis zur Kernzahl (ein einzelner HAP-Encode lastet die CPU
 // nicht voll aus -> mehrere gleichzeitig nutzen die Kerne besser; x264/x265 schon).
@@ -118,6 +121,10 @@ export function VideoConverter(): JSX.Element {
   const options = useConverterPrefs((s) => s.options)
   const concurrency = useConverterPrefs((s) => s.concurrency)
   const [caps, setCaps] = useState<ConvertCapabilities | null>(null)
+  const [encoders, setEncoders] = useState<ConverterEncoderStatus | null>(null)
+  // Maschinen-Einstellung (settings.json), kein Teil der Zielsystem-Vorgaben
+  const encoderMode: EncoderMode =
+    useSettings((s) => s.converter.encoder) === 'cpu' ? 'cpu' : 'auto'
   const [outputDir, setOutputDir] = useState<string | null>(null)
   const [jobs, setJobs] = useState<Record<string, ConverterJob>>({})
   const [dragOver, setDragOver] = useState(false)
@@ -207,6 +214,29 @@ export function VideoConverter(): JSX.Element {
   }
 
   const fi = CONVERT_FORMATS[options.format]
+  const encoderFamily =
+    fi.family === 'h264' || fi.family === 'hevc' || fi.family === 'prores' ? fi.family : null
+  const encoder = encoderFamily
+    ? encoderView(encoders, encoderFamily, encoderMode, {
+        compat: options.compat,
+        keepAlpha: options.keepAlpha
+      })
+    : null
+
+  // Encoder erst prüfen lassen, wenn ein Format sie braucht (der erste Aufruf macht im main
+  // kurze Probeläufe je GPU-Encoder, danach kommt die Antwort aus dem Cache)
+  const needsEncoders = encoderFamily !== null
+  useEffect(() => {
+    if (!needsEncoders) return
+    let alive = true
+    void api.converter.encoders().then((s) => {
+      if (alive) setEncoders(s)
+    })
+    return () => {
+      alive = false
+    }
+  }, [needsEncoders])
+
   const available = (f: ConvertFormat): boolean => !caps || caps.formats[f]
   const formatOk = available(options.format)
   const ffmpegMissing = caps !== null && !caps.ffmpegFound
@@ -404,7 +434,8 @@ export function VideoConverter(): JSX.Element {
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    HAP-Encoding läuft auf der CPU (keine GPU); die GPU nutzt erst der Player.
+                    HAP wird immer auf der CPU kodiert (einen GPU-Encoder gibt es nicht) – dafür
+                    dekodiert beim Abspielen die Grafikkarte.
                   </span>
                 </div>
               </>
@@ -534,7 +565,33 @@ export function VideoConverter(): JSX.Element {
             )}
           </PanelSection>
 
-          <PanelSection id="proc" title="Verarbeitung" icon={Cpu}>
+          <PanelSection
+            id="proc"
+            title="Verarbeitung"
+            icon={Cpu}
+            right={
+              encoder?.encoder?.hardware ? (
+                <Badge tone="success">{encoderFamily === 'prores' ? 'Hardware' : 'GPU'}</Badge>
+              ) : undefined
+            }
+          >
+            {/* Rechner-Einstellung: in der Kundenansicht verborgen (wie beim Video-Player) */}
+            {encoderFamily && encoder && !locked && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Encoder</span>
+                <select
+                  className={selectClass}
+                  value={encoderMode}
+                  onChange={(e) =>
+                    updateSettings({ converter: { encoder: e.target.value as EncoderMode } })
+                  }
+                >
+                  <option value="auto">{ENCODER_MODE_LABELS[encoderFamily].auto}</option>
+                  <option value="cpu">{ENCODER_MODE_LABELS[encoderFamily].cpu}</option>
+                </select>
+                <span className="text-xs text-muted-foreground">{encoder.hint}</span>
+              </label>
+            )}
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Gleichzeitige Konvertierungen</span>
               <select
@@ -798,7 +855,8 @@ function JobRow({
     job.formatLabel,
     job.width && job.height ? `${job.width}×${job.height}` : null,
     job.fps ? `${rateText(job.fps)} fps` : null,
-    job.chunks ? `${job.chunks} Chunks` : null
+    job.chunks ? `${job.chunks} Chunks` : null,
+    job.encoder
   ]
     .filter(Boolean)
     .join(' · ')

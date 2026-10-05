@@ -4,13 +4,14 @@
 
 import { PRORES_PROFILE, type ConvertPlan } from '@shared/convertPlan'
 import type { ConvertOptions, ConvertQuality } from '@shared/types'
-import { encoderOutputArgs, encoderPixFmt } from './encoders'
+import { encoderPixFmt, hardwareEncoderArgs, type H264Compat } from './encoders'
 
 export interface ConvertIo {
   input: string
   output: string
-  /** H.264-Encoder: libx264 (Standard) oder ein geprüfter GPU-Encoder (Player) */
-  h264Encoder?: string
+  /** Video-Encoder für H.264/H.265/ProRes (geprüft, siehe encoders.ts); fehlt er, gilt der
+   *  klassische CPU-Encoder (libx264, libx265, prores_ks) */
+  encoder?: string
   /** HAP-Chunks (aus der Auflösung bzw. manuell) */
   hapChunks?: number
 }
@@ -26,6 +27,13 @@ export function h264Level(width: number, height: number, fps: number | null): st
   if (mbs <= 8704 && perSec <= 522240) return '4.2'
   if (mbs <= 36864 && perSec <= 983040) return '5.1'
   return '5.2'
+}
+
+/** Player-Boxen/TVs: festes Level + Bitraten-Deckel (sonst ruckeln Spitzen). */
+function h264Compat(width: number, height: number, fps: number | null): H264Compat {
+  const level = h264Level(width, height, fps)
+  const sd = level.startsWith('4')
+  return { level, maxrate: sd ? '25M' : '60M', bufsize: sd ? '50M' : '120M' }
 }
 
 function videoEncoderArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo): string[] {
@@ -45,9 +53,9 @@ function videoEncoderArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo
         String(Math.max(1, io.hapChunks ?? 1))
       ]
     case 'h264': {
-      const enc = io.h264Encoder ?? 'libx264'
-      // GPU-Encoder: bewährte Einstellungen des Players
-      if (enc !== 'libx264') return [...encoderOutputArgs(enc), ...gop]
+      const enc = io.encoder ?? 'libx264'
+      const compat = opts.compat ? h264Compat(v.width, v.height, v.fps) : undefined
+      if (enc !== 'libx264') return [...hardwareEncoderArgs(enc, opts.quality, compat), ...gop]
       const args = [
         '-c:v',
         'libx264',
@@ -59,22 +67,17 @@ function videoEncoderArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo
         'high',
         ...gop
       ]
-      if (opts.compat) {
-        // Player-Boxen/TVs: festes Level + Bitraten-Deckel (sonst ruckeln Spitzen)
-        const level = h264Level(v.width, v.height, v.fps)
-        const sd = level.startsWith('4')
-        args.push(
-          '-level:v',
-          level,
-          '-maxrate',
-          sd ? '25M' : '60M',
-          '-bufsize',
-          sd ? '50M' : '120M'
-        )
+      if (compat) {
+        args.push('-level:v', compat.level, '-maxrate', compat.maxrate, '-bufsize', compat.bufsize)
       }
       return args
     }
-    case 'hevc':
+    case 'hevc': {
+      const enc = io.encoder ?? 'libx265'
+      // hvc1 statt hev1: sonst spielen QuickTime/Apple-Geräte die Datei nicht
+      if (enc !== 'libx265') {
+        return [...hardwareEncoderArgs(enc, opts.quality), '-tag:v', 'hvc1', ...gop]
+      }
       return [
         '-c:v',
         'libx265',
@@ -82,22 +85,20 @@ function videoEncoderArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo
         'medium',
         '-crf',
         String(CRF_HEVC[opts.quality]),
-        // hvc1 statt hev1: sonst spielen QuickTime/Apple-Geräte die Datei nicht
         '-tag:v',
         'hvc1',
         ...gop,
         '-x265-params',
         'log-level=error'
       ]
-    case 'prores':
-      return [
-        '-c:v',
-        'prores_ks',
-        '-profile:v',
-        String(PRORES_PROFILE[plan.format] ?? 2),
-        '-vendor',
-        'apl0'
-      ]
+    }
+    case 'prores': {
+      const enc = io.encoder ?? 'prores_ks'
+      const profile = ['-profile:v', String(PRORES_PROFILE[plan.format] ?? 2)]
+      // VideoToolbox schreibt als Apples eigener Encoder ohnehin „apl0“
+      if (enc === 'prores_videotoolbox') return ['-c:v', enc, ...profile]
+      return ['-c:v', enc, ...profile, '-vendor', 'apl0']
+    }
     case 'image':
       return ['-frames:v', '1', '-q:v', '2', '-update', '1']
     default:
@@ -122,9 +123,8 @@ export function buildConvertArgs(plan: ConvertPlan, opts: ConvertOptions, io: Co
     if (v.copy) {
       args.push('-c:v', 'copy')
     } else {
-      const enc = io.h264Encoder ?? 'libx264'
-      // QSV arbeitet intern mit nv12
-      const pixFmt = plan.formatInfo.family === 'h264' && v.pixFmt ? encoderPixFmt(enc) : v.pixFmt
+      // Quick Sync arbeitet intern mit nv12
+      const pixFmt = v.pixFmt && io.encoder ? encoderPixFmt(io.encoder, v.pixFmt) : v.pixFmt
       const chain = [...v.filters, ...(pixFmt ? [`format=${pixFmt}`] : [])]
       if (chain.length) args.push('-vf', chain.join(','))
       args.push(...videoEncoderArgs(plan, opts, io))

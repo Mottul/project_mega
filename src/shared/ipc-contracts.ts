@@ -11,6 +11,7 @@ import type {
   DisplayInfo,
   FitMode,
   ConvertCapabilities,
+  ConverterEncoderStatus,
   ConverterEnqueueRequest,
   ConverterJob,
   ImportProgress,
@@ -82,6 +83,7 @@ export const Channels = {
   ffmpegProbe: 'ffmpeg:probe',
   // Video-Konverter (gemeinsamer Konvertierungs-Kern, früher HAP-Konverter)
   converterCapabilities: 'converter:capabilities',
+  converterEncoders: 'converter:encoders', // geprüfte GPU-/CPU-Encoder je Familie
   converterEnqueue: 'converter:enqueue',
   converterList: 'converter:list',
   converterCancel: 'converter:cancel',
@@ -269,6 +271,8 @@ export interface ToolboxApi {
   converter: {
     /** Was kann das gebündelte ffmpeg (Formate, HDR -> SDR)? */
     capabilities(): Promise<ConvertCapabilities>
+    /** Geprüfte Encoder für H.264/H.265/ProRes (GPU-Probelauf; das erste Mal dauert's kurz). */
+    encoders(): Promise<ConverterEncoderStatus>
     enqueue(req: ConverterEnqueueRequest): Promise<{ jobIds: string[] }>
     list(): Promise<ConverterJob[]>
     cancel(id: string): Promise<void>

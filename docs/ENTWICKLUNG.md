@@ -77,7 +77,7 @@ src/
 │   ├── ipc/                  # IPC-Handler je Bereich (*.handlers.ts), registry.ts, remoteControls.ts
 │   └── services/
 │       ├── store.ts · db.ts  # settings.json (Quelle der Wahrheit) · SQLite/FTS5 – je mit Wiederherstellung
-│       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Runner, Warteschlange, Fähigkeiten
+│       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Warteschlange, Fähigkeiten
 │       ├── ffmpeg/           # ffmpeg-Pfade, Medien-Info (ffprobe-Analyse, Parser, Cache)
 │       ├── player/           # Bibliothek, Import, Wiedergabezustand, Ausgabefenster, Fernsteuerung
 │       ├── manuals/ · osc/ · novastar/ · netscan/ · ytdlp/   # Dienste einzelner Werkzeuge
@@ -121,7 +121,10 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   `probeMediaInfo` (mit Cache), alle Entscheidungen in `shared/convertPlan.ts` (rein, getestet,
   auch für die Vorschau im Renderer), Argumente, Runner und Warteschlange in
   `main/services/convert/`. Neue Korrekturen und Formate gehören dorthin, nicht ins einzelne
-  Werkzeug; ffmpeg läuft immer über `runFfmpeg()`.
+  Werkzeug; ffmpeg läuft immer über `runFfmpeg()`. Encoder (GPU bzw. schnelles ProRes) kommen aus
+  `convert/encoders.ts`: Kandidaten erst nach Mini-Probelauf nutzen, Auswahl über
+  `shared/encoderChoice.ts` (auch für die Anzeige im Konverter), Aufträge über
+  `encodeWithFallback()` – scheitert die GPU, läuft er einmal auf der CPU.
 - **Theme:** Dunkel ist Standard, Hell über die Klasse `.light` am `<html>`; die Akzentfarbe kommt
   aus CSS-Variablen (`@renderer/lib/accent`). Farben immer über Tailwind-Tokens (`primary`,
   `border`, …), nie hart kodiert.
@@ -181,7 +184,8 @@ Dazu gilt:
 ## Tests & CI
 
 - **Vitest** (Umgebung Node, ohne DOM) prüft alles, was sich rein prüfen lässt: Rechenkerne der
-  Werkzeuge, Konvertierungs-Plan und ffmpeg-Argumente, den ffprobe-Parser (Fixtures aus echten
+  Werkzeuge, Konvertierungs-Plan und ffmpeg-Argumente, Encoder-Erkennung und -Rückfall (mit
+  simuliertem ffmpeg), den ffprobe-Parser (Fixtures aus echten
   Ausgaben in `__fixtures__/`), OSC- und NovaStar-Codec, Netzwerk-Erkennung, Timer-Ablauf,
   Fernsteuer-Server und die Favoriten-Kategorien.
 - main-Dienste lassen sich mit einem schlanken `vi.mock('electron', …)` ohne natives Modul testen.

@@ -3,6 +3,7 @@ import { Channels } from '@shared/ipc-contracts'
 import type { ConverterEnqueueRequest, MediaProbeOptions } from '@shared/types'
 import { getConvertCapabilities } from '../services/convert/capabilities'
 import { converterJobs } from '../services/convert/converterJobs'
+import { detectConverterEncoders } from '../services/convert/encoders'
 import { collectMediaFiles, probeMediaInfo, rawMediaInfo } from '../services/ffmpeg/mediaInfo'
 import { probe } from '../services/ffmpeg/probe'
 
@@ -10,6 +11,7 @@ export function registerFfmpegHandlers(): void {
   ipcMain.handle(Channels.ffmpegProbe, (_e, path: string) => probe(path))
   // Video-Konverter
   ipcMain.handle(Channels.converterCapabilities, () => getConvertCapabilities())
+  ipcMain.handle(Channels.converterEncoders, () => detectConverterEncoders())
   ipcMain.handle(Channels.converterEnqueue, (_e, req: ConverterEnqueueRequest) =>
     converterJobs.enqueue(req)
   )

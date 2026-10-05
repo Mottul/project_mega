@@ -40,6 +40,9 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   zuletzt gesendeten Stand), weitere Modelle (VX-Serie, MCTRL).
 - **Video-Player:** Logo-Overlay (PNG mit Alpha; Größe, Position, Deckkraft – als Ebene, nicht
   eingebacken).
+- **Video-Konverter:** ProRes auf der GPU auch unter Windows/Linux (ffmpegs neuer
+  `prores_ks_vulkan`) prüfen; ProRes 4444 mit Alpha über VideoToolbox freigeben, sobald auf einem
+  Mac bestätigt (heute geht Transparenz bewusst über die CPU).
 - **Stage-Timer:** Teleprompter (scrollender Text auf dem Referentenmonitor); Steuerung per OSC
   (Start/Pause/±1 min aus Companion oder Stream Deck – heute nur über die HTTP-Fernsteuerung).
 - **Testbildgenerator:** Audio-Testtöne (Sinus, Rosa Rauschen, Sweep, Kanal-Identifikation).
@@ -135,6 +138,9 @@ NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Ge
   sowie die Fernsteuer-Parser (Body, OSC-/Jingle-Befehle, Upload).
 - **Komponententests:** jsdom und @testing-library ergänzen (`*.test.tsx` werden schon
   eingesammelt, laufen aber ohne DOM).
+- **GPU-Encoder auf echter Hardware gegenprüfen** (NVENC, Quick Sync, AMF, VideoToolbox inkl.
+  ProRes): ohne GPU im Testrechner sind nur Erkennung, Argumente und der Rückfall auf die CPU
+  geprüft.
 - **CI-Matrix** um Windows und macOS erweitern (natives Modul und Electron-Paketierung).
 
 ### Upgrades
@@ -165,7 +171,9 @@ Damit nichts doppelt geplant wird:
   Aufräumen bei Abbruch), Fernsteuer-Befehle von Player und Jingle feldweise geprüft, CSP ohne
   `unsafe-eval`, yt-dlp nur mit http(s)-Adressen hinter `--`.
 - **Konvertierung:** gemeinsamer Kern für Video-Konverter, Player-Import und Testbild-Export
-  (ersetzt den alten HAP-Auftragsmanager), eigene Player-Spur, Medien-Info als Analyse-Werkzeug.
+  (ersetzt den alten HAP-Auftragsmanager), eigene Player-Spur, Medien-Info als Analyse-Werkzeug;
+  Video-Konverter mit GPU für H.264/H.265 (geprüft, Rückfall auf die CPU) und schnellem ProRes
+  (VideoToolbox bzw. prores_aw).
 - **Fernsteuerung:** Fernsteuer-App mit gemeinsamer Startseite (Port 8090), Stage-Timer am Handy,
   Zustand wird gemerkt, Start/Stopp über `registerRemoteControl()`.
 - **Startbildschirm:** Favoriten in eigenen Kategorien, Kachelgröße, Ansicht „Favoriten“.

@@ -54,7 +54,9 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   und Testbild-Export: Analyse per `probeMediaInfo` (Cache), alle Entscheidungen in
   `shared/convertPlan.ts` (rein, getestet, auch Vorschau im Renderer), Argumente/Runner/
   Warteschlange (Spuren `player`/`converter`) in `main/services/convert/`. Neue Korrekturen
-  und Formate dort einbauen, nicht je Tool; ffmpeg immer über `runFfmpeg()`.
+  und Formate dort einbauen, nicht je Tool; ffmpeg immer über `runFfmpeg()`. GPU-/Schnell-Encoder
+  nur nach Probelauf (`convert/encoders.ts`, Wahl in `shared/encoderChoice.ts`), Aufträge über
+  `encodeWithFallback()` (GPU scheitert -> einmal CPU).
 - **Native/optionale Module:** better-sqlite3 (Prebuild via
   `scripts/rebuild-native.mjs`, KEIN node-gyp im Baum); NDI-Binding
   `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`).

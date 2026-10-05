@@ -2,21 +2,50 @@
 // analysieren (Medien-Info, mit Cache), planen (shared/convertPlan), einen freien
 // Ausgabenamen vergeben (nie überschreiben) und über die gemeinsame Warteschlange
 // mit ffmpeg ausführen. Der Player-Import nutzt denselben Kern auf eigener Spur.
+// H.264/H.265/ProRes laufen je nach Einstellung auf der GPU bzw. dem schnellsten
+// geprüften Encoder; scheitert der, wird der Auftrag einmal auf der CPU wiederholt.
 
 import { randomUUID } from 'node:crypto'
 import { existsSync, rmSync } from 'node:fs'
 import { cpus } from 'node:os'
 import { basename, dirname, extname, join } from 'node:path'
-import { CONVERT_FORMATS, planConversion } from '@shared/convertPlan'
-import type { ConverterEnqueueRequest, ConverterJob, ConvertOptions } from '@shared/types'
+import { CONVERT_FORMATS, planConversion, type ConvertPlan } from '@shared/convertPlan'
+import type {
+  ConverterEnqueueRequest,
+  ConverterJob,
+  ConverterSettings,
+  ConvertOptions,
+  EncoderInfo
+} from '@shared/types'
 import { collectConvertInputs, probeMediaInfo } from '../ffmpeg/mediaInfo'
 import { logLine } from '../log'
+import { getSettings } from '../store'
 import { buildConvertArgs } from './args'
 import { getConvertCapabilities } from './capabilities'
+import {
+  CPU_ENCODERS,
+  PRORES_FAST,
+  encodeWithFallback,
+  resolveConverterEncoder,
+  type EncoderFamily
+} from './encoders'
 import { convertQueue } from './queue'
 import { FfmpegCanceledError, runFfmpeg } from './runFfmpeg'
 
 type Sink = (job: ConverterJob) => void
+
+interface JobSpec {
+  options: ConvertOptions
+  outputDir: string | null
+  /** beim Einreihen festgehalten: Umstellen gilt erst für neue Aufträge */
+  encoderMode: ConverterSettings['encoder']
+}
+
+/** Encoder-Familie eines Plans (nur diese haben eine GPU- bzw. Schnell-Variante). */
+function encoderFamily(plan: ConvertPlan): EncoderFamily | null {
+  const f = plan.formatInfo.family
+  return f === 'h264' || f === 'hevc' || f === 'prores' ? f : null
+}
 
 /**
  * HAP-Chunks automatisch aus der Fläche (720p -> 1, darüber mehr, höchstens Kernzahl):
@@ -49,7 +78,7 @@ const isFinished = (j: ConverterJob): boolean =>
 
 class ConverterJobs {
   private jobs = new Map<string, ConverterJob>()
-  private specs = new Map<string, { options: ConvertOptions; outputDir: string | null }>()
+  private specs = new Map<string, JobSpec>()
   private aborts = new Map<string, AbortController>()
   // vergebene, aber noch nicht geschriebene Ausgaben (Groß/klein egal: macOS/Windows)
   private reserved = new Set<string>()
@@ -77,6 +106,7 @@ class ConverterJobs {
   async enqueue(req: ConverterEnqueueRequest): Promise<{ jobIds: string[] }> {
     convertQueue.setLimit('converter', req.concurrency)
     const files = await collectConvertInputs(req.inputs, req.options.format === 'wav')
+    const encoderMode = getSettings().converter.encoder === 'cpu' ? 'cpu' : 'auto'
     const jobIds: string[] = []
     for (const input of files) {
       const id = randomUUID()
@@ -92,12 +122,13 @@ class ConverterJobs {
         height: null,
         fps: null,
         chunks: null,
+        encoder: null,
         steps: [],
         durationSec: null,
         createdAt: Date.now()
       }
       this.jobs.set(id, job)
-      this.specs.set(id, { options: req.options, outputDir: req.outputDir })
+      this.specs.set(id, { options: req.options, outputDir: req.outputDir, encoderMode })
       this.sink({ ...job })
       convertQueue.add(id, 'converter', () => this.run(job))
       jobIds.push(id)
@@ -152,16 +183,41 @@ class ConverterJobs {
         steps: plan.steps,
         durationSec: plan.durationSec
       })
-      const args = buildConvertArgs(plan, spec.options, {
-        input: job.inputPath,
-        output,
-        hapChunks: chunks ?? undefined
-      })
-      await runFfmpeg(args, {
-        durationSec: plan.durationSec,
-        signal: abort.signal,
-        onProgress: (p) => this.update(job, { progress: p })
-      })
+      const family = encoderFamily(plan)
+      const mode = spec.encoderMode
+      const primary = family
+        ? await resolveConverterEncoder(family, mode, {
+            alpha: Boolean(v?.pixFmt?.startsWith('yuva')),
+            compat: spec.options.compat
+          })
+        : null
+      if (this.isCanceled(job)) return
+      const target = output
+      const run = async (enc: EncoderInfo | null): Promise<void> => {
+        this.update(job, { progress: 0, encoder: enc?.label ?? null })
+        const args = buildConvertArgs(plan, spec.options, {
+          input: job.inputPath,
+          output: target,
+          hapChunks: chunks ?? undefined,
+          encoder: enc?.id
+        })
+        await runFfmpeg(args, {
+          durationSec: plan.durationSec,
+          signal: abort.signal,
+          onProgress: (p) => this.update(job, { progress: p })
+        })
+      }
+      if (family && primary) {
+        // schnelles ProRes bleibt auch im Rückfall schnell (prores_aw statt prores_ks)
+        const cpu = family === 'prores' && mode === 'auto' ? PRORES_FAST : CPU_ENCODERS[family]
+        await encodeWithFallback(primary, cpu, run, () =>
+          this.update(job, {
+            steps: [...plan.steps, `${primary.label} fehlgeschlagen – mit ${cpu.id} wiederholt`]
+          })
+        )
+      } else {
+        await run(null)
+      }
       this.update(job, { status: 'done', progress: 1 })
     } catch (err) {
       // halbfertige Ausgabe nie liegen lassen (sähe wie ein fertiger Clip aus)

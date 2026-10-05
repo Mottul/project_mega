@@ -17,6 +17,7 @@ import { FfmpegCanceledError, runFfmpeg } from '../convert/runFfmpeg'
 import { probeMediaInfo } from '../ffmpeg/mediaInfo'
 import { logLine } from '../log'
 import { getSettings } from '../store'
+import { CPU_ENCODERS, encodeWithFallback } from '../convert/encoders'
 import { buildThumbArgs, resolveEncoder } from './encoder'
 import { analyzeFit, playerOptions, type PlayerSpec } from './playerPlan'
 import {
@@ -254,17 +255,26 @@ class ConvertManager {
       p.kind === 'image' || copy ? undefined : await resolveEncoder(getSettings().player.encoder)
     // während der (ersten, langsamen) GPU-Erkennung abgebrochen -> „canceled" nicht überschreiben
     if (this.isCanceled(job)) throw new FfmpegCanceledError()
-    this.update(job, { status: 'converting', encoder: copy ? 'copy' : (encoder ?? null) })
-    const args = buildConvertArgs(p.plan, p.options, {
-      input: job.sourcePath,
-      output,
-      h264Encoder: encoder
-    })
-    await runFfmpeg(args, {
-      durationSec: p.plan.durationSec,
-      signal: this.aborts.get(job.id)?.signal,
-      onProgress: (v) => this.update(job, { progress: v })
-    })
+    const run = async (enc: string | undefined): Promise<void> => {
+      this.update(job, {
+        status: 'converting',
+        progress: 0,
+        encoder: copy ? 'copy' : (enc ?? null)
+      })
+      const args = buildConvertArgs(p.plan, p.options, {
+        input: job.sourcePath,
+        output,
+        encoder: enc
+      })
+      await runFfmpeg(args, {
+        durationSec: p.plan.durationSec,
+        signal: this.aborts.get(job.id)?.signal,
+        onProgress: (v) => this.update(job, { progress: v })
+      })
+    }
+    if (!encoder) return run(undefined)
+    // GPU-Fehler mitten im Import (Treiber, Sitzungslimit) -> einmal auf der CPU wiederholen
+    await encodeWithFallback(encoder, CPU_ENCODERS.h264, (e) => run(e.id))
   }
 
   /** Vorschaubild aus dem AUFBEREITETEN Ergebnis (zeigt Blur-Rand/Letterbox/Streckung). */
@@ -533,9 +543,10 @@ class ConvertManager {
     const output = mediaFilePath(storedName)
     const encoder =
       kind === 'image' || p.plan.video?.copy ? undefined : await resolveEncoder(s.encoder)
-    await runFfmpeg(
-      buildConvertArgs(p.plan, p.options, { input: sourcePath, output, h264Encoder: encoder })
-    )
+    const run = (enc: string | undefined): Promise<void> =>
+      runFfmpeg(buildConvertArgs(p.plan, p.options, { input: sourcePath, output, encoder: enc }))
+    if (encoder) await encodeWithFallback(encoder, CPU_ENCODERS.h264, (e) => run(e.id))
+    else await run(undefined)
     return { storedName, kind }
   }
 }
