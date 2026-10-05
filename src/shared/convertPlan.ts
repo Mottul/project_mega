@@ -18,6 +18,7 @@ import type {
   MediaInfo,
   MediaVideoTrack
 } from './types'
+import { loudnessPlanStep, type LoudnessTarget } from './loudness'
 
 /* --------------------------------- Formate --------------------------------- */
 
@@ -274,7 +275,10 @@ export interface ConvertPlanAudio {
   channels: number | null
   sampleRate: number | null
   bitrate: number | null
+  /** Filter vor der Lautheit (Tempo) */
   filters: string[]
+  /** Lautheit angleichen: Ziel. Der Filter entsteht erst mit den Messwerten (args.ts). */
+  loudness: LoudnessTarget | null
 }
 
 export interface ConvertPlan {
@@ -405,17 +409,15 @@ function planAudio(
   }
   const filters: string[] = []
   if (tempo) filters.push(`atempo=${Number(tempo.toFixed(6))}`)
-  if (opts.loudnorm) {
-    const l = opts.loudnorm
-    filters.push(`loudnorm=I=${l.i}:TP=${l.tp}:LRA=${l.lra}`)
-    steps.push('Lautheit angeglichen')
-  }
+  const loudness = opts.loudnorm ?? null
+  if (loudness) steps.push(loudnessPlanStep(loudness))
   const stereo = opts.audio === 'stereo' && a.channels !== 2
   // Player: AAC/MP3 unverändert übernehmen, wenn das Video ohnehin nur umverpackt wird
   if (
     opts.allowCopy &&
     copyVideo &&
     !filters.length &&
+    !loudness &&
     !stereo &&
     (a.codecName === 'aac' || a.codecName === 'mp3')
   ) {
@@ -425,7 +427,8 @@ function planAudio(
       channels: null,
       sampleRate: null,
       bitrate: null,
-      filters
+      filters,
+      loudness: null
     }
   }
   const pcm = fi.family === 'hap' || fi.family === 'prores' || fi.family === 'audio'
@@ -448,7 +451,8 @@ function planAudio(
     channels,
     sampleRate: 48000,
     bitrate: codec === 'aac' ? (outChannels <= 2 ? 192000 : 384000) : null,
-    filters
+    filters,
+    loudness
   }
 }
 

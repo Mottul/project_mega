@@ -254,7 +254,8 @@ export interface ConvertOptions {
   audio: 'auto' | 'stereo' | 'none'
   hapCompressor: HapCompressor
   hapChunks: ChunksMode
-  /** Player: Lautheit angleichen (EBU R128). */
+  /** Lautheit angleichen (EBU R128): Ziel in LUFS/dBTP/LU; gemessen und angewandt in zwei
+   *  Durchgängen (shared/loudness.ts). null/fehlt = Ton unverändert. */
   loudnorm?: { i: number; tp: number; lra: number } | null
   /** Player: Blur-Rand (nur fit 'blur'). */
   blur?: { strength: number; darken: number }
@@ -1143,8 +1144,10 @@ export interface PlayerSettings {
   blurStrength: number
   blurDarken: number
   // Loudness-Normalisierung (EBU R128 / ffmpeg loudnorm) beim Einbacken: gleicht
-  // unterschiedlich laute Clips auf ein Ziel an. Standard AUS (ändert bestehende
-  // Medien nicht). Zielwerte: Integrated LUFS, True Peak (dBTP), Range (LU).
+  // unterschiedlich laute Clips auf ein Ziel an – gemessen und angewandt in zwei Durchgängen
+  // (shared/loudness.ts). Standard AUS; gehört zum Dedup-Schlüssel, „Neu einbacken“ wendet
+  // eine geänderte Einstellung an. Zielwerte: Integrated LUFS, True Peak (dBTP), Range (LU) –
+  // die Range ist nur noch Untergrenze: gemessen wird nie zusammengedrückt.
   loudnormEnabled: boolean
   loudnormI: number
   loudnormTp: number

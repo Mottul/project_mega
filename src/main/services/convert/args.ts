@@ -2,7 +2,8 @@
 // noch Encoder-Wissen (Qualitätsstufen, Level, Container-Flags) – alle inhaltlichen
 // Entscheidungen (Drehung, Pixel, Halbbilder, Bildrate, HDR, Größe, Ton) trifft der Plan.
 
-import { PRORES_PROFILE, type ConvertPlan } from '@shared/convertPlan'
+import { PRORES_PROFILE, type ConvertPlan, type ConvertPlanAudio } from '@shared/convertPlan'
+import { loudnormApplyFilter, loudnormMeasureFilter, type LoudnessOutcome } from '@shared/loudness'
 import type { ConvertOptions, ConvertQuality } from '@shared/types'
 import { encoderPixFmt, hardwareEncoderArgs, type H264Compat } from './encoders'
 
@@ -14,6 +15,8 @@ export interface ConvertIo {
   encoder?: string
   /** HAP-Chunks (aus der Auflösung bzw. manuell) */
   hapChunks?: number
+  /** Ergebnis der Lautheitsmessung (loudness.ts); fehlt es, wird einstufig angeglichen */
+  loudness?: LoudnessOutcome | null
 }
 
 const CRF_H264: Record<ConvertQuality, number> = { high: 18, standard: 21, small: 25 }
@@ -106,6 +109,42 @@ function videoEncoderArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo
   }
 }
 
+/**
+ * Tonfilter vor der Lautheit: Tempo und – nur wenn angeglichen wird – der Downmix auf Stereo.
+ * Gemessen und angeglichen wird so, was am Ende in der Datei steht (-ac allein mischte erst
+ * NACH loudnorm und verschöbe die Lautheit wieder).
+ */
+function audioPreFilters(a: ConvertPlanAudio): string[] {
+  const downmix = a.loudness && a.channels === 2 ? ['aformat=channel_layouts=stereo'] : []
+  return [...a.filters, ...downmix]
+}
+
+/**
+ * Erster Durchgang der Lautheit: nur die Tonspur durch dieselben Filter, loudnorm misst und
+ * schreibt die Werte ans Ende der Ausgabe. null = nichts zu messen.
+ */
+export function buildLoudnessMeasureArgs(plan: ConvertPlan, input: string): string[] | null {
+  const a = plan.audio
+  if (!a?.loudness || a.codec === 'copy') return null
+  const chain = [...audioPreFilters(a), loudnormMeasureFilter(a.loudness)]
+  return [
+    '-hide_banner',
+    '-nostdin',
+    '-i',
+    input,
+    '-map',
+    `0:${a.streamIndex}`,
+    '-af',
+    chain.join(','),
+    '-f',
+    'null',
+    '-progress',
+    'pipe:1',
+    '-nostats',
+    '-'
+  ]
+}
+
 /** Vollständige ffmpeg-Argumente (Fortschritt über -progress pipe:1). */
 export function buildConvertArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo): string[] {
   const v = plan.video
@@ -138,7 +177,12 @@ export function buildConvertArgs(plan: ConvertPlan, opts: ConvertOptions, io: Co
     if (a.codec === 'copy') {
       args.push('-c:a', 'copy')
     } else {
-      if (a.filters.length) args.push('-af', a.filters.join(','))
+      const chain = audioPreFilters(a)
+      if (a.loudness) {
+        const loud = loudnormApplyFilter(a.loudness, io.loudness ?? { kind: 'unmeasured' })
+        if (loud) chain.push(loud)
+      }
+      if (chain.length) args.push('-af', chain.join(','))
       args.push('-c:a', a.codec)
       if (a.bitrate) args.push('-b:a', `${Math.round(a.bitrate / 1000)}k`)
       if (a.channels) args.push('-ac', String(a.channels))

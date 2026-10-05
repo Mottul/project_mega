@@ -304,7 +304,13 @@ describe('planConversion – Player', () => {
   it('Lautheit: Video kopieren, Ton neu kodieren; gedreht/anamorph nie kopieren', () => {
     const loud = plan(mediaInfo(), { ...player, loudnorm: { i: -16, tp: -1.5, lra: 11 } })
     expect(loud.video?.copy).toBe(true)
-    expect(loud.audio).toMatchObject({ codec: 'aac', filters: ['loudnorm=I=-16:TP=-1.5:LRA=11'] })
+    // Ziel im Plan, den Filter (mit Messwerten) bauen erst die Argumente
+    expect(loud.audio).toMatchObject({
+      codec: 'aac',
+      filters: [],
+      loudness: { i: -16, tp: -1.5, lra: 11 }
+    })
+    expect(loud.steps).toContain('Lautheit auf −16 LUFS (EBU R128)')
     expect(plan(video({ rotation: 180 }), player).video?.copy).toBe(false)
     expect(plan(video({ width: 1440, sar: '4:3' }), player).video?.copy).toBe(false)
   })

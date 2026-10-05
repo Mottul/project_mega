@@ -65,8 +65,10 @@ Playlist-Player für LED-Wände und Beamer.
   richtig eingerechnet; passendes H.264 wird nur umverpackt. Bilder werden mit frei wählbarer
   Standzeit gebacken, GIFs zu Loop-Videos. Importe haben eine eigene Spur in der Warteschlange und
   warten nie auf einen Konverter-Stapel.
-- **Lautheit angleichen** (optional, EBU R128): Ziel −23, −16 oder −14 LUFS – gilt für neu oder
-  erneut konvertierte Medien.
+- **Lautheit angleichen** (optional, EBU R128): Ziel −23, −16 oder −14 LUFS, gemessen und
+  angewandt wie im [Video-Konverter](#video-konverter). Gilt für neue Importe; „Vorhandene neu
+  einbacken“ bringt die Bibliothek auf die aktuelle Einstellung (bereits passende Medien werden
+  übersprungen, zwei Fassungen desselben Clips laufen zu einer zusammen).
 - **Ausgabe & Wand** (erste Sektion im Seiten-Panel): Ausgabe-Monitor wählen, Vollbild öffnen
   und die Wand-Auflösung festlegen – per Eingabe, Vorgabe oder „von Monitor“.
 - **Vollbild-Ausgabe** mit doppelt gepuffertem Player: nahtlose Übergänge, wahlweise Schnitt oder
@@ -225,6 +227,11 @@ Clips passend fürs Zielsystem (früher „HAP-Konverter“).
   CPU-Encoder.
 - Die Encoder-Wahl ist eine Rechner-Einstellung (`settings.json`), keine Vorgabe des
   Zielsystems: „Nur CPU“ bei H.264/H.265 und „Normgerecht“ bei ProRes sind dieselbe Stellung.
+- **Lautheit angleichen** (EBU R128, −23/−16/−14 LUFS) für alle Formate mit Ton: erst messen,
+  dann gleichmäßig verstärken – die Dynamik bleibt erhalten, nur wo Spitzen sonst über
+  −1,5 dBTP gingen, wird begrenzt. Stille Spuren bleiben unverändert, gemessen wird nach dem
+  Stereo-Downmix, Mono wie über zwei Lautsprecher. Die Auftragszeile zeigt das Ergebnis
+  („Lautheit −32,3 → −23 LUFS, gleichmäßig“).
 - **Sicher:** überschreibt nie (`…_2`), halbfertige Dateien werden entfernt; „Ergebnis prüfen“
   öffnet die fertige Datei in der Medien-Info.
 
@@ -237,7 +244,7 @@ Testbild-Export – entscheidet je Datei:
 - HDR → SDR, Alpha automatisch (HAP Alpha/ProRes 4444) bzw. sauber auf Schwarz,
 - Größe: Original, höchstens oder genau – mit Letterbox, Füllen, Blur oder Strecken; gerade bzw.
   durch 4 teilbare Maße,
-- Farbmatrix und Range, Ton (48 kHz, AAC/PCM, Stereo, Lautheit),
+- Farbmatrix und Range, Ton (48 kHz, AAC/PCM, Stereo, Lautheit in zwei Durchgängen),
 - passendes H.264 nur umverpacken.
 
 Die Warteschlange hat eine eigene Spur für den Player. Geprüft mit über 60 echten
