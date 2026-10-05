@@ -38,8 +38,8 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
 - **Kundenansicht:** „Als Kundenansicht starten“ in der Kopfzeile eines Werkzeugs sperrt es
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,
-  Medien-Info und Video-Konverter die Sprünge in andere Werkzeuge). **Strg+Shift+K** verlässt die
-  Kundenansicht und hebt den Autostart auf.
+  Medien-Info und Video-Konverter die Sprünge in andere Werkzeuge, der Video-Konverter auch die
+  Encoder-Wahl). **Strg+Shift+K** verlässt die Kundenansicht und hebt den Autostart auf.
 - **Darstellung:** Design Dunkel (Standard), Hell oder wie das System; sieben Akzentfarben (Gold,
   Bernstein, Türkis, Blau, Violett, Pink, Grün); am Startbildschirm außerdem eine kompakte Anzeige,
   die die ganze Oberfläche etwas kleiner setzt. Ergebnisse in den Rechnern stehen in der
@@ -58,7 +58,8 @@ Playlist-Player für LED-Wände und Beamer.
 - **Auf die Wand eingebacken:** Medien werden beim Import auf die Wand-Auflösung gerechnet –
   Blur-Fill, schwarze Ränder oder Strecken – und als H.264/MP4 abgelegt, das Chromium
   hardwarebeschleunigt abspielt. GPU-Encoder (NVENC, QSV, AMF, VideoToolbox) werden erkannt und
-  vor Gebrauch geprüft, sonst übernimmt libx264.
+  vor Gebrauch geprüft, sonst übernimmt libx264; scheitert die GPU mitten im Import (Treiber,
+  Sitzungslimit), wird er einmal auf der CPU wiederholt.
 - **Über den gemeinsamen Konvertierungs-Kern** (siehe [Video-Konverter](#video-konverter)):
   Deinterlace, HDR → SDR, konstante Bildrate, Drehung von Handyvideos und anamorphe Pixel werden
   richtig eingerechnet; passendes H.264 wird nur umverpackt. Bilder werden mit frei wählbarer
@@ -211,6 +212,19 @@ Clips passend fürs Zielsystem (früher „HAP-Konverter“).
 - **Formate** frei wählbar: HAP, HAP Q, HAP Alpha, H.264, H.265, ProRes Proxy bis 4444, WAV.
 - **Vorschau je Datei** („→ 1920 × 1080 · 50 fps · HAP Q“), parallele Läufe, HAP-Chunks und
   Kompressor einstellbar.
+- **GPU für H.264 und H.265:** Encoder „Automatisch“ nutzt NVIDIA NVENC, Intel Quick Sync, AMD
+  AMF bzw. Apple VideoToolbox – jeder GPU-Encoder wird vorher per Mini-Probelauf geprüft, ohne
+  passende Hardware übernimmt die CPU (libx264/libx265). „Für Player-Boxen und TVs“ läuft nur über
+  GPU-Encoder, die Level und Bitraten-Deckel im Probelauf eingehalten haben (VideoToolbox nicht →
+  CPU). Scheitert die GPU mitten im Auftrag, wird er einmal auf der CPU wiederholt; die
+  Auftragszeile zeigt den genutzten Encoder.
+- **ProRes schnell oder normgerecht:** „Schnell“ nutzt auf dem Mac Apple VideoToolbox (Clips mit
+  Transparenz über die CPU), sonst prores_aw – rund 3× so schnell wie prores_ks und meist sogar
+  genauer, körniges Material liegt aber deutlich über der ProRes-Datenrate (gemessen bis 3×
+  größere Dateien). „Normgerecht“ (prores_ks) hält Apples Datenraten ein. HAP gibt es nur als
+  CPU-Encoder.
+- Die Encoder-Wahl ist eine Rechner-Einstellung (`settings.json`), keine Vorgabe des
+  Zielsystems: „Nur CPU“ bei H.264/H.265 und „Normgerecht“ bei ProRes sind dieselbe Stellung.
 - **Sicher:** überschreibt nie (`…_2`), halbfertige Dateien werden entfernt; „Ergebnis prüfen“
   öffnet die fertige Datei in der Medien-Info.
 

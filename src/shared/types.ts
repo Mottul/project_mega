@@ -293,6 +293,8 @@ export interface ConverterJob {
   height: number | null
   fps: number | null
   chunks: number | null // nur HAP
+  /** Kodiert mit (Bezeichnung, z. B. „NVIDIA NVENC (GPU)“); null = steht noch nicht fest */
+  encoder: string | null
   steps: string[] // angewendete Korrekturen („Deinterlaced (25i → 50p)" …)
   durationSec: number | null
   error?: string
@@ -573,6 +575,15 @@ export interface EncoderInfo {
   id: string // ffmpeg-Encodername, z.B. 'h264_nvenc' | 'libx264'
   label: string
   hardware: boolean
+  /** H.264: Level- und Bitraten-Grenzen für USB-/LED-Player im Probelauf bestanden. */
+  compat?: boolean
+}
+
+/** Geprüfte Encoder des Video-Konverters je Familie – Schnellster zuerst, CPU zuletzt. */
+export interface ConverterEncoderStatus {
+  h264: EncoderInfo[]
+  hevc: EncoderInfo[]
+  prores: EncoderInfo[]
 }
 
 export interface PlayerEncoderStatus {
@@ -1200,6 +1211,15 @@ export const DEFAULT_YOUTUBE_SETTINGS: YoutubeSettings = {
   playlistNumbers: true
 }
 
+/** Video-Konverter: Encoder-Wahl für H.264, H.265 und ProRes. */
+export interface ConverterSettings {
+  /** auto = schnellster geprüfter Encoder (GPU bzw. schnelles ProRes),
+   *  cpu = klassische CPU-Encoder (libx264, libx265, prores_ks) */
+  encoder: 'auto' | 'cpu'
+}
+
+export const DEFAULT_CONVERTER_SETTINGS: ConverterSettings = { encoder: 'auto' }
+
 /** Eingerichteter Ablauf des Stage-Timers (ohne Laufzustand) – übersteht Neustarts. */
 export interface TimerSetup {
   segments: TimerSegment[]
@@ -1273,6 +1293,8 @@ export interface AppSettings {
   youtube: YoutubeSettings
   /** Stage-Timer: gemerkter Ablauf und NDI-Ausgabe */
   timer: TimerSettings
+  /** Video-Konverter: Encoder-Wahl */
+  converter: ConverterSettings
   /** Fernsteuerungen von Jingle-Player, OSC-Steuerung und Stage-Timer (der
    *  Video-Player merkt sich seine unter player.remoteEnabled/remotePort). */
   remoteControls: Record<Exclude<RemoteControlId, 'player'>, RemoteControlSetting>
@@ -1312,5 +1334,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ytdlpAutoUpdate: true,
   youtube: DEFAULT_YOUTUBE_SETTINGS,
   timer: DEFAULT_TIMER_SETTINGS,
+  converter: DEFAULT_CONVERTER_SETTINGS,
   remoteControls: DEFAULT_REMOTE_CONTROLS
 }
