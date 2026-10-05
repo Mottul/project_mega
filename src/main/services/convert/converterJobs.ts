@@ -10,6 +10,7 @@ import { existsSync, rmSync } from 'node:fs'
 import { cpus } from 'node:os'
 import { basename, dirname, extname, join } from 'node:path'
 import { CONVERT_FORMATS, planConversion, type ConvertPlan } from '@shared/convertPlan'
+import { withLoudnessResult } from '@shared/loudness'
 import type {
   ConverterEnqueueRequest,
   ConverterJob,
@@ -22,6 +23,7 @@ import { logLine } from '../log'
 import { getSettings } from '../store'
 import { buildConvertArgs } from './args'
 import { getConvertCapabilities } from './capabilities'
+import { measureLoudness } from './loudness'
 import {
   CPU_ENCODERS,
   PRORES_FAST,
@@ -156,6 +158,16 @@ class ConverterJobs {
       if (!caps.formats[plan.format]) {
         throw new Error(`${plan.formatInfo.label} kann das gebündelte ffmpeg nicht schreiben`)
       }
+      // Lautheit vorab messen (gehört zur Analyse): der eigentliche Lauf braucht die Werte
+      const loudness = await measureLoudness(plan, job.inputPath, {
+        signal: abort.signal,
+        onProgress: (p) => this.update(job, { progress: p })
+      })
+      if (this.isCanceled(job)) return
+      const steps =
+        loudness && plan.audio?.loudness
+          ? withLoudnessResult(plan.steps, plan.audio.loudness, loudness)
+          : plan.steps
       output = uniqueOutputPath(
         job.inputPath,
         spec.outputDir,
@@ -173,6 +185,7 @@ class ConverterJobs {
             : computeChunks(v?.width ?? null, v?.height ?? null)
       this.update(job, {
         status: 'running',
+        progress: 0,
         outputPath: output,
         format: plan.format,
         formatLabel: plan.formatInfo.label,
@@ -180,7 +193,7 @@ class ConverterJobs {
         height: v?.height ?? null,
         fps: v?.fps ?? null,
         chunks,
-        steps: plan.steps,
+        steps,
         durationSec: plan.durationSec
       })
       const family = encoderFamily(plan)
@@ -199,7 +212,8 @@ class ConverterJobs {
           input: job.inputPath,
           output: target,
           hapChunks: chunks ?? undefined,
-          encoder: enc?.id
+          encoder: enc?.id,
+          loudness
         })
         await runFfmpeg(args, {
           durationSec: plan.durationSec,
@@ -212,7 +226,7 @@ class ConverterJobs {
         const cpu = family === 'prores' && mode === 'auto' ? PRORES_FAST : CPU_ENCODERS[family]
         await encodeWithFallback(primary, cpu, run, () =>
           this.update(job, {
-            steps: [...plan.steps, `${primary.label} fehlgeschlagen – mit ${cpu.id} wiederholt`]
+            steps: [...steps, `${primary.label} fehlgeschlagen – mit ${cpu.id} wiederholt`]
           })
         )
       } else {

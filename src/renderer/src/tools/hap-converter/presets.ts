@@ -85,7 +85,8 @@ export const DEFAULT_OPTIONS: ConvertOptions = {
   toSdr: true,
   audio: 'auto',
   hapCompressor: 'snappy',
-  hapChunks: { kind: 'auto' }
+  hapChunks: { kind: 'auto' },
+  loudnorm: null
 }
 
 /** Vorgabe eines Zielsystems (Bildrate, Halbbilder, HDR und HAP-Details bleiben). */

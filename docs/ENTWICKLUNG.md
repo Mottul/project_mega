@@ -124,7 +124,10 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Werkzeug; ffmpeg läuft immer über `runFfmpeg()`. Encoder (GPU bzw. schnelles ProRes) kommen aus
   `convert/encoders.ts`: Kandidaten erst nach Mini-Probelauf nutzen, Auswahl über
   `shared/encoderChoice.ts` (auch für die Anzeige im Konverter), Aufträge über
-  `encodeWithFallback()` – scheitert die GPU, läuft er einmal auf der CPU.
+  `encodeWithFallback()` – scheitert die GPU, läuft er einmal auf der CPU. Lautheit in zwei
+  Durchgängen: Der Plan liefert nur das Ziel, `convert/loudness.ts` misst vor dem Lauf
+  (`measureLoudness()`), die Argumente setzen die Messwerte (Filter und Auswertung rein in
+  `shared/loudness.ts`); ohne Messung wird einstufig angeglichen.
 - **Theme:** Dunkel ist Standard, Hell über die Klasse `.light` am `<html>`; die Akzentfarbe kommt
   aus CSS-Variablen (`@renderer/lib/accent`). Farben immer über Tailwind-Tokens (`primary`,
   `border`, …), nie hart kodiert.

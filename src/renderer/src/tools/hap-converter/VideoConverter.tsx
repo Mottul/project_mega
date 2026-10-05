@@ -34,6 +34,7 @@ import { useKiosk } from '@renderer/launcher/kiosk'
 import { useHandoff } from '@renderer/lib/handoff'
 import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { cn } from '@renderer/lib/utils'
+import { DEFAULT_LOUDNESS, LOUDNESS_CHOICES } from '@shared/loudness'
 import { PROBE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import {
   CONVERT_FORMATS,
@@ -558,6 +559,39 @@ export function VideoConverter(): JSX.Element {
                 {videoFormat && <option value="none">Ohne Ton</option>}
               </select>
             </label>
+            {options.audio !== 'none' && (
+              <>
+                <Checkbox
+                  checked={Boolean(options.loudnorm)}
+                  onChange={(v) => setOpt({ loudnorm: v ? DEFAULT_LOUDNESS : null })}
+                  label="Lautheit angleichen (EBU R128)"
+                  hint="Erst messen, dann gleichmäßig verstärken – die Dynamik bleibt erhalten, nur übersteuernde Spitzen werden begrenzt."
+                />
+                {options.loudnorm && (
+                  <label className="flex items-center justify-between gap-2 pl-6">
+                    <span className="text-xs text-muted-foreground">Ziel-Lautheit</span>
+                    <select
+                      className={cn(selectClass, 'h-8 w-auto')}
+                      value={options.loudnorm.i}
+                      onChange={(e) =>
+                        setOpt({
+                          loudnorm: {
+                            ...(options.loudnorm ?? DEFAULT_LOUDNESS),
+                            i: Number(e.target.value)
+                          }
+                        })
+                      }
+                    >
+                      {LOUDNESS_CHOICES.map((c) => (
+                        <option key={c.i} value={c.i}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </>
+            )}
             {videoFormat && (
               <span className="text-xs text-muted-foreground">
                 Drehung, Spiegelung und anamorphe Pixel werden immer fest eingerechnet.
@@ -926,7 +960,12 @@ function JobRow({
         )}
       </div>
       {(job.status === 'running' || job.status === 'probing') && (
-        <Progress value={job.progress} indeterminate={job.status === 'probing'} className="mt-2" />
+        // Analyse ohne Fortschritt; die Lautheitsmessung darin meldet ihren eigenen
+        <Progress
+          value={job.progress}
+          indeterminate={job.status === 'probing' && job.progress === 0}
+          className="mt-2"
+        />
       )}
       {job.status === 'error' && job.error && (
         <p className="mt-2 text-xs text-destructive">{job.error}</p>

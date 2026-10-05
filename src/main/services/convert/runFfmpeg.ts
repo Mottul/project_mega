@@ -16,6 +16,8 @@ export interface RunFfmpegOptions {
   durationSec?: number | null
   onProgress?: (p: number) => void
   signal?: AbortSignal
+  /** nach erfolgreichem Lauf: Ende der ffmpeg-Ausgabe (stderr), z. B. Messwerte von Filtern */
+  onStderr?: (tail: string) => void
 }
 
 /** Letzte aussagekräftige stderr-Zeile („Conversion failed!" ist keine Ursache). */
@@ -62,7 +64,7 @@ export function runFfmpeg(args: string[], opts: RunFfmpegOptions = {}): Promise<
       }
     })
     proc.stderr.on('data', (chunk: Buffer) => {
-      tail = (tail + chunk.toString()).slice(-4000)
+      tail = (tail + chunk.toString()).slice(-16000)
     })
     proc.on('error', (err: NodeJS.ErrnoException) => {
       opts.signal?.removeEventListener('abort', onAbort)
@@ -71,8 +73,10 @@ export function runFfmpeg(args: string[], opts: RunFfmpegOptions = {}): Promise<
     proc.on('close', (code) => {
       opts.signal?.removeEventListener('abort', onAbort)
       if (opts.signal?.aborted) reject(new FfmpegCanceledError())
-      else if (code === 0) resolve()
-      else reject(new Error(ffmpegErrorText(code, tail)))
+      else if (code === 0) {
+        opts.onStderr?.(tail)
+        resolve()
+      } else reject(new Error(ffmpegErrorText(code, tail)))
     })
   })
 }

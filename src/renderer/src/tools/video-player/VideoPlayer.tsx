@@ -47,6 +47,7 @@ import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
+import { LOUDNESS_CHOICES } from '@shared/loudness'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
 import {
@@ -739,16 +740,35 @@ export function VideoPlayer(): JSX.Element {
                         void persistPlayer({ loudnormI: v })
                       }}
                     >
-                      <option value={-23}>−23 LUFS (Broadcast)</option>
-                      <option value={-16}>−16 LUFS (Streaming)</option>
-                      <option value={-14}>−14 LUFS (laut)</option>
+                      {LOUDNESS_CHOICES.map((c) => (
+                        <option key={c.i} value={c.i}>
+                          {c.label}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 )}
                 <span className="text-xs text-muted-foreground">
-                  Gleicht beim Einbacken unterschiedlich laute Clips an – wirkt auf neu
-                  importierte/neu konvertierte Medien (mit Tonspur).
+                  Gleicht beim Einbacken unterschiedlich laute Clips an: erst messen, dann
+                  gleichmäßig verstärken – die Dynamik bleibt erhalten, nur übersteuernde Spitzen
+                  werden begrenzt. Wirkt auf neue Importe.
                 </span>
+                {library.some((m) => m.hasAudio) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    onClick={() =>
+                      void api.player.reconvert(
+                        library.filter((m) => m.hasAudio).map((m) => m.id),
+                        { width: wallW, height: wallH }
+                      )
+                    }
+                    title="Aktuelle Lautheits-Einstellung auf bereits importierte Medien mit Ton anwenden (bereits passende werden übersprungen)"
+                  >
+                    Vorhandene neu einbacken
+                  </Button>
+                )}
               </div>
             )}
           </PanelSection>

@@ -5,7 +5,7 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', isPackaged: false, getAppPath: () => '/x' }
 }))
 
-const { buildConvertArgs, h264Level } = await import('./args')
+const { buildConvertArgs, buildLoudnessMeasureArgs, h264Level } = await import('./args')
 const { capabilitiesFrom, parseEncoderNames, parseFilterNames } = await import('./capabilities')
 const { ConvertQueue } = await import('./queue')
 const { ffmpegErrorText } = await import('./runFfmpeg')
@@ -138,6 +138,51 @@ describe('buildConvertArgs', () => {
     expect(vt).not.toContain('-vendor')
     // ohne Encoder-Angabe: die klassischen CPU-Encoder
     expect(after(argsFor(mediaInfo(), { format: 'prores_hq' }), '-c:v')).toBe('prores_ks')
+  })
+
+  it('Lautheit: Messlauf nur über die Tonspur, Downmix vor loudnorm, Messwerte im Lauf', () => {
+    const loud = { i: -23, tp: -1.5, lra: 11 }
+    const surround = mediaInfo({ audio: [audioTrack({ index: 1, channels: 6 })] })
+    const opts = {
+      ...OPTS,
+      format: 'prores_422' as const,
+      audio: 'stereo' as const,
+      loudnorm: loud
+    }
+    const r = planConversion(surround, opts, { tonemap: true })
+    if (!r.ok) throw new Error(r.error)
+    const measure = buildLoudnessMeasureArgs(r.plan, 'in.mov')
+    expect(measure).not.toBeNull()
+    const m = measure as string[]
+    expect(m.filter((_x, i) => m[i - 1] === '-map')).toEqual(['0:1'])
+    expect(after(m, '-af')).toBe(
+      'aformat=channel_layouts=stereo,loudnorm=I=-23:TP=-1.5:LRA=11:dual_mono=true:print_format=json'
+    )
+    expect(m.slice(-6)).toEqual(['-f', 'null', '-progress', 'pipe:1', '-nostats', '-'])
+
+    const measured = {
+      kind: 'measured' as const,
+      linear: true,
+      m: { i: -30, tp: -12, lra: 5, thresh: -41, offset: 0.2 }
+    }
+    const run = argsFor(surround, opts, { loudness: measured })
+    const af = after(run, '-af') ?? ''
+    expect(af.startsWith('aformat=channel_layouts=stereo,loudnorm=I=-23:')).toBe(true)
+    expect(af).toContain('measured_I=-30.00')
+    expect(af.endsWith(':linear=true')).toBe(true)
+    expect(after(run, '-ac')).toBe('2')
+    // stille Spur: kein loudnorm, Ton sonst wie geplant
+    const silent = argsFor(surround, opts, { loudness: { kind: 'silent' } })
+    expect(after(silent, '-af')).toBe('aformat=channel_layouts=stereo')
+    // ohne Messung (z. B. fehlgeschlagen): einstufig wie früher
+    expect(after(argsFor(mediaInfo(), { loudnorm: loud }), '-af')).toBe(
+      'loudnorm=I=-23:TP=-1.5:LRA=11:dual_mono=true'
+    )
+    // ohne Lautheit: kein Messlauf, kein Downmix-Filter (nur -ac)
+    const plain = planConversion(surround, { ...opts, loudnorm: null }, { tonemap: true })
+    if (!plain.ok) throw new Error(plain.error)
+    expect(buildLoudnessMeasureArgs(plain.plan, 'in.mov')).toBeNull()
+    expect(argsFor(surround, { ...opts, loudnorm: null })).not.toContain('-af')
   })
 
   it('WebM mit Alpha: Decoder vor -i erzwungen', () => {

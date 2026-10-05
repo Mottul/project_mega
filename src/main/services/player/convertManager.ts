@@ -8,10 +8,12 @@ import { existsSync, readdirSync, renameSync, rmSync, statSync, type Dirent } fr
 import { randomUUID } from 'node:crypto'
 import { basename, extname, join } from 'node:path'
 import { planConversion, type ConvertPlan } from '@shared/convertPlan'
+import type { LoudnessTarget } from '@shared/loudness'
 import { dotted, STILL_IMAGE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import type { ConvertJob, ConvertOptions, MediaKind, PlayerImportRequest } from '@shared/types'
 import { buildConvertArgs } from '../convert/args'
 import { getConvertCapabilities } from '../convert/capabilities'
+import { measureLoudness } from '../convert/loudness'
 import { convertQueue } from '../convert/queue'
 import { FfmpegCanceledError, runFfmpeg } from '../convert/runFfmpeg'
 import { probeMediaInfo } from '../ffmpeg/mediaInfo'
@@ -24,6 +26,7 @@ import {
   convKeyFor,
   deleteMedia,
   findByConvKey,
+  getMedia,
   insertMedia,
   isGifExt,
   isImageExt,
@@ -78,10 +81,10 @@ function titleWithSuffix(base: string, suffix: string): string {
   return `${base} · ${suffix}`
 }
 
-/** Aktive Loudness-Normalisierung aus den Einstellungen (undefined = aus). */
-function currentLoudnorm(): { i: number; tp: number; lra: number } | undefined {
+/** Aktive Loudness-Normalisierung aus den Einstellungen (null = aus). */
+function currentLoudnorm(): LoudnessTarget | null {
   const p = getSettings().player
-  if (!p.loudnormEnabled) return undefined
+  if (!p.loudnormEnabled) return null
   return { i: p.loudnormI ?? -16, tp: p.loudnormTp ?? -1.5, lra: p.loudnormLra ?? 11 }
 }
 
@@ -91,17 +94,22 @@ function currentBlur(): { blurStrength: number; blurDarken: number } {
   return { blurStrength: p.blurStrength ?? 50, blurDarken: p.blurDarken ?? 0 }
 }
 
-/** Schlüssel-Variante nur für Blur-Fit (Stärke/Abdunkelung verändern das Bild). */
-function blurVariant(spec: {
-  fit: PlayerImportRequest['fitMode']
-  blurStrength: number
-  blurDarken: number
-}): string | undefined {
-  return spec.fit === 'blur' ? `b${spec.blurStrength}d${spec.blurDarken}` : undefined
+interface Spec extends PlayerSpec {
+  /** beim Einreihen festgehalten (wie der Blur-Look) */
+  loudnorm: LoudnessTarget | null
+  reconvertId?: string
 }
 
-interface Spec extends PlayerSpec {
-  reconvertId?: string
+/**
+ * Schlüssel-Variante: Blur-Look (Stärke/Abdunkelung verändern das Bild) und – bei Videos –
+ * die Lautheit. So legt ein Import mit anderer Einstellung eine eigene Fassung an, und
+ * „Neu einbacken“ wendet eine geänderte Einstellung an, statt das Medium für aktuell zu halten.
+ */
+function convVariant(spec: Spec, kind: MediaKind): string | undefined {
+  const blur = spec.fit === 'blur' ? `b${spec.blurStrength}d${spec.blurDarken}` : ''
+  const l = spec.loudnorm
+  const loud = kind === 'video' && l ? `l${l.i}_${l.tp}_${l.lra}` : ''
+  return [blur, loud].filter(Boolean).join('_') || undefined
 }
 
 interface Prepared {
@@ -121,7 +129,7 @@ async function prepare(sourcePath: string, kindIn: MediaKind, spec: Spec): Promi
   // GIF mit nur einem Bild ist ein Standbild -> als JPG statt als 1-Bild-Video
   const still = res.info.isStill || v.fpsMode === 'still'
   const kind: MediaKind = kindIn === 'gif' && still ? 'image' : kindIn
-  const options = playerOptions(kind, spec, currentLoudnorm())
+  const options = playerOptions(kind, spec, spec.loudnorm)
   const planned = planConversion(res.info, options, await getConvertCapabilities())
   if (!planned.ok) throw new Error(planned.error)
   const { suffix } = analyzeFit(
@@ -197,7 +205,13 @@ class ConvertManager {
         createdAt: Date.now()
       }
       this.jobs.set(id, job)
-      this.specs.set(id, { fit: req.fitMode, width, height, ...currentBlur() })
+      this.specs.set(id, {
+        fit: req.fitMode,
+        width,
+        height,
+        ...currentBlur(),
+        loudnorm: currentLoudnorm()
+      })
       this.sink({ ...job })
       this.queue(job)
       jobIds.push(id)
@@ -239,6 +253,7 @@ class ConvertManager {
         width: job.targetWidth,
         height: job.targetHeight,
         ...currentBlur(),
+        loudnorm: currentLoudnorm(),
         reconvertId: it.reconvertId
       })
       this.sink({ ...job })
@@ -255,6 +270,11 @@ class ConvertManager {
       p.kind === 'image' || copy ? undefined : await resolveEncoder(getSettings().player.encoder)
     // während der (ersten, langsamen) GPU-Erkennung abgebrochen -> „canceled" nicht überschreiben
     if (this.isCanceled(job)) throw new FfmpegCanceledError()
+    // Lautheit vorab messen (noch Status „Analyse“) – der Lauf braucht die Messwerte
+    const loudness = await measureLoudness(p.plan, job.sourcePath, {
+      signal: this.aborts.get(job.id)?.signal
+    })
+    if (this.isCanceled(job)) throw new FfmpegCanceledError()
     const run = async (enc: string | undefined): Promise<void> => {
       this.update(job, {
         status: 'converting',
@@ -264,7 +284,8 @@ class ConvertManager {
       const args = buildConvertArgs(p.plan, p.options, {
         input: job.sourcePath,
         output,
-        encoder: enc
+        encoder: enc,
+        loudness
       })
       await runFfmpeg(args, {
         durationSec: p.plan.durationSec,
@@ -323,10 +344,10 @@ class ConvertManager {
         spec.fit,
         spec.width,
         spec.height,
-        blurVariant(spec)
+        convVariant(spec, job.kind ?? kindOf(job.sourcePath))
       )
 
-      // Dedup: gleiche Quelle, gleicher Fit, gleiche Auflösung, gleicher Blur-Look.
+      // Dedup: gleiche Quelle, gleicher Fit, gleiche Auflösung, gleicher Look, gleiche Lautheit.
       const existing = findByConvKey(convKey)
       if (existing) {
         this.update(job, { status: 'done', progress: 1, mediaId: existing.id })
@@ -406,12 +427,20 @@ class ConvertManager {
   private async runReconvert(job: ConvertJob, spec: Spec, id: string): Promise<void> {
     const ext = storedExtFor(job.kind ?? kindOf(job.sourcePath))
     try {
+      // Inzwischen entfernt – etwa als Dublette, weil ein anderes Medium eben auf denselben
+      // Stand gebacken wurde (zwei Lautheits-/Blur-Fassungen desselben Clips): nichts tun.
+      // Sonst hielte dieser Auftrag seinerseits das neu gebackene Medium für die Dublette
+      // und löschte es – am Ende wären beide weg.
+      if (!getMedia(id)) {
+        this.update(job, { status: 'done', progress: 1, mediaId: null })
+        return
+      }
       const convKey = convKeyFor(
         job.sourcePath,
         spec.fit,
         spec.width,
         spec.height,
-        blurVariant(spec)
+        convVariant(spec, job.kind ?? kindOf(job.sourcePath))
       )
       const collision = findByConvKey(convKey)
       if (collision && collision.id === id) {
@@ -535,7 +564,8 @@ class ConvertManager {
       fit: s.defaultFit,
       width: Math.max(2, Math.round(s.wallWidth)),
       height: Math.max(2, Math.round(s.wallHeight)),
-      ...currentBlur()
+      ...currentBlur(),
+      loudnorm: currentLoudnorm()
     }
     const p = await prepare(sourcePath, kindOf(sourcePath), spec)
     const kind = p.kind === 'image' ? 'image' : 'video'
@@ -543,8 +573,11 @@ class ConvertManager {
     const output = mediaFilePath(storedName)
     const encoder =
       kind === 'image' || p.plan.video?.copy ? undefined : await resolveEncoder(s.encoder)
+    const loudness = await measureLoudness(p.plan, sourcePath)
     const run = (enc: string | undefined): Promise<void> =>
-      runFfmpeg(buildConvertArgs(p.plan, p.options, { input: sourcePath, output, encoder: enc }))
+      runFfmpeg(
+        buildConvertArgs(p.plan, p.options, { input: sourcePath, output, encoder: enc, loudness })
+      )
     if (encoder) await encodeWithFallback(encoder, CPU_ENCODERS.h264, (e) => run(e.id))
     else await run(undefined)
     return { storedName, kind }
