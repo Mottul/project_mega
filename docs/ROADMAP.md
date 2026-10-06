@@ -70,8 +70,8 @@ NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Ge
   Zielwerkzeug“ ist die Grundlage für alles Weitere.
 - **Fertiger Auftrag → Player-Bibliothek:** Download oder Konvertierung mit einem Klick in den
   Video-Player (spart den Umweg über den Dateimanager kurz vor der Show).
-- **LED-Wall → Video-Player/Testbild:** Wandauflösung übernehmen; das Testbild-Gitter im echten
-  Modulraster der Wand (Pixelfehlersuche je Modul).
+- **LED-Wall → Video-Player:** Wandauflösung übernehmen (das Testbild kann es schon: Raster und
+  Auflösung „Aus LED-Wall-Konfigurator“).
 - **LED-Wall → Stromlast/Rigging:** Gewicht und Stromaufnahme sind schon berechnet.
 - **Netzwerk-Scanner → Manuals:** den erkannten Hersteller als Handbuch-Suche öffnen.
 - **Packliste aus mehr Quellen:** Rigging (Anschlagmittel je Bridle) und Stromlast (Kabel und
@@ -185,4 +185,5 @@ Damit nichts doppelt geplant wird:
   Fader-Ausrichtung, Raster-Spalten, Auto-Nummerierung, Set-Wechsel am Handy), NovaStar
   (Preset-Abruf, Blackout/Freeze), Video-Player (Lautheit nach EBU R128, NDI mit Ton, „Ausgabe &
   Wand“ als erste Sektion), LED-Wall-Vorlagen, YouTube-Downloader (yt-dlp mit Prüfsumme,
-  Playlist-Erkennung mit Auswahl).
+  Playlist-Erkennung mit Auswahl), Testbild (eigenes Mapping-Testbild mit schaltbaren Elementen
+  und Cabinet-Raster aus dem LED-Wall-Konfigurator).

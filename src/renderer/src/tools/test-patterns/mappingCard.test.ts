@@ -1,58 +1,150 @@
 import { describe, expect, it } from 'vitest'
-import { clockText, mappingLayout, stripBlocks } from './mappingCard'
+import {
+  autoCell,
+  axisBand,
+  cardLayout,
+  cellName,
+  clockText,
+  contrast,
+  fieldSlots,
+  isLight,
+  ratioText,
+  type Rect
+} from './mappingCard'
 
-// Sollwerte aus Screenshots des MadMapper-Testbilds (1440×960, 1920×1080, 1080×1920).
-describe('mappingLayout (Einheit s = kürzere Kante / 12, Hauptraster in 2s-Zellen)', () => {
-  it.each([
-    // w, h, s, Hauptraster x0..x1, y0..y1
-    [1440, 960, 80, 240, 1200, 160, 800],
-    [1920, 1080, 90, 240, 1680, 180, 900],
-    [1080, 1920, 90, 180, 900, 240, 1680]
-  ])('%s×%s', (w, h, s, x0, x1, y0, y1) => {
-    const l = mappingLayout(w, h)
-    expect(l.s).toBe(s)
-    expect(l.cx - l.bigX * 2 * l.s).toBe(x0)
-    expect(l.cx + l.bigX * 2 * l.s).toBe(x1)
-    expect(l.cy - l.bigY * 2 * l.s).toBe(y0)
-    expect(l.cy + l.bigY * 2 * l.s).toBe(y1)
+describe('Mapping-Testbild: Raster und Beschriftung', () => {
+  it('automatische Zelle = kürzere Kante ÷ 9 auf runde Pixelwerte', () => {
+    expect(autoCell(1920, 1080)).toBe(120) // 16 × 9 Zellen
+    expect(autoCell(3840, 2160)).toBe(240)
+    expect(autoCell(1280, 720)).toBe(80)
+    expect(autoCell(1080, 1920)).toBe(120) // Hochformat
+    expect(autoCell(1920, 1200)).toBe(128)
+    expect(autoCell(512, 256)).toBe(30)
+    expect(autoCell(64, 32)).toBe(16) // kleinster Wert
   })
 
-  it('bleibt bei krummen Maßen symmetrisch und innerhalb der Eck-Fadenkreuze', () => {
-    const l = mappingLayout(1000, 1000)
-    expect(l.bigX).toBe(2) // (500 - 2s) / 2s = 2 trotz Gleitkomma-Rest
-    expect(l.cx - l.bigX * 2 * l.s).toBeGreaterThanOrEqual(2 * l.s - 1e-9)
+  it('feste Rastergröße (z. B. LED-Cabinet), unsinnige Werte -> automatisch', () => {
+    expect(cardLayout(1920, 1080, { w: 128, h: 256 })).toMatchObject({ u: 120, cw: 128, ch: 256 })
+    expect(cardLayout(1920, 1080, { w: 0, h: Number.NaN })).toMatchObject({ cw: 120, ch: 120 })
+    expect(cardLayout(1920, 1080, { w: 1, h: 99999 })).toMatchObject({ cw: 4, ch: 4096 })
+    expect(cardLayout(1920, 1080, null)).toMatchObject({ cw: 120, ch: 120, R: 480 })
+  })
+
+  it('Zellnamen wie in der Tabellenkalkulation', () => {
+    expect(cellName(0, 0)).toBe('A1')
+    expect(cellName(15, 8)).toBe('P9')
+    expect(cellName(25, 0)).toBe('Z1')
+    expect(cellName(26, 1)).toBe('AA2')
+    expect(cellName(27, 11)).toBe('AB12')
+  })
+
+  it('Seitenverhältnis mit den üblichen Namen, krumme als Dezimalzahl', () => {
+    expect(ratioText(1920, 1080)).toBe('16:9')
+    expect(ratioText(1920, 1200)).toBe('16:10')
+    expect(ratioText(1440, 1080)).toBe('4:3')
+    expect(ratioText(2560, 1080)).toBe('21:9')
+    expect(ratioText(1080, 1920)).toBe('9:16')
+    expect(ratioText(1366, 768)).toBe('1,78:1')
+  })
+
+  it('Mittelachse trifft genau die Mitte: 2 px bei gerader, 1 px bei ungerader Länge', () => {
+    expect(axisBand(1920)).toEqual({ start: 959, size: 2 })
+    expect(axisBand(1079)).toEqual({ start: 539, size: 1 })
+  })
+
+  it('Uhrzeit zweistellig, Linienfarbe passt sich dem Grund an', () => {
+    expect(clockText(new Date(2026, 0, 1, 7, 5, 9))).toBe('07:05:09')
+    expect(isLight('#1e1e1e')).toBe(false)
+    expect(isLight('#ffffff')).toBe(true)
+    expect(isLight('#ffce2e')).toBe(true) // Gold -> dunkle Ziffern in den Ecken
+    expect(contrast('#ffce2e', '#1e1e1e')).toBeGreaterThan(8) // Gold auf Anthrazit: gut lesbar
+    expect(contrast('#ffce2e', '#ffffff')).toBeLessThan(2) // Gold auf Weiß -> Linienfarbe
   })
 })
 
-describe('stripBlocks (Randstreifen, Phase an der Bildmitte verankert)', () => {
-  it('1440 breit, oben: erster Block (160..240) hell, dann dunkel', () => {
-    const blocks = stripBlocks(720, 80, 160, 1280, true)
-    expect(blocks).toHaveLength(14)
-    expect(blocks[0]).toEqual({ a: 160, b: 240, dark: false })
-    expect(blocks[1]).toEqual({ a: 240, b: 320, dark: true })
-    expect(blocks[13]).toEqual({ a: 1200, b: 1280, dark: true })
+describe('Mapping-Testbild: Messfelder', () => {
+  const overlaps = (a: Rect, b: Rect): boolean =>
+    a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+
+  // Jede Lage muss die Regeln der Spezifikation erfüllen: im Bild, frei von Lineal und
+  // Ecken, außerhalb des großen Kreises, ohne Überlappung untereinander
+  function checkRules(w: number, h: number, cell?: { w: number; h: number }): Rect[] {
+    const lay = cardLayout(w, h, cell)
+    const { rects, snapped } = fieldSlots(lay)
+    const m = Math.ceil(lay.u * 0.5)
+    for (const r of rects) {
+      expect(r.x).toBeGreaterThanOrEqual(m)
+      expect(r.y).toBeGreaterThanOrEqual(m)
+      expect(r.x + r.w).toBeLessThanOrEqual(w - m)
+      expect(r.y + r.h).toBeLessThanOrEqual(h - m)
+      const nx = Math.min(Math.max(lay.cx, r.x), r.x + r.w)
+      const ny = Math.min(Math.max(lay.cy, r.y), r.y + r.h)
+      expect(Math.hypot(lay.cx - nx, lay.cy - ny)).toBeGreaterThanOrEqual(lay.R)
+      if (snapped) {
+        expect(r.x % lay.cw).toBe(0)
+        expect(r.y % lay.ch).toBe(0)
+        expect(r.w % lay.cw).toBe(0)
+        expect(r.h % lay.ch).toBe(0)
+      }
+    }
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) expect(overlaps(rects[i], rects[j])).toBe(false)
+    }
+    return rects
+  }
+
+  it('16:9: je drei mal zwei Zellen, symmetrisch neben dem Kreis', () => {
+    const lay = cardLayout(1920, 1080)
+    const { rects, snapped } = fieldSlots(lay)
+    expect(snapped).toBe(true)
+    // Farbe B2, Grau B7, Schärfe M2, Verlauf M7 (je 3 × 2 Zellen à 120 px)
+    expect(rects).toEqual([
+      { x: 120, y: 120, w: 360, h: 240 },
+      { x: 120, y: 720, w: 360, h: 240 },
+      { x: 1440, y: 120, w: 360, h: 240 },
+      { x: 1440, y: 720, w: 360, h: 240 }
+    ])
+    checkRules(1920, 1080)
   })
 
-  it('unten gegenphasig zu oben (punktsymmetrisch)', () => {
-    const top = stripBlocks(720, 80, 160, 1280, true)
-    const bottom = stripBlocks(720, 80, 160, 1280, false)
-    expect(bottom.map((b) => b.dark)).toEqual(top.map((b) => !b.dark))
+  it('Hochformat: über und unter dem Kreis', () => {
+    const rects = checkRules(1080, 1920)
+    expect(rects).toHaveLength(4)
+    expect(rects[0].y + rects[0].h).toBeLessThan(1920 / 2 - 480)
+    expect(rects[2].y).toBeGreaterThan(1920 / 2 + 480)
   })
 
-  it('schneidet Teilblöcke am Streifenende ab (1920 breit, s = 90)', () => {
-    const blocks = stripBlocks(960, 90, 180, 1740, true)
-    expect(blocks[0]).toEqual({ a: 180, b: 240, dark: false }) // Zelle 150..240
-    expect(blocks.at(-1)).toEqual({ a: 1680, b: 1740, dark: true }) // Zelle 1680..1770
+  it('alle Formate und LED-Raster halten die Regeln ein', () => {
+    const cases: [number, number, { w: number; h: number }?][] = [
+      [1920, 1200],
+      [1440, 1080],
+      [1080, 1080],
+      [3840, 1080],
+      [3840, 2160],
+      [1152, 648],
+      [512, 256],
+      [2880, 1440, { w: 240, h: 240 }],
+      [1920, 1080, { w: 128, h: 128 }],
+      [1920, 1080, { w: 192, h: 192 }],
+      [1920, 1080, { w: 128, h: 256 }],
+      [1920, 1080, { w: 8, h: 8 }],
+      [1366, 768],
+      [7680, 4320]
+    ]
+    for (const [w, h, cell] of cases) checkRules(w, h, cell)
   })
 
-  it('Hochformat 1080×1920, oben: erster Block (180..270) dunkel', () => {
-    expect(stripBlocks(540, 90, 180, 900, true)[0]).toEqual({ a: 180, b: 270, dark: true })
+  it('16:10-Beamer und Cabinet-Raster: Felder liegen in ganzen Zellen', () => {
+    expect(fieldSlots(cardLayout(1920, 1200)).snapped).toBe(true)
+    const cab = fieldSlots(cardLayout(2880, 1440, { w: 240, h: 240 }))
+    expect(cab.snapped).toBe(true)
+    expect(cab.rects[0].w % 240).toBe(0)
   })
-})
 
-describe('clockText', () => {
-  it('zweistellig mit führenden Nullen', () => {
-    expect(clockText(new Date(2026, 0, 2, 3, 4, 5))).toBe('03:04:05')
-    expect(clockText(new Date(2026, 0, 2, 17, 15, 7))).toBe('17:15:07')
+  it('zu wenig Platz: lieber frei und größer als winzig im Raster; sonst keine Felder', () => {
+    const fourThree = fieldSlots(cardLayout(1440, 1080))
+    expect(fourThree.rects).toHaveLength(4)
+    expect(fourThree.rects[0].w).toBeGreaterThan(200)
+    expect(fieldSlots(cardLayout(400, 400)).rects).toHaveLength(0)
   })
 })
