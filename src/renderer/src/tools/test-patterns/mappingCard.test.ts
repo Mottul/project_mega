@@ -6,6 +6,7 @@ import {
   cellName,
   clockText,
   contrast,
+  discLayout,
   fieldSlots,
   isLight,
   ratioText,
@@ -146,5 +147,46 @@ describe('Mapping-Testbild: Messfelder', () => {
     expect(fourThree.rects).toHaveLength(4)
     expect(fourThree.rects[0].w).toBeGreaterThan(200)
     expect(fieldSlots(cardLayout(400, 400)).rects).toHaveLength(0)
+  })
+})
+
+describe('Mapping-Testbild: Mittelscheibe', () => {
+  it('halber großer Kreis, Ring und Fadenkreuz wachsen mit', () => {
+    const d = discLayout(cardLayout(1920, 1080))
+    expect(d.r).toBe(240)
+    expect(d.ring).toBe(8)
+    expect(discLayout(cardLayout(3840, 2160)).r).toBe(480)
+  })
+
+  it('alle Zeilen liegen in der Scheibe und lassen das Fadenkreuz frei', () => {
+    for (const [w, h] of [
+      [1920, 1080],
+      [1080, 1920],
+      [1440, 1080],
+      [512, 256],
+      [3840, 2160]
+    ]) {
+      const lay = cardLayout(w, h)
+      const d = discLayout(lay)
+      const rows = [d.title, d.label, d.info, d.infoAlone]
+      for (const row of rows) {
+        const top = row.y - row.px * 0.78 - lay.cy
+        const bottom = row.y + row.px * 0.22 - lay.cy
+        expect(Math.max(Math.abs(top), Math.abs(bottom))).toBeLessThan(d.r)
+        // Fadenkreuz (± cross) bleibt frei
+        expect(bottom < -d.cross || top > d.cross).toBe(true)
+        expect(row.maxW).toBeGreaterThan(0)
+        expect(row.maxW).toBeLessThan(2 * d.r)
+      }
+      // Logo über dem Titel, beide über dem Fadenkreuz
+      expect(d.logo.y + d.logo.h / 2).toBeLessThan(d.title.y - d.title.px * 0.78)
+      expect(d.label.y).toBeLessThan(d.info.y - d.info.px * 0.78)
+    }
+  })
+
+  it('Kennung passt bei Full HD ohne Verkleinerung in ihre Zeile', () => {
+    const d = discLayout(cardLayout(1920, 1080))
+    // „1920 × 1080 px · 16:9 · 12:34:56“: 31 Zeichen à ~0,55 em
+    expect(31 * 0.55 * d.info.px).toBeLessThan(d.info.maxW)
   })
 })

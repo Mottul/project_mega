@@ -124,14 +124,18 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
     LED-Wall-Konfigurator“ im Cabinet-Raster samt Wandauflösung. Wahlweise in Akzentfarbe,
     damit beim Überblenden jeder Beamer sein eigenes Raster zeigt.
   - In Akzentfarbe: 1-px-Rahmen auf dem äußersten Pixel (Beschnitt), Ecken 1–4 mit
-    Pixelkoordinate, Mittelachsen genau durch die Bildmitte, Kreise (Seitenverhältnis) und
-    ein OBEN-Pfeil für gedrehte oder gespiegelte Ausgänge.
+    Pixelkoordinate, Mittelachsen genau durch die Bildmitte mit kräftigen Mittenmarken an den
+    Kanten, ein kräftiger Kreis (Seitenverhältnis) und ein OBEN-Pfeil für gedrehte oder
+    gespiegelte Ausgänge.
+  - Schwarze Mittelscheibe mit Logo, Titel, Bezeichnung und Kennung; ihr Ring in Akzentfarbe
+    füllt sich im Sekundentakt einmal je Minute – steht er, hängt die Ausgabe, auch aus der
+    Entfernung zu sehen.
   - Lineal mit Teilstrichen alle 10/50/100 px, Diagonalen.
   - Vier Messfelder, im Raster eingepasst: Farbe 100/75 %, Grau 0–100 % mit Schwarz- und
     Weißgrenze, Schärfe (Linienpaare 1–4 px), Verläufe. Bei 4:3, großen Cabinets oder fast
     quadratischen Formaten frei in den Ecken; bei zu wenig Platz entfallen sie.
-  - Logo mit Titel und Kennung: Bezeichnung (z. B. „Beamer links“), Auflösung,
-    Seitenverhältnis und laufende Uhrzeit. Steht die Uhr, hängt die Ausgabe.
+  - Kennung: Bezeichnung (z. B. „Beamer links“), Auflösung, Seitenverhältnis und laufende
+    Uhrzeit; ohne Mittelscheibe auf Schildern über und unter der Mitte.
   - Akzent- und Hintergrundfarbe frei wählbar oder per Schnellwahl. Raster, Lineal und Schrift
     passen sich dem Hintergrund an (hell auf dunkel, dunkel auf hell).
 - **Bewegte Muster:** Pixelcheck-Loop, Scroll, Timecode.
