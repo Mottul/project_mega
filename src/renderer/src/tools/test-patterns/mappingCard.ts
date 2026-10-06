@@ -8,7 +8,8 @@
 //   großer und halber Kreis, Diagonalen, Mittelachsen – Seitenverhältnis, Skalierung, Mitte
 //   Messfelder Farbe, Grau, Schärfe, Verlauf – Farbe/Gamma, Schwarz- und Weißgrenze,
 //     Fokus und Skalierung (1-px-Linien), Abstufungen
-//   Logo/Titel und Kennung (Bezeichnung, Auflösung, Uhrzeit – steht die Uhr, hängt es)
+//   Mittelscheibe mit Logo/Titel und Kennung (Bezeichnung, Auflösung, Uhrzeit); ihr Ring
+//     füllt sich im Sekundentakt – steht er, hängt die Ausgabe (auch aus der Entfernung)
 // Gezeichnet wird in Zielkoordinaten: Ausgabe und Export sind pixelgenau, die kleinere
 // Vorschau zeigt dieselbe Zeichnung verkleinert (auch feste Rastergrößen in px stimmen).
 
@@ -246,6 +247,57 @@ export function fieldSlots(lay: CardLayout): { rects: Rect[]; snapped: boolean }
   return { rects: free, snapped: false }
 }
 
+export interface DiscRow {
+  /** Grundlinie */
+  y: number
+  px: number
+  /** Platz in der Scheibe auf dieser Höhe (Sehne minus Rand) */
+  maxW: number
+}
+
+export interface DiscLayout {
+  /** Radius der schwarzen Fläche (= halber großer Kreis) */
+  r: number
+  /** Breite des Rings außen herum (Sekundenring) */
+  ring: number
+  /** halbe Länge des Fadenkreuzes in der Mitte */
+  cross: number
+  logo: { y: number; h: number }
+  title: DiscRow
+  label: DiscRow
+  /** Kennungszeile unter der Bezeichnung bzw. allein (ohne Bezeichnung) */
+  info: DiscRow
+  infoAlone: DiscRow
+}
+
+/**
+ * Aufteilung der Mittelscheibe: oben Logo und Titel, in der Mitte das Fadenkreuz, unten
+ * Bezeichnung und Kennung. Jede Zeile bekommt die Breite, die die Scheibe auf ihrer Höhe hat.
+ */
+export function discLayout(lay: CardLayout): DiscLayout {
+  const { u, cy, R } = lay
+  const r = R / 2
+  const chord = (d: number): number => 2 * Math.sqrt(Math.max(0, r * r - d * d))
+  const row = (rel: number, px: number): DiscRow => {
+    const y = cy + rel * r
+    // Zeile reicht von der Oberlänge bis knapp unter die Grundlinie
+    const far = Math.max(Math.abs(y - px * 0.78 - cy), Math.abs(y + px * 0.22 - cy))
+    return { y, px, maxW: Math.max(0, chord(far) - r * 0.12) }
+  }
+  const big = Math.max(8, Math.round(r * 0.13))
+  const small = Math.max(7, Math.round(r * 0.085))
+  return {
+    r,
+    ring: Math.max(3, Math.round(Math.min(r * 0.035, u * 0.07))),
+    cross: r * 0.15,
+    logo: { y: cy - r * 0.56, h: r * 0.26 },
+    title: row(-0.24, big),
+    label: row(0.36, big),
+    info: row(0.57, small),
+    infoAlone: row(0.42, small)
+  }
+}
+
 /* ------------------------------- Zeichnen -------------------------------- */
 
 function font(weight: number, px: number): string {
@@ -285,6 +337,20 @@ function ellipsize(ctx: Ctx, s: string, maxW: number): string {
     else hi = mid
   }
   return cut(lo)
+}
+
+// Größte Schrift (höchstens px, mindestens min), in der s in maxW passt
+function fitFont(
+  ctx: Ctx,
+  s: string,
+  weight: number,
+  px: number,
+  min: number,
+  maxW: number
+): number {
+  ctx.font = font(weight, px)
+  const width = ctx.measureText(s).width
+  return width <= maxW ? px : Math.max(min, Math.floor((px * maxW) / width))
 }
 
 function hexRgb(hex: string): [number, number, number] {
@@ -517,30 +583,84 @@ export function drawMappingCard(
     ctx.stroke()
   }
 
+  const disc = on('disc') ? discLayout(lay) : null
+  const now = timeMs > 0 ? new Date(timeMs) : new Date()
+
   if (on('circles')) {
-    ctx.strokeStyle = rgba(ink, 0.6)
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.arc(cx, cy, R / 2, 0, Math.PI * 2)
-    ctx.stroke()
+    if (!disc) {
+      ctx.strokeStyle = rgba(ink, 0.6)
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.arc(cx, cy, R / 2, 0, Math.PI * 2)
+      ctx.stroke()
+    }
     ctx.strokeStyle = accent
-    ctx.lineWidth = Math.max(2, Math.round(u / 60))
+    ctx.lineWidth = Math.max(3, Math.round(u * 0.05))
     ctx.beginPath()
     ctx.arc(cx, cy, R, 0, Math.PI * 2)
     ctx.stroke()
+  }
+
+  // Mittelscheibe: schwarz, mit Ring in Akzentfarbe. Der Ring füllt sich im Sekundentakt
+  // einmal je Minute – ein stehender Ring heißt: Ausgabe hängt (auch aus der Entfernung).
+  if (disc) {
+    ctx.fillStyle = '#000000'
+    ctx.beginPath()
+    ctx.arc(cx, cy, disc.r, 0, Math.PI * 2)
+    ctx.fill()
+    const rr = disc.r + disc.ring / 2
+    ctx.lineWidth = disc.ring
+    ctx.lineCap = 'butt'
+    ctx.strokeStyle = on('info') ? rgba(accent, 0.3) : accent
+    ctx.beginPath()
+    ctx.arc(cx, cy, rr, 0, Math.PI * 2)
+    ctx.stroke()
+    const sec = now.getSeconds()
+    if (on('info') && sec > 0) {
+      ctx.strokeStyle = accent
+      ctx.beginPath()
+      ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + (sec / 60) * Math.PI * 2)
+      ctx.stroke()
+    }
   }
 
   if (on('axes')) {
     const ax = axisBand(w)
     const ay = axisBand(h)
     ctx.fillStyle = accent
-    ctx.fillRect(ax.start, 0, ax.size, h)
-    ctx.fillRect(0, ay.start, w, ay.size)
+    if (disc) {
+      // außen bis an den Ring, innen ein Fadenkreuz – die Schrift bleibt frei
+      const gap = disc.r + disc.ring
+      ctx.fillRect(ax.start, 0, ax.size, Math.max(0, cy - gap))
+      ctx.fillRect(ax.start, cy + gap, ax.size, Math.max(0, h - cy - gap))
+      ctx.fillRect(0, ay.start, Math.max(0, cx - gap), ay.size)
+      ctx.fillRect(cx + gap, ay.start, Math.max(0, w - cx - gap), ay.size)
+      ctx.fillRect(ax.start, cy - disc.cross, ax.size, 2 * disc.cross)
+      ctx.fillRect(cx - disc.cross, ay.start, 2 * disc.cross, ay.size)
+    } else {
+      ctx.fillRect(ax.start, 0, ax.size, h)
+      ctx.fillRect(0, ay.start, w, ay.size)
+    }
     ctx.strokeStyle = accent
     ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.arc(cx, cy, Math.max(4, u / 6), 0, Math.PI * 2)
+    ctx.arc(cx, cy, Math.max(4, Math.min(u / 6, disc ? disc.cross * 0.55 : u)), 0, Math.PI * 2)
     ctx.stroke()
+    // Mittenmarken an den Kanten: kräftige Balken auf den Achsen – die Mitte ist auch auf
+    // großen Flächen sofort zu finden (oben sitzt der OBEN-Pfeil, sonst ebenfalls ein Balken)
+    const thick = (n: number): number => {
+      const t = Math.max(3, Math.round(u * 0.08))
+      return t % 2 === n % 2 ? t : t + 1 // gleiche Parität -> genau mittig auf der Achse
+    }
+    const bh = thick(h)
+    const bw = thick(w)
+    const len = Math.max(6, Math.round(u * 0.5))
+    const y0 = (h - bh) / 2
+    const x0 = (w - bw) / 2
+    ctx.fillRect(0, y0, len, bh)
+    ctx.fillRect(w - len, y0, len, bh)
+    ctx.fillRect(x0, h - len, bw, len)
+    if (!on('up')) ctx.fillRect(x0, 0, bw, len)
   }
 
   // Messfelder: in ganzen Zellen um 1 px eingerückt, damit die Rasterlinien sie rahmen;
@@ -577,6 +697,10 @@ export function drawMappingCard(
           )
         )
           continue
+        // nicht auf der Mittelscheibe (dort stehen Logo und Kennung)
+        if (disc && Math.hypot(lx - px - cx, ly - px / 2 - cy) < disc.r + disc.ring + px * 1.5) {
+          continue
+        }
         text(ctx, cellName(i, j), lx, ly, px, { align: 'right', color: rgba(ink, 0.45) })
       }
     }
@@ -700,56 +824,93 @@ export function drawMappingCard(
     }
   }
 
-  // Über der Mitte: Logo + Titel
-  const maxTextW = Math.min(2 * R * 0.9, w - 2 * u)
   const title = on('logo') ? clampText(cfg.mappingTitle ?? DEFAULT_PATTERN_CONFIG.mappingTitle) : ''
-  if (on('logo')) {
-    const tpx = Math.max(8, Math.round(u * 0.3))
-    const lh = u * 0.5
-    const lw = lh * LOGO_ASPECT
-    const gap = title ? u * 0.2 : 0
-    ctx.font = font(600, tpx)
-    // Sperrung über schmale Leerzeichen (letterSpacing kennt nicht jede Umgebung)
-    const shown = title ? ellipsize(ctx, [...title].join(' '), maxTextW - lw - gap) : ''
-    const tw = shown ? ctx.measureText(shown).width : 0
-    const total = lw + gap + tw
-    const y = cy - R * 0.5
-    plate(ctx, cx - total / 2 - u * 0.18, y - lh / 2 - u * 0.14, total + u * 0.36, lh + u * 0.28, 6)
-    drawLogo(ctx, cx - total / 2 + lw / 2, y, lh, '#ffffff')
-    if (shown)
-      text(ctx, shown, cx - total / 2 + lw + gap, y + tpx * 0.36, tpx, {
-        weight: 600,
-        color: '#ffffff'
-      })
-  }
+  const label = on('info') ? clampText(cfg.label) : ''
+  const info = `${w} × ${h} px · ${ratioText(w, h)} · ${clockText(now)}`
+  // Sperrung über schmale Leerzeichen (letterSpacing kennt nicht jede Umgebung)
+  const spaced = (t: string): string => [...t].join('\u2009')
 
-  // Unter der Mitte: Bezeichnung + Auflösung · Seitenverhältnis · Uhrzeit
-  if (on('info')) {
-    const label = clampText(cfg.label)
-    const now = timeMs > 0 ? new Date(timeMs) : new Date()
-    const info = `${w} × ${h} px · ${ratioText(w, h)} · ${clockText(now)}`
-    const ipx = Math.max(8, Math.round(u * 0.2))
-    const lpx = Math.max(9, Math.round(u * 0.3))
-    ctx.font = font(500, ipx)
-    const infoShown = ellipsize(ctx, info, maxTextW)
-    let bw = ctx.measureText(infoShown).width
-    ctx.font = font(600, lpx)
-    const labelShown = label ? ellipsize(ctx, label, maxTextW) : ''
-    if (labelShown) bw = Math.max(bw, ctx.measureText(labelShown).width)
-    const bh = (labelShown ? lpx * 1.25 : 0) + ipx * 1.3 + u * 0.2
-    const by = cy + R * 0.5 - bh / 2
-    plate(ctx, cx - bw / 2 - u * 0.18, by, bw + u * 0.36, bh, 6)
-    if (labelShown) {
-      text(ctx, labelShown, cx, by + u * 0.1 + lpx, lpx, {
+  if (disc && disc.r >= 30) {
+    // In der Scheibe: oben Logo und Titel, unten Bezeichnung und Kennung
+    if (on('logo')) {
+      drawLogo(ctx, cx, disc.logo.y, disc.logo.h, '#ffffff')
+      if (title) {
+        const t = disc.title
+        ctx.font = font(600, t.px)
+        text(ctx, ellipsize(ctx, spaced(title), t.maxW), cx, t.y, t.px, {
+          align: 'center',
+          weight: 600,
+          color: '#ffffff'
+        })
+      }
+    }
+    if (on('info')) {
+      if (label) {
+        const l = disc.label
+        ctx.font = font(700, l.px)
+        text(ctx, ellipsize(ctx, label, l.maxW), cx, l.y, l.px, {
+          align: 'center',
+          weight: 700,
+          color: '#ffffff'
+        })
+      }
+      const row = label ? disc.info : disc.infoAlone
+      const px = fitFont(ctx, info, 500, row.px, 6, row.maxW)
+      text(ctx, info, cx, row.y, px, { align: 'center', color: 'rgba(255,255,255,0.8)' })
+    }
+  } else if (!disc) {
+    // Ohne Scheibe: Schilder – über der Mitte Logo + Titel, darunter die Kennung
+    const maxTextW = Math.min(2 * R * 0.9, w - 2 * u)
+    if (on('logo')) {
+      const tpx = Math.max(8, Math.round(u * 0.3))
+      const lh = u * 0.5
+      const lw = lh * LOGO_ASPECT
+      const gap = title ? u * 0.2 : 0
+      ctx.font = font(600, tpx)
+      const shown = title ? ellipsize(ctx, spaced(title), maxTextW - lw - gap) : ''
+      const tw = shown ? ctx.measureText(shown).width : 0
+      const total = lw + gap + tw
+      const y = cy - R * 0.5
+      plate(
+        ctx,
+        cx - total / 2 - u * 0.18,
+        y - lh / 2 - u * 0.14,
+        total + u * 0.36,
+        lh + u * 0.28,
+        6
+      )
+      drawLogo(ctx, cx - total / 2 + lw / 2, y, lh, '#ffffff')
+      if (shown)
+        text(ctx, shown, cx - total / 2 + lw + gap, y + tpx * 0.36, tpx, {
+          weight: 600,
+          color: '#ffffff'
+        })
+    }
+
+    if (on('info')) {
+      const ipx = Math.max(8, Math.round(u * 0.2))
+      const lpx = Math.max(9, Math.round(u * 0.3))
+      ctx.font = font(500, ipx)
+      const infoShown = ellipsize(ctx, info, maxTextW)
+      let bw = ctx.measureText(infoShown).width
+      ctx.font = font(600, lpx)
+      const labelShown = label ? ellipsize(ctx, label, maxTextW) : ''
+      if (labelShown) bw = Math.max(bw, ctx.measureText(labelShown).width)
+      const bh = (labelShown ? lpx * 1.25 : 0) + ipx * 1.3 + u * 0.2
+      const by = cy + R * 0.5 - bh / 2
+      plate(ctx, cx - bw / 2 - u * 0.18, by, bw + u * 0.36, bh, 6)
+      if (labelShown) {
+        text(ctx, labelShown, cx, by + u * 0.1 + lpx, lpx, {
+          align: 'center',
+          weight: 600,
+          color: '#ffffff'
+        })
+      }
+      text(ctx, infoShown, cx, by + bh - u * 0.12, ipx, {
         align: 'center',
-        weight: 600,
-        color: '#ffffff'
+        color: 'rgba(255,255,255,0.85)'
       })
     }
-    text(ctx, infoShown, cx, by + bh - u * 0.12, ipx, {
-      align: 'center',
-      color: 'rgba(255,255,255,0.85)'
-    })
   }
 
   ctx.restore()

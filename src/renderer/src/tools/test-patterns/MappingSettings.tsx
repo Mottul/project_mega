@@ -40,7 +40,11 @@ const ACCENT_ELEMENTS: { id: MappingElement; label: string; hint: string }[] = [
     hint: '1 px auf dem äußersten Pixel: fehlt eine Kante, wird beschnitten'
   },
   { id: 'corners', label: 'Ecken 1–4', hint: 'Ecknummern im Uhrzeigersinn, mit Pixelkoordinate' },
-  { id: 'axes', label: 'Mittelachsen', hint: 'Genau durch die Bildmitte' },
+  {
+    id: 'axes',
+    label: 'Mittelachsen',
+    hint: 'Genau durch die Bildmitte, mit kräftigen Mittenmarken an den Kanten'
+  },
   { id: 'circles', label: 'Kreise', hint: 'Bleiben sie rund, stimmt das Seitenverhältnis' },
   { id: 'up', label: 'OBEN-Pfeil', hint: 'Zeigt gedrehte oder gespiegelte Ausgänge' }
 ]
@@ -49,6 +53,11 @@ const OTHER_ELEMENTS: { id: MappingElement; label: string; hint: string }[] = [
   { id: 'grid', label: 'Raster', hint: 'Ab Pixel 0,0' },
   { id: 'ruler', label: 'Lineal', hint: 'Teilstriche alle 10/50/100 px' },
   { id: 'diagonals', label: 'Diagonalen', hint: 'Von Ecke zu Ecke' },
+  {
+    id: 'disc',
+    label: 'Mittelscheibe',
+    hint: 'Schwarze Scheibe mit Logo, Titel und Kennung; ihr Ring füllt sich im Sekundentakt'
+  },
   { id: 'fields', label: 'Messfelder', hint: 'Farbe, Grau, Schärfe, Verlauf' },
   {
     id: 'labels',

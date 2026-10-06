@@ -384,10 +384,11 @@ export type SolidColor =
   'white' | 'black' | 'red' | 'green' | 'blue' | 'cyan' | 'magenta' | 'yellow' | 'gray18' | 'gray50'
 
 /**
- * Schaltbare Elemente des Mapping-Testbilds. Akzentfarbe: frame, corners, axes, up und der
- * große Kreis (circles); labels = kleine technische Beschriftungen (Zellnamen, Lineal-Zahlen,
- * Eck-Koordinaten, Grauwerte, „OBEN“); logo = Logo + Titel; info = Bezeichnung, Auflösung,
- * Seitenverhältnis und Uhrzeit.
+ * Schaltbare Elemente des Mapping-Testbilds. Akzentfarbe: frame, corners, axes (mit
+ * Mittenmarken an den Kanten), up und der große Kreis (circles); disc = schwarze Mittelscheibe
+ * mit Sekundenring, die Logo, Titel und Kennung trägt; labels = kleine technische
+ * Beschriftungen (Zellnamen, Lineal-Zahlen, Eck-Koordinaten, Grauwerte, „OBEN“); logo = Logo +
+ * Titel; info = Bezeichnung, Auflösung, Seitenverhältnis und Uhrzeit.
  */
 export type MappingElement =
   | 'grid'
@@ -398,6 +399,7 @@ export type MappingElement =
   | 'corners'
   | 'axes'
   | 'up'
+  | 'disc'
   | 'fields'
   | 'labels'
   | 'logo'
@@ -412,6 +414,7 @@ export const MAPPING_ELEMENTS: MappingElement[] = [
   'corners',
   'axes',
   'up',
+  'disc',
   'fields',
   'labels',
   'logo',
