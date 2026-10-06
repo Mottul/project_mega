@@ -18,8 +18,6 @@ import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import {
   DEFAULT_PATTERN_CONFIG,
-  MAPPING_DEFAULT_ACCENT,
-  MAPPING_DEFAULT_BACKGROUND,
   type DisplayInfo,
   type PatternConfig,
   type PatternPreset,
@@ -27,6 +25,7 @@ import {
 } from '@shared/types'
 import { PATTERN_OPTIONS, SOLID_OPTIONS, moduleCells, renderToCanvas } from './patterns'
 import { PatternPreview } from './PatternPreview'
+import { MappingSettings } from './MappingSettings'
 
 const RES_PRESETS = [
   { label: '1280 × 720', w: 1280, h: 720 },
@@ -43,38 +42,6 @@ const LOOP_COLOR_OPTIONS = [
   { hex: '#000000', label: 'Schwarz' },
   { hex: '#808080', label: 'Grau' }
 ]
-
-// Schnellwahl für die Akzentfarbe des Mapping-Testbilds: je Beamer eine eigene
-// Farbe -> Überlappungs-/Blend-Zonen sind sofort zuzuordnen.
-const MAPPING_ACCENTS = [
-  { hex: MAPPING_DEFAULT_ACCENT, label: 'Cyan' },
-  { hex: '#ff8c1a', label: 'Orange' },
-  { hex: '#e8409c', label: 'Magenta' },
-  { hex: '#45c552', label: 'Grün' },
-  { hex: '#f0d12b', label: 'Gelb' }
-]
-
-function ColorField({
-  label,
-  value,
-  onChange
-}: {
-  label: string
-  value: string
-  onChange: (hex: string) => void
-}): JSX.Element {
-  return (
-    <label className="flex items-center gap-2 text-sm">
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 w-10 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
-      />
-      {label}
-    </label>
-  )
-}
 
 // Modulanzahl hübsch: ganze Zahl als solche, sonst mit deutschem Dezimalkomma
 // (z. B. 4,5 bei ×0.5 von 16:9) – passend zu den Teilzellen am Rand.
@@ -249,10 +216,6 @@ export function TestPatterns(): JSX.Element {
   const isCycle = config.pattern === 'colorcycle'
   const isScroll = config.pattern === 'scroll'
   const isMapping = config.pattern === 'mapping'
-  const mappingAccent = config.mappingAccent || MAPPING_DEFAULT_ACCENT
-  const mappingBackground = config.mappingBackground || MAPPING_DEFAULT_BACKGROUND
-  const mappingDefaultColors =
-    mappingAccent === MAPPING_DEFAULT_ACCENT && mappingBackground === MAPPING_DEFAULT_BACKGROUND
   const showScale = config.pattern === 'grid' || config.pattern === 'geometry'
   const mc = moduleCells(config.width, config.height)
   const gridCells = {
@@ -312,78 +275,7 @@ export function TestPatterns(): JSX.Element {
               </select>
             </label>
 
-            {isMapping && (
-              <div className="flex flex-col gap-3">
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium">Text über der Auflösung</span>
-                  <Input
-                    value={config.label}
-                    placeholder="z.B. Beamer links"
-                    onChange={(e) => patch({ label: e.target.value })}
-                  />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium">Text rechts</span>
-                  <Input
-                    value={config.mappingTitle ?? DEFAULT_PATTERN_CONFIG.mappingTitle}
-                    placeholder="leer = kein Text"
-                    onChange={(e) => patch({ mappingTitle: e.target.value })}
-                  />
-                </label>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium">Farben</span>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <ColorField
-                      label="Akzent"
-                      value={mappingAccent}
-                      onChange={(hex) => patch({ mappingAccent: hex })}
-                    />
-                    <ColorField
-                      label="Hintergrund"
-                      value={mappingBackground}
-                      onChange={(hex) => patch({ mappingBackground: hex })}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={mappingDefaultColors}
-                      onClick={() =>
-                        patch({
-                          mappingAccent: MAPPING_DEFAULT_ACCENT,
-                          mappingBackground: MAPPING_DEFAULT_BACKGROUND
-                        })
-                      }
-                    >
-                      Standard
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {MAPPING_ACCENTS.map((o) => (
-                      <button
-                        key={o.hex}
-                        type="button"
-                        onClick={() => patch({ mappingAccent: o.hex })}
-                        className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs transition-colors ${
-                          mappingAccent === o.hex
-                            ? 'border-primary text-foreground'
-                            : 'border-border text-muted-foreground'
-                        }`}
-                      >
-                        <span
-                          className="size-3 rounded-sm border border-white/25"
-                          style={{ background: o.hex }}
-                        />
-                        {o.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  Uhrzeit läuft live mit (Vorschau und Vollbild). Tipp: je Beamer eine eigene
-                  Akzentfarbe, dann sind Überlappungen sofort zuzuordnen.
-                </span>
-              </div>
-            )}
+            {isMapping && <MappingSettings config={config} patch={patch} />}
 
             {isSolid && (
               <label className="flex flex-col gap-1.5">

@@ -383,6 +383,41 @@ export type PatternId =
 export type SolidColor =
   'white' | 'black' | 'red' | 'green' | 'blue' | 'cyan' | 'magenta' | 'yellow' | 'gray18' | 'gray50'
 
+/**
+ * Schaltbare Elemente des Mapping-Testbilds. Akzentfarbe: frame, corners, axes, up und der
+ * große Kreis (circles); labels = kleine technische Beschriftungen (Zellnamen, Lineal-Zahlen,
+ * Eck-Koordinaten, Grauwerte, „OBEN“); logo = Logo + Titel; info = Bezeichnung, Auflösung,
+ * Seitenverhältnis und Uhrzeit.
+ */
+export type MappingElement =
+  | 'grid'
+  | 'ruler'
+  | 'diagonals'
+  | 'circles'
+  | 'frame'
+  | 'corners'
+  | 'axes'
+  | 'up'
+  | 'fields'
+  | 'labels'
+  | 'logo'
+  | 'info'
+
+export const MAPPING_ELEMENTS: MappingElement[] = [
+  'grid',
+  'ruler',
+  'diagonals',
+  'circles',
+  'frame',
+  'corners',
+  'axes',
+  'up',
+  'fields',
+  'labels',
+  'logo',
+  'info'
+]
+
 export interface PatternConfig {
   pattern: PatternId
   width: number
@@ -393,18 +428,24 @@ export interface PatternConfig {
   cycleColors: string[] // fuer 'colorcycle' (Pixelcheck): Hex-Farben in Reihenfolge
   cycleSeconds: number // fuer 'colorcycle': Dauer je Farbe
   scrollSpeed: number // fuer 'scroll' (Tearing): Geschwindigkeitsfaktor (1 = Standard)
-  label: string // frei waehlbarer Output-Name (Info-Label; 'mapping': Text über der Auflösung)
+  label: string // frei waehlbarer Output-Name (Info-Label; 'mapping': Bezeichnung unter der Mitte)
   showInfo: boolean // Auflösung/Label einblenden
-  // 'mapping' (Mapping-Testbild): Text rechts neben dem Logo + einstellbare Farben.
-  // Optional, damit ältere Presets ohne diese Felder gültig bleiben (Fallback: Standard).
-  mappingTitle?: string
-  mappingAccent?: string // Hex: Eckfelder, Hauptraster, Halo
-  mappingBackground?: string // Hex: Grundfläche
+  // 'mapping' (Mapping-Testbild). Optional, damit ältere Presets ohne diese Felder gültig
+  // bleiben (Fallback: Standard).
+  mappingTitle?: string // Titel neben dem Logo
+  mappingAccent?: string // Hex: Rahmen, Ecken, Mittelachsen, großer Kreis, OBEN
+  mappingBackground?: string // Hex: Grundfläche (Linien/Schrift passen sich hell/dunkel an)
+  /** Rasterzelle in px, z. B. ein Cabinet der LED-Wand; fehlt/null = automatisch */
+  mappingCell?: { w: number; h: number } | null
+  /** Ausgeblendete Elemente (Standard: alle sichtbar) */
+  mappingHidden?: MappingElement[]
+  /** Raster in Akzentfarbe statt neutral – beim Überblenden je Beamer ein eigenes Raster */
+  mappingGridAccent?: boolean
 }
 
-/** Standardfarben des Mapping-Testbilds (angelehnt an das MadMapper-Testbild). */
-export const MAPPING_DEFAULT_ACCENT = '#34c7db'
-export const MAPPING_DEFAULT_BACKGROUND = '#545454'
+/** Standardfarben des Mapping-Testbilds: Gold der App auf Anthrazit. */
+export const MAPPING_DEFAULT_ACCENT = '#ffce2e'
+export const MAPPING_DEFAULT_BACKGROUND = '#1e1e1e'
 
 export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   pattern: 'grid',
@@ -420,7 +461,10 @@ export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   showInfo: true,
   mappingTitle: APP_NAME.toUpperCase(),
   mappingAccent: MAPPING_DEFAULT_ACCENT,
-  mappingBackground: MAPPING_DEFAULT_BACKGROUND
+  mappingBackground: MAPPING_DEFAULT_BACKGROUND,
+  mappingCell: null,
+  mappingHidden: [],
+  mappingGridAccent: false
 }
 
 export interface ColorLoopRequest {

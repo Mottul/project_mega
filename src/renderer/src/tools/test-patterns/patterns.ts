@@ -8,7 +8,7 @@ import { drawMappingCard } from './mappingCard'
 type Ctx = CanvasRenderingContext2D
 
 export const PATTERN_OPTIONS: { value: PatternId; label: string }[] = [
-  { value: 'mapping', label: 'Mapping-Testbild (MadMapper-Stil)' },
+  { value: 'mapping', label: 'Mapping-Testbild' },
   { value: 'grid', label: 'Gitter / Kreuzraster' },
   { value: 'checkerboard', label: 'Schachbrett' },
   { value: 'geometry', label: 'Geometrie (Kreise/Diagonalen)' },
