@@ -21,6 +21,7 @@ import {
   Wifi,
   X
 } from 'lucide-react'
+import { QrCode } from '@renderer/components/QrCode'
 import { RemoteAccess } from '@renderer/components/RemoteAccess'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
@@ -44,7 +45,7 @@ import {
   type TimerSegment
 } from '@shared/types'
 import { selectClass } from '../_calc/ui'
-import { fmtTimer, parseDuration } from './format'
+import { displayUrls, fmtTimer, parseDuration } from './format'
 import { TimerDisplay } from './TimerDisplay'
 
 const QUICK_MESSAGES = ['Bitte zum Ende kommen', 'Letzte Minute!', 'Zeit ist um']
@@ -196,6 +197,61 @@ function RemotePanel(): JSX.Element {
         </Button>
       </div>
       {remote && <RemoteAccess status={remote} />}
+    </>
+  )
+}
+
+/** Bühnen-Anzeige im Browser: läuft über den Server der Fernsteuerung (nur Anzeige). */
+function BrowserDisplayPanel(): JSX.Element {
+  const [remote, setRemote] = useState<RemoteStatus | null>(null)
+  useEffect(() => {
+    void api.timer.remoteStatus().then(setRemote)
+    return api.timer.onRemoteChanged(setRemote)
+  }, [])
+  const urls = remote ? displayUrls(remote) : []
+
+  async function start(): Promise<void> {
+    const port = remote?.port ?? 8092
+    try {
+      setRemote(await api.timer.remoteStart(port))
+    } catch (e) {
+      toast.error(
+        `Fernsteuerung konnte nicht starten (Port ${port} belegt?)`,
+        e instanceof Error ? e.message : undefined
+      )
+    }
+  }
+
+  return (
+    <>
+      <p className="text-xs text-muted-foreground">
+        Für Fernseher, Tablets und Rechner ohne NDI: dieselbe Bühnenanzeige im Browser – nur
+        Anzeige, keine Bedienung. Antippen schaltet auf Vollbild. Läuft über den Server der
+        Fernsteuerung (im selben Netz, ohne Passwort).
+      </p>
+      {urls.length > 0 ? (
+        <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-2">
+          <QrCode text={urls[0]} size={96} />
+          <div className="min-w-0 space-y-1 text-xs">
+            <p className="text-muted-foreground">Im Browser öffnen (QR scannen oder eintippen):</p>
+            {urls.map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => void navigator.clipboard?.writeText(u)}
+                title="Adresse kopieren"
+                className="block max-w-full break-all text-left font-mono text-[11px] text-primary hover:underline"
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <Button size="sm" onClick={() => void start()}>
+          <Wifi className="size-4" /> Aktivieren
+        </Button>
+      )}
     </>
   )
 }
@@ -524,6 +580,15 @@ export function StageTimer(): JSX.Element {
             <p className="text-xs text-muted-foreground">
               Esc im Ausgabefenster schließt es. Die Anzeige läuft synchron zur Vorschau.
             </p>
+          </PanelSection>
+
+          <PanelSection
+            id="browser"
+            title="Anzeige im Browser"
+            defaultOpen={false}
+            right={remoteRunning ? <Badge tone="success">an</Badge> : undefined}
+          >
+            <BrowserDisplayPanel />
           </PanelSection>
 
           <PanelSection id="ndi" title="NDI-Ausgabe (Netzwerk)" defaultOpen={false}>

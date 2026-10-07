@@ -61,6 +61,8 @@ const remoteApp = createRemoteApp(
       icon:
         '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/>' +
         '<circle cx="12" cy="14" r="8"/>',
+      // Bühnen-Anzeige für Fernseher/Tablets ohne NDI (nur Anzeige)
+      links: [{ label: 'Bühnen-Anzeige (nur Anzeige)', path: 'anzeige' }],
       isRunning: isTimerRemoteRunning,
       handle: handleTimerRemote
     }

@@ -25,6 +25,8 @@ export interface AppRemote {
   description: string
   /** Innere SVG-Elemente des Symbols (viewBox 24, Strich-Icons). */
   icon: string
+  /** Weitere Seiten der Fernsteuerung (Pfad relativ zu /<id>/), z. B. eine Anzeige */
+  links?: { label: string; path: string }[]
   isRunning(): boolean
   handle: RemoteHandler
 }
@@ -56,6 +58,7 @@ export function createRemoteApp(remotes: AppRemote[], port: number): RemoteApp {
         tool: r.tool,
         description: r.description,
         icon: r.icon,
+        links: r.links ?? [],
         running: r.isRunning()
       }))
     }

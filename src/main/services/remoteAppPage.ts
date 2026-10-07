@@ -33,6 +33,9 @@ a.tile:active{transform:scale(.985);border-color:var(--gold)}
 .t{display:block;font-size:17px;font-weight:700}
 .d{display:block;font-size:13px;color:var(--dim);margin-top:3px;line-height:1.35}
 .st{align-self:flex-start;flex:0 0 auto;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:rgba(52,211,153,.14);color:var(--ok)}
+.grp{display:flex;flex-direction:column;gap:6px}
+.more{display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--gold);font-size:14px;font-weight:600;text-decoration:none}
+.more:active{border-color:var(--gold)}
 .tile.off{opacity:.6}
 .tile.off .ic{background:var(--muted);color:var(--dim)}
 .hint{display:flex;gap:10px;align-items:flex-start;margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--card);font-size:13px;color:var(--dim);line-height:1.45}
@@ -65,7 +68,10 @@ ${PWA_SCRIPT}
     for(var i=0;i<remotes.length;i++){
       var r=remotes[i], ic='<span class="ic">'+svg(r.icon)+'</span>';
       if(r.running){
-        h+='<a class="tile" href="'+esc(r.id)+'/">'+ic+'<span class="tx"><span class="t">'+esc(r.name)+'</span><span class="d">'+esc(r.description)+'</span></span><span class="st">bereit</span></a>';
+        var tile='<a class="tile" href="'+esc(r.id)+'/">'+ic+'<span class="tx"><span class="t">'+esc(r.name)+'</span><span class="d">'+esc(r.description)+'</span></span><span class="st">bereit</span></a>';
+        var links=r.links||[], more='';
+        for(var k=0;k<links.length;k++)more+='<a class="more" href="'+esc(r.id)+'/'+esc(links[k].path)+'">'+esc(links[k].label)+' →</a>';
+        h+=more?'<div class="grp">'+tile+more+'</div>':tile;
       }else{
         h+='<div class="tile off">'+ic+'<span class="tx"><span class="t">'+esc(r.name)+'</span><span class="d">Aus – am Rechner im Werkzeug „'+esc(r.tool)+'“ unter „Fernsteuerung“ aktivieren.</span></span></div>';
       }

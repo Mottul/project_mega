@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fmtClock, fmtTimer, parseDuration } from './format'
+import { displayUrls, fmtClock, fmtTimer, parseDuration } from './format'
 
 describe('fmtTimer (M:SS bzw. H:MM:SS)', () => {
   it('Stundenfeld erscheint genau ab 3600 s', () => {
@@ -58,5 +58,22 @@ describe('fmtClock (lokale Uhrzeit HH:MM:SS)', () => {
   })
   it('Mitternacht', () => {
     expect(fmtClock(new Date(2026, 0, 1, 0, 0, 0))).toBe('00:00:00')
+  })
+})
+
+describe('Bühnen-Anzeige im Browser', () => {
+  it('bevorzugt die Fernsteuer-App, sonst den eigenen Port', () => {
+    expect(
+      displayUrls({
+        running: true,
+        port: 8092,
+        urls: ['http://10.0.0.5:8092'],
+        app: { urls: ['http://10.0.0.5:8090/timer/'] }
+      })
+    ).toEqual(['http://10.0.0.5:8090/timer/anzeige'])
+    expect(displayUrls({ running: true, port: 8092, urls: ['http://10.0.0.5:8092'] })).toEqual([
+      'http://10.0.0.5:8092/anzeige'
+    ])
+    expect(displayUrls({ running: false, port: 8092, urls: [] })).toEqual([])
   })
 })

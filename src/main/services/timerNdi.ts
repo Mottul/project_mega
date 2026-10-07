@@ -21,6 +21,7 @@ import { Channels } from '@shared/ipc-contracts'
 import { DEFAULT_TIMER_NDI, type TimerNdiConfig, type TimerNdiStatus } from '@shared/types'
 import { broadcast } from './broadcast'
 import { logLine } from './log'
+import { setTimerNdiActive } from './stageTimer'
 import { ensureNdiInitialized, getNdiLoadError, loadGrandiose, type Grandiose } from './ndi'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -47,7 +48,9 @@ export function getTimerNdiStatus(): TimerNdiStatus {
 }
 
 function emitStatus(): void {
-  broadcast(Channels.timerNdiChanged, getTimerNdiStatus())
+  const status = getTimerNdiStatus()
+  broadcast(Channels.timerNdiChanged, status)
+  setTimerNdiActive(status.running)
 }
 
 /** paint-Frame (BGRA) als NDI-Videoframe senden; bei laufendem Send verwerfen. */

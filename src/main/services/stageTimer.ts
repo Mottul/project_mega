@@ -29,7 +29,8 @@ export const EMPTY_TIMER_STATE: StageTimerState = {
   showClockInTimer: true,
   clockShowSeconds: true,
   clockShowDate: true,
-  outputOpen: false
+  outputOpen: false,
+  ndiActive: false
 }
 
 const state: StageTimerState = { ...EMPTY_TIMER_STATE }
@@ -301,6 +302,12 @@ export function applyTimerCommand(cmd: TimerCommand): void {
 
 export function setTimerOutputOpen(open: boolean): void {
   state.outputOpen = open
+  emitState()
+}
+
+export function setTimerNdiActive(active: boolean): void {
+  if (state.ndiActive === active) return
+  state.ndiActive = active
   emitState()
 }
 

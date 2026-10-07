@@ -388,7 +388,8 @@ export type SolidColor =
  * Mittenmarken an den Kanten), up und der große Kreis (circles); disc = schwarze Mittelscheibe
  * mit Sekundenring, die Logo, Titel und Kennung trägt; labels = kleine technische
  * Beschriftungen (Zellnamen, Lineal-Zahlen, Eck-Koordinaten, Grauwerte, „OBEN“); logo = Logo +
- * Titel; info = Bezeichnung, Auflösung, Seitenverhältnis und Uhrzeit.
+ * Titel; info = Bezeichnung, Auflösung und Seitenverhältnis; clock = laufende Uhrzeit;
+ * seconds = Sekundenring der Mittelscheibe (aus: voller Ring).
  */
 export type MappingElement =
   | 'grid'
@@ -404,6 +405,8 @@ export type MappingElement =
   | 'labels'
   | 'logo'
   | 'info'
+  | 'clock'
+  | 'seconds'
 
 export const MAPPING_ELEMENTS: MappingElement[] = [
   'grid',
@@ -418,7 +421,9 @@ export const MAPPING_ELEMENTS: MappingElement[] = [
   'fields',
   'labels',
   'logo',
-  'info'
+  'info',
+  'clock',
+  'seconds'
 ]
 
 export interface PatternConfig {
@@ -739,6 +744,8 @@ export interface StageTimerState {
   clockShowSeconds: boolean // Uhr-Modus: Sekunden anzeigen
   clockShowDate: boolean // Uhr-Modus: Datum unter der Uhrzeit anzeigen
   outputOpen: boolean
+  /** NDI-Ausgabe sendet (Startbildschirm zeigt „Ausgabe“, ohne das NDI-Modul zu laden) */
+  ndiActive: boolean
 }
 
 /** Leichter, haeufiger Tick (Restzeit), analog PlayerTick. */
@@ -1185,6 +1192,9 @@ export interface PlayerSettings {
   idleMediaUrl: string | null
   idleMediaKind: 'image' | 'video' | null
   encoder: string // 'auto' | 'cpu' | konkrete Encoder-id
+  /** Gleichzeitige Importe (1–4). Mehr lohnt bei vielen kurzen Clips/Bildern und mit GPU;
+   *  ein einzelner langer CPU-Lauf nutzt ohnehin alle Kerne. Während der Show lieber 1. */
+  importConcurrency: number
   // Blur-Fill: Unschärfe-Stärke (0..100, 50 = bisheriger Standard) und Abdunkelung
   // des Hintergrunds (0..100 %). Wird beim Einbacken angewandt -> gilt für neu
   // importierte/neu konvertierte Medien.
@@ -1228,6 +1238,7 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   idleMediaUrl: null,
   idleMediaKind: null,
   encoder: 'auto',
+  importConcurrency: 2,
   blurStrength: 50,
   blurDarken: 0,
   loudnormEnabled: false,

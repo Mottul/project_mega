@@ -14,11 +14,12 @@ import type { ConvertJob, ConvertOptions, MediaKind, PlayerImportRequest } from 
 import { buildConvertArgs } from '../convert/args'
 import { getConvertCapabilities } from '../convert/capabilities'
 import { measureLoudness } from '../convert/loudness'
+import { KeyedLock } from '../convert/keyedLock'
 import { convertQueue } from '../convert/queue'
 import { FfmpegCanceledError, runFfmpeg } from '../convert/runFfmpeg'
 import { probeMediaInfo } from '../ffmpeg/mediaInfo'
 import { logLine } from '../log'
-import { getSettings } from '../store'
+import { getSettings, onSettingsChange } from '../store'
 import { CPU_ENCODERS, encodeWithFallback } from '../convert/encoders'
 import { buildThumbArgs, resolveEncoder } from './encoder'
 import { analyzeFit, playerOptions, type PlayerSpec } from './playerPlan'
@@ -178,8 +179,15 @@ class ConvertManager {
 
   // Eigene Spur der gemeinsamen Warteschlange: Importe warten nie auf den Video-Konverter
   private queue(job: ConvertJob): void {
+    // Parallelität aus den Einstellungen (wirkt auch auf schon wartende Aufträge)
+    convertQueue.setLimit('player', getSettings().player.importConcurrency ?? 2)
     convertQueue.add(job.id, 'player', () => this.run(job))
   }
+
+  // Aufträge derselben Quelle laufen nie gleichzeitig: Doppel-Erkennung und „Neu einbacken“
+  // lesen den Bibliotheksstand und dürfen sich nicht überholen (sonst zwei Einträge mit
+  // demselben Schlüssel oder ein Auftrag, der das eben gebackene Medium als Dublette löscht)
+  private sources = new KeyedLock()
 
   enqueue(req: PlayerImportRequest): { jobIds: string[] } {
     const files = collectMedia(req.sources)
@@ -329,10 +337,14 @@ class ConvertManager {
     if (this.isCanceled(job)) return
     const spec = this.specs.get(job.id)!
     this.aborts.set(job.id, new AbortController())
+    const unlock = await this.sources.acquire(job.sourcePath.toLowerCase())
     try {
+      // während des Wartens auf dieselbe Quelle abgebrochen
+      if (this.isCanceled(job)) return
       if (spec.reconvertId) await this.runReconvert(job, spec, spec.reconvertId)
       else await this.runImport(job, spec)
     } finally {
+      unlock()
       this.aborts.delete(job.id)
     }
   }
@@ -585,3 +597,6 @@ class ConvertManager {
 }
 
 export const convertManager = new ConvertManager()
+
+// Geänderte Parallelität sofort anwenden (auch auf schon wartende Importe)
+onSettingsChange((s) => convertQueue.setLimit('player', s.player.importConcurrency ?? 2))

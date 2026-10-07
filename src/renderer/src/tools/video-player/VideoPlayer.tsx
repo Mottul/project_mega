@@ -122,6 +122,7 @@ export function VideoPlayer(): JSX.Element {
   const [mainRef, mainW] = useElementWidth<HTMLDivElement>()
   const wide = mainW >= 900
   const [enc, setEnc] = useState<PlayerEncoderStatus | null>(null)
+  const importConcurrency = useSettings((s) => s.player.importConcurrency) ?? 2
   const [library, setLibrary] = useState<MediaItem[]>([])
   const [jobs, setJobs] = useState<Record<string, ConvertJob>>({})
   const [pstate, setPstate] = useState<PlayerState>(EMPTY_PLAYER_STATE)
@@ -715,6 +716,30 @@ export function VideoPlayer(): JSX.Element {
             )}
 
             {!locked && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium">Gleichzeitige Importe</span>
+                <select
+                  className={selectClass}
+                  value={importConcurrency}
+                  onChange={(e) =>
+                    updateSettings({ player: { importConcurrency: Number(e.target.value) } })
+                  }
+                >
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n}>
+                      {n === 1 ? '1 (nacheinander)' : `${n} parallel`}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs text-muted-foreground">
+                  Mehr parallel lohnt bei vielen kurzen Clips, Bildern und mit GPU – ein langer Clip
+                  nutzt auf der CPU ohnehin alle Kerne. Während der Show lieber 1, dann bleiben
+                  Reserven für die Wiedergabe.
+                </span>
+              </label>
+            )}
+
+            {!locked && (
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2">
                   <input
@@ -1173,9 +1198,21 @@ export function VideoPlayer(): JSX.Element {
                       </span>
                     </button>
                     <button
-                      onClick={() => void persistSaved(saved.filter((x) => x.name !== p.name))}
+                      onClick={() =>
+                        void api
+                          .confirm({
+                            message: `Playlist „${p.name}“ löschen?`,
+                            detail: 'Die Medien bleiben in der Bibliothek.',
+                            confirmLabel: 'Löschen',
+                            danger: true
+                          })
+                          .then((ok) => {
+                            if (ok) void persistSaved(saved.filter((x) => x.name !== p.name))
+                          })
+                      }
                       className="text-muted-foreground hover:text-destructive"
-                      title="Löschen"
+                      title="Playlist löschen"
+                      aria-label={`Playlist „${p.name}“ löschen`}
                     >
                       <X className="size-3.5" />
                     </button>
