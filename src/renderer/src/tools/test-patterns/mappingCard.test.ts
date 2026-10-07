@@ -10,6 +10,7 @@ import {
   fieldSlots,
   isLight,
   ratioText,
+  secondsArc,
   type Rect
 } from './mappingCard'
 
@@ -188,5 +189,24 @@ describe('Mapping-Testbild: Mittelscheibe', () => {
     const d = discLayout(cardLayout(1920, 1080))
     // „1920 × 1080 px · 16:9 · 12:34:56“: 31 Zeichen à ~0,55 em
     expect(31 * 0.55 * d.info.px).toBeLessThan(d.info.maxW)
+  })
+})
+
+describe('Mapping-Testbild: Sekundenring', () => {
+  const at = (min: number, sec: number): Date => new Date(2026, 9, 7, 12, min, sec)
+
+  it('gerade Minute: wächst Sekunde für Sekunde ab 12 Uhr', () => {
+    expect(secondsArc(at(10, 0))).toEqual({ from: 0, to: 0 })
+    expect(secondsArc(at(10, 15))).toEqual({ from: 0, to: 0.25 })
+    expect(secondsArc(at(10, 59)).to).toBeCloseTo(59 / 60)
+  })
+
+  it('ungerade Minute: wird Sekunde für Sekunde wieder ausgegraut – kein Sprung', () => {
+    expect(secondsArc(at(11, 0))).toEqual({ from: 0, to: 1 })
+    expect(secondsArc(at(11, 30))).toEqual({ from: 0.5, to: 1 })
+    // Übergänge: 10:59 -> 11:00 und 11:59 -> 12:00 ändern je nur eine Sekunde
+    const len = (a: { from: number; to: number }): number => a.to - a.from
+    expect(len(secondsArc(at(11, 0))) - len(secondsArc(at(10, 59)))).toBeCloseTo(1 / 60)
+    expect(len(secondsArc(at(11, 59))) - len(secondsArc(at(12, 0)))).toBeCloseTo(1 / 60)
   })
 })

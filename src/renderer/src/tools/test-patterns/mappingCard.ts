@@ -90,6 +90,16 @@ export function clockText(d: Date): string {
   return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
 }
 
+/**
+ * Sekundenring: in geraden Minuten wächst der Bogen Sekunde für Sekunde (ab 12 Uhr im
+ * Uhrzeigersinn), in ungeraden wird er ebenso Sekunde für Sekunde wieder ausgegraut – kein
+ * Sprung von voll auf leer. Anfang/Ende als Anteil einer Umdrehung (0 = 12 Uhr).
+ */
+export function secondsArc(d: Date): { from: number; to: number } {
+  const s = d.getSeconds() / 60
+  return d.getMinutes() % 2 === 0 ? { from: 0, to: s } : { from: s, to: 1 }
+}
+
 /** Mittelachse: bei gerader Kantenlänge die beiden Mittelpixel, sonst das eine. */
 export function axisBand(n: number): { start: number; size: number } {
   return n % 2 === 0 ? { start: n / 2 - 1, size: 2 } : { start: (n - 1) / 2, size: 1 }
@@ -563,13 +573,14 @@ export function drawMappingCard(
   ctx.fillStyle = background
   ctx.fillRect(0, 0, w, h)
 
-  // Raster: 1-px-Linien auf der ersten Spalte/Zeile jeder Zelle, ab Pixel 0,0 (wie
-  // LED-Prozessoren zählen). Wahlweise in Akzentfarbe: beim Überblenden mehrerer Beamer
-  // sind die Raster dann je Beamer zu unterscheiden.
+  // Raster ab Pixel 0,0 (wie LED-Prozessoren zählen). Wahlweise in Akzentfarbe: beim
+  // Überblenden mehrerer Beamer sind die Raster dann je Beamer zu unterscheiden.
   if (on('grid')) {
     ctx.fillStyle = cfg.mappingGridAccent ? rgba(accent, 0.7) : rgba(ink, 0.32)
-    for (let x = cw; x < w; x += cw) ctx.fillRect(x, 0, 1, h)
-    for (let y = ch; y < h; y += ch) ctx.fillRect(0, y, w, 1)
+    // 2 px genau auf der Zellgrenze: letztes Pixel der einen, erstes der nächsten Zelle ->
+    // jedes Cabinet zeigt seine eigene Kante; fällt eins aus, ist klar, welches betroffen ist
+    for (let x = cw; x < w; x += cw) ctx.fillRect(x - 1, 0, 2, h)
+    for (let y = ch; y < h; y += ch) ctx.fillRect(0, y - 1, w, 2)
   }
 
   if (on('diagonals')) {
@@ -601,8 +612,8 @@ export function drawMappingCard(
     ctx.stroke()
   }
 
-  // Mittelscheibe: schwarz, mit Ring in Akzentfarbe. Der Ring füllt sich im Sekundentakt
-  // einmal je Minute – ein stehender Ring heißt: Ausgabe hängt (auch aus der Entfernung).
+  // Mittelscheibe: schwarz, mit Ring in Akzentfarbe. Der Ring füllt sich im Sekundentakt und
+  // leert sich in der nächsten Minute ebenso – steht er, hängt die Ausgabe (auch von weitem).
   if (disc) {
     ctx.fillStyle = '#000000'
     ctx.beginPath()
@@ -611,15 +622,16 @@ export function drawMappingCard(
     const rr = disc.r + disc.ring / 2
     ctx.lineWidth = disc.ring
     ctx.lineCap = 'butt'
-    ctx.strokeStyle = on('info') ? rgba(accent, 0.3) : accent
+    ctx.strokeStyle = on('seconds') ? rgba(accent, 0.3) : accent
     ctx.beginPath()
     ctx.arc(cx, cy, rr, 0, Math.PI * 2)
     ctx.stroke()
-    const sec = now.getSeconds()
-    if (on('info') && sec > 0) {
+    const arc = secondsArc(now)
+    if (on('seconds') && arc.to > arc.from) {
+      const turn = (f: number): number => -Math.PI / 2 + f * Math.PI * 2
       ctx.strokeStyle = accent
       ctx.beginPath()
-      ctx.arc(cx, cy, rr, -Math.PI / 2, -Math.PI / 2 + (sec / 60) * Math.PI * 2)
+      ctx.arc(cx, cy, rr, turn(arc.from), turn(arc.to))
       ctx.stroke()
     }
   }
@@ -663,11 +675,11 @@ export function drawMappingCard(
     if (!on('up')) ctx.fillRect(x0, 0, bw, len)
   }
 
-  // Messfelder: in ganzen Zellen um 1 px eingerückt, damit die Rasterlinien sie rahmen;
-  // frei gesetzte Felder bekommen einen eigenen 1-px-Rahmen in der Linienfarbe
+  // Messfelder: in ganzen Zellen rundum 1 px eingerückt, damit die 2-px-Rasterlinien (je
+  // 1 px beidseits der Grenze) sie rahmen; frei gesetzte bekommen einen eigenen Rahmen
   const slots = on('fields') ? fieldSlots(lay) : { rects: [], snapped: false }
   slots.rects.forEach((r, i) => {
-    const inner = slots.snapped ? { x: r.x + 1, y: r.y + 1, w: r.w - 1, h: r.h - 1 } : r
+    const inner = slots.snapped ? { x: r.x + 1, y: r.y + 1, w: r.w - 2, h: r.h - 2 } : r
     if (!slots.snapped) {
       ctx.fillStyle = rgba(ink, 0.45)
       ctx.fillRect(r.x - 1, r.y - 1, r.w + 2, r.h + 2)
@@ -826,7 +838,13 @@ export function drawMappingCard(
 
   const title = on('logo') ? clampText(cfg.mappingTitle ?? DEFAULT_PATTERN_CONFIG.mappingTitle) : ''
   const label = on('info') ? clampText(cfg.label) : ''
-  const info = `${w} × ${h} px · ${ratioText(w, h)} · ${clockText(now)}`
+  // Kennungszeile: Auflösung und Seitenverhältnis (info) und/oder Uhrzeit (clock)
+  const info = [
+    on('info') ? `${w} × ${h} px · ${ratioText(w, h)}` : '',
+    on('clock') ? clockText(now) : ''
+  ]
+    .filter(Boolean)
+    .join(' · ')
   // Sperrung über schmale Leerzeichen (letterSpacing kennt nicht jede Umgebung)
   const spaced = (t: string): string => [...t].join('\u2009')
 
@@ -844,7 +862,7 @@ export function drawMappingCard(
         })
       }
     }
-    if (on('info')) {
+    if (label || info) {
       if (label) {
         const l = disc.label
         ctx.font = font(700, l.px)
@@ -854,9 +872,11 @@ export function drawMappingCard(
           color: '#ffffff'
         })
       }
-      const row = label ? disc.info : disc.infoAlone
-      const px = fitFont(ctx, info, 500, row.px, 6, row.maxW)
-      text(ctx, info, cx, row.y, px, { align: 'center', color: 'rgba(255,255,255,0.8)' })
+      if (info) {
+        const row = label ? disc.info : disc.infoAlone
+        const px = fitFont(ctx, info, 500, row.px, 6, row.maxW)
+        text(ctx, info, cx, row.y, px, { align: 'center', color: 'rgba(255,255,255,0.8)' })
+      }
     }
   } else if (!disc) {
     // Ohne Scheibe: Schilder – über der Mitte Logo + Titel, darunter die Kennung
@@ -887,16 +907,16 @@ export function drawMappingCard(
         })
     }
 
-    if (on('info')) {
+    if (label || info) {
       const ipx = Math.max(8, Math.round(u * 0.2))
       const lpx = Math.max(9, Math.round(u * 0.3))
       ctx.font = font(500, ipx)
-      const infoShown = ellipsize(ctx, info, maxTextW)
-      let bw = ctx.measureText(infoShown).width
+      const infoShown = info ? ellipsize(ctx, info, maxTextW) : ''
+      let bw = infoShown ? ctx.measureText(infoShown).width : 0
       ctx.font = font(600, lpx)
       const labelShown = label ? ellipsize(ctx, label, maxTextW) : ''
       if (labelShown) bw = Math.max(bw, ctx.measureText(labelShown).width)
-      const bh = (labelShown ? lpx * 1.25 : 0) + ipx * 1.3 + u * 0.2
+      const bh = (labelShown ? lpx * 1.25 : 0) + (infoShown ? ipx * 1.3 : 0) + u * 0.2
       const by = cy + R * 0.5 - bh / 2
       plate(ctx, cx - bw / 2 - u * 0.18, by, bw + u * 0.36, bh, 6)
       if (labelShown) {
@@ -906,10 +926,12 @@ export function drawMappingCard(
           color: '#ffffff'
         })
       }
-      text(ctx, infoShown, cx, by + bh - u * 0.12, ipx, {
-        align: 'center',
-        color: 'rgba(255,255,255,0.85)'
-      })
+      if (infoShown) {
+        text(ctx, infoShown, cx, by + bh - u * 0.12, ipx, {
+          align: 'center',
+          color: 'rgba(255,255,255,0.85)'
+        })
+      }
     }
   }
 

@@ -43,6 +43,21 @@ Adresse antwortet, solange am Rechner mindestens eine Fernsteuerung läuft.
   an die Bühne (mit Schnellnachrichten). Abschnitte und Schwellen werden am Rechner bearbeitet.
   Funktioniert auch bei geschlossenem Werkzeug, weil der Timer im Hauptprozess läuft.
 
+## Bühnen-Anzeige des Stage-Timers im Browser
+
+Für Geräte ohne NDI – Fernseher mit Browser, Tablet als Referentenmonitor, zweiter Rechner:
+**`http://<IP-des-Rechners>:8092/anzeige`** (bzw. `…:8090/timer/anzeige`; QR-Code im Stage-Timer
+unter „Anzeige im Browser“, Link „Bühnen-Anzeige“ auf der Startseite der Fernsteuer-App). Sie
+läuft, solange die Fernsteuerung des Stage-Timers eingeschaltet ist.
+
+- Reine Anzeige, keine Knöpfe – sieht aus wie das Ausgabefenster: Restzeit in Warnfarbe,
+  Redner/Titel, Uhrzeit, Restzeit-Balken, Nachrichten an die Bühne, Uhr-Modus.
+- Die Uhrzeit kommt vom Rechner, nicht vom Anzeigegerät. Reißt die Verbindung ab, erscheint nach
+  zwei Sekunden „Verbindung zum Timer getrennt“ – die Seite verbindet sich von selbst neu.
+- Antippen bzw. Klicken schaltet auf Vollbild, der Mauszeiger verschwindet nach drei Sekunden.
+- Bewusst schlicht gebaut, damit sie auch in älteren Smart-TV-Browsern läuft (ohne
+  Server-Sent Events fragt sie jede Sekunde nach).
+
 Ist ein Werkzeug in mehreren Fenstern offen, gehen Befehle vom Handy nur an das Fenster, dessen
 Stand das Handy zeigt – nichts wird doppelt abgespielt.
 
@@ -58,7 +73,7 @@ Stand das Handy zeigt – nichts wird doppelt abgespielt.
 
 - Über http im lokalen Netz erlauben Browser weder eine echte App-Installation (Android) noch das
   Wachhalten des Displays (Wake Lock). Für die Show am Gerät die automatische Bildschirmsperre
-  abschalten.
+  abschalten – auch am Gerät mit der Bühnen-Anzeige (Bildschirmschoner, Energiesparen).
 - Ohne Passwort kann jeder im selben Netz steuern – in fremden Netzen nur bei Bedarf einschalten
   (siehe [SICHERHEIT.md](SICHERHEIT.md)). Die Befehle werden dabei Feld für Feld geprüft;
   Desktop-Einstellungen wie das Idle-Bild lassen sich vom Handy nicht ändern.

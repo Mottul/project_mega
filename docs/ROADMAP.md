@@ -171,14 +171,16 @@ Damit nichts doppelt geplant wird:
   Aufräumen bei Abbruch), Fernsteuer-Befehle von Player und Jingle feldweise geprüft, CSP ohne
   `unsafe-eval`, yt-dlp nur mit http(s)-Adressen hinter `--`.
 - **Konvertierung:** gemeinsamer Kern für Video-Konverter, Player-Import und Testbild-Export
-  (ersetzt den alten HAP-Auftragsmanager), eigene Player-Spur, Medien-Info als Analyse-Werkzeug;
+  (ersetzt den alten HAP-Auftragsmanager), eigene Player-Spur (parallele Importe einstellbar,
+  dieselbe Quelle nie doppelt), Medien-Info als Analyse-Werkzeug;
   Video-Konverter mit GPU für H.264/H.265 (geprüft, Rückfall auf die CPU) und schnellem ProRes
   (VideoToolbox bzw. prores_aw); Lautheit in zwei Durchgängen (messen, dann gleichmäßig
   verstärken) in Konverter und Player-Import, „Neu einbacken“ wendet sie auch auf vorhandene
   Medien an.
 - **Fernsteuerung:** Fernsteuer-App mit gemeinsamer Startseite (Port 8090), Stage-Timer am Handy,
-  Zustand wird gemerkt, Start/Stopp über `registerRemoteControl()`.
-- **Startbildschirm:** Favoriten in eigenen Kategorien, Kachelgröße, Ansicht „Favoriten“.
+  Bühnen-Anzeige des Timers im Browser (für Geräte ohne NDI), Zustand wird gemerkt, Start/Stopp über `registerRemoteControl()`.
+- **Startbildschirm:** Favoriten in eigenen Kategorien, Kachelgröße, Ansicht „Favoriten“, gleich
+  hohe Kacheln, Ausgabe-Status von Player und Stage-Timer.
 - **Gemeinsame Bausteine:** Medien-Endungen in `shared/`, QR-Code und `selectClass` in
   `components/`.
 - **Werkzeuge:** OSC (Learn-Modus, Auswahl, Bank, Poti/Encoder, Anzeige, Label,

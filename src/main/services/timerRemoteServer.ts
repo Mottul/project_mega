@@ -8,6 +8,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { StageTimerState, StageTimerTick, TimerCommand } from '@shared/types'
 import { createRemoteHost, readBody, sendJson } from './remoteHttp'
 import { applyTimerCommand, getTimerState } from './stageTimer'
+import { TIMER_DISPLAY_PAGE } from './timerDisplayPage'
 import { TIMER_MOBILE_PAGE } from './timerRemotePage'
 
 const host = createRemoteHost('timer-remote', 8092)
@@ -62,6 +63,14 @@ export function handleTimerRemote(req: IncomingMessage, res: ServerResponse): vo
     res.end(TIMER_MOBILE_PAGE)
     return
   }
+  // Bühnen-Anzeige im Browser (nur Anzeige) für Geräte ohne NDI
+  if (path === '/anzeige' || path === '/anzeige/') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' })
+    res.end(TIMER_DISPLAY_PAGE)
+    return
+  }
+  // Uhrzeit des Rechners: die Anzeige zeigt sie statt der (oft falschen) Uhr des Fernsehers
+  if (path === '/api/time') return sendJson(res, { now: Date.now() })
   if (path === '/api/state') return sendJson(res, getTimerState())
   if (path === '/api/events') return host.openSse(req, res, getTimerState)
   if (path === '/api/command' && req.method === 'POST') {

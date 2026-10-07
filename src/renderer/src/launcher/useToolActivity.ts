@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/api'
 
 // Live-Status je Tool für den Homescreen: zeigt, was gerade läuft (Konverter-Aufträge,
-// YouTube-Downloads, laufender Timer, offene Player-Ausgabe). Tools ohne
+// YouTube-Downloads, laufender Timer, offene Player- bzw. Timer-Ausgabe). Tools ohne
 // Aktivität fehlen einfach in der Map.
 
 export interface ToolActivity {
@@ -13,7 +13,10 @@ export interface ToolActivity {
 export function useToolActivity(): Record<string, ToolActivity> {
   const [conv, setConv] = useState(0)
   const [yt, setYt] = useState(0)
-  const [timer, setTimer] = useState(false)
+  const [timer, setTimer] = useState<{ running: boolean; output: boolean }>({
+    running: false,
+    output: false
+  })
   const [player, setPlayer] = useState<{ playing: boolean; output: boolean; items: number }>({
     playing: false,
     output: false,
@@ -53,10 +56,12 @@ export function useToolActivity(): Record<string, ToolActivity> {
     })
   }, [])
 
-  // Stage-Timer
+  // Stage-Timer: läuft er, ist ein Ausgabefenster offen oder sendet NDI?
   useEffect(() => {
-    void api.timer.getState().then((s) => setTimer(s.running))
-    return api.timer.onState((s) => setTimer(s.running))
+    const apply = (s: { running: boolean; outputOpen: boolean; ndiActive?: boolean }): void =>
+      setTimer({ running: s.running, output: s.outputOpen || Boolean(s.ndiActive) })
+    void api.timer.getState().then(apply)
+    return api.timer.onState(apply)
   }, [])
 
   // Video-Player
@@ -74,7 +79,9 @@ export function useToolActivity(): Record<string, ToolActivity> {
   const out: Record<string, ToolActivity> = {}
   if (conv > 0) out['hap-converter'] = { count: conv, label: `konvertiert · ${conv}` }
   if (yt > 0) out['youtube-dl'] = { count: yt, label: `lädt · ${yt}` }
-  if (timer) out['stage-timer'] = { count: 1, label: 'läuft' }
+  if (timer.running)
+    out['stage-timer'] = { count: 1, label: timer.output ? 'läuft · Ausgabe' : 'läuft' }
+  else if (timer.output) out['stage-timer'] = { count: 1, label: 'Ausgabe offen' }
   if (player.playing)
     out['video-player'] = { count: 1, label: player.output ? 'spielt · Ausgabe' : 'spielt' }
   else if (player.output) out['video-player'] = { count: 1, label: 'Ausgabe offen' }

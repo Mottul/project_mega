@@ -152,20 +152,11 @@ function drawGridModules(ctx: Ctx, cfg: PatternConfig): void {
   const base = moduleCells(w, h)
   const cellW = w / Math.max(0.0001, base.x * cfg.gridScale)
   const cellH = h / Math.max(0.0001, base.y * cfg.gridScale)
-  ctx.strokeStyle = '#ffffff'
-  ctx.lineWidth = 2
-  ctx.beginPath()
-  for (let x = cellW; x < w - 0.5; x += cellW) {
-    const px = Math.round(x)
-    ctx.moveTo(px + 0.5, 0)
-    ctx.lineTo(px + 0.5, h)
-  }
-  for (let y = cellH; y < h - 0.5; y += cellH) {
-    const py = Math.round(y)
-    ctx.moveTo(0, py + 0.5)
-    ctx.lineTo(w, py + 0.5)
-  }
-  ctx.stroke()
+  // 2-px-Linien genau auf der Modulgrenze: letztes Pixel des einen und erstes des nächsten
+  // Moduls -> jedes Modul zeigt seine eigene Kante (fehlt sie, ist klar, welches betroffen ist)
+  ctx.fillStyle = '#ffffff'
+  for (let x = cellW; x < w - 0.5; x += cellW) ctx.fillRect(Math.round(x) - 1, 0, 2, h)
+  for (let y = cellH; y < h - 0.5; y += cellH) ctx.fillRect(0, Math.round(y) - 1, w, 2)
   drawEdgeFrame(ctx, w, h)
 }
 

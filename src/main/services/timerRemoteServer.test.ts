@@ -5,7 +5,8 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', isPackaged: false }
 }))
 
-const { parseTimerCommand } = await import('./timerRemoteServer')
+const { parseTimerCommand, handleTimerRemote } = await import('./timerRemoteServer')
+import type { IncomingMessage, ServerResponse } from 'node:http'
 const parse = (v: unknown): ReturnType<typeof parseTimerCommand> =>
   parseTimerCommand(JSON.stringify(v))
 
@@ -45,5 +46,50 @@ describe('Timer-Fernsteuerung – Befehlsprüfung', () => {
     // Abschnitte/Schwellen werden nur am Rechner bearbeitet
     expect(parse({ type: 'setSegments', segments: [] })).toBeNull()
     expect(parse({ type: 'setThresholds', warnSec: 1, alertSec: 1 })).toBeNull()
+  })
+})
+
+// Minimaler Request/Response-Ersatz: hält Status, Kopf und Inhalt fest
+function call(url: string): { status: number; type: string; body: string } {
+  const out = { status: 0, type: '', body: '' }
+  const res = {
+    writeHead(status: number, headers?: Record<string, string>) {
+      out.status = status
+      out.type = headers?.['Content-Type'] ?? ''
+      return res
+    },
+    setHeader(name: string, value: string) {
+      if (name.toLowerCase() === 'content-type') out.type = value
+    },
+    end(body?: string) {
+      out.body = body ?? ''
+      if (!out.status) out.status = 200
+    }
+  }
+  handleTimerRemote(
+    { url, method: 'GET', headers: {} } as unknown as IncomingMessage,
+    res as unknown as ServerResponse
+  )
+  return out
+}
+
+describe('Timer-Fernsteuerung – Bühnen-Anzeige im Browser', () => {
+  it('liefert die Anzeigeseite mit relativen API-Pfaden (läuft auch unter /timer/)', () => {
+    const r = call('/anzeige')
+    expect(r.status).toBe(200)
+    expect(r.type).toContain('text/html')
+    expect(r.body).toContain("EventSource('api/events')")
+    expect(r.body).toContain("'api/time'")
+    expect(r.body).not.toMatch(/['"]\/api\//) // nie absolut
+    // reine Anzeige: schickt keine Befehle
+    expect(r.body).not.toContain('api/command')
+  })
+
+  it('nennt die Uhrzeit des Rechners', () => {
+    const before = Date.now()
+    const r = call('/api/time')
+    const now = (JSON.parse(r.body) as { now: number }).now
+    expect(now).toBeGreaterThanOrEqual(before)
+    expect(now).toBeLessThanOrEqual(Date.now())
   })
 })

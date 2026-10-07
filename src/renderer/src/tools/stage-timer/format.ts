@@ -1,5 +1,19 @@
 // Zeit-Formatierung/-Parsing für den Stage-Timer (reine Funktionen).
 
+import type { RemoteStatus } from '@shared/types'
+
+/**
+ * Adressen der Bühnen-Anzeige im Browser: bevorzugt in der Fernsteuer-App (…:8090/timer/),
+ * sonst am eigenen Port der Timer-Fernsteuerung.
+ */
+export function displayUrls(status: RemoteStatus): string[] {
+  if (!status.running) return []
+  const app = status.app?.urls ?? []
+  return (app.length ? app : status.urls).map((u) =>
+    u.endsWith('/') ? `${u}anzeige` : `${u}/anzeige`
+  )
+}
+
 /** Sekunden -> "MM:SS" bzw. "H:MM:SS"; negativ -> "−M:SS" (Überziehung). */
 export function fmtTimer(totalSec: number): string {
   const neg = totalSec < 0

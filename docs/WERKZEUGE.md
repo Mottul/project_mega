@@ -28,8 +28,10 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   alphabetisch sortieren. Eine Kachel aus „Alle“ in eine Kategorie zu ziehen macht sie zum
   Favoriten. Beim Löschen einer Kategorie wandern ihre Werkzeuge in die Nachbar-Kategorie.
 - **Kachelgröße** klein, mittel oder groß.
-- **Was gerade läuft**, zeigt die Kachel: laufende Konvertierungen, Downloads, Timer,
-  Player-Ausgabe – und ob die Handy-Fernsteuerung des Werkzeugs aktiv ist. Der Handy-Knopf oben
+- **Was gerade läuft**, zeigt die Kachel mit pulsierendem Punkt: laufende Konvertierungen,
+  Downloads, Timer, offene Ausgaben von Player und Stage-Timer (Fenster oder NDI) – und ob die
+  Handy-Fernsteuerung des Werkzeugs aktiv ist. Alle Kacheln einer Größe sind gleich hoch, auch
+  bei kurzer Beschreibung. Der Handy-Knopf oben
   zeigt den QR-Code der [Fernsteuer-App](FERNSTEUERUNG.md).
 - **Eigene Fenster:** Jedes Werkzeug lässt sich zusätzlich in einem eigenen Fenster öffnen
   („In neuem Fenster öffnen“ an der Kachel oder in der Kopfzeile) – etwa Video-Player, Jingles
@@ -64,7 +66,10 @@ Playlist-Player für LED-Wände und Beamer.
   Deinterlace, HDR → SDR, konstante Bildrate, Drehung von Handyvideos und anamorphe Pixel werden
   richtig eingerechnet; passendes H.264 wird nur umverpackt. Bilder werden mit frei wählbarer
   Standzeit gebacken, GIFs zu Loop-Videos. Importe haben eine eigene Spur in der Warteschlange und
-  warten nie auf einen Konverter-Stapel.
+  warten nie auf einen Konverter-Stapel. **Gleichzeitige Importe** einstellbar (1–4, Standard 2):
+  mehr lohnt bei vielen kurzen Clips, Bildern oder mit GPU-Encoder; während der Show lieber 1,
+  damit die Wiedergabe genug Luft hat. Dieselbe Datei wird nie doppelt gleichzeitig gerechnet –
+  zweimal hineingezogen, landet sie einmal in der Bibliothek.
 - **Lautheit angleichen** (optional, EBU R128): Ziel −23, −16 oder −14 LUFS, gemessen und
   angewandt wie im [Video-Konverter](#video-konverter). Gilt für neue Importe; „Vorhandene neu
   einbacken“ bringt die Bibliothek auf die aktuelle Einstellung (bereits passende Medien werden
@@ -75,7 +80,8 @@ Playlist-Player für LED-Wände und Beamer.
   echtes Überblenden (das alte Video läuft weiter, Ton blendet mit). Shuffle ist lückenlos – das
   nächste Zufallsmedium wird vorab geladen.
 - **Bedienung:** Play/Pause, Skip, Seek, Loop, Shuffle, Stumm; Playlist per Drag & Drop,
-  gespeicherte Playlists als Tabs.
+  gespeicherte Playlists als Tabs (Löschen nur nach Rückfrage; die Medien bleiben in der
+  Bibliothek).
 - **Bibliothek** mit Thumbnails, Import per Drag & Drop, Listen- und Kachelansicht;
   Neu-Konvertierung aller Medien bei Auflösungswechsel.
 - **In-App-Vorschau**, die auch ohne Ausgabefenster abspielt – praktisch ohne zweiten Bildschirm.
@@ -109,17 +115,27 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
 - **Live:** ±1 Minute, Nachrichten an die Bühne (auf Wunsch blinkend, mit Schnellnachrichten).
 - **Vollbild-Anzeige** auf wählbarem Monitor, synchron zur Vorschau – der Timer läuft im
   Hauptprozess. Alternativ eine große Uhr mit Sekunden.
+- **Anzeige im Browser** für Geräte ohne NDI: Fernseher, Tablet oder zweiter Rechner im selben
+  Netz öffnen `http://<Rechner>:8092/anzeige` (QR-Code im Werkzeug, Link in der Fernsteuer-App).
+  Reine Anzeige wie das Ausgabefenster – Restzeit in Warnfarbe, Redner/Titel, Balken,
+  Nachrichten, Uhr-Modus. Antippen schaltet auf Vollbild; die Uhrzeit kommt vom Rechner,
+  reißt die Verbindung ab, steht das groß da (verbindet sich von selbst neu). Läuft auch in
+  älteren Smart-TV-Browsern. Details: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
 - **NDI-Ausgabe** (optional): [NDI.md](NDI.md). **Handy-Fernsteuerung**, die auch bei
   geschlossenem Werkzeug funktioniert.
+- **Am Startbildschirm** zeigt die Kachel, ob der Timer läuft und ob eine Ausgabe (Fenster oder
+  NDI) aktiv ist.
 - **Ablauf bleibt erhalten:** Abschnitte, Schwellen, Ende-Verhalten und Anzeige merkt sich die App
   über Neustarts – auch wenn der Timer nur vom Handy aus bedient wurde.
 
 ### Testbildgenerator
 
-- **Muster:** Gitter/Module, Geometrie, Farbbalken, Graustufen, Siemensstern, Konvergenz.
+- **Muster:** Gitter/Module (2-px-Linien genau auf der Modulgrenze: letztes Pixel des einen,
+  erstes des nächsten Moduls – bei Pixelfehlern ist klar, welches Modul betroffen ist), Geometrie, Farbbalken, Graustufen, Siemensstern, Konvergenz.
 - **Mapping-Testbild** zum Einrichten von Beamern, Mappings und LED-Wänden. Jedes Element hat
   einen Messzweck und lässt sich einzeln ausblenden:
-  - Raster ab Pixel 0,0 mit Zellnamen (A1, B2 …), um Warp-Punkte anzusagen: automatisch
+  - Raster ab Pixel 0,0 mit Zellnamen (A1, B2 …), um Warp-Punkte anzusagen; Linien 2 px breit
+    genau auf der Zell- bzw. Cabinet-Grenze: automatisch
     (kürzere Kante ÷ 9, bei 1080p 120 px), mit eigener Zellgröße oder per „Aus
     LED-Wall-Konfigurator“ im Cabinet-Raster samt Wandauflösung. Wahlweise in Akzentfarbe,
     damit beim Überblenden jeder Beamer sein eigenes Raster zeigt.
@@ -128,14 +144,15 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
     Kanten, ein kräftiger Kreis (Seitenverhältnis) und ein OBEN-Pfeil für gedrehte oder
     gespiegelte Ausgänge.
   - Schwarze Mittelscheibe mit Logo, Titel, Bezeichnung und Kennung; ihr Ring in Akzentfarbe
-    füllt sich im Sekundentakt einmal je Minute – steht er, hängt die Ausgabe, auch aus der
-    Entfernung zu sehen.
+    füllt sich Sekunde für Sekunde und wird in der nächsten Minute ebenso wieder ausgegraut (kein
+    Sprung zum Minutenwechsel) – steht er, hängt die Ausgabe, auch aus der Entfernung zu sehen.
+    Sekundenring und Uhrzeit lassen sich einzeln ausblenden (dann voller Ring).
   - Lineal mit Teilstrichen alle 10/50/100 px, Diagonalen.
   - Vier Messfelder, im Raster eingepasst: Farbe 100/75 %, Grau 0–100 % mit Schwarz- und
     Weißgrenze, Schärfe (Linienpaare 1–4 px), Verläufe. Bei 4:3, großen Cabinets oder fast
     quadratischen Formaten frei in den Ecken; bei zu wenig Platz entfallen sie.
   - Kennung: Bezeichnung (z. B. „Beamer links“), Auflösung, Seitenverhältnis und laufende
-    Uhrzeit; ohne Mittelscheibe auf Schildern über und unter der Mitte.
+    Uhrzeit (ausblendbar); ohne Mittelscheibe auf Schildern über und unter der Mitte.
   - Akzent- und Hintergrundfarbe frei wählbar oder per Schnellwahl. Raster, Lineal und Schrift
     passen sich dem Hintergrund an (hell auf dunkel, dunkel auf hell).
 - **Bewegte Muster:** Pixelcheck-Loop, Scroll, Timecode.
@@ -266,7 +283,7 @@ Testbild-Export – entscheidet je Datei:
 - Farbmatrix und Range, Ton (48 kHz, AAC/PCM, Stereo, Lautheit in zwei Durchgängen),
 - passendes H.264 nur umverpacken.
 
-Die Warteschlange hat eine eigene Spur für den Player. Geprüft mit über 60 echten
+Die Warteschlange hat eine eigene Spur für den Player (gleichzeitige Importe einstellbar). Geprüft mit über 60 echten
 Konvertierungen (Kontrolle per ffprobe).
 
 ### Medien-Info

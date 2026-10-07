@@ -19,7 +19,10 @@ const TILE_MIN: Record<LauncherTileSize, number> = { small: 160, medium: 240, la
 
 export function tileGridStyle(size: LauncherTileSize): CSSProperties {
   return {
-    gridTemplateColumns: `repeat(auto-fill, minmax(min(${TILE_MIN[size]}px, 100%), 1fr))`
+    gridTemplateColumns: `repeat(auto-fill, minmax(min(${TILE_MIN[size]}px, 100%), 1fr))`,
+    // alle Zeilen so hoch wie die höchste -> Kacheln gleich hoch, auch mit weniger Text
+    // oder wenn ein Status-Badge den Titel umbricht
+    gridAutoRows: '1fr'
   }
 }
 
@@ -28,19 +31,21 @@ const SIZE: Record<
   { pad: string; box: string; icon: string; title: string; desc: string | null }
 > = {
   small: { pad: 'p-2.5', box: 'size-8', icon: 'size-4', title: 'text-sm', desc: null },
+  // Beschreibung reserviert immer ihre volle Zeilenzahl: kurze Texte machen die Kachel nicht
+  // niedriger (gleiche Höhe auch über Kategorien hinweg)
   medium: {
     pad: 'p-4',
     box: 'size-9',
     icon: 'size-5',
     title: 'text-sm',
-    desc: 'mt-0.5 line-clamp-2 text-xs'
+    desc: 'mt-0.5 line-clamp-2 min-h-[2lh] text-xs'
   },
   large: {
     pad: 'p-5',
     box: 'size-11',
     icon: 'size-6',
     title: 'text-base',
-    desc: 'mt-1 line-clamp-3 text-sm'
+    desc: 'mt-1 line-clamp-3 min-h-[3lh] text-sm'
   }
 }
 
@@ -109,7 +114,7 @@ export function ToolCard({
       onDragOver={drop?.onDragOver}
       onDrop={drop?.onDrop}
       className={cn(
-        'group relative cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/40',
+        'group relative h-full cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/40',
         s.pad,
         drag?.dragging && 'opacity-40'
       )}

@@ -56,7 +56,7 @@ const OTHER_ELEMENTS: { id: MappingElement; label: string; hint: string }[] = [
   {
     id: 'disc',
     label: 'Mittelscheibe',
-    hint: 'Schwarze Scheibe mit Logo, Titel und Kennung; ihr Ring füllt sich im Sekundentakt'
+    hint: 'Schwarze Scheibe mit Logo, Titel und Kennung'
   },
   { id: 'fields', label: 'Messfelder', hint: 'Farbe, Grau, Schärfe, Verlauf' },
   {
@@ -65,7 +65,13 @@ const OTHER_ELEMENTS: { id: MappingElement; label: string; hint: string }[] = [
     hint: 'Zellnamen, Lineal-Zahlen, Eck-Koordinaten, Grauwerte'
   },
   { id: 'logo', label: 'Logo & Titel', hint: 'Über der Mitte' },
-  { id: 'info', label: 'Kennung', hint: 'Bezeichnung, Auflösung, Seitenverhältnis, Uhrzeit' }
+  { id: 'info', label: 'Kennung', hint: 'Bezeichnung, Auflösung, Seitenverhältnis' },
+  { id: 'clock', label: 'Uhrzeit', hint: 'Laufende Uhrzeit unter der Kennung' },
+  {
+    id: 'seconds',
+    label: 'Sekundenring',
+    hint: 'Ring der Mittelscheibe wächst und schrumpft im Sekundentakt (aus: voller Ring)'
+  }
 ]
 
 function ColorField({
