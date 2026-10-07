@@ -63,8 +63,8 @@ Playlist-Player für LED-Wände und Beamer.
   vor Gebrauch geprüft, sonst übernimmt libx264; scheitert die GPU mitten im Import (Treiber,
   Sitzungslimit), wird er einmal auf der CPU wiederholt.
 - **Über den gemeinsamen Konvertierungs-Kern** (siehe [Video-Konverter](#video-konverter)):
-  Deinterlace, HDR → SDR, konstante Bildrate, Drehung von Handyvideos und anamorphe Pixel werden
-  richtig eingerechnet; passendes H.264 wird nur umverpackt. Bilder werden mit frei wählbarer
+  Deinterlace, HDR → SDR, konstante Bildrate, Drehung von Handyfotos und -videos (auch EXIF) und
+  anamorphe Pixel werden richtig eingerechnet; passendes H.264 wird nur umverpackt. Bilder werden mit frei wählbarer
   Standzeit gebacken, GIFs zu Loop-Videos. Importe haben eine eigene Spur in der Warteschlange und
   warten nie auf einen Konverter-Stapel. **Gleichzeitige Importe** einstellbar (1–4, Standard 2):
   mehr lohnt bei vielen kurzen Clips, Bildern oder mit GPU-Encoder; während der Show lieber 1,
@@ -294,7 +294,8 @@ Video- und Audio-Eckdaten per ffprobe: Auflösung, Bildrate, Codec, Bitrate, Ton
 
 - **Analyse** im Hauptprozess mit Timeout, lesbaren Fehlermeldungen und Cache; Ordner werden
   rekursiv eingelesen (ohne `._`- und Systemdateien).
-- **Tiefenanalyse** (optional): Keyframe-Abstand/GOP, VFR-Nachweis, Scan-Typ, HDR10-Metadaten.
+- **Tiefenanalyse** (optional): Keyframe-Abstand/GOP, VFR-Nachweis, Scan-Typ, HDR10-Metadaten,
+  EXIF-Drehung von Fotos (steckt nur in den Seitendaten des ersten Bildes, nicht im Stream).
 - **Show-Check:** Ampel-Hinweise je Prüfprofil (Zielsystem, Show-Raster, Datenträger).
 - **Playlist-Vergleich** mit hervorgehobenen Abweichungen.
 - **Kopieren** als Steckbrief, Kurzzeile oder Tabelle; **Export** als CSV (für Excel) oder JSON.

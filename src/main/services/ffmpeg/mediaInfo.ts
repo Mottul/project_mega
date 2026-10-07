@@ -202,14 +202,20 @@ function remember(path: string, entry: CacheEntry): void {
 
 async function deepAnalyze(path: string, info: MediaInfo): Promise<MediaInfo> {
   const v = info.video.find((t) => t.fpsMode !== 'still')
-  if (!v || !v.codecName) return { ...info, deepAnalyzed: true }
-  const idx = String(v.index)
+  // Kein echtes Video (nur ein Standbild): trotzdem das erste Frame lesen, denn die
+  // EXIF-Drehung steckt nur dort (nicht im Stream) – Paket-Scan ergibt hier nichts.
+  const still = v ? null : info.video.find((t) => t.fpsMode === 'still')
+  const track = v ?? still
+  if (!track || !track.codecName) return { ...info, deepAnalyzed: true }
+  const idx = String(track.index)
   // Paket-Scan nur, wo er etwas aussagt (GOP bei Long-GOP, VFR-Nachweis). Bei
   // Intra-/GPU-Codecs würde er nur viele MB lesen (HAP 4K), ohne Erkenntnis.
-  const wantPackets = v.codecClass === 'longgop' || v.fpsMode === 'vfr-suspect'
-  // Erstes Frame: Scan-Typ, wenn der Container ihn nicht nennt (DNx/DV/MJPEG), und
-  // HDR10-Metadaten, die nur im SEI stehen.
-  const wantFrame = v.scan === 'unknown' || (v.hdr === 'pq' && v.masteringMaxNits === null)
+  const wantPackets = v ? v.codecClass === 'longgop' || v.fpsMode === 'vfr-suspect' : false
+  // Erstes Frame: Scan-Typ, wenn der Container ihn nicht nennt (DNx/DV/MJPEG), HDR10-
+  // Metadaten, die nur im SEI stehen, oder (Standbild) die EXIF-Drehung.
+  const wantFrame = v
+    ? v.scan === 'unknown' || (v.hdr === 'pq' && v.masteringMaxNits === null)
+    : true
 
   const [packets, frame] = await Promise.all([
     wantPackets
