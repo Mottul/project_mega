@@ -1,12 +1,16 @@
 # Plan: Video-Generator (Diashow & Montage)
 
-**Status:** Plan, noch nicht umgesetzt. **Stand:** 7. Oktober 2026 (Code-Basis `main` nach PR #110).
-Vor dem Start die [offenen Fragen](#offene-fragen) klären.
+**Status:** Plan, noch nicht umgesetzt (Phase 0 erledigt). **Stand:** 7. Oktober 2026 (Code-Basis
+`main` nach PR #110). Die [Festlegungen](#festlegungen) (Name, Hauptzweck, Musik, Titel/Logo)
+sind getroffen – die Umsetzung kann mit Phase 1 beginnen.
 
 Bilder und Videos hineinladen, ein Gesamtvideo herausbekommen: Anzeigedauer, Übergänge,
 Reihenfolge, Ken-Burns-Effekt, einstellbare Zielgröße. Die Messwerte unten stammen aus Versuchen
 mit dem gebündelten ffmpeg (N-127222 vom 06.10.2026, Linux, 4 Kerne, nur CPU); die dort
 geprüften Befehle stehen im Abschnitt [Render-Pipeline](#render-pipeline).
+
+Hauptzwecke sind **Foto-Diashows** (Gala, Hochzeit) und **Sponsor-Loops** für die LED-Wand; bei
+Videos genügt ein Ausschnitt (Start/Ende). Ein Schnittprogramm soll das Werkzeug nicht werden.
 
 - [Entscheidung](#entscheidung-eigenes-werkzeug)
 - [Funktionsumfang](#funktionsumfang)
@@ -15,7 +19,7 @@ geprüften Befehle stehen im Abschnitt [Render-Pipeline](#render-pipeline).
 - [Umsetzung im Code](#umsetzung-im-code)
 - [Sonderfälle](#sonderfälle)
 - [Phase 0: EXIF-Drehung von Fotos](#phase-0-exif-drehung-von-fotos-betrifft-heute-den-player)
-- [Phasen](#phasen) · [Tests & Doku](#tests--doku) · [Offene Fragen](#offene-fragen)
+- [Phasen](#phasen) · [Tests & Doku](#tests--doku) · [Festlegungen](#festlegungen)
 
 ## Entscheidung: eigenes Werkzeug
 
@@ -47,12 +51,21 @@ Video-Konverter**.
 - **Reihenfolge:** Ziehen, Pfeil-Knöpfe/Tastatur; sortieren nach Name (natürlich, „2“ vor „10“,
   gleicher Collator wie `collectMediaFiles`), Aufnahmedatum, Typ; **Mischen** würfelt die Liste
   einmal sichtbar um – gerendert wird genau, was man sieht.
-- **Dauer:** Bilder mit Vorgabe (Vorschlag 5 s) und je Bild änderbar; Videos ganz oder als
-  Ausschnitt (Start/Ende).
+- **Dauer:** Bilder mit Vorgabe (Vorschlag 5 s) und je Bild änderbar.
+- **Videoausschnitt:** je Video **Start und Ende** festlegen (ein Ausschnitt; Eingabe in Sekunden
+  mit Komma, Vorgabe: ganzes Video). Damit man die Stelle sieht, zeigt die Auswahl Vorschaubilder
+  am Start- und am Endpunkt (`vgenThumb` mit Zeitpunkt); grafisch ziehen folgt in Phase 2. Es gibt
+  **keinen Schnitt-Editor** – soll ein Clip mit zwei Ausschnitten vorkommen, fügt man ihn zweimal
+  hinzu (jedes Element hat eine eigene id, Dubletten sind erlaubt).
 - **Übergänge:** Vorgabe und je Übergang: Schnitt, Überblenden, über Schwarz, über Weiß,
   Auflösen, Wischen ←/→, Schieben ←/→/↑/↓, Kreis, weiches Wischen, Zoom (xfade kennt über 50 –
   eine kuratierte Auswahl mit deutschen Namen genügt). Vorgabe 1 s. Zu lange Übergänge werden
   gekürzt (höchstens die Hälfte des kürzeren Nachbarn), mit Hinweis.
+- **Nahtlose Schleife** (Schalter bei der Ausgabe, Vorgabe aus; für Sponsor-Loops im Player): Das
+  Ende blendet in den Anfang. Der Schleifen-Übergang (letztes → erstes Element) ist ein normaler
+  Übergang mit eigener Art und Länge (bei „Schnitt“ entfällt das Stück, die Naht ist dann hart);
+  möglich ab zwei Elementen, sonst Hinweis. Die Gesamtdauer ist die Summe der Dauern minus
+  **aller** Übergänge. Technik: [Render-Pipeline](#render-pipeline), „Nahtlose Schleife“.
 - **Ken Burns je Bild:** aus, automatisch (wechselnde Richtungen, deterministisch aus der
   Element-id; Hochkantbilder schwenken senkrecht), Zoom rein/raus, Schwenk ←/→/↑/↓. Stärke sanft
   (10 %), mittel (20 %), stark (35 %). Vorgabe: automatisch, mittel.
@@ -61,8 +74,9 @@ Video-Konverter**.
 - **Zielgröße:** Breite × Höhe, Bildrate (25, 30, 50, 60, 23,976, 29,97, 59,94); Vorlagen HD,
   4K, Hochkant; „Wie Player-Wand“ und „Aus LED-Wall-Konfigurator“.
 - **Ton:** Originalton je Video an/aus (in Übergängen verblendet); eine Musikdatei (auf
-  Gesamtlänge geschnitten bzw. wiederholt, Ein-/Ausblenden, Pegel); Lautheit nach EBU R128 wie im
-  Konverter (zweistufig, gemessen am fertigen Ton-Mix).
+  Gesamtlänge geschnitten bzw. wiederholt, Ein-/Ausblenden, Pegel – bei Schleife blendet statt-
+  dessen das Musikende in den Anfang); Lautheit nach EBU R128 wie im Konverter (zweistufig,
+  gemessen am fertigen Ton-Mix).
 - **Ausgabe:** Formate wie im Konverter (H.264, H.265, ProRes, HAP/HAP Q; Transparenz erst
   später), Qualität, GPU-Encoder mit Rückfall; Fortschritt in Stufen, Abbrechen; danach
   „In Player-Bibliothek übernehmen“, „In Medien-Info prüfen“, „Im Ordner zeigen“.
@@ -77,7 +91,8 @@ Video-Konverter**.
 - **„Vorschau rechnen“:** kleiner Probelauf (z. B. 640 px) eines Bereichs um das gewählte
   Element, exakt wie das Ergebnis.
 - **Ken-Burns-Rahmen:** Start- und Endausschnitt direkt auf dem Bild ziehen.
-- **Nahtlose Schleife:** Das Ende blendet in den Anfang – für Sponsor-Loops im Player.
+- **Videoausschnitt grafisch:** Start und Ende an einem Bereichsregler über der Vorschau setzen
+  (Phase 1: Eingabefelder mit Vorschaubildern).
 - **Musik:** mehrere Titel, Absenken unter Originalton (`sidechaincompress`), „Bilddauer an
   Musiklänge anpassen“.
 
@@ -87,17 +102,25 @@ Titel-/Texttafeln (im Renderer gezeichnet → PNG → Standbild-Element, wie der
 eingebackenes Logo (`overlay`, PNG mit Alpha), Farbkorrektur/LUT (`lut3d`), Schnitt auf den Takt
 der Musik, „ein Video je Ordner“, benannte Projekt-Vorlagen.
 
+### Nicht geplant
+
+Schnitt-Editor (Clips teilen, mehrere Ausschnitte je Clip, Schnittmarken, mehrere Spuren) und
+Clip-Zusammenschnitt als Schwerpunkt – dafür gibt es Schnittprogramme; der Generator bleibt bei
+Diashow, Loop und einfacher Montage.
+
 ## Bedienung
 
 - **Oben: Storyboard** – Kachelreihe in Abspielreihenfolge mit Vorschaubildern; zwischen den
   Kacheln ein anklickbares Übergangs-Symbol; Zeitlineal und Gesamtdauer. Listenansicht für viele
   Elemente (100+ Fotos).
-- **Mitte: Vorschau** mit Play; springt zum gewählten Element.
+- **Mitte: Vorschau** des gewählten Elements – in Phase 1 als Standbild (bei Videos am Start-
+  bzw. Endpunkt), ab Phase 2 live mit Play.
 - **Seiten-Panel** (`ToolShell`/`PanelSection` wie die anderen Werkzeuge):
-  - **Ausgabe:** Größe, Bildrate, Format, Qualität, Zieldatei.
+  - **Ausgabe:** Größe, Bildrate, Format, Qualität, Schleife, Zieldatei.
   - **Vorgaben:** Bilddauer, Übergang, Ken Burns, Einpassen.
   - **Ton & Musik.**
-  - **Auswahl:** Einstellungen des gewählten Elements bzw. Übergangs, auch für mehrere zugleich.
+  - **Auswahl:** Einstellungen des gewählten Elements bzw. Übergangs (bei Videos: Start/Ende),
+    auch für mehrere zugleich.
 - **„Video erzeugen“:** Auftrag mit Fortschritt in Stufen (Elemente x/y, Übergänge,
   Zusammensetzen), Abbrechen.
 - **Kundenansicht** (`useKiosk()`): Encoder-Wahl und Sprünge in andere Werkzeuge ausblenden, wie
@@ -134,6 +157,19 @@ Zielgröße/Bildrate + Plan-Version; Cache-Ordner `userData/vgen-cache` mit Grö
 **Zeitachse in ganzen Bildern.** Ton-Positionen aus der aufsummierten Zeitachse runden, nicht je
 Stück – bei 29,97/59,94 fps ist ein Bild keine ganze Zahl Samples (1601,6 bei 29,97), sonst
 entsteht Drift.
+
+**Nahtlose Schleife** (noch nicht gemessen – eine Verallgemeinerung der gemessenen Verfahren): Die
+Übergänge werden zyklisch gezählt, Element n−1 blendet in Element 0. Das Schleifen-Übergangs-Stück
+entsteht wie jedes andere aus dem Schluss von Element n−1 und dem Anfang von Element 0 und steht
+am Ende der Bildliste; die Datei **beginnt** in Element 0 erst hinter dessen Überblendbereich
+(`inpoint` = Länge des Schleifen-Übergangs – die Regel „Übergang davor“ der Bildliste gilt damit
+auch für Element 0). Im Ton-Lauf wird Element 0 zweimal gebraucht: ab dem Schleifen-Übergang als
+Anfang und als Kopfstück im letzten `acrossfade`. Dauer = Summe der Dauern − Summe aller n
+Übergänge; die Kürzungsregel (höchstens die Hälfte des kürzeren Nachbarn) gilt zyklisch. Ken Burns
+an Element 0 läuft ohne Sprung weiter, weil die Datei mitten in dessen Bahn beginnt. Die Musik
+bekommt bei Schleife kein Aus-/Einblenden; ihr Ende wird mit ihrem Anfang überblendet
+(`acrossfade`). Prüfen im E2E: letztes Bild → erstes Bild ohne Sprung gegen die Nachbarbilder. Wie
+sauber der Player am Dateiende neu startet, ist getrennt zu prüfen.
 
 ### Geprüfte Befehle
 
@@ -364,7 +400,7 @@ Alle gemessen – die naheliegenden Rezepte gehen hier schief:
   zuerst aufräumen.
 - **Abbrechen** jederzeit; fertige Stücke bleiben im Cache für den nächsten Lauf.
 
-## Phase 0: EXIF-Drehung von Fotos (betrifft heute den Player)
+## Phase 0: EXIF-Drehung von Fotos (betrifft heute den Player) – ✅ erledigt
 
 ffmpeg dreht ein Foto mit EXIF-Orientierung beim Dekodieren automatisch. ffprobe meldet die
 Drehung aber nur in den **Frame**-Seitendaten, nicht im Stream. `deriveRotation`
@@ -386,36 +422,57 @@ Querformat und passen sie falsch ein – bei passendem Seitenverhältnis wählt 
 mit auswerten (Typname `3x3 displaymatrix` neben `Display Matrix`), Tests mit der Fabrik
 `tools/media-info/testFactory.ts`. Klein, lohnt sich vorab.
 
+**Umgesetzt:** `deriveRotation`/`parseFirstFrame` in `mediaInfoParse.ts` werten die Display-Matrix
+jetzt unter beiden Typnamen aus; `deepAnalyze` (`mediaInfo.ts`) liest bei Standbildern ohne „echtes"
+Video ebenfalls das erste Frame (statt wie bisher nur bei Videos), `applyDeepAnalysis` trägt
+Rotation, Spiegelung und Anzeigegröße des Standbilds nach. Läuft über die bestehende
+Tiefenanalyse – Medien-Info (Vorgabe an), Player-Import und Video-Konverter (beide fest an) nutzen
+sie automatisch. `convertPlan.ts` rechnete `rotation`/`sar` schon vorher korrekt ein, nur die
+Analyse lieferte bei Fotos bislang `rotation: 0`. Tests: `mediaInfoParse.test.ts` (reale
+ffprobe-Ausgabe eines EXIF-gedrehten Testfotos als Fixture).
+
 ## Phasen
 
 | Phase | Inhalt | Umfang |
 |---|---|---|
-| 0 | EXIF-Drehung in der Analyse (Player profitiert sofort) | klein |
-| 1 | Kern-Umbauten, `videoGenPlan`, Rechenlauf mit Cache, Werkzeug mit Storyboard, Vorgaben, Ausgabe, Musik einfach, Übergaben | groß |
-| 2 | Live-Vorschau und „Vorschau rechnen“, Ken-Burns-Rahmen, Schleife, Musik-Ausbau | mittel |
+| 0 | ✅ EXIF-Drehung in der Analyse (Player profitiert sofort) | klein |
+| 1 | Kern-Umbauten, `videoGenPlan`, Rechenlauf mit Cache, Werkzeug mit Storyboard, Vorgaben, Ausgabe, Videoausschnitt (Start/Ende), nahtlose Schleife, Musik einfach (eine Datei), Übergaben | groß |
+| 2 | Live-Vorschau und „Vorschau rechnen“, Ken-Burns-Rahmen, Videoausschnitt grafisch, Musik-Ausbau | mittel |
 | 3 | Titel, Logo, LUT, Vorlagen | nach Bedarf |
 
 ## Tests & Doku
 
 - **Unit-Tests** (vitest) für `videoGenPlan`: Zeitachse in Bildern und Samples (auch 29,97),
-  Kürzungen, Ken-Burns-Bahnen, Bildliste, Ton-Graph, Cache-Schlüssel; `order.ts`; Prüfung der
-  IPC-Eingaben.
-- **E2E in der App** (wie bei den anderen Werkzeugen mit Playwright + Electron): Testmedien per
+  Kürzungen, Ken-Burns-Bahnen, Bildliste, Ton-Graph, Cache-Schlüssel, Schleife (zyklische
+  Übergänge, Gesamtdauer, `inpoint` von Element 0); `order.ts`; Prüfung der IPC-Eingaben.
+- **E2E-Harness vorhanden:** `e2e/harness.mjs` und die Skripte `smoke`, `testpattern`, `timer`,
+  `player` (aus den Cloud-Läufen übernommen), gestartet mit `npm run e2e`, siehe
+  [ENTWICKLUNG.md](ENTWICKLUNG.md#tests--ci) und Projekt-Skill `electron-e2e`. Für den Generator ein
+  eigenes Skript `e2e/video-generator.mjs` anlegen und in `e2e/run.mjs` eintragen.
+- **E2E in der App** (mit diesem Harness): Testmedien per
   lavfi erzeugen (Fotos quer/hoch, Clips mit/ohne Ton, verschiedene Bildraten), Projekt rechnen
   und prüfen: Bildzahl, Samplezahl, Bild an jeder Stückgrenze gegen die Nachbarn (wie in den
-  Messungen), Abbrechen, Cache-Treffer beim zweiten Lauf, Übergabe an den Player.
+  Messungen), Schleife (Dateiende → Dateianfang ohne Sprung, Länge = Summe − alle Übergänge),
+  Videoausschnitt (Start/Ende bildgenau), Abbrechen, Cache-Treffer beim zweiten Lauf, Übergabe an
+  den Player.
 - **Doku bei Umsetzung:** `WERKZEUGE.md` (neuer Abschnitt unter „Medien & Bibliothek“, Übergaben,
   Kundenansicht), README-Überblick, `ROADMAP.md` (Eintrag streichen, Verzahnung anpassen),
   `SICHERHEIT.md` (`media://vgen`), `ENTWICKLUNG.md` (Kern-Liste). Nebenbei: `WERKZEUGE.md` und
   `ENTWICKLUNG.md` sagen, der Testbild-Export nutze den gemeinsamen Kern – er nutzt aber nur
   `runFfmpeg` und `setparamsFor`/`tagsFor`, nicht `planConversion`/`buildConvertArgs`.
 
-## Offene Fragen
+## Festlegungen
 
-1. **Name:** „Video-Generator“ oder z. B. „Diashow & Montage“?
-2. **Hauptzweck:** Foto-Diashow (Gala, Hochzeit), Sponsor-Loop für die LED-Wand oder
-   Clip-Zusammenschnitt? Bestimmt die Vorgaben – und ob die nahtlose Schleife schon in Phase 1
-   kommt.
-3. **Musik:** Reicht eine Datei mit Blende in Phase 1?
-4. **Titel/Logo:** Gebraucht? Wie wichtig?
-5. **Phase 0** (EXIF-Drehung) vorab umsetzen?
+Die ursprünglich offenen Fragen sind am 7. Oktober 2026 entschieden:
+
+1. **Name:** „Video-Generator“ (id `video-generator`). „Diashow & Montage“ bleibt nur der Untertitel
+   dieses Plans.
+2. **Hauptzweck:** Foto-Diashow (Gala, Hochzeit) und Sponsor-Loop für die LED-Wand. Bei Videos
+   genügt ein Ausschnitt mit Start und Ende; ein Schnitt-Editor und der Clip-Zusammenschnitt als
+   Schwerpunkt entfallen (siehe „Nicht geplant“). Folgen: Die **nahtlose Schleife kommt schon in
+   Phase 1** (vorher Phase 2); die Vorgaben (5 s, Überblenden 1 s, Ken Burns automatisch/mittel)
+   bleiben auf Diashows zugeschnitten, die Schleife ist ein Schalter (Vorgabe aus).
+3. **Musik:** in Phase 1 eine Datei mit Ein-/Ausblenden und Pegel; mehrere Titel, Absenken unter
+   den Originalton und „Bilddauer an Musiklänge anpassen“ bleiben Phase 2.
+4. **Titel/Logo:** später, nach Bedarf (Phase 3).
+5. **Phase 0** (EXIF-Drehung): vorab umgesetzt, siehe oben.

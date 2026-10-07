@@ -482,23 +482,39 @@ function parseMatrix(s: string | undefined): number[] | null {
   return nums.length === 9 ? nums : null
 }
 
+// ffprobe nennt dieselbe Display-Matrix je nach Abfrage anders: am Stream „Display
+// Matrix", am Frame (-show_frames, einzige Quelle für EXIF-Drehung bei Standbildern)
+// „3x3 displaymatrix".
+const DISPLAY_MATRIX_TYPES = new Set(['Display Matrix', '3x3 displaymatrix'])
+
 /**
- * Anzeige-Drehung im Uhrzeigersinn + Spiegelung. Display-Matrix-„rotation" ist
- * GEGEN den Uhrzeigersinn positiv (Handy hochkant = −90). Spiegelung erkennt man
- * nur an der Matrix (Determinante < 0); hflip meldet sonst ebenfalls −180.
+ * Dreh-/Spiegel-Info aus einer Seitendaten-Liste (Stream- oder Frame-Ebene).
+ * Display-Matrix-„rotation" ist GEGEN den Uhrzeigersinn positiv (Handy hochkant =
+ * −90). Spiegelung erkennt man nur an der Matrix (Determinante < 0); hflip meldet
+ * sonst ebenfalls −180.
+ */
+function rotationFromSideData(
+  list: FfSideData[] | undefined
+): { rotation: number; mirrored: boolean } | null {
+  const dm = list?.find((x) => x.side_data_type && DISPLAY_MATRIX_TYPES.has(x.side_data_type))
+  if (!dm) return null
+  const norm = (d: number): number => ((Math.round(d) % 360) + 360) % 360
+  const m = parseMatrix(dm.displaymatrix)
+  const mirrored = m ? m[0] * m[4] - m[1] * m[3] < 0 : false
+  let rotation = norm(-(num(dm.rotation) ?? 0))
+  // reines horizontales Spiegeln: Matrix [-1 0; 0 1] -> keine Drehung
+  if (mirrored && rotation === 180 && m && m[4] > 0) rotation = 0
+  return { rotation, mirrored }
+}
+
+/**
+ * Anzeige-Drehung im Uhrzeigersinn + Spiegelung aus den Stream-Seitendaten.
  * Altlast: tags.rotate zählt im Uhrzeigersinn.
  */
 export function deriveRotation(s: FfStream): { rotation: number; mirrored: boolean } {
+  const fromMatrix = rotationFromSideData(s.side_data_list)
+  if (fromMatrix) return fromMatrix
   const norm = (d: number): number => ((Math.round(d) % 360) + 360) % 360
-  const dm = s.side_data_list?.find((x) => x.side_data_type === 'Display Matrix')
-  if (dm) {
-    const m = parseMatrix(dm.displaymatrix)
-    const mirrored = m ? m[0] * m[4] - m[1] * m[3] < 0 : false
-    let rotation = norm(-(num(dm.rotation) ?? 0))
-    // reines horizontales Spiegeln: Matrix [-1 0; 0 1] -> keine Drehung
-    if (mirrored && rotation === 180 && m && m[4] > 0) rotation = 0
-    return { rotation, mirrored }
-  }
   const legacy = num(tag(s.tags, 'rotate'))
   return { rotation: legacy === null ? 0 : norm(legacy), mirrored: false }
 }
@@ -1062,9 +1078,14 @@ export interface FirstFrameInfo {
   masteringMaxNits: number | null
   maxCll: number | null
   maxFall: number | null
+  /** Nur bei Standbildern ausgewertet – EXIF-Drehung steckt NICHT im Stream. */
+  rotation: { rotation: number; mirrored: boolean } | null
 }
 
-/** Erstes Frame (`-show_frames … -read_intervals %+#1`): Interlace-Flag + HDR10-SEI. */
+/**
+ * Erstes Frame (`-show_frames … -read_intervals %+#1`): Interlace-Flag, HDR10-SEI
+ * und (bei Standbildern) die EXIF-Drehung.
+ */
 export function parseFirstFrame(json: unknown): FirstFrameInfo | null {
   const frames = (json as { frames?: Record<string, unknown>[] } | null)?.frames
   const f = frames?.[0]
@@ -1079,7 +1100,8 @@ export function parseFirstFrame(json: unknown): FirstFrameInfo | null {
     topFieldFirst: tff === null ? null : tff === 1,
     masteringMaxNits: md ? ratio(md.max_luminance) : null,
     maxCll: cll?.max_content ?? null,
-    maxFall: cll?.max_average ?? null
+    maxFall: cll?.max_average ?? null,
+    rotation: rotationFromSideData(side)
   }
 }
 
@@ -1111,6 +1133,21 @@ export function applyDeepAnalysis(
       v.masteringMaxNits ??= frame.masteringMaxNits
       v.maxCll ??= frame.maxCll
       v.maxFall ??= frame.maxFall
+    }
+  } else if (frame?.rotation) {
+    // Standbild: ffprobe trägt die EXIF-Drehung nur in den Seitendaten des ersten
+    // Frames ein, nicht im Stream -> sonst gilt ein Hochkantfoto als Querformat und
+    // der Plan wählt bei passendem Seitenverhältnis sogar „Strecken".
+    const still = info.video.find((t) => t.fpsMode === 'still')
+    if (still) {
+      still.rotation = frame.rotation.rotation
+      still.mirrored = frame.rotation.mirrored
+      const sarNum = still.sar ? ratio(still.sar) : null
+      let dw = sarNum ? Math.round(still.width * sarNum) : still.width
+      let dh = still.height
+      if (still.rotation === 90 || still.rotation === 270) [dw, dh] = [dh, dw]
+      still.displayWidth = dw
+      still.displayHeight = dh
     }
   }
   return { ...info, deepAnalyzed: true }

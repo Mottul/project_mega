@@ -13,6 +13,7 @@ npm run format:check    # Prettier-Prüfung (format = schreiben)
 npm run typecheck       # tsc: node- + web-Projekt
 npm run typecheck:test  # tsc: Testdateien
 npm test                # Vitest (einmalig; test:watch für Watch)
+npm run e2e             # App bauen + E2E-Skripte (Playwright, e2e/; `-- timer` wählt aus)
 npm run build           # typecheck + electron-vite build -> out/
 npm run package         # Installer via electron-builder (holt ffmpeg)
 ```
@@ -85,5 +86,8 @@ README = kurzer Einstieg; Details in `docs/`: WERKZEUGE (Funktionen je Tool), FE
 NDI, ENTWICKLUNG (Setup, Aufbau, Paketierung), SICHERHEIT, ROADMAP, INSTALL (Anwender).
 Ausgearbeitete Pläne für größere Vorhaben: `docs/PLAN-*.md` (z. B. Video-Generator) – vor der
 Umsetzung lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überführen und löschen.
+Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
+`abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,
+`review-checkliste`).
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.

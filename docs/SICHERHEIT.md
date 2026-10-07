@@ -12,7 +12,8 @@ aufgesetzt:
 - **`package-lock.json` ist eingecheckt** – mit sha512-Integrity je Paket.
 - **Nur zwei Laufzeit-Abhängigkeiten:** `better-sqlite3` und `pdfjs-dist` – beide exakt gepinnt
   und mit Abstand nachgezogen (siehe [Updates einspielen](#updates-einspielen)). Alles andere ist
-  Build-Werkzeug.
+  Build- bzw. Testwerkzeug, etwa `playwright-core` für die E2E-Läufe: eigene Abhängigkeiten hat es
+  keine, Browser lädt es nicht, und die Version (1.63.0) war beim Einspielen über eine Woche alt.
 - **`.npmrc`:** `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
 - **Schlanker Install-Baum:** `electron-builder` ist keine Abhängigkeit, sondern wird beim
   Paketieren per `npx` geholt. So bleibt die `node-gyp`/`tar`/`app-builder`-Kette aus `npm ci`

@@ -368,7 +368,8 @@ describe('Tiefenanalyse', () => {
       topFieldFirst: false,
       masteringMaxNits: null,
       maxCll: null,
-      maxFall: null
+      maxFall: null,
+      rotation: null
     })
     expect(dv.video[0].scan).toBe('bff')
   })
@@ -391,9 +392,74 @@ describe('Tiefenanalyse', () => {
       topFieldFirst: false,
       masteringMaxNits: 1000,
       maxCll: 1000,
-      maxFall: 400
+      maxFall: 400,
+      rotation: null
     })
     expect(parseFirstFrame({})).toBeNull()
+  })
+
+  it('parseFirstFrame liest EXIF-Drehung eines Standbilds aus „3x3 displaymatrix" (Frame-Seitendaten, NICHT im Stream)', () => {
+    // Echte ffprobe-Ausgabe für ein 800×400-Testbild mit EXIF-Orientierung 6 (90° CW):
+    // -select_streams v:0 -read_intervals "%+#1" -show_frames
+    // -show_entries frame=interlaced_frame,top_field_first,side_data_list
+    const f = parseFirstFrame({
+      frames: [
+        {
+          interlaced_frame: 0,
+          top_field_first: 0,
+          side_data_list: [
+            {
+              side_data_type: '3x3 displaymatrix',
+              displaymatrix:
+                '\n00000000:            0       65536           0\n00000001:       -65536           0           0\n00000002:            0           0  1073741824\n',
+              rotation: -90
+            },
+            { side_data_type: 'EXIF metadata', size: 14 }
+          ]
+        }
+      ]
+    })
+    expect(f?.rotation).toEqual({ rotation: 90, mirrored: false })
+  })
+
+  it('applyDeepAnalysis trägt die EXIF-Drehung eines Standbilds nach (Rotation, Spiegelung, Anzeigegröße)', () => {
+    const base = info('still.png')
+    expect(base.video[0]).toMatchObject({
+      width: 1920,
+      height: 1080,
+      displayWidth: 1920,
+      displayHeight: 1080,
+      rotation: 0
+    })
+    const rotated = applyDeepAnalysis(base, null, {
+      interlaced: null,
+      topFieldFirst: null,
+      masteringMaxNits: null,
+      maxCll: null,
+      maxFall: null,
+      rotation: { rotation: 90, mirrored: false }
+    })
+    expect(rotated.video[0]).toMatchObject({
+      rotation: 90,
+      mirrored: false,
+      displayWidth: 1080,
+      displayHeight: 1920
+    })
+    expect(rotated.deepAnalyzed).toBe(true)
+    // kein echtes Video, keine Drehung gefunden -> unverändert
+    const untouched = applyDeepAnalysis(info('still.png'), null, {
+      interlaced: null,
+      topFieldFirst: null,
+      masteringMaxNits: null,
+      maxCll: null,
+      maxFall: null,
+      rotation: null
+    })
+    expect(untouched.video[0]).toMatchObject({
+      rotation: 0,
+      displayWidth: 1920,
+      displayHeight: 1080
+    })
   })
 })
 
