@@ -6,8 +6,9 @@
 // Werkzeug-Stände des Entwicklers im Test, und die laufende eigene App bleibt unberührt.
 
 import { _electron as electron } from 'playwright-core'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import net from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -34,10 +35,15 @@ export async function launchApp({ env = {}, args = [] } = {}) {
     env: full
   })
   const page = await app.firstWindow()
+  // Fehler des Hauptfensters sammeln (pageerror und console.error) – siehe smoke.mjs
+  const errors = []
+  page.on('pageerror', (e) => errors.push('pageerror: ' + e.message))
+  page.on('console', (m) => m.type() === 'error' && errors.push(m.text().slice(0, 200)))
   await page.waitForLoadState('domcontentloaded')
   return {
     app,
     page,
+    errors,
     userData,
     async close() {
       await app.close().catch(() => {})
@@ -64,8 +70,107 @@ export async function stubConfirm(app, accept) {
 }
 
 /**
- * Kleiner Testlauf: führt Schritte der Reihe nach aus, meldet ✓/✗ und setzt den Exit-Code.
- * Ein Schritt ist `[Name, async () => …]`; er besteht, wenn er nicht wirft.
+ * Dialog mit einer Antwortfolge ersetzen, z. B. [1, 0] = erst Abbrechen, dann Bestätigen.
+ * Ist die Folge leer, antwortet er mit Abbrechen.
+ */
+export async function stubConfirmSequence(app, answers) {
+  await app.evaluate(({ dialog }, seq) => {
+    globalThis.__answers = [...seq]
+    dialog.showMessageBox = async () => ({
+      response: globalThis.__answers.shift() ?? 1,
+      checkboxChecked: false
+    })
+  }, answers)
+}
+
+/**
+ * Dialog offen halten, bis `resolveConfirm` ihn beantwortet – damit sich zwischen Frage und
+ * Antwort etwas anderes tun lässt (z. B. „ein anderes Fenster speichert“).
+ */
+export async function holdConfirm(app) {
+  await app.evaluate(({ dialog }) => {
+    dialog.showMessageBox = () =>
+      new Promise((resolve) => {
+        globalThis.__answer = resolve
+      })
+  })
+}
+
+export async function resolveConfirm(app, accept) {
+  await app.evaluate((_electron, ok) => {
+    globalThis.__answer({ response: ok ? 0 : 1, checkboxChecked: false })
+  }, accept)
+}
+
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Wartet, bis `fn` etwas Wahres liefert; gibt es zurück, nach Ablauf `null`. */
+export async function waitFor(fn, ms = 20_000, step = 200) {
+  const t0 = Date.now()
+  while (Date.now() - t0 < ms) {
+    const v = await fn()
+    if (v) return v
+    await sleep(step)
+  }
+  return null
+}
+
+/**
+ * Öffnet eine Adresse in einem unsichtbaren Electron-Fenster – als „fremder Browser“ für die
+ * Seiten der Fernsteuerungen (ohne Preload-Brücke). `timezoneId` stellt die Zeitzone des
+ * Anzeigegeräts ein (z. B. 'America/New_York').
+ */
+export async function openBrowserWindow(app, url, { timezoneId } = {}) {
+  const opened = app.waitForEvent('window')
+  await app.evaluate(({ BrowserWindow }, u) => {
+    const win = new BrowserWindow({
+      show: false,
+      width: 1280,
+      height: 720,
+      webPreferences: { backgroundThrottling: false }
+    })
+    void win.loadURL(u)
+  }, url)
+  const page = await opened
+  if (timezoneId) {
+    const cdp = await app.context().newCDPSession(page)
+    await cdp.send('Emulation.setTimezoneOverride', { timezoneId })
+    await page.reload()
+  }
+  await page.waitForLoadState('domcontentloaded')
+  return page
+}
+
+/** Pfad des gebündelten ffmpeg (für Testmedien per lavfi) oder null. */
+export function findFfmpeg() {
+  const dir = { win32: 'win', darwin: 'mac' }[process.platform] ?? 'linux'
+  const exe = join(
+    root,
+    'resources',
+    'ffmpeg',
+    dir,
+    process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
+  )
+  return existsSync(exe) ? exe : null
+}
+
+/** true, wenn auf 127.0.0.1:port niemand lauscht. */
+export function portFree(port) {
+  return new Promise((resolve) => {
+    const s = net.connect(port, '127.0.0.1')
+    s.once('connect', () => (s.destroy(), resolve(false)))
+    s.once('error', () => resolve(true))
+  })
+}
+
+/** Wirft den Marker für „Schritt übersprungen“ (wird von runSteps als – gezählt). */
+export class Skip extends Error {}
+
+/**
+ * Kleiner Testlauf: führt Schritte der Reihe nach aus und meldet ✓/✗/–. Ein Schritt ist
+ * `[Name, async () => …]`; er besteht, wenn er nicht wirft, und gilt als übersprungen, wenn
+ * er `Skip` wirft. Schlägt einer fehl, wird der Exit-Code 1 (nie zurück auf 0 gesetzt, damit
+ * mehrere Läufe in einem Prozess zusammenzählen).
  */
 export async function runSteps(title, steps) {
   console.log(title)
@@ -75,10 +180,14 @@ export async function runSteps(title, steps) {
       await fn()
       console.log(`  ✓ ${name}`)
     } catch (e) {
+      if (e instanceof Skip) {
+        console.log(`  – ${name} (übersprungen: ${e.message})`)
+        continue
+      }
       failed++
       console.log(`  ✗ ${name}\n    ${e instanceof Error ? e.message : e}`)
     }
   }
   console.log(failed ? `${failed} von ${steps.length} Schritten fehlgeschlagen` : 'alles grün')
-  process.exitCode = failed ? 1 : 0
+  if (failed) process.exitCode = 1
 }

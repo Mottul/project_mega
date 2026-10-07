@@ -23,6 +23,22 @@ try {
       }
     ],
     [
+      'Alle Kacheln gleich hoch',
+      async () => {
+        await page.setViewportSize({ width: 1400, height: 1000 })
+        const heights = await page.evaluate(() =>
+          [...document.querySelectorAll('[aria-describedby^="tool-desc-"]')].map((e) =>
+            Math.round(e.getBoundingClientRect().height)
+          )
+        )
+        assert.ok(heights.length > 10, 'zu wenige Kacheln: ' + heights.length)
+        assert.ok(
+          Math.max(...heights) - Math.min(...heights) <= 1,
+          [...new Set(heights)].join(', ')
+        )
+      }
+    ],
+    [
       'Suche „timecode“ findet das Werkzeug',
       async () => {
         await page.getByPlaceholder('Werkzeug suchen…').fill('timecode')
@@ -48,6 +64,12 @@ try {
       async () => {
         const has = await page.evaluate(() => typeof window.api?.getSettings === 'function')
         assert.equal(has, true)
+      }
+    ],
+    [
+      'keine Konsolenfehler im Hauptfenster',
+      async () => {
+        assert.deepEqual(ctx.errors, [])
       }
     ]
   ])

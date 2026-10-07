@@ -445,11 +445,10 @@ ffprobe-Ausgabe eines EXIF-gedrehten Testfotos als Fixture).
 - **Unit-Tests** (vitest) für `videoGenPlan`: Zeitachse in Bildern und Samples (auch 29,97),
   Kürzungen, Ken-Burns-Bahnen, Bildliste, Ton-Graph, Cache-Schlüssel, Schleife (zyklische
   Übergänge, Gesamtdauer, `inpoint` von Element 0); `order.ts`; Prüfung der IPC-Eingaben.
-- **E2E-Harness vorhanden:** `e2e/harness.mjs` (`launchApp`, `openRoute`, `stubConfirm`,
-  `runSteps`) und `e2e/smoke.mjs`, gestartet mit `npm run e2e`, siehe
-  [ENTWICKLUNG.md](ENTWICKLUNG.md#tests--ci). Die früheren E2E-Läufe der Cloud-Sitzungen waren
-  Wegwerf-Skripte im Scratchpad und gingen bei Container-Resets verloren – für den Generator
-  ein eigenes Skript `e2e/video-generator.mjs` ins Repo legen.
+- **E2E-Harness vorhanden:** `e2e/harness.mjs` und die Skripte `smoke`, `testpattern`, `timer`,
+  `player` (aus den Cloud-Läufen übernommen), gestartet mit `npm run e2e`, siehe
+  [ENTWICKLUNG.md](ENTWICKLUNG.md#tests--ci) und Projekt-Skill `electron-e2e`. Für den Generator ein
+  eigenes Skript `e2e/video-generator.mjs` anlegen und in `e2e/run.mjs` eintragen.
 - **E2E in der App** (mit diesem Harness): Testmedien per
   lavfi erzeugen (Fotos quer/hoch, Clips mit/ohne Ton, verschiedene Bildraten), Projekt rechnen
   und prüfen: Bildzahl, Samplezahl, Bild an jeder Stückgrenze gegen die Nachbarn (wie in den

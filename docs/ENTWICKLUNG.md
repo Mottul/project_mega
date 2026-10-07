@@ -56,7 +56,7 @@ npm run dev         # App mit Hot Reload
 | `npm run typecheck`                 | TypeScript: main/preload/shared **und** renderer                         |
 | `npm run typecheck:test`            | TypeScript: Testdateien                                                  |
 | `npm run build`                     | Typecheck + Produktions-Bundles nach `out/`                              |
-| `npm run e2e`                       | App bauen und den E2E-Rauchtest (`e2e/`) über Playwright laufen lassen   |
+| `npm run e2e`                       | App bauen und die E2E-Skripte (`e2e/`) über Playwright laufen lassen    |
 | `npm run package`                   | Installer fürs aktuelle OS (holt ffmpeg, baut, electron-builder via npx) |
 | `npm run package:dir`               | nur die entpackte App, ohne Installer – zum schnellen Testen             |
 | `npm run ff:fetch`                  | HAP-fähiges ffmpeg holen                                                 |
@@ -195,14 +195,18 @@ Dazu gilt:
   Ausgaben in `__fixtures__/`), OSC- und NovaStar-Codec, Netzwerk-Erkennung, Timer-Ablauf,
   Fernsteuer-Server und die Favoriten-Kategorien.
 - main-Dienste lassen sich mit einem schlanken `vi.mock('electron', …)` ohne natives Modul testen.
-- **E2E** (`e2e/`, `npm run e2e`): `playwright-core` startet die **gebaute** App (`out/`) mit
-  frischem userData-Ordner pro Lauf, das gebündelte Electron wird verwendet, Browser werden nicht
-  geladen. `e2e/harness.mjs` bringt `launchApp`, `openRoute`, `stubConfirm` (ersetzt den nativen
-  Rückfrage-Dialog) und `runSteps`; `e2e/smoke.mjs` ist der Rauchtest (Start, Suche, Werkzeug
-  öffnen, Programmbrücke) und das Vorbild für weitere Skripte je Werkzeug. Unter Linux ohne
-  Display mit `xvfb-run` starten (der Harness setzt dort `--no-sandbox`). E2E läuft derzeit nicht
-  in der CI; Ausgabefenster (`#/output` u. ä.) lesen ihre Konfiguration nur beim Öffnen, die
-  Route je Variante neu öffnen.
+- **E2E** (`e2e/`): `playwright-core` startet die **gebaute** App (`out/`) mit frischem userData-Ordner
+  pro Lauf, das gebündelte Electron wird verwendet, Browser werden nicht geladen.
+  `npm run e2e` baut und führt alle Skripte aus, `npm run e2e -- timer player` nur die genannten,
+  `npm run e2e:run` ohne neuen Build. Skripte: `smoke` (Start, Kacheln, Suche, Werkzeug öffnen),
+  `testpattern` (2-px-Rasterlinien pixelgenau), `timer` (Startbildschirm-Status, Bühnen-Anzeige im
+  Browser samt Verbindungsabbruch, Zeitzone und totem Strom; öffnet kurz das Timer-Ausgabefenster),
+  `player` (Playlist-Rückfrage, parallele Importe; braucht `npm run ff:fetch`). `e2e/harness.mjs`
+  bringt `launchApp`, `openRoute`, `waitFor`, Dialog-Stubs, `openBrowserWindow` (unsichtbares
+  Electron-Fenster als fremder Browser), `findFfmpeg`, `portFree` und `runSteps`. Ein neues Skript
+  in `e2e/run.mjs` eintragen. Unter Linux ohne Display mit `xvfb-run` starten (der Harness setzt
+  dort `--no-sandbox`). E2E läuft derzeit nicht in der CI. Tricks und Stolpersteine stehen im
+  Projekt-Skill `electron-e2e`.
 - **CI** (`.github/workflows/ci.yml`) läuft bei jedem Push und Pull Request auf Ubuntu mit Node 22
   und 24: `npm ci`, Format, Lint, Typecheck (App und Tests), Tests, Build.
 
