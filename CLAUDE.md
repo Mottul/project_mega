@@ -13,6 +13,7 @@ npm run format:check    # Prettier-Prüfung (format = schreiben)
 npm run typecheck       # tsc: node- + web-Projekt
 npm run typecheck:test  # tsc: Testdateien
 npm test                # Vitest (einmalig; test:watch für Watch)
+npm run e2e             # App bauen + E2E-Rauchtest (Playwright, e2e/; Vorbild für weitere Skripte)
 npm run build           # typecheck + electron-vite build -> out/
 npm run package         # Installer via electron-builder (holt ffmpeg)
 ```
