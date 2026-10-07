@@ -50,12 +50,13 @@ describe('Timer-Fernsteuerung – Befehlsprüfung', () => {
 })
 
 // Minimaler Request/Response-Ersatz: hält Status, Kopf und Inhalt fest
-function call(url: string): { status: number; type: string; body: string } {
-  const out = { status: 0, type: '', body: '' }
+function call(url: string): { status: number; type: string; body: string; location: string } {
+  const out = { status: 0, type: '', body: '', location: '' }
   const res = {
     writeHead(status: number, headers?: Record<string, string>) {
       out.status = status
       out.type = headers?.['Content-Type'] ?? ''
+      out.location = headers?.Location ?? ''
       return res
     },
     setHeader(name: string, value: string) {
@@ -85,11 +86,21 @@ describe('Timer-Fernsteuerung – Bühnen-Anzeige im Browser', () => {
     expect(r.body).not.toContain('api/command')
   })
 
-  it('nennt die Uhrzeit des Rechners', () => {
+  it('mit Schrägstrich: relative Umleitung (sonst zeigten die API-Pfade ins Leere)', () => {
+    const r = call('/anzeige/')
+    expect(r.status).toBe(301)
+    expect(r.location).toBe('../anzeige')
+    // auch unter der Fernsteuer-App (/timer/anzeige/) landet sie richtig
+    expect(new URL(r.location, 'http://h:8090/timer/anzeige/').pathname).toBe('/timer/anzeige')
+    expect(new URL(r.location, 'http://h:8092/anzeige/').pathname).toBe('/anzeige')
+  })
+
+  it('nennt Uhrzeit und Zeitzone des Rechners', () => {
     const before = Date.now()
     const r = call('/api/time')
-    const now = (JSON.parse(r.body) as { now: number }).now
+    const { now, tz } = JSON.parse(r.body) as { now: number; tz: number }
     expect(now).toBeGreaterThanOrEqual(before)
     expect(now).toBeLessThanOrEqual(Date.now())
+    expect(tz).toBe(-new Date().getTimezoneOffset() || 0) // UTC: -0 kommt als 0 an
   })
 })

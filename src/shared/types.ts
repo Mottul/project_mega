@@ -743,6 +743,8 @@ export interface StageTimerState {
   showClockInTimer: boolean // kleine Uhrzeit zusaetzlich im Timer-Modus
   clockShowSeconds: boolean // Uhr-Modus: Sekunden anzeigen
   clockShowDate: boolean // Uhr-Modus: Datum unter der Uhrzeit anzeigen
+  /** Überziehen: Bild blinkt rot (aus: nur die Ziffern sind rot) */
+  overtimeFlash: boolean
   outputOpen: boolean
   /** NDI-Ausgabe sendet (Startbildschirm zeigt „Ausgabe“, ohne das NDI-Modul zu laden) */
   ndiActive: boolean
@@ -771,6 +773,7 @@ export type TimerCommand =
   | { type: 'setDisplayMode'; mode: TimerDisplayMode }
   | { type: 'setShowClock'; show: boolean }
   | { type: 'setClockOptions'; showSeconds?: boolean; showDate?: boolean }
+  | { type: 'setOvertimeFlash'; flash: boolean }
   | { type: 'message'; text: string; flash: boolean }
   | { type: 'clearMessage' }
 
@@ -1291,6 +1294,7 @@ export interface TimerSetup {
   showClockInTimer: boolean
   clockShowSeconds: boolean
   clockShowDate: boolean
+  overtimeFlash: boolean
 }
 
 export interface TimerSettings {

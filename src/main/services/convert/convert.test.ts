@@ -252,6 +252,30 @@ describe('Fähigkeiten, Fehlertexte, Warteschlange', () => {
     q.setLimit('converter', 2)
     expect(q.runningCount('converter')).toBe(1)
   })
+
+  it('gleicher Sperr-Schlüssel nie gleichzeitig: wartet ohne Platz, andere ziehen vorbei', async () => {
+    const q = new ConvertQueue()
+    q.setLimit('player', 2)
+    const started: string[] = []
+    const gates: Record<string, () => void> = {}
+    const job = (id: string) => () =>
+      new Promise<void>((res) => {
+        started.push(id)
+        gates[id] = res
+      })
+    q.add('a1', 'player', job('a1'), 'clip.mp4')
+    q.add('a2', 'player', job('a2'), 'clip.mp4')
+    q.add('b', 'player', job('b'), 'other.mp4')
+    q.add('a3', 'player', job('a3'), 'clip.mp4')
+    await Promise.resolve()
+    expect(started).toEqual(['a1', 'b'])
+    // der wartende Doppelgänger ist noch abbrechbar
+    expect(q.remove('a3')).toBe(true)
+    gates.a1()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(started).toEqual(['a1', 'b', 'a2'])
+    expect(q.runningCount('player')).toBe(2)
+  })
 })
 
 describe('Auftragsliste', () => {

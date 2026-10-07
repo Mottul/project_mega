@@ -111,7 +111,9 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
 
 - **Sprechzeit-Timer** mit mehreren Abschnitten, die nacheinander laufen.
 - **Farbwarnung** nach Restzeit (weiß → gelb → rot, Schwellen einstellbar).
-- **Am Ende:** stehen bleiben, rot blinkend überziehen oder automatisch zum nächsten Abschnitt.
+- **Am Ende:** stehen bleiben, überziehen oder automatisch zum nächsten Abschnitt. Beim
+  Überziehen blinkt das Bild rot – abschaltbar (dann nur rote Ziffern), gilt für Ausgabefenster,
+  NDI, Browser-Anzeige und Handy.
 - **Live:** ±1 Minute, Nachrichten an die Bühne (auf Wunsch blinkend, mit Schnellnachrichten).
 - **Vollbild-Anzeige** auf wählbarem Monitor, synchron zur Vorschau – der Timer läuft im
   Hauptprozess. Alternativ eine große Uhr mit Sekunden.
