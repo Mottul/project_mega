@@ -139,7 +139,7 @@ label.flash input{width:20px;height:20px}
     var phase=remaining<0?'over':remaining<=state.alertSec?'alert':remaining<=state.warnSec?'warn':'ok';
     if(!s)phase='ok';
     t.style.color=phase==='ok'?'#ffffff':phase==='warn'?'#eab308':'#ef4444';
-    t.className=phase==='over'?'blink':'';
+    t.className=phase==='over'&&state.overtimeFlash!==false?'blink':'';
     var p=s&&s.durationSec>0?Math.max(0,Math.min(1,remaining/s.durationSec)):0;
     var f=el('fill');f.style.width=(p*100)+'%';
     f.style.background=phase==='ok'?'#22c55e':phase==='warn'?'#eab308':'#ef4444';

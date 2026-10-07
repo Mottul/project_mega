@@ -1206,8 +1206,13 @@ export function VideoPlayer(): JSX.Element {
                             confirmLabel: 'Löschen',
                             danger: true
                           })
-                          .then((ok) => {
-                            if (ok) void persistSaved(saved.filter((x) => x.name !== p.name))
+                          // erst nach der Rückfrage den aktuellen Stand lesen: Während der
+                          // Dialog offen war, kann ein anderes Fenster eine Playlist gespeichert
+                          // haben – die alte Liste würde sie wieder löschen
+                          .then(async (ok) => {
+                            if (!ok) return
+                            const cur = (await api.getSettings()).player.savedPlaylists ?? []
+                            await persistSaved(cur.filter((x) => x.name !== p.name))
                           })
                       }
                       className="text-muted-foreground hover:text-destructive"

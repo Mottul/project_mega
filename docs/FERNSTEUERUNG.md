@@ -52,8 +52,10 @@ läuft, solange die Fernsteuerung des Stage-Timers eingeschaltet ist.
 
 - Reine Anzeige, keine Knöpfe – sieht aus wie das Ausgabefenster: Restzeit in Warnfarbe,
   Redner/Titel, Uhrzeit, Restzeit-Balken, Nachrichten an die Bühne, Uhr-Modus.
-- Die Uhrzeit kommt vom Rechner, nicht vom Anzeigegerät. Reißt die Verbindung ab, erscheint nach
-  zwei Sekunden „Verbindung zum Timer getrennt“ – die Seite verbindet sich von selbst neu.
+- Uhrzeit und Zeitzone kommen vom Rechner, nicht vom Anzeigegerät. Der Rechner meldet sich
+  mindestens jede Sekunde; bleibt das aus (auch bei einer scheinbar noch offenen Verbindung nach
+  einem WLAN-Aussetzer), baut die Seite neu auf und zeigt nach zwei Sekunden „Verbindung zum
+  Timer getrennt“ – ein stehengebliebenes Bild sieht nie wie die echte Restzeit aus.
 - Antippen bzw. Klicken schaltet auf Vollbild, der Mauszeiger verschwindet nach drei Sekunden.
 - Bewusst schlicht gebaut, damit sie auch in älteren Smart-TV-Browsern läuft (ohne
   Server-Sent Events fragt sie jede Sekunde nach).

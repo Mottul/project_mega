@@ -80,7 +80,7 @@ export function TimerDisplay({ state, remainingSec }: Props): JSX.Element {
       style={{
         background: '#000',
         animation:
-          phase === 'overtime' && state.displayMode === 'timer'
+          phase === 'overtime' && state.displayMode === 'timer' && state.overtimeFlash !== false
             ? 'timer-bg-flash 1s steps(1) infinite'
             : undefined
       }}

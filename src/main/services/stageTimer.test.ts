@@ -159,6 +159,15 @@ describe('Stage-Timer – Ablauf merken', () => {
     expect(seen).toEqual(['a,b', 'a,b'])
   })
 
+  it('Überzieh-Blinken abschaltbar und gemerkt', () => {
+    const seen: boolean[] = []
+    setTimerSetupSink((setup) => seen.push(setup.overtimeFlash))
+    applyTimerCommand({ type: 'setOvertimeFlash', flash: false })
+    expect(st().overtimeFlash).toBe(false)
+    applyTimerCommand({ type: 'setOvertimeFlash', flash: true })
+    expect(seen).toEqual([false, true])
+  })
+
   it('prüft gespeicherte Abläufe und übernimmt alte Felder', () => {
     const setup = sanitizeTimerSetup({
       segments: [
@@ -171,7 +180,8 @@ describe('Stage-Timer – Ablauf merken', () => {
       alertSec: 120,
       endBehavior: 'explodieren',
       displayMode: 'clock',
-      clockShowDate: false
+      clockShowDate: false,
+      overtimeFlash: 'ja'
     })
     expect(setup?.segments).toEqual([
       { id: 'x', speaker: '', title: 'Begrüßung', durationSec: 300 },
@@ -183,7 +193,8 @@ describe('Stage-Timer – Ablauf merken', () => {
       endBehavior: 'overtime',
       displayMode: 'clock',
       clockShowDate: false,
-      clockShowSeconds: true
+      clockShowSeconds: true,
+      overtimeFlash: true // Unsinn -> Vorgabe
     })
     expect(sanitizeTimerSetup(null)).toBeNull()
   })
@@ -199,9 +210,11 @@ describe('Stage-Timer – Ablauf merken', () => {
       displayMode: 'timer',
       showClockInTimer: false,
       clockShowSeconds: true,
-      clockShowDate: true
+      clockShowDate: true,
+      overtimeFlash: false
     })
     expect(st()).toMatchObject({
+      overtimeFlash: false,
       running: false,
       current: 0,
       remainingSec: 120,

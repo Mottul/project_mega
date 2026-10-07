@@ -14,7 +14,6 @@ import type { ConvertJob, ConvertOptions, MediaKind, PlayerImportRequest } from 
 import { buildConvertArgs } from '../convert/args'
 import { getConvertCapabilities } from '../convert/capabilities'
 import { measureLoudness } from '../convert/loudness'
-import { KeyedLock } from '../convert/keyedLock'
 import { convertQueue } from '../convert/queue'
 import { FfmpegCanceledError, runFfmpeg } from '../convert/runFfmpeg'
 import { probeMediaInfo } from '../ffmpeg/mediaInfo'
@@ -177,17 +176,22 @@ class ConvertManager {
     this.sink({ ...job })
   }
 
-  // Eigene Spur der gemeinsamen Warteschlange: Importe warten nie auf den Video-Konverter
+  // Eigene Spur der gemeinsamen Warteschlange: Importe warten nie auf den Video-Konverter.
+  // Aufträge mit gleichem Dateinamen laufen nie gleichzeitig: Doppel-Erkennung und „Neu
+  // einbacken“ lesen den Bibliotheksstand und dürfen sich nicht überholen (sonst zwei Einträge
+  // mit demselben Schlüssel oder ein Auftrag, der das eben gebackene Medium als Dublette
+  // löscht). Der Name statt des Pfads, weil der Dedup-Schlüssel den Ordner nicht kennt –
+  // Kopien desselben Clips in Tag1/ und Tag2/ sind eine Quelle.
   private queue(job: ConvertJob): void {
     // Parallelität aus den Einstellungen (wirkt auch auf schon wartende Aufträge)
     convertQueue.setLimit('player', getSettings().player.importConcurrency ?? 2)
-    convertQueue.add(job.id, 'player', () => this.run(job))
+    convertQueue.add(
+      job.id,
+      'player',
+      () => this.run(job),
+      `player:${basename(job.sourcePath).toLowerCase()}`
+    )
   }
-
-  // Aufträge derselben Quelle laufen nie gleichzeitig: Doppel-Erkennung und „Neu einbacken“
-  // lesen den Bibliotheksstand und dürfen sich nicht überholen (sonst zwei Einträge mit
-  // demselben Schlüssel oder ein Auftrag, der das eben gebackene Medium als Dublette löscht)
-  private sources = new KeyedLock()
 
   enqueue(req: PlayerImportRequest): { jobIds: string[] } {
     const files = collectMedia(req.sources)
@@ -337,14 +341,10 @@ class ConvertManager {
     if (this.isCanceled(job)) return
     const spec = this.specs.get(job.id)!
     this.aborts.set(job.id, new AbortController())
-    const unlock = await this.sources.acquire(job.sourcePath.toLowerCase())
     try {
-      // während des Wartens auf dieselbe Quelle abgebrochen
-      if (this.isCanceled(job)) return
       if (spec.reconvertId) await this.runReconvert(job, spec, spec.reconvertId)
       else await this.runImport(job, spec)
     } finally {
-      unlock()
       this.aborts.delete(job.id)
     }
   }
@@ -391,6 +391,15 @@ class ConvertManager {
         }
       })()
 
+      // Rückversicherung: kam derselbe Stand doch inzwischen in die Bibliothek, diesen
+      // übernehmen statt an UNIQUE zu scheitern und verwaiste Dateien zu hinterlassen
+      const late = findByConvKey(convKey)
+      if (late) {
+        this.removeOutputs(job.id)
+        this.update(job, { status: 'done', progress: 1, mediaId: late.id })
+        this.librarySink()
+        return
+      }
       const item = insertMedia({
         id: job.id,
         kind: p.kind,
@@ -480,6 +489,11 @@ class ConvertManager {
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
       const thumbOk = await this.thumbnail(job, tmpStored, tmpThumb, p)
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
+
+      // Rückversicherung wie beim Import: UNIQUE erst prüfen, dann Dateien tauschen – sonst
+      // passten die Dateien danach nicht mehr zum Bibliothekseintrag
+      const late = findByConvKey(convKey)
+      if (late && late.id !== id) deleteMedia(late.id)
 
       // Dateien tauschen
       const finalStored = mediaFilePath(`${id}${ext}`)

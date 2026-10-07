@@ -64,13 +64,23 @@ export function handleTimerRemote(req: IncomingMessage, res: ServerResponse): vo
     return
   }
   // Bühnen-Anzeige im Browser (nur Anzeige) für Geräte ohne NDI
-  if (path === '/anzeige' || path === '/anzeige/') {
+  if (path === '/anzeige') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' })
     res.end(TIMER_DISPLAY_PAGE)
     return
   }
-  // Uhrzeit des Rechners: die Anzeige zeigt sie statt der (oft falschen) Uhr des Fernsehers
-  if (path === '/api/time') return sendJson(res, { now: Date.now() })
+  // Mit Schrägstrich zeigten die relativen API-Pfade auf /anzeige/api/… -> umleiten
+  // (relativ, damit es auch unter /timer/ der Fernsteuer-App stimmt)
+  if (path === '/anzeige/') {
+    res.writeHead(301, { Location: '../anzeige' })
+    res.end()
+    return
+  }
+  // Uhrzeit des Rechners samt Zeitzone (Minuten östlich von UTC): Die Anzeige zeigt die
+  // Wanduhr des Rechners, nicht die oft falsch gestellte Uhr oder Zone des Fernsehers
+  if (path === '/api/time') {
+    return sendJson(res, { now: Date.now(), tz: -new Date().getTimezoneOffset() })
+  }
   if (path === '/api/state') return sendJson(res, getTimerState())
   if (path === '/api/events') return host.openSse(req, res, getTimerState)
   if (path === '/api/command' && req.method === 'POST') {
@@ -92,8 +102,24 @@ export function pushTimerRemoteTick(tick: StageTimerTick): void {
   if (host.isRunning()) host.broadcast('tick', tick)
 }
 
+// Lebenszeichen bei stehendem Timer (sonst kämen keine Ticks): Die Bühnen-Anzeige erkennt
+// einen still gestorbenen Strom daran, dass höchstens drei Sekunden lang nichts ankommt.
+// Läuft der Timer, tickt er ohnehin fünfmal je Sekunde.
+let heartbeat: ReturnType<typeof setInterval> | null = null
+function startHeartbeat(): void {
+  if (heartbeat) return
+  heartbeat = setInterval(() => {
+    const s = getTimerState()
+    if (!host.isRunning() || s.running) return
+    host.broadcast('tick', { remainingSec: s.remainingSec, running: s.running, current: s.current })
+  }, 1000)
+  heartbeat.unref?.()
+}
+
 export const getTimerRemoteStatus = host.status
 export const isTimerRemoteRunning = host.isRunning
-export const startTimerRemote = (port: number): ReturnType<typeof host.start> =>
-  host.start(port, handleTimerRemote)
+export const startTimerRemote = (port: number): ReturnType<typeof host.start> => {
+  startHeartbeat()
+  return host.start(port, handleTimerRemote)
+}
 export const stopTimerRemote = host.stop

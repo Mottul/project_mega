@@ -29,6 +29,7 @@ export const EMPTY_TIMER_STATE: StageTimerState = {
   showClockInTimer: true,
   clockShowSeconds: true,
   clockShowDate: true,
+  overtimeFlash: true,
   outputOpen: false,
   ndiActive: false
 }
@@ -57,7 +58,8 @@ const SETUP_COMMANDS = new Set<TimerCommand['type']>([
   'setThresholds',
   'setDisplayMode',
   'setShowClock',
-  'setClockOptions'
+  'setClockOptions',
+  'setOvertimeFlash'
 ])
 
 /** Gemerkt wird der Ablauf: Abschnitte, Schwellen, Ende-Verhalten, Anzeige. */
@@ -70,7 +72,8 @@ export function timerSetupOf(s: StageTimerState): TimerSetup {
     displayMode: s.displayMode,
     showClockInTimer: s.showClockInTimer,
     clockShowSeconds: s.clockShowSeconds,
-    clockShowDate: s.clockShowDate
+    clockShowDate: s.clockShowDate,
+    overtimeFlash: s.overtimeFlash
   }
 }
 
@@ -119,7 +122,9 @@ export function sanitizeTimerSetup(raw: unknown): TimerSetup | null {
         ? r.clockShowSeconds
         : EMPTY_TIMER_STATE.clockShowSeconds,
     clockShowDate:
-      typeof r.clockShowDate === 'boolean' ? r.clockShowDate : EMPTY_TIMER_STATE.clockShowDate
+      typeof r.clockShowDate === 'boolean' ? r.clockShowDate : EMPTY_TIMER_STATE.clockShowDate,
+    overtimeFlash:
+      typeof r.overtimeFlash === 'boolean' ? r.overtimeFlash : EMPTY_TIMER_STATE.overtimeFlash
   }
 }
 
@@ -288,6 +293,9 @@ export function applyTimerCommand(cmd: TimerCommand): void {
     case 'setClockOptions':
       if (cmd.showSeconds !== undefined) state.clockShowSeconds = cmd.showSeconds
       if (cmd.showDate !== undefined) state.clockShowDate = cmd.showDate
+      break
+    case 'setOvertimeFlash':
+      state.overtimeFlash = cmd.flash
       break
     case 'message':
       state.message = { text: cmd.text, flash: cmd.flash, seq: ++messageSeq }

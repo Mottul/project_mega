@@ -511,11 +511,21 @@ export function StageTimer(): JSX.Element {
                       })
                     }
                   >
-                    <option value="overtime">Überziehung zählen (rot blinkend)</option>
+                    <option value="overtime">Überziehung zählen (rot)</option>
                     <option value="stop">Bei 0:00 stehen bleiben</option>
                     <option value="next">Automatisch nächster Abschnitt</option>
                   </select>
                 </label>
+                {state.endBehavior === 'overtime' && (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={state.overtimeFlash}
+                      onChange={(e) => cmd({ type: 'setOvertimeFlash', flash: e.target.checked })}
+                    />
+                    Beim Überziehen rot blinken (aus: nur rote Ziffern)
+                  </label>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block">
                     <span className="mb-1 block text-xs text-muted-foreground">Gelb ab Rest</span>

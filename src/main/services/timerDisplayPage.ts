@@ -3,9 +3,12 @@
 // sieht aus wie das Ausgabefenster: große Ziffern in der Warnfarbe, Redner/Titel, Uhrzeit,
 // Restzeit-Balken, Nachrichten-Banner, Uhr-Modus.
 // Robust für ältere Smart-TV-Browser: ES5 ohne Framework, XMLHttpRequest statt fetch,
-// Rückfall auf Abfragen ohne EventSource. Die Uhrzeit kommt vom Rechner (api/time), nicht
-// von der Uhr des Anzeigegeräts. Reißt die Verbindung ab, steht das groß da – ein
-// eingefrorenes Bild darf nie wie die echte Restzeit aussehen.
+// Rückfall auf Abfragen ohne EventSource. Die Uhrzeit kommt vom Rechner (api/time: Zeit und
+// Zeitzone), nicht von der Uhr des Anzeigegeräts. Reißt die Verbindung ab, steht das groß
+// da – ein eingefrorenes Bild darf nie wie die echte Restzeit aussehen. Deshalb zählt nicht
+// nur der Zustand der Verbindung: Der Server meldet sich mindestens jede Sekunde (Ticks bzw.
+// Lebenszeichen); bleibt das 3 s aus, gilt sie als tot und wird neu aufgebaut (halboffene
+// Sockets nach WLAN-Aussetzern).
 // API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App (/timer/) läuft.
 // Achtung Template-Literal: im Client-JS keine Backslashes, Backticks oder ${…}.
 
@@ -56,19 +59,23 @@ body.idle{cursor:none}
 </div>
 <script>
 (function(){
-  var S=null, remaining=0, offset=0, online=false, offSince=Date.now(), es=null, polling=false;
+  // tz: Minuten östlich von UTC (zuerst die des Geräts, ab der ersten Abfrage die des Rechners)
+  var S=null, remaining=0, offset=0, tz=-new Date().getTimezoneOffset(), online=false,
+    offSince=Date.now(), es=null, polling=false, lastMsg=0, lastConnect=0;
   function el(id){return document.getElementById(id);}
   function pad(n){return (n<10?'0':'')+n;}
-  function now(){return new Date(Date.now()+offset);}
+  // Wanduhr des Rechners als UTC-Felder: getUTC* liefert dessen Ortszeit, egal welche Zone
+  // das Anzeigegerät hat
+  function now(){return new Date(Date.now()+offset+tz*60000);}
   function fmtTimer(t){
     var neg=t<0, s=Math.abs(Math.round(t)), h=Math.floor(s/3600), m=Math.floor((s%3600)/60), x=s%60;
     var core=h>0?(h+':'+pad(m)+':'+pad(x)):(m+':'+pad(x));
     return neg?('−'+core):core;
   }
-  function fmtClock(d,sec){return pad(d.getHours())+':'+pad(d.getMinutes())+(sec?':'+pad(d.getSeconds()):'');}
+  function fmtClock(d,sec){return pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+(sec?':'+pad(d.getUTCSeconds()):'');}
   function fmtDate(d){
-    try{return d.toLocaleDateString('de-AT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
-    catch(e){return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();}
+    try{return d.toLocaleDateString('de-AT',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});}
+    catch(e){return pad(d.getUTCDate())+'.'+pad(d.getUTCMonth()+1)+'.'+d.getUTCFullYear();}
   }
   function phase(){
     if(remaining<0)return 'overtime';
@@ -89,7 +96,7 @@ body.idle{cursor:none}
     var main=clockMode?fmtClock(d,S.clockShowSeconds):(seg?fmtTimer(remaining):'--:--');
     var fs=Math.min((w/Math.max(4,main.length))*1.55,h*0.42);
     var p=phase();
-    el('root').className=(p==='overtime'&&!clockMode)?'flash':'';
+    el('root').className=(p==='overtime'&&!clockMode&&S.overtimeFlash!==false)?'flash':'';
     if(clockMode){
       el('cbig').textContent=main;
       el('cbig').style.fontSize=fs+'px';
@@ -133,7 +140,18 @@ body.idle{cursor:none}
   }
   // Erst nach 2 s melden: kurze Aussetzer (Neuverbindung) sollen nicht flackern
   function showConn(){show('conn',!online&&Date.now()-offSince>2000);}
-  setInterval(showConn,500);
+  // Lebt der Strom? Bleibt 3 s lang alles aus, ist er tot, auch wenn der Browser die
+  // Verbindung noch für offen hält. Ein vom Server abgewiesener Strom (z. B. 404, solange die
+  // Fernsteuerung aus ist) versucht es nicht selbst erneut.
+  function stale(){return Date.now()-lastMsg>3000;}
+  function watch(){
+    if(es&&(es.readyState===2||stale())){
+      setOnline(false);
+      if(Date.now()-lastConnect>3000)reconnect();
+    }
+    showConn();
+  }
+  setInterval(watch,500);
 
   function get(path,ok,fail){
     var x=new XMLHttpRequest();
@@ -144,16 +162,18 @@ body.idle{cursor:none}
     x.send();
   }
   function apply(m){
+    lastMsg=Date.now();
     if(m.type==='state'){S=m.payload;remaining=S.remainingSec;}
     else if(m.type==='tick'&&S){remaining=m.payload.remainingSec;S.running=m.payload.running;S.current=m.payload.current;}
     render();
   }
-  // Uhr des Rechners übernehmen (Laufzeit halbiert) – zugleich Lebenszeichen alle 10 s
+  // Uhr und Zeitzone des Rechners übernehmen (Laufzeit halbiert)
   function sync(){
     var t0=Date.now();
     get('api/time',function(r){
       var t1=Date.now();offset=r.now+(t1-t0)/2-t1;
-      if(polling||(es&&es.readyState===1))setOnline(true);
+      if(typeof r.tz==='number')tz=r.tz;
+      if(polling)setOnline(true);
     },function(){setOnline(false);});
   }
   function poll(){
@@ -162,10 +182,17 @@ body.idle{cursor:none}
   }
   function connect(){
     if(!window.EventSource){polling=true;poll();return;}
+    lastConnect=Date.now();
+    lastMsg=Date.now();
     es=new EventSource('api/events');
     es.onopen=function(){setOnline(true);};
     es.onmessage=function(e){try{apply(JSON.parse(e.data));setOnline(true);}catch(err){}};
     es.onerror=function(){setOnline(false);};
+  }
+  function reconnect(){
+    try{es.close();}catch(e){}
+    es=null;
+    connect();
   }
 
   // Antippen: Vollbild + Bildschirm wach halten (Wake Lock nur, wo der Browser es erlaubt –
