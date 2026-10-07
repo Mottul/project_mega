@@ -83,5 +83,7 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 
 README = kurzer Einstieg; Details in `docs/`: WERKZEUGE (Funktionen je Tool), FERNSTEUERUNG,
 NDI, ENTWICKLUNG (Setup, Aufbau, Paketierung), SICHERHEIT, ROADMAP, INSTALL (Anwender).
+Ausgearbeitete Pläne für größere Vorhaben: `docs/PLAN-*.md` (z. B. Video-Generator) – vor der
+Umsetzung lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überführen und löschen.
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.

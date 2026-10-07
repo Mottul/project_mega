@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 4. Oktober 2026
+**Stand:** 7. Oktober 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -53,6 +53,10 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Neue Werkzeuge
 
+- **Video-Generator** (Diashow & Montage): Bilder und Videos zu einem Video mit Standzeiten,
+  Übergängen, Ken-Burns-Effekt und Zielgröße – ausgearbeiteter, mit ffmpeg gemessener Plan in
+  [PLAN-VIDEO-GENERATOR.md](PLAN-VIDEO-GENERATOR.md). Vorab: EXIF-Drehung von Handyfotos in der
+  Analyse (betrifft heute schon den Player-Import).
 - **ArtNet/sACN-Tester** (DMX übers Netz senden, Node-Discovery) und **DMX-Universum-Planer**
   (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem DMX-Dip-Schalter.
 - **Rechner:** IP-/Subnetz (Dante, NDI, AV-over-IP – passend zum Netzwerk-Scanner),
