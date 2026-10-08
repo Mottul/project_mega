@@ -194,18 +194,20 @@ app.on('window-all-closed', () => {
 // (NDI-Offscreen-Spiegel von Timer/Player). Die dürfen die App aber nicht am
 // Leben halten: schließt das letzte SICHTBARE Fenster, wird beendet -- sonst
 // läuft der Prozess (und der NDI-Stream!) unsichtbar weiter.
+// Gezählt werden Fenster, die je gezeigt wurden (Haupt-, Werkzeug-, Ausgabefenster, auch
+// minimiert); Dienst-Fenster (NDI-Spiegel, PDF-Export) werden nie gezeigt und zählen nie.
+// Bewusst NICHT isVisible() der übrigen: Unter Windows meldet ein MINIMIERTES Fenster
+// „unsichtbar“ – war die Mottulbox minimiert und schloss man die Vollbild-Ausgabe (Escape im
+// Timer-, Player- oder Testbild-Fenster), beendete sich die ganze App.
+const shownWindows = new Set<BrowserWindow>()
 app.on('browser-window-created', (_e, win) => {
-  // Nur Fenster, die je SICHTBAR waren, stoßen die Beenden-Prüfung an: das
-  // Schließen eines versteckten Dienst-Fensters (z.B. NDI-Stopp) darf die App
-  // niemals beenden -- egal, was isVisible() der übrigen gerade meldet.
-  let wasVisible = win.isVisible()
-  win.on('show', () => {
-    wasVisible = true
-  })
+  if (win.isVisible()) shownWindows.add(win)
+  win.on('show', () => shownWindows.add(win))
   win.on('closed', () => {
-    if (process.platform === 'darwin' || !wasVisible) return
-    const anyVisible = BrowserWindow.getAllWindows().some((w) => !w.isDestroyed() && w.isVisible())
-    if (!anyVisible) app.quit()
+    const wasShown = shownWindows.delete(win)
+    if (process.platform === 'darwin' || !wasShown || shownWindows.size > 0) return
+    logLine('[fenster] letztes Fenster geschlossen – beenden')
+    app.quit()
   })
 })
 
