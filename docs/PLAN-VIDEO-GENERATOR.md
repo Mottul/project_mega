@@ -1,7 +1,8 @@
 # Plan: Video-Generator (Diashow & Montage)
 
-**Status:** Phase 0 und Phase 1 umgesetzt (8. Oktober 2026, Branch `video-generator`) – das
-Werkzeug steht in [WERKZEUGE.md](WERKZEUGE.md#video-generator). Offen sind Phase 2 und 3; dafür
+**Status:** Phase 0 und 1 umgesetzt (8. Oktober 2026, Branch `video-generator`), Phase 2 ebenso
+(8. Oktober 2026, Branch `video-generator-phase2`, siehe [Umsetzung Phase 2](#umsetzung-phase-2))
+– das Werkzeug steht in [WERKZEUGE.md](WERKZEUGE.md#video-generator). Offen ist Phase 3; dafür
 bleibt dieser Plan mit Messwerten und Stolpersteinen stehen. Die [Festlegungen](#festlegungen)
 (Name, Hauptzweck, Musik, Titel/Logo) gelten weiter.
 
@@ -20,7 +21,8 @@ Videos genügt ein Ausschnitt (Start/Ende). Ein Schnittprogramm soll das Werkzeu
 - [Umsetzung im Code](#umsetzung-im-code)
 - [Sonderfälle](#sonderfälle)
 - [Phase 0: EXIF-Drehung von Fotos](#phase-0-exif-drehung-von-fotos-betrifft-heute-den-player)
-- [Phasen](#phasen) · [Tests & Doku](#tests--doku) · [Festlegungen](#festlegungen)
+- [Phasen](#phasen) · [Umsetzung Phase 2](#umsetzung-phase-2) · [Tests & Doku](#tests--doku) ·
+  [Festlegungen](#festlegungen)
 
 ## Entscheidung: eigenes Werkzeug
 
@@ -455,8 +457,43 @@ ffprobe-Ausgabe eines EXIF-gedrehten Testfotos als Fixture).
 |---|---|---|
 | 0 | ✅ EXIF-Drehung in der Analyse (Player profitiert sofort) | klein |
 | 1 | ✅ Kern-Umbauten, `videoGenPlan`, Rechenlauf mit Cache, Werkzeug mit Storyboard, Vorgaben, Ausgabe, Videoausschnitt (Start/Ende), nahtlose Schleife, Musik einfach (eine Datei), Übergaben | groß |
-| 2 | Live-Vorschau und „Vorschau rechnen“, Ken-Burns-Rahmen, Videoausschnitt grafisch, Musik-Ausbau | mittel |
+| 2 | ✅ Live-Vorschau und „Vorschau rechnen“, Ken-Burns-Rahmen, Videoausschnitt grafisch, Musik-Ausbau | mittel |
 | 3 | Titel, Logo, LUT, Vorlagen | nach Bedarf |
+
+## Umsetzung Phase 2
+
+- **Ausschnitt statt Teilprojekt („Vorschau rechnen“):** Die Vorschau plant das ganze Projekt in
+  640 px und rechnet nur die Stücke, die der Bereich braucht (`previewRanges`,
+  `piecesForRanges`); Bildliste mit Bereichen (`concatList(…, ranges)`, auch zwei Bereiche über
+  die Schleifen-Naht), im Ton-Graphen werden nicht gerechnete Elemente durch exakt lange Stille
+  ersetzt (`audioGraph({ silent, ranges })`). Ein verkleinertes Teilprojekt wäre nicht exakt:
+  Ken-Burns-Bahnen, gekürzte Übergänge und die Lage der Musik hängen von den Nachbarn ab.
+  Gemessen (Labortest): Bild für Bild dieselben Prüfsummen und dieselben Samples (Abweichung
+  < 10⁻⁶) wie der entsprechende Teil des ganzen Ergebnisses. Laufen Vorschau und Auftrag in
+  derselben Größe, teilen sie sich die Stücke.
+- **Musik:** je Vorkommen eines Titels ein eigener Eingang (statt `-stream_loop -1`), Überblendung
+  per `acrossfade` mit der Länge aus der Analyse (höchstens die Hälfte des kürzeren Titels), eine
+  Sekunde Reserve, weil die Dauer bei MP3 etwas zu lang sein kann. Höchstens 200 Eingänge.
+- **Absenken unter Originalton** wird **geplant** statt per `sidechaincompress` geregelt: Die
+  Bereiche, in denen Videos mit Originalton laufen, sind bekannt; `volume='…':eval=frame` nach
+  `asetnsamples=n=480` (10-ms-Blöcke, 1024er-Blöcke stufen hörbar) senkt mit 0,5-s-Rampen ab,
+  dicht aufeinanderfolgende Clips am Stück. Vorteil: vorhersagbar, kein Pumpen bei leisem
+  Originalton, und dieselbe Formel (`duckFactor`/`duckExpr`) rechnet die Live-Vorschau. Gemessen:
+  −12,0 dB eingestellt → −12,0 dB im Mix.
+- **Live-Vorschau:** dieselbe Zeitachse (`outputSegments`, `frameAt`, Fortschritt k/T wie
+  xfade), Ken Burns per CSS-`transform` aus `kenBurnsRect`, Musik aus `musicAt`. Die Übergänge
+  sind CSS-Nachbauten, vermessen am gebündelten ffmpeg (rot → blau, Bild für Bild ausgelesen):
+  Wischen/Schieben „←“ bringen das neue Bild von rechts, „↑“ von unten; „über Schwarz/Weiß“ ist
+  `a·(1−p)·smoothstep(0,8…1; 1−p)` + `b·p·(1−smoothstep(0,2…1; 1−p))` – das alte Bild ist nach 20 %
+  weg; der Kreis deckt, wo Abstand/Eckabstand + 3·(0,5 − p) ≤ 0 (weicher Rand eine Eckweite);
+  weiches Wischen ist ein Verlauf über die ganze Breite; Zoom vergrößert das alte Bild in der
+  ersten Hälfte (≈ 1,9× bei p = 0,24) und blendet in der zweiten. Quelldateien über
+  `media://vgen/src/<zeichen>` (siehe [SICHERHEIT.md](SICHERHEIT.md#die-app)).
+- **Eigener Ken-Burns-Rahmen:** Modus `custom` mit Start/Ende (Mitte + Zoom), geklemmt wie die
+  Bahn (`clampKenBurnsFrame`); liegen Start und Ende auf der Fläche, gilt das für die ganze Bahn
+  (Mitte linear, halbe Breite konvex in der Zeit). Nie als Vorgabe.
+- **Mono-Ton** wird beim Umwandeln nach Stereo je Kanal um 3 dB abgesenkt (ffmpeg-Standard,
+  Leistung bleibt) – im Labortest gemessen, gilt im ganzen Programm gleich.
 
 ## Tests & Doku
 

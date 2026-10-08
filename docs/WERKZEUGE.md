@@ -307,16 +307,37 @@ LED-Wand.
 - **Übergänge:** Schnitt, Überblenden, über Schwarz/Weiß, Auflösen, Wischen, Schieben, Kreis,
   weiches Wischen, Zoom; zu lange werden auf die Hälfte des kürzeren Nachbarn gekürzt (Hinweis).
 - **Ken Burns** (Fotos): automatisch (wechselnd, Hochkantfotos schwenken senkrecht), Zoom
-  rein/raus oder Schwenk in vier Richtungen, sanft/mittel/stark. Gerechnet über `perspective`
-  mit Subpixel-Genauigkeit – auch langsame Schwenks ruckeln auf der LED-Wand nicht. Die Vorschau
-  zeigt Anfang und Ende genau so, wie sie gerechnet werden.
+  rein/raus oder Schwenk in vier Richtungen, sanft/mittel/stark – oder ein **eigener Rahmen**:
+  Start- und Endausschnitt direkt auf dem Bild ziehen (Ecke zoomt, Pfeiltasten und +/− gehen auch;
+  „Tauschen“ dreht die Fahrt um). Der Rahmen bleibt immer auf dem Bild, höchstens 4× vergrößert.
+  Gerechnet über `perspective` mit Subpixel-Genauigkeit – auch langsame Schwenks ruckeln auf der
+  LED-Wand nicht.
 - **Nahtlose Schleife:** Das Ende blendet in den Anfang – vom letzten zum ersten Bild der Datei
   gibt es keinen Sprung; Musik blendet dann ebenfalls vom Ende in den Anfang.
 - **Ausgabe:** Größe (HD, 4K, Hochkant, eigene, „Wie Player-Wand“, „Aus LED-Wall-Konfigurator“),
   Bildrate (auch 23,976/29,97/59,94), Format wie im Video-Konverter (H.264, H.265, ProRes, HAP,
   HAP Q) mit GPU-Encoder und CPU-Rückfall.
-- **Ton:** Originalton der Videos (in Übergängen verblendet), eine Musikdatei (geschnitten bzw.
-  wiederholt, Ein-/Ausblenden, Pegel), Lautheit nach EBU R128 am fertigen Mix.
+- **Ton:** Originalton der Videos (in Übergängen verblendet) und **Musik aus mehreren Titeln**:
+  nacheinander mit Überblendung (einstellbar), reicht die Liste nicht, beginnt sie von vorn;
+  Ein-/Ausblenden, Pegel und **Absenken unter Originalton** (−6 bis −30 dB, mit weichen Rampen von
+  0,5 s, dicht aufeinanderfolgende Clips am Stück). Lautheit nach EBU R128 am fertigen Mix.
+  **„Standzeit an Musik anpassen“** wählt die Standzeit der Bilder so, dass das Video genau so lang
+  wird wie die Musik (Bilder mit eigener Standzeit und Videos bleiben, bei Schleife läuft die Musik
+  genau einmal je Durchlauf).
+- **Vorschau** (Karte unter dem Storyboard):
+  - **Live** spielt das ganze Projekt in der App ab, ohne zu rechnen – Zeitachse, Ken-Burns-Fahrt,
+    Einpassen und Musik (Titelfolge, Blenden, Absenken) wie in der Datei; die Übergänge sind in CSS
+    nachgebaut (am gebündelten ffmpeg vermessen). Wählt man ein Element, springt der Abspielkopf
+    dorthin. Videos laufen direkt aus der Quelle; was Chromium nicht abspielt (ProRes, HAP …),
+    zeigt das Standbild.
+  - **Ausschnitt eines Videos** an einem Bereichsregler unter der Vorschau: Start und Ende ziehen,
+    die Bühne zeigt dabei das Bild an der Griffstelle (auch per Tastatur, ±0,1 s/±1 s).
+  - **Rahmen:** der Ken-Burns-Editor für das gewählte Foto.
+  - **„Vorschau rechnen“:** rechnet den Bereich um das gewählte Element (eine Sekunde davor und
+    danach, bei Schleife über die Naht) klein (längere Seite 640 px) mit denselben Stücken und
+    Befehlen wie das Ergebnis – Bild für Bild und Sample für Sample gleich, nur ohne
+    Lautheitsangleichung. Gerechnet werden nur die Stücke im Ausschnitt; gleicher Stand kommt aus
+    dem Zwischenspeicher. Ändert man danach etwas, steht „veraltet“ dabei.
 - **Rechnen in Stücken:** Jedes Element und jeder Übergang wird einzeln gerechnet und
   zwischengespeichert; danach setzt ein Endlauf alles zusammen. Ändert man ein Element, werden nur
   dieses und seine Übergänge neu gerechnet. Bild und Ton liegen auf das Bild bzw. Sample genau
@@ -428,7 +449,7 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 | `library.db`            | Bibliothek von Manuals und Video-Player (SQLite)                         |
 | `player-media/`         | konvertierte Player-Medien und Thumbnails                                |
 | `player-uploads/`       | vom Handy hochgeladene Originale                                         |
-| `vgen-cache/`           | Video-Generator: Zwischenstücke (begrenzt, älteste zuerst gelöscht), Vorschaubilder |
+| `vgen-cache/`           | Video-Generator: Zwischenstücke (begrenzt, älteste zuerst gelöscht), Vorschaubilder, gerechnete Vorschauen (die neuesten 20) |
 | `jingles/`              | Audiodateien des Jingle-Players                                          |
 | `manuals/`              | importierte Handbücher                                                   |
 | `bin/`                  | yt-dlp                                                                   |
