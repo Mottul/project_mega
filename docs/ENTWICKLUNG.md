@@ -38,6 +38,10 @@ npm run dev         # App mit Hot Reload
   Git). Die gängigen npm-ffmpeg-Pakete können kein HAP. Vorhandenes wird nicht erneut geladen
   (`--force` erzwingt es, `--platform win|mac|linux` bzw. `--all` für andere Systeme). Ohne ffmpeg
   zeigen die betroffenen Werkzeuge einen Hinweis; im fertigen Paket ist es enthalten.
+  **Aktuell halten:** Die Quellen liefern täglich neue Builds; die CI testet jede Woche gegen den
+  neuesten, der Installer packt den beim Paketieren aktuellen. Lokal ab und zu
+  `npm run ff:fetch -- --force` – sonst entwickelt man gegen einen alten Stand und merkt
+  Verhaltensänderungen erst in der CI (Beispiel: Farbort-Wechsel im Video-Generator, Oktober 2026).
 - **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node (als `postinstall` und
   vor `dev`/`start`). Das klappt auch dort, wo Sicherheits-Wrapper electrons eigenes `install.js`
   abfangen. Fehlt die Binary, bricht `npm run dev` mit „Electron uninstall“ ab →

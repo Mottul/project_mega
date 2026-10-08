@@ -958,7 +958,15 @@ function colorArgs(plan: VgenPlan, n: VgenNormalize): string {
   // nach dem Abflachen (overlay in RGB) ist die Quelle RGB
   const inPart =
     n.inMatrix && !n.alpha ? `:in_color_matrix=${n.inMatrix}:in_range=${n.inRange}` : ''
-  return `${inPart}:out_color_matrix=${plan.outMatrix}:out_range=tv`
+  // Farbort links (H.264-Standard) für ALLE Stücke: JPEG liefert „center“, Videos „left“ –
+  // wechselt das mitten in der Bildliste, rechnet neueres ffmpeg (ab Herbst 2026) die
+  // Farbebenen beim Zusammensetzen um; die Stücke kämen nicht mehr bitgenau heraus
+  return `${inPart}:out_color_matrix=${plan.outMatrix}:out_range=tv:out_chroma_loc=left`
+}
+
+/** Kennung jedes Stücks: Farbraum der Ausgabe und einheitlicher Farbort (siehe colorArgs). */
+function pieceTags(plan: VgenPlan): string {
+  return `${setparamsFor(tagsFor(plan.outMatrix, plan.height))}:chroma_location=left`
 }
 
 /**
@@ -1030,7 +1038,7 @@ export interface ElementIo {
 export function elementPieceArgs(plan: VgenPlan, e: VgenElementPlan, io: ElementIo): string[] {
   const N = e.frames
   const [rn, rd] = plan.rate
-  const tags = setparamsFor(tagsFor(plan.outMatrix, plan.height))
+  const tags = pieceTags(plan)
   const g: string[] = []
   const input: string[] = []
   if (e.kind === 'video') {
