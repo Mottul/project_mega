@@ -3,8 +3,13 @@
 //   win   : BtbN "win64-gpl"   (GPL, .zip mit libsnappy/HAP)
 //   linux : BtbN "linux64-gpl"
 //   mac   : evermeet.cx        (einzelne Binaries)
-// Aufruf: node scripts/download-ffmpeg.mjs [--platform win|mac|linux] [--all]
-// (ohne Argumente: aktuelle Plattform)
+// Aufruf: node scripts/download-ffmpeg.mjs [--platform win|mac|linux] [--all] [--force]
+//         [--max-age <tage>]
+// (ohne Argumente: aktuelle Plattform, nur laden, wenn noch keins da ist)
+//
+// --max-age: aktuell halten – neu laden, wenn der vorhandene Build älter ist (Stand in
+// stand.json neben den Binaries). Läuft vor `dev`/`start`/`e2e` und beim Paketieren; schlägt
+// das Laden fehl (offline, ffmpeg gerade in Benutzung), geht es mit dem vorhandenen weiter.
 
 import { spawnSync } from 'node:child_process'
 import {
@@ -14,7 +19,10 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
-  rmSync
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync
 } from 'node:fs'
 import https from 'node:https'
 import { tmpdir } from 'node:os'
@@ -107,16 +115,43 @@ function extract(file, destDir, type) {
   }
 }
 
+const outDirOf = (targetOs) => join(ROOT, 'resources', 'ffmpeg', targetOs)
+const hasBins = (targetOs) =>
+  SOURCES[targetOs].bins.every((b) => existsSync(join(outDirOf(targetOs), b)))
+
+/** Alter des vorhandenen Builds in Tagen (aus stand.json); null = unbekannt. */
+function ageDays(outDir) {
+  try {
+    const { geladen } = JSON.parse(readFileSync(join(outDir, 'stand.json'), 'utf8'))
+    const t = Date.parse(geladen)
+    return Number.isFinite(t) ? (Date.now() - t) / 86_400_000 : null
+  } catch {
+    return null
+  }
+}
+
 async function build(targetOs) {
   const src = SOURCES[targetOs]
-  const outDir = join(ROOT, 'resources', 'ffmpeg', targetOs)
+  const outDir = outDirOf(targetOs)
   mkdirSync(outDir, { recursive: true })
 
-  // Schon vorhanden? -> nicht erneut laden (spart ~220 MB pro Pack-Lauf).
-  // Mit --force trotzdem neu holen.
-  if (!FORCE && src.bins.every((b) => existsSync(join(outDir, b)))) {
-    console.log(`  ✓ bereits vorhanden in ${outDir} (mit --force neu laden)`)
-    return
+  // Schon vorhanden? -> nicht erneut laden (spart ~220 MB pro Lauf); mit --max-age nur, solange
+  // der Build jung genug ist; mit --force immer neu
+  if (!FORCE && hasBins(targetOs)) {
+    const age = ageDays(outDir)
+    if (MAX_AGE === null) {
+      console.log(`  ✓ bereits vorhanden in ${outDir} (mit --force neu laden)`)
+      return
+    }
+    if (age !== null && age < MAX_AGE) {
+      console.log(`  ✓ aktuell (vor ${age.toFixed(1).replace('.', ',')} Tagen geladen)`)
+      return
+    }
+    console.log(
+      age === null
+        ? '  ↻ Stand unbekannt – lade den neuesten Build'
+        : `  ↻ ${Math.floor(age)} Tage alt – lade den neuesten Build`
+    )
   }
   const tmp = join(tmpdir(), `ff-${targetOs}-${Date.now()}`)
   mkdirSync(tmp, { recursive: true })
@@ -136,21 +171,41 @@ async function build(targetOs) {
       extract(archive, tmp, src.type)
     }
 
-    for (const bin of src.bins) {
+    // erst alle neben das Ziel kopieren, dann austauschen: ein abgebrochener Lauf hinterlässt
+    // nie eine halbe Binary (läuft ffmpeg gerade, scheitert unter Windows das Umbenennen)
+    const fresh = src.bins.map((bin) => {
       const found = findFile(tmp, bin)
       if (!found) throw new Error(`${bin} im Archiv nicht gefunden`)
-      const target = join(outDir, bin)
-      copyFileSync(found, target)
-      if (targetOs !== 'win') chmodSync(target, 0o755)
+      const next = join(outDir, `${bin}.neu`)
+      copyFileSync(found, next)
+      if (targetOs !== 'win') chmodSync(next, 0o755)
+      return { next, target: join(outDir, bin) }
+    })
+    try {
+      for (const f of fresh) renameSync(f.next, f.target)
+    } finally {
+      for (const f of fresh) rmSync(f.next, { force: true })
     }
 
     // Verifikation nur moeglich, wenn das Ziel der aktuellen Plattform entspricht
+    let version = null
     if (targetOs === osKey()) {
       const ffmpegBin = join(outDir, targetOs === 'win' ? 'ffmpeg.exe' : 'ffmpeg')
       const r = spawnSync(ffmpegBin, ['-hide_banner', '-encoders'], { encoding: 'utf-8' })
       const hasHap = (r.stdout ?? '').split('\n').some((l) => /^\s*[A-Z.]{6}\s+hap\b/i.test(l))
       console.log(hasHap ? '  ✓ HAP-Encoder vorhanden' : '  ⚠ HAP-Encoder NICHT gefunden!')
+      const v = spawnSync(ffmpegBin, ['-version'], { encoding: 'utf-8' })
+      version = (v.stdout ?? '').split('\n')[0].trim() || null
+      if (version) console.log(`  ✓ ${version}`)
     }
+    writeFileSync(
+      join(outDir, 'stand.json'),
+      JSON.stringify(
+        { geladen: new Date().toISOString(), quelle: src.url ?? src.urls, version },
+        null,
+        2
+      ) + '\n'
+    )
     console.log(`  ✓ abgelegt in ${outDir}`)
   } finally {
     try {
@@ -163,11 +218,23 @@ async function build(targetOs) {
 
 const argv = process.argv.slice(2)
 const FORCE = argv.includes('--force')
+const MAX_AGE = argv.includes('--max-age') ? Number(argv[argv.indexOf('--max-age') + 1]) : null
+if (MAX_AGE !== null && !(MAX_AGE >= 0)) throw new Error('--max-age braucht eine Zahl (Tage)')
 let targets = [osKey()]
 if (argv.includes('--all')) targets = ['win', 'mac', 'linux']
 else if (argv.includes('--platform')) targets = [osKey(argv[argv.indexOf('--platform') + 1])]
 
 for (const t of targets) {
   console.log(`\n=== ffmpeg fuer ${t} ===`)
-  await build(t)
+  try {
+    await build(t)
+  } catch (err) {
+    // Aktuell-Halten darf den Start nie blockieren: offline oder ffmpeg in Benutzung -> weiter
+    if (MAX_AGE === null) throw err
+    console.warn(
+      hasBins(t)
+        ? `  ⚠ Aktualisieren fehlgeschlagen (${err.message}) – weiter mit dem vorhandenen ffmpeg`
+        : `  ⚠ ffmpeg nicht geladen (${err.message}) – die Werkzeuge zeigen einen Hinweis`
+    )
+  }
 }
