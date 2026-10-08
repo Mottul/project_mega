@@ -211,13 +211,17 @@ describe('buildConvertArgs', () => {
 describe('Fähigkeiten, Fehlertexte, Warteschlange', () => {
   it('Encoder-/Filterlisten von ffmpeg auswerten', () => {
     const enc = parseEncoderNames(' V....D libx264   libx264 H.264\n V.S..D hap   Vidvox Hap\n')
-    const fil = parseFilterNames(' TS bwdif   V->V   Deinterlace\n .S zscale  V->V   Apply\n')
+    const fil = parseFilterNames(
+      ' TS bwdif   V->V   Deinterlace\n .S zscale  V->V   Apply\n .S xfade   VV->V   Cross fade\n'
+    )
     expect([...enc]).toEqual(['libx264', 'hap'])
     const caps = capabilitiesFrom(enc, fil, 'ffmpeg version x')
     expect(caps.formats.hap_q).toBe(true)
     expect(caps.formats.hevc).toBe(false)
     expect(caps.tonemap).toBe(false) // tonemap fehlt
     expect(caps.vpxAlpha).toBe(false)
+    expect(caps.xfade).toBe(true) // zwei Bild-Eingänge: „VV->V“
+    expect(caps.perspective).toBe(false)
     const dec = parseEncoderNames(' V....D libvpx   libvpx VP8\n V..... libvpx-vp9  libvpx VP9\n')
     expect(capabilitiesFrom(enc, fil, null, dec).vpxAlpha).toBe(true)
   })

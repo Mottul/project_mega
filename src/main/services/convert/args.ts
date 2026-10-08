@@ -2,9 +2,15 @@
 // noch Encoder-Wissen (Qualitätsstufen, Level, Container-Flags) – alle inhaltlichen
 // Entscheidungen (Drehung, Pixel, Halbbilder, Bildrate, HDR, Größe, Ton) trifft der Plan.
 
-import { PRORES_PROFILE, type ConvertPlan, type ConvertPlanAudio } from '@shared/convertPlan'
+import {
+  CONVERT_FORMATS,
+  PRORES_PROFILE,
+  type ConvertFormatInfo,
+  type ConvertPlan,
+  type ConvertPlanAudio
+} from '@shared/convertPlan'
 import { loudnormApplyFilter, loudnormMeasureFilter, type LoudnessOutcome } from '@shared/loudness'
-import type { ConvertOptions, ConvertQuality } from '@shared/types'
+import type { ConvertFormat, ConvertOptions, ConvertQuality } from '@shared/types'
 import { encoderPixFmt, hardwareEncoderArgs, type H264Compat } from './encoders'
 
 export interface ConvertIo {
@@ -39,17 +45,33 @@ function h264Compat(width: number, height: number, fps: number | null): H264Comp
   return { level, maxrate: sd ? '25M' : '60M', bufsize: sd ? '50M' : '120M' }
 }
 
-function videoEncoderArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo): string[] {
-  const v = plan.video
-  if (!v) return []
+/** Was der Video-Encoder über das Bild wissen muss (Konverter: aus dem Plan; Video-Generator:
+ *  aus der Ausgabe). */
+export interface EncoderVideo {
+  width: number
+  height: number
+  fps: number | null
+  /** Keyframe-Abstand in Bildern (Long-GOP); null = Encoder-Vorgabe */
+  gop: number | null
+}
+
+export type EncoderOptions = Pick<ConvertOptions, 'quality' | 'compat' | 'hapCompressor'>
+
+/** Encoder-Argumente eines Formats – gemeinsam für Konverter, Player-Import und Video-Generator. */
+export function videoEncoderArgs(
+  format: ConvertFormat,
+  v: EncoderVideo,
+  opts: EncoderOptions,
+  io: Pick<ConvertIo, 'encoder' | 'hapChunks'>
+): string[] {
   const gop = v.gop ? ['-g', String(v.gop)] : []
-  switch (plan.formatInfo.family) {
+  switch (CONVERT_FORMATS[format].family) {
     case 'hap':
       return [
         '-c:v',
         'hap',
         '-format',
-        plan.format,
+        format,
         '-compressor',
         opts.hapCompressor,
         '-chunks',
@@ -97,7 +119,7 @@ function videoEncoderArgs(plan: ConvertPlan, opts: ConvertOptions, io: ConvertIo
     }
     case 'prores': {
       const enc = io.encoder ?? 'prores_ks'
-      const profile = ['-profile:v', String(PRORES_PROFILE[plan.format] ?? 2)]
+      const profile = ['-profile:v', String(PRORES_PROFILE[format] ?? 2)]
       // VideoToolbox schreibt als Apples eigener Encoder ohnehin „apl0“
       if (enc === 'prores_videotoolbox') return ['-c:v', enc, ...profile]
       return ['-c:v', enc, ...profile, '-vendor', 'apl0']
@@ -166,7 +188,7 @@ export function buildConvertArgs(plan: ConvertPlan, opts: ConvertOptions, io: Co
       const pixFmt = v.pixFmt && io.encoder ? encoderPixFmt(io.encoder, v.pixFmt) : v.pixFmt
       const chain = [...v.filters, ...(pixFmt ? [`format=${pixFmt}`] : [])]
       if (chain.length) args.push('-vf', chain.join(','))
-      args.push(...videoEncoderArgs(plan, opts, io))
+      args.push(...videoEncoderArgs(plan.format, v, opts, io))
       // Konstante Bildrate erzwingen: alte AVIs/Streams haben Zeitstempel-Lücken (fehlende
       // Bilder) -> sonst entstünde trotz „konstanter" Quelle eine variable Ausgabe
       if (v.fps && plan.formatInfo.family !== 'image') args.push('-fps_mode', 'cfr')
@@ -190,16 +212,21 @@ export function buildConvertArgs(plan: ConvertPlan, opts: ConvertOptions, io: Co
     }
   }
 
-  switch (plan.formatInfo.container) {
-    case 'mp4':
-      // Index an den Anfang: sofort abspielbar (USB-Player, Browser, Netzlaufwerk)
-      args.push('-movflags', '+faststart')
-      break
-    case 'wav':
-      // über 4 GB automatisch als RF64
-      args.push('-rf64', 'auto')
-      break
-  }
+  args.push(...containerArgs(plan.formatInfo.container))
   args.push('-progress', 'pipe:1', '-nostats', '-y', io.output)
   return args
+}
+
+/** Container-Schalter (Konverter und Video-Generator). */
+export function containerArgs(container: ConvertFormatInfo['container']): string[] {
+  switch (container) {
+    case 'mp4':
+      // Index an den Anfang: sofort abspielbar (USB-Player, Browser, Netzlaufwerk)
+      return ['-movflags', '+faststart']
+    case 'wav':
+      // über 4 GB automatisch als RF64
+      return ['-rf64', 'auto']
+    default:
+      return []
+  }
 }

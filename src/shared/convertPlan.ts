@@ -306,7 +306,8 @@ const FIT_LABEL: Record<ConvertFit, string> = {
   blur: 'Blur-Rand'
 }
 
-const TONEMAP_HEAD =
+/** HDR -> linear -> Rec. 709 mit Tonemapping (auch vom Video-Generator genutzt). */
+export const TONEMAP_HEAD =
   'zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0'
 
 function fitFilters(
@@ -350,7 +351,7 @@ function fitFilters(
 }
 
 /** Farbmatrix der Quelle (null = nicht gekennzeichnet). */
-function sourceMatrix(v: MediaVideoTrack): 'bt709' | 'bt601' | 'bt2020' | null {
+export function sourceMatrix(v: MediaVideoTrack): 'bt709' | 'bt601' | 'bt2020' | null {
   switch (v.colorSpace) {
     case 'bt709':
       return 'bt709'
