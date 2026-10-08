@@ -29,7 +29,7 @@ Die Installation für Anwender steht in [INSTALL.md](INSTALL.md).
 git clone <repo-url>
 cd project_mega
 npm ci              # exakt aus dem Lockfile; postinstall lädt better-sqlite3-Prebuild + Electron
-npm run ff:fetch    # einmalig: HAP-fähiges ffmpeg (Konverter, Player-Import, Medien-Info …)
+npm run ff:fetch    # HAP-fähiges ffmpeg (Konverter, Player-Import …); hält sich danach selbst aktuell
 npm run dev         # App mit Hot Reload
 ```
 
@@ -38,10 +38,13 @@ npm run dev         # App mit Hot Reload
   Git). Die gängigen npm-ffmpeg-Pakete können kein HAP. Vorhandenes wird nicht erneut geladen
   (`--force` erzwingt es, `--platform win|mac|linux` bzw. `--all` für andere Systeme). Ohne ffmpeg
   zeigen die betroffenen Werkzeuge einen Hinweis; im fertigen Paket ist es enthalten.
-  **Aktuell halten:** Die Quellen liefern täglich neue Builds; die CI testet jede Woche gegen den
-  neuesten, der Installer packt den beim Paketieren aktuellen. Lokal ab und zu
-  `npm run ff:fetch -- --force` – sonst entwickelt man gegen einen alten Stand und merkt
-  Verhaltensänderungen erst in der CI (Beispiel: Farbort-Wechsel im Video-Generator, Oktober 2026).
+  **Bleibt automatisch aktuell:** Die Quellen liefern täglich neue Builds. `npm run dev`,
+  `npm start` und `npm run e2e` laden vorher den neuesten, wenn der vorhandene älter als 7 Tage
+  ist (Stand in `resources/ffmpeg/<os>/stand.json`); `npm run package` nimmt einen höchstens einen
+  Tag alten; die CI testet jede Woche gegen den neuesten. Offline oder bei laufendem ffmpeg geht es
+  mit dem vorhandenen weiter. Sofort aktualisieren: `npm run ff:update`. So fallen
+  Verhaltensänderungen beim Entwickeln auf, nicht erst im Installer (Beispiel: Farbort-Wechsel im
+  Video-Generator, Oktober 2026).
 - **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node (als `postinstall` und
   vor `dev`/`start`). Das klappt auch dort, wo Sicherheits-Wrapper electrons eigenes `install.js`
   abfangen. Fehlt die Binary, bricht `npm run dev` mit „Electron uninstall“ ab →
@@ -63,7 +66,8 @@ npm run dev         # App mit Hot Reload
 | `npm run e2e`                       | App bauen und die E2E-Skripte (`e2e/`) über Playwright laufen lassen    |
 | `npm run package`                   | Installer fürs aktuelle OS (holt ffmpeg, baut, electron-builder via npx) |
 | `npm run package:dir`               | nur die entpackte App, ohne Installer – zum schnellen Testen             |
-| `npm run ff:fetch`                  | HAP-fähiges ffmpeg holen                                                 |
+| `npm run ff:fetch`                  | HAP-fähiges ffmpeg holen (vor `dev`/`start`/`e2e` automatisch erneuert, wenn älter als 7 Tage) |
+| `npm run ff:update`                 | ffmpeg sofort auf den neuesten Build bringen                             |
 | `npm run rebuild:native`            | better-sqlite3-Prebuild für die Electron-ABI laden (kein Compiler)       |
 | `npm run electron:bin`              | Electron-Laufzeit-Binary laden                                           |
 | `npm run ndi:setup`                 | optionales NDI-Binding einrichten, siehe [NDI.md](NDI.md)                |
