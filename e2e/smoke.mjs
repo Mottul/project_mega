@@ -3,6 +3,8 @@
 // `launchApp` aus harness.mjs verwenden.
 
 import assert from 'node:assert/strict'
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { launchApp, openRoute, runSteps } from './harness.mjs'
 
 const ctx = await launchApp()
@@ -64,6 +66,40 @@ try {
       async () => {
         const has = await page.evaluate(() => typeof window.api?.getSettings === 'function')
         assert.equal(has, true)
+      }
+    ],
+    [
+      'Datei-Dialoge starten im zuletzt benutzten Ordner (Electron öffnet sonst „Downloads“)',
+      async () => {
+        const medien = join(ctx.userData, 'medien')
+        const exporte = join(ctx.userData, 'exporte')
+        mkdirSync(medien)
+        mkdirSync(exporte)
+        // Dialoge ersetzen: liefern feste Pfade und merken sich den übergebenen Startpfad
+        await ctx.app.evaluate(
+          ({ dialog }, { medien, exporte }) => {
+            const seen = (globalThis.__dialogStarts = [])
+            const opts = (args) => args[args.length - 1]
+            dialog.showOpenDialog = async (...args) => {
+              seen.push(opts(args).defaultPath ?? null)
+              return { canceled: false, filePaths: [medien + '/clip.mp4'] }
+            }
+            dialog.showSaveDialog = async (...args) => {
+              seen.push(opts(args).defaultPath ?? null)
+              return { canceled: false, filePath: exporte + '/liste.json' }
+            }
+          },
+          { medien, exporte }
+        )
+        for (let i = 0; i < 2; i++) {
+          await page.evaluate(() => window.api.selectPaths({ title: 'Dateien' }))
+          await page.evaluate(() => window.api.util.saveText('{}', 'neu.json'))
+        }
+        const starts = await ctx.app.evaluate(() => globalThis.__dialogStarts)
+        assert.deepEqual(starts, [null, 'neu.json', medien, join(exporte, 'neu.json')])
+        const dirs = (await page.evaluate(() => window.api.getSettings())).dialogDirs
+        assert.equal(dirs.dateien, medien)
+        assert.equal(dirs.speichern, exporte)
       }
     ],
     [

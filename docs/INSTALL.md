@@ -7,11 +7,14 @@ in [ENTWICKLUNG.md](ENTWICKLUNG.md#build--paketierung) (`npm run package`, Ergeb
 beim ersten Start selbst — weder Python noch eine der beiden Anwendungen müssen
 von Hand eingerichtet werden.
 
-| System        | Datei                           |
-| ------------- | ------------------------------- |
-| Windows 10/11 | `Mottulbox-<Version>-setup.exe` |
-| macOS         | `Mottulbox-<Version>.dmg`       |
-| Linux         | `Mottulbox-<Version>.AppImage`  |
+| System                       | Datei                           |
+| ---------------------------- | ------------------------------- |
+| Windows 10/11 (64 Bit)       | `Mottulbox-<Version>-setup.exe` |
+| macOS 13 (Ventura) und neuer | `Mottulbox-<Version>.dmg`       |
+| Linux (64 Bit)               | `Mottulbox-<Version>.AppImage`  |
+
+Ältere Systeme (32-Bit-Windows, macOS 12 und älter) unterstützt die zugrunde liegende
+Electron-Version 44 nicht mehr.
 
 ---
 

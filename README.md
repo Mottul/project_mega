@@ -75,7 +75,7 @@ Alles im Detail: [docs/WERKZEUGE.md](docs/WERKZEUGE.md)
 **Entwicklung** (Node.js ≥ 22.12, kein C++-Compiler nötig):
 
 ```bash
-npm ci              # Abhängigkeiten exakt aus dem Lockfile (lädt Prebuild + Electron)
+npm ci              # Abhängigkeiten exakt aus dem Lockfile (lädt Electron, prüft die Prüfsumme)
 npm run ff:fetch    # einmalig: HAP-fähiges ffmpeg
 npm run dev         # App mit Hot Reload
 npm run package     # Installer fürs aktuelle Betriebssystem nach dist/
@@ -97,5 +97,5 @@ Weiter in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
 ## Technik
 
-Electron 42, React 18 und TypeScript (electron-vite), Tailwind CSS, zustand, react-router 7,
+Electron 44, React 18 und TypeScript (electron-vite), Tailwind CSS, zustand, react-router 7,
 `better-sqlite3` (FTS5), `pdfjs-dist`, gebündeltes ffmpeg mit HAP.

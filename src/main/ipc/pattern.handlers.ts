@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { Channels } from '@shared/ipc-contracts'
 import type {
@@ -7,6 +7,7 @@ import type {
   PatternVideoProgress,
   PatternVideoRequest
 } from '@shared/types'
+import { showSaveDialog } from '../services/fileDialogs'
 import { exportColorLoop, exportPatternVideo } from '../services/patternVideo'
 import {
   closePattern,
@@ -32,7 +33,7 @@ export function registerPatternHandlers(): void {
       defaultPath: suggestedName,
       filters: [{ name: 'PNG', extensions: ['png'] }]
     }
-    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
+    const res = await showSaveDialog(win, opts)
     if (res.canceled || !res.filePath) return null
     await writeFile(res.filePath, Buffer.from(bytes))
     return res.filePath
@@ -46,7 +47,7 @@ export function registerPatternHandlers(): void {
       defaultPath: `testbild.${ext}`,
       filters: [{ name: ext.toUpperCase(), extensions: [ext] }]
     }
-    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
+    const res = await showSaveDialog(win, opts)
     if (res.canceled || !res.filePath) return null
 
     const emit = (p: PatternVideoProgress): void => e.sender.send(Channels.patternVideoProgress, p)
@@ -68,7 +69,7 @@ export function registerPatternHandlers(): void {
       defaultPath: `pixelcheck-loop.${ext}`,
       filters: [{ name: ext.toUpperCase(), extensions: [ext] }]
     }
-    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
+    const res = await showSaveDialog(win, opts)
     if (res.canceled || !res.filePath) return null
 
     const emit = (p: PatternVideoProgress): void => e.sender.send(Channels.patternVideoProgress, p)

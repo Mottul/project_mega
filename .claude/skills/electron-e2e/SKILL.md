@@ -11,7 +11,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 
 | Skript | Prüft |
 |---|---|
-| `smoke.mjs` | Start, Kachelhöhen, Suche, Werkzeug öffnen, Programmbrücke, keine Konsolenfehler |
+| `smoke.mjs` | Start, Kachelhöhen, Suche, Werkzeug öffnen, Programmbrücke, Datei-Dialoge merken sich den Ordner, keine Konsolenfehler |
 | `testpattern.mjs` | 2-px-Rasterlinien pixelgenau (Raster und Mapping-Testbild) |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
@@ -61,7 +61,9 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   `e2e/timer.mjs`), bildet das halboffene WLAN-Aussetzen nach; Erholung großzügig abwarten.
 - **Testmedien per lavfi** (`findFfmpeg()`), ohne ffmpeg `throw new Skip(…)`.
 - **Datei- und Speicherdialoge** ebenso per `app.evaluate` ersetzen: `dialog.showOpenDialog` /
-  `dialog.showSaveDialog` liefern feste Pfade (Beispiel `e2e/video-generator.mjs`).
+  `dialog.showSaveDialog` liefern feste Pfade (Beispiel `e2e/video-generator.mjs`). Die Optionen
+  stehen im letzten Argument (davor ggf. das Elternfenster) – so lässt sich auch der Startpfad
+  prüfen (Beispiel `e2e/smoke.mjs`).
 - **`app.evaluate` in Warteschleifen** mit `.catch(() => false)`: Kurz nach dem Start wirft
   Playwright gelegentlich „Resulting promise was garbage collected“ (CI unter Linux).
 - **Beenden testen:** `app.quit()` per `app.evaluate` (in `setTimeout`, sonst reißt die Antwort

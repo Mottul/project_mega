@@ -33,6 +33,9 @@ Preload per Typ zur Vollständigkeit – `npm run typecheck` zeigt vergessene St
 - Logik aus dem Handler in einen Dienst (`src/main/services/…`) oder in `src/shared/` ziehen
   und dort mit vitest testen; der Handler bleibt eine dünne Hülle.
 - ffmpeg-Aufrufe immer über `runFfmpeg()` (siehe CLAUDE.md, Abschnitt Konvertierung).
+- **Datei-Dialoge** immer über `showOpenDialog`/`showSaveDialog` aus `services/fileDialogs.ts`,
+  nie direkt `dialog.show…Dialog`: Seit Electron 43 startet ein Dialog ohne absoluten Pfad im
+  Downloads-Ordner; der Helfer merkt sich den Ordner (je Art, in settings.json).
 
 ## Abschluss
 
