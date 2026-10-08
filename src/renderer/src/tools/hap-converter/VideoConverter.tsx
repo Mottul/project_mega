@@ -33,6 +33,7 @@ import { selectClass } from '@renderer/components/ui/select'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { useKiosk } from '@renderer/launcher/kiosk'
+import { FfmpegPanel } from './FfmpegPanel'
 import { useHandoff } from '@renderer/lib/handoff'
 import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { cn } from '@renderer/lib/utils'
@@ -684,6 +685,8 @@ export function VideoConverter(): JSX.Element {
               Vorhandene Dateien werden nie überschrieben (dann „…_2").
             </span>
           </PanelSection>
+          {/* Wartung – in der Kundenansicht ausgeblendet */}
+          {!locked && <FfmpegPanel />}
         </>
       }
       main={

@@ -5,10 +5,22 @@ import { getConvertCapabilities } from '../services/convert/capabilities'
 import { converterJobs } from '../services/convert/converterJobs'
 import { detectConverterEncoders } from '../services/convert/encoders'
 import { collectMediaFiles, probeMediaInfo, rawMediaInfo } from '../services/ffmpeg/mediaInfo'
+import {
+  checkFfmpegUpdate,
+  ffmpegToolStatus,
+  setFfmpegStatusSink,
+  useBundledFfmpeg
+} from '../services/ffmpeg/ffmpegUpdate'
 import { probe } from '../services/ffmpeg/probe'
+import { broadcast } from '../services/broadcast'
 
 export function registerFfmpegHandlers(): void {
   ipcMain.handle(Channels.ffmpegProbe, (_e, path: string) => probe(path))
+  // ffmpeg in der fertigen App aktuell halten (keine Eingaben – nichts zu prüfen)
+  setFfmpegStatusSink((s) => broadcast(Channels.ffmpegStatusUpdate, s))
+  ipcMain.handle(Channels.ffmpegStatus, () => ffmpegToolStatus())
+  ipcMain.handle(Channels.ffmpegCheckUpdate, () => checkFfmpegUpdate())
+  ipcMain.handle(Channels.ffmpegUseBundled, () => useBundledFfmpeg())
   // Video-Konverter
   ipcMain.handle(Channels.converterCapabilities, () => getConvertCapabilities())
   ipcMain.handle(Channels.converterEncoders, () => detectConverterEncoders())

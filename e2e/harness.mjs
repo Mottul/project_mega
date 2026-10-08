@@ -19,10 +19,11 @@ export const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
  * Startet die App. `env` ergänzt die Umgebung, `args` kommt vor dem Projektordner.
- * Liefert { app, page, userData, close } – `page` ist das Hauptfenster.
+ * `userData`: vorhandenen Ordner weiterverwenden (Neustart nachstellen) – der Aufrufer räumt ihn
+ * dann selbst auf. Liefert { app, page, userData, close } – `page` ist das Hauptfenster.
  */
-export async function launchApp({ env = {}, args = [] } = {}) {
-  const userData = mkdtempSync(join(tmpdir(), 'mottulbox-e2e-'))
+export async function launchApp({ env = {}, args = [], userData: given } = {}) {
+  const userData = given ?? mkdtempSync(join(tmpdir(), 'mottulbox-e2e-'))
   const full = { ...process.env, ...env }
   // Von einer Electron-Umgebung (z. B. der Claude-Desktop-App) geerbt, würde die Binary als
   // reines Node starten statt als App.
@@ -73,7 +74,7 @@ export async function launchApp({ env = {}, args = [] } = {}) {
     userData,
     async close() {
       await app.close().catch(() => {})
-      rmSync(userData, { recursive: true, force: true })
+      if (!given) rmSync(userData, { recursive: true, force: true })
     }
   }
 }

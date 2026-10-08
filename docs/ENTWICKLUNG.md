@@ -42,7 +42,11 @@ npm run dev         # App mit Hot Reload
   `npm start` und `npm run e2e` laden vorher den neuesten, wenn der vorhandene älter als 7 Tage
   ist (Stand in `resources/ffmpeg/<os>/stand.json`); `npm run package` nimmt einen höchstens einen
   Tag alten; die CI testet jede Woche gegen den neuesten. Offline oder bei laufendem ffmpeg geht es
-  mit dem vorhandenen weiter. Sofort aktualisieren: `npm run ff:update`. So fallen
+  mit dem vorhandenen weiter. Sofort aktualisieren: `npm run ff:update`. Die **fertige App**
+  hält sich unter Windows und Linux selbst aktuell (`services/ffmpeg/ffmpegUpdate.ts`, Ablage
+  `userData/ffmpeg/`; E2E `ffmpeg-update` mit lokalem Schein-Server über
+  `MOTTULBOX_FFMPEG_RELEASES_URL`). ffmpeg-Pfade immer über `ffmpegBinPath()` – es liefert den
+  in der App aktualisierten Build, wenn einer aktiv ist. So fallen
   Verhaltensänderungen beim Entwickeln auf, nicht erst im Installer (Beispiel: Farbort-Wechsel im
   Video-Generator, Oktober 2026).
 - **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node (als `postinstall` und

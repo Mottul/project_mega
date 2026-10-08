@@ -22,7 +22,11 @@ const api: ToolboxApi = {
   openToolWindow: (id) => ipcRenderer.invoke(Channels.windowOpenTool, id),
 
   ffmpeg: {
-    probe: (path) => ipcRenderer.invoke(Channels.ffmpegProbe, path)
+    probe: (path) => ipcRenderer.invoke(Channels.ffmpegProbe, path),
+    status: () => ipcRenderer.invoke(Channels.ffmpegStatus),
+    checkUpdate: () => ipcRenderer.invoke(Channels.ffmpegCheckUpdate),
+    useBundled: () => ipcRenderer.invoke(Channels.ffmpegUseBundled),
+    onStatus: (cb) => subscribe(Channels.ffmpegStatusUpdate, (s) => cb(s as never))
   },
 
   converter: {

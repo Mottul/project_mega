@@ -21,6 +21,14 @@ aufgesetzt:
 - **Externe Programme aus offiziellen Quellen:** ffmpeg (BtbN, evermeet.cx) und die
   Electron-Binary per HTTPS beim Einrichten; yt-dlp lädt die App selbst und vergleicht dabei die
   Prüfsumme des Releases.
+- **ffmpeg in der fertigen App** (Windows, Linux; abschaltbar im Video-Konverter): einmal am Tag
+  der neueste Build von BtbN, der **mindestens 7 Tage alt** ist (dieselbe Regel wie für npm-Pakete;
+  bis dahin hat ihn auch die CI getestet). Download nur von
+  `github.com/BtbN/FFmpeg-Builds/releases/download/…` – eine veränderte API-Antwort kann keine
+  andere Quelle unterschieben –, Prüfung gegen die `checksums.sha256` desselben Releases (sichert
+  die Übertragung, nicht das Release selbst), Selbsttest (Encoder, Filter, Probe-Kodierung) und
+  Aktivierung erst beim nächsten Start; „Mitgeliefertes verwenden“ sperrt den Build. macOS
+  aktualisiert nicht in der App: evermeet.cx liefert nur GPG-Signaturen, keine Prüfsummen.
 
 ### Installation
 

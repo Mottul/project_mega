@@ -12,6 +12,7 @@ import {
 } from './ipc/registry'
 import { appIconPath } from './services/appIcon'
 import { killAllFfmpeg } from './services/convert/runFfmpeg'
+import { initFfmpegUpdates } from './services/ffmpeg/ffmpegUpdate'
 import { logLine } from './services/log'
 import { hasRunningWork, stopAllWork } from './services/shutdown'
 import { disposeOsc } from './services/osc/oscService'
@@ -169,6 +170,8 @@ function migrateUserData(): void {
 app.whenReady().then(() => {
   migrateUserData() // vor jedem Zugriff auf DB/Settings
   logLine('--- Start ---', `packaged=${app.isPackaged}`)
+  // vor jedem ffmpeg-Aufruf: bereitliegenden Build aktivieren, tägliche Prüfung planen
+  initFfmpegUpdates()
   logLine('appPath=', app.getAppPath())
   logLine('resourcesPath=', process.resourcesPath)
   logLine('userData=', app.getPath('userData'))

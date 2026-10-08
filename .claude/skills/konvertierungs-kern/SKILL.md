@@ -17,7 +17,7 @@ rein in `mediaInfoParse.ts`), **alle Entscheidungen in `src/shared/convertPlan.t
 | Encoder (GPU/CPU), Probelauf, Rückfall | `convert/encoders.ts` (`resolveConverterEncoder`, `encodeWithFallback`), Wahl in `shared/encoderChoice.ts` |
 | Fähigkeiten des gebündelten ffmpeg (Filter, Encoder) | `convert/capabilities.ts` |
 | Lautheit (EBU R128, zweistufig) | `shared/loudness.ts` (rein) + `convert/loudness.ts` (`measureLoudness`), Ergebnis als `loudness` an `buildConvertArgs` |
-| ffmpeg ausführen | **immer** `runFfmpeg()` (Fortschritt aus `-progress`, Abbruch per `AbortSignal`, Fehlertext) |
+| ffmpeg ausführen | **immer** `runFfmpeg()` (Fortschritt aus `-progress`, Abbruch per `AbortSignal`, Fehlertext); Pfade nur über `ffmpegBinPath()` – es liefert den in der App aktualisierten Build (`ffmpeg/ffmpegUpdate.ts`, gilt ab dem nächsten Start), sonst den mitgelieferten |
 | Warteschlange | `convert/queue.ts` (Spuren `player`/`converter`, Grenze `setLimit`, Ausschluss gleicher Quellen) |
 | Video-Generator | Zeitachse, Ken Burns, Filter, Bildliste (auch Ausschnitte), Ton-Graph, Musik, Absenken rein in `shared/videoGenPlan.ts` (+ Labortest `convert/videoGen.lab.test.ts` mit echtem ffmpeg); gemeinsame Schritte `convert/videoGenRender.ts`, Rechenlauf `convert/videoGenJobs.ts`, „Vorschau rechnen“ `convert/videoGenPreview.ts` |
 
