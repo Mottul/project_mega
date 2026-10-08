@@ -83,6 +83,10 @@ react-router-dom 7.18.4, vitest 4.1.11, postcss 8.5.28 und vite 7.3.6 (samt Unte
   Fenster (`window.open` gesperrt); externe Links gehen an den Standardbrowser.
 - **Eigene Protokolle** für Handbücher, Player-Medien und Jingles (`manual:`, `media:`, `jingle:`)
   liefern nur Dateien aus den App-Ablagen – der Renderer braucht keinen `file://`-Zugriff.
+  `media://vgen/…` liefert nur Vorschaubilder des Video-Generators aus `vgen-cache/thumbs`
+  (sichere Namen, nur `.jpg`). Projekte des Video-Generators prüft der main-Prozess Feld für
+  Feld, bevor sie an ffmpeg gehen: erlaubte Werte, Grenzen, nur absolute Pfade ohne Protokolle
+  (ffmpeg öffnet sonst auch `concat:`, `http:` …), die Zieldatei darf keine Quelle sein.
 - **Kein `eval` im Renderer:** Die Content-Security-Policy verbietet `unsafe-eval`; pdfjs 6 kommt
   ohne eval aus – präparierte PDFs können darüber keinen Code ausführen. (`'unsafe-inline'` für
   Skripte braucht noch der Vite-Dev-Server, siehe Roadmap.)

@@ -1,6 +1,6 @@
 # Werkzeuge
 
-Alle 22 Werkzeuge im Detail, gegliedert wie auf dem Startbildschirm. Die Handy-Fernsteuerung hat
+Alle 23 Werkzeuge im Detail, gegliedert wie auf dem Startbildschirm. Die Handy-Fernsteuerung hat
 eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
 
 - [Startbildschirm & Bedienung](#startbildschirm--bedienung)
@@ -10,7 +10,7 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   DMX-Dip-Schalter
 - [Bild & Projektion](#bild--projektion) – LED-Wall-Konfigurator, Projektionsverhältnis,
   Kameraobjektiv, Beamer-Lumen
-- [Medien & Bibliothek](#medien--bibliothek) – Video-Konverter, Medien-Info,
+- [Medien & Bibliothek](#medien--bibliothek) – Video-Konverter, Video-Generator, Medien-Info,
   Manuals-Bibliothek, YouTube-Downloader
 - [Strom, Rigging & Aufbau](#strom-rigging--aufbau) – Packliste, Stromlast & Absicherung,
   Rigging-Last
@@ -273,8 +273,9 @@ Clips passend fürs Zielsystem (früher „HAP-Konverter“).
 - **Sicher:** überschreibt nie (`…_2`), halbfertige Dateien werden entfernt; „Ergebnis prüfen“
   öffnet die fertige Datei in der Medien-Info.
 
-**Der gemeinsame Konvertierungs-Kern** – genutzt von Video-Konverter, Player-Import und
-Testbild-Export – entscheidet je Datei:
+**Der gemeinsame Konvertierungs-Kern** – genutzt von Video-Konverter und Player-Import; der
+Video-Generator nutzt seine Analyse, Encoder, Lautheit und Warteschlange, der Testbild-Export nur
+den ffmpeg-Runner und die Farbkennung – entscheidet je Datei:
 
 - Drehung/Spiegelung und anamorphe Pixel fest einrechnen,
 - Deinterlace (25i → 50p), variable → konstante Bildrate,
@@ -288,6 +289,46 @@ Testbild-Export – entscheidet je Datei:
 Die Warteschlange hat eine eigene Spur für den Player (gleichzeitige Importe einstellbar). Geprüft mit über 60 echten
 Konvertierungen (Kontrolle per ffprobe).
 
+### Video-Generator
+
+Bilder und Videos zu **einem** Video – Foto-Diashow (Gala, Hochzeit) oder Sponsor-Loop für die
+LED-Wand.
+
+- **Elemente:** Fotos (JPG, PNG, WebP, BMP, TIFF), Videos und GIFs (als Schleife über die
+  Standzeit) per Ziehen – auch an eine bestimmte Stelle –, Dialog oder Ordner. Fotos werden mit
+  ihrer EXIF-Drehung gelesen. Fehlt eine Datei, ist das Element rot und „Video erzeugen“ gesperrt.
+- **Storyboard** in Abspielreihenfolge mit Vorschaubildern, Übergang zwischen den Kacheln und
+  Zeitlineal; bei vielen Fotos als Liste. Reihenfolge per Ziehen (auch mehrere zugleich), Pfeilen
+  oder Alt+←/→; sortieren nach Name (natürlich: „2“ vor „10“), Aufnahmedatum oder Typ; „Mischen“
+  würfelt die Liste einmal sichtbar um – gerendert wird genau, was man sieht.
+- **Je Element** (auch für mehrere zugleich, leer = Vorgabe): Standzeit, bei Videos **Start und
+  Ende** (ein Ausschnitt; soll ein Clip zweimal vorkommen, einfach zweimal hinzufügen), Originalton,
+  Einpassen (Füllen, Ränder in Hintergrundfarbe, Blur-Rand), Ken Burns und der Übergang danach.
+- **Übergänge:** Schnitt, Überblenden, über Schwarz/Weiß, Auflösen, Wischen, Schieben, Kreis,
+  weiches Wischen, Zoom; zu lange werden auf die Hälfte des kürzeren Nachbarn gekürzt (Hinweis).
+- **Ken Burns** (Fotos): automatisch (wechselnd, Hochkantfotos schwenken senkrecht), Zoom
+  rein/raus oder Schwenk in vier Richtungen, sanft/mittel/stark. Gerechnet über `perspective`
+  mit Subpixel-Genauigkeit – auch langsame Schwenks ruckeln auf der LED-Wand nicht. Die Vorschau
+  zeigt Anfang und Ende genau so, wie sie gerechnet werden.
+- **Nahtlose Schleife:** Das Ende blendet in den Anfang – vom letzten zum ersten Bild der Datei
+  gibt es keinen Sprung; Musik blendet dann ebenfalls vom Ende in den Anfang.
+- **Ausgabe:** Größe (HD, 4K, Hochkant, eigene, „Wie Player-Wand“, „Aus LED-Wall-Konfigurator“),
+  Bildrate (auch 23,976/29,97/59,94), Format wie im Video-Konverter (H.264, H.265, ProRes, HAP,
+  HAP Q) mit GPU-Encoder und CPU-Rückfall.
+- **Ton:** Originalton der Videos (in Übergängen verblendet), eine Musikdatei (geschnitten bzw.
+  wiederholt, Ein-/Ausblenden, Pegel), Lautheit nach EBU R128 am fertigen Mix.
+- **Rechnen in Stücken:** Jedes Element und jeder Übergang wird einzeln gerechnet und
+  zwischengespeichert; danach setzt ein Endlauf alles zusammen. Ändert man ein Element, werden nur
+  dieses und seine Übergänge neu gerechnet. Bild und Ton liegen auf das Bild bzw. Sample genau
+  (auch bei 29,97 fps), der Speicherbedarf bleibt unabhängig von der Länge. Vorher wird der
+  Platz für die Zwischendateien geprüft (etwa 320 MB je Minute 1080p); der Zwischenspeicher hat
+  eine Obergrenze und lässt sich leeren.
+- **Aufträge** mit Fortschritt in Stufen (Analyse, Elemente, Übergänge, Ton, Kodieren) und
+  Abbrechen (eine halbe Datei bleibt nie liegen); danach „In Player-Bibliothek übernehmen“,
+  „In Medien-Info prüfen“, „Im Ordner zeigen“. Der Startbildschirm zeigt „rechnet · x %“.
+- Das Projekt wird gemerkt. Aufträge teilen sich die Warteschlange (und GPU-Sitzungen) mit dem
+  Video-Konverter.
+
 ### Medien-Info
 
 Video- und Audio-Eckdaten per ffprobe: Auflösung, Bildrate, Codec, Bitrate, Ton, Timecode …
@@ -299,7 +340,8 @@ Video- und Audio-Eckdaten per ffprobe: Auflösung, Bildrate, Codec, Bitrate, Ton
 - **Show-Check:** Ampel-Hinweise je Prüfprofil (Zielsystem, Show-Raster, Datenträger).
 - **Playlist-Vergleich** mit hervorgehobenen Abweichungen.
 - **Kopieren** als Steckbrief, Kurzzeile oder Tabelle; **Export** als CSV (für Excel) oder JSON.
-- **„Konvertieren“** übergibt die Dateien samt Zielsystem und Show-Raster an den Video-Konverter.
+- **„Konvertieren“** übergibt die Dateien samt Zielsystem und Show-Raster an den Video-Konverter,
+  **„Zu einem Video zusammenfügen …“** Bilder und Videos an den Video-Generator.
 
 Der Parser ist an rund 140 echten Testdateien geprüft; 29 typische ffprobe-Ausgaben sind als
 Fixture-Tests hinterlegt.
@@ -360,6 +402,10 @@ mit Warnstufen. Richtwerte – ersetzt keinen Sachkundigen.
 
 - **Medien-Info → Video-Konverter:** „Konvertieren“ übergibt die Dateien samt Zielsystem und
   Show-Raster. Zurück geht es mit „Quelle“, „Details“ oder „Ergebnis in Medien-Info prüfen“.
+- **Video-Konverter / Medien-Info → Video-Generator:** „Zu einem Video zusammenfügen …“ übergibt
+  die Dateien (Ordner werden dort aufgelöst). Das Ergebnis geht mit „In Player-Bibliothek
+  übernehmen“ an den Video-Player (Wand-Auflösung und Einpassen wie dort eingestellt) und mit
+  „In Medien-Info prüfen“ zur Kontrolle.
 - **LED-Wall-Konfigurator → Packliste:** übernimmt Module, Standfüße, Ballast und Kabel und
   öffnet die Packliste im eigenen Fenster.
 - **Netzwerk-Scanner → NovaStar:** IP eines Geräts in die NovaStar-Steuerung bzw. die
@@ -382,6 +428,7 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 | `library.db`            | Bibliothek von Manuals und Video-Player (SQLite)                         |
 | `player-media/`         | konvertierte Player-Medien und Thumbnails                                |
 | `player-uploads/`       | vom Handy hochgeladene Originale                                         |
+| `vgen-cache/`           | Video-Generator: Zwischenstücke (begrenzt, älteste zuerst gelöscht), Vorschaubilder |
 | `jingles/`              | Audiodateien des Jingle-Players                                          |
 | `manuals/`              | importierte Handbücher                                                   |
 | `bin/`                  | yt-dlp                                                                   |

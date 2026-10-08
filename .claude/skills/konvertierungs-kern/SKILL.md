@@ -19,6 +19,7 @@ rein in `mediaInfoParse.ts`), **alle Entscheidungen in `src/shared/convertPlan.t
 | Lautheit (EBU R128, zweistufig) | `shared/loudness.ts` (rein) + `convert/loudness.ts` (`measureLoudness`), Ergebnis als `loudness` an `buildConvertArgs` |
 | ffmpeg ausführen | **immer** `runFfmpeg()` (Fortschritt aus `-progress`, Abbruch per `AbortSignal`, Fehlertext) |
 | Warteschlange | `convert/queue.ts` (Spuren `player`/`converter`, Grenze `setLimit`, Ausschluss gleicher Quellen) |
+| Video-Generator | Zeitachse, Ken Burns, Filter, Bildliste, Ton-Graph rein in `shared/videoGenPlan.ts` (+ Labortest `convert/videoGen.lab.test.ts` mit echtem ffmpeg); Rechenlauf `convert/videoGenJobs.ts` |
 
 ## Vorgehen
 

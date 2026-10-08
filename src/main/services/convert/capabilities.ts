@@ -45,7 +45,9 @@ export function capabilitiesFrom(
     version,
     formats,
     tonemap: filters.has('zscale') && filters.has('tonemap'),
-    vpxAlpha: decoders.has('libvpx-vp9') && decoders.has('libvpx')
+    vpxAlpha: decoders.has('libvpx-vp9') && decoders.has('libvpx'),
+    xfade: filters.has('xfade'),
+    perspective: filters.has('perspective')
   }
 }
 
@@ -80,7 +82,9 @@ async function detect(): Promise<ConvertCapabilities> {
       error: err instanceof Error ? err.message : String(err),
       formats,
       tonemap: false,
-      vpxAlpha: false
+      vpxAlpha: false,
+      xfade: false,
+      perspective: false
     }
   }
 }

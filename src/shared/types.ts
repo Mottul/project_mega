@@ -273,6 +273,9 @@ export interface ConvertCapabilities {
   tonemap: boolean
   /** libvpx-Decoder: nur sie lesen den Alpha-Kanal von VP8/VP9-WebM */
   vpxAlpha: boolean
+  /** Video-Generator: Übergänge (xfade) und Ken Burns (perspective) */
+  xfade: boolean
+  perspective: boolean
 }
 
 export interface ConverterEnqueueRequest {
@@ -300,6 +303,155 @@ export interface ConverterJob {
   durationSec: number | null
   error?: string
   createdAt: number
+}
+
+/* ---------------------------- Video-Generator ----------------------------- */
+// Diashow & Montage: aus Bildern und Videos EIN Video. Das Projekt hält nur, was der Nutzer
+// einstellt; Bildzahlen, Ton-Samples, Ken-Burns-Bahnen und ffmpeg-Befehle rechnet
+// shared/videoGenPlan.ts (Plan und Messwerte: docs/PLAN-VIDEO-GENERATOR.md).
+
+/** Einpassen in die Zielgröße: füllen (Rand beschnitten), Ränder in Hintergrundfarbe, Blur-Rand. */
+export type VgenFit = 'crop' | 'bars' | 'blur'
+
+/** Kuratierte xfade-Übergänge; 'cut' = harter Schnitt (ohne Übergangs-Stück). */
+export type VgenTransitionKind =
+  | 'cut'
+  | 'fade'
+  | 'fadeblack'
+  | 'fadewhite'
+  | 'dissolve'
+  | 'wipeleft'
+  | 'wiperight'
+  | 'slideleft'
+  | 'slideright'
+  | 'slideup'
+  | 'slidedown'
+  | 'circleopen'
+  | 'smoothleft'
+  | 'smoothright'
+  | 'zoomin'
+
+export interface VgenTransition {
+  kind: VgenTransitionKind
+  durationSec: number
+}
+
+export type VgenKenBurnsMode =
+  | 'off'
+  | 'auto' // wechselnd, aus der Element-id; Hochkant schwenkt senkrecht
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'pan-left'
+  | 'pan-right'
+  | 'pan-up'
+  | 'pan-down'
+
+export type VgenKenBurnsStrength = 'soft' | 'medium' | 'strong'
+
+export interface VgenKenBurns {
+  mode: VgenKenBurnsMode
+  strength: VgenKenBurnsStrength
+}
+
+/** gif = animiertes GIF (Schleife über die Standzeit); ein GIF mit einem Bild ist ein Bild. */
+export type VgenElementKind = 'image' | 'video' | 'gif'
+
+export interface VgenElement {
+  /** stabil (crypto.randomUUID); Grundlage für Ken Burns „automatisch“ */
+  id: string
+  path: string
+  kind: VgenElementKind
+  /** Bild/GIF: Standzeit in s; null = Vorgabe */
+  durationSec: number | null
+  /** Video: Ausschnitt in s; null = Anfang bzw. Ende */
+  inSec: number | null
+  outSec: number | null
+  /** nur Bilder; null = Vorgabe */
+  kenBurns: VgenKenBurns | null
+  /** null = Vorgabe */
+  fit: VgenFit | null
+  /** Übergang zum NÄCHSTEN Element (beim letzten: in den Anfang, nur mit Schleife); null = Vorgabe */
+  transition: VgenTransition | null
+  /** Originalton (nur Videos) */
+  audio: boolean
+}
+
+export interface VgenMusic {
+  path: string
+  gainDb: number
+  fadeInSec: number
+  fadeOutSec: number
+}
+
+export interface VgenOutput {
+  width: number
+  height: number
+  fps: number
+  /** h264, hevc, prores_* (ohne 4444), hap, hap_q – Transparenz kommt später */
+  format: ConvertFormat
+  quality: ConvertQuality
+  /** nahtlose Schleife: das Ende blendet in den Anfang (Sponsor-Loop) */
+  loop: boolean
+  /** Hintergrund für Ränder und Transparenz, „#rrggbb“ */
+  background: string
+}
+
+export interface VgenDefaults {
+  imageSec: number
+  transition: VgenTransition
+  kenBurns: VgenKenBurns
+  fit: VgenFit
+}
+
+export interface VgenProject {
+  elements: VgenElement[]
+  output: VgenOutput
+  defaults: VgenDefaults
+  music: VgenMusic | null
+  /** Lautheit nach EBU R128 (gemessen am fertigen Ton-Mix); null = unverändert */
+  loudnorm: { i: number; tp: number; lra: number } | null
+}
+
+/** Hinweis des Plans (Fehler sperren das Erzeugen). */
+export interface VgenHint {
+  id: string
+  level: 'error' | 'warning' | 'info'
+  text: string
+  elementId?: string
+}
+
+export type VgenJobStage = 'analyze' | 'elements' | 'transitions' | 'audio' | 'encode'
+
+export interface VgenJob {
+  id: string
+  status: JobStatus
+  stage: VgenJobStage | null
+  /** „Elemente 3/12“ … */
+  stageText: string
+  progress: number // 0..1 über alle Stufen
+  outputPath: string
+  /** Name des Projekts in der Auftragsliste (Dateiname ohne Endung) */
+  title: string
+  durationSec: number | null
+  width: number
+  height: number
+  fps: number
+  formatLabel: string
+  /** kodiert mit (Bezeichnung), sobald feststeht */
+  encoder: string | null
+  /** Stücke aus dem Zwischenspeicher übernommen / neu gerechnet */
+  cachedPieces: number
+  renderedPieces: number
+  hints: VgenHint[]
+  error?: string
+  createdAt: number
+  finishedAt?: number
+}
+
+export interface VgenEnqueueRequest {
+  project: VgenProject
+  /** Zieldatei (aus dem Speicherdialog) */
+  outputPath: string
 }
 
 /* ------------------------------- Manuals -------------------------------- */
@@ -1284,6 +1436,14 @@ export interface ConverterSettings {
 
 export const DEFAULT_CONVERTER_SETTINGS: ConverterSettings = { encoder: 'auto' }
 
+/** Video-Generator: Vorschlag für den Speicherort (das Projekt selbst liegt im Werkzeug-Store). */
+export interface VideoGenSettings {
+  /** zuletzt gewählter Zielordner; leer bis zur ersten Wahl */
+  outputDir: string
+}
+
+export const DEFAULT_VIDEOGEN_SETTINGS: VideoGenSettings = { outputDir: '' }
+
 /** Eingerichteter Ablauf des Stage-Timers (ohne Laufzustand) – übersteht Neustarts. */
 export interface TimerSetup {
   segments: TimerSegment[]
@@ -1360,6 +1520,8 @@ export interface AppSettings {
   timer: TimerSettings
   /** Video-Konverter: Encoder-Wahl */
   converter: ConverterSettings
+  /** Video-Generator: zuletzt gewählter Zielordner */
+  videoGen: VideoGenSettings
   /** Fernsteuerungen von Jingle-Player, OSC-Steuerung und Stage-Timer (der
    *  Video-Player merkt sich seine unter player.remoteEnabled/remotePort). */
   remoteControls: Record<Exclude<RemoteControlId, 'player'>, RemoteControlSetting>
@@ -1400,5 +1562,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   youtube: DEFAULT_YOUTUBE_SETTINGS,
   timer: DEFAULT_TIMER_SETTINGS,
   converter: DEFAULT_CONVERTER_SETTINGS,
+  videoGen: DEFAULT_VIDEOGEN_SETTINGS,
   remoteControls: DEFAULT_REMOTE_CONTROLS
 }

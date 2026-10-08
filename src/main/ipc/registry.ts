@@ -11,6 +11,7 @@ import { jingleContentType, resolveJingleFile } from '../services/jingleLibrary'
 import { logFilePath, logLine } from '../services/log'
 import { resolveManualFile } from '../services/manuals/manualsService'
 import { resolveMediaFile } from '../services/player/mediaLibrary'
+import { resolveVgenFile } from '../services/convert/videoGenCache'
 import { getSettings, onSettingsChange, setSettings } from '../services/store'
 import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
@@ -23,6 +24,7 @@ import { registerPatternHandlers } from './pattern.handlers'
 import { registerPlayerHandlers } from './player.handlers'
 import { registerTimerHandlers } from './timer.handlers'
 import { registerUtilHandlers } from './util.handlers'
+import { registerVideoGenHandlers } from './videoGen.handlers'
 import { registerYoutubeHandlers } from './youtube.handlers'
 
 /** Bedient das custom `manual://`-Protocol (PDF-Bytes der Bibliothek). */
@@ -81,7 +83,9 @@ export function registerMediaProtocol(): void {
   protocol.handle(MEDIA_PROTOCOL, async (request) => {
     try {
       const url = new URL(request.url)
-      const abs = resolveMediaFile(url.pathname)
+      // media://vgen/… = Vorschaubilder des Video-Generators (eigener, abgesicherter Ordner)
+      const abs =
+        url.host === 'vgen' ? resolveVgenFile(url.pathname) : resolveMediaFile(url.pathname)
       if (!abs) return new Response('Not found', { status: 404 })
 
       const total = (await stat(abs)).size
@@ -224,6 +228,7 @@ export function registerIpcHandlers(): void {
   registerOscHandlers()
   registerNovastarHandlers()
   registerNetscanHandlers()
+  registerVideoGenHandlers()
 }
 
 /** Verbindet die Live-Job-Updates mit ALLEN Fenstern (Multi-Window: ein Video-

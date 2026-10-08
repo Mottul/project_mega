@@ -36,6 +36,17 @@ const api: ToolboxApi = {
     onUpdate: (cb) => subscribe(Channels.converterUpdate, (job) => cb(job as never))
   },
 
+  videoGen: {
+    thumb: (path, timeSec, width) => ipcRenderer.invoke(Channels.vgenThumb, path, timeSec, width),
+    pickOutput: (format, name) => ipcRenderer.invoke(Channels.vgenPickOutput, format, name),
+    enqueue: (req) => ipcRenderer.invoke(Channels.vgenEnqueue, req),
+    list: () => ipcRenderer.invoke(Channels.vgenList),
+    cancel: (id) => ipcRenderer.invoke(Channels.vgenCancel, id),
+    clearFinished: () => ipcRenderer.invoke(Channels.vgenClearFinished),
+    clearCache: () => ipcRenderer.invoke(Channels.vgenClearCache),
+    onUpdate: (cb) => subscribe(Channels.vgenUpdate, (job) => cb(job as never))
+  },
+
   mediaInfo: {
     probe: (path, opts) => ipcRenderer.invoke(Channels.mediaInfoProbe, path, opts),
     raw: (path) => ipcRenderer.invoke(Channels.mediaInfoRaw, path),

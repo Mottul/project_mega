@@ -14,6 +14,9 @@ import type {
   ConverterEncoderStatus,
   ConverterEnqueueRequest,
   ConverterJob,
+  ConvertFormat,
+  VgenEnqueueRequest,
+  VgenJob,
   ImportProgress,
   MediaCollectResult,
   MediaInfoResult,
@@ -90,6 +93,14 @@ export const Channels = {
   converterCancelAll: 'converter:cancelAll',
   converterClearFinished: 'converter:clearFinished',
   converterUpdate: 'converter:update', // Event: ConverterJob
+  vgenThumb: 'vgen:thumb',
+  vgenPickOutput: 'vgen:pickOutput',
+  vgenEnqueue: 'vgen:enqueue',
+  vgenList: 'vgen:list',
+  vgenCancel: 'vgen:cancel',
+  vgenClearFinished: 'vgen:clearFinished',
+  vgenClearCache: 'vgen:clearCache',
+  vgenUpdate: 'vgen:update', // Event: VgenJob
   // Medien-Info (ffprobe)
   mediaInfoProbe: 'mediaInfo:probe',
   mediaInfoRaw: 'mediaInfo:raw',
@@ -280,6 +291,23 @@ export interface ToolboxApi {
     clearFinished(): Promise<void>
     /** Live-Updates einzelner Aufträge. Liefert eine Cleanup-Funktion. */
     onUpdate(cb: (job: ConverterJob) => void): () => void
+  }
+
+  videoGen: {
+    /** Vorschaubild (media://vgen/…) einer Datei; Videos zum Zeitpunkt timeSec; Breite 320 (Kachel)
+     *  oder 960 (Vorschau). null = nicht lesbar. */
+    thumb(path: string, timeSec: number | null, width?: 320 | 960): Promise<string | null>
+    /** Speicherdialog für das Ergebnis (merkt sich den Ordner). null = abgebrochen. */
+    pickOutput(format: ConvertFormat, suggestedName: string): Promise<string | null>
+    /** Projekt rechnen (wird im main feldweise geprüft); wirft bei ungültiger Eingabe. */
+    enqueue(req: VgenEnqueueRequest): Promise<{ jobId: string }>
+    list(): Promise<VgenJob[]>
+    cancel(id: string): Promise<void>
+    clearFinished(): Promise<void>
+    /** Zwischengespeicherte Stücke löschen (der nächste Lauf rechnet alles neu). */
+    clearCache(): Promise<void>
+    /** Live-Updates einzelner Aufträge. Liefert eine Cleanup-Funktion. */
+    onUpdate(cb: (job: VgenJob) => void): () => void
   }
 
   mediaInfo: {

@@ -1,8 +1,9 @@
 # Plan: Video-Generator (Diashow & Montage)
 
-**Status:** Plan, noch nicht umgesetzt (Phase 0 erledigt). **Stand:** 7. Oktober 2026 (Code-Basis
-`main` nach PR #110). Die [Festlegungen](#festlegungen) (Name, Hauptzweck, Musik, Titel/Logo)
-sind getroffen – die Umsetzung kann mit Phase 1 beginnen.
+**Status:** Phase 0 und Phase 1 umgesetzt (8. Oktober 2026, Branch `video-generator`) – das
+Werkzeug steht in [WERKZEUGE.md](WERKZEUGE.md#video-generator). Offen sind Phase 2 und 3; dafür
+bleibt dieser Plan mit Messwerten und Stolpersteinen stehen. Die [Festlegungen](#festlegungen)
+(Name, Hauptzweck, Musik, Titel/Logo) gelten weiter.
 
 Bilder und Videos hineinladen, ein Gesamtvideo herausbekommen: Anzeigedauer, Übergänge,
 Reihenfolge, Ken-Burns-Effekt, einstellbare Zielgröße. Die Messwerte unten stammen aus Versuchen
@@ -311,6 +312,23 @@ Alle gemessen – die naheliegenden Rezepte gehen hier schief:
 - **Handyfotos:** ffmpeg dreht sie beim Dekodieren nach EXIF, die Analyse sieht die Drehung aber
   nicht ([Phase 0](#phase-0-exif-drehung-von-fotos-betrifft-heute-den-player)).
 
+Bei der Umsetzung (Labortest `src/main/services/convert/videoGen.lab.test.ts`, bildgenau mit
+Prüfsummen an jeder Stückgrenze) kamen drei weitere dazu:
+
+- **Standbild bei 29,97 fps:** `setpts=N/(Rate)/TB` rechnet in der Zeitbasis des Bild-Eingangs
+  (1/25); bei NTSC-Raten runden Zeitstempel aufeinander und `fps` verwirft Bilder (44 statt 45).
+  Erst `settb` auf die Bildrate, dann `setpts=N`. Das Rezept oben galt nur bei 25 fps.
+- **`inpoint` im concat-Demuxer** springt zum Schlüsselbild VOR dem Zeitpunkt und gibt es mit aus
+  (anders als `-ss` an der Kommandozeile, das verwirft) – ein halbes Bild Vorlauf bringt je
+  inpoint ein Bild zu viel. Exakte Bildzeiten mit 6 Nachkommastellen runden beim Umrechnen in
+  die Zeitbasis der Stücke wieder genau auf den Takt. Für die Übergangs-Stücke (`-ss`) ist der
+  halbe Bild Vorlauf dagegen richtig.
+- **`boxblur`** verlangt einen Radius unter der halben Kantenlänge der (halb so großen)
+  Farbebene – bei kleinen Ausgaben (Vorschau, 320 × 180) Radius anpassen.
+
+Der gebündelte Windows-Build vom 1. Juni 2026 kennt `-/filter_complex` ebenfalls (und noch
+`-filter_complex_script`); verwendet wird `-/filter_complex`.
+
 ## Umsetzung im Code
 
 ### Konvertierungs-Kern (kleine Umbauten, Konverter und Player bleiben unverändert)
@@ -436,7 +454,7 @@ ffprobe-Ausgabe eines EXIF-gedrehten Testfotos als Fixture).
 | Phase | Inhalt | Umfang |
 |---|---|---|
 | 0 | ✅ EXIF-Drehung in der Analyse (Player profitiert sofort) | klein |
-| 1 | Kern-Umbauten, `videoGenPlan`, Rechenlauf mit Cache, Werkzeug mit Storyboard, Vorgaben, Ausgabe, Videoausschnitt (Start/Ende), nahtlose Schleife, Musik einfach (eine Datei), Übergaben | groß |
+| 1 | ✅ Kern-Umbauten, `videoGenPlan`, Rechenlauf mit Cache, Werkzeug mit Storyboard, Vorgaben, Ausgabe, Videoausschnitt (Start/Ende), nahtlose Schleife, Musik einfach (eine Datei), Übergaben | groß |
 | 2 | Live-Vorschau und „Vorschau rechnen“, Ken-Burns-Rahmen, Videoausschnitt grafisch, Musik-Ausbau | mittel |
 | 3 | Titel, Logo, LUT, Vorlagen | nach Bedarf |
 

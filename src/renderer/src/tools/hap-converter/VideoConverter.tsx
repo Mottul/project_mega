@@ -14,6 +14,7 @@ import {
   Film,
   FolderOpen,
   FolderSearch,
+  Images,
   Loader2,
   Play,
   SlidersHorizontal,
@@ -25,6 +26,7 @@ import {
 import { Badge, type BadgeTone } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { Checkbox } from '@renderer/components/ui/checkbox'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { selectClass } from '@renderer/components/ui/select'
@@ -201,6 +203,12 @@ export function VideoConverter(): JSX.Element {
       setOutputDir(paths[0])
       void api.setSettings({ lastHapOutputDir: paths[0] })
     }
+  }
+
+  // Eingaben an den Video-Generator: zu EINEM Video zusammenfügen (Ordner löst er selbst auf)
+  function sendToGenerator(): void {
+    useHandoff.getState().givePaths('video-generator', inputs)
+    navigate('/tool/video-generator')
   }
 
   function showInMediaInfo(path: string): void {
@@ -719,6 +727,15 @@ export function VideoConverter(): JSX.Element {
               <Button variant="secondary" onClick={() => void addFolder()}>
                 <FolderOpen className="size-4" /> Ordner hinzufügen
               </Button>
+              {inputs.length > 0 && !locked && (
+                <Button
+                  variant="outline"
+                  onClick={sendToGenerator}
+                  title="Im Video-Generator zu einem Video zusammenfügen (Diashow/Montage)"
+                >
+                  <Images className="size-4" /> Zu einem Video zusammenfügen …
+                </Button>
+              )}
               <div className="flex-1" />
               <Button
                 onClick={() => void start()}
@@ -841,36 +858,6 @@ export function VideoConverter(): JSX.Element {
         </div>
       }
     />
-  )
-}
-
-function Checkbox({
-  checked,
-  onChange,
-  label,
-  hint,
-  disabled
-}: {
-  checked: boolean
-  onChange: (v: boolean) => void
-  label: string
-  hint?: string
-  disabled?: boolean
-}): JSX.Element {
-  return (
-    <label className={cn('flex items-start gap-2 text-sm', disabled && 'opacity-60')}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 accent-[hsl(var(--primary))]"
-      />
-      <span>
-        {label}
-        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
-      </span>
-    </label>
   )
 }
 
