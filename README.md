@@ -75,7 +75,7 @@ Alles im Detail: [docs/WERKZEUGE.md](docs/WERKZEUGE.md)
 **Entwicklung** (Node.js ≥ 22.12, kein C++-Compiler nötig):
 
 ```bash
-npm ci              # Abhängigkeiten exakt aus dem Lockfile (lädt Electron, prüft die Prüfsumme)
+npm ci              # Abhängigkeiten exakt aus dem Lockfile, ohne Install-Skripte
 npm run ff:fetch    # einmalig: HAP-fähiges ffmpeg
 npm run dev         # App mit Hot Reload
 npm run package     # Installer fürs aktuelle Betriebssystem nach dist/

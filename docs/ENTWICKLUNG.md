@@ -26,7 +26,7 @@ Die Installation für Anwender steht in [INSTALL.md](INSTALL.md).
 ```bash
 git clone <repo-url>
 cd project_mega
-npm ci              # exakt aus dem Lockfile; postinstall lädt die Electron-Binary (mit Prüfsumme)
+npm ci              # exakt aus dem Lockfile, ohne Install-Skripte (.npmrc)
 npm run ff:fetch    # HAP-fähiges ffmpeg (Konverter, Player-Import …); hält sich danach selbst aktuell
 npm run dev         # App mit Hot Reload
 ```
@@ -47,11 +47,12 @@ npm run dev         # App mit Hot Reload
   in der App aktualisierten Build, wenn einer aktiv ist. So fallen
   Verhaltensänderungen beim Entwickeln auf, nicht erst im Installer (Beispiel: Farbort-Wechsel im
   Video-Generator, Oktober 2026).
-- **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node (als `postinstall` und
-  vor `dev`/`start`). Das klappt auch dort, wo Sicherheits-Wrapper electrons eigenes `install.js`
-  abfangen. Fehlt die Binary, bricht `npm run dev` mit „Electron uninstall“ ab →
-  `npm run electron:bin`.
-- **Ganz ohne Paket-Skripte** installieren: siehe [SICHERHEIT.md](SICHERHEIT.md#installation).
+- **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node und prüft sie gegen
+  ihre Prüfsumme – als erster Schritt von `dev`, `start` und `e2e` (liegt sie schon da, passiert
+  nichts). Einzeln: `npm run electron:bin`.
+- **Keine Install-Skripte:** `.npmrc` setzt `ignore-scripts=true` (siehe
+  [SICHERHEIT.md](SICHERHEIT.md#installation)). Damit laufen auch keine `pre`-/`post`-Skripte –
+  was vor einem Befehl passieren soll, steht direkt in seinem Skript.
 
 ## NPM-Skripte
 

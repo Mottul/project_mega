@@ -11,10 +11,8 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "predev": "node scripts/fetch-electron-bin.mjs && node scripts/download-ffmpeg.mjs --max-age 7",
-    "dev": "electron-vite dev",
-    "prestart": "node scripts/fetch-electron-bin.mjs && node scripts/download-ffmpeg.mjs --max-age 7",
-    "start": "electron-vite preview",
+    "dev": "node scripts/fetch-electron-bin.mjs && node scripts/download-ffmpeg.mjs --max-age 7 && electron-vite dev",
+    "start": "node scripts/fetch-electron-bin.mjs && node scripts/download-ffmpeg.mjs --max-age 7 && electron-vite preview",
     "build": "npm run typecheck && electron-vite build",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
@@ -22,8 +20,8 @@
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "node scripts/download-ffmpeg.mjs --max-age 7 && electron-vite build && node e2e/run.mjs",
-    "e2e:run": "node e2e/run.mjs",
+    "e2e": "node scripts/fetch-electron-bin.mjs && node scripts/download-ffmpeg.mjs --max-age 7 && electron-vite build && node e2e/run.mjs",
+    "e2e:run": "node scripts/fetch-electron-bin.mjs && node e2e/run.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",
@@ -32,9 +30,7 @@
     "ff:fetch": "node scripts/download-ffmpeg.mjs",
     "ff:update": "node scripts/download-ffmpeg.mjs --force",
     "electron:bin": "node scripts/fetch-electron-bin.mjs",
-    "postinstall": "node scripts/fetch-electron-bin.mjs",
-    "prepackage": "node -e \"for (const d of ['dist/.icon-ico','dist/.icon-set']) require('node:fs').rmSync(d,{recursive:true,force:true})\"",
-    "package": "node scripts/download-ffmpeg.mjs --max-age 1 && npm run ff:fetch && npm run build && npx --yes electron-builder@26",
+    "package": "node -e \"for (const d of ['dist/.icon-ico','dist/.icon-set']) require('node:fs').rmSync(d,{recursive:true,force:true})\" && node scripts/download-ffmpeg.mjs --max-age 1 && npm run ff:fetch && npm run build && npx --yes electron-builder@26",
     "package:dir": "npm run build && npx --yes electron-builder@26 --dir"
   },
   "dependencies": {

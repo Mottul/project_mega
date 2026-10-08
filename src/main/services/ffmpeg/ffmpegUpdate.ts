@@ -368,9 +368,21 @@ function currentNumber(): number | null {
 
 /* --------------------------------- Ablauf ---------------------------------- */
 
-export async function checkFfmpegUpdate(): Promise<FfmpegToolStatus> {
+let running: Promise<FfmpegToolStatus> | null = null
+
+/** Prüft und lädt ggf. einen neueren Build. Läuft schon eine Prüfung (etwa die beim Start),
+ *  liefert „Jetzt prüfen“ deren Ergebnis statt des Zwischenstands „Suche …“. */
+export function checkFfmpegUpdate(): Promise<FfmpegToolStatus> {
+  if (running) return running
   const p = platform()
-  if (state.checking || !p || unsupportedReason()) return ffmpegToolStatus()
+  if (!p || unsupportedReason()) return Promise.resolve(ffmpegToolStatus())
+  running = runCheck(p).finally(() => {
+    running = null
+  })
+  return running
+}
+
+async function runCheck(p: UpdatePlatform): Promise<FfmpegToolStatus> {
   state.checking = true
   state.lastError = null
   state.lastResult = 'Suche nach einem neueren Build …'

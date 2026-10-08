@@ -18,10 +18,11 @@ npm audit fix --before <Datum vor 7 Tagen>
 npm audit --omit=dev                  # Laufzeit: muss ohne Befund bleiben
 ```
 
-- Nach `npm install <paket>` fehlt die Electron-Binary (npm ersetzt den Paketordner, das
-  Root-`postinstall` läuft nur bei `npm install` ohne Argumente): `npm run electron:bin`.
-- npm 12 blockiert Install-Skripte von Abhängigkeiten (Hinweis „install-scripts blocked“ für
-  esbuild) – gewollt, esbuild läuft auch so.
+- Install-Skripte laufen nie (`.npmrc`: `ignore-scripts=true`). Nach einem Electron-Update fehlt
+  deshalb die Binary, bis `npm run dev`/`e2e` (oder `npm run electron:bin`) sie holt.
+- **Neues Paket mit Install-Skript?** Prüfen, ob es ohne läuft (`npm ci` hat es nie ausgeführt).
+  Pakete mit `binding.gyp` lösen bei `npm ci` einen node-gyp-Bau aus, auch mit
+  `"gypfile": false` – deshalb die Einstellung (CI-Fehler mit better-sqlite3 13 unter Windows).
 - Große Umstiege (React, Tailwind, Vite, TypeScript, vitest) sind eigene Vorhaben in
   `docs/ROADMAP.md` und in `dependabot.yml` als Hauptversion ausgenommen.
 

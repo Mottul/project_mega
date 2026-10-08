@@ -35,8 +35,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      # Voller Install inkl. postinstall (better-sqlite3-Prebuild + Electron-Binary),
-      # damit der Build exakt wie lokal läuft.
+      # Ohne Install-Skripte (.npmrc); Build und Tests brauchen die Electron-Binary nicht.
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
@@ -60,6 +59,8 @@ jobs:
           node-version: '22.x'
           cache: npm
       - run: npm ci
+      # Electron-Binary für die E2E-Läufe (mit Prüfsumme; npm ci führt keine Skripte aus)
+      - run: npm run electron:bin
       # ffmpeg wie im Installer (HAP-fähig); die Quelle liefert täglich neue Builds -> je Woche
       # einmal laden, sonst aus dem Cache
       - name: Woche für den ffmpeg-Cache

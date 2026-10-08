@@ -2,11 +2,10 @@
 // node_modules/electron/{dist, path.txt} an -- in reinem Node, ohne electron's
 // eigenen install.js / @electron/get.
 //
-// Hintergrund: In gehaerteten Umgebungen (Script-Gating / Security-Wrapper) wird
-// electron's postinstall (node install.js) abgefangen/abgebrochen ("is not a tty"),
-// sodass die Binary fehlt und electron-vite "Electron uninstall" wirft. Dieser
-// Schritt laeuft als normaler (nicht abgefangener) Root-Postinstall durch -- genau
-// wie der ffmpeg-Downloader, der in derselben Umgebung funktioniert.
+// Hintergrund: Install-Skripte von Abhaengigkeiten laufen nicht (.npmrc: ignore-scripts),
+// electrons eigenes install.js also auch nicht -- ohne Binary wirft electron-vite
+// "Electron uninstall". Dieser Schritt laeuft deshalb vor dev, start und e2e (und in der CI)
+// -- genau wie der ffmpeg-Downloader.
 //
 // Idempotent: liegt die Binary schon vor, passiert nichts (npm install bleibt schnell).
 //
@@ -250,7 +249,6 @@ main().catch((err) => {
   console.error(
     '  Fehlt die exe nach dem Entpacken: Projektordner in den Virenscanner-Ausnahmen eintragen.'
   )
-  // Als postinstall den npm-install nicht hart scheitern lassen; beim manuellen
-  // Aufruf (npm run electron:bin) den Fehler aber sichtbar machen (Exit 1).
-  process.exit(process.env.npm_lifecycle_event === 'postinstall' ? 0 : 1)
+  // Ohne Binary startet nichts -> dev/start/e2e hier abbrechen statt später kryptisch.
+  process.exit(1)
 })

@@ -14,7 +14,8 @@ aufgesetzt:
   und mit Abstand nachgezogen (siehe [Updates einspielen](#updates-einspielen)). Alles andere ist
   Build- bzw. Testwerkzeug, etwa `playwright-core` für die E2E-Läufe: eigene Abhängigkeiten hat es
   keine, Browser lädt es nicht, und die Version (1.63.0) war beim Einspielen über eine Woche alt.
-- **`.npmrc`:** `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
+- **`.npmrc`:** `ignore-scripts=true` (keine Install-Skripte, siehe [Installation](#installation)),
+  `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
 - **Schlanker Install-Baum:** `electron-builder` ist keine Abhängigkeit, sondern wird beim
   Paketieren per `npx` geholt. So bleibt die `node-gyp`/`tar`/`app-builder`-Kette aus `npm ci`
   heraus. Das native Modul `better-sqlite3` bringt seit Version 13 fertige N-API-Binaries im Paket
@@ -40,19 +41,20 @@ npm ci                  # exakt aus dem Lockfile, prüft die Integrity-Hashes
 npm audit signatures    # optional: Registry-Signaturen prüfen
 ```
 
-**Maximal vorsichtig** – kein Paket-Skript läuft automatisch. Das blockiert den häufigsten
-Angriffsweg, Install-Skripte beliebiger transitiver Abhängigkeiten:
+**Kein Paket-Skript läuft automatisch** (`.npmrc`: `ignore-scripts=true`). Das blockiert den
+häufigsten Angriffsweg, Install-Skripte beliebiger transitiver Abhängigkeiten – und keines unserer
+Pakete braucht eines:
 
-```bash
-npm ci --ignore-scripts
-npm run electron:bin     # Electron-Laufzeit-Binary laden und prüfen (reines Node)
-```
+- `better-sqlite3` bringt fertige Binaries mit. Sein `binding.gyp` würde bei `npm ci` trotz
+  `"gypfile": false` einen node-gyp-Bau auslösen (npm speichert das Feld nicht in der
+  Lock-Datei) – ohne C++-Compiler bricht der Install dann ab.
+- Die Electron-Binary lädt `scripts/fetch-electron-bin.mjs` in reinem Node und prüft ihre
+  Prüfsumme; `npm run dev`, `start` und `e2e` rufen es als ersten Schritt auf (einzeln:
+  `npm run electron:bin`). Es umgeht bewusst electrons eigenes `install.js`.
+- `esbuild` prüft in seinem Install-Skript nur das Binary; es läuft auch ohne.
 
-Ohne den Folgeschritt fehlt die Electron-Binary – `npm run dev` bricht dann mit „Electron
-uninstall“ ab. Das Skript läuft in reinem Node, lädt nur die offizielle Binary, prüft ihre
-Prüfsumme und braucht keinen Compiler. Es umgeht bewusst electrons eigenes `install.js`, das
-manche Sicherheits-Wrapper abfangen. (`better-sqlite3` braucht keinen Schritt mehr: Seine
-Binaries liegen im Paket.)
+Folge: npm führt auch keine `pre`-/`post`-Skripte aus. Was vor einem Befehl passieren soll,
+steht deshalb direkt in dessen Skript (`package.json`).
 
 ### Updates einspielen
 
