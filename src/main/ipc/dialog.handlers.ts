@@ -8,6 +8,7 @@ import {
 } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { ConfirmOptions, NotifyOptions, SelectPathsOptions } from '@shared/types'
+import { showOpenDialog } from '../services/fileDialogs'
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(Channels.dialogSelect, async (_e, options: SelectPathsOptions) => {
@@ -15,7 +16,7 @@ export function registerDialogHandlers(): void {
       options.directories ? 'openDirectory' : 'openFile'
     ]
     if (options.multi) properties.push('multiSelections')
-    const res = await dialog.showOpenDialog({
+    const res = await showOpenDialog(null, {
       title: options.title,
       filters: options.filters,
       properties

@@ -14,21 +14,19 @@ Die Installation für Anwender steht in [INSTALL.md](INSTALL.md).
 
 ## Voraussetzungen
 
-- **Node.js ≥ 22.12** und npm (von Electron 42 vorgegeben). `engine-strict=true` in `.npmrc`
+- **Node.js ≥ 22.12** und npm (von Electron 44 vorgegeben). `engine-strict=true` in `.npmrc`
   bricht den Install mit zu altem Node gleich mit klarer Meldung ab statt später kryptisch.
-- **Kein C++-Compiler nötig.** Das einzige native Modul (`better-sqlite3`) wird nicht kompiliert,
-  sondern als geprüftes **Prebuild** für die Electron-ABI geladen (`postinstall` →
-  `scripts/rebuild-native.mjs`).
-  - Nur falls es für eine exotische Plattform/Architektur kein Prebuild gibt: lokale
-    Build-Werkzeuge (Windows: VS Build Tools „Desktop development with C++“ + Python 3, macOS:
-    `xcode-select --install`, Linux: `build-essential python3`), danach `npm run rebuild:native`.
+- **Kein C++-Compiler nötig.** Das einzige native Modul (`better-sqlite3`) nutzt seit Version 13
+  die stabile N-API: Die fertigen Binaries (Windows, macOS, Linux; x64 und arm64) liegen im
+  npm-Paket und laufen unter jeder Electron- und Node-Version – kein Rebuild nach einem
+  Electron-Upgrade, und die Unit-Tests können die Datenbank direkt öffnen.
 
 ## Einrichten und starten
 
 ```bash
 git clone <repo-url>
 cd project_mega
-npm ci              # exakt aus dem Lockfile; postinstall lädt better-sqlite3-Prebuild + Electron
+npm ci              # exakt aus dem Lockfile, ohne Install-Skripte (.npmrc)
 npm run ff:fetch    # HAP-fähiges ffmpeg (Konverter, Player-Import …); hält sich danach selbst aktuell
 npm run dev         # App mit Hot Reload
 ```
@@ -49,11 +47,12 @@ npm run dev         # App mit Hot Reload
   in der App aktualisierten Build, wenn einer aktiv ist. So fallen
   Verhaltensänderungen beim Entwickeln auf, nicht erst im Installer (Beispiel: Farbort-Wechsel im
   Video-Generator, Oktober 2026).
-- **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node (als `postinstall` und
-  vor `dev`/`start`). Das klappt auch dort, wo Sicherheits-Wrapper electrons eigenes `install.js`
-  abfangen. Fehlt die Binary, bricht `npm run dev` mit „Electron uninstall“ ab →
-  `npm run electron:bin`.
-- **Ganz ohne Paket-Skripte** installieren: siehe [SICHERHEIT.md](SICHERHEIT.md#installation).
+- **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node und prüft sie gegen
+  ihre Prüfsumme – als erster Schritt von `dev`, `start` und `e2e` (liegt sie schon da, passiert
+  nichts). Einzeln: `npm run electron:bin`.
+- **Keine Install-Skripte:** `.npmrc` setzt `ignore-scripts=true` (siehe
+  [SICHERHEIT.md](SICHERHEIT.md#installation)). Damit laufen auch keine `pre`-/`post`-Skripte –
+  was vor einem Befehl passieren soll, steht direkt in seinem Skript.
 
 ## NPM-Skripte
 
@@ -72,7 +71,6 @@ npm run dev         # App mit Hot Reload
 | `npm run package:dir`               | nur die entpackte App, ohne Installer – zum schnellen Testen             |
 | `npm run ff:fetch`                  | HAP-fähiges ffmpeg holen (vor `dev`/`start`/`e2e` automatisch erneuert, wenn älter als 7 Tage) |
 | `npm run ff:update`                 | ffmpeg sofort auf den neuesten Build bringen                             |
-| `npm run rebuild:native`            | better-sqlite3-Prebuild für die Electron-ABI laden (kein Compiler)       |
 | `npm run electron:bin`              | Electron-Laufzeit-Binary laden                                           |
 | `npm run ndi:setup`                 | optionales NDI-Binding einrichten, siehe [NDI.md](NDI.md)                |
 

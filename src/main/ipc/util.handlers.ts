@@ -2,9 +2,10 @@
 // rendert ein VERSTECKTES BrowserWindow das uebergebene HTML und druckt es per
 // printToPDF in die vom Nutzer gewaehlte Datei (z.B. LED-Wall-Projektdoku).
 
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { Channels } from '@shared/ipc-contracts'
+import { showOpenDialog, showSaveDialog } from '../services/fileDialogs'
 import { logLine } from '../services/log'
 
 export function registerUtilHandlers(): void {
@@ -33,9 +34,7 @@ export function registerUtilHandlers(): void {
           { name: 'Alle Dateien', extensions: ['*'] }
         ]
       }
-      const res = parent
-        ? await dialog.showSaveDialog(parent, opts)
-        : await dialog.showSaveDialog(opts)
+      const res = await showSaveDialog(parent, opts)
       if (res.canceled || !res.filePath) return null
       await writeFile(res.filePath, text, 'utf8')
       logLine('[util] Text gespeichert ->', res.filePath, `${text.length} Zeichen`)
@@ -54,9 +53,7 @@ export function registerUtilHandlers(): void {
         { name: 'Alle Dateien', extensions: ['*'] }
       ]
     }
-    const res = parent
-      ? await dialog.showOpenDialog(parent, opts)
-      : await dialog.showOpenDialog(opts)
+    const res = await showOpenDialog(parent, opts)
     if (res.canceled || !res.filePaths[0]) return null
     return readFile(res.filePaths[0], 'utf8')
   })
@@ -70,9 +67,7 @@ export function registerUtilHandlers(): void {
         defaultPath: suggestedName,
         filters: [{ name: 'PDF', extensions: ['pdf'] }]
       }
-      const res = parent
-        ? await dialog.showSaveDialog(parent, opts)
-        : await dialog.showSaveDialog(opts)
+      const res = await showSaveDialog(parent, opts)
       if (res.canceled || !res.filePath) return null
 
       const win = new BrowserWindow({

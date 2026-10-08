@@ -50,6 +50,10 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   App läuft weiter. Stille Fehler werden als Hinweis sichtbar (z. B. defekte Jingle-Datei,
   verlorenes Audiogerät). `settings.json` wird atomar gespeichert; eine beschädigte
   `settings.json` oder `library.db` wird gesichert und neu angelegt statt still zurückgesetzt.
+- **Datei-Dialoge** starten im zuletzt benutzten Ordner – getrennt für Dateien öffnen, Ordner
+  wählen und Speichern, auch nach einem Neustart. Ein Speichern-Vorschlag behält dabei seinen
+  Dateinamen. Ist der Ordner nicht mehr da (Stick abgezogen), startet der Dialog wie ohne Vorgabe
+  (Downloads-Ordner).
 
 ## Wiedergabe & Show
 

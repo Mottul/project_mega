@@ -3,7 +3,7 @@
 // Die Zieldatei darf keine der Quellen sein und nicht schon von einem laufenden Auftrag
 // beschrieben werden.
 
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { CONVERT_FORMATS } from '@shared/convertPlan'
@@ -16,6 +16,7 @@ import { videoGenJobs } from '../services/convert/videoGenJobs'
 import { cancelPreview, renderPreview, setPreviewSink } from '../services/convert/videoGenPreview'
 import { videoGenSourceUrl } from '../services/convert/videoGenSources'
 import { videoGenThumb } from '../services/convert/videoGenThumbs'
+import { showSaveDialog } from '../services/fileDialogs'
 import { getSettings, setSettings } from '../services/store'
 
 // Pfadtrenner, Steuer- und unter Windows verbotene Zeichen
@@ -50,7 +51,7 @@ export function registerVideoGenHandlers(): void {
       filters: [{ name: info.label, extensions: [info.ext.slice(1)] }]
     }
     const win = BrowserWindow.fromWebContents(e.sender)
-    const res = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts)
+    const res = await showSaveDialog(win, opts)
     if (res.canceled || !res.filePath) return null
     const path = res.filePath.toLowerCase().endsWith(info.ext)
       ? res.filePath

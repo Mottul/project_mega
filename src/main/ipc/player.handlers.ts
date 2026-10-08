@@ -1,10 +1,11 @@
 import { readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { dialog, ipcMain } from 'electron'
+import { ipcMain } from 'electron'
 import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
 import type { PlayerCommand, PlayerImportRequest } from '@shared/types'
 import { broadcast } from '../services/broadcast'
+import { showOpenDialog } from '../services/fileDialogs'
 import { convertManager } from '../services/player/convertManager'
 import { detectEncoders } from '../services/player/encoder'
 import {
@@ -82,7 +83,7 @@ export function registerPlayerHandlers(): void {
     broadcast(Channels.playerLibraryChanged)
   })
   ipcMain.handle(Channels.playerPickIdleMedia, async () => {
-    const res = await dialog.showOpenDialog({
+    const res = await showOpenDialog(null, {
       title: 'Idle-Bild/-Video wählen',
       properties: ['openFile'],
       // Dieselbe Menge, die der Konverter tatsächlich verarbeitet (vorher fehlten

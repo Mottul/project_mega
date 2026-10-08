@@ -14,13 +14,17 @@ aufgesetzt:
   und mit Abstand nachgezogen (siehe [Updates einspielen](#updates-einspielen)). Alles andere ist
   Build- bzw. Testwerkzeug, etwa `playwright-core` für die E2E-Läufe: eigene Abhängigkeiten hat es
   keine, Browser lädt es nicht, und die Version (1.63.0) war beim Einspielen über eine Woche alt.
-- **`.npmrc`:** `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
+- **`.npmrc`:** `ignore-scripts=true` (keine Install-Skripte, siehe [Installation](#installation)),
+  `save-exact=true` (neue Pakete werden exakt gepinnt), `engine-strict=true`.
 - **Schlanker Install-Baum:** `electron-builder` ist keine Abhängigkeit, sondern wird beim
   Paketieren per `npx` geholt. So bleibt die `node-gyp`/`tar`/`app-builder`-Kette aus `npm ci`
-  heraus; das native Modul kommt als Prebuild über `prebuild-install` statt über node-gyp.
+  heraus. Das native Modul `better-sqlite3` bringt seit Version 13 fertige N-API-Binaries im Paket
+  mit – ohne Install-Skript, ohne `prebuild-install`, ohne node-gyp.
 - **Externe Programme aus offiziellen Quellen:** ffmpeg (BtbN, evermeet.cx) und die
-  Electron-Binary per HTTPS beim Einrichten; yt-dlp lädt die App selbst und vergleicht dabei die
-  Prüfsumme des Releases.
+  Electron-Binary per HTTPS beim Einrichten; die Electron-Binary wird gegen die SHA-256-Summe aus
+  `electron/checksums.json` geprüft (kommt mit dem npm-Paket, also über die Integrity der
+  Lock-Datei abgesichert). yt-dlp lädt die App selbst und vergleicht dabei die Prüfsumme des
+  Releases.
 - **ffmpeg in der fertigen App** (Windows, Linux; abschaltbar im Video-Konverter): einmal am Tag
   der neueste Build von BtbN, der **mindestens 7 Tage alt** ist (dieselbe Regel wie für npm-Pakete;
   bis dahin hat ihn auch die CI getestet). Download nur von
@@ -37,19 +41,20 @@ npm ci                  # exakt aus dem Lockfile, prüft die Integrity-Hashes
 npm audit signatures    # optional: Registry-Signaturen prüfen
 ```
 
-**Maximal vorsichtig** – kein Paket-Skript läuft automatisch. Das blockiert den häufigsten
-Angriffsweg, Install-Skripte beliebiger transitiver Abhängigkeiten:
+**Kein Paket-Skript läuft automatisch** (`.npmrc`: `ignore-scripts=true`). Das blockiert den
+häufigsten Angriffsweg, Install-Skripte beliebiger transitiver Abhängigkeiten – und keines unserer
+Pakete braucht eines:
 
-```bash
-npm ci --ignore-scripts
-npm run rebuild:native   # better-sqlite3-Prebuild für die Electron-ABI (reines Node)
-npm run electron:bin     # Electron-Laufzeit-Binary laden (reines Node)
-```
+- `better-sqlite3` bringt fertige Binaries mit. Sein `binding.gyp` würde bei `npm ci` trotz
+  `"gypfile": false` einen node-gyp-Bau auslösen (npm speichert das Feld nicht in der
+  Lock-Datei) – ohne C++-Compiler bricht der Install dann ab.
+- Die Electron-Binary lädt `scripts/fetch-electron-bin.mjs` in reinem Node und prüft ihre
+  Prüfsumme; `npm run dev`, `start` und `e2e` rufen es als ersten Schritt auf (einzeln:
+  `npm run electron:bin`). Es umgeht bewusst electrons eigenes `install.js`.
+- `esbuild` prüft in seinem Install-Skript nur das Binary; es läuft auch ohne.
 
-Ohne die beiden Folgeschritte fehlen Prebuild und Electron-Binary – `npm run dev` bricht dann mit
-„Electron uninstall“ ab. Beide Skripte laufen in reinem Node, laden nur Prebuilds bzw. die
-offizielle Binary und brauchen keinen Compiler. `electron:bin` umgeht bewusst electrons eigenes
-`install.js`, das manche Sicherheits-Wrapper abfangen.
+Folge: npm führt auch keine `pre`-/`post`-Skripte aus. Was vor einem Befehl passieren soll,
+steht deshalb direkt in dessen Skript (`package.json`).
 
 ### Updates einspielen
 
@@ -65,6 +70,17 @@ npm ci                                                        # frisch installie
 Danach alle Prüfungen (`format:check`, `lint`, `typecheck`, `typecheck:test`, `test`, `build`)
 und ein kurzer App-Start. `save-exact` pinnt dabei auf die genaue Version.
 
+**Automatisch:** Dependabot (`.github/dependabot.yml`) öffnet jeden Montag Pull Requests – nach
+derselben Regel (`cooldown`: 7 Tage). Patch- und Minor-Updates kommen gesammelt in einem PR,
+Hauptversionen einzeln; die großen Umstiege der [Roadmap](ROADMAP.md#upgrades) (React, Tailwind,
+Vite, TypeScript …) bleiben eigene Vorhaben und kommen nicht als PR. Auch die GitHub Actions der
+CI hält Dependabot aktuell. Gemergt wird erst nach grüner CI, von Hand.
+
+**Electron-Hauptversionen:** Electron pflegt nur die drei neuesten (etwa alle 8 Wochen eine neue).
+Vor dem Umstieg die [Breaking Changes](https://www.electronjs.org/docs/latest/breaking-changes)
+durchgehen – beim Schritt 42 → 44 z. B. starten Datei-Dialoge ohne Startpfad im Downloads-Ordner
+(deshalb `services/fileDialogs.ts`), und macOS braucht ab 44 mindestens Version 13.
+
 > **npm 10 und vitest:** Updates von vitest brechen mit „Cannot read properties of null (reading
 > 'edgesOut')“ ab – ein npm-Fehler beim Auflösen von vitests optionalen Peer-Abhängigkeiten.
 > Abhilfe: `--legacy-peer-deps` anhängen. Die Lock-Datei bleibt gleichwertig, weil im Baum keine
@@ -75,13 +91,16 @@ und ein kurzer App-Start. `save-exact` pinnt dabei auf die genaue Version.
 Prüfen mit `npm audit` (alles) bzw. `npm audit --omit=dev` (nur Laufzeit-Abhängigkeiten – Electron
 selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
 
-**Stand 4. Oktober 2026** – nach den Updates auf Electron 42.11.8, pdfjs-dist 6.3.289,
-react-router-dom 7.18.4, vitest 4.1.11, postcss 8.5.28 und vite 7.3.6 (samt Unterabhängigkeiten):
+**Stand 9. Oktober 2026** – nach den Updates auf Electron 44.5.1, better-sqlite3 13.0.3,
+eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhängigkeiten, z. B.
+`source-map-js` 1.2.2):
 
-- `npm audit --omit=dev`: **keine Lücken**; Electron selbst ist ebenfalls ohne bekannte Meldung.
-- `npm audit`: **5 Meldungen der Tailwind-3-Kette** (`braces` → `micromatch`/`fast-glob`/`chokidar`
-  → `tailwindcss`). Sie betreffen nur den Build, der ausschließlich die eigenen Quelldateien
-  durchsucht, und verschwinden erst mit Tailwind 4 (siehe [Roadmap](ROADMAP.md#upgrades)).
+- `npm audit --omit=dev`: **keine Lücken**; Electron 44.5.1 enthält die Chromium-/V8-Korrekturen
+  vom 30. September (dieselben wie 42.11.10).
+- `npm audit`: **7 Meldungen der Tailwind-3-Kette** (`braces` → `micromatch`/`fast-glob`/`chokidar`
+  sowie `postcss-selector-parser` → `postcss-nested`, alle unter `tailwindcss`). Sie betreffen nur
+  den Build, der ausschließlich die eigenen Quelldateien verarbeitet, und verschwinden erst mit
+  Tailwind 4 (siehe [Roadmap](ROADMAP.md#upgrades)).
 
 ## Die App
 

@@ -1567,6 +1567,9 @@ export interface FavoriteGroup {
 
 export type LauncherTileSize = 'small' | 'medium' | 'large'
 
+/** Art eines Datei-Dialogs – je Art merkt sich die App den zuletzt benutzten Ordner. */
+export type DialogDirKind = 'dateien' | 'ordner' | 'speichern'
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
@@ -1596,6 +1599,9 @@ export interface AppSettings {
   ytdlpAutoUpdate: boolean
   /** ffmpeg in der fertigen App aktuell halten (Windows/Linux; gilt ab dem nächsten Start). */
   ffmpegAutoUpdate: boolean
+  /** Zuletzt benutzte Ordner der Datei-Dialoge: Seit Electron 43 merkt sie sich das
+   *  Betriebssystem nicht mehr, ohne Vorgabe öffnet jeder Dialog im Downloads-Ordner. */
+  dialogDirs: Record<DialogDirKind, string | null>
   /** YouTube-Downloader: Zielordner und Vorgaben */
   youtube: YoutubeSettings
   /** Stage-Timer: gemerkter Ablauf und NDI-Ausgabe */
@@ -1642,6 +1648,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   uiDensity: 'normal',
   ytdlpAutoUpdate: true,
   ffmpegAutoUpdate: true,
+  dialogDirs: { dateien: null, ordner: null, speichern: null },
   youtube: DEFAULT_YOUTUBE_SETTINGS,
   timer: DEFAULT_TIMER_SETTINGS,
   converter: DEFAULT_CONVERTER_SETTINGS,

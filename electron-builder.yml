@@ -9,10 +9,15 @@ directories:
 files:
   - out/**
   - package.json
+  # better-sqlite3 bringt Binaries fuer alle Plattformen und die SQLite-Quellen mit (~27 MB):
+  # ins Paket kommt nur das Binary der Zielplattform.
+  - '!**/node_modules/better-sqlite3/{deps,src}/**'
+  - '!**/node_modules/better-sqlite3/binding.gyp'
+  - '!**/node_modules/better-sqlite3/prebuilds/**'
+  - '**/node_modules/better-sqlite3/prebuilds/${platform}-${arch}.node'
 
-# better-sqlite3 wird bereits per postinstall (scripts/rebuild-native.mjs) gegen die
-# Electron-ABI vorgebaut -> electron-builder muss/soll nicht selbst rebuilden
-# (haelt die node-gyp/tar-Kette auch aus dem Packaging-Schritt heraus).
+# better-sqlite3 (ab 13) nutzt die N-API und bringt fertige Binaries mit -> electron-builder
+# muss/soll nicht selbst rebuilden (haelt die node-gyp/tar-Kette auch aus dem Packaging heraus).
 npmRebuild: false
 
 asar: true

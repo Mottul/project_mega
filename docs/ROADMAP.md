@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 8. Oktober 2026
+**Stand:** 9. Oktober 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -17,12 +17,15 @@ beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
 Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
-1. **Abhängigkeiten aktuell halten** – Electron-Patches und `pdfjs-dist` regelmäßig mit Abstand
-   nachziehen ([SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)).
-2. **Restliche Härtungen** – Fenster-Wächter, `shellOpenPath`-Allowlist, Prüfsummen für ffmpeg
-   und Electron (siehe [Sicherheit](#sicherheit)).
+1. **Update-PRs von Dependabot** jeden Montag durchsehen und nach grüner CI mergen (7 Tage
+   Abstand, [SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)) – als Nächstes kommen u. a.
+   pdfjs-dist 6.4.299 und Electron 44.7.0. Eine neue Electron-Hauptversion vor dem Merge an den
+   Breaking Changes prüfen.
+2. **Restliche Härtungen** – Fenster-Wächter, `shellOpenPath`-Allowlist, Prüfsumme für den
+   ffmpeg-Download beim Einrichten (siehe [Sicherheit](#sicherheit)).
 3. **Paketierung in der CI** – Installer je Betriebssystem probeweise bauen (heute prüft die CI
    Build, Tests und E2E auf allen drei, aber nicht `electron-builder`).
+4. **App-Aktualisierung** – darauf aufbauend (siehe [Große Umbauten](#große-umbauten)).
 
 ## Funktionen
 
@@ -103,8 +106,10 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
   `setWindowOpenHandler`) auch für Ausgabe-, NDI- und PDF-Fenster – heute nur in Haupt- und
   Werkzeugfenstern.
 - **`shellOpenPath`/`shellShowItem`** nur für App-Ablage und gewählte Ausgabeordner.
-- **Prüfsummen** für den ffmpeg- und den Electron-Download (yt-dlp prüft bereits gegen
-  `SHA2-256SUMS`; das Electron-Paket bringt seine Prüfsummen in `checksums.json` mit).
+- **Prüfsumme** für den ffmpeg-Download beim Einrichten (`scripts/download-ffmpeg.mjs` lädt
+  „latest“ ungeprüft). Die Aktualisierung in der App prüft schon gegen die `checksums.sha256` von
+  BtbN – dieselbe Logik lässt sich übernehmen; yt-dlp prüft gegen `SHA2-256SUMS`, die
+  Electron-Binary gegen `checksums.json`.
 
 ### Konsolidierung
 
@@ -127,6 +132,10 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 
 ### Große Umbauten
 
+- **App-Aktualisierung** (`electron-updater` über GitHub Releases): Electron mit Chromium und
+  alle npm-Pakete kommen heute nur mit einem neuen Installer – selbst aktuell halten sich nur
+  ffmpeg und yt-dlp. Braucht gebaute Installer in der CI (Releases); Windows warnt ohne Signatur
+  beim Installieren, macOS geht nur mit einem Apple-Entwicklerzertifikat.
 - **IPC-Vertrag generieren:** ein generischer Preload-Proxy aus `Channels` und ein typisierter
   `handle(Channels.x, fn)`-Wrapper. Neue Kanäle brauchen dann zwei statt vier Stellen, die 26
   `as never`-Casts im Preload entfallen, falsche Handler-Signaturen werden zu Compile-Fehlern.
@@ -139,7 +148,8 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 
 ### Tests & CI
 
-- **Tests** für `playerState` (braucht einen DB-Mock), yt-dlp-Argumente und -Ausgabezeilen
+- **Tests** für `playerState` (better-sqlite3 läuft seit Version 13 auch unter Node – eine
+  `:memory:`-Datenbank statt Mock), yt-dlp-Argumente und -Ausgabezeilen
   sowie die Fernsteuer-Parser (Body, OSC-/Jingle-Befehle, Upload).
 - **Komponententests:** jsdom und @testing-library ergänzen (`*.test.tsx` werden schon
   eingesammelt, laufen aber ohne DOM).
@@ -170,9 +180,14 @@ Damit nichts doppelt geplant wird:
 - **Kein Datenverlust zwischen Fenstern:** `settings.json` nimmt Teiländerungen (feldweise
   zusammengeführt, atomar geschrieben) und meldet Änderungen an alle Fenster; Werkzeug-Stände
   gleichen sich zwischen Fenstern ab (eigene, noch ungespeicherte Eingaben gewinnen).
-- **Upgrades:** Electron 40 → 42, pdfjs-dist 4 → 6, react-router 6 → 7; Sicherheits-Updates vom
-  4. Oktober 2026 (Electron 42.11.8, pdfjs-dist 6.3.289 u. a. – `npm audit --omit=dev` ohne
-  Befund).
+- **Upgrades:** Electron 40 → 42 → 44 (Datei-Dialoge merken sich ihren Ordner selbst),
+  better-sqlite3 12 → 13 (N-API: kein Rebuild mehr je Electron-Version), pdfjs-dist 4 → 6,
+  react-router 6 → 7; Stand 9. Oktober 2026 `npm audit --omit=dev` ohne Befund. Dependabot hält
+  die Abhängigkeiten seitdem mit 7 Tagen Abstand aktuell, die Electron-Binary wird gegen ihre
+  Prüfsumme geprüft.
+- **ffmpeg aktuell:** beim Entwickeln (`npm run dev`, `e2e`: wöchentlich) und in der fertigen App
+  (Windows, Linux: neuester Build ab 7 Tagen Alter, Prüfsumme, Selbsttest, aktiv ab dem nächsten
+  Start).
 - **Kleine Härtungen:** Uploads der Player-Fernsteuerung begrenzt (8 GB je Datei, 2 GB Reserve,
   Aufräumen bei Abbruch), Fernsteuer-Befehle von Player und Jingle feldweise geprüft, CSP ohne
   `unsafe-eval`, yt-dlp nur mit http(s)-Adressen hinter `--`.

@@ -31,6 +31,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   Neue IPC-Fläche = Channel + ToolboxApi-Methode + preload-Mapping +
   Handler in `src/main/ipc/*.handlers.ts` (Registrierung: `registry.ts`).
 - **Renderer-Zugriff nur über `api`** (`@renderer/lib/api`), nie direkt ipcRenderer.
+- **Datei-Dialoge** im main nur über `services/fileDialogs.ts` (merkt den Ordner je Art; Electron
+  startet sie seit Version 43 sonst immer in „Downloads“).
 - **Tools** liegen unter `src/renderer/src/tools/<id>/` und registrieren sich
   über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).
@@ -61,8 +63,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   nur nach Probelauf (`convert/encoders.ts`, Wahl in `shared/encoderChoice.ts`), Aufträge über
   `encodeWithFallback()` (GPU scheitert -> einmal CPU). Lautheit zweistufig: vor dem Lauf
   `measureLoudness()`, Ergebnis als `loudness` an `buildConvertArgs` (`shared/loudness.ts`).
-- **Native/optionale Module:** better-sqlite3 (Prebuild via
-  `scripts/rebuild-native.mjs`, KEIN node-gyp im Baum); NDI-Binding
+- **Native/optionale Module:** better-sqlite3 (ab 13 über N-API: die Binaries liegen im Paket und
+  laufen unter jeder Electron- und Node-Version, kein Rebuild, KEIN node-gyp im Baum); NDI-Binding
   `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`).
 
 ## Konventionen
@@ -90,6 +92,6 @@ Ausgearbeitete Pläne für größere Vorhaben: `docs/PLAN-*.md` (z. B. Video-Gen
 Umsetzung lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überführen und löschen.
 Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
 `abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,
-`review-checkliste`).
+`review-checkliste`, `abhaengigkeiten`).
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.
