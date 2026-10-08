@@ -18,6 +18,7 @@ import { stageTimerTool } from './stage-timer'
 import { testPatternsTool } from './test-patterns'
 import { throwRatioTool } from './throw-ratio'
 import { timecodeTool } from './timecode'
+import { videoGeneratorTool } from './video-generator'
 import { videoPlayerTool } from './video-player'
 import { youtubeDlTool } from './youtube-dl'
 import type { ToolModule } from './types'
@@ -25,6 +26,7 @@ import type { ToolModule } from './types'
 // EINZIGE Stelle zum Eintragen neuer Tools.
 export const tools: ToolModule[] = [
   hapConverterTool,
+  videoGeneratorTool,
   mediaInfoTool,
   manualsTool,
   testPatternsTool,

@@ -17,6 +17,7 @@ import {
   ArrowUp,
   ClipboardCopy,
   FileCog,
+  Images,
   FileDown,
   FileSearch,
   FolderOpen,
@@ -236,6 +237,18 @@ export function MediaInfo(): JSX.Element {
     useHandoff.getState().giveConvertProfile({ target: profile.target, raster: profile.raster })
     navigate('/tool/hap-converter')
   }
+
+  // An den Video-Generator: Bilder und Videos zu einem Video zusammenfügen
+  function sendToGenerator(paths: string[]): void {
+    if (!paths.length) return
+    useHandoff.getState().givePaths('video-generator', paths)
+    navigate('/tool/video-generator')
+  }
+
+  // Bilder und Videos (alles mit Bildspur) für den Video-Generator
+  const montageCandidates = entries
+    .filter((e) => (e.info ? mainVideo(e.info) : null) !== null)
+    .map((e) => e.path)
 
   // konvertierbare Videos (keine Standbilder/reinen Tondateien)
   const convertCandidates = entries
@@ -476,6 +489,15 @@ export function MediaInfo(): JSX.Element {
                   title="Im Video-Konverter passend zum gewählten Zielsystem aufbereiten"
                 >
                   <FileCog className="size-4" /> Konvertieren ({convertCandidates.length})
+                </Button>
+              )}
+              {montageCandidates.length > 1 && !locked && (
+                <Button
+                  variant="outline"
+                  onClick={() => sendToGenerator(montageCandidates)}
+                  title="Im Video-Generator zu einer Diashow bzw. Montage zusammenfügen"
+                >
+                  <Images className="size-4" /> Zu einem Video zusammenfügen …
                 </Button>
               )}
               {entries.length > 0 && (
