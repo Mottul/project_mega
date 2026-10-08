@@ -1,8 +1,25 @@
 // ffmpeg ausführen – gemeinsam für Video-Konverter und Player-Import: Fortschritt aus
 // -progress, verständlicher Fehlertext aus dem stderr-Ende, Abbrechen per AbortSignal.
 
-import { spawn } from 'node:child_process'
+import { spawn, type ChildProcess } from 'node:child_process'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
+
+/**
+ * Laufende Prozesse: Beim Beenden der App räumt killAllFfmpeg() alles ab, was kein Auftrag
+ * selbst abbricht (Vorschaubilder, Messläufe) – unter Windows sterben Kindprozesse nicht mit
+ * dem Elternprozess, ffmpeg schriebe sonst weiter.
+ */
+const running = new Set<ChildProcess>()
+
+export function runningFfmpegCount(): number {
+  return running.size
+}
+
+/** Alle laufenden ffmpeg-Prozesse sofort beenden; Rückgabe: wie viele. */
+export function killAllFfmpeg(): number {
+  for (const p of running) p.kill('SIGKILL')
+  return running.size
+}
 
 export class FfmpegCanceledError extends Error {
   constructor() {
@@ -38,6 +55,7 @@ export function runFfmpeg(args: string[], opts: RunFfmpegOptions = {}): Promise<
       return
     }
     const proc = spawn(ffmpegBinPath('ffmpeg'), args, { windowsHide: true })
+    running.add(proc)
     const onAbort = (): void => {
       proc.kill('SIGKILL')
     }
@@ -67,10 +85,12 @@ export function runFfmpeg(args: string[], opts: RunFfmpegOptions = {}): Promise<
       tail = (tail + chunk.toString()).slice(-16000)
     })
     proc.on('error', (err: NodeJS.ErrnoException) => {
+      running.delete(proc)
       opts.signal?.removeEventListener('abort', onAbort)
       reject(err.code === 'ENOENT' ? new Error('ffmpeg nicht gefunden') : err)
     })
     proc.on('close', (code) => {
+      running.delete(proc)
       opts.signal?.removeEventListener('abort', onAbort)
       if (opts.signal?.aborted) reject(new FfmpegCanceledError())
       else if (code === 0) {

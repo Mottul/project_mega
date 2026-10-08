@@ -559,6 +559,11 @@ class ConvertManager {
     this.removeOutputs(id)
   }
 
+  /** Alle offenen Importe abbrechen (Beenden der App). */
+  cancelAll(): void {
+    for (const id of this.jobs.keys()) this.cancel(id)
+  }
+
   private removeOutputs(id: string): void {
     for (const name of [`${id}.mp4`, `${id}.jpg`, `${id}_thumb.jpg`]) {
       try {

@@ -270,7 +270,9 @@ Clips passend fürs Zielsystem (früher „HAP-Konverter“).
   −1,5 dBTP gingen, wird begrenzt. Stille Spuren bleiben unverändert, gemessen wird nach dem
   Stereo-Downmix, Mono wie über zwei Lautsprecher. Die Auftragszeile zeigt das Ergebnis
   („Lautheit −32,3 → −23 LUFS, gleichmäßig“).
-- **Sicher:** überschreibt nie (`…_2`), halbfertige Dateien werden entfernt; „Ergebnis prüfen“
+- **Sicher:** überschreibt nie (`…_2`), halbfertige Dateien werden entfernt – auch wenn man die
+  App mitten im Auftrag beendet (sie bricht dann alle Konvertierungen, Generator-Läufe, Importe
+  und Downloads ab, räumt auf und schließt höchstens 3 s später); „Ergebnis prüfen“
   öffnet die fertige Datei in der Medien-Info.
 
 **Der gemeinsame Konvertierungs-Kern** – genutzt von Video-Konverter und Player-Import; der
