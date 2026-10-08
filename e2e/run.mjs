@@ -2,7 +2,7 @@
 // sonst nur die genannten: `npm run e2e -- timer player` (Namen ohne .mjs).
 // Der Exit-Code ist 1, sobald irgendein Schritt fehlschlägt.
 
-const all = ['smoke', 'testpattern', 'timer', 'player', 'video-generator']
+const all = ['smoke', 'testpattern', 'timer', 'player', 'video-generator', 'shutdown']
 const wanted = process.argv.slice(2)
 const unknown = wanted.filter((n) => !all.includes(n))
 if (unknown.length) {

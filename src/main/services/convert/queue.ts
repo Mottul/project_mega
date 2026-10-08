@@ -17,6 +17,8 @@ export class ConvertQueue {
   private waiting: Entry[] = []
   private running = new Map<string, Lane>()
   private busyKeys = new Set<string>()
+  /** laufende start()-Aufrufe samt Aufräumen – für idle() beim Beenden der App */
+  private active = new Set<Promise<void>>()
   private limits: Record<Lane, number> = { player: 1, converter: 1 }
 
   setLimit(lane: Lane, n: number): void {
@@ -47,6 +49,19 @@ export class ConvertQueue {
     return n
   }
 
+  /** Läuft oder wartet noch etwas? */
+  busy(): boolean {
+    return this.running.size > 0 || this.waiting.length > 0
+  }
+
+  /**
+   * Wartet, bis kein Auftrag mehr läuft – einschließlich dessen, was ein Auftrag nach dem
+   * Abbrechen noch aufräumt (halbe Ausgaben löschen). Nachrückende zählen mit.
+   */
+  async idle(): Promise<void> {
+    while (this.active.size) await Promise.allSettled([...this.active])
+  }
+
   private pump(): void {
     for (let i = 0; i < this.waiting.length;) {
       const e = this.waiting[i]
@@ -61,14 +76,16 @@ export class ConvertQueue {
       this.running.set(e.id, e.lane)
       if (e.key !== undefined) this.busyKeys.add(e.key)
       // Fehler behandelt der Auftraggeber selbst; die Schlange darf nie hängen bleiben
-      void Promise.resolve()
+      const done: Promise<void> = Promise.resolve()
         .then(e.start)
         .catch(() => {})
         .finally(() => {
+          this.active.delete(done)
           this.running.delete(e.id)
           if (e.key !== undefined) this.busyKeys.delete(e.key)
           this.pump()
         })
+      this.active.add(done)
     }
   }
 }

@@ -315,6 +315,19 @@ export function checkOnStartup(): void {
   setTimeout(() => void ensureUpToDate(), 1500)
 }
 
+/**
+ * yt-dlp samt Kindprozessen beenden: Es startet ffmpeg zum Zusammenführen von Bild und Ton,
+ * und unter Windows stirbt ein Kind nicht mit dem Elternprozess (taskkill /T beendet den Baum).
+ */
+function killTree(proc: ChildProcessWithoutNullStreams): void {
+  if (process.platform === 'win32' && proc.pid) {
+    spawn('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { windowsHide: true }).on(
+      'error',
+      () => proc.kill('SIGKILL')
+    )
+  } else proc.kill('SIGKILL')
+}
+
 class YtManager {
   private jobs = new Map<string, YtJob>()
   private procs = new Map<string, ChildProcessWithoutNullStreams>()
@@ -469,8 +482,19 @@ class YtManager {
       this.update(job, { status: 'canceled' })
     } else if (job.status === 'running') {
       this.update(job, { status: 'canceled' })
-      this.procs.get(id)?.kill('SIGKILL')
+      const proc = this.procs.get(id)
+      if (proc) killTree(proc)
     }
+  }
+
+  /** Alle Downloads abbrechen (Beenden der App); yt-dlp lässt nur .part-Dateien zurück. */
+  cancelAll(): void {
+    for (const id of this.jobs.keys()) this.cancel(id)
+  }
+
+  /** Läuft gerade ein yt-dlp-Prozess? */
+  busy(): boolean {
+    return this.procs.size > 0
   }
 
   clearFinished(): void {

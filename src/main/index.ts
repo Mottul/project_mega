@@ -11,7 +11,9 @@ import {
   registerMediaProtocol
 } from './ipc/registry'
 import { appIconPath } from './services/appIcon'
+import { killAllFfmpeg } from './services/convert/runFfmpeg'
 import { logLine } from './services/log'
+import { hasRunningWork, stopAllWork } from './services/shutdown'
 import { disposeOsc } from './services/osc/oscService'
 import { stopJingleRemote } from './services/jingleRemoteServer'
 import { stopOscRemote } from './services/oscRemoteServer'
@@ -216,8 +218,21 @@ app.on('before-quit', () => {
   stopPlayerNdi(false)
 })
 
+// Laufende Konvertierungen, Generator-Läufe, Importe und Downloads abbrechen und ihr Aufräumen
+// abwarten (höchstens 3 s), erst dann wirklich beenden – sonst schriebe ffmpeg weiter
+// (services/shutdown.ts). Der zweite quit() läuft hier durch.
+let workStopped = false
+app.on('before-quit', (e) => {
+  if (workStopped || !hasRunningWork()) return
+  e.preventDefault()
+  workStopped = true
+  void stopAllWork().finally(() => app.quit())
+})
+
 // Fernsteuerungs-Server + Timer-Intervall beim Beenden sauber schliessen.
 app.on('will-quit', () => {
+  // letztes Netz: was jetzt noch an ffmpeg läuft, überlebte sonst die App
+  killAllFfmpeg()
   stopRemote()
   stopJingleRemote()
   stopOscRemote()

@@ -51,8 +51,28 @@ export function cancelPreview(): void {
   current?.abort()
 }
 
+/** laufende Vorschauen samt Aufräumen (eine abgebrochene räumt noch ihre Dateien weg) */
+const runs = new Set<Promise<VgenPreviewOutcome>>()
+
+/** Wartet, bis keine Vorschau mehr rechnet oder aufräumt (Beenden der App). */
+export async function previewIdle(): Promise<void> {
+  while (runs.size) await Promise.allSettled([...runs])
+}
+
+export function previewBusy(): boolean {
+  return runs.size > 0
+}
+
 /** Projekt und Anfrage sind schon geprüft (videoGen.handlers.ts). */
-export async function renderPreview(req: VgenPreviewRequest): Promise<VgenPreviewOutcome> {
+export function renderPreview(req: VgenPreviewRequest): Promise<VgenPreviewOutcome> {
+  const run = renderPreviewRun(req)
+  runs.add(run)
+  // renderPreviewRun fängt alles ab -> finally kann nicht unbehandelt scheitern
+  void run.finally(() => runs.delete(run))
+  return run
+}
+
+async function renderPreviewRun(req: VgenPreviewRequest): Promise<VgenPreviewOutcome> {
   current?.abort()
   const abort = new AbortController()
   current = abort

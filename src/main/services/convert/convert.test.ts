@@ -280,6 +280,33 @@ describe('Fähigkeiten, Fehlertexte, Warteschlange', () => {
     expect(started).toEqual(['a1', 'b', 'a2'])
     expect(q.runningCount('player')).toBe(2)
   })
+
+  it('idle(): wartet auf laufende Aufträge samt Aufräumen, auch auf nachrückende', async () => {
+    const q = new ConvertQueue()
+    const gates: Record<string, () => void> = {}
+    const cleaned: string[] = []
+    // wie ein Auftrag: erst das Ende des Laufs, danach noch Aufräumen
+    const job = (id: string) => () =>
+      new Promise<void>((res) => (gates[id] = res)).then(async () => {
+        await new Promise((r) => setTimeout(r, 5))
+        cleaned.push(id)
+      })
+    q.add('a', 'converter', job('a'))
+    q.add('b', 'converter', job('b'))
+    expect(q.busy()).toBe(true)
+    let idle = false
+    const waiting = q.idle().then(() => (idle = true))
+    await new Promise((r) => setTimeout(r, 0))
+    gates.a()
+    await new Promise((r) => setTimeout(r, 20))
+    // a ist fertig, b ist nachgerückt und läuft noch
+    expect(cleaned).toEqual(['a'])
+    expect(idle).toBe(false)
+    gates.b()
+    await waiting
+    expect(cleaned).toEqual(['a', 'b'])
+    expect(q.busy()).toBe(false)
+  })
 })
 
 describe('Auftragsliste', () => {
