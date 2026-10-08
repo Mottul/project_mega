@@ -327,6 +327,14 @@ Prüfsummen an jeder Stückgrenze) kamen drei weitere dazu:
   halbe Bild Vorlauf dagegen richtig.
 - **`boxblur`** verlangt einen Radius unter der halben Kantenlänge der (halb so großen)
   Farbebene – bei kleinen Ausgaben (Vorschau, 320 × 180) Radius anpassen.
+- **Farbort wechselt mitten in der Bildliste** (aufgefallen in der CI mit N-127252 vom
+  8. Oktober 2026; der Build vom 1. Juni war unauffällig): Stücke aus JPEG-Fotos tragen den
+  Farbort „center“, aus Videos und PNG „left“. Neueres ffmpeg rechnet beim Wechsel einer
+  Bild-Eigenschaft mitten im Strom die Farbebenen um – alle Bilder ab dem Wechsel wichen in den
+  Farbwerten leicht ab (Helligkeit gleich, nicht mehr bitgenau, im Ergebnis eine unnötige
+  Umrechnung). Abhilfe: jedes Stück einheitlich mit `out_chroma_loc=left` beim Umrechnen und
+  `setparams=…:chroma_location=left`. Allgemein: Alle Stücke müssen in **allen**
+  Bild-Eigenschaften gleich sein, nicht nur in Größe, Rate, Zeitbasis und Pixelformat.
 
 Der gebündelte Windows-Build vom 1. Juni 2026 kennt `-/filter_complex` ebenfalls (und noch
 `-filter_complex_script`); verwendet wird `-/filter_complex`.

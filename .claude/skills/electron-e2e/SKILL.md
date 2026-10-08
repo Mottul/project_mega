@@ -61,6 +61,8 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Testmedien per lavfi** (`findFfmpeg()`), ohne ffmpeg `throw new Skip(…)`.
 - **Datei- und Speicherdialoge** ebenso per `app.evaluate` ersetzen: `dialog.showOpenDialog` /
   `dialog.showSaveDialog` liefern feste Pfade (Beispiel `e2e/video-generator.mjs`).
+- **`app.evaluate` in Warteschleifen** mit `.catch(() => false)`: Kurz nach dem Start wirft
+  Playwright gelegentlich „Resulting promise was garbage collected“ (CI unter Linux).
 - **Beenden testen:** `app.quit()` per `app.evaluate` (in `setTimeout`, sonst reißt die Antwort
   ab), auf `app.process()` 'exit' warten; übrige Prozesse am Pfad des gebündelten ffmpeg
   erkennen (PowerShell `Get-Process … ; exit 0` – ohne Treffer endet es sonst mit 1). Beispiel
@@ -77,9 +79,11 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   `launchApp` wartet deshalb, bis es sichtbar ist (sonst galt es beim Schließen einer Ausgabe
   noch nicht als gezeigt, und die App beendete sich – timer.mjs war jeden zweiten Lauf rot).
 - **Windows meldet minimierte Fenster als unsichtbar** (`isVisible()` = false) – nie daraus
-  schließen, dass kein Fenster mehr offen ist.
+  schließen, dass kein Fenster mehr offen ist. **macOS zeichnet minimierte Fenster nicht neu**:
+  Bei minimiertem Fenster den Zustand im main prüfen (`app.evaluate`), nicht in dessen Seite.
 - Unter Linux ohne Display `xvfb-run -a …`; der Harness setzt dort `--no-sandbox`. Die CI läuft
-  die E2E-Skripte derzeit nicht.
+  alle E2E-Skripte auf Linux, Windows und macOS (Job „App“ in `.github/workflows/ci.yml`) – ein
+  neues Skript in `e2e/run.mjs` läuft dort automatisch mit.
 - Fehlschlag zuerst als Testproblem prüfen (Zeitfenster zu eng, Route nicht neu geladen),
   bevor die App geändert wird – wie beim „toten Strom“, wo erst ein zweiter Anlauf die Verbindung
   wiederherstellt.

@@ -38,6 +38,10 @@ npm run dev         # App mit Hot Reload
   Git). Die gängigen npm-ffmpeg-Pakete können kein HAP. Vorhandenes wird nicht erneut geladen
   (`--force` erzwingt es, `--platform win|mac|linux` bzw. `--all` für andere Systeme). Ohne ffmpeg
   zeigen die betroffenen Werkzeuge einen Hinweis; im fertigen Paket ist es enthalten.
+  **Aktuell halten:** Die Quellen liefern täglich neue Builds; die CI testet jede Woche gegen den
+  neuesten, der Installer packt den beim Paketieren aktuellen. Lokal ab und zu
+  `npm run ff:fetch -- --force` – sonst entwickelt man gegen einen alten Stand und merkt
+  Verhaltensänderungen erst in der CI (Beispiel: Farbort-Wechsel im Video-Generator, Oktober 2026).
 - **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node (als `postinstall` und
   vor `dev`/`start`). Das klappt auch dort, wo Sicherheits-Wrapper electrons eigenes `install.js`
   abfangen. Fehlt die Binary, bricht `npm run dev` mit „Electron uninstall“ ab →
@@ -212,10 +216,14 @@ Dazu gilt:
   bringt `launchApp`, `openRoute`, `waitFor`, Dialog-Stubs, `openBrowserWindow` (unsichtbares
   Electron-Fenster als fremder Browser), `findFfmpeg`, `portFree` und `runSteps`. Ein neues Skript
   in `e2e/run.mjs` eintragen. Unter Linux ohne Display mit `xvfb-run` starten (der Harness setzt
-  dort `--no-sandbox`). E2E läuft derzeit nicht in der CI. Tricks und Stolpersteine stehen im
-  Projekt-Skill `electron-e2e`.
-- **CI** (`.github/workflows/ci.yml`) läuft bei jedem Push und Pull Request auf Ubuntu mit Node 22
-  und 24: `npm ci`, Format, Lint, Typecheck (App und Tests), Tests, Build.
+  dort `--no-sandbox`). Tricks und Stolpersteine stehen im Projekt-Skill `electron-e2e`.
+- **CI** (`.github/workflows/ci.yml`) läuft bei jedem Pull Request und auf `main`:
+  - **Prüfungen** auf Linux mit Node 22 und 24: `npm ci`, Format, Lint, Typecheck (App und
+    Tests), Tests, Build.
+  - **App** auf Linux, Windows und macOS: `npm ci`, gebündeltes ffmpeg (`ff:fetch`, je Woche
+    gecacht), Unit-Tests samt Labortest des Video-Generators, Build und alle E2E-Skripte (Linux
+    mit `xvfb-run`). Arbeits-Branches laufen nur über ihren Pull Request; ein neuer Push bricht
+    den veralteten Lauf ab.
 
 ## Build & Paketierung
 

@@ -122,11 +122,18 @@ try {
     [
       'Hauptfenster minimiert, Ausgabe geschlossen: die App läuft weiter',
       async () => {
-        // Windows meldet ein minimiertes Fenster als unsichtbar – früher beendete sich die App
+        // Windows meldet ein minimiertes Fenster als unsichtbar – früher beendete sich die App.
+        // Das Ausgabefenster im main prüfen, nicht am Hinweis: macOS zeichnet ein minimiertes
+        // Fenster nicht neu, der Hinweis bliebe stehen
+        const windows = () =>
+          app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
         await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].minimize())
         const displays = await w.evaluate(() => window.api.screen.list())
         await w.evaluate((id) => window.api.timer.openOutput(id), displays[0].id)
-        assert.ok(await waitFor(async () => (await badge()).includes('Ausgabe')), await badge())
+        assert.ok(
+          await waitFor(async () => (await windows()) === 2),
+          'Ausgabefenster geht nicht auf'
+        )
         await w.evaluate(() => window.api.timer.closeOutput())
         await sleep(1000)
         const alive = await app

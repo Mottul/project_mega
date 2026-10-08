@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 7. Oktober 2026
+**Stand:** 8. Oktober 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -17,12 +17,12 @@ beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
 Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
-1. **CI auf Windows und macOS** – das Versprechen „plattformübergreifend“ wird heute nur unter
-   Linux gebaut und getestet.
-2. **Abhängigkeiten aktuell halten** – Electron-Patches und `pdfjs-dist` regelmäßig mit Abstand
+1. **Abhängigkeiten aktuell halten** – Electron-Patches und `pdfjs-dist` regelmäßig mit Abstand
    nachziehen ([SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)).
-3. **Restliche Härtungen** – Fenster-Wächter, `shellOpenPath`-Allowlist, Prüfsummen für ffmpeg
+2. **Restliche Härtungen** – Fenster-Wächter, `shellOpenPath`-Allowlist, Prüfsummen für ffmpeg
    und Electron (siehe [Sicherheit](#sicherheit)).
+3. **Paketierung in der CI** – Installer je Betriebssystem probeweise bauen (heute prüft die CI
+   Build, Tests und E2E auf allen drei, aber nicht `electron-builder`).
 
 ## Funktionen
 
@@ -146,7 +146,8 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 - **GPU-Encoder auf echter Hardware gegenprüfen** (NVENC, Quick Sync, AMF, VideoToolbox inkl.
   ProRes): ohne GPU im Testrechner sind nur Erkennung, Argumente und der Rückfall auf die CPU
   geprüft.
-- **CI-Matrix** um Windows und macOS erweitern (natives Modul und Electron-Paketierung).
+- **Paketierung in der CI** (`electron-builder --dir` je Betriebssystem) – Tests und E2E laufen
+  schon auf Linux, Windows und macOS.
 
 ### Upgrades
 
@@ -188,6 +189,8 @@ Damit nichts doppelt geplant wird:
   hohe Kacheln, Ausgabe-Status von Player und Stage-Timer.
 - **Gemeinsame Bausteine:** Medien-Endungen in `shared/`, QR-Code und `selectClass` in
   `components/`.
+- **CI auf drei Betriebssystemen:** Unit-Tests (mit Labortest), Build und alle E2E-Skripte der
+  echten App auf Linux, Windows und macOS; Prüfungen (Format, Lint, Typen) auf Node 22 und 24.
 - **Werkzeuge:** OSC (Learn-Modus, Auswahl, Bank, Poti/Encoder, Anzeige, Label,
   Fader-Ausrichtung, Raster-Spalten, Auto-Nummerierung, Set-Wechsel am Handy), NovaStar
   (Preset-Abruf, Blackout/Freeze), Video-Player (Lautheit nach EBU R128, NDI mit Ton, „Ausgabe &

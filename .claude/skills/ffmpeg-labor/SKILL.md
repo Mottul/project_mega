@@ -12,7 +12,11 @@ kein `-filter_complex_script` mehr, `xfade` verlangt identische Größe/Rate/Zei
 Dort zuerst nachlesen. Neue Verfahren so prüfen, bevor sie in den Code wandern:
 
 1. **Erst die Fähigkeiten:** `ffmpeg -hide_banner -filters` / `-encoders` – das gebündelte
-   ffmpeg ist ein bestimmter Build, nicht das aus dem PATH.
+   ffmpeg ist ein bestimmter Build, nicht das aus dem PATH. **Gegen den aktuellen Build messen**
+   (`npm run ff:fetch -- --force`): Installer und CI nehmen den neuesten, und Verhalten ändert
+   sich zwischen Builds (Farbort-Umrechnung im Herbst 2026, `-vsync` entfernt → `-fps_mode`).
+   Bild-Eigenschaften je Stück prüfen:
+   `ffprobe -read_intervals "%+#1" -show_entries frame=color_range,color_space,chroma_location`.
 2. **Testmedien per lavfi**, nie echte Kundendateien: `testsrc2` (Bild, Bewegung), `sine` (Ton),
    Fotos als Einzelbild; absichtlich unbequeme Fälle (Hochkant, 29,97/59,94 fps, Mono 44,1 kHz,
    anamorph, ohne Ton, EXIF-gedreht).

@@ -352,6 +352,10 @@ describe('videoGenPlan – Befehle', () => {
     expect(g).toContain('trim=end_frame=100')
     // JPEG: volle Range, Rec. 601 -> HD: Rec. 709 Limited
     expect(g).toContain('in_color_matrix=bt601:in_range=pc:out_color_matrix=bt709:out_range=tv')
+    // Farbort einheitlich links (JPEG käme mit „center“; ein Wechsel in der Bildliste ließe
+    // neueres ffmpeg umrechnen)
+    expect(g).toContain('out_chroma_loc=left')
+    expect(g).toContain(':chroma_location=left')
     expect(g).toContain('anullsrc=r=48000:cl=stereo,atrim=end_sample=192000')
     expect(args).toContain('-g')
     expect(args.slice(-3)).toEqual(['-progress', 'pipe:1', '-nostats'])
