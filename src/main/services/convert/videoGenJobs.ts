@@ -9,7 +9,6 @@
 // Konverter); halbfertige Ausgaben werden nie liegen gelassen.
 
 import { randomUUID } from 'node:crypto'
-import { existsSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { CONVERT_FORMATS, rateArg } from '@shared/convertPlan'
@@ -22,33 +21,25 @@ import {
 } from '@shared/loudness'
 import type {
   EncoderInfo,
-  MediaInfo,
   VgenEnqueueRequest,
   VgenJob,
   VgenJobStage,
   VgenProject
 } from '@shared/types'
 import {
-  audioGraph,
-  audioRunArgs,
+  audioRun,
   concatList,
-  elementCacheKey,
-  elementPieceArgs,
   estimateCacheBytes,
   finalAudioArgs,
   finalVideoFilter,
   planVideoGen,
-  transitionCacheKey,
   transitionPairs,
-  transitionPieceArgs,
   VGEN_SAMPLE_RATE,
   type VgenPlan
 } from '@shared/videoGenPlan'
-import { probeMediaInfo } from '../ffmpeg/mediaInfo'
 import { logLine } from '../log'
 import { getSettings } from '../store'
 import { containerArgs, videoEncoderArgs } from './args'
-import { getConvertCapabilities } from './capabilities'
 import { computeChunks } from './converterJobs'
 import {
   CPU_ENCODERS,
@@ -60,25 +51,10 @@ import {
 } from './encoders'
 import { convertQueue } from './queue'
 import { FfmpegCanceledError, runFfmpeg } from './runFfmpeg'
-import {
-  commit,
-  elementPaths,
-  ensureDirs,
-  freeBytes,
-  haveAll,
-  jobDir,
-  piecesDir,
-  prune,
-  removeQuietly,
-  tempName,
-  touch,
-  transitionFile
-} from './videoGenCache'
+import { ensureDirs, freeBytes, jobDir, piecesDir, prune, removeQuietly } from './videoGenCache'
+import { analyzeProject, pieceTasks, renderPieces, vgenCapabilities } from './videoGenRender'
 
 type Sink = (job: VgenJob) => void
-
-/** Element- und Übergangs-Stücke gleichzeitig (gemessen: 2 parallel auf 4 Kernen). */
-const PIECE_PARALLEL = 2
 
 const STAGE_TEXT: Record<VgenJobStage, string> = {
   analyze: 'Analyse',
@@ -90,24 +66,6 @@ const STAGE_TEXT: Record<VgenJobStage, string> = {
 
 const isFinished = (j: VgenJob): boolean =>
   j.status === 'done' || j.status === 'error' || j.status === 'canceled'
-
-/** Führt `tasks` mit höchstens `limit` gleichzeitig aus; der erste Fehler bricht ab. */
-async function pool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
-  let next = 0
-  let failed: unknown = null
-  const worker = async (): Promise<void> => {
-    while (failed === null && next < items.length) {
-      const item = items[next++]
-      try {
-        await fn(item)
-      } catch (err) {
-        failed ??= err
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
-  if (failed !== null) throw failed
-}
 
 function encoderFamily(format: VgenProject['output']['format']): EncoderFamily | null {
   const f = CONVERT_FORMATS[format].family
@@ -179,160 +137,57 @@ class VideoGenJobs {
     // Fortschritt: Arbeit in Bildern (Stücke + Endlauf); der Ton zählt wenig, er ist schnell
     let total = 1
     let doneUnits = 0
-    const partial = new Map<string, number>()
     const report = (stage: VgenJobStage, text: string): void => {
-      let p = doneUnits
-      for (const v of partial.values()) p += v
-      this.update(job, { stage, stageText: text, progress: Math.min(0.999, p / total) })
+      this.update(job, { stage, stageText: text, progress: Math.min(0.999, doneUnits / total) })
     }
     try {
-      // 1. Analyse
+      // 1. Analyse (Elemente und Musik)
       this.update(job, { status: 'probing', stage: 'analyze', stageText: STAGE_TEXT.analyze })
-      const paths = [...new Set(project.elements.map((e) => e.path))]
-      const infos = new Map<string, MediaInfo>()
-      let probed = 0
-      await Promise.all(
-        paths.map(async (p) => {
-          const res = await probeMediaInfo(p, { deep: true })
-          if (res.ok) infos.set(p, res.info)
-          probed++
-          this.update(job, {
-            stageText: `${STAGE_TEXT.analyze} ${probed}/${paths.length}`,
-            progress: 0
-          })
-        })
+      const infos = await analyzeProject(project, (done, count) =>
+        this.update(job, { stageText: `${STAGE_TEXT.analyze} ${done}/${count}`, progress: 0 })
       )
       if (this.isCanceled(job)) return
-      if (project.music && !existsSync(project.music.path)) {
-        throw new Error(`Musikdatei nicht gefunden: ${basename(project.music.path)}`)
-      }
-      const caps = await getConvertCapabilities()
-      if (!caps.ffmpegFound) throw new Error('ffmpeg nicht gefunden')
-      if (!caps.formats[project.output.format]) {
-        throw new Error(
-          `${CONVERT_FORMATS[project.output.format].label} kann das gebündelte ffmpeg nicht schreiben`
-        )
-      }
-      const plan = planVideoGen(project, (p) => infos.get(p), {
-        tonemap: caps.tonemap,
-        vpxAlpha: caps.vpxAlpha,
-        xfade: caps.xfade,
-        perspective: caps.perspective
-      })
+      const caps = await vgenCapabilities(project.output.format)
+      const plan = planVideoGen(project, (p) => infos.get(p), caps)
       this.update(job, { hints: plan.hints, durationSec: plan.durationSec })
       const error = plan.hints.find((h) => h.level === 'error')
       if (error) throw new Error(error.text)
 
       // Aufgaben und Cache-Treffer bestimmen
-      const elementTasks = plan.elements.map((e, i) => {
-        const key = elementCacheKey(plan, e)
-        return { i, key, paths: elementPaths(key), frames: e.frames }
-      })
-      const transitionTasks = transitionPairs(plan).map((p) => ({
-        ...p,
-        key: transitionCacheKey(plan, p.index, p.next),
-        frames: plan.elements[p.index].transition?.frames ?? 0
-      }))
-      const elementHit = await Promise.all(
-        elementTasks.map((t) => haveAll([t.paths.video, t.paths.audio]))
-      )
-      const transitionHit = await Promise.all(
-        transitionTasks.map((t) => haveAll([transitionFile(t.key)]))
-      )
-      const todoFrames =
-        elementTasks.reduce((s, t, k) => s + (elementHit[k] ? 0 : t.frames), 0) +
-        transitionTasks.reduce((s, t, k) => s + (transitionHit[k] ? 0 : t.frames), 0)
-      total = todoFrames + plan.totalFrames * 1.1
-      await this.checkSpace(plan, todoFrames)
+      const tasks = await pieceTasks(plan)
+      total = tasks.todoFrames + plan.totalFrames * 1.1
+      await this.checkSpace(plan, tasks.todoFrames)
       await ensureDirs(piecesDir(), work)
       this.update(job, { status: 'running' })
 
-      // 2. Element-Stücke
-      let finished = 0
-      report('elements', `${STAGE_TEXT.elements} 0/${elementTasks.length}`)
-      await pool(
-        elementTasks.map((t, k) => ({ ...t, hit: elementHit[k] })),
-        PIECE_PARALLEL,
-        async (t) => {
-          if (t.hit) {
-            await touch([t.paths.video, t.paths.audio])
-            job.cachedPieces++
-          } else {
-            await this.renderElement(plan, t.i, t.paths, abort.signal, (p) => {
-              partial.set(`e${t.i}`, p * t.frames)
-              report('elements', `${STAGE_TEXT.elements} ${finished}/${elementTasks.length}`)
-            })
-            partial.delete(`e${t.i}`)
-            doneUnits += t.frames
-            job.renderedPieces++
-          }
-          finished++
-          report('elements', `${STAGE_TEXT.elements} ${finished}/${elementTasks.length}`)
+      // 2./3. Element-Stücke und Übergänge
+      const { transitionFiles } = await renderPieces(plan, tasks, {
+        signal: abort.signal,
+        tag: job.id.slice(0, 8),
+        isCanceled: () => this.isCanceled(job),
+        onPiece: (cached) => {
+          if (cached) job.cachedPieces++
+          else job.renderedPieces++
+        },
+        onProgress: (p) => {
+          doneUnits = p.framesDone
+          report(p.stage, `${STAGE_TEXT[p.stage]} ${p.finished}/${p.count}`)
         }
-      )
+      })
       if (this.isCanceled(job)) return
-
-      // 3. Übergänge
-      finished = 0
-      const tFiles: (string | null)[] = plan.elements.map(() => null)
-      await pool(
-        transitionTasks.map((t, k) => ({ ...t, hit: transitionHit[k] })),
-        PIECE_PARALLEL,
-        async (t) => {
-          const file = transitionFile(t.key)
-          tFiles[t.index] = file
-          if (t.hit) {
-            await touch([file])
-            job.cachedPieces++
-          } else {
-            const tmp = tempName(file, job.id.slice(0, 8))
-            try {
-              await runFfmpeg(
-                transitionPieceArgs(plan, t.index, {
-                  a: elementTasks[t.index].paths.video,
-                  b: elementTasks[t.next].paths.video,
-                  out: tmp
-                }),
-                {
-                  durationSec: t.frames / plan.fps,
-                  signal: abort.signal,
-                  onProgress: (p) => {
-                    partial.set(`t${t.index}`, p * t.frames)
-                    report(
-                      'transitions',
-                      `${STAGE_TEXT.transitions} ${finished}/${transitionTasks.length}`
-                    )
-                  }
-                }
-              )
-              await commit(tmp, file)
-            } finally {
-              await removeQuietly(tmp)
-            }
-            partial.delete(`t${t.index}`)
-            doneUnits += t.frames
-            job.renderedPieces++
-          }
-          finished++
-          report('transitions', `${STAGE_TEXT.transitions} ${finished}/${transitionTasks.length}`)
-        }
-      )
-      if (this.isCanceled(job)) return
+      doneUnits = tasks.todoFrames
 
       // 4. Ton
       report('audio', STAGE_TEXT.audio)
       const graphFile = join(work, 'ton.txt')
-      await writeFile(graphFile, audioGraph(plan, project.music))
       const mix = join(work, 'mix.wav')
-      await runFfmpeg(
-        audioRunArgs(
-          elementTasks.map((t) => t.paths.audio),
-          project.music?.path ?? null,
-          graphFile,
-          mix
-        ),
-        { durationSec: plan.durationSec, signal: abort.signal }
-      )
+      const audio = audioRun(plan, {
+        wavs: tasks.elements.map((t) => t.paths.audio),
+        graphFile,
+        out: mix
+      })
+      await writeFile(graphFile, audio.graph)
+      await runFfmpeg(audio.args, { durationSec: plan.durationSec, signal: abort.signal })
       const finalMix = await this.loudness(plan, project, mix, work, abort.signal, (text) =>
         report('audio', text)
       )
@@ -343,7 +198,10 @@ class VideoGenJobs {
       const list = join(work, 'liste.ffconcat')
       await writeFile(
         list,
-        concatList(plan, { elements: elementTasks.map((t) => t.paths.video), transitions: tFiles })
+        concatList(plan, {
+          elements: tasks.elements.map((t) => t.paths.video),
+          transitions: transitionFiles
+        })
       )
       report('encode', STAGE_TEXT.encode)
       const format = project.output.format
@@ -391,8 +249,8 @@ class VideoGenJobs {
       })
       // gerade gebrauchte Stücke bleiben beim Aufräumen
       const keep = new Set<string>([
-        ...elementTasks.flatMap((t) => [t.paths.video, t.paths.audio]),
-        ...tFiles.filter((f): f is string => f !== null)
+        ...tasks.elements.flatMap((t) => [t.paths.video, t.paths.audio]),
+        ...tasks.transitions.map((t) => t.file)
       ])
       void prune(undefined, keep).catch(() => {})
     } catch (err) {
@@ -414,31 +272,6 @@ class VideoGenJobs {
     } finally {
       this.aborts.delete(job.id)
       await removeQuietly(work)
-    }
-  }
-
-  private async renderElement(
-    plan: VgenPlan,
-    i: number,
-    paths: { video: string; audio: string },
-    signal: AbortSignal,
-    onProgress: (p: number) => void
-  ): Promise<void> {
-    const e = plan.elements[i]
-    const id = randomUUID().slice(0, 8)
-    const video = tempName(paths.video, id)
-    const audio = tempName(paths.audio, id)
-    try {
-      await runFfmpeg(elementPieceArgs(plan, e, { input: e.path, video, audio }), {
-        durationSec: e.frames / plan.fps,
-        signal,
-        onProgress
-      })
-      // erst der Ton, dann das Bild: haveAll prüft beide, ein halbes Paar zählt nie als Treffer
-      await commit(audio, paths.audio)
-      await commit(video, paths.video)
-    } finally {
-      await removeQuietly(video, audio)
     }
   }
 

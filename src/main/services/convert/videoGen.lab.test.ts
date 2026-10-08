@@ -11,11 +11,13 @@ import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import type { MediaInfo, VgenElement, VgenProject } from '@shared/types'
 import {
-  audioGraph,
-  audioRunArgs,
+  audioRun,
   concatList,
   elementPieceArgs,
+  piecesForRanges,
   planVideoGen,
+  previewRanges,
+  sampleAt,
   transitionPairs,
   transitionPieceArgs,
   type VgenPlan
@@ -78,6 +80,25 @@ function frameMd5(path: string): string[] {
     .map((l) => l.split(',').pop()!.trim())
 }
 
+/** Ton als Float-Samples (ein Kanal, der linke). */
+function samplesOf(path: string): Float32Array {
+  const buf = execFileSync(
+    FF,
+    ['-v', 'error', '-i', path, '-map', '0:a', '-af', 'pan=mono|c0=c0', '-f', 'f32le', '-'],
+    { maxBuffer: 256 * 1024 * 1024, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }
+  )
+  return new Float32Array(buf.buffer, buf.byteOffset, Math.floor(buf.byteLength / 4))
+}
+
+/** Effektivwert (dB) eines Abschnitts in Sekunden. */
+function rmsDb(s: Float32Array, from: number, to: number): number {
+  let sum = 0
+  const a = Math.round(from * 48000)
+  const b = Math.round(to * 48000)
+  for (let i = a; i < b; i++) sum += s[i] * s[i]
+  return 10 * Math.log10(sum / (b - a))
+}
+
 const file = (n: string): string => join(dir, n)
 
 describe.skipIf(!have)('Video-Generator im Labor (gebündeltes ffmpeg)', () => {
@@ -112,7 +133,10 @@ describe.skipIf(!have)('Video-Generator im Labor (gebündeltes ffmpeg)', () => {
     ff(['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=220:d=3', file('musik.wav')])
 
     const media = new Map(
-      ['quer.jpg', 'hoch.png', 'clip.mp4', 'pal.mp4'].map((n) => [file(n), info(file(n))])
+      ['quer.jpg', 'hoch.png', 'clip.mp4', 'pal.mp4', 'musik.wav'].map((n) => [
+        file(n),
+        info(file(n))
+      ])
     )
     expect(media.get(file('hoch.png'))?.video[0].alpha).toBe(true)
     expect(media.get(file('pal.mp4'))?.video[0].sar).toBe('64:45')
@@ -184,7 +208,15 @@ describe.skipIf(!have)('Video-Generator im Labor (gebündeltes ffmpeg)', () => {
         kenBurns: { mode: 'auto', strength: 'medium' },
         fit: 'crop'
       },
-      music: { path: file('musik.wav'), gainDb: -10, fadeInSec: 1, fadeOutSec: 1 },
+      // 3-s-Titel: wird mit Überblendung wiederholt; Absenken unter dem Clip-Ton
+      music: {
+        tracks: [file('musik.wav')],
+        gainDb: -10,
+        fadeInSec: 1,
+        fadeOutSec: 1,
+        crossfadeSec: 0.5,
+        duckDb: -12
+      },
       loudnorm: null
     }
     const plan: VgenPlan = planVideoGen(project, (p) => media.get(p), {
@@ -195,6 +227,8 @@ describe.skipIf(!have)('Video-Generator im Labor (gebündeltes ffmpeg)', () => {
     })
     expect(plan.hints.filter((h) => h.level === 'error')).toEqual([])
     expect(plan.loop).toBe(true)
+    expect(plan.music!.entries.length).toBeGreaterThan(1)
+    expect(plan.music!.duck).not.toBeNull()
 
     // 1. Element-Stücke
     const vids = plan.elements.map((_, i) => file(`e${i}.mov`))
@@ -220,8 +254,9 @@ describe.skipIf(!have)('Video-Generator im Labor (gebündeltes ffmpeg)', () => {
     }
 
     // 3. Ton-Lauf
-    writeFileSync(file('ton.txt'), audioGraph(plan, project.music))
-    ff(audioRunArgs(wavs, project.music!.path, file('ton.txt'), file('mix.wav')))
+    const audio = audioRun(plan, { wavs, graphFile: file('ton.txt'), out: file('mix.wav') })
+    writeFileSync(file('ton.txt'), audio.graph)
+    ff(audio.args)
     expect(counts(file('mix.wav')).samples).toBe(plan.totalSamples)
 
     // 4. Zusammensetzen (Bild unverändert kopiert -> Stückgrenzen per Prüfsumme vergleichbar)
@@ -259,5 +294,137 @@ describe.skipIf(!have)('Video-Generator im Labor (gebündeltes ffmpeg)', () => {
       }
     }
     expect(g).toBe(plan.totalFrames)
+
+    // 6. Vorschau-Ausschnitt um Element 0 (über die Schleifen-Naht): nur die nötigen Stücke,
+    // die übrigen im Ton als Stille – Bild für Bild und Sample für Sample wie das Ergebnis
+    const ranges = previewRanges(plan, 0, 8)
+    expect(ranges).toHaveLength(2)
+    const need = piecesForRanges(plan, ranges)
+    expect(need.elements.length).toBeLessThan(plan.elements.length)
+    const keepE = new Set(need.elements)
+    const keepT = new Set(need.transitions)
+    writeFileSync(
+      file('fenster.ffconcat'),
+      concatList(
+        plan,
+        {
+          elements: vids.map((v, i) => (keepE.has(i) ? v : null)),
+          transitions: trans.map((t, i) => (keepT.has(i) ? t : null))
+        },
+        ranges
+      )
+    )
+    const wAudio = audioRun(
+      plan,
+      {
+        wavs: wavs.map((w, i) => (keepE.has(i) ? w : null)),
+        graphFile: file('fenster.txt'),
+        out: file('fenster.wav')
+      },
+      ranges
+    )
+    writeFileSync(file('fenster.txt'), wAudio.graph)
+    ff(wAudio.args)
+    ff([
+      ...['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', file('fenster.ffconcat')],
+      ...['-map', '0:v', '-c:v', 'copy', file('fenster.mov')]
+    ])
+    const expectFrames = ranges.flatMap(([a, b]) => out.slice(a, b))
+    expect(frameMd5(file('fenster.mov'))).toEqual(expectFrames)
+    const full = samplesOf(file('mix.wav'))
+    const win = samplesOf(file('fenster.wav'))
+    const expectSamples = ranges.flatMap(([a, b]) => [
+      ...full.subarray(sampleAt(a, plan.rate), sampleAt(b, plan.rate))
+    ])
+    expect(win.length).toBe(expectSamples.length)
+    let maxDiff = 0
+    for (let i = 0; i < win.length; i++)
+      maxDiff = Math.max(maxDiff, Math.abs(win[i] - expectSamples[i]))
+    expect(maxDiff).toBeLessThan(1e-6)
   }, 180_000)
+
+  it('Musik: zwei Titel mit Überblendung, Absenken unter Originalton um 12 dB', () => {
+    ff([
+      ...['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=s=320x180:r=25:d=2'],
+      ...['-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo', '-t', '2'],
+      ...['-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-shortest', file('leise.mp4')]
+    ])
+    ff([
+      ...['-v', 'error', '-y', '-f', 'lavfi', '-i', 'testsrc2=s=320x180', '-frames:v', '1'],
+      file('bild.jpg')
+    ])
+    ff(['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=5', file('t1.wav')])
+    ff(['-v', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=660:d=5', file('t2.wav')])
+    const media = new Map(
+      ['leise.mp4', 'bild.jpg', 't1.wav', 't2.wav'].map((n) => [file(n), info(file(n))])
+    )
+    const cut = { kind: 'cut' as const, durationSec: 0 }
+    const base: Omit<VgenElement, 'id' | 'path' | 'kind'> = {
+      durationSec: 2,
+      inSec: null,
+      outSec: null,
+      kenBurns: { mode: 'off', strength: 'medium' },
+      fit: null,
+      transition: cut,
+      audio: true
+    }
+    const project: VgenProject = {
+      elements: [
+        { ...base, id: 'a', path: file('bild.jpg'), kind: 'image' },
+        { ...base, id: 'v', path: file('leise.mp4'), kind: 'video', durationSec: null },
+        { ...base, id: 'b', path: file('bild.jpg'), kind: 'image', durationSec: 4 }
+      ],
+      output: {
+        width: 160,
+        height: 90,
+        fps: 25,
+        format: 'h264',
+        quality: 'standard',
+        loop: false,
+        background: '#000000'
+      },
+      defaults: {
+        imageSec: 2,
+        transition: cut,
+        kenBurns: { mode: 'off', strength: 'medium' },
+        fit: 'crop'
+      },
+      music: {
+        tracks: [file('t1.wav'), file('t2.wav')],
+        gainDb: -6,
+        fadeInSec: 0,
+        fadeOutSec: 0,
+        crossfadeSec: 1,
+        duckDb: -12
+      },
+      loudnorm: null
+    }
+    const plan = planVideoGen(project, (p) => media.get(p), {
+      tonemap: true,
+      vpxAlpha: false,
+      xfade: true,
+      perspective: true
+    })
+    expect(plan.hints.filter((h) => h.level === 'error')).toEqual([])
+    expect(plan.durationSec).toBe(8)
+    expect(plan.music?.duck?.ranges).toEqual([[2, 4]])
+    const wavs = plan.elements.map((e, i) => {
+      const w = file(`m${i}.wav`)
+      ff(elementPieceArgs(plan, e, { input: e.path, video: file(`m${i}.mov`), audio: w }))
+      return w
+    })
+    const audio = audioRun(plan, { wavs, graphFile: file('m.txt'), out: file('m-mix.wav') })
+    writeFileSync(file('m.txt'), audio.graph)
+    ff(audio.args)
+    expect(counts(file('m-mix.wav')).samples).toBe(8 * 48000)
+    const s = samplesOf(file('m-mix.wav'))
+    // lavfi-Sinus: −21,07 dB Effektivwert; mono -> stereo je Kanal −3 dB (Leistung bleibt, wie
+    // überall bei ffmpeg), dazu −6 dB Pegel = −30,08 dB; unter dem Video 12 dB leiser
+    const free = rmsDb(s, 0.5, 1.5)
+    const ducked = rmsDb(s, 2.6, 3.4)
+    expect(Math.abs(free + 30.08)).toBeLessThan(0.3)
+    expect(ducked - free).toBeCloseTo(-12, 1)
+    // nach dem Video wieder voll; Titelwechsel 4..5 s überblendet, danach Titel 2 voll
+    expect(rmsDb(s, 5.2, 7.8)).toBeCloseTo(free, 1)
+  }, 120_000)
 })

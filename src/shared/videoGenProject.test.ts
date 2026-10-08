@@ -90,12 +90,72 @@ describe('Video-Generator – Eingaben prüfen', () => {
     const p = sanitizeVgenProject({
       ...DEFAULT_VGEN_PROJECT,
       elements: [el({ kind: 'video', path: '/media/clip.mov', inSec: 5, outSec: 2 })],
-      music: { path: '/media/musik.mp3', gainDb: -99, fadeInSec: 2, fadeOutSec: 'x' },
+      music: {
+        tracks: ['/media/a.mp3', 'relativ.mp3', 'http://x/b.mp3', '/media/b.flac'],
+        gainDb: -99,
+        fadeInSec: 2,
+        fadeOutSec: 'x',
+        crossfadeSec: 99,
+        duckDb: 6
+      },
       loudnorm: { i: -16, tp: -1.5, lra: 11 }
     })
     expect(p?.elements[0]).toMatchObject({ inSec: 5, outSec: 5 })
-    expect(p?.music).toEqual({ path: '/media/musik.mp3', gainDb: -40, fadeInSec: 2, fadeOutSec: 0 })
+    expect(p?.music).toEqual({
+      tracks: ['/media/a.mp3', '/media/b.flac'],
+      gainDb: -40,
+      fadeInSec: 2,
+      fadeOutSec: 0,
+      crossfadeSec: 10,
+      duckDb: 0
+    })
     expect(p?.loudnorm).toEqual({ i: -16, tp: -1.5, lra: 11 })
+  })
+
+  it('Musik aus Phase 1 (ein Titel unter `path`) wird übernommen; ohne Titel keine Musik', () => {
+    const old = sanitizeVgenProject({
+      ...DEFAULT_VGEN_PROJECT,
+      music: { path: '/media/musik.mp3', gainDb: -6, fadeInSec: 2, fadeOutSec: 3 }
+    })
+    expect(old?.music).toEqual({
+      tracks: ['/media/musik.mp3'],
+      gainDb: -6,
+      fadeInSec: 2,
+      fadeOutSec: 3,
+      crossfadeSec: 2,
+      duckDb: 0
+    })
+    expect(
+      sanitizeVgenProject({ ...DEFAULT_VGEN_PROJECT, music: { tracks: ['x.mp3'] } })?.music
+    ).toBeNull()
+  })
+
+  it('eigener Ken-Burns-Rahmen: Werte begrenzt, nie als Vorgabe', () => {
+    const p = sanitizeVgenProject({
+      ...DEFAULT_VGEN_PROJECT,
+      defaults: {
+        ...DEFAULT_VGEN_PROJECT.defaults,
+        kenBurns: { mode: 'custom', strength: 'soft' }
+      },
+      elements: [
+        el({
+          kenBurns: {
+            mode: 'custom',
+            strength: 'medium',
+            from: { cx: -3, cy: 0.4, zoom: 9 },
+            to: { cx: 0.7, cy: 'x' as never, zoom: 1.5 }
+          }
+        })
+      ]
+    })
+    expect(p?.defaults.kenBurns).toEqual({ mode: 'auto', strength: 'soft' })
+    // ungültiges Ende: wie der Start (ruhiger Rahmen statt Sprung)
+    expect(p?.elements[0].kenBurns).toEqual({
+      mode: 'custom',
+      strength: 'medium',
+      from: { cx: 0, cy: 0.4, zoom: 4 },
+      to: { cx: 0, cy: 0.4, zoom: 4 }
+    })
   })
 
   it('Pfade: nur absolute ohne Protokoll; Zieldatei mit passender Endung', () => {

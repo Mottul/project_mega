@@ -8,11 +8,13 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { CONVERT_FORMATS } from '@shared/convertPlan'
 import { Channels } from '@shared/ipc-contracts'
-import type { ConvertFormat } from '@shared/types'
+import type { ConvertFormat, VgenPreviewOutcome } from '@shared/types'
 import { sanitizeVgenProject, validOutputPath, VGEN_FORMATS } from '@shared/videoGenProject'
 import { broadcast } from '../services/broadcast'
 import { clearCache } from '../services/convert/videoGenCache'
 import { videoGenJobs } from '../services/convert/videoGenJobs'
+import { cancelPreview, renderPreview, setPreviewSink } from '../services/convert/videoGenPreview'
+import { videoGenSourceUrl } from '../services/convert/videoGenSources'
 import { videoGenThumb } from '../services/convert/videoGenThumbs'
 import { getSettings, setSettings } from '../services/store'
 
@@ -70,7 +72,7 @@ export function registerVideoGenHandlers(): void {
     }
     if (!existsSync(dirname(out))) throw new Error('Zielordner nicht gefunden')
     const lower = out.toLowerCase()
-    const sources = [...project.elements.map((e) => e.path), project.music?.path ?? '']
+    const sources = [...project.elements.map((e) => e.path), ...(project.music?.tracks ?? [])]
     if (sources.some((s) => s.toLowerCase() === lower)) {
       throw new Error('Die Zieldatei ist eine der Quellen – bitte einen anderen Namen wählen')
     }
@@ -91,4 +93,17 @@ export function registerVideoGenHandlers(): void {
   })
   ipcMain.handle(Channels.vgenClearFinished, () => videoGenJobs.clearFinished())
   ipcMain.handle(Channels.vgenClearCache, () => clearCache())
+
+  setPreviewSink((p) => broadcast(Channels.vgenPreviewProgress, p))
+  ipcMain.handle(Channels.vgenPreview, (_e, req: unknown): Promise<VgenPreviewOutcome> => {
+    const r = (typeof req === 'object' && req !== null ? req : {}) as Record<string, unknown>
+    const project = sanitizeVgenProject(r.project)
+    const ok = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{1,64}$/.test(v)
+    if (!project || !ok(r.requestId) || !ok(r.elementId)) {
+      return Promise.resolve({ ok: false, canceled: false, error: 'Ungültige Anfrage' })
+    }
+    return renderPreview({ requestId: r.requestId, project, elementId: r.elementId })
+  })
+  ipcMain.handle(Channels.vgenPreviewCancel, () => cancelPreview())
+  ipcMain.handle(Channels.vgenSource, (_e, path: unknown) => videoGenSourceUrl(path))
 }

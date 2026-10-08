@@ -17,6 +17,9 @@ import type {
   ConvertFormat,
   VgenEnqueueRequest,
   VgenJob,
+  VgenPreviewOutcome,
+  VgenPreviewProgress,
+  VgenPreviewRequest,
   ImportProgress,
   MediaCollectResult,
   MediaInfoResult,
@@ -101,6 +104,10 @@ export const Channels = {
   vgenClearFinished: 'vgen:clearFinished',
   vgenClearCache: 'vgen:clearCache',
   vgenUpdate: 'vgen:update', // Event: VgenJob
+  vgenPreview: 'vgen:preview',
+  vgenPreviewCancel: 'vgen:previewCancel',
+  vgenPreviewProgress: 'vgen:previewProgress', // Event: VgenPreviewProgress
+  vgenSource: 'vgen:source',
   // Medien-Info (ffprobe)
   mediaInfoProbe: 'mediaInfo:probe',
   mediaInfoRaw: 'mediaInfo:raw',
@@ -308,6 +315,14 @@ export interface ToolboxApi {
     clearCache(): Promise<void>
     /** Live-Updates einzelner Aufträge. Liefert eine Cleanup-Funktion. */
     onUpdate(cb: (job: VgenJob) => void): () => void
+    /** „Vorschau rechnen“: kleiner Probelauf um ein Element, exakt wie das Ergebnis. Eine neue
+     *  Anfrage bricht die laufende ab (die meldet dann canceled). */
+    preview(req: VgenPreviewRequest): Promise<VgenPreviewOutcome>
+    cancelPreview(): Promise<void>
+    onPreviewProgress(cb: (p: VgenPreviewProgress) => void): () => void
+    /** Abspielbare Adresse (media://vgen/src/…) einer Quelldatei für die Live-Vorschau – nur
+     *  Videos, GIFs und Musik; null = nicht erlaubt oder nicht vorhanden. */
+    source(path: string): Promise<string | null>
   }
 
   mediaInfo: {

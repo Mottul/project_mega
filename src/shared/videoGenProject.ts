@@ -11,6 +11,7 @@ import type {
   VgenElementKind,
   VgenFit,
   VgenKenBurns,
+  VgenKenBurnsFrame,
   VgenKenBurnsMode,
   VgenKenBurnsStrength,
   VgenMusic,
@@ -18,7 +19,7 @@ import type {
   VgenProject,
   VgenTransition
 } from './types'
-import { VGEN_TRANSITION_KINDS } from './videoGenPlan'
+import { KEN_BURNS_ZOOM_MAX, VGEN_TRANSITION_KINDS } from './videoGenPlan'
 
 /** Formate der Ausgabe (Transparenz kommt später: ohne HAP Alpha und ProRes 4444). */
 export const VGEN_FORMATS: ConvertFormat[] = [
@@ -58,7 +59,27 @@ export const VGEN_KEN_BURNS_MODES: { id: VgenKenBurnsMode; label: string }[] = [
   { id: 'pan-left', label: 'Schwenk ←' },
   { id: 'pan-right', label: 'Schwenk →' },
   { id: 'pan-up', label: 'Schwenk ↑' },
-  { id: 'pan-down', label: 'Schwenk ↓' }
+  { id: 'pan-down', label: 'Schwenk ↓' },
+  // nur je Bild – als Vorgabe für alle Bilder ergibt ein fester Ausschnitt keinen Sinn
+  { id: 'custom', label: 'Eigener Rahmen' }
+]
+
+/** Vorgaben für neue Musik (Pegel unter dem Originalton, weiche Übergänge). */
+export const DEFAULT_VGEN_MUSIC: Omit<VgenMusic, 'tracks'> = {
+  gainDb: -6,
+  fadeInSec: 2,
+  fadeOutSec: 3,
+  crossfadeSec: 2,
+  duckDb: 0
+}
+
+/** Absenken unter Originalton: Auswahl im Panel. */
+export const VGEN_DUCK_CHOICES: { db: number; label: string }[] = [
+  { db: 0, label: 'Aus' },
+  { db: -6, label: 'Leicht (−6 dB)' },
+  { db: -12, label: 'Mittel (−12 dB)' },
+  { db: -18, label: 'Stark (−18 dB)' },
+  { db: -30, label: 'Fast stumm (−30 dB)' }
 ]
 
 export const VGEN_KEN_BURNS_STRENGTHS: { id: VgenKenBurnsStrength; label: string }[] = [
@@ -101,7 +122,8 @@ export const VGEN_LIMITS = {
   imageSecMin: 0.1,
   imageSecMax: 3600,
   transitionSecMax: 10,
-  mediaSecMax: 24 * 3600
+  mediaSecMax: 24 * 3600,
+  musicTracks: 100
 }
 
 /* --------------------------------- Prüfung --------------------------------- */
@@ -134,6 +156,14 @@ function transition(v: unknown): VgenTransition | null {
   return kind && durationSec !== null ? { kind, durationSec } : null
 }
 
+function kbFrame(v: unknown): VgenKenBurnsFrame | null {
+  if (!isObj(v)) return null
+  const cx = finite(v.cx, 0, 1)
+  const cy = finite(v.cy, 0, 1)
+  const zoom = finite(v.zoom, 1, KEN_BURNS_ZOOM_MAX)
+  return cx !== null && cy !== null && zoom !== null ? { cx, cy, zoom } : null
+}
+
 function kenBurns(v: unknown): VgenKenBurns | null {
   if (!isObj(v)) return null
   const mode = oneOf(
@@ -144,7 +174,11 @@ function kenBurns(v: unknown): VgenKenBurns | null {
     v.strength,
     VGEN_KEN_BURNS_STRENGTHS.map((s) => s.id)
   )
-  return mode && strength ? { mode, strength } : null
+  if (!mode || !strength) return null
+  if (mode !== 'custom') return { mode, strength }
+  // eigener Rahmen ohne gültige Ausschnitte: ruhig in der Mitte (die Bahn klemmt ohnehin)
+  const from = kbFrame(v.from) ?? { cx: 0.5, cy: 0.5, zoom: 1 }
+  return { mode, strength, from, to: kbFrame(v.to) ?? from }
 }
 
 const FIT_IDS = VGEN_FITS.map((f) => f.id)
@@ -204,18 +238,27 @@ function defaultsOf(v: unknown): VgenDefaults | null {
   if (!isObj(v)) return null
   const imageSec = finite(v.imageSec, VGEN_LIMITS.imageSecMin, VGEN_LIMITS.imageSecMax)
   const t = transition(v.transition)
-  const kb = kenBurns(v.kenBurns)
+  const k = kenBurns(v.kenBurns)
+  // ein eigener Rahmen gilt nur je Bild
+  const kb = k && k.mode === 'custom' ? { mode: 'auto' as const, strength: k.strength } : k
   const fit = oneOf(v.fit, FIT_IDS)
   return imageSec !== null && t && kb && fit ? { imageSec, transition: t, kenBurns: kb, fit } : null
 }
 
+/** Musik; ältere Projekte (Phase 1) hatten genau einen Titel unter `path`. */
 function music(v: unknown): VgenMusic | null {
-  if (!isObj(v) || !isSafeAbsolutePath(v.path)) return null
+  if (!isObj(v)) return null
+  const raw = Array.isArray(v.tracks) ? v.tracks : v.path !== undefined ? [v.path] : []
+  const tracks = raw.filter(isSafeAbsolutePath).slice(0, VGEN_LIMITS.musicTracks)
+  if (!tracks.length) return null
+  const d = DEFAULT_VGEN_MUSIC
   return {
-    path: v.path,
+    tracks,
     gainDb: finite(v.gainDb, -40, 12) ?? 0,
     fadeInSec: finite(v.fadeInSec, 0, 30) ?? 0,
-    fadeOutSec: finite(v.fadeOutSec, 0, 30) ?? 0
+    fadeOutSec: finite(v.fadeOutSec, 0, 30) ?? 0,
+    crossfadeSec: finite(v.crossfadeSec, 0, 10) ?? d.crossfadeSec,
+    duckDb: finite(v.duckDb, -40, 0) ?? d.duckDb
   }
 }
 

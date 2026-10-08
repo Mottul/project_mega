@@ -44,7 +44,11 @@ const api: ToolboxApi = {
     cancel: (id) => ipcRenderer.invoke(Channels.vgenCancel, id),
     clearFinished: () => ipcRenderer.invoke(Channels.vgenClearFinished),
     clearCache: () => ipcRenderer.invoke(Channels.vgenClearCache),
-    onUpdate: (cb) => subscribe(Channels.vgenUpdate, (job) => cb(job as never))
+    onUpdate: (cb) => subscribe(Channels.vgenUpdate, (job) => cb(job as never)),
+    preview: (req) => ipcRenderer.invoke(Channels.vgenPreview, req),
+    cancelPreview: () => ipcRenderer.invoke(Channels.vgenPreviewCancel),
+    onPreviewProgress: (cb) => subscribe(Channels.vgenPreviewProgress, (p) => cb(p as never)),
+    source: (path) => ipcRenderer.invoke(Channels.vgenSource, path)
   },
 
   mediaInfo: {

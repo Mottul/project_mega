@@ -1,7 +1,8 @@
 // Zwischenspeicher des Video-Generators unter userData/vgen-cache:
-//   pieces/  Element-Stücke (<schlüssel>.mov + .wav) und Übergänge (<schlüssel>.mov)
-//   thumbs/  Vorschaubilder (über media://vgen/<datei> im Renderer)
-//   jobs/    Arbeitsordner je Auftrag (Bildliste, Ton-Graph, Mix) – nach dem Lauf gelöscht
+//   pieces/    Element-Stücke (<schlüssel>.mov + .wav) und Übergänge (<schlüssel>.mov)
+//   thumbs/    Vorschaubilder (über media://vgen/<datei> im Renderer)
+//   previews/  gerechnete Vorschauen („Vorschau rechnen“, p_<schlüssel>.mp4, die neuesten 20)
+//   jobs/      Arbeitsordner je Auftrag (Bildliste, Ton-Graph, Mix) – nach dem Lauf gelöscht
 // Die Schlüssel kommen aus shared/videoGenPlan (Quelle + genau der ffmpeg-Befehl): Ändert man
 // ein Element, ist nur dessen Stück neu; der Rest wird wiederverwendet. Platz begrenzt, die
 // am längsten unbenutzten Stücke gehen zuerst.
@@ -22,7 +23,11 @@ export function cacheRoot(): string {
 }
 export const piecesDir = (): string => join(cacheRoot(), 'pieces')
 export const thumbsDir = (): string => join(cacheRoot(), 'thumbs')
+export const previewsDir = (): string => join(cacheRoot(), 'previews')
 export const jobDir = (jobId: string): string => join(cacheRoot(), 'jobs', jobId)
+
+/** Gerechnete Vorschauen: so viele bleiben (je wenige MB). */
+export const VGEN_PREVIEWS_KEEP = 20
 
 export async function ensureDirs(...dirs: string[]): Promise<void> {
   for (const d of dirs) await mkdir(d, { recursive: true })
@@ -127,15 +132,47 @@ export async function prune(
   logLine('[vgen] Cache aufgeräumt, jetzt', Math.round(total / 1024 ** 2), 'MB')
 }
 
-/** Gerechnete Stücke löschen (Vorschaubilder bleiben – sie sind klein und gerade sichtbar). */
-export async function clearCache(): Promise<void> {
-  await removeQuietly(piecesDir())
+/** Nur die neuesten gerechneten Vorschauen behalten. */
+export async function prunePreviews(keep = VGEN_PREVIEWS_KEEP): Promise<void> {
+  const dir = previewsDir()
+  if (!existsSync(dir)) return
+  const files: { path: string; mtime: number }[] = []
+  for (const name of await readdir(dir)) {
+    try {
+      const path = join(dir, name)
+      files.push({ path, mtime: (await stat(path)).mtimeMs })
+    } catch {
+      // gerade gelöscht – egal
+    }
+  }
+  files.sort((a, b) => b.mtime - a.mtime)
+  await removeQuietly(...files.slice(keep).map((f) => f.path))
 }
 
-/** Datei für media://vgen/<name> – NUR Vorschaubilder, nur sichere Namen. */
+/**
+ * Gerechnete Stücke und Vorschauen löschen (Vorschaubilder bleiben – sie sind klein und
+ * gerade sichtbar).
+ */
+export async function clearCache(): Promise<void> {
+  await removeQuietly(piecesDir(), previewsDir())
+}
+
+const PREVIEW_NAME_RE = /^p_[0-9a-f]+\.mp4$/
+
+/**
+ * Datei für media://vgen/<name> aus dem eigenen Cache – nur Vorschaubilder (.jpg) und
+ * gerechnete Vorschauen (p_….mp4), nur sichere Namen. Quelldateien laufen über
+ * videoGenSources (media://vgen/src/…).
+ */
 export function resolveVgenFile(relative: string): string | null {
   const name = basename(decodeURIComponent(relative))
-  if (!SAFE_NAME_RE.test(name) || !name.endsWith('.jpg')) return null
-  const abs = join(thumbsDir(), name)
+  if (!SAFE_NAME_RE.test(name)) return null
+  const dir = name.endsWith('.jpg')
+    ? thumbsDir()
+    : PREVIEW_NAME_RE.test(name)
+      ? previewsDir()
+      : null
+  if (!dir) return null
+  const abs = join(dir, name)
   return existsSync(abs) ? abs : null
 }
