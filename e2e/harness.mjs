@@ -34,7 +34,19 @@ export async function launchApp({ env = {}, args = [] } = {}) {
     args: [...sandbox, `--user-data-dir=${userData}`, ...args, root],
     env: full
   })
+  // E2E_DEBUG=1: Ausgabe und Ende des main-Prozesses mitschreiben (Abstürze, Fehler im main)
+  if (process.env.E2E_DEBUG) {
+    const proc = app.process()
+    proc.stdout?.on('data', (d) => process.stdout.write(`[main] ${d}`))
+    proc.stderr?.on('data', (d) => process.stdout.write(`[main!] ${d}`))
+    proc.on('exit', (code, signal) => console.log(`[main] beendet: Code ${code}, Signal ${signal}`))
+  }
   const page = await app.firstWindow()
+  if (process.env.E2E_DEBUG) {
+    page.on('close', () => console.log('[e2e] Hauptfenster geschlossen'))
+    page.on('crash', () => console.log('[e2e] Hauptfenster abgestürzt'))
+    app.on('window', (p) => console.log(`[e2e] neues Fenster ${p.url()}`))
+  }
   // Fehler des Hauptfensters sammeln (pageerror und console.error) – siehe smoke.mjs
   const errors = []
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message))
