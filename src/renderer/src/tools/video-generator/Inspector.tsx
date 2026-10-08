@@ -3,10 +3,15 @@
 
 import { useState } from 'react'
 import {
+  ArrowDown,
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
+  Frame,
   Monitor,
   Music,
+  Plus,
+  Ruler,
   SlidersHorizontal,
   Trash2,
   Wand2
@@ -20,27 +25,49 @@ import { PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { useSettings } from '@renderer/lib/settings'
 import { toast } from '@renderer/lib/toast'
+import { cn } from '@renderer/lib/utils'
 import { DEFAULT_LOUDNESS, LOUDNESS_CHOICES } from '@shared/loudness'
 import { AUDIO_EXTENSIONS } from '@shared/mediaExtensions'
 import type {
   ConvertCapabilities,
+  MediaInfo,
   VgenElement,
   VgenFit,
   VgenKenBurns,
   VgenKenBurnsMode,
   VgenKenBurnsStrength,
+  VgenMusic,
   VgenProject,
   VgenTransition,
   VgenTransitionKind
 } from '@shared/types'
-import { VGEN_TRANSITIONS } from '@shared/videoGenPlan'
 import {
+  imageSecForMusic,
+  kenBurnsFrames,
+  musicPassSamples,
+  VGEN_SAMPLE_RATE,
+  VGEN_TRANSITIONS,
+  type VgenCaps,
+  type VgenPlan
+} from '@shared/videoGenPlan'
+import {
+  DEFAULT_VGEN_MUSIC,
+  VGEN_DUCK_CHOICES,
   VGEN_FITS,
   VGEN_FPS,
   VGEN_KEN_BURNS_MODES,
-  VGEN_KEN_BURNS_STRENGTHS
+  VGEN_KEN_BURNS_STRENGTHS,
+  VGEN_LIMITS
 } from '@shared/videoGenProject'
-import { FORMAT_OPTIONS, QUALITY_OPTIONS, SIZE_PRESETS, basename, sizePresetId } from './presets'
+import type { Meta } from './meta'
+import {
+  FORMAT_OPTIONS,
+  QUALITY_OPTIONS,
+  SIZE_PRESETS,
+  basename,
+  fmtDuration,
+  sizePresetId
+} from './presets'
 import { useVideoGen } from './store'
 
 const label = 'block text-xs font-medium text-muted-foreground'
@@ -279,26 +306,31 @@ function TransitionFields({
 
 function KenBurnsFields({
   value,
-  onChange
+  onChange,
+  allowCustom = false
 }: {
   value: VgenKenBurns
   onChange: (k: VgenKenBurns) => void
+  /** „Eigener Rahmen“ nur je Bild, nicht als Vorgabe */
+  allowCustom?: boolean
 }): JSX.Element {
   return (
     <div className="flex items-center gap-2">
       <select
-        aria-label="Ken Burns"
+        aria-label={allowCustom ? 'Ken Burns der Auswahl' : 'Ken Burns'}
         className={`${selectClass} min-w-0 flex-1`}
         value={value.mode}
-        onChange={(e) => onChange({ ...value, mode: e.target.value as VgenKenBurnsMode })}
+        onChange={(e) =>
+          onChange({ mode: e.target.value as VgenKenBurnsMode, strength: value.strength })
+        }
       >
-        {VGEN_KEN_BURNS_MODES.map((m) => (
+        {VGEN_KEN_BURNS_MODES.filter((m) => allowCustom || m.id !== 'custom').map((m) => (
           <option key={m.id} value={m.id}>
             {m.label}
           </option>
         ))}
       </select>
-      {value.mode !== 'off' && (
+      {value.mode !== 'off' && value.mode !== 'custom' && (
         <select
           aria-label="Stärke"
           className={`${selectClass} w-24`}
@@ -365,30 +397,64 @@ export function DefaultsPanel(): JSX.Element {
 
 /* ------------------------------- Ton & Musik ------------------------------- */
 
-export function AudioPanel(): JSX.Element {
-  const music = useVideoGen((s) => s.project.music)
-  const loudnorm = useVideoGen((s) => s.project.loudnorm)
-  const loop = useVideoGen((s) => s.project.output.loop)
+export function AudioPanel({
+  meta,
+  caps,
+  plan
+}: {
+  meta: Record<string, Meta>
+  caps: VgenCaps
+  plan: VgenPlan
+}): JSX.Element {
+  const project = useVideoGen((s) => s.project)
   const setProject = useVideoGen((s) => s.setProject)
+  const setDefaults = useVideoGen((s) => s.setDefaults)
+  const { music, loudnorm } = project
+  const loop = project.output.loop
+  const lookup = (p: string): MediaInfo | null => {
+    const m = meta[p]
+    return m?.kind === 'ok' ? m.info : null
+  }
+  const setMusic = (patch: Partial<VgenMusic>): void => {
+    if (music) setProject({ music: { ...music, ...patch } })
+  }
+  const setTracks = (tracks: string[]): void =>
+    setProject({ music: music && tracks.length ? { ...music, tracks } : null })
 
-  async function chooseMusic(): Promise<void> {
+  async function addTracks(): Promise<void> {
     const paths = await api.selectPaths({
       title: 'Musik auswählen',
+      multi: true,
       filters: [
         { name: 'Ton', extensions: AUDIO_EXTENSIONS },
         { name: 'Alle Dateien', extensions: ['*'] }
       ]
     })
-    if (paths.length) {
-      setProject({
-        music: {
-          path: paths[0],
-          gainDb: music?.gainDb ?? -6,
-          fadeInSec: music?.fadeInSec ?? 2,
-          fadeOutSec: music?.fadeOutSec ?? 3
-        }
-      })
+    if (!paths.length) return
+    const tracks = [...(music?.tracks ?? []), ...paths].slice(0, VGEN_LIMITS.musicTracks)
+    setProject({ music: music ? { ...music, tracks } : { ...DEFAULT_VGEN_MUSIC, tracks } })
+  }
+
+  function fitToMusic(): void {
+    const r = imageSecForMusic(project, lookup, caps)
+    if (!r.ok) {
+      toast.warning('Standzeit nicht angepasst', r.error)
+      return
     }
+    setDefaults({ imageSec: r.imageSec })
+    toast.success(
+      `Standzeit der Bilder: ${sec(r.imageSec)} – das Video dauert jetzt ${fmtDuration(r.durationSec)}.`
+    )
+  }
+
+  const pass = music ? musicPassSamples(music, lookup) : null
+  const move = (i: number, dir: -1 | 1): void => {
+    if (!music) return
+    const t = [...music.tracks]
+    const j = i + dir
+    if (j < 0 || j >= t.length) return
+    ;[t[i], t[j]] = [t[j], t[i]]
+    setTracks(t)
   }
 
   return (
@@ -400,24 +466,76 @@ export function AudioPanel(): JSX.Element {
         <span className={label}>Musik</span>
         {music ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate text-sm" title={music.path}>
-                {basename(music.path)}
-              </span>
-              <Button variant="ghost" size="sm" onClick={() => void chooseMusic()}>
-                Ändern
+            <ol className="space-y-1" aria-label="Musiktitel">
+              {music.tracks.map((t, i) => {
+                const m = meta[t]
+                return (
+                  <li key={`${t}-${i}`} className="flex items-center gap-1 text-sm">
+                    <span className="w-4 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                      {i + 1}
+                    </span>
+                    <span
+                      className={cn(
+                        'min-w-0 flex-1 truncate',
+                        m?.kind === 'error' && 'text-destructive'
+                      )}
+                      title={m?.kind === 'error' ? `${t}\n${m.message}` : t}
+                    >
+                      {basename(t)}
+                    </span>
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {m?.kind === 'ok' && m.info.durationSec
+                        ? fmtDuration(m.info.durationSec)
+                        : ''}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      aria-label="Titel nach oben"
+                      title="Nach oben"
+                      disabled={i === 0}
+                      onClick={() => move(i, -1)}
+                    >
+                      <ArrowUp className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      aria-label="Titel nach unten"
+                      title="Nach unten"
+                      disabled={i === music.tracks.length - 1}
+                      onClick={() => move(i, 1)}
+                    >
+                      <ArrowDown className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      aria-label="Titel entfernen"
+                      title="Titel entfernen"
+                      onClick={() => setTracks(music.tracks.filter((_, k) => k !== i))}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </li>
+                )
+              })}
+            </ol>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => void addTracks()}>
+                <Plus className="size-4" /> Titel
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Musik entfernen"
-                title="Musik entfernen"
-                onClick={() => setProject({ music: null })}
-              >
-                <Trash2 className="size-4" />
-              </Button>
+              {pass !== null && (
+                <span className="text-xs text-muted-foreground">
+                  Musik {fmtDuration(pass / VGEN_SAMPLE_RATE)} · Video{' '}
+                  {fmtDuration(plan.durationSec)}
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1">
                 <span className={label}>Pegel</span>
                 <DecimalField
@@ -426,7 +544,18 @@ export function AudioPanel(): JSX.Element {
                   max={12}
                   decimals={1}
                   suffix="dB"
-                  onCommit={(v) => v !== null && setProject({ music: { ...music, gainDb: v } })}
+                  onCommit={(v) => v !== null && setMusic({ gainDb: v })}
+                />
+              </label>
+              <label className="space-y-1">
+                <span className={label}>Überblendung</span>
+                <DecimalField
+                  value={music.crossfadeSec}
+                  min={0}
+                  max={10}
+                  decimals={1}
+                  suffix="s"
+                  onCommit={(v) => v !== null && setMusic({ crossfadeSec: v })}
                 />
               </label>
               <label className="space-y-1">
@@ -437,7 +566,7 @@ export function AudioPanel(): JSX.Element {
                   max={30}
                   decimals={1}
                   suffix="s"
-                  onCommit={(v) => v !== null && setProject({ music: { ...music, fadeInSec: v } })}
+                  onCommit={(v) => v !== null && setMusic({ fadeInSec: v })}
                 />
               </label>
               <label className="space-y-1">
@@ -448,7 +577,7 @@ export function AudioPanel(): JSX.Element {
                   max={30}
                   decimals={1}
                   suffix="s"
-                  onCommit={(v) => v !== null && setProject({ music: { ...music, fadeOutSec: v } })}
+                  onCommit={(v) => v !== null && setMusic({ fadeOutSec: v })}
                 />
               </label>
             </div>
@@ -457,9 +586,34 @@ export function AudioPanel(): JSX.Element {
                 Mit Schleife blendet das Musikende in den Anfang (statt Ein-/Ausblenden).
               </p>
             )}
+            <label className="block space-y-1">
+              <span className={label}>Unter Originalton absenken</span>
+              <select
+                className={`${selectClass} w-full`}
+                value={String(music.duckDb)}
+                onChange={(e) => setMusic({ duckDb: Number(e.target.value) })}
+              >
+                {!VGEN_DUCK_CHOICES.some((c) => c.db === music.duckDb) && (
+                  <option value={String(music.duckDb)}>{music.duckDb} dB</option>
+                )}
+                {VGEN_DUCK_CHOICES.map((c) => (
+                  <option key={c.db} value={String(c.db)}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              variant="outline"
+              size="sm"
+              title="Standzeit der Bilder (Vorgabe) so wählen, dass das Video so lang wird wie die Musik"
+              onClick={fitToMusic}
+            >
+              <Ruler className="size-4" /> Standzeit an Musik anpassen
+            </Button>
           </div>
         ) : (
-          <Button variant="outline" size="sm" onClick={() => void chooseMusic()}>
+          <Button variant="outline" size="sm" onClick={() => void addTracks()}>
             <Music className="size-4" /> Musik wählen …
           </Button>
         )}
@@ -491,9 +645,11 @@ export function AudioPanel(): JSX.Element {
 
 export function SelectionPanel({
   infoText,
+  plan,
   onNudge
 }: {
   infoText: string | null
+  plan: VgenPlan
   onNudge: (dir: -1 | 1) => void
 }): JSX.Element {
   const elements = useVideoGen((s) => s.project.elements)
@@ -501,6 +657,8 @@ export function SelectionPanel({
   const defaults = useVideoGen((s) => s.project.defaults)
   const loop = useVideoGen((s) => s.project.output.loop)
   const update = useVideoGen((s) => s.updateElements)
+  const updateEach = useVideoGen((s) => s.updateEach)
+  const setPreviewMode = useVideoGen((s) => s.setPreviewMode)
   const remove = useVideoGen((s) => s.remove)
   const sel = elements.filter((e) => selectedIds.includes(e.id))
   const ids = sel.map((e) => e.id)
@@ -638,6 +796,7 @@ export function SelectionPanel({
         <div className="space-y-1">
           <span className={label}>Ken Burns</span>
           <select
+            aria-label="Ken-Burns-Einstellung"
             className={`${selectClass} w-full`}
             value={kb === undefined ? 'mixed' : kb ? 'own' : ''}
             onChange={(e) =>
@@ -656,13 +815,32 @@ export function SelectionPanel({
           {kb && (
             <KenBurnsFields
               value={kb}
-              onChange={(k) =>
-                update(
+              allowCustom
+              onChange={(k) => {
+                if (k.mode !== 'custom') {
+                  update(
+                    images.map((x) => x.id),
+                    { kenBurns: k }
+                  )
+                  return
+                }
+                // eigener Rahmen: je Bild aus seiner bisherigen Bahn (nichts springt)
+                const paths = new Map(plan.elements.map((e) => [e.id, e.kenBurns]))
+                updateEach(
                   images.map((x) => x.id),
-                  { kenBurns: k }
+                  (x) => {
+                    const p = paths.get(x.id)
+                    return { kenBurns: { ...k, ...(p ? kenBurnsFrames(p) : {}) } }
+                  }
                 )
-              }
+                if (images.length === 1) setPreviewMode('frame')
+              }}
             />
+          )}
+          {kb?.mode === 'custom' && images.length === 1 && (
+            <Button variant="outline" size="sm" onClick={() => setPreviewMode('frame')}>
+              <Frame className="size-4" /> Rahmen auf dem Bild ziehen
+            </Button>
           )}
         </div>
       )}

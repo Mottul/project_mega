@@ -1,6 +1,6 @@
 // Projekt des Video-Generators: Elemente, Ausgabe, Vorgaben, Musik. Persistiert nach
 // Projektregel (debouncedStorage, version/migrate, fensterübergreifend). NICHT gespeichert:
-// Auswahl, Analyse-Ergebnisse und Vorschaubilder (abgeleitet, siehe meta.ts/thumbs.ts).
+// Auswahl, Art der Vorschau, Analyse-Ergebnisse und Vorschaubilder (abgeleitet, siehe meta.ts).
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -9,15 +9,22 @@ import { DEFAULT_VGEN_PROJECT, sanitizeVgenProject } from '@shared/videoGenProje
 import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
 import { kindForPath } from './presets'
 
+/** Vorschau-Karte: live abspielen, Ken-Burns-Rahmen ziehen, gerechnete Vorschau. */
+export type PreviewMode = 'live' | 'frame' | 'rendered'
+
 interface VgenState {
   project: VgenProject
   /** ausgewählte Element-ids (Mehrfachauswahl) */
   selected: string[]
+  previewMode: PreviewMode
+  setPreviewMode: (mode: PreviewMode) => void
   setProject: (patch: Partial<VgenProject>) => void
   setElements: (elements: VgenElement[]) => void
   /** Dateien als Elemente einfügen (Ordner vorher auflösen); at = Index, null = ans Ende */
   insertFiles: (paths: string[], at: number | null) => string[]
   updateElements: (ids: string[], patch: Partial<VgenElement>) => void
+  /** je Element eigene Änderung (z. B. eigener Ken-Burns-Rahmen aus der jeweiligen Bahn) */
+  updateEach: (ids: string[], patch: (e: VgenElement) => Partial<VgenElement>) => void
   remove: (ids: string[]) => void
   clearElements: () => void
   setOutput: (patch: Partial<VgenProject['output']>) => void
@@ -47,6 +54,8 @@ export const useVideoGen = create<VgenState>()(
     (set, get) => ({
       project: DEFAULT_VGEN_PROJECT,
       selected: [],
+      previewMode: 'live',
+      setPreviewMode: (previewMode) => set({ previewMode }),
       setProject: (patch) => set((s) => ({ project: { ...s.project, ...patch } })),
       setElements: (elements) => set((s) => ({ project: { ...s.project, elements } })),
       insertFiles: (paths, at) => {
@@ -68,6 +77,15 @@ export const useVideoGen = create<VgenState>()(
           }
         }))
       },
+      updateEach: (ids, patch) => {
+        const set_ = new Set(ids)
+        set((s) => ({
+          project: {
+            ...s.project,
+            elements: s.project.elements.map((e) => (set_.has(e.id) ? { ...e, ...patch(e) } : e))
+          }
+        }))
+      },
       remove: (ids) => {
         const set_ = new Set(ids)
         set((s) => ({
@@ -85,7 +103,8 @@ export const useVideoGen = create<VgenState>()(
     {
       name: 'video-generator',
       storage: debouncedStorage(),
-      version: 1,
+      // 2: Musik mit mehreren Titeln (`tracks` statt `path`) – die Prüfung übernimmt alte Stände
+      version: 2,
       // Gespeicherten Stand dieselbe Prüfung durchlaufen lassen wie im main – ein kaputter
       // oder veralteter Stand fällt auf die Vorgabe zurück statt das Werkzeug zu sprengen
       migrate: (persisted) => {

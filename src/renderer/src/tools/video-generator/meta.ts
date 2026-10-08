@@ -71,6 +71,36 @@ const useThumbs = create<ThumbState>((set, get) => ({
   }
 }))
 
+const sources = new Map<string, Promise<string | null>>()
+
+/** Abspielbare Adresse einer Quelldatei (Video, GIF, Musik) für die Live-Vorschau. */
+export function sourceUrl(path: string): Promise<string | null> {
+  let p = sources.get(path)
+  if (!p) {
+    p = api.videoGen.source(path).catch(() => null)
+    sources.set(path, p)
+  }
+  return p
+}
+
+/** Wie sourceUrl als Hook: undefined = lädt, null = nicht abspielbar. */
+export function useSourceUrl(path: string | null): string | null | undefined {
+  const [state, setState] = useState<{ path: string | null; url: string | null | undefined }>({
+    path,
+    url: undefined
+  })
+  useEffect(() => {
+    if (!path) return
+    let alive = true
+    void sourceUrl(path).then((url) => alive && setState({ path, url }))
+    return () => {
+      alive = false
+    }
+  }, [path])
+  if (!path) return null
+  return state.path === path ? state.url : undefined
+}
+
 /**
  * Vorschaubild erst laden, wenn das Element sichtbar wird (100+ Fotos im Storyboard).
  * Liefert ref (an das Bild-Element) und die URL (undefined = lädt noch, null = keins).
