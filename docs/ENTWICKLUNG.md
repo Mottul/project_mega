@@ -79,7 +79,8 @@ src/
 │   └── services/
 │       ├── store.ts · db.ts  # settings.json (Quelle der Wahrheit) · SQLite/FTS5 – je mit Wiederherstellung
 │       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Warteschlange, Fähigkeiten;
-│       │                     #   videoGen*: Rechenlauf, Zwischenspeicher, Vorschaubilder des Video-Generators
+│       │                     #   videoGen*: Rechenlauf, Vorschau rechnen, Zwischenspeicher, Vorschaubilder,
+│       │                     #   Quelladressen (Live-Vorschau) des Video-Generators
 │       ├── ffmpeg/           # ffmpeg-Pfade, Medien-Info (ffprobe-Analyse, Parser, Cache)
 │       ├── player/           # Bibliothek, Import, Wiedergabezustand, Ausgabefenster, Fernsteuerung
 │       ├── manuals/ · osc/ · novastar/ · netscan/ · ytdlp/   # Dienste einzelner Werkzeuge

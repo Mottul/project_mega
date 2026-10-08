@@ -29,6 +29,13 @@ Zusätzlich gilt der allgemeine `/code-review`.
   anderen Fenster gespeicherte. Einstellungen ersetzen Listen, sie mergen sie nicht → frischen
   Stand holen (`api.getSettings()`) und daraus filtern.
 - Der Einstellungs-Broadcast erreicht das auslösende Fenster nicht; mehrere Fenster mitdenken.
+- **zustand-Store und lokaler `useState` nach `await` nicht im selben Atemzug setzen, wenn ein
+  Effekt beide liest.** Der Store rendert sofort (useSyncExternalStore), der lokale Zustand erst
+  im nächsten Durchlauf – ein Wächter-Effekt sieht den Mischstand und dreht die Änderung zurück
+  (Video-Generator, 8. Oktober 2026: „Gerechnet“ sprang auf „Live“ zurück). Den Store erst in
+  einem Effekt auf den lokalen Zustand nachziehen.
+- **`key` von Listen mit Medien nicht aus der Position bilden**, wenn Einträge den Platz
+  wechseln: Das `<video>` wird sonst neu geladen und hakt (Live-Vorschau beim Übergang).
 
 ## Fernsteuer- und Browser-Seiten
 

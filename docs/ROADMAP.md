@@ -43,11 +43,10 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 - **Video-Konverter:** ProRes auf der GPU auch unter Windows/Linux (ffmpegs neuer
   `prores_ks_vulkan`) prüfen; ProRes 4444 mit Alpha über VideoToolbox freigeben, sobald auf einem
   Mac bestätigt (heute geht Transparenz bewusst über die CPU).
-- **Video-Generator** (Phase 2/3 aus [PLAN-VIDEO-GENERATOR.md](PLAN-VIDEO-GENERATOR.md)):
-  Live-Vorschau mit Play und „Vorschau rechnen“ (kleiner Probelauf), Ken-Burns-Rahmen auf dem Bild
-  ziehen, Videoausschnitt am Bereichsregler, mehrere Musiktitel mit Absenken unter dem
-  Originalton, „Bilddauer an Musiklänge anpassen“; später Titel-/Texttafeln, Logo, LUT, Vorlagen
-  und Transparenz (HAP Alpha/ProRes 4444).
+- **Video-Generator** (Phase 3 aus [PLAN-VIDEO-GENERATOR.md](PLAN-VIDEO-GENERATOR.md)): Titel-/
+  Texttafeln, Logo, LUT, Vorlagen und Transparenz (HAP Alpha/ProRes 4444); offen aus Phase 2: die
+  4:4:4-Zwischenstufe für ProRes/HAP-Ziele messen und den Neustart des Players an der Naht einer
+  nahtlosen Schleife prüfen.
 - **Stage-Timer:** Teleprompter (scrollender Text auf dem Referentenmonitor); Steuerung per OSC
   (Start/Pause/±1 min aus Companion oder Stream Deck – heute nur über die HTTP-Fernsteuerung).
 - **Testbildgenerator:** Audio-Testtöne (Sinus, Rosa Rauschen, Sweep, Kanal-Identifikation).

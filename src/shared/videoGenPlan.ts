@@ -29,8 +29,11 @@ import type {
   VgenElementKind,
   VgenFit,
   VgenHint,
+  VgenKenBurns,
+  VgenKenBurnsFrame,
   VgenKenBurnsMode,
   VgenKenBurnsStrength,
+  VgenMusic,
   VgenProject,
   VgenTransitionKind
 } from './types'
@@ -66,6 +69,15 @@ export const KEN_BURNS_STRENGTH: Record<VgenKenBurnsStrength, number> = {
   strong: 1.35
 }
 
+/** Eigener Rahmen: stärker als 4× vergrößert wird es auch bei 50-MP-Fotos weich. */
+export const KEN_BURNS_ZOOM_MAX = 4
+
+/** Absenken der Musik: Rampe hinein und heraus (s). */
+export const DUCK_RAMP_SEC = 0.5
+
+/** Höchstzahl Musik-Eingänge (wiederholte Titel) – jeder ist ein Dekoder im Ton-Lauf. */
+export const MUSIC_ENTRIES_MAX = 200
+
 /* --------------------------------- Typen ---------------------------------- */
 
 export interface VgenCaps {
@@ -89,6 +101,28 @@ export interface KenBurnsPath {
   /** Grundfenster (größtes Rechteck im Seitenverhältnis der Ausgabe), Anteil der Fläche */
   bw: number
   bh: number
+}
+
+/** Ein Titel der Musik, so oft er in der Abspielfolge vorkommt (je Vorkommen ein Eingang). */
+export interface VgenMusicEntry {
+  path: string
+  /** Länge laut Analyse (Samples bei 48 kHz) */
+  samples: number
+  /** Überblendung mit dem nächsten Eintrag (Samples, 0 = direkt) */
+  crossfade: number
+}
+
+export interface VgenMusicPlan {
+  entries: VgenMusicEntry[]
+  /** Länge der Abspielfolge nach den Überblendungen (Samples) */
+  samples: number
+  gainDb: number
+  fadeInSec: number
+  fadeOutSec: number
+  /** Schleife: Ende der Musik in ihren Anfang blenden (Samples) */
+  loopCrossfade: number
+  /** Absenken: Faktor (0..1) und Bereiche der Ausgabe in Sekunden; null = aus */
+  duck: { gain: number; rampSec: number; ranges: [number, number][] } | null
 }
 
 /** Was die Quelle braucht, bevor sie ins Raster passt (aus der Medien-Info abgeleitet). */
@@ -161,6 +195,7 @@ export interface VgenPlan {
   totalFrames: number
   totalSamples: number
   durationSec: number
+  music: VgenMusicPlan | null
   hints: VgenHint[]
 }
 
@@ -240,10 +275,40 @@ export function baseWindow(
 }
 
 /**
+ * Eigenen Rahmen in die Fläche zwingen: Zoom 1..4, Mitte so, dass der Ausschnitt ganz auf der
+ * Zeichenfläche liegt. Liegen Start und Ende drin, gilt das für die ganze Bahn (Mitte linear,
+ * halbe Breite konvex in der Zeit).
+ */
+export function clampKenBurnsFrame(
+  f: VgenKenBurnsFrame,
+  bw: number,
+  bh: number
+): VgenKenBurnsFrame {
+  const zoom = Math.min(KEN_BURNS_ZOOM_MAX, Math.max(1, Number.isFinite(f.zoom) ? f.zoom : 1))
+  const c = (v: number, half: number): number =>
+    Math.min(1 - half, Math.max(half, Number.isFinite(v) ? v : 0.5))
+  return { cx: c(f.cx, bw / zoom / 2), cy: c(f.cy, bh / zoom / 2), zoom }
+}
+
+/** Start und Ende einer Bahn als eigener Rahmen – Ausgangspunkt fürs Ziehen im Editor. */
+export function kenBurnsFrames(p: KenBurnsPath): {
+  from: VgenKenBurnsFrame
+  to: VgenKenBurnsFrame
+} {
+  return {
+    from: { cx: p.cx0, cy: p.cy0, zoom: p.z0 },
+    to: { cx: p.cx1, cy: p.cy1, zoom: p.z1 }
+  }
+}
+
+const CENTER_FRAME: VgenKenBurnsFrame = { cx: 0.5, cy: 0.5, zoom: 1 }
+
+/**
  * Bahn eines Bildes. `auto` wählt deterministisch aus der Element-id: Hochkant (beim Füllen)
  * schwenkt senkrecht, Panorama (deutlich breiter als die Ausgabe) waagerecht, sonst
  * wechselnd Zoom rein/raus/Schwenk. Schwenks nutzen vorhandenen Überstand ohne Zoom, sonst
- * zoomen sie um die Stärke, um Platz zu bekommen.
+ * zoomen sie um die Stärke, um Platz zu bekommen. `custom` nimmt Start- und Endausschnitt
+ * aus `frames` (in die Fläche gezwungen).
  */
 export function kenBurnsPath(
   id: string,
@@ -251,7 +316,8 @@ export function kenBurnsPath(
   strength: VgenKenBurnsStrength,
   canvas: { width: number; height: number },
   out: { width: number; height: number },
-  fit: VgenFit
+  fit: VgenFit,
+  frames?: Pick<VgenKenBurns, 'from' | 'to'>
 ): KenBurnsPath | null {
   if (mode === 'off') return null
   const Z = KEN_BURNS_STRENGTH[strength]
@@ -268,6 +334,11 @@ export function kenBurnsPath(
     else m = h % 2 ? 'zoom-out' : 'zoom-in'
   }
   switch (m) {
+    case 'custom': {
+      const a = clampKenBurnsFrame(frames?.from ?? CENTER_FRAME, bw, bh)
+      const b = clampKenBurnsFrame(frames?.to ?? frames?.from ?? CENTER_FRAME, bw, bh)
+      return { mode: m, z0: a.zoom, z1: b.zoom, cx0: a.cx, cx1: b.cx, cy0: a.cy, cy1: b.cy, bw, bh }
+    }
     case 'zoom-in':
       return { mode: m, z0: 1, z1: Z, cx0: 0.5, cx1: 0.5, cy0: 0.5, cy1: 0.5, bw, bh }
     case 'zoom-out':
@@ -459,7 +530,7 @@ export function planVideoGen(
         : { width: W, height: H }
     let path =
       kb && caps.perspective
-        ? kenBurnsPath(el.id, kb.mode, kb.strength, canvas, { width: W, height: H }, fit)
+        ? kenBurnsPath(el.id, kb.mode, kb.strength, canvas, { width: W, height: H }, fit, kb)
         : null
     if (kb && kb.mode !== 'off' && !caps.perspective) {
       hints.push({
@@ -575,6 +646,13 @@ export function planVideoGen(
     elements[0].samples += head
   }
 
+  // 4. Musik: Abspielfolge der Titel, Absenken unter Originalton
+  const totalSamples = sampleAt(total, rate)
+  const music =
+    project.music && project.music.tracks.length && count
+      ? planMusic(project.music, media, { total, totalSamples, loop, rate, elements }, hints)
+      : null
+
   return {
     ok: !hints.some((h) => h.level === 'error'),
     width: W,
@@ -586,9 +664,277 @@ export function planVideoGen(
     loop,
     elements,
     totalFrames: total,
-    totalSamples: sampleAt(total, rate),
+    totalSamples,
     durationSec: (total * rate[1]) / rate[0],
+    music,
     hints
+  }
+}
+
+/** Überblendung der Musik an der Schleifen-Naht: 2 s, bei kurzen Loops höchstens ein Viertel. */
+export function musicLoopCrossfade(totalSamples: number): number {
+  return Math.min(2 * VGEN_SAMPLE_RATE, Math.floor(totalSamples / 4))
+}
+
+/**
+ * Abspielfolge: Titel nacheinander (Überblendung höchstens die Hälfte des kürzeren), die Liste
+ * von vorn, bis die Länge reicht – je Vorkommen ein eigener Eingang (der Ton-Lauf liest jeden
+ * Titel einmal linear). Eine Sekunde Reserve: Die Dauer aus der Analyse kann bei MP3 ein wenig
+ * zu lang sein, an der Schleifen-Naht fehlte dann Ton.
+ */
+function planMusic(
+  m: VgenMusic,
+  media: (path: string) => MediaInfo | null | undefined,
+  t: {
+    total: number
+    totalSamples: number
+    loop: boolean
+    rate: [number, number]
+    elements: VgenElementPlan[]
+  },
+  hints: VgenHint[]
+): VgenMusicPlan | null {
+  const tracks: { path: string; samples: number }[] = []
+  for (const path of m.tracks) {
+    const info = media(path)
+    const sec = info ? (info.durationSec ?? info.audio[0]?.durationSec ?? null) : null
+    if (!info || !info.audio.length || !sec || sec <= 0) {
+      hints.push({
+        id: 'music-unreadable',
+        level: 'error',
+        text: `Musik „${path.split(/[\\/]/).pop()}“: ${info ? 'kein lesbarer Ton' : 'Datei fehlt oder ist nicht analysiert'}.`
+      })
+      continue
+    }
+    tracks.push({ path, samples: Math.floor(sec * VGEN_SAMPLE_RATE) })
+  }
+  if (!tracks.length) return null
+
+  const loopCrossfade = t.loop ? musicLoopCrossfade(t.totalSamples) : 0
+  const need = t.totalSamples + loopCrossfade + VGEN_SAMPLE_RATE
+  const X = Math.max(0, Math.round(m.crossfadeSec * VGEN_SAMPLE_RATE))
+  const entries: VgenMusicEntry[] = []
+  let len = 0
+  for (let k = 0; len < need && entries.length < MUSIC_ENTRIES_MAX; k++) {
+    const tr = tracks[k % tracks.length]
+    const prev = entries[entries.length - 1]
+    if (prev) {
+      prev.crossfade = Math.min(X, Math.floor(prev.samples / 2), Math.floor(tr.samples / 2))
+      len -= prev.crossfade
+    }
+    entries.push({ path: tr.path, samples: tr.samples, crossfade: 0 })
+    len += tr.samples
+  }
+  if (len < t.totalSamples + loopCrossfade) {
+    hints.push({
+      id: 'music-short',
+      level: 'warning',
+      text: 'Die Musik reicht nicht für die ganze Länge – am Ende ist Stille.'
+    })
+  }
+
+  // Absenken: wo Videos mit Originalton laufen (samt ihren Übergängen); nahe Bereiche
+  // zusammengefasst, sonst käme die Musik zwischen zwei Clips kurz hoch
+  let duck: VgenMusicPlan['duck'] = null
+  if (m.duckDb < 0) {
+    const sec = (f: number): number => (f * t.rate[1]) / t.rate[0]
+    const totalSec = sec(t.total)
+    const raw: [number, number][] = []
+    for (const e of t.elements) {
+      if (e.audioStream === null) continue
+      const a = sec(e.start)
+      const b = sec(e.start + e.frames)
+      raw.push([a, b])
+      // Schleife: der Kopf von Element 0 liegt am Ende der Datei
+      if (t.loop && a < 0) raw.push([a + totalSec, b + totalSec])
+    }
+    raw.sort((x, y) => x[0] - y[0])
+    const ranges: [number, number][] = []
+    for (const r of raw) {
+      const last = ranges[ranges.length - 1]
+      if (last && r[0] <= last[1] + 2 * DUCK_RAMP_SEC) last[1] = Math.max(last[1], r[1])
+      else ranges.push([r[0], r[1]])
+    }
+    if (ranges.length) {
+      duck = { gain: Math.pow(10, m.duckDb / 20), rampSec: DUCK_RAMP_SEC, ranges }
+    } else {
+      hints.push({
+        id: 'duck-none',
+        level: 'info',
+        text: 'Absenken der Musik: Kein Video mit Originalton im Projekt.'
+      })
+    }
+  }
+
+  return {
+    entries,
+    samples: len,
+    gainDb: m.gainDb,
+    fadeInSec: m.fadeInSec,
+    fadeOutSec: m.fadeOutSec,
+    loopCrossfade,
+    duck
+  }
+}
+
+/* ------------------------------- Musik-Hüllkurve --------------------------- */
+
+const clip01 = (v: number): number => Math.min(1, Math.max(0, v))
+
+/** Rampe eines Bereichs: kurze Bereiche (unter zwei Rampen) erreichen die volle Absenkung nicht. */
+const rampOf = (d: NonNullable<VgenMusicPlan['duck']>, a: number, b: number): number =>
+  Math.max(0.01, Math.min(d.rampSec, (b - a) / 2))
+
+/** Faktor des Absenkens zur Ausgabezeit t (s): 1 = unverändert. Gleiche Formel wie duckExpr. */
+export function duckFactor(d: NonNullable<VgenMusicPlan['duck']>, t: number): number {
+  let s = 0
+  for (const [a, b] of d.ranges) {
+    const r = rampOf(d, a, b)
+    s += clip01((t - a) / r) * clip01((b - t) / r)
+  }
+  return 1 - (1 - d.gain) * Math.min(1, s)
+}
+
+/** Dieselbe Hüllkurve als ffmpeg-Ausdruck für `volume=…:eval=frame` (t = Zeit des Ton-Blocks). */
+export function duckExpr(d: NonNullable<VgenMusicPlan['duck']>): string {
+  const terms = d.ranges.map(([a, b]) => {
+    const r = num(rampOf(d, a, b))
+    return `clip((t-${num(a)})/${r},0,1)*clip((${num(b)}-t)/${r},0,1)`
+  })
+  return `1-${num(1 - d.gain)}*min(1,${terms.join('+')})`
+}
+
+/**
+ * Was die Musik zur Ausgabezeit t (s) spielt – für die Live-Vorschau: Einträge mit Position im
+ * Titel (s) und Gewicht (in Überblendungen zwei), dazu der Gesamtfaktor aus Pegel, Blenden und
+ * Absenken. Die Datei rechnet dasselbe in ffmpeg (audioGraph).
+ */
+export function musicAt(
+  plan: VgenPlan,
+  t: number
+): { gain: number; parts: { entry: number; path: string; offsetSec: number; weight: number }[] } {
+  const mp = plan.music
+  if (!mp) return { gain: 0, parts: [] }
+  const SR = VGEN_SAMPLE_RATE
+  const total = plan.totalSamples
+  const pos = Math.round(t * SR)
+  // Position im Musikstrom (bei Schleife: ab C, das Ende blendet in den Anfang)
+  const stream: { s: number; w: number }[] = []
+  if (plan.loop && mp.loopCrossfade > 0) {
+    const C = mp.loopCrossfade
+    if (pos < total - C) stream.push({ s: pos + C, w: 1 })
+    else {
+      const w = clip01((pos - (total - C)) / C)
+      stream.push({ s: pos + C, w: 1 - w }, { s: pos - (total - C), w })
+    }
+  } else stream.push({ s: pos, w: 1 })
+  const parts: { entry: number; path: string; offsetSec: number; weight: number }[] = []
+  for (const { s, w } of stream) {
+    let start = 0
+    for (let k = 0; k < mp.entries.length; k++) {
+      const e = mp.entries[k]
+      const end = start + e.samples
+      if (s >= start && s < end) {
+        const prevX = k > 0 ? mp.entries[k - 1].crossfade : 0
+        // in die Überblendung mit dem Vorgänger (linear wie acrossfade c=tri)
+        const fadeIn = prevX > 0 && s < start + prevX ? (s - start) / prevX : 1
+        const fadeOut = e.crossfade > 0 && s >= end - e.crossfade ? (end - s) / e.crossfade : 1
+        parts.push({
+          entry: k,
+          path: e.path,
+          offsetSec: (s - start) / SR,
+          weight: w * Math.min(fadeIn, fadeOut)
+        })
+      }
+      start = end - e.crossfade
+    }
+  }
+  let gain = Math.pow(10, mp.gainDb / 20)
+  if (!plan.loop) {
+    const sec = total / SR
+    const fi = Math.max(0, Math.min(mp.fadeInSec, sec / 2))
+    const fo = Math.max(0, Math.min(mp.fadeOutSec, sec / 2))
+    if (fi > 0) gain *= clip01(t / fi)
+    if (fo > 0) gain *= clip01((sec - t) / fo)
+  }
+  if (mp.duck) gain *= duckFactor(mp.duck, t)
+  return { gain, parts }
+}
+
+/**
+ * Länge eines Durchlaufs der Musik (alle Titel einmal, mit den Überblendungen dazwischen) in
+ * Samples – Ziel für „Standzeit an Musik anpassen“. null = Titel fehlen oder sind unlesbar.
+ */
+export function musicPassSamples(
+  music: VgenMusic,
+  media: (path: string) => MediaInfo | null | undefined
+): number | null {
+  if (!music.tracks.length) return null
+  const lens: number[] = []
+  for (const path of music.tracks) {
+    const info = media(path)
+    const sec = info ? (info.durationSec ?? info.audio[0]?.durationSec ?? null) : null
+    if (!info || !info.audio.length || !sec || sec <= 0) return null
+    lens.push(Math.floor(sec * VGEN_SAMPLE_RATE))
+  }
+  const X = Math.max(0, Math.round(music.crossfadeSec * VGEN_SAMPLE_RATE))
+  let len = lens[0]
+  for (let k = 1; k < lens.length; k++) {
+    len += lens[k] - Math.min(X, Math.floor(lens[k - 1] / 2), Math.floor(lens[k] / 2))
+  }
+  return len
+}
+
+/**
+ * Standzeit der Bilder (Vorgabe), mit der das Video so lang wird wie ein Durchlauf der Musik
+ * (bei Schleife: Musik genau einmal je Durchlauf, die Naht-Überblendung abgezogen). Gesucht in
+ * ganzen Bildern; Bilder mit eigener Standzeit und Videos bleiben, wie sie sind.
+ */
+export function imageSecForMusic(
+  project: VgenProject,
+  media: (path: string) => MediaInfo | null | undefined,
+  caps: VgenCaps
+): { ok: true; imageSec: number; durationSec: number } | { ok: false; error: string } {
+  if (!project.music) return { ok: false, error: 'Keine Musik gewählt.' }
+  const target = musicPassSamples(project.music, media)
+  if (target === null) return { ok: false, error: 'Die Musik ist noch nicht analysiert.' }
+  if (!project.elements.some((e) => e.kind !== 'video' && e.durationSec === null)) {
+    return { ok: false, error: 'Kein Bild nutzt die Vorgabe-Standzeit.' }
+  }
+  const rate = rateRational(project.output.fps)
+  const fps = rate[0] / rate[1]
+  const lengthFor = (frames: number): { samples: number; durationSec: number } => {
+    const sec = Math.round((frames / fps) * 1000) / 1000
+    const plan = planVideoGen(
+      { ...project, music: null, defaults: { ...project.defaults, imageSec: sec } },
+      media,
+      caps
+    )
+    const loopX = plan.loop ? musicLoopCrossfade(plan.totalSamples) : 0
+    return { samples: plan.totalSamples + loopX, durationSec: plan.durationSec }
+  }
+  // kleinste Bildzahl, ab der die Länge reicht (die Länge wächst nie, wenn Bilder länger werden)
+  let lo = Math.max(1, Math.ceil(0.1 * fps))
+  let hi = Math.floor(3600 * fps)
+  if (lengthFor(lo).samples >= target) {
+    return { ok: false, error: 'Schon bei kürzester Standzeit ist das Video länger als die Musik.' }
+  }
+  if (lengthFor(hi).samples < target) {
+    return { ok: false, error: 'Die Musik ist länger als eine Stunde je Bild erlaubt.' }
+  }
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2)
+    if (lengthFor(mid).samples >= target) hi = mid
+    else lo = mid
+  }
+  // der nähere der beiden Nachbarn
+  const a = lengthFor(lo)
+  const b = lengthFor(hi)
+  const best = target - a.samples <= b.samples - target ? lo : hi
+  return {
+    ok: true,
+    imageSec: Math.round((best / fps) * 1000) / 1000,
+    durationSec: (best === lo ? a : b).durationSec
   }
 }
 
@@ -832,21 +1178,32 @@ function concatPath(p: string): string {
   return `'${p.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`
 }
 
+/** Bereich der Ausgabe in Bildern: [von, bis). */
+export type VgenRange = [number, number]
+
+/** Abschnitt der Ausgabe: Mittelteil eines Elements oder ein Übergangs-Stück. */
+export interface VgenSegment {
+  kind: 'element' | 'transition'
+  /** Element (beim Übergang: das Element davor) */
+  index: number
+  /** erstes Bild auf der Ausgabe-Zeitachse */
+  at: number
+  /** erstes Bild im Stück */
+  from: number
+  frames: number
+  /** Länge des ganzen Stücks */
+  pieceFrames: number
+}
+
 /**
- * Bildliste für den concat-Demuxer: je Element der Teil ohne Überlappungen
- * (inpoint = Übergang davor, outpoint = Dauer − Übergang danach), dazwischen die
- * Übergangs-Stücke. `transitions[i]` = Stück nach Element i.
- * Exakte Bildzeiten, KEIN Versatz: Der Demuxer springt zum Schlüsselbild vor dem inpoint und
- * gibt es mit aus (anders als -ss, das verwirft) – ein halbes Bild früher brächte je inpoint
- * ein Bild zu viel. Die 6 Nachkommastellen runden beim Umrechnen in die Zeitbasis der
- * Stücke wieder exakt auf den Bildtakt (gemessen bei 29,97 fps).
+ * Die Ausgabe in Abspielreihenfolge: je Element der Teil ohne Überlappungen, dazwischen die
+ * Übergangs-Stücke; bei Schleife steht der Schleifen-Übergang am Ende, und Element 0 beginnt
+ * hinter seinem Kopf. Grundlage für Bildliste, Vorschau-Ausschnitt und Live-Vorschau.
  */
-export function concatList(
-  plan: VgenPlan,
-  files: { elements: string[]; transitions: (string | null)[] }
-): string {
+export function outputSegments(plan: VgenPlan): VgenSegment[] {
   const n = plan.elements.length
-  const lines = ['ffconcat version 1.0']
+  const out: VgenSegment[] = []
+  let at = 0
   for (let i = 0; i < n; i++) {
     const e = plan.elements[i]
     const before =
@@ -856,47 +1213,215 @@ export function concatList(
           ? (plan.elements[n - 1].transition?.frames ?? 0)
           : 0
     const after = i < n - 1 || plan.loop ? (e.transition?.frames ?? 0) : 0
-    lines.push(`file ${concatPath(files.elements[i])}`)
-    if (before > 0) lines.push(`inpoint ${frameTime(before, plan.rate)}`)
-    if (after > 0) lines.push(`outpoint ${frameTime(e.frames - after, plan.rate)}`)
+    const body = e.frames - before - after
+    // ganz von Übergängen verbraucht (zwei halbe Längen): kein eigener Teil
+    if (body > 0) {
+      out.push({ kind: 'element', index: i, at, from: before, frames: body, pieceFrames: e.frames })
+      at += body
+    }
     if (after > 0) {
-      const t = files.transitions[i]
-      if (!t) throw new Error(`Übergangs-Stück nach Element ${i + 1} fehlt`)
-      lines.push(`file ${concatPath(t)}`)
+      out.push({ kind: 'transition', index: i, at, from: 0, frames: after, pieceFrames: after })
+      at += after
+    }
+  }
+  return out
+}
+
+/**
+ * Bildliste für den concat-Demuxer: die Abschnitte der Ausgabe (inpoint/outpoint nur, wo ein
+ * Stück nicht ganz gebraucht wird); `transitions[i]` = Stück nach Element i. Mit `ranges` nur
+ * diese Bereiche nacheinander (Vorschau; bei Schleife auch über die Naht).
+ * Exakte Bildzeiten, KEIN Versatz: Der Demuxer springt zum Schlüsselbild vor dem inpoint und
+ * gibt es mit aus (anders als -ss, das verwirft) – ein halbes Bild früher brächte je inpoint
+ * ein Bild zu viel. Die 6 Nachkommastellen runden beim Umrechnen in die Zeitbasis der
+ * Stücke wieder exakt auf den Bildtakt (gemessen bei 29,97 fps). Alle Stücke sind
+ * Einzelbild-Material, jeder Punkt ist also ein Schlüsselbild.
+ */
+export function concatList(
+  plan: VgenPlan,
+  files: { elements: (string | null)[]; transitions: (string | null)[] },
+  ranges: VgenRange[] = [[0, plan.totalFrames]]
+): string {
+  const segs = outputSegments(plan)
+  const lines = ['ffconcat version 1.0']
+  for (const [a, b] of ranges) {
+    for (const s of segs) {
+      const s0 = Math.max(a, s.at)
+      const s1 = Math.min(b, s.at + s.frames)
+      if (s1 <= s0) continue
+      const file = s.kind === 'element' ? files.elements[s.index] : files.transitions[s.index]
+      if (!file) {
+        throw new Error(
+          s.kind === 'element'
+            ? `Stück von Element ${s.index + 1} fehlt`
+            : `Übergangs-Stück nach Element ${s.index + 1} fehlt`
+        )
+      }
+      const pin = s.from + (s0 - s.at)
+      const pout = s.from + (s1 - s.at)
+      lines.push(`file ${concatPath(file)}`)
+      if (pin > 0) lines.push(`inpoint ${frameTime(pin, plan.rate)}`)
+      if (pout < s.pieceFrames) lines.push(`outpoint ${frameTime(pout, plan.rate)}`)
     }
   }
   return lines.join('\n') + '\n'
 }
 
+/**
+ * Bereich um ein Element für „Vorschau rechnen“: das Element mit `margin` Bildern davor und
+ * danach – bei Schleife über die Naht hinweg (zwei Bereiche), sonst an den Enden gekappt.
+ */
+export function previewRanges(plan: VgenPlan, index: number, margin: number): VgenRange[] {
+  const total = plan.totalFrames
+  const e = plan.elements[index]
+  if (!e || total <= 0) return []
+  const a = e.start - margin
+  const b = e.start + e.frames + margin
+  if (b - a >= total) return [[0, total]]
+  if (!plan.loop) return [[Math.max(0, a), Math.min(total, b)]]
+  if (a < 0) {
+    return [
+      [a + total, total],
+      [0, b]
+    ]
+  }
+  if (b > total) {
+    return [
+      [a, total],
+      [0, b - total]
+    ]
+  }
+  return [[a, b]]
+}
+
+/**
+ * Wo das Ausgabebild `f` im aneinandergehängten Ausschnitt liegt (Bilder ab Anfang der
+ * Vorschau); bei Schleife zählt auch f ± Gesamtlänge. null = nicht enthalten.
+ */
+export function rangeOffset(ranges: VgenRange[], f: number, total: number): number | null {
+  let offset = 0
+  for (const [a, b] of ranges) {
+    for (const x of [f, f + total, f - total]) if (x >= a && x < b) return offset + (x - a)
+    offset += b - a
+  }
+  return null
+}
+
+/** Welche Stücke ein Ausschnitt braucht (Übergänge brauchen beide Nachbarn als Eingang). */
+export function piecesForRanges(
+  plan: VgenPlan,
+  ranges: VgenRange[]
+): { elements: number[]; transitions: number[] } {
+  const n = plan.elements.length
+  const els = new Set<number>()
+  const trs = new Set<number>()
+  const segs = outputSegments(plan)
+  for (const [a, b] of ranges) {
+    for (const s of segs) {
+      if (Math.min(b, s.at + s.frames) <= Math.max(a, s.at)) continue
+      els.add(s.index)
+      if (s.kind === 'transition') {
+        trs.add(s.index)
+        els.add((s.index + 1) % n)
+      }
+    }
+  }
+  const sorted = (x: Set<number>): number[] => [...x].sort((p, q) => p - q)
+  return { elements: sorted(els), transitions: sorted(trs) }
+}
+
+/** Ebenen eines Ausgabebildes – für die Live-Vorschau (dieselbe Zeitachse wie die Datei). */
+export interface VgenFrameState {
+  /** ein Element, im Übergang zwei (a, dann b); local = Bild im Element */
+  layers: { index: number; local: number }[]
+  /** progress 0..1 wie in xfade (Bild k von T: k/T) */
+  transition: { kind: VgenTransitionKind; progress: number } | null
+}
+
+/** Was das Ausgabebild `f` zeigt; bei Schleife läuft f im Kreis. */
+export function frameAt(
+  plan: VgenPlan,
+  f: number,
+  segs: VgenSegment[] = outputSegments(plan)
+): VgenFrameState {
+  const n = plan.elements.length
+  const total = plan.totalFrames
+  if (!n || total <= 0) return { layers: [], transition: null }
+  const fr = plan.loop
+    ? ((Math.floor(f) % total) + total) % total
+    : Math.min(Math.max(0, Math.floor(f)), total - 1)
+  // binäre Suche: Abschnitte liegen lückenlos hintereinander
+  let lo = 0
+  let hi = segs.length - 1
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1
+    if (segs[mid].at <= fr) lo = mid
+    else hi = mid - 1
+  }
+  const s = segs[lo]
+  if (!s) return { layers: [], transition: null }
+  const k = fr - s.at
+  if (s.kind === 'element') {
+    return { layers: [{ index: s.index, local: s.from + k }], transition: null }
+  }
+  const a = plan.elements[s.index]
+  return {
+    layers: [
+      { index: s.index, local: a.frames - s.frames + k },
+      { index: (s.index + 1) % n, local: k }
+    ],
+    transition: { kind: a.transition?.kind ?? 'fade', progress: k / s.frames }
+  }
+}
+
 /* ---------------------------------- Ton ------------------------------------ */
 
 /**
- * Ton-Graph über die WAVs der Elemente (Eingänge 0..n−1, Musik als Eingang n): acrossfade mit
- * der exakten Überlappung in Samples, concat bei Schnitten; bei Schleife wird der Kopf von
- * Element 0 ans Ende geblendet. Musik: auf Gesamtlänge geschnitten bzw. wiederholt, Blenden,
- * Pegel – bei Schleife blendet ihr Ende in ihren Anfang. Ausgang: [out].
+ * Ton-Graph über die WAVs der Elemente: acrossfade mit der exakten Überlappung in Samples,
+ * concat bei Schnitten; bei Schleife wird der Kopf von Element 0 ans Ende geblendet. Musik:
+ * Titel nacheinander (Überblendung), auf Gesamtlänge geschnitten, Blenden, Pegel, Absenken
+ * unter Originalton – bei Schleife blendet ihr Ende in ihren Anfang. Ausgang: [out].
+ *
+ * Eingänge: die WAVs aller Elemente außer `silent` in Reihenfolge, danach die Musik-Einträge.
+ * `silent` (Vorschau: nicht gerechnete Elemente) wird durch Stille exakt gleicher Länge
+ * ersetzt – der Graph bleibt derselbe, der Ton im Ausschnitt also exakt der des Ergebnisses.
+ * `ranges`: nur diese Bereiche nacheinander ausgeben.
  */
-export function audioGraph(plan: VgenPlan, music: VgenProject['music']): string {
+export function audioGraph(
+  plan: VgenPlan,
+  opts: { silent?: ReadonlySet<number>; ranges?: VgenRange[] } = {}
+): string {
   const n = plan.elements.length
   const g: string[] = []
   const total = plan.totalSamples
-  let cur: string
+  const silent = opts.silent ?? new Set<number>()
+  const inputOf: string[] = []
+  let k = 0
+  for (let i = 0; i < n; i++) {
+    if (silent.has(i)) {
+      g.push(
+        `anullsrc=r=${VGEN_SAMPLE_RATE}:cl=stereo,atrim=end_sample=${plan.elements[i].samples},aformat=sample_fmts=s16[s${i}]`
+      )
+      inputOf.push(`s${i}`)
+    } else inputOf.push(`${k++}:a`)
+  }
+  let cur = inputOf[0]
   if (plan.loop) {
     const head = plan.elements[0].headSamples
     if (head > 0) {
-      g.push(`[0:a]asplit=2[h0][b0]`)
+      g.push(`[${inputOf[0]}]asplit=2[h0][b0]`)
       g.push(`[h0]atrim=end_sample=${head},asetpts=N/SR/TB[head]`)
       g.push(`[b0]atrim=start_sample=${head},asetpts=N/SR/TB[x0]`)
       cur = 'x0'
-    } else cur = '0:a'
-  } else cur = '0:a'
+    }
+  }
   for (let i = 1; i < n; i++) {
     const o = plan.elements[i - 1].transition?.samples ?? 0
     const next = `x${i}`
     g.push(
       o > 0
-        ? `[${cur}][${i}:a]acrossfade=ns=${o}:c1=tri:c2=tri[${next}]`
-        : `[${cur}][${i}:a]concat=n=2:v=0:a=1[${next}]`
+        ? `[${cur}][${inputOf[i]}]acrossfade=ns=${o}:c1=tri:c2=tri[${next}]`
+        : `[${cur}][${inputOf[i]}]concat=n=2:v=0:a=1[${next}]`
     )
     cur = next
   }
@@ -905,63 +1430,90 @@ export function audioGraph(plan: VgenPlan, music: VgenProject['music']): string 
     cur = 'xl'
   }
   g.push(`[${cur}]aformat=sample_fmts=fltp:channel_layouts=stereo[mix]`)
-  if (music) {
-    const m = `${n}:a`
+  const full = opts.ranges ? 'full' : 'out'
+  const mp = plan.music
+  if (mp) {
     const norm = `aresample=${VGEN_SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=N/SR/TB`
-    const gain = `volume=${num(music.gainDb)}dB`
+    // Titel nacheinander: ein Eingang je Vorkommen
+    mp.entries.forEach((_, j) => g.push(`[${k + j}:a]${norm}[m${j}]`))
+    let mc = 'm0'
+    for (let j = 1; j < mp.entries.length; j++) {
+      const x = mp.entries[j - 1].crossfade
+      g.push(
+        x > 0
+          ? `[${mc}][m${j}]acrossfade=ns=${x}:c1=tri:c2=tri[mc${j}]`
+          : `[${mc}][m${j}]concat=n=2:v=0:a=1[mc${j}]`
+      )
+      mc = `mc${j}`
+    }
+    const after = [`volume=${num(mp.gainDb)}dB`]
+    // Absenken in 10-ms-Blöcken (eval=frame rechnet je Block; 1024er-Blöcke stufen hörbar)
+    if (mp.duck) after.push(`asetnsamples=n=480:p=0,volume='${duckExpr(mp.duck)}':eval=frame`)
     if (plan.loop) {
       // Ende der Musik in ihren Anfang blenden: A = Musik ab C, B = die ersten C Samples
-      const C = Math.min(Math.round(2 * VGEN_SAMPLE_RATE), Math.floor(total / 4))
-      g.push(`[${m}]${norm},asplit=2[ma][mb]`)
+      const C = mp.loopCrossfade
+      g.push(`[${mc}]asplit=2[ma][mb]`)
       g.push(`[ma]atrim=start_sample=${C}:end_sample=${total + C},asetpts=N/SR/TB[mA]`)
       g.push(`[mb]atrim=end_sample=${C},asetpts=N/SR/TB[mB]`)
-      g.push(C > 0 ? `[mA][mB]acrossfade=ns=${C}:c1=tri:c2=tri,${gain}[mus]` : `[mA]${gain}[mus]`)
+      g.push(
+        C > 0
+          ? `[mA][mB]acrossfade=ns=${C}:c1=tri:c2=tri,asetpts=N/SR/TB,${after.join(',')}[mus]`
+          : `[mA]${after.join(',')}[mus]`
+      )
     } else {
       const sec = total / VGEN_SAMPLE_RATE
-      const fi = Math.max(0, Math.min(music.fadeInSec, sec / 2))
-      const fo = Math.max(0, Math.min(music.fadeOutSec, sec / 2))
+      const fi = Math.max(0, Math.min(mp.fadeInSec, sec / 2))
+      const fo = Math.max(0, Math.min(mp.fadeOutSec, sec / 2))
       const fades = [
         fi > 0 ? `afade=t=in:d=${num(fi)}` : null,
         fo > 0 ? `afade=t=out:st=${num(sec - fo)}:d=${num(fo)}` : null
-      ].filter(Boolean)
-      g.push(`[${m}]${norm},atrim=end_sample=${total},${[...fades, gain].join(',')}[mus]`)
+      ].filter((f): f is string => f !== null)
+      g.push(
+        `[${mc}]atrim=end_sample=${total},asetpts=N/SR/TB,${[...fades, ...after].join(',')}[mus]`
+      )
     }
     g.push(`[mix][mus]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mixed]`)
-    g.push(`[mixed]apad,atrim=end_sample=${total},asetpts=N/SR/TB[out]`)
+    g.push(`[mixed]apad,atrim=end_sample=${total},asetpts=N/SR/TB[${full}]`)
   } else {
-    g.push(`[mix]apad,atrim=end_sample=${total},asetpts=N/SR/TB[out]`)
+    g.push(`[mix]apad,atrim=end_sample=${total},asetpts=N/SR/TB[${full}]`)
+  }
+  if (opts.ranges) {
+    const r = opts.ranges
+    const trim = (i: number, from: string): string =>
+      `[${from}]atrim=start_sample=${sampleAt(r[i][0], plan.rate)}:end_sample=${sampleAt(r[i][1], plan.rate)},asetpts=N/SR/TB`
+    if (r.length === 1) g.push(`${trim(0, 'full')}[out]`)
+    else {
+      g.push(`[full]asplit=${r.length}${r.map((_, i) => `[f${i}]`).join('')}`)
+      r.forEach((_, i) => g.push(`${trim(i, `f${i}`)}[r${i}]`))
+      g.push(`${r.map((_, i) => `[r${i}]`).join('')}concat=n=${r.length}:v=0:a=1[out]`)
+    }
   }
   return g.join(';\n')
 }
 
 /**
- * Ton-Lauf: liest nur die kleinen WAVs (+ Musik, endlos wiederholt) und schreibt den Mix als
- * 32-bit-float-WAV (Summen können über 0 dBFS gehen, die Lautheit regelt danach).
- * Der Graph steht in einer Datei (`-/filter_complex`): bei vielen Elementen sprengt er sonst
- * die Windows-Kommandozeile (32.767 Zeichen).
+ * Ton-Lauf: liest nur die kleinen WAVs (null = nicht gerechnet, im Graph Stille) und die
+ * Musik-Einträge und schreibt den Mix als 32-bit-float-WAV (Summen können über 0 dBFS gehen,
+ * die Lautheit regelt danach). Der Graph steht in einer Datei (`-/filter_complex`): bei vielen
+ * Elementen sprengt er sonst die Windows-Kommandozeile (32.767 Zeichen).
  */
-export function audioRunArgs(
-  wavs: string[],
-  music: string | null,
-  graphFile: string,
-  out: string
-): string[] {
+export function audioRun(
+  plan: VgenPlan,
+  io: { wavs: (string | null)[]; graphFile: string; out: string },
+  ranges?: VgenRange[]
+): { args: string[]; graph: string } {
+  const silent = new Set<number>()
   const args = ['-hide_banner', '-nostdin', '-y']
-  for (const w of wavs) args.push('-i', w)
-  if (music) args.push('-stream_loop', '-1', '-i', music)
+  io.wavs.forEach((w, i) => {
+    if (w) args.push('-i', w)
+    else silent.add(i)
+  })
+  for (const e of plan.music?.entries ?? []) args.push('-i', e.path)
   args.push(
-    '-/filter_complex',
-    graphFile,
-    '-map',
-    '[out]',
-    '-c:a',
-    'pcm_f32le',
-    out,
-    '-progress',
-    'pipe:1',
-    '-nostats'
+    ...['-/filter_complex', io.graphFile, '-map', '[out]', '-c:a', 'pcm_f32le', io.out],
+    ...['-progress', 'pipe:1', '-nostats']
   )
-  return args
+  return { args, graph: audioGraph(plan, { silent, ranges }) }
 }
 
 /* ------------------------------- Cache & Platz ----------------------------- */
@@ -1021,4 +1573,31 @@ export function finalAudioArgs(format: ConvertFormat): string[] {
   return CONVERT_FORMATS[format].container === 'mp4'
     ? ['-c:a', 'aac', '-b:a', '192k']
     : ['-c:a', 'pcm_s16le']
+}
+
+/* ----------------------------- Vorschau rechnen ---------------------------- */
+
+/** Größe für „Vorschau rechnen“: längere Seite höchstens `max` px, gerade Maße. */
+export function previewSize(
+  width: number,
+  height: number,
+  max = 640
+): { width: number; height: number } {
+  const s = Math.min(1, max / Math.max(width, height))
+  return { width: even(width * s), height: even(height * s) }
+}
+
+/**
+ * Endlauf der Vorschau: Bildliste des Ausschnitts + Ton-Mix -> kleines H.264/AAC-MP4, das
+ * <video> direkt abspielt (faststart: Kopf vorn, Springen ohne ganze Datei).
+ */
+export function previewFinalArgs(plan: VgenPlan, list: string, mix: string, out: string): string[] {
+  return [
+    ...['-hide_banner', '-nostdin', '-f', 'concat', '-safe', '0', '-i', list, '-i', mix],
+    ...['-map', '0:v', '-map', '1:a', '-vf', finalVideoFilter(plan, 'h264')],
+    ...['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-g', String(Math.round(plan.fps))],
+    ...['-fps_mode', 'cfr', '-r', rateArg(plan.fps)],
+    ...['-c:a', 'aac', '-b:a', '128k', '-ar', String(VGEN_SAMPLE_RATE), '-ac', '2'],
+    ...['-movflags', '+faststart', '-progress', 'pipe:1', '-nostats', '-y', out]
+  ]
 }

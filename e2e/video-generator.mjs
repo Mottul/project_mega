@@ -1,6 +1,8 @@
 // Video-Generator in der echten App: Rechenlauf im main über die Programmbrücke (ohne
 // Oberfläche), Zwischenspeicher beim zweiten Lauf, Schleife mit Musik und Lautheit,
-// Abbrechen, Eingabeprüfung und Vorschaubilder über media://vgen.
+// Abbrechen, Eingabeprüfung, Vorschaubilder über media://vgen, „Vorschau rechnen“, Musik mit
+// mehreren Titeln und Quelladressen für die Live-Vorschau; danach die Oberfläche bis zum
+// fertigen Video (Live-Vorschau, Ken-Burns-Rahmen, Bereichsregler, Musik-Panel).
 // Bildzahlen sind exakt erwartet (Zeitachse in ganzen Bildern); ProRes-Ausgaben tragen PCM,
 // dort ist auch die Samplezahl exakt. Braucht das gebündelte ffmpeg (`npm run ff:fetch`).
 
@@ -25,7 +27,8 @@ function counts(path) {
     ffprobe,
     [
       ...['-v', 'error', '-count_frames', '-print_format', 'json'],
-      ...['-show_entries', 'stream=codec_type,nb_read_frames,duration_ts,codec_name', path]
+      ...['-show_entries', 'stream=codec_type,nb_read_frames,duration_ts,codec_name,width,height'],
+      path
     ],
     { encoding: 'utf8' }
   )
@@ -35,10 +38,15 @@ function counts(path) {
   return {
     frames: v ? Number(v.nb_read_frames) : null,
     codec: v?.codec_name,
+    width: v?.width,
+    height: v?.height,
     samples: a?.duration_ts ?? null,
     audioCodec: a?.codec_name
   }
 }
+
+/** Datei hinter einer media://vgen-Adresse (Vorschau) im Cache des Testlaufs. */
+const previewFile = (url) => join(ctx.userData, 'vgen-cache', 'previews', url.split('/').pop())
 
 const element = (id, path, p = {}) => ({
   id,
@@ -104,6 +112,7 @@ try {
     ...['-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', '-shortest', f('clip.mp4')]
   ])
   make(['-f', 'lavfi', '-i', 'sine=f=300:d=5', f('musik.wav')])
+  make(['-f', 'lavfi', '-i', 'sine=f=500:d=30', f('lang.wav')])
 
   const basic = project([
     element('a', f('quer.jpg'), { kenBurns: { mode: 'zoom-in', strength: 'medium' } }),
@@ -240,6 +249,123 @@ try {
           null
         )
       }
+    ],
+    [
+      'Vorschau rechnen: Bereich um ein Element bildgenau, beim zweiten Mal aus dem Speicher',
+      async () => {
+        const preview = (elementId, p = basic) =>
+          w.evaluate((r) => window.api.videoGen.preview(r), {
+            requestId: `e2e-${elementId}-${Date.now()}`,
+            project: p,
+            elementId
+          })
+        const res = await preview('b')
+        assert.ok(res.ok, res.error)
+        // b beginnt bei Bild 37 (50 − 13) und ist 50 lang; je 25 Bilder davor/danach
+        assert.equal(res.elementStartSec, 1)
+        assert.equal(res.elementEndSec, 3)
+        assert.equal(res.cached, false)
+        const c = counts(previewFile(res.url))
+        assert.deepEqual([c.frames, c.width, c.height, c.codec], [100, 640, 360, 'h264'])
+        assert.equal(c.audioCodec, 'aac')
+        const again = await preview('b')
+        assert.equal(again.cached, true)
+        assert.equal(again.url, res.url)
+        // spielt im Renderer über media://vgen
+        const dur = await w.evaluate(
+          (u) =>
+            new Promise((resolve) => {
+              const v = document.createElement('video')
+              v.onloadedmetadata = () => resolve(v.duration)
+              v.onerror = () => resolve(null)
+              v.src = u
+            }),
+          res.url
+        )
+        assert.ok(Math.abs(dur - 4) < 0.1, String(dur))
+      }
+    ],
+    [
+      'Vorschau rechnen: neue Anfrage bricht die laufende ab',
+      async () => {
+        const long = project(
+          [element('x', f('quer.jpg'), { durationSec: 300 }), element('y', f('hoch.jpg'))],
+          { width: 1920, height: 1080 }
+        )
+        const first = w.evaluate((r) => window.api.videoGen.preview(r), {
+          requestId: 'e2e-lang',
+          project: long,
+          elementId: 'x'
+        })
+        await new Promise((r) => setTimeout(r, 800))
+        const second = await w.evaluate((r) => window.api.videoGen.preview(r), {
+          requestId: 'e2e-kurz',
+          project: basic,
+          elementId: 'a'
+        })
+        assert.ok(second.ok, second.error)
+        const r1 = await first
+        assert.equal(r1.ok, false)
+        assert.equal(r1.canceled, true)
+      }
+    ],
+    [
+      'Musik mit zwei Titeln (Überblendung, Absenken): Bilder und Samples exakt',
+      async () => {
+        const p = project(
+          basic.elements,
+          {},
+          {
+            music: {
+              tracks: [f('musik.wav'), f('lang.wav')],
+              gainDb: -6,
+              fadeInSec: 1,
+              fadeOutSec: 1,
+              crossfadeSec: 2,
+              duckDb: -12
+            }
+          }
+        )
+        const { jobId } = await enqueue({ project: p, outputPath: f('musik.mov') })
+        const j = await finished(jobId)
+        assert.equal(j.status, 'done', j.error)
+        const c = counts(f('musik.mov'))
+        assert.equal(c.frames, 124)
+        assert.equal(c.samples, 124 * 1920)
+      }
+    ],
+    [
+      'Quelladressen der Live-Vorschau: nur Medien, spielbar über media://vgen/src',
+      async () => {
+        const src = (p) => w.evaluate((x) => window.api.videoGen.source(x), p)
+        const url = await src(f('clip.mp4'))
+        assert.match(url, /^media:\/\/vgen\/src\/[0-9a-f]{32}\/media\.mp4$/)
+        assert.equal(await src(f('clip.mp4')), url) // gleiche Datei, gleiche Adresse
+        assert.equal(await src(f('quer.jpg')), null) // Bilder laufen über Vorschaubilder
+        assert.equal(await src(f('fehlt.mp4')), null)
+        assert.equal(await src('relativ.mp4'), null)
+        const dur = await w.evaluate(
+          (u) =>
+            new Promise((resolve) => {
+              const v = document.createElement('video')
+              v.onloadedmetadata = () => resolve(v.duration)
+              v.onerror = () => resolve(null)
+              v.src = u
+            }),
+          url
+        )
+        assert.ok(Math.abs(dur - 4) < 0.1, String(dur))
+        // erfundenes Zeichen: nichts
+        const bad = await w.evaluate(
+          () =>
+            fetch(`media://vgen/src/${'0'.repeat(32)}/media.mp4`).then(
+              (r) => r.status,
+              () => 'fehler'
+            ),
+          null
+        )
+        assert.notEqual(bad, 200)
+      }
     ]
   ])
 
@@ -281,19 +407,114 @@ try {
       }
     ],
     [
-      'Auswahl: Standzeit ändern verlängert die Gesamtdauer, Vorschau zeigt Anfang und Ende',
+      'Auswahl: Standzeit ändern verlängert die Gesamtdauer, Live-Vorschau zeigt das Bild',
       async () => {
         await w
           .getByRole('button', { name: /quer\.jpg/ })
           .first()
           .click()
-        await w.getByText('Anfang', { exact: true }).waitFor({ timeout: 5_000 })
+        const stage = w.getByTestId('vgen-stage')
+        await stage.waitFor({ timeout: 5_000 })
+        assert.ok(
+          await waitFor(() =>
+            stage.evaluate((s) => [...s.querySelectorAll('img')].some((i) => i.naturalWidth > 0))
+          ),
+          'kein Bild auf der Bühne'
+        )
         const field = w.getByPlaceholder(/Vorgabe 5 s/)
         await field.fill('7,5')
         await field.press('Enter')
         // 7,5 s = 188 Bilder (187,5 aufgerundet): 188 + 125 + 100 − 50 = 363 Bilder = 14,52 s
         assert.ok(await waitFor(() => w.getByText('3 Elemente · 14,5 s').isVisible()))
         await shot('2-auswahl')
+      }
+    ],
+    [
+      'Live-Vorschau: Abspielen bewegt den Abspielkopf, Pause hält ihn an',
+      async () => {
+        const pos = w.getByRole('slider', { name: 'Abspielposition' })
+        const start = Number(await pos.inputValue())
+        await w.getByRole('button', { name: 'Abspielen' }).click()
+        assert.ok(
+          await waitFor(async () => Number(await pos.inputValue()) > start + 10),
+          'Abspielkopf steht'
+        )
+        await w.getByRole('button', { name: 'Pause' }).click()
+        const held = Number(await pos.inputValue())
+        await new Promise((r) => setTimeout(r, 400))
+        assert.equal(Number(await pos.inputValue()), held)
+        // in einen Übergang gesprungen (quer → hoch: Bilder 163..188): zwei Ebenen auf der Bühne
+        await pos.evaluate((el, v) => {
+          const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+          set.call(el, v)
+          el.dispatchEvent(new Event('input', { bubbles: true }))
+        }, '176')
+        assert.ok(
+          await waitFor(() => w.getByTestId('vgen-stage').evaluate((s) => s.children.length === 2)),
+          'im Übergang keine zwei Ebenen'
+        )
+      }
+    ],
+    [
+      'Ken-Burns-Rahmen: eigener Rahmen, Start auf dem Bild verschieben',
+      async () => {
+        await w
+          .getByRole('button', { name: /quer\.jpg/ })
+          .first()
+          .click()
+        await w.getByRole('combobox', { name: 'Ken-Burns-Einstellung' }).selectOption('own')
+        await w.getByRole('combobox', { name: 'Ken Burns der Auswahl' }).selectOption('custom')
+        const editor = w.getByTestId('vgen-kb-editor')
+        await editor.waitFor({ timeout: 5_000 })
+        const startBox = w.getByRole('slider', { name: 'Startausschnitt' })
+        const before = await startBox.getAttribute('aria-valuetext')
+        // Zoom per Taste (Platz zum Verschieben), dann mit der Maus nach rechts unten ziehen
+        await startBox.focus()
+        for (let i = 0; i < 6; i++) await w.keyboard.press('=')
+        const zoomed = await startBox.getAttribute('aria-valuetext')
+        assert.notEqual(zoomed, before)
+        const box = await startBox.boundingBox()
+        await w.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await w.mouse.down()
+        await w.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2 + 25, { steps: 5 })
+        await w.mouse.up()
+        assert.notEqual(await startBox.getAttribute('aria-valuetext'), zoomed)
+        await shot('3-kenburns')
+        // Bühne wieder auf Live
+        await w.getByRole('button', { name: 'Live', exact: true }).click()
+      }
+    ],
+    [
+      'Bereichsregler: Start des Videos um 1 s nach hinten, Gesamtdauer sinkt',
+      async () => {
+        await w
+          .getByRole('button', { name: /clip\.mp4/ })
+          .first()
+          .click()
+        const handle = w.getByRole('slider', { name: 'Start des Ausschnitts' })
+        await handle.waitFor({ timeout: 10_000 })
+        await handle.focus()
+        for (let i = 0; i < 10; i++) await w.keyboard.press('ArrowRight')
+        // 188 + 125 + 75 − 50 = 338 Bilder = 13,52 s
+        assert.ok(await waitFor(() => w.getByText('3 Elemente · 13,5 s').isVisible()))
+        await shot('4-ausschnitt')
+      }
+    ],
+    [
+      'Vorschau rechnen in der Oberfläche: gerechnetes Video läuft, 4 s um den Clip',
+      async () => {
+        await w.getByRole('button', { name: 'Vorschau rechnen' }).click()
+        const video = w.getByTestId('vgen-rendered')
+        const failed = w.getByText(/Vorschau fehlgeschlagen/)
+        await video.or(failed).waitFor({ timeout: 120_000 })
+        if (await failed.isVisible()) throw new Error(await failed.innerText())
+        const dur = await waitFor(() =>
+          video.evaluate((v) => (v.readyState >= 1 ? v.duration : null))
+        )
+        // Clip ab Bild 263, Ausschnitt 238..338 (am Ende gekappt) = 100 Bilder
+        assert.ok(Math.abs(dur - 4) < 0.1, String(dur))
+        await shot('5-gerechnet')
+        await w.getByRole('button', { name: 'Live', exact: true }).click()
       }
     ],
     [
@@ -314,9 +535,28 @@ try {
         assert.ok(id, 'kein Auftrag')
         const j = await finished(id)
         assert.equal(j.status, 'done', j.error)
-        assert.equal(counts(out).frames, 363)
+        assert.equal(counts(out).frames, 338)
         await w.getByRole('button', { name: 'In Player-Bibliothek übernehmen' }).first().waitFor()
-        await shot('3-fertig')
+        await shot('6-fertig')
+      }
+    ],
+    [
+      'Musik: zwei Titel, „Standzeit an Musik anpassen“ trifft die Musiklänge',
+      async () => {
+        await ctx.app.evaluate(
+          ({ dialog }, files) => {
+            dialog.showOpenDialog = async () => ({ canceled: false, filePaths: files })
+          },
+          [f('musik.wav'), f('lang.wav')]
+        )
+        await w.getByRole('button', { name: /Musik wählen/ }).click()
+        const list = w.getByRole('list', { name: 'Musiktitel' })
+        assert.ok(await waitFor(async () => (await list.locator('li').count()) === 2))
+        // Musik 5 + 30 − 2 s Überblendung = 33 s; quer (eigene 7,5 s) und der Clip (3 s) bleiben
+        assert.ok(await waitFor(() => w.getByText('Musik 33 s', { exact: false }).isVisible()))
+        await w.getByRole('button', { name: /Standzeit an Musik anpassen/ }).click()
+        assert.ok(await waitFor(() => w.getByText('3 Elemente · 33 s').isVisible()))
+        await shot('7-musik')
       }
     ],
     [

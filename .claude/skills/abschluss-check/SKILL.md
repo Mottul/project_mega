@@ -22,5 +22,6 @@ description: Prüfung vor dem Abschluss einer Änderung in Mottulbox – Prettie
 7. **Doku:** Neue oder geänderte Funktion in `docs/WERKZEUGE.md`, Erledigtes aus
    `docs/ROADMAP.md` streichen (CLAUDE.md, Abschnitt Doku).
 8. **Bericht:** kurz sagen, was grün ist und was nicht (mit Ausgabe), nichts beschönigen.
-   Nicht committen oder pushen, solange es nicht verlangt wurde; Pull Requests legt der Nutzer
-   selbst an.
+   Danach committen, pushen und den Pull Request anlegen (vom Nutzer freigegeben, 8. Oktober
+   2026) – auf einem eigenen Branch je Vorhaben, nie auf `main` oder `stoffl`. Gemergt wird auf
+   GitHub vom Nutzer.

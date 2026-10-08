@@ -31,13 +31,13 @@ import { usePersistentState, type Codec } from '@renderer/lib/usePersistentState
 import { cn } from '@renderer/lib/utils'
 import { rateText } from '@shared/convertPlan'
 import type { ConvertCapabilities, VgenJob } from '@shared/types'
-import { planVideoGen } from '@shared/videoGenPlan'
+import { planVideoGen, type VgenCaps } from '@shared/videoGenPlan'
 import { AudioPanel, DefaultsPanel, OutputPanel, SelectionPanel } from './Inspector'
 import { JobRow } from './JobList'
 import { useVgenMeta } from './meta'
 import { moveMany, nudge, shuffle, sortItems, type SortKey } from './order'
 import { MEDIA_FILTER_EXTENSIONS, fmtDuration, kindForPath } from './presets'
-import { Preview } from './Preview'
+import { PreviewCard } from './PreviewCard'
 import { Storyboard } from './Storyboard'
 import { useVideoGen } from './store'
 
@@ -66,10 +66,13 @@ export function VideoGenerator(): JSX.Element {
   const [busy, setBusy] = useState<'adding' | 'starting' | null>(null)
   const elements = project.elements
 
-  // Analyse aller Dateien (Cache im main; Tiefenanalyse liest die EXIF-Drehung)
+  // Analyse aller Dateien (Cache im main; Tiefenanalyse liest die EXIF-Drehung) – auch der
+  // Musik: Ihre Länge braucht der Plan für die Titelfolge
+  const tracks = project.music?.tracks
   useEffect(() => {
     for (const e of elements) useVgenMeta.getState().load(e.path)
-  }, [elements])
+    for (const t of tracks ?? []) useVgenMeta.getState().load(t)
+  }, [elements, tracks])
 
   useEffect(() => {
     // Übergabe aus Video-Konverter oder Medien-Info
@@ -80,6 +83,15 @@ export function VideoGenerator(): JSX.Element {
     return api.videoGen.onUpdate((job) => setJobs((prev) => ({ ...prev, [job.id]: job })))
   }, [])
 
+  const vcaps = useMemo<VgenCaps>(
+    () => ({
+      tonemap: caps?.tonemap ?? true,
+      vpxAlpha: caps?.vpxAlpha ?? true,
+      xfade: caps?.xfade ?? true,
+      perspective: caps?.perspective ?? true
+    }),
+    [caps]
+  )
   const plan = useMemo(
     () =>
       planVideoGen(
@@ -88,24 +100,24 @@ export function VideoGenerator(): JSX.Element {
           const m = meta[p]
           return m?.kind === 'ok' ? m.info : null
         },
-        {
-          tonemap: caps?.tonemap ?? true,
-          vpxAlpha: caps?.vpxAlpha ?? true,
-          xfade: caps?.xfade ?? true,
-          perspective: caps?.perspective ?? true
-        }
+        vcaps
       ),
-    [project, meta, caps]
+    [project, meta, vcaps]
   )
 
   const loading = elements.filter((e) => !meta[e.path] || meta[e.path].kind === 'loading')
   const loadingIds = new Set(loading.map((e) => e.id))
+  const musicLoading = (tracks ?? []).some((t) => !meta[t] || meta[t].kind === 'loading')
   // „nicht analysiert“ gilt erst, wenn die Analyse fertig ist
-  const hints = plan.hints.filter((h) => !(h.elementId && loadingIds.has(h.elementId)))
+  const hints = plan.hints.filter(
+    (h) =>
+      !(h.elementId && loadingIds.has(h.elementId)) &&
+      !(musicLoading && (h.id === 'music-unreadable' || h.id === 'music-short'))
+  )
   const errors = hints.filter((h) => h.level === 'error')
   const ffmpegMissing = caps !== null && !caps.ffmpegFound
-  const canStart =
-    elements.length > 0 && !loading.length && !errors.length && !ffmpegMissing && busy === null
+  const ready = !loading.length && !musicLoading && !errors.length && !ffmpegMissing
+  const canStart = elements.length > 0 && ready && busy === null
 
   async function addPaths(paths: string[], at: number | null): Promise<void> {
     setBusy('adding')
@@ -200,7 +212,6 @@ export function VideoGenerator(): JSX.Element {
   }
 
   const single = selected.length === 1 ? elements.find((e) => e.id === selected[0]) : undefined
-  const singlePlan = single ? plan.elements.find((e) => e.id === single.id) : undefined
   const singleInfo = (() => {
     if (!single) return null
     const m = meta[single.path]
@@ -224,10 +235,10 @@ export function VideoGenerator(): JSX.Element {
       aside={
         <>
           {/* Auswahl zuerst: beim Bearbeiten das meistgebrauchte Panel */}
-          <SelectionPanel infoText={singleInfo} onNudge={onNudge} />
+          <SelectionPanel infoText={singleInfo} plan={plan} onNudge={onNudge} />
           <OutputPanel caps={caps} />
           <DefaultsPanel />
-          <AudioPanel />
+          <AudioPanel meta={meta} caps={vcaps} plan={plan} />
         </>
       }
       main={
@@ -407,11 +418,20 @@ export function VideoGenerator(): JSX.Element {
             )}
           </Card>
 
-          {single && (
-            <Card className="space-y-3 p-5">
-              <p className="text-sm font-medium">Vorschau</p>
-              <Preview el={single} ep={singlePlan} plan={plan} />
-            </Card>
+          {plan.totalFrames > 0 && (
+            <PreviewCard
+              project={project}
+              plan={plan}
+              meta={meta}
+              single={single ?? null}
+              canRender={ready}
+              onKenBurns={(id, kenBurns) =>
+                useVideoGen.getState().updateElements([id], { kenBurns })
+              }
+              onRange={(id, inSec, outSec) =>
+                useVideoGen.getState().updateElements([id], { inSec, outSec })
+              }
+            />
           )}
 
           {jobList.length > 0 && (

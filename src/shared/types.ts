@@ -345,12 +345,26 @@ export type VgenKenBurnsMode =
   | 'pan-right'
   | 'pan-up'
   | 'pan-down'
+  | 'custom' // eigener Start- und Endausschnitt (nur je Bild, nicht als Vorgabe)
 
 export type VgenKenBurnsStrength = 'soft' | 'medium' | 'strong'
+
+/**
+ * Ausschnitt eines eigenen Ken-Burns-Rahmens: Mitte in Anteilen der Zeichenfläche (0..1) und
+ * Zoom relativ zum Grundfenster (1 = größter Ausschnitt im Seitenverhältnis der Ausgabe).
+ */
+export interface VgenKenBurnsFrame {
+  cx: number
+  cy: number
+  zoom: number
+}
 
 export interface VgenKenBurns {
   mode: VgenKenBurnsMode
   strength: VgenKenBurnsStrength
+  /** nur bei 'custom': Start- und Endausschnitt (die Bahn dazwischen wie bei allen Modi) */
+  from?: VgenKenBurnsFrame
+  to?: VgenKenBurnsFrame
 }
 
 /** gif = animiertes GIF (Schleife über die Standzeit); ein GIF mit einem Bild ist ein Bild. */
@@ -377,10 +391,15 @@ export interface VgenElement {
 }
 
 export interface VgenMusic {
-  path: string
+  /** Titel in Abspielreihenfolge; reicht die Liste nicht, beginnt sie von vorn */
+  tracks: string[]
   gainDb: number
   fadeInSec: number
   fadeOutSec: number
+  /** Überblendung zwischen zwei Titeln (auch beim Wiederholen der Liste); 0 = direkt */
+  crossfadeSec: number
+  /** Musik unter Videos mit Originalton absenken (dB, negativ); 0 = aus */
+  duckDb: number
 }
 
 export interface VgenOutput {
@@ -452,6 +471,40 @@ export interface VgenEnqueueRequest {
   project: VgenProject
   /** Zieldatei (aus dem Speicherdialog) */
   outputPath: string
+}
+
+/**
+ * „Vorschau rechnen“: kleiner Probelauf (längere Seite 640 px) des Bereichs um ein Element –
+ * dieselben Stücke und Befehle wie das Ergebnis, nur ohne Lautheitsangleichung.
+ */
+export interface VgenPreviewRequest {
+  /** vom Renderer vergeben; Fortschritts-Events tragen sie mit */
+  requestId: string
+  project: VgenProject
+  elementId: string
+}
+
+export type VgenPreviewOutcome =
+  | {
+      ok: true
+      /** media://vgen/<datei>.mp4 */
+      url: string
+      width: number
+      height: number
+      durationSec: number
+      /** Lage des Elements in der Vorschau (s), für die Markierung */
+      elementStartSec: number
+      elementEndSec: number
+      /** komplett aus dem Zwischenspeicher */
+      cached: boolean
+    }
+  | { ok: false; canceled: boolean; error: string }
+
+export interface VgenPreviewProgress {
+  requestId: string
+  /** 0..1 */
+  progress: number
+  text: string
 }
 
 /* ------------------------------- Manuals -------------------------------- */

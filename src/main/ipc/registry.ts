@@ -12,6 +12,7 @@ import { logFilePath, logLine } from '../services/log'
 import { resolveManualFile } from '../services/manuals/manualsService'
 import { resolveMediaFile } from '../services/player/mediaLibrary'
 import { resolveVgenFile } from '../services/convert/videoGenCache'
+import { resolveVgenSource } from '../services/convert/videoGenSources'
 import { getSettings, onSettingsChange, setSettings } from '../services/store'
 import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
@@ -62,18 +63,24 @@ export function registerManualProtocol(): void {
 function mediaContentType(path: string): string {
   switch (extname(path).toLowerCase()) {
     case '.mp4':
+    case '.m4v':
       return 'video/mp4'
     case '.webm':
       return 'video/webm'
     case '.mov':
       return 'video/quicktime'
+    case '.mkv':
+      return 'video/x-matroska'
     case '.jpg':
     case '.jpeg':
       return 'image/jpeg'
     case '.png':
       return 'image/png'
+    case '.gif':
+      return 'image/gif'
     default:
-      return 'application/octet-stream'
+      // Musik der Video-Generator-Vorschau (media://vgen/src/…)
+      return jingleContentType(path)
   }
 }
 
@@ -83,9 +90,14 @@ export function registerMediaProtocol(): void {
   protocol.handle(MEDIA_PROTOCOL, async (request) => {
     try {
       const url = new URL(request.url)
-      // media://vgen/… = Vorschaubilder des Video-Generators (eigener, abgesicherter Ordner)
+      // media://vgen/… = Vorschaubilder und gerechnete Vorschauen des Video-Generators (eigener,
+      // abgesicherter Ordner); media://vgen/src/<zeichen>/… = vom Generator freigegebene Quelle
       const abs =
-        url.host === 'vgen' ? resolveVgenFile(url.pathname) : resolveMediaFile(url.pathname)
+        url.host !== 'vgen'
+          ? resolveMediaFile(url.pathname)
+          : url.pathname.startsWith('/src/')
+            ? resolveVgenSource(url.pathname)
+            : resolveVgenFile(url.pathname)
       if (!abs) return new Response('Not found', { status: 404 })
 
       const total = (await stat(abs)).size
