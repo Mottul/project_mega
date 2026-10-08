@@ -51,8 +51,9 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   Client-Skript kommen aus `remotePwa.ts`. Start/Stopp/Merken/Autostart je Fernsteuerung
   über `registerRemoteControl()` (`ipc/remoteControls.ts`). Befehle vom Handy sind fremde
   Eingaben: feldweise prüfen (Allowlist, Werte begrenzen – Muster `player/remoteCommand.ts`).
-- **Konvertierung:** EIN Kern für Video-Konverter (Tool-id `hap-converter`), Player-Import
-  und Testbild-Export: Analyse per `probeMediaInfo` (Cache), alle Entscheidungen in
+- **Konvertierung:** EIN Kern für Video-Konverter (Tool-id `hap-converter`) und Player-Import;
+  der Video-Generator nutzt ihn mit (Zeitachse/Filter rein in `shared/videoGenPlan.ts`), der
+  Testbild-Export nur `runFfmpeg()` und die Farbkennung. Analyse per `probeMediaInfo` (Cache), alle Entscheidungen in
   `shared/convertPlan.ts` (rein, getestet, auch Vorschau im Renderer), Argumente/Runner/
   Warteschlange (Spuren `player`/`converter`) in `main/services/convert/`. Neue Korrekturen
   und Formate dort einbauen, nicht je Tool; ffmpeg immer über `runFfmpeg()`. GPU-/Schnell-Encoder

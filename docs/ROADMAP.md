@@ -43,6 +43,11 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 - **Video-Konverter:** ProRes auf der GPU auch unter Windows/Linux (ffmpegs neuer
   `prores_ks_vulkan`) prüfen; ProRes 4444 mit Alpha über VideoToolbox freigeben, sobald auf einem
   Mac bestätigt (heute geht Transparenz bewusst über die CPU).
+- **Video-Generator** (Phase 2/3 aus [PLAN-VIDEO-GENERATOR.md](PLAN-VIDEO-GENERATOR.md)):
+  Live-Vorschau mit Play und „Vorschau rechnen“ (kleiner Probelauf), Ken-Burns-Rahmen auf dem Bild
+  ziehen, Videoausschnitt am Bereichsregler, mehrere Musiktitel mit Absenken unter dem
+  Originalton, „Bilddauer an Musiklänge anpassen“; später Titel-/Texttafeln, Logo, LUT, Vorlagen
+  und Transparenz (HAP Alpha/ProRes 4444).
 - **Stage-Timer:** Teleprompter (scrollender Text auf dem Referentenmonitor); Steuerung per OSC
   (Start/Pause/±1 min aus Companion oder Stream Deck – heute nur über die HTTP-Fernsteuerung).
 - **Testbildgenerator:** Audio-Testtöne (Sinus, Rosa Rauschen, Sweep, Kanal-Identifikation).
@@ -53,9 +58,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Neue Werkzeuge
 
-- **Video-Generator** (Diashow & Montage): Bilder und Videos zu einem Video mit Standzeiten,
-  Übergängen, Ken-Burns-Effekt, Videoausschnitt, Zielgröße und nahtloser Schleife (Sponsor-Loops)
-  – ausgearbeiteter, mit ffmpeg gemessener Plan in [PLAN-VIDEO-GENERATOR.md](PLAN-VIDEO-GENERATOR.md).
 - **ArtNet/sACN-Tester** (DMX übers Netz senden, Node-Discovery) und **DMX-Universum-Planer**
   (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem DMX-Dip-Schalter.
 - **Rechner:** IP-/Subnetz (Dante, NDI, AV-over-IP – passend zum Netzwerk-Scanner),
@@ -65,14 +67,15 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Verzahnung
 
-Heute gibt es Medien-Info ↔ Video-Konverter, LED-Wall → Packliste und Netzwerk-Scanner →
-NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Geplant:
+Heute gibt es Medien-Info ↔ Video-Konverter, Video-Konverter/Medien-Info → Video-Generator →
+Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Geplant:
 
 - **Übergabe-Speicher verallgemeinern** – heute gibt es nur einen NovaStar-IP-Slot. Deshalb setzt
   „IP in der OSC-Steuerung verwenden“ nur die NovaStar-IP, nicht das OSC-Ziel. Ein Slot „Wert +
   Zielwerkzeug“ ist die Grundlage für alles Weitere.
 - **Fertiger Auftrag → Player-Bibliothek:** Download oder Konvertierung mit einem Klick in den
-  Video-Player (spart den Umweg über den Dateimanager kurz vor der Show).
+  Video-Player (spart den Umweg über den Dateimanager kurz vor der Show) – der Video-Generator kann
+  es schon, YouTube-Downloader und Video-Konverter noch nicht.
 - **LED-Wall → Video-Player:** Wandauflösung übernehmen (das Testbild kann es schon: Raster und
   Auflösung „Aus LED-Wall-Konfigurator“).
 - **LED-Wall → Stromlast/Rigging:** Gewicht und Stromaufnahme sind schon berechnet.

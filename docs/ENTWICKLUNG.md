@@ -78,14 +78,15 @@ src/
 │   ├── ipc/                  # IPC-Handler je Bereich (*.handlers.ts), registry.ts, remoteControls.ts
 │   └── services/
 │       ├── store.ts · db.ts  # settings.json (Quelle der Wahrheit) · SQLite/FTS5 – je mit Wiederherstellung
-│       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Warteschlange, Fähigkeiten
+│       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Warteschlange, Fähigkeiten;
+│       │                     #   videoGen*: Rechenlauf, Zwischenspeicher, Vorschaubilder des Video-Generators
 │       ├── ffmpeg/           # ffmpeg-Pfade, Medien-Info (ffprobe-Analyse, Parser, Cache)
 │       ├── player/           # Bibliothek, Import, Wiedergabezustand, Ausgabefenster, Fernsteuerung
 │       ├── manuals/ · osc/ · novastar/ · netscan/ · ytdlp/   # Dienste einzelner Werkzeuge
 │       ├── remoteHttp.ts · remoteApp*.ts · remotePwa.ts      # Fernsteuer-Basis, Fernsteuer-App, Web-App
 │       └── …                 # Stage-Timer, Jingles, NDI, Testbild-Export, Log
 ├── preload/index.ts          # contextBridge → window.api (typisiert)
-├── shared/                   # IPC-Vertrag, Domain-Typen, Konvertierungs-Plan, Medien-Endungen, Marke
+├── shared/                   # IPC-Vertrag, Domain-Typen, Konvertierungs-Plan, Video-Generator-Plan, Medien-Endungen, Marke
 └── renderer/src/
     ├── launcher/             # Startbildschirm, Favoriten-Kategorien, ToolHost (Fehlergrenze je Werkzeug)
     ├── components/           # ToolShell, ErrorBoundary, Toaster, QrCode … + ui/ (Button, Select, Progress …)
@@ -118,7 +119,9 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Start, Stopp, Merken und Autostart laufen über `registerRemoteControl()`
   (`ipc/remoteControls.ts`). Befehle vom Handy sind fremde Eingaben: Feld für Feld prüfen, nur
   bekannte Befehle durchlassen, Werte begrenzen (Muster: `player/remoteCommand.ts`).
-- **Konvertierung:** ein Kern für Video-Konverter, Player-Import und Testbild-Export. Analyse per
+- **Konvertierung:** ein Kern für Video-Konverter und Player-Import; der Video-Generator nutzt
+  Analyse, Encoder, Lautheit und Warteschlange (Zeitachse, Filter und Befehle rein in
+  `shared/videoGenPlan.ts`), der Testbild-Export nur `runFfmpeg()` und die Farbkennung. Analyse per
   `probeMediaInfo` (mit Cache), alle Entscheidungen in `shared/convertPlan.ts` (rein, getestet,
   auch für die Vorschau im Renderer), Argumente, Runner und Warteschlange in
   `main/services/convert/`. Neue Korrekturen und Formate gehören dorthin, nicht ins einzelne
@@ -201,7 +204,10 @@ Dazu gilt:
   `npm run e2e:run` ohne neuen Build. Skripte: `smoke` (Start, Kacheln, Suche, Werkzeug öffnen),
   `testpattern` (2-px-Rasterlinien pixelgenau), `timer` (Startbildschirm-Status, Bühnen-Anzeige im
   Browser samt Verbindungsabbruch, Zeitzone und totem Strom; öffnet kurz das Timer-Ausgabefenster),
-  `player` (Playlist-Rückfrage, parallele Importe; braucht `npm run ff:fetch`). `e2e/harness.mjs`
+  `player` (Playlist-Rückfrage, parallele Importe; braucht `npm run ff:fetch`), `video-generator`
+  (Rechenlauf bild- und samplegenau, Zwischenspeicher, Schleife, Abbrechen, Eingabeprüfung,
+  Oberfläche; braucht ffmpeg). `E2E_DEBUG=1` schreibt Ausgabe und Fenster des main-Prozesses mit.
+  `e2e/harness.mjs`
   bringt `launchApp`, `openRoute`, `waitFor`, Dialog-Stubs, `openBrowserWindow` (unsichtbares
   Electron-Fenster als fremder Browser), `findFfmpeg`, `portFree` und `runSteps`. Ein neues Skript
   in `e2e/run.mjs` eintragen. Unter Linux ohne Display mit `xvfb-run` starten (der Harness setzt
