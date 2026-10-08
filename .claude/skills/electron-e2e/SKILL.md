@@ -79,7 +79,8 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Windows meldet minimierte Fenster als unsichtbar** (`isVisible()` = false) – nie daraus
   schließen, dass kein Fenster mehr offen ist.
 - Unter Linux ohne Display `xvfb-run -a …`; der Harness setzt dort `--no-sandbox`. Die CI läuft
-  die E2E-Skripte derzeit nicht.
+  alle E2E-Skripte auf Linux, Windows und macOS (Job „App“ in `.github/workflows/ci.yml`) – ein
+  neues Skript in `e2e/run.mjs` läuft dort automatisch mit.
 - Fehlschlag zuerst als Testproblem prüfen (Zeitfenster zu eng, Route nicht neu geladen),
   bevor die App geändert wird – wie beim „toten Strom“, wo erst ein zweiter Anlauf die Verbindung
   wiederherstellt.

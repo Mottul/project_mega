@@ -212,10 +212,14 @@ Dazu gilt:
   bringt `launchApp`, `openRoute`, `waitFor`, Dialog-Stubs, `openBrowserWindow` (unsichtbares
   Electron-Fenster als fremder Browser), `findFfmpeg`, `portFree` und `runSteps`. Ein neues Skript
   in `e2e/run.mjs` eintragen. Unter Linux ohne Display mit `xvfb-run` starten (der Harness setzt
-  dort `--no-sandbox`). E2E läuft derzeit nicht in der CI. Tricks und Stolpersteine stehen im
-  Projekt-Skill `electron-e2e`.
-- **CI** (`.github/workflows/ci.yml`) läuft bei jedem Push und Pull Request auf Ubuntu mit Node 22
-  und 24: `npm ci`, Format, Lint, Typecheck (App und Tests), Tests, Build.
+  dort `--no-sandbox`). Tricks und Stolpersteine stehen im Projekt-Skill `electron-e2e`.
+- **CI** (`.github/workflows/ci.yml`) läuft bei jedem Pull Request und auf `main`:
+  - **Prüfungen** auf Linux mit Node 22 und 24: `npm ci`, Format, Lint, Typecheck (App und
+    Tests), Tests, Build.
+  - **App** auf Linux, Windows und macOS: `npm ci`, gebündeltes ffmpeg (`ff:fetch`, je Woche
+    gecacht), Unit-Tests samt Labortest des Video-Generators, Build und alle E2E-Skripte (Linux
+    mit `xvfb-run`). Arbeits-Branches laufen nur über ihren Pull Request; ein neuer Push bricht
+    den veralteten Lauf ab.
 
 ## Build & Paketierung
 
