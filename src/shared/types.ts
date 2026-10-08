@@ -1190,6 +1190,33 @@ export interface YtToolStatus {
   lastError: string | null
 }
 
+/**
+ * ffmpeg der App: mitgeliefert (mit dem Installer) oder in der App aktualisiert (Windows/Linux,
+ * services/ffmpeg/ffmpegUpdate.ts). Ein neuer Build gilt erst ab dem nächsten Start.
+ */
+export interface FfmpegToolStatus {
+  /** im Einsatz */
+  active: {
+    source: 'mitgeliefert' | 'aktualisiert' | 'system'
+    /** erste Zeile von `ffmpeg -version` */
+    version: string | null
+    /** „N-127252-ga25ba44c0c“ bei aktualisierten Builds */
+    build: string | null
+  }
+  /** geladen und geprüft – wird beim nächsten Start verwendet */
+  ready: { build: string; publishedAt: string } | null
+  /** Aktualisierung in der App möglich; sonst steht der Grund in unsupportedReason */
+  supported: boolean
+  unsupportedReason: string | null
+  checking: boolean
+  /** Download 0..1, null = keiner */
+  progress: number | null
+  lastCheck: number | null
+  /** Ergebnis der letzten Prüfung in Worten */
+  lastResult: string | null
+  lastError: string | null
+}
+
 export interface YtEnqueueRequest {
   url: string
   format: YtFormatId
@@ -1567,6 +1594,8 @@ export interface AppSettings {
   uiDensity: UiDensity
   /** yt-dlp beim Start prüfen und bei Bedarf aktualisieren. */
   ytdlpAutoUpdate: boolean
+  /** ffmpeg in der fertigen App aktuell halten (Windows/Linux; gilt ab dem nächsten Start). */
+  ffmpegAutoUpdate: boolean
   /** YouTube-Downloader: Zielordner und Vorgaben */
   youtube: YoutubeSettings
   /** Stage-Timer: gemerkter Ablauf und NDI-Ausgabe */
@@ -1612,6 +1641,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   launcherTileSize: 'medium',
   uiDensity: 'normal',
   ytdlpAutoUpdate: true,
+  ffmpegAutoUpdate: true,
   youtube: DEFAULT_YOUTUBE_SETTINGS,
   timer: DEFAULT_TIMER_SETTINGS,
   converter: DEFAULT_CONVERTER_SETTINGS,

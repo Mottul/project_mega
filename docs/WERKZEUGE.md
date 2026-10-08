@@ -274,6 +274,13 @@ Clips passend fürs Zielsystem (früher „HAP-Konverter“).
   App mitten im Auftrag beendet (sie bricht dann alle Konvertierungen, Generator-Läufe, Importe
   und Downloads ab, räumt auf und schließt höchstens 3 s später); „Ergebnis prüfen“
   öffnet die fertige Datei in der Medien-Info.
+- **ffmpeg aktuell** (Seitenpanel „ffmpeg“, nicht in der Kundenansicht): zeigt, welcher Build
+  läuft (mitgeliefert oder in der App aktualisiert). Unter Windows und Linux holt die App einmal am
+  Tag den neuesten Build, der mindestens 7 Tage alt ist, prüft ihn (Prüfsumme, Encoder und
+  Filter, Probe-Kodierung) und verwendet ihn **ab dem nächsten Start** – in einer laufenden Show
+  wechselt ffmpeg nie. „Jetzt prüfen“ sucht sofort; „Mitgeliefertes verwenden“ geht beim nächsten
+  Start zurück, und der abgelehnte Build kommt nicht wieder (erst ein neuerer). Abschaltbar; unter
+  macOS kommt ffmpeg mit dem Installer.
 
 **Der gemeinsame Konvertierungs-Kern** – genutzt von Video-Konverter und Player-Import; der
 Video-Generator nutzt seine Analyse, Encoder, Lautheit und Warteschlange, der Testbild-Export nur

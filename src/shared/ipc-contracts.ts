@@ -54,6 +54,7 @@ import type {
   PlayerState,
   PlayerTick,
   ProbeResult,
+  FfmpegToolStatus,
   RemoteAppStatus,
   RemoteStatus,
   SelectPathsOptions,
@@ -87,6 +88,10 @@ export const Channels = {
   appLogPath: 'app:logPath',
   // ffmpeg
   ffmpegProbe: 'ffmpeg:probe',
+  ffmpegStatus: 'ffmpeg:status',
+  ffmpegCheckUpdate: 'ffmpeg:checkUpdate',
+  ffmpegUseBundled: 'ffmpeg:useBundled',
+  ffmpegStatusUpdate: 'ffmpeg:statusUpdate', // Event: FfmpegToolStatus
   // Video-Konverter (gemeinsamer Konvertierungs-Kern, früher HAP-Konverter)
   converterCapabilities: 'converter:capabilities',
   converterEncoders: 'converter:encoders', // geprüfte GPU-/CPU-Encoder je Familie
@@ -284,6 +289,14 @@ export interface ToolboxApi {
 
   ffmpeg: {
     probe(path: string): Promise<ProbeResult>
+    /** Welches ffmpeg läuft (mitgeliefert/aktualisiert), liegt ein neuer Build bereit? */
+    status(): Promise<FfmpegToolStatus>
+    /** Jetzt nach einem neueren Build suchen (mind. 7 Tage alt), laden, prüfen – gilt ab dem
+     *  nächsten Start. */
+    checkUpdate(): Promise<FfmpegToolStatus>
+    /** Ab dem nächsten Start wieder das mitgelieferte ffmpeg (falls ein Build Ärger macht). */
+    useBundled(): Promise<FfmpegToolStatus>
+    onStatus(cb: (status: FfmpegToolStatus) => void): () => void
   }
 
   converter: {
