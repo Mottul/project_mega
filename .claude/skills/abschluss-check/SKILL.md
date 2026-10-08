@@ -12,10 +12,8 @@ description: Prüfung vor dem Abschluss einer Änderung in Mottulbox – Prettie
    Git-Warnung „LF will be replaced by CRLF“ ist harmlos.
 3. **Lint** (warnungsfrei): `npm run lint`.
 4. **Typen:** `npm run typecheck` und `npm run typecheck:test`.
-5. **Tests:** erst die betroffenen (`npx vitest run <Pfad>`), zum Schluss `npm test`.
-   Stand 7. Oktober 2026 schlägt unter Windows `src/main/services/convert/convert.test.ts`
-   („Ausgabename: nie überschreiben …“) wegen der Pfadtrenner in `uniqueOutputPath` fehl,
-   unabhängig von eigenen Änderungen – nicht als neuen Fehler melden, alles andere schon.
+5. **Tests:** erst die betroffenen (`npx vitest run <Pfad>`), zum Schluss `npm test` – unter
+   Windows wie Linux vollständig grün; Pfade in Tests mit `path.join` bilden, nicht mit `/`.
 6. **App-Verhalten geändert** (Oberfläche, IPC, Ausgabefenster, Fernsteuerung)? Dann zusätzlich
    `npm run e2e` (baut die App und startet den Rauchtest). Für ein neues Werkzeug ein eigenes
    Skript neben `e2e/smoke.mjs` anlegen, das `launchApp` aus `e2e/harness.mjs` nutzt.

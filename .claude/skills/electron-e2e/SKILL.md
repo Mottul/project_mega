@@ -13,7 +13,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 |---|---|
 | `smoke.mjs` | Start, Kachelhöhen, Suche, Werkzeug öffnen, Programmbrücke, keine Konsolenfehler |
 | `testpattern.mjs` | 2-px-Rasterlinien pixelgenau (Raster und Mapping-Testbild) |
-| `timer.mjs` | Startbildschirm-Status, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
+| `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
 | `video-generator.mjs` | Rechenlauf über die Brücke (Bilder/Samples exakt, Cache, Schleife, Abbrechen, Eingabeprüfung, Vorschau rechnen, Musik, Quelladressen), Oberfläche mit gestubbten Datei-/Speicherdialogen (Live-Vorschau, Ken-Burns-Rahmen, Bereichsregler, Musik-Panel) |
 
@@ -66,7 +66,13 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 
 ## Grenzen
 
-- `timer.mjs` öffnet kurz das Timer-Ausgabefenster auf dem ersten Bildschirm.
+- `timer.mjs` öffnet kurz das Timer-Ausgabefenster auf dem ersten Bildschirm und minimiert
+  einmal das Hauptfenster.
+- **Das Hauptfenster erscheint erst bei `ready-to-show`**, manchmal nach dem ersten Inhalt;
+  `launchApp` wartet deshalb, bis es sichtbar ist (sonst galt es beim Schließen einer Ausgabe
+  noch nicht als gezeigt, und die App beendete sich – timer.mjs war jeden zweiten Lauf rot).
+- **Windows meldet minimierte Fenster als unsichtbar** (`isVisible()` = false) – nie daraus
+  schließen, dass kein Fenster mehr offen ist.
 - Unter Linux ohne Display `xvfb-run -a …`; der Harness setzt dort `--no-sandbox`. Die CI läuft
   die E2E-Skripte derzeit nicht.
 - Fehlschlag zuerst als Testproblem prüfen (Zeitfenster zu eng, Route nicht neu geladen),

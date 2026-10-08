@@ -118,6 +118,23 @@ try {
         await w.evaluate(() => window.api.timer.closeOutput())
         assert.ok(await waitFor(async () => !(await badge()).includes('Ausgabe')))
       }
+    ],
+    [
+      'Hauptfenster minimiert, Ausgabe geschlossen: die App läuft weiter',
+      async () => {
+        // Windows meldet ein minimiertes Fenster als unsichtbar – früher beendete sich die App
+        await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].minimize())
+        const displays = await w.evaluate(() => window.api.screen.list())
+        await w.evaluate((id) => window.api.timer.openOutput(id), displays[0].id)
+        assert.ok(await waitFor(async () => (await badge()).includes('Ausgabe')), await badge())
+        await w.evaluate(() => window.api.timer.closeOutput())
+        await sleep(1000)
+        const alive = await app
+          .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)
+          .catch(() => 0)
+        assert.ok(alive >= 1, 'die App hat sich beendet')
+        await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].restore())
+      }
     ]
   ])
 

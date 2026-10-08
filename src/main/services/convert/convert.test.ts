@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 
 // args/capabilities ziehen über ffmpegPath nur `electron` (app) herein
@@ -284,13 +285,17 @@ describe('Fähigkeiten, Fehlertexte, Warteschlange', () => {
 
 describe('Auftragsliste', () => {
   it('Ausgabename: nie überschreiben, Groß/klein egal, nie die Quelle selbst', () => {
-    const taken = new Set(['/out/clip_hap_q.mov', '/out/clip_hap_q_2.mov'])
+    // Pfade so, wie das Betriebssystem sie bildet (unter Windows mit „\“)
+    const out = (name: string): string => join('/out', name)
+    const taken = new Set(
+      [out('Clip_HAP_Q.mov'), out('clip_hap_q_2.MOV')].map((p) => p.toLowerCase())
+    )
     const has = (p: string): boolean => taken.has(p.toLowerCase())
     expect(uniqueOutputPath('/in/clip.mp4', '/out', 'hap_q', '.mov', has)).toBe(
-      '/out/clip_hap_q_3.mov'
+      out('clip_hap_q_3.mov')
     )
     expect(uniqueOutputPath('/in/clip.mp4', null, 'h264', '.mp4', () => false)).toBe(
-      '/in/clip_h264.mp4'
+      join('/in', 'clip_h264.mp4')
     )
   })
 

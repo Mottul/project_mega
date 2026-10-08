@@ -52,6 +52,16 @@ export async function launchApp({ env = {}, args = [] } = {}) {
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message))
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text().slice(0, 200)))
   await page.waitForLoadState('domcontentloaded')
+  // Das Hauptfenster erscheint erst bei 'ready-to-show' – manchmal nach dem ersten Inhalt.
+  // Ohne zu warten öffnete und schloss timer.mjs die Vollbild-Ausgabe, bevor das Hauptfenster
+  // als gezeigt galt, und die App beendete sich („letztes Fenster geschlossen“).
+  const shown = await waitFor(
+    () =>
+      app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.isVisible())),
+    15_000,
+    50
+  )
+  if (!shown) throw new Error('Hauptfenster wird nicht angezeigt')
   return {
     app,
     page,
