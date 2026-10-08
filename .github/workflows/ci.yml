@@ -1,14 +1,30 @@
 name: CI
 
-# Mini-CI: bei jedem Push/PR Typecheck, Unit-Tests und Produktions-Build.
-# Fängt kaputte Commits automatisch ab, ohne die App zu starten.
+# Bei jedem Pull Request und auf main:
+# - Linux mit Node 22 und 24: Format, Lint, Typen (App und Tests), Unit-Tests, Build.
+# - Linux, Windows und macOS: Unit-Tests samt Labortest mit dem gebündelten ffmpeg, Build und
+#   alle E2E-Skripte in der echten App – Pfade, Prozesse, Fenster und Zeilenenden verhalten sich
+#   je Betriebssystem anders (Beispiel: Windows meldet minimierte Fenster als unsichtbar).
+# Push nur auf main: Arbeits-Branches laufen über ihren Pull Request, sonst liefe alles doppelt.
 on:
   push:
+    branches: [main]
   pull_request:
+
+# Die Läufe brauchen kein Schreibrecht am Repository
+permissions:
+  contents: read
+
+# Ein neuer Push auf denselben Pull Request bricht den veralteten Lauf ab
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
+    name: Prüfungen · Node ${{ matrix.node }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -28,3 +44,39 @@ jobs:
       - run: npm run typecheck:test
       - run: npm test
       - run: npm run build
+
+  e2e:
+    name: App · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci
+      # ffmpeg wie im Installer (HAP-fähig); die Quelle liefert täglich neue Builds -> je Woche
+      # einmal laden, sonst aus dem Cache
+      - name: Woche für den ffmpeg-Cache
+        id: week
+        shell: bash
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: resources/ffmpeg
+          key: ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('scripts/download-ffmpeg.mjs') }}
+      - run: npm run ff:fetch
+      # mit ffmpeg läuft auch der Labortest des Video-Generators (bild- und samplegenau)
+      - run: npm test
+      - run: npx electron-vite build
+      - name: E2E (virtuelles Display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a --server-args="-screen 0 1920x1080x24" node e2e/run.mjs
+      - name: E2E
+        if: runner.os != 'Linux'
+        run: node e2e/run.mjs
