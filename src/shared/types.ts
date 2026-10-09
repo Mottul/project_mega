@@ -1615,6 +1615,8 @@ export interface AppSettings {
   /** Zuletzt benutzte Ordner der Datei-Dialoge: Seit Electron 43 merkt sie sich das
    *  Betriebssystem nicht mehr, ohne Vorgabe öffnet jeder Dialog im Downloads-Ordner. */
   dialogDirs: Record<DialogDirKind, string | null>
+  /** Lage und Inhaltsgröße der Fenster kleiner Werkzeuge (je Werkzeug, siehe shared/toolWindows) */
+  toolWindowBounds: Record<string, { x: number; y: number; width: number; height: number }>
   /** YouTube-Downloader: Zielordner und Vorgaben */
   youtube: YoutubeSettings
   /** Stage-Timer: gemerkter Ablauf und NDI-Ausgabe */
@@ -1662,6 +1664,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ytdlpAutoUpdate: true,
   ffmpegAutoUpdate: true,
   dialogDirs: { dateien: null, ordner: null, speichern: null },
+  toolWindowBounds: {},
   youtube: DEFAULT_YOUTUBE_SETTINGS,
   timer: DEFAULT_TIMER_SETTINGS,
   converter: DEFAULT_CONVERTER_SETTINGS,

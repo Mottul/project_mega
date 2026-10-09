@@ -27,6 +27,13 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      (Start, Import, Export, Ein/Aus) – die gehören in Leiste oder Arbeitsfläche.
    - Was die ganze App betrifft, gehört ins App-Menü (`components/app/AppMenu.tsx`), nie ins
      Werkzeug. Die Kopfleiste (`ToolHost`) baut das Werkzeug nicht selbst.
+   - **Kleines Werkzeug** (Rechner ohne Ausgabe und Schublade, Seite in `CalcPage` aus
+     `tools/_calc/ui`): in `SMALL_TOOLS` (`src/shared/toolWindows.ts`) eintragen – es öffnet sich
+     dann immer im eigenen, kleinen Fenster. Breite 600, Höhe = 41 px Kopfleiste + Seitenhöhe, im
+     echten Fenster gemessen (`npm run build`, Werkzeug öffnen, `document.querySelector(
+     '[data-testid=tool-content]').scrollHeight`). Höher als ~920 px nur, wenn es nicht anders geht
+     (dann in `SCROLLING_SMALL_TOOLS`); sonst die id in die Liste des Schritts „alle kleinen
+     Werkzeuge passen …“ in `e2e/layout.mjs` aufnehmen.
    - Bausteine aus `components/ui`, Eingabefelder mit Puffer (`useDraft`, `TextField`,
      `NumberField`), Farben nur über Tailwind-Tokens (`primary`, `border` …; Rot ist „live“).
      Texte deutsch.

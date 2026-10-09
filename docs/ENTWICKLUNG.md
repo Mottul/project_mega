@@ -97,7 +97,7 @@ src/
 │       ├── remoteHttp.ts · remoteApp*.ts · remotePwa.ts      # Fernsteuer-Basis, Fernsteuer-App, Web-App
 │       └── …                 # Stage-Timer, Jingles, NDI, Testbild-Export, Log
 ├── preload/index.ts          # contextBridge → window.api (typisiert)
-├── shared/                   # IPC-Vertrag, Domain-Typen, Konvertierungs-Plan, Video-Generator-Plan, Medien-Endungen, Marke
+├── shared/                   # IPC-Vertrag, Domain-Typen, Konvertierungs-Plan, Video-Generator-Plan, Medien-Endungen, Marke, Werkzeug-Fenster
 └── renderer/src/
     ├── launcher/             # Startbildschirm, Favoriten-Kategorien, ToolHost (Fehlergrenze je Werkzeug)
     ├── components/           # ToolShell, ErrorBoundary, Toaster, QrCode … + ui/ (Button, Select, Progress …)
@@ -119,6 +119,12 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
 - **Der Hauptprozess ist autoritativ** für alles, was fensterübergreifend laufen muss: Player- und
   Timer-Zustand ticken im main; Ausgabefenster (`#/output`, `#/player-output`, `#/timer-output`,
   `#/osc-monitor`) und Handy-Seiten spiegeln nur.
+- **Kleine Werkzeuge im eigenen Fenster:** `SMALL_TOOLS` in `src/shared/toolWindows.ts` nennt je
+  Rechner die gemessene Inhaltsgröße. Diese Werkzeuge öffnen sich immer in einem eigenen Fenster
+  (`openToolWindow` im main: höchstens eines je Werkzeug, Lage in `settings.toolWindowBounds`,
+  gekürzt auf den Bildschirm); `ToolHost` leitet `/tool/<id>` im Hauptfenster dorthin um und
+  zeigt im Fenster (`?fenster=1`) eine schlanke Kopfleiste. Schließt das Hauptfenster, gehen sie
+  mit. `e2e/layout.mjs` prüft, dass sie ohne Scrollen in ihr Fenster passen.
 - **Speichern – eine Regel, drei Orte** (siehe [Was wohin gehört](#was-wohin-gehört)):
   Einstellungen in `settings.json`, Arbeitsdaten im Werkzeug-Store, Bedien-Kleinigkeiten über
   `usePersistentState`. Nie direkt `localStorage` mit eigenem Parser.

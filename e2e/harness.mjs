@@ -79,7 +79,7 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
   }
 }
 
-/** Route im HashRouter öffnen, z. B. openRoute(page, '/tool/timecode'). */
+/** Route im HashRouter öffnen, z. B. openRoute(page, '/tool/media-info'). */
 export async function openRoute(page, route) {
   await page.evaluate((r) => {
     window.location.hash = r

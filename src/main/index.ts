@@ -1,7 +1,16 @@
-import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, screen, shell } from 'electron'
 import { existsSync, renameSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { APP_NAME, PREVIOUS_APP_NAMES } from '@shared/brand'
+import {
+  isSmallTool,
+  OWN_WINDOW_PARAM,
+  restoreBounds,
+  TOOL_WINDOW,
+  toolWindowSize,
+  type ToolWindowSize,
+  type WindowBounds
+} from '@shared/toolWindows'
 import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import {
   attachWindow,
@@ -28,6 +37,7 @@ import { closeTimerOutput } from './services/timerWindow'
 import { stopTimerNdi } from './services/timerNdi'
 import { stopPlayerNdi } from './services/playerNdi'
 import { checkOnStartup } from './services/ytdlp/ytDlp'
+import { getSettings, setSettings } from './services/store'
 
 const isDev = !app.isPackaged
 
@@ -72,13 +82,27 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 // Erstellt ein App-Fenster. `hash` = Start-Route (z.B. "/tool/jingle-player");
-// `isMain` = das Hauptfenster, das beim Schließen die Vollbild-Ausgaben mitnimmt.
-function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWindow {
+// `isMain` = das Hauptfenster, das beim Schließen die Vollbild-Ausgaben und die Fenster der
+// kleinen Werkzeuge mitnimmt.
+// `size`/`bounds`: kleine Werkzeuge bekommen ein passend kleines Fenster (Inhaltsgröße).
+function createWindow(
+  opts: {
+    hash?: string
+    isMain?: boolean
+    size?: ToolWindowSize
+    bounds?: WindowBounds | null
+  } = {}
+): BrowserWindow {
+  const size = opts.size ?? TOOL_WINDOW
+  const small = size !== TOOL_WINDOW
   const win = new BrowserWindow({
-    width: 1240,
-    height: 840,
-    minWidth: 960,
-    minHeight: 620,
+    width: opts.bounds?.width ?? size.width,
+    height: opts.bounds?.height ?? size.height,
+    ...(opts.bounds ? { x: opts.bounds.x, y: opts.bounds.y } : {}),
+    minWidth: size.minWidth,
+    minHeight: size.minHeight,
+    // Maße der kleinen Fenster meinen den Inhalt (gemessen an der Seite), nicht den Rahmen
+    useContentSize: small,
     show: false,
     backgroundColor: '#09090b',
     autoHideMenuBar: true,
@@ -103,12 +127,14 @@ function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWi
   // steuert den Zoom selbst (sonst zoomt/scrollt die ganze App ungewollt).
   win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
   // Nur das Hauptfenster nimmt die Vollbild-Ausgaben (Testbild/Player/Timer) mit;
-  // Zusatzfenster (z.B. parallel geöffnete Tools) lassen sie weiterlaufen.
+  // Zusatzfenster (z.B. parallel geöffnete Tools) lassen sie weiterlaufen. Die kleinen
+  // Werkzeuge gehen mit: Ihre Fenster haben keinen Weg zurück zum Startbildschirm.
   if (opts.isMain) {
     win.on('closed', () => {
       closePattern()
       closePlayerOutput()
       closeTimerOutput()
+      closeSmallToolWindows()
     })
   }
 
@@ -140,9 +166,56 @@ function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWi
   return win
 }
 
+// Fenster der kleinen Werkzeuge: je Werkzeug höchstens eines (ein zweiter Klick holt es nach
+// vorn), Lage und Größe gemerkt (settings.json, toolWindowBounds).
+const smallToolWindows = new Map<string, BrowserWindow>()
+
 /** Öffnet ein Tool in einem EIGENEN Fenster (parallel zum Hauptfenster). */
-export function openToolWindow(id: string): void {
-  createWindow({ hash: `/tool/${id}` })
+export function openToolWindow(id: unknown): void {
+  // kommt aus dem Renderer -> nur eine schlichte Werkzeug-Kennung
+  if (typeof id !== 'string' || !/^[a-z0-9-]{1,40}$/.test(id)) return
+  const hash = `/tool/${id}?${OWN_WINDOW_PARAM}=1`
+  if (!isSmallTool(id)) {
+    createWindow({ hash })
+    return
+  }
+  const open = smallToolWindows.get(id)
+  if (open && !open.isDestroyed()) {
+    if (open.isMinimized()) open.restore()
+    open.show()
+    open.focus()
+    return
+  }
+  // Nie höher als der Bildschirm, auf dem das Fenster erscheint (Laptop: ~1000 px nutzbar)
+  const full = toolWindowSize(id)
+  const work = screen.getPrimaryDisplay().workArea
+  const size = { ...full, height: Math.min(full.height, work.height - 60) }
+  const areas = screen.getAllDisplays().map((d) => d.workArea)
+  const win = createWindow({
+    hash,
+    size,
+    bounds: restoreBounds(getSettings().toolWindowBounds[id], areas, size)
+  })
+  smallToolWindows.set(id, win)
+  // 'closed' kommt erst später: Ein Klick in dieser Zeit holte sonst ein sterbendes Fenster
+  // nach vorn, statt ein neues zu öffnen -> schon bei 'close' austragen.
+  const release = (): void => {
+    if (smallToolWindows.get(id) === win) smallToolWindows.delete(id)
+  }
+  win.on('close', () => {
+    release()
+    // minimiert (Windows meldet dann -32000), maximiert oder Vollbild stimmt die Lage nicht
+    // -> die zuletzt gemerkte normale behalten
+    if (win.isMinimized() || win.isMaximized() || win.isFullScreen()) return
+    const [x, y] = win.getPosition()
+    const [width, height] = win.getContentSize()
+    setSettings({ toolWindowBounds: { [id]: { x, y, width, height } } })
+  })
+  win.on('closed', release)
+}
+
+function closeSmallToolWindows(): void {
+  for (const win of [...smallToolWindows.values()]) if (!win.isDestroyed()) win.close()
 }
 
 // Einmalige userData-Übernahme nach der Umbenennung: heißt der App-Ordner neu
@@ -179,7 +252,7 @@ app.whenReady().then(() => {
   registerMediaProtocol()
   registerJingleProtocol()
   registerIpcHandlers()
-  ipcMain.handle(Channels.windowOpenTool, (_e, id: string) => openToolWindow(id))
+  ipcMain.handle(Channels.windowOpenTool, (_e, id: unknown) => openToolWindow(id))
   ipcMain.handle(Channels.windowOpenOscMonitor, () => {
     createWindow({ hash: '/osc-monitor' })
   })
