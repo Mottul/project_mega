@@ -33,6 +33,10 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 - **Renderer-Zugriff nur über `api`** (`@renderer/lib/api`), nie direkt ipcRenderer.
 - **Datei-Dialoge** im main nur über `services/fileDialogs.ts` (merkt den Ordner je Art; Electron
   startet sie seit Version 43 sonst immer in „Downloads“).
+- **Werkzeug-Layout** (für alle gleich): `ToolShell` mit `bar` (`ToolBar`: Ausgabe, rot solange
+  live – oder `kind="job"` für den Auftrag) und `aside` (Schublade links aus `PanelSection`s mit
+  `summary`; Felder per `Field`/`Checkbox` mit `hint` = ⓘ). Aktionen nie in die Schublade;
+  App-weites (Design, Akzent, ffmpeg, yt-dlp) ins App-Menü `components/app/AppMenu.tsx`.
 - **Tools** liegen unter `src/renderer/src/tools/<id>/` und registrieren sich
   über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).

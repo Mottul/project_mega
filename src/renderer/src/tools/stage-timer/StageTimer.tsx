@@ -9,6 +9,8 @@ import {
   ArrowUp,
   ChevronsLeft,
   ChevronsRight,
+  Globe,
+  Hourglass,
   MessageSquare,
   MonitorUp,
   Pause,
@@ -16,7 +18,9 @@ import {
   Plus,
   Radio,
   RotateCcw,
+  Smartphone,
   Square,
+  Timer as TimerIcon,
   Trash2,
   Wifi,
   X
@@ -28,7 +32,17 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { TextField } from '@renderer/components/ui/text-field'
-import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
+import {
+  BarDivider,
+  BarToggle,
+  PanelSection,
+  ToolBar,
+  ToolShell
+} from '@renderer/components/ToolShell'
+import { Checkbox } from '@renderer/components/ui/checkbox'
+import { Field } from '@renderer/components/ui/field'
+import { InfoTip } from '@renderer/components/ui/info-tip'
+import { cn } from '@renderer/lib/utils'
 import { api } from '@renderer/lib/api'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { toast } from '@renderer/lib/toast'
@@ -143,9 +157,15 @@ function SegText({
   )
 }
 
-/** Fernsteuerung per Handy/Tablet: der Timer läuft im main-Prozess, die Steuerseite
+/** Fernsteuer-Server des Timers – Handy-Steuerung UND Bühnen-Anzeige im Browser laufen darüber.
+ *  Ein Zustand für Ausgabe-Leiste und Panels. Der Timer läuft im main-Prozess, die Steuerseite
  *  funktioniert daher auch, wenn dieses Werkzeug danach geschlossen wird. */
-function RemotePanel(): JSX.Element {
+function useTimerRemote(): {
+  remote: RemoteStatus | null
+  port: number
+  setPort: (p: number) => void
+  toggle: () => Promise<void>
+} {
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [port, setPort] = useState(8092)
 
@@ -170,64 +190,54 @@ function RemotePanel(): JSX.Element {
       }
     }
   }
+  return { remote, port, setPort, toggle }
+}
 
+function RemotePanel({
+  remote,
+  port,
+  setPort
+}: {
+  remote: RemoteStatus | null
+  port: number
+  setPort: (p: number) => void
+}): JSX.Element {
   return (
     <>
-      <p className="text-xs text-muted-foreground">
-        Handy/Tablet im selben WLAN startet/pausiert den Timer, wechselt Abschnitte und schickt
-        Nachrichten an die Bühne (ohne Passwort).
-      </p>
-      <div className="flex items-center gap-2">
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          Port
-          <Input
-            className="h-8 w-20"
-            type="number"
-            value={port}
-            onChange={(e) => setPort(Number(e.target.value) || 8092)}
-            disabled={remote?.running}
-          />
-        </label>
-        <Button
-          variant={remote?.running ? 'outline' : 'default'}
-          size="sm"
-          onClick={() => void toggle()}
-        >
-          <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
-        </Button>
-      </div>
+      <Field
+        label="Port"
+        hint="Handy/Tablet im selben WLAN startet/pausiert den Timer, wechselt Abschnitte und schickt Nachrichten an die Bühne (ohne Passwort). Ein/Aus mit „Handy & Browser“ in der Ausgabe-Leiste."
+      >
+        <Input
+          className="h-8 w-24"
+          type="number"
+          value={port}
+          onChange={(e) => setPort(Number(e.target.value) || 8092)}
+          disabled={remote?.running}
+        />
+      </Field>
       {remote && <RemoteAccess status={remote} />}
     </>
   )
 }
 
 /** Bühnen-Anzeige im Browser: läuft über den Server der Fernsteuerung (nur Anzeige). */
-function BrowserDisplayPanel(): JSX.Element {
-  const [remote, setRemote] = useState<RemoteStatus | null>(null)
-  useEffect(() => {
-    void api.timer.remoteStatus().then(setRemote)
-    return api.timer.onRemoteChanged(setRemote)
-  }, [])
+function BrowserDisplayPanel({
+  remote,
+  onStart
+}: {
+  remote: RemoteStatus | null
+  onStart: () => void
+}): JSX.Element {
   const urls = remote ? displayUrls(remote) : []
-
-  async function start(): Promise<void> {
-    const port = remote?.port ?? 8092
-    try {
-      setRemote(await api.timer.remoteStart(port))
-    } catch (e) {
-      toast.error(
-        `Fernsteuerung konnte nicht starten (Port ${port} belegt?)`,
-        e instanceof Error ? e.message : undefined
-      )
-    }
-  }
-
   return (
     <>
-      <p className="text-xs text-muted-foreground">
-        Für Fernseher, Tablets und Rechner ohne NDI: dieselbe Bühnenanzeige im Browser – nur
-        Anzeige, keine Bedienung. Antippen schaltet auf Vollbild. Läuft über den Server der
-        Fernsteuerung (im selben Netz, ohne Passwort).
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        Für Fernseher, Tablets und Rechner ohne NDI.
+        <InfoTip
+          label="Erklärung zur Anzeige im Browser"
+          text="Dieselbe Bühnenanzeige im Browser – nur Anzeige, keine Bedienung. Antippen schaltet auf Vollbild. Läuft über den Server der Fernsteuerung (im selben Netz, ohne Passwort)."
+        />
       </p>
       {urls.length > 0 ? (
         <div className="flex items-start gap-3 rounded-md border border-border bg-muted/30 p-2">
@@ -248,7 +258,7 @@ function BrowserDisplayPanel(): JSX.Element {
           </div>
         </div>
       ) : (
-        <Button size="sm" onClick={() => void start()}>
+        <Button size="sm" onClick={onStart}>
           <Wifi className="size-4" /> Aktivieren
         </Button>
       )}
@@ -256,27 +266,17 @@ function BrowserDisplayPanel(): JSX.Element {
   )
 }
 
-/** Fernsteuer-Status fürs Panel-Badge (eigener kleiner Abo-Hook). */
-function useRemoteRunning(): boolean {
-  const [running, setRunning] = useState(false)
-  useEffect(() => {
-    void api.timer.remoteStatus().then((s) => setRunning(s.running))
-    return api.timer.onRemoteChanged((s) => setRunning(s.running))
-  }, [])
-  return running
-}
-
 const NDI_RESOLUTIONS: [number, number][] = [
   [1920, 1080],
   [1280, 720]
 ]
 
-/** NDI-Ausgabe (experimentell): Timer-Anzeige als NDI-Quelle ins Netz senden.
- *  Ohne installiertes NDI-Modul zeigt das Panel nur einen Hinweis. */
-function NdiPanel(): JSX.Element {
+/** NDI-Zustand des Timers: von der Ausgabe-Leiste (Ein/Aus) und dem Panel geteilt. */
+function useTimerNdi(cfg: TimerNdiConfig): {
+  status: TimerNdiStatus | null
+  toggle: () => Promise<void>
+} {
   const [status, setStatus] = useState<TimerNdiStatus | null>(null)
-  // gemerkt in settings.json (timer.ndi), in allen Fenstern gleich
-  const cfg = useSettings((s) => s.timer.ndi) ?? DEFAULT_TIMER_SETTINGS.ndi
   useEffect(() => {
     // frühere Versionen: nur im localStorage
     migrateLocalStorage('stage-timer-ndi', (old) => {
@@ -301,6 +301,18 @@ function NdiPanel(): JSX.Element {
     return () => clearInterval(t)
   }, [status?.running])
 
+  async function toggle(): Promise<void> {
+    setStatus(await (status?.running ? api.timer.ndiStop() : api.timer.ndiStart(cfg)))
+  }
+  return { status, toggle }
+}
+
+/** NDI-Ausgabe (experimentell): Timer-Anzeige als NDI-Quelle ins Netz senden.
+ *  Ohne installiertes NDI-Modul zeigt das Panel nur einen Hinweis. */
+function NdiPanel({ status }: { status: TimerNdiStatus | null }): JSX.Element {
+  // gemerkt in settings.json (timer.ndi), in allen Fenstern gleich
+  const cfg = useSettings((s) => s.timer.ndi) ?? DEFAULT_TIMER_SETTINGS.ndi
+
   function patchCfg(patch: Partial<TimerNdiConfig>): void {
     updateSettings({ timer: { ndi: patch } })
   }
@@ -322,18 +334,16 @@ function NdiPanel(): JSX.Element {
   const running = status.running
   return (
     <>
-      <label className="block">
-        <span className="mb-1 block text-xs text-muted-foreground">Quellenname im Netz</span>
+      <Field label="Quellenname im Netz">
         <TextField
           value={cfg.name}
           disabled={running}
           maxLength={60}
           onCommit={(name) => patchCfg({ name })}
         />
-      </label>
+      </Field>
       <div className="grid grid-cols-2 gap-2">
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Auflösung</span>
+        <Field label="Auflösung">
           <select
             className={selectClass}
             disabled={running}
@@ -349,9 +359,8 @@ function NdiPanel(): JSX.Element {
               </option>
             ))}
           </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs text-muted-foreground">Bildrate</span>
+        </Field>
+        <Field label="Bildrate">
           <select
             className={selectClass}
             disabled={running}
@@ -364,31 +373,26 @@ function NdiPanel(): JSX.Element {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
       </div>
       {running ? (
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => void api.timer.ndiStop().then(setStatus)}
-        >
-          <X className="size-4" /> NDI-Ausgabe stoppen
-        </Button>
-      ) : (
-        <Button className="w-full" onClick={() => void api.timer.ndiStart(cfg).then(setStatus)}>
-          <Radio className="size-4" /> NDI-Ausgabe starten
-        </Button>
-      )}
-      {running && (
         <p className="text-xs text-muted-foreground">
           Sendet als <span className="font-medium text-foreground">„{status.config.name}“</span> ·{' '}
           {status.config.width}×{status.config.height}@{status.config.fps} ·{' '}
           <span className="tabular-nums">{status.framesSent}</span> Frames
         </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">Ein/Aus mit „NDI“ in der Ausgabe-Leiste.</p>
       )}
       {status.error && <p className="text-xs text-destructive">{status.error}</p>}
     </>
   )
+}
+
+const END_LABEL: Record<StageTimerState['endBehavior'], string> = {
+  overtime: 'Überziehung zählen',
+  stop: 'bei 0:00 stehen',
+  next: 'automatisch weiter'
 }
 
 export function StageTimer(): JSX.Element {
@@ -398,7 +402,9 @@ export function StageTimer(): JSX.Element {
   const [displayId, setDisplayId] = useState<number | null>(null)
   const [msgText, setMsgText] = useState('')
   const [msgFlash, setMsgFlash] = useState(false)
-  const remoteRunning = useRemoteRunning()
+  const rc = useTimerRemote()
+  const ndiCfg = useSettings((s) => s.timer.ndi) ?? DEFAULT_TIMER_SETTINGS.ndi
+  const ndi = useTimerNdi(ndiCfg)
 
   useEffect(() => {
     void api.timer.getState().then((s) => {
@@ -452,17 +458,102 @@ export function StageTimer(): JSX.Element {
 
   const segs = state.segments
   const isClock = state.displayMode === 'clock'
+  const seg = state.current >= 0 ? segs[state.current] : undefined
   const twoCol = !isClock && mainW >= 820
 
   return (
     <ToolShell
       id="stage-timer"
-      asideWidth={340}
+      asideWidth={360}
+      bar={
+        <ToolBar
+          label="Ausgabe"
+          active={state.outputOpen || Boolean(ndi.status?.running)}
+          status={
+            isClock ? (
+              <span className="text-muted-foreground">Uhr</span>
+            ) : seg ? (
+              <>
+                {state.running ? (
+                  <Play className="size-3.5 shrink-0 fill-current text-primary" />
+                ) : (
+                  <Pause className="size-3.5 shrink-0 text-muted-foreground" />
+                )}
+                <span className="max-w-[16rem] truncate font-medium">
+                  {seg.title || seg.speaker || `Abschnitt ${state.current + 1}`}
+                </span>
+                <span className={remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}>
+                  {remaining < 0
+                    ? `${fmtTimer(-remaining)} überzogen`
+                    : `noch ${fmtTimer(remaining)}`}
+                </span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">Kein Abschnitt</span>
+            )
+          }
+        >
+          <select
+            className={cn(selectClass, 'h-8 w-64 max-w-full')}
+            aria-label="Ausgabe-Monitor"
+            value={displayId ?? ''}
+            onChange={(e) => setDisplayId(Number(e.target.value))}
+          >
+            {displays.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          {state.outputOpen ? (
+            <Button size="sm" variant="destructive" onClick={() => void api.timer.closeOutput()}>
+              <X className="size-4" /> Vollbild beenden
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              disabled={displayId == null}
+              title="Esc im Ausgabefenster schließt es wieder"
+              onClick={() => displayId != null && void api.timer.openOutput(displayId)}
+            >
+              <MonitorUp className="size-4" /> Vollbild starten
+            </Button>
+          )}
+          <BarDivider />
+          <BarToggle
+            on={Boolean(ndi.status?.running)}
+            disabled={!ndi.status?.available}
+            title={
+              ndi.status?.available === false
+                ? 'NDI-Modul nicht verfügbar (npm run ndi:setup, siehe docs/NDI.md)'
+                : 'Timer-Anzeige als NDI-Quelle ins Netz senden'
+            }
+            onClick={() => void ndi.toggle()}
+          >
+            NDI
+          </BarToggle>
+          <BarToggle
+            on={Boolean(rc.remote?.running)}
+            title="Fernsteuerung fürs Handy und Bühnen-Anzeige im Browser (ein gemeinsamer Server)"
+            onClick={() => void rc.toggle()}
+          >
+            Handy &amp; Browser
+          </BarToggle>
+        </ToolBar>
+      }
       aside={
         <>
-          <PanelSection id="behavior" title="Verhalten" defaultOpen>
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">Anzeige</span>
+          <PanelSection
+            id="behavior"
+            title="Anzeige"
+            icon={TimerIcon}
+            summary={
+              isClock
+                ? `Uhr${state.clockShowSeconds ? ' · Sekunden' : ''}${state.clockShowDate ? ' · Datum' : ''}`
+                : `Timer (Restzeit)${state.showClockInTimer ? ' · Uhrzeit klein' : ''}`
+            }
+          >
+            <Field label="Anzeige">
               <select
                 className={selectClass}
                 value={state.displayMode}
@@ -473,145 +564,114 @@ export function StageTimer(): JSX.Element {
                 <option value="timer">Timer (Restzeit)</option>
                 <option value="clock">Uhr</option>
               </select>
-            </label>
+            </Field>
             {isClock ? (
               <>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={state.clockShowSeconds}
-                    onChange={(e) =>
-                      cmd({ type: 'setClockOptions', showSeconds: e.target.checked })
-                    }
-                  />
-                  Sekunden anzeigen
-                </label>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={state.clockShowDate}
-                    onChange={(e) => cmd({ type: 'setClockOptions', showDate: e.target.checked })}
-                  />
-                  Datum anzeigen
-                </label>
+                <Checkbox
+                  checked={state.clockShowSeconds}
+                  onChange={(v) => cmd({ type: 'setClockOptions', showSeconds: v })}
+                  label="Sekunden anzeigen"
+                />
+                <Checkbox
+                  checked={state.clockShowDate}
+                  onChange={(v) => cmd({ type: 'setClockOptions', showDate: v })}
+                  label="Datum anzeigen"
+                />
               </>
             ) : (
-              <>
-                <label className="block">
-                  <span className="mb-1 block text-xs text-muted-foreground">
-                    Wenn die Zeit abgelaufen ist
-                  </span>
-                  <select
-                    className={selectClass}
-                    value={state.endBehavior}
-                    onChange={(e) =>
-                      cmd({
-                        type: 'setEndBehavior',
-                        behavior: e.target.value as StageTimerState['endBehavior']
-                      })
-                    }
-                  >
-                    <option value="overtime">Überziehung zählen (rot)</option>
-                    <option value="stop">Bei 0:00 stehen bleiben</option>
-                    <option value="next">Automatisch nächster Abschnitt</option>
-                  </select>
-                </label>
-                {state.endBehavior === 'overtime' && (
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={state.overtimeFlash}
-                      onChange={(e) => cmd({ type: 'setOvertimeFlash', flash: e.target.checked })}
-                    />
-                    Beim Überziehen rot blinken (aus: nur rote Ziffern)
-                  </label>
-                )}
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-muted-foreground">Gelb ab Rest</span>
-                    <DurationInput
-                      seconds={state.warnSec}
-                      onCommit={(sec) =>
-                        cmd({ type: 'setThresholds', warnSec: sec, alertSec: state.alertSec })
-                      }
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs text-muted-foreground">Rot ab Rest</span>
-                    <DurationInput
-                      seconds={state.alertSec}
-                      onCommit={(sec) =>
-                        cmd({ type: 'setThresholds', warnSec: state.warnSec, alertSec: sec })
-                      }
-                    />
-                  </label>
-                </div>
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={state.showClockInTimer}
-                    onChange={(e) => cmd({ type: 'setShowClock', show: e.target.checked })}
-                  />
-                  Uhrzeit klein einblenden (Timer-Modus)
-                </label>
-              </>
+              <Checkbox
+                checked={state.showClockInTimer}
+                onChange={(v) => cmd({ type: 'setShowClock', show: v })}
+                label="Uhrzeit klein einblenden"
+              />
             )}
           </PanelSection>
 
-          <PanelSection id="output" title="Ausgabefenster" defaultOpen>
-            <select
-              className={selectClass}
-              value={displayId ?? ''}
-              onChange={(e) => setDisplayId(Number(e.target.value))}
+          {!isClock && (
+            <PanelSection
+              id="flow"
+              title="Ablauf und Farben"
+              icon={Hourglass}
+              summary={`${END_LABEL[state.endBehavior]} · Gelb ab ${fmtTimer(state.warnSec)} · Rot ab ${fmtTimer(state.alertSec)}`}
             >
-              {displays.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-            {state.outputOpen ? (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => void api.timer.closeOutput()}
-              >
-                <X className="size-4" /> Vollbild schließen
-              </Button>
-            ) : (
-              <Button
-                className="w-full"
-                disabled={displayId == null}
-                onClick={() => displayId != null && void api.timer.openOutput(displayId)}
-              >
-                <MonitorUp className="size-4" /> Vollbild öffnen
-              </Button>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Esc im Ausgabefenster schließt es. Die Anzeige läuft synchron zur Vorschau.
-            </p>
-          </PanelSection>
+              <Field label="Wenn die Zeit abgelaufen ist">
+                <select
+                  className={selectClass}
+                  value={state.endBehavior}
+                  onChange={(e) =>
+                    cmd({
+                      type: 'setEndBehavior',
+                      behavior: e.target.value as StageTimerState['endBehavior']
+                    })
+                  }
+                >
+                  <option value="overtime">Überziehung zählen (rot)</option>
+                  <option value="stop">Bei 0:00 stehen bleiben</option>
+                  <option value="next">Automatisch nächster Abschnitt</option>
+                </select>
+              </Field>
+              {state.endBehavior === 'overtime' && (
+                <Checkbox
+                  checked={state.overtimeFlash}
+                  onChange={(v) => cmd({ type: 'setOvertimeFlash', flash: v })}
+                  label="Beim Überziehen rot blinken"
+                  hint="Aus: Nur die Ziffern sind rot, das Bild blinkt nicht."
+                />
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Gelb ab Rest">
+                  <DurationInput
+                    seconds={state.warnSec}
+                    onCommit={(sec) =>
+                      cmd({ type: 'setThresholds', warnSec: sec, alertSec: state.alertSec })
+                    }
+                  />
+                </Field>
+                <Field label="Rot ab Rest">
+                  <DurationInput
+                    seconds={state.alertSec}
+                    onCommit={(sec) =>
+                      cmd({ type: 'setThresholds', warnSec: state.warnSec, alertSec: sec })
+                    }
+                  />
+                </Field>
+              </div>
+            </PanelSection>
+          )}
 
           <PanelSection
             id="browser"
             title="Anzeige im Browser"
+            icon={Globe}
             defaultOpen={false}
-            right={remoteRunning ? <Badge tone="success">an</Badge> : undefined}
+            summary={
+              rc.remote?.running ? (displayUrls(rc.remote)[0] ?? 'an') : 'aus – „Handy & Browser“'
+            }
+            right={rc.remote?.running ? <Badge tone="success">an</Badge> : undefined}
           >
-            <BrowserDisplayPanel />
+            <BrowserDisplayPanel remote={rc.remote} onStart={() => void rc.toggle()} />
           </PanelSection>
 
-          <PanelSection id="ndi" title="NDI-Ausgabe (Netzwerk)" defaultOpen={false}>
-            <NdiPanel />
+          <PanelSection
+            id="ndi"
+            title="NDI"
+            icon={Radio}
+            defaultOpen={false}
+            summary={`„${ndiCfg.name}“ · ${ndiCfg.width} × ${ndiCfg.height} · ${ndiCfg.fps} fps`}
+            right={ndi.status?.running ? <Badge tone="success">sendet</Badge> : undefined}
+          >
+            <NdiPanel status={ndi.status} />
           </PanelSection>
 
           <PanelSection
             id="remote"
             title="Fernsteuerung"
+            icon={Smartphone}
             defaultOpen={false}
-            right={remoteRunning ? <Badge tone="success">an</Badge> : undefined}
+            summary={`Port ${rc.remote?.port ?? rc.port} · ${rc.remote?.running ? 'an' : 'aus'}`}
+            right={rc.remote?.running ? <Badge tone="success">an</Badge> : undefined}
           >
-            <RemotePanel />
+            <RemotePanel remote={rc.remote} port={rc.port} setPort={rc.setPort} />
           </PanelSection>
         </>
       }

@@ -83,6 +83,8 @@ const api: ToolboxApi = {
     update: (config) => ipcRenderer.invoke(Channels.patternUpdate, config),
     close: () => ipcRenderer.invoke(Channels.patternClose),
     current: () => ipcRenderer.invoke(Channels.patternCurrent),
+    isOpen: () => ipcRenderer.invoke(Channels.patternIsOpen),
+    onOutputChanged: (cb) => subscribe(Channels.patternOutputChanged, (v) => cb(v as never)),
     onRender: (cb) => subscribe(Channels.patternRender, (c) => cb(c as never)),
     savePng: (bytes, suggestedName) =>
       ipcRenderer.invoke(Channels.patternSavePng, bytes, suggestedName),

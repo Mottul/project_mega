@@ -37,7 +37,11 @@ export function openTimerOutput(displayId: number): void {
   })
   logLine('[timer] Ausgabefenster auf Display', display.id, JSON.stringify(b))
 
+  // Nur das AKTUELLE Fenster darf `win` leeren: Electron meldet 'closed' asynchron – beim
+  // Monitorwechsel steht dann schon das neue Fenster in `win` und ginge sonst verloren.
+  const self = win
   win.on('closed', () => {
+    if (win !== self) return
     win = null
     setTimerOutputOpen(false)
   })

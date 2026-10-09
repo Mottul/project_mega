@@ -227,18 +227,9 @@ export function YoutubeDownloader(): JSX.Element {
         </Button>
       </Card>
 
-      <label className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-        <input
-          type="checkbox"
-          className="accent-primary"
-          checked={autoUpdate}
-          onChange={(e) => {
-            const on = e.target.checked
-            updateSettings({ ytdlpAutoUpdate: on })
-          }}
-        />
-        Beim Programmstart automatisch auf eine neue yt-dlp-Version prüfen
-      </label>
+      <p className="px-1 text-xs text-muted-foreground">
+        Automatisch beim Start prüfen: {autoUpdate ? 'an' : 'aus'} (im Menü „Mottulbox“).
+      </p>
 
       {problem && (
         <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">

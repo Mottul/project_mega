@@ -14,14 +14,22 @@ import {
   Square,
   Trash2,
   Upload,
-  Volume2,
   Wifi
 } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
-import { ToolShell, PanelSection } from '@renderer/components/ToolShell'
+import {
+  BarDivider,
+  BarToggle,
+  PanelSection,
+  ToolBar,
+  ToolShell
+} from '@renderer/components/ToolShell'
+import { Field } from '@renderer/components/ui/field'
+import { InfoTip } from '@renderer/components/ui/info-tip'
+import { cn } from '@renderer/lib/utils'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
 import { useDraft } from '@renderer/lib/useDraft'
@@ -264,9 +272,6 @@ export function JinglePlayer(): JSX.Element {
           />
           Solo
         </label>
-        <Button variant="destructive" size="sm" onClick={() => engine.stopAll()}>
-          <Square className="size-4" /> Stopp (Esc)
-        </Button>
       </div>
 
       {/* Pad-Raster */}
@@ -307,8 +312,8 @@ export function JinglePlayer(): JSX.Element {
           </>
         ) : (
           <>
-            Edit-Modus: Pad anklicken, um es rechts zu bearbeiten. Leeres Pad anklicken oder Datei
-            darauf ziehen, um zu laden.
+            Edit-Modus: Pad anklicken, um es in den Einstellungen zu bearbeiten. Leeres Pad
+            anklicken oder Datei darauf ziehen, um zu laden.
           </>
         )}
       </p>
@@ -326,7 +331,14 @@ export function JinglePlayer(): JSX.Element {
 
   const aside = (
     <>
-      <PanelSection id="pad" title="Pad" icon={Settings2}>
+      <PanelSection
+        id="pad"
+        title="Pad"
+        icon={Settings2}
+        summary={
+          selected ? selected.label || selected.originalName || 'Jingle' : 'kein Pad gewählt'
+        }
+      >
         {selected ? (
           <PadSettings
             pad={selected}
@@ -347,60 +359,36 @@ export function JinglePlayer(): JSX.Element {
         )}
       </PanelSection>
 
-      <PanelSection id="output" title="Audio-Ausgabe" icon={Volume2}>
-        <select
-          className={selectClass}
-          value={s.outputDeviceId}
-          onChange={(e) => s.set({ outputDeviceId: e.target.value })}
-        >
-          <option value="">Standardgerät</option>
-          {devices.map((d, i) => (
-            <option key={d.deviceId} value={d.deviceId}>
-              {d.label || `Ausgabegerät ${i + 1}`}
-            </option>
-          ))}
-        </select>
-        {devices.length === 0 || devices.every((d) => !d.label) ? (
-          <p className="text-xs text-muted-foreground">
-            Gerätenamen erscheinen erst nach Audio-Freigabe – die Wiedergabe funktioniert dennoch.
-          </p>
-        ) : null}
-      </PanelSection>
-
       <PanelSection
         id="remote"
         title="Fernsteuerung"
         icon={Wifi}
         defaultOpen={false}
+        summary={`Port ${remote?.port ?? remotePort} · ${remote?.running ? 'an' : 'aus'}`}
         right={remote?.running ? <Badge tone="success">an</Badge> : undefined}
       >
-        <p className="text-xs text-muted-foreground">
-          Handy/Tablet im selben WLAN steuert die Pads (ohne Passwort). Dieses Fenster muss offen
-          bleiben.
-        </p>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            Port
-            <Input
-              className="h-8 w-20"
-              type="number"
-              value={remotePort}
-              onChange={(e) => setRemotePort(Number(e.target.value) || 8089)}
-              disabled={remote?.running}
-            />
-          </label>
-          <Button
-            variant={remote?.running ? 'outline' : 'default'}
-            size="sm"
-            onClick={() => void toggleRemote()}
-          >
-            <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
-          </Button>
-        </div>
+        <Field
+          label="Port"
+          hint="Handy/Tablet im selben WLAN steuert die Pads (ohne Passwort). Dieses Fenster muss offen bleiben. Ein/Aus mit „Handy“ in der Ausgabe-Leiste."
+        >
+          <Input
+            className="h-8 w-24"
+            type="number"
+            value={remotePort}
+            onChange={(e) => setRemotePort(Number(e.target.value) || 8089)}
+            disabled={remote?.running}
+          />
+        </Field>
         {remote && <RemoteAccess status={remote} />}
       </PanelSection>
 
-      <PanelSection id="set" title="Set" icon={Music} defaultOpen={false}>
+      <PanelSection
+        id="set"
+        title="Set"
+        icon={Music}
+        defaultOpen={false}
+        summary={`„${bank.name}“ · ${bank.pads.length} Pads`}
+      >
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Name</span>
           <Input value={bank.name} onChange={(e) => s.renameBank(bank.id, e.target.value)} />
@@ -414,7 +402,54 @@ export function JinglePlayer(): JSX.Element {
     </>
   )
 
-  return <ToolShell id="jingle-player" main={main} aside={aside} asideWidth={400} />
+  const playingCount = Object.keys(engine.playing).length
+  const noLabels = devices.length === 0 || devices.every((d) => !d.label)
+  const bar = (
+    <ToolBar
+      label="Ausgabe"
+      active={playingCount > 0}
+      status={
+        playingCount > 0 ? (
+          <span>{playingCount === 1 ? '1 Jingle spielt' : `${playingCount} Jingles spielen`}</span>
+        ) : (
+          <span className="text-muted-foreground">Stille</span>
+        )
+      }
+    >
+      <select
+        className={cn(selectClass, 'h-8 w-60 max-w-full')}
+        aria-label="Audio-Ausgabe"
+        value={s.outputDeviceId}
+        onChange={(e) => s.set({ outputDeviceId: e.target.value })}
+      >
+        <option value="">Standardgerät</option>
+        {devices.map((d, i) => (
+          <option key={d.deviceId} value={d.deviceId}>
+            {d.label || `Ausgabegerät ${i + 1}`}
+          </option>
+        ))}
+      </select>
+      {noLabels && (
+        <InfoTip
+          label="Erklärung zur Audio-Ausgabe"
+          text="Gerätenamen erscheinen erst nach Audio-Freigabe – die Wiedergabe funktioniert dennoch."
+        />
+      )}
+      <BarDivider />
+      <BarToggle
+        on={Boolean(remote?.running)}
+        title="Fernsteuerung fürs Handy/Tablet im selben WLAN"
+        onClick={() => void toggleRemote()}
+      >
+        Handy
+      </BarToggle>
+      <Button variant="destructive" size="sm" onClick={() => engine.stopAll()}>
+        <Square className="size-4" /> Stopp (Esc)
+      </Button>
+    </ToolBar>
+  )
+
+  return <ToolShell id="jingle-player" bar={bar} main={main} aside={aside} asideWidth={400} />
 }
 
 function PadTile({
@@ -569,7 +604,8 @@ function ExcerptEditor({
         />
       ) : (
         <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
-          Kein Jingle geladen. Im Panel rechts „Datei laden" wählen oder eine Datei aufs Pad ziehen.
+          Kein Jingle geladen. In den Einstellungen „Datei laden" wählen oder eine Datei aufs Pad
+          ziehen.
         </p>
       )}
       <p className="mt-1.5 text-xs text-muted-foreground">

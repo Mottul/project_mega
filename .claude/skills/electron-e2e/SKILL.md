@@ -12,6 +12,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | Skript | Prüft |
 |---|---|
 | `smoke.mjs` | Start, Kachelhöhen, Suche, Werkzeug öffnen, Programmbrücke, Datei-Dialoge merken sich den Ordner, keine Konsolenfehler |
+| `layout.mjs` | Werkzeug-Muster: Kopfleiste, App-Menü (13 Akzentfarben), Schublade (anheften/lösen/schließen, je Werkzeug gemerkt), ⓘ, Ausgabe-Leiste live/aus (Esc und Schließen von außen), Monitorwechsel von Testbild- und Player-Ausgabe, Auftrags-Leiste |
 | `testpattern.mjs` | 2-px-Rasterlinien pixelgenau (Raster und Mapping-Testbild) |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
@@ -72,6 +73,15 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   `e2e/shutdown.mjs`.
 - **Fehlersuche:** `E2E_DEBUG=1` schreibt Ausgabe und Ende des main-Prozesses sowie
   Fenster-Ereignisse (neu, geschlossen, abgestürzt) mit.
+- **Werkzeug-Muster greifen:** `page.getByTestId('tool-bar')` (Attribute `data-active`, `data-kind`)
+  und `getByTestId('settings-drawer')` (`data-pinned`); Knöpfe über ihre Namen („Einstellungen“,
+  „Schublade lösen“, „Vollbild starten“). Eine Bereichs-Überschrift heißt Titel + Zusammenfassung –
+  mit Regex suchen (`{ name: /Anzeige im Browser/ }`).
+- **Tastendruck im Ausgabefenster** (Esc schließt): `win.keyboard.press` erreicht
+  `before-input-event` nicht zuverlässig. Erst warten, bis das Fenster geladen ist
+  (`webContents.isLoading()` = false), dann per `app.evaluate` `w.focus()` und
+  `w.webContents.sendInputEvent({ type: 'keyDown' | 'keyUp', keyCode: 'Escape' })` (Beispiel
+  `e2e/layout.mjs`).
 - `ELECTRON_RUN_AS_NODE` aus der Umgebung entfernt der Harness (sonst startet Electron als Node).
 
 ## Grenzen

@@ -14,7 +14,9 @@ import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { selectClass } from '@renderer/components/ui/select'
-import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
+import { PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { InfoTip } from '@renderer/components/ui/info-tip'
+import { cn } from '@renderer/lib/utils'
 import { api } from '@renderer/lib/api'
 import {
   DEFAULT_PATTERN_CONFIG,
@@ -61,6 +63,10 @@ export function TestPatterns(): JSX.Element {
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
   const [displayId, setDisplayId] = useState<number | null>(null)
   const [outputOpen, setOutputOpen] = useState(false)
+  // Nur das Fenster, das die Ausgabe geöffnet hat, spiegelt seine Änderungen hinein – sonst
+  // schöbe ein zweites Testbild-Fenster beim „Ausgabe offen“-Broadcast seine eigene Einstellung
+  // auf die Wand.
+  const [ownsOutput, setOwnsOutput] = useState(false)
 
   const [vidFormat, setVidFormat] = useState<PatternVideoFormat>('mp4')
   const [vidSeconds, setVidSeconds] = useState(10)
@@ -93,10 +99,20 @@ export function TestPatterns(): JSX.Element {
     }
   }, [])
 
+  // Ausgabefenster offen/zu: der main meldet es (auch nach Esc im Ausgabefenster oder wenn ein
+  // anderes Fenster es öffnet) -> die Ausgabe-Leiste zeigt „Live“ verlässlich.
+  useEffect(() => {
+    void api.patterns.isOpen().then(setOutputOpen)
+    return api.patterns.onOutputChanged((open) => {
+      setOutputOpen(open)
+      if (!open) setOwnsOutput(false)
+    })
+  }, [])
+
   // Aenderungen live ins offene Ausgabefenster spiegeln
   useEffect(() => {
-    if (outputOpen) void api.patterns.update(config)
-  }, [config, outputOpen])
+    if (outputOpen && ownsOutput) void api.patterns.update(config)
+  }, [config, outputOpen, ownsOutput])
 
   function patch(p: Partial<PatternConfig>): void {
     setConfig((prev) => ({ ...prev, ...p }))
@@ -144,12 +160,14 @@ export function TestPatterns(): JSX.Element {
     if (displayId == null) return
     await api.patterns.open(config, displayId)
     setOutputOpen(true)
+    setOwnsOutput(true)
     setNote(null)
   }
 
   async function closeFullscreen(): Promise<void> {
     await api.patterns.close()
     setOutputOpen(false)
+    setOwnsOutput(false)
   }
 
   async function savePng(): Promise<void> {
@@ -226,9 +244,73 @@ export function TestPatterns(): JSX.Element {
   return (
     <ToolShell
       id="test-patterns"
+      bar={
+        <ToolBar
+          label="Ausgabe"
+          active={outputOpen}
+          status={
+            <>
+              <span className="max-w-[16rem] truncate font-medium">
+                {PATTERN_OPTIONS.find((o) => o.value === config.pattern)?.label ?? config.pattern}
+              </span>
+              <span className="text-muted-foreground">
+                {config.width} × {config.height}
+              </span>
+            </>
+          }
+        >
+          <select
+            className={cn(selectClass, 'h-8 w-64 max-w-full')}
+            aria-label="Ausgabe-Monitor"
+            value={displayId ?? ''}
+            onChange={(e) => setDisplayId(Number(e.target.value))}
+          >
+            {displays.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          {outputOpen ? (
+            <>
+              <Button size="sm" variant="destructive" onClick={() => void closeFullscreen()}>
+                <MonitorX className="size-4" /> Vollbild beenden
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void showFullscreen()}
+                disabled={displayId == null}
+                title="Testbild auf den gewählten Monitor legen"
+              >
+                Monitor wechseln
+              </Button>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => void showFullscreen()}
+              disabled={displayId == null}
+              title="Pixelgenau in der nativen Auflösung des Monitors; Esc im Ausgabefenster beendet die Anzeige"
+            >
+              <MonitorPlay className="size-4" /> Vollbild starten
+            </Button>
+          )}
+        </ToolBar>
+      }
       aside={
         <>
-          <PanelSection id="presets" title="Presets" icon={Bookmark} defaultOpen={false}>
+          <PanelSection
+            id="presets"
+            title="Presets"
+            icon={Bookmark}
+            defaultOpen={false}
+            summary={
+              presets.length === 0
+                ? 'keine gespeichert'
+                : `${presets.length} gespeichert${selectedPreset ? ` · „${selectedPreset}“` : ''}`
+            }
+          >
             <div className="flex items-center gap-2">
               <select
                 className={`${selectClass} flex-1`}
@@ -259,7 +341,12 @@ export function TestPatterns(): JSX.Element {
             </div>
           </PanelSection>
 
-          <PanelSection id="pattern" title="Testbild" icon={LayoutGrid}>
+          <PanelSection
+            id="pattern"
+            title="Testbild"
+            icon={LayoutGrid}
+            summary={`${PATTERN_OPTIONS.find((o) => o.value === config.pattern)?.label ?? ''}${showScale ? ` · ${fmtCells(gridCells.x)} × ${fmtCells(gridCells.y)} Module` : ''}`}
+          >
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Testbild</span>
               <select
@@ -306,7 +393,13 @@ export function TestPatterns(): JSX.Element {
             )}
             {showScale && (
               <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Modul-Unterteilung</span>
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  Modul-Unterteilung
+                  <InfoTip
+                    label="Erklärung zur Modul-Unterteilung"
+                    text={`Zellanzahl aus dem Seitenverhältnis (${mc.x}:${mc.y}); der ×-Faktor verdoppelt sie.`}
+                  />
+                </span>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -333,9 +426,6 @@ export function TestPatterns(): JSX.Element {
                     {fmtCells(gridCells.x)} × {fmtCells(gridCells.y)} Module
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  Zellanzahl aus dem Seitenverhältnis ({mc.x}:{mc.y}); ×-Faktor verdoppelt.
-                </span>
               </div>
             )}
 
@@ -380,7 +470,13 @@ export function TestPatterns(): JSX.Element {
 
             {isScroll && (
               <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Scroll-Geschwindigkeit</span>
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  Scroll-Geschwindigkeit
+                  <InfoTip
+                    label="Erklärung zur Scroll-Geschwindigkeit"
+                    text="Höher = schnellere Balken – Tearing und Judder werden deutlicher."
+                  />
+                </span>
                 <div className="flex items-center gap-3">
                   <input
                     type="range"
@@ -395,14 +491,16 @@ export function TestPatterns(): JSX.Element {
                     ×{config.scrollSpeed.toFixed(1)}
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  Höher = schnellere Balken (Tearing/Judder deutlicher).
-                </span>
               </label>
             )}
           </PanelSection>
 
-          <PanelSection id="res" title="Auflösung & Anzeige" icon={Ratio}>
+          <PanelSection
+            id="res"
+            title="Auflösung & Anzeige"
+            icon={Ratio}
+            summary={`${config.width} × ${config.height}${!isMapping && config.showInfo ? (config.label ? ` · „${config.label}“` : ' · Auflösung eingeblendet') : ''}`}
+          >
             <div className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Auflösung</span>
               <div className="flex items-center gap-2">
@@ -437,7 +535,7 @@ export function TestPatterns(): JSX.Element {
                   onClick={fromMonitor}
                   disabled={displayId == null}
                 >
-                  von Monitor
+                  Vom Monitor
                 </Button>
               </div>
             </div>
@@ -476,40 +574,6 @@ export function TestPatterns(): JSX.Element {
               {config.height})
             </p>
           </div>
-
-          {/* Ausgabe auf Monitor */}
-          <Card className="space-y-4 p-5">
-            <h2 className="font-medium">Vollbild-Ausgabe</h2>
-            <div className="flex flex-wrap items-end gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-sm font-medium">Monitor</span>
-                <select
-                  className={selectClass}
-                  value={displayId ?? ''}
-                  onChange={(e) => setDisplayId(Number(e.target.value))}
-                >
-                  {displays.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Button onClick={() => void showFullscreen()} disabled={displayId == null}>
-                <MonitorPlay className="size-4" />{' '}
-                {outputOpen ? 'Auf Monitor aktualisieren' : 'Vollbild anzeigen'}
-              </Button>
-              {outputOpen && (
-                <Button variant="outline" onClick={() => void closeFullscreen()}>
-                  <MonitorX className="size-4" /> Schließen
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Das Testbild wird pixelgenau in der nativen Auflösung des Monitors angezeigt. Im
-              Ausgabefenster beendet <kbd className="rounded bg-muted px-1">Esc</kbd> die Anzeige.
-            </p>
-          </Card>
 
           {/* Export */}
           <Card className="space-y-4 p-5">

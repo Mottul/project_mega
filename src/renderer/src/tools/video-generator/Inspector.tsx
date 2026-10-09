@@ -109,7 +109,12 @@ export function OutputPanel({ caps }: { caps: ConvertCapabilities | null }): JSX
   }
 
   return (
-    <PanelSection id="output" title="Ausgabe" icon={Monitor}>
+    <PanelSection
+      id="output"
+      title="Ausgabe"
+      icon={Monitor}
+      summary={`${output.width} × ${output.height} · ${fpsValue >= 0 ? VGEN_FPS[fpsValue].label : `${output.fps} fps`} · ${family?.label ?? output.format}${output.loop ? ' · Schleife' : ''}`}
+    >
       <label className="block space-y-1">
         <span className={label}>Größe</span>
         <select
@@ -352,7 +357,12 @@ export function DefaultsPanel(): JSX.Element {
   const d = useVideoGen((s) => s.project.defaults)
   const setDefaults = useVideoGen((s) => s.setDefaults)
   return (
-    <PanelSection id="defaults" title="Vorgaben" icon={SlidersHorizontal}>
+    <PanelSection
+      id="defaults"
+      title="Vorgaben"
+      icon={SlidersHorizontal}
+      summary={`Standzeit ${d.imageSec.toLocaleString('de-DE')} s · ${VGEN_FITS.find((f) => f.id === d.fit)?.label ?? d.fit}`}
+    >
       <p className="text-xs text-muted-foreground">
         Gelten für alle Elemente, die nichts Eigenes eingestellt haben.
       </p>
@@ -458,7 +468,12 @@ export function AudioPanel({
   }
 
   return (
-    <PanelSection id="audio" title="Ton & Musik" icon={Music}>
+    <PanelSection
+      id="audio"
+      title="Ton & Musik"
+      icon={Music}
+      summary={`${music ? `${music.tracks.length} Musiktitel` : 'Keine Musik'}${loudnorm ? ' · Lautheit' : ''}`}
+    >
       <p className="text-xs text-muted-foreground">
         Originalton je Video in der Auswahl; in Übergängen wird er weich verblendet.
       </p>

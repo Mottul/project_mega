@@ -34,6 +34,7 @@ import { Card } from '@renderer/components/ui/card'
 import { Progress } from '@renderer/components/ui/progress'
 import { selectClass } from '@renderer/components/ui/select'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
+import { Checkbox } from '@renderer/components/ui/checkbox'
 import { api } from '@renderer/lib/api'
 import { useKiosk } from '@renderer/launcher/kiosk'
 import { useHandoff } from '@renderer/lib/handoff'
@@ -301,13 +302,26 @@ export function MediaInfo(): JSX.Element {
   }
 
   const currentHints = current ? (hintsByPath.get(current.path) ?? []) : []
+  const profileSummary = [
+    TARGET_OPTIONS.find((o) => o.value === profile.target)?.label,
+    RASTER_OPTIONS.find((o) => o.value === profile.raster)?.label,
+    MEDIUM_OPTIONS.find((o) => o.value === profile.medium)?.label,
+    deep && 'Tiefenanalyse'
+  ]
+    .filter((x) => x && !/^keine/i.test(x))
+    .join(' · ')
 
   return (
     <ToolShell
       id="media-info"
       aside={
         <>
-          <PanelSection id="profile" title="Prüfprofil" icon={SlidersHorizontal}>
+          <PanelSection
+            id="profile"
+            title="Prüfprofil"
+            icon={SlidersHorizontal}
+            summary={profileSummary}
+          >
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Zielsystem</span>
               <select
@@ -363,24 +377,20 @@ export function MediaInfo(): JSX.Element {
             <span className="text-xs text-muted-foreground">
               Die Hinweise (Ampel) richten sich nach dem Profil – ein Wechsel bewertet sofort neu.
             </span>
-            <label className="flex items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={deep}
-                onChange={(e) => onDeepChange(e.target.checked)}
-                className="mt-0.5 size-4 accent-[hsl(var(--primary))]"
-              />
-              <span>
-                Tiefenanalyse
-                <span className="block text-xs text-muted-foreground">
-                  Liest die ersten Bilder: Keyframe-Abstand (GOP), Nachweis variabler Bildrate,
-                  Scan-Typ und HDR10-Werte. Etwas langsamer, auf Netzlaufwerken spürbar.
-                </span>
-              </span>
-            </label>
+            <Checkbox
+              checked={deep}
+              onChange={onDeepChange}
+              label="Tiefenanalyse"
+              hint="Liest die ersten Bilder: Keyframe-Abstand (GOP), Nachweis variabler Bildrate, Scan-Typ und HDR10-Werte. Etwas langsamer, auf Netzlaufwerken spürbar."
+            />
           </PanelSection>
 
-          <PanelSection id="export" title="Kopieren & Export" icon={FileDown}>
+          <PanelSection
+            id="export"
+            title="Kopieren & Export"
+            icon={FileDown}
+            summary="Steckbrief, Tabelle, CSV, JSON"
+          >
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"

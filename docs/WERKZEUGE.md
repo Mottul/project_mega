@@ -20,6 +20,22 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
 
 ## Startbildschirm & Bedienung
 
+Jedes Werkzeug ist gleich aufgebaut:
+
+- **Kopfleiste:** links das Menü **„Mottulbox ▾“** mit allem, was die ganze App betrifft (Design,
+  Akzentfarbe, Anzeige, ffmpeg, yt-dlp), dann „Start“, das Werkzeug und sein Knopf
+  **„Einstellungen“**; rechts nur Aktionen des Werkzeugs: „Eigenes Fenster“, „Kundenansicht“.
+- **Ausgabe-Leiste** direkt darunter, in jedem Werkzeug am selben Platz: Monitor, Vollbild, NDI,
+  Handy und rechts, was gerade läuft. Solange etwas live ist, ist sie **rot umrandet** und trägt
+  „Live“ – Rot ist dafür reserviert (es gibt auch keine rote Akzentfarbe). Werkzeuge ohne
+  Live-Ausgabe zeigen dort ihren Auftrag (Video-Konverter: Ziel, Ordner, „Konvertieren“;
+  Video-Generator: „Video erzeugen“; Handbücher: Import) – **bernsteinfarben** mit „Läuft“,
+  solange er läuft.
+- **Schublade links** mit den Einstellungen: Bereiche mit Symbol, Titel und einer Zusammenfassung
+  der Werte, einzeln auf- und zuklappbar; längere Erklärungen hinter dem **ⓘ**. Mit der **Nadel**
+  angeheftet schiebt sie die Arbeitsfläche zur Seite (zum Einrichten), gelöst schwebt sie darüber
+  und ist in der Show schnell wieder zu. Offen/angeheftet merkt sich jedes Werkzeug.
+
 - **Suche** über Name, Beschreibung und Stichworte; mehrere Begriffe grenzen weiter ein.
 - **Ansicht „Alle“ oder „Favoriten“.** Der Stern an einer Kachel macht ein Werkzeug zum Favoriten.
 - **Favoriten-Kategorien:** selbst benannt, frei angeordnet und mit eigener Breite (ganze Zeile,
@@ -34,18 +50,18 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   bei kurzer Beschreibung. Der Handy-Knopf oben
   zeigt den QR-Code der [Fernsteuer-App](FERNSTEUERUNG.md).
 - **Eigene Fenster:** Jedes Werkzeug lässt sich zusätzlich in einem eigenen Fenster öffnen
-  („In neuem Fenster öffnen“ an der Kachel oder in der Kopfzeile) – etwa Video-Player, Jingles
+  („In neuem Fenster öffnen“ an der Kachel, „Eigenes Fenster“ in der Kopfleiste) – etwa Video-Player, Jingles
   und Rechner gleichzeitig. Ist ein Werkzeug in mehreren Fenstern offen, zeigen alle denselben
   Stand; Änderungen kommen nach spätestens einer halben Sekunde in den anderen Fenstern an.
-- **Kundenansicht:** „Als Kundenansicht starten“ in der Kopfzeile eines Werkzeugs sperrt es
+- **Kundenansicht:** „Kundenansicht“ in der Kopfleiste eines Werkzeugs sperrt es
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,
   Medien-Info und Video-Konverter die Sprünge in andere Werkzeuge, der Video-Konverter auch die
   Encoder-Wahl). **Strg+Shift+K** verlässt die Kundenansicht und hebt den Autostart auf.
-- **Darstellung:** Design Dunkel (Standard), Hell oder wie das System; sieben Akzentfarben (Gold,
-  Bernstein, Türkis, Blau, Violett, Pink, Grün); am Startbildschirm außerdem eine kompakte Anzeige,
-  die die ganze Oberfläche etwas kleiner setzt. Ergebnisse in den Rechnern stehen in der
-  Akzentfarbe.
+- **Darstellung** (Menü „Mottulbox“ bzw. „App-Einstellungen“ am Startbildschirm): Design Dunkel
+  (Standard), Hell oder wie das System; 13 Akzentfarben (Gold, Bernstein, Türkis, Blau, Violett,
+  Pink, Grün, Limette, Cyan, Indigo, Orchidee, Rosé, Silber); eine kompakte Anzeige setzt die
+  ganze Oberfläche etwas kleiner. Ergebnisse in den Rechnern stehen in der Akzentfarbe.
 - **Robust in der Show:** Ein abstürzendes Werkzeug bleibt in seinem Bereich (Fehlergrenze), die
   App läuft weiter. Stille Fehler werden als Hinweis sichtbar (z. B. defekte Jingle-Datei,
   verlorenes Audiogerät). `settings.json` wird atomar gespeichert; eine beschädigte
@@ -78,8 +94,9 @@ Playlist-Player für LED-Wände und Beamer.
   angewandt wie im [Video-Konverter](#video-konverter). Gilt für neue Importe; „Vorhandene neu
   einbacken“ bringt die Bibliothek auf die aktuelle Einstellung (bereits passende Medien werden
   übersprungen, zwei Fassungen desselben Clips laufen zu einer zusammen).
-- **Ausgabe & Wand** (erste Sektion im Seiten-Panel): Ausgabe-Monitor wählen, Vollbild öffnen
-  und die Wand-Auflösung festlegen – per Eingabe, Vorgabe oder „von Monitor“.
+- **Ausgabe-Leiste:** Ausgabe-Monitor, Vollbild starten/beenden („Monitor wechseln“ legt die
+  laufende Ausgabe um), NDI und Handy-Fernsteuerung ein/aus, rechts der laufende Titel. Die
+  Wand-Auflösung (Eingabe, Vorgabe oder „Vom Monitor“) steht in der Schublade unter „Wand“.
 - **Vollbild-Ausgabe** mit doppelt gepuffertem Player: nahtlose Übergänge, wahlweise Schnitt oder
   echtes Überblenden (das alte Video läuft weiter, Ton blendet mit). Shuffle ist lückenlos – das
   nächste Zufallsmedium wird vorab geladen.
@@ -101,7 +118,8 @@ Hervorgegangen aus dem „LED Wall Player V4“ (Python/mpv).
 Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
 
 - **Edit- und Live-Modus:** Live spielt ein Klick oder Hotkey (1–9, q …) ab; im Edit-Modus wählt
-  der Klick ein Pad, seine Einstellungen erscheinen im Seiten-Panel.
+  der Klick ein Pad, seine Einstellungen erscheinen in der Schublade. Audio-Ausgabe, Handy und
+  „Stopp (Esc)“ stehen in der Ausgabe-Leiste.
 - **Je Pad:** Farbe, Lautstärke, Loop, Modus (One-Shot oder Toggle), Fade-Out und ein Start-/
   Stopp-Ausschnitt.
 - **Waveform-Editor:** zoombar, Marker millisekundengenau ziehbar, Vorschau mit Abspielkopf,
@@ -185,8 +203,9 @@ Frei belegbares Steuerpult, das OSC an MadMapper & Co. sendet.
 - **Geräte-Vorschau** (Handy/Tablet, drehbar) zeigt die Fläche im Geräterahmen.
 - **Projekte und Sets:** Ein Projekt bündelt mehrere Sets (je eine Bedienfläche, als Tabs). Der
   Projekt-Titel ist das erste Adresssegment neuer Kacheln (z. B. `/mottl/fader`); ein Projekt
-  lässt sich als Vorlage für neue speichern („Default“). Edit-/Live-Umschalter in der Kopfzeile,
-  Einstellungen im Seiten-Panel.
+  lässt sich als Vorlage für neue speichern („Default“). Edit-/Live-Umschalter und „Widget“ in der
+  Set-Zeile, Ziel (Host:Port), Handy und OSC-Monitor in der Ausgabe-Leiste, Einstellungen in der
+  Schublade.
 - **Bedienung:** Fader, XY-Pad und Farbregler ziehen relativ (kein Sprung zum Klickpunkt).
 - **Senden** per UDP aus dem Hauptprozess mit eigenem OSC-Codec; Host und Ports einstellbar
   (MadMapper-Standard: senden 8000, empfangen 9000).
@@ -278,7 +297,7 @@ Clips passend fürs Zielsystem (früher „HAP-Konverter“).
   App mitten im Auftrag beendet (sie bricht dann alle Konvertierungen, Generator-Läufe, Importe
   und Downloads ab, räumt auf und schließt höchstens 3 s später); „Ergebnis prüfen“
   öffnet die fertige Datei in der Medien-Info.
-- **ffmpeg aktuell** (Seitenpanel „ffmpeg“, nicht in der Kundenansicht): zeigt, welcher Build
+- **ffmpeg aktuell** (Menü „Mottulbox“ → ffmpeg; gilt für die ganze App): zeigt, welcher Build
   läuft (mitgeliefert oder in der App aktualisiert). Unter Windows und Linux holt die App einmal am
   Tag den neuesten Build, der mindestens 7 Tage alt ist, prüft ihn (Prüfsumme, Encoder und
   Filter, Probe-Kodierung) und verwendet ihn **ab dem nächsten Start** – in einer laufenden Show
@@ -403,7 +422,8 @@ Wrapper um yt-dlp.
 - **Video in einer Playlist** (`watch?v=…&list=…`): nur dieses Video ist vorgewählt, „Nur dieses
   Video laden“ startet es direkt.
 - yt-dlp lädt die App selbst als eigenständiges Programm (Prüfsumme wird verglichen) und prüft
-  beim Start auf neue Versionen – abschaltbar, der Knopf **Prüfen** stößt es von Hand an.
+  beim Start auf neue Versionen – abschaltbar im Menü „Mottulbox“, der Knopf **Prüfen** stößt es
+  von Hand an.
 - Nur freigegebene oder eigene Inhalte laden.
 
 ## Strom, Rigging & Aufbau

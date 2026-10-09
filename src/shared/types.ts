@@ -1549,7 +1549,20 @@ export const DEFAULT_TIMER_SETTINGS: TimerSettings = { setup: null, ndi: DEFAULT
 export type ThemeMode = 'system' | 'light' | 'dark'
 
 /** Markenakzent (Primärfarbe) der Oberfläche. 'gold' = bisherige Marke. */
-export type AccentId = 'gold' | 'amber' | 'teal' | 'blue' | 'violet' | 'pink' | 'green'
+export type AccentId =
+  | 'gold'
+  | 'amber'
+  | 'teal'
+  | 'blue'
+  | 'violet'
+  | 'pink'
+  | 'green'
+  | 'lime'
+  | 'cyan'
+  | 'indigo'
+  | 'orchid'
+  | 'rose'
+  | 'silver'
 
 /** UI-Dichte. 'compact' verkleinert die Wurzel-Schriftgröße -> alle rem-basierten
  *  Maße (Höhen, Abstände, Text) schrumpfen proportional -> mehr passt aufs Bild. */

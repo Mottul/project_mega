@@ -28,13 +28,11 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
-  SlidersHorizontal,
   Smartphone,
   Trash2,
   Volume1,
   Volume2,
   VolumeX,
-  Wifi,
   X
 } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
@@ -43,7 +41,17 @@ import { Card } from '@renderer/components/ui/card'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { TextField } from '@renderer/components/ui/text-field'
 import { Progress } from '@renderer/components/ui/progress'
-import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
+import {
+  BarDivider,
+  BarToggle,
+  PanelSection,
+  ToolBar,
+  ToolShell
+} from '@renderer/components/ToolShell'
+import { Checkbox } from '@renderer/components/ui/checkbox'
+import { Field } from '@renderer/components/ui/field'
+import { InfoTip } from '@renderer/components/ui/info-tip'
+import { cn } from '@renderer/lib/utils'
 import { api } from '@renderer/lib/api'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
@@ -79,10 +87,10 @@ import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 const selectClass =
   'h-9 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
 
-const FIT_OPTIONS: { value: FitMode; label: string }[] = [
-  { value: 'blur', label: 'Blur-Fill (unscharfer Hintergrund)' },
-  { value: 'bars', label: 'Schwarze Ränder (Letter-/Pillarbox)' },
-  { value: 'stretch', label: 'Strecken (auf Wand-Auflösung ziehen)' }
+const FIT_OPTIONS: { value: FitMode; label: string; short: string }[] = [
+  { value: 'blur', label: 'Blur-Fill (unscharfer Hintergrund)', short: 'Blur-Fill' },
+  { value: 'bars', label: 'Schwarze Ränder (Letter-/Pillarbox)', short: 'Schwarze Ränder' },
+  { value: 'stretch', label: 'Strecken (auf Wand-Auflösung ziehen)', short: 'Strecken' }
 ]
 
 const RES_PRESETS = [
@@ -128,9 +136,11 @@ export function VideoPlayer(): JSX.Element {
   const [pstate, setPstate] = useState<PlayerState>(EMPTY_PLAYER_STATE)
   const [tick, setTick] = useState<{ positionSec: number; durationSec: number } | null>(null)
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
+  const ndiPrefs = useSettings((s) => s.player.ndi) ?? DEFAULT_PLAYER_SETTINGS.ndi
 
   const [wallW, setWallW] = useState(1920)
   const [wallH, setWallH] = useState(1080)
+  const ndi = usePlayerNdi(ndiPrefs, wallW, wallH)
   const [fit, setFit] = useState<FitMode>('blur')
   const [encoder, setEncoder] = useState('auto')
   const [blurStrength, setBlurStrength] = useState(50)
@@ -499,6 +509,10 @@ export function VideoPlayer(): JSX.Element {
   }
 
   const ffmpegMissing = enc && !enc.ffmpegFound
+  const encoderSummary =
+    encoder === 'auto'
+      ? 'Encoder automatisch'
+      : (enc?.available.find((a) => a.id === encoder)?.label ?? encoder)
   const loopIcon =
     pstate.loop === 'one' ? <Repeat1 className="size-4" /> : <Repeat className="size-4" />
 
@@ -519,50 +533,98 @@ export function VideoPlayer(): JSX.Element {
   return (
     <ToolShell
       id="video-player"
+      bar={
+        <ToolBar
+          label="Ausgabe"
+          active={pstate.outputOpen || Boolean(ndi.status?.running)}
+          status={
+            current ? (
+              <>
+                {pstate.playing ? (
+                  <Play className="size-3.5 shrink-0 fill-current text-primary" />
+                ) : (
+                  <Pause className="size-3.5 shrink-0 text-muted-foreground" />
+                )}
+                <span className="max-w-[18rem] truncate font-medium">{current.title}</span>
+                {current.kind !== 'image' && (
+                  <span className="text-muted-foreground">
+                    {fmtTime(position)} / {fmtTime(duration)}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-muted-foreground">Playlist leer</span>
+            )
+          }
+        >
+          <select
+            className={cn(selectClass, 'h-8 w-64 max-w-full')}
+            aria-label="Ausgabe-Monitor"
+            value={displayId ?? ''}
+            onChange={(e) => setDisplayId(Number(e.target.value))}
+          >
+            {displays.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          {pstate.outputOpen ? (
+            <>
+              <Button size="sm" variant="destructive" onClick={() => void api.player.closeOutput()}>
+                <MonitorX className="size-4" /> Vollbild beenden
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void openOutput()}
+                disabled={displayId == null}
+                title="Ausgabe auf den gewählten Monitor legen"
+              >
+                Monitor wechseln
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" onClick={() => void openOutput()} disabled={displayId == null}>
+              <MonitorPlay className="size-4" /> Vollbild starten
+            </Button>
+          )}
+          <BarDivider />
+          <BarToggle
+            on={Boolean(ndi.status?.running)}
+            disabled={!ndi.status?.available}
+            title={
+              ndi.status?.available === false
+                ? 'NDI-Modul nicht verfügbar (npm run ndi:setup, siehe docs/NDI.md)'
+                : 'Wandbild als NDI-Quelle ins Netz senden'
+            }
+            onClick={() => void ndi.toggle()}
+          >
+            NDI
+          </BarToggle>
+          <BarToggle
+            on={Boolean(remote?.running)}
+            title="Fernsteuerung fürs Handy/Tablet im selben WLAN"
+            onClick={() => void toggleRemote()}
+          >
+            Handy
+          </BarToggle>
+        </ToolBar>
+      }
       aside={
         <>
-          {/* Ausgabe zuerst: Monitor wählen und die Wand-Auflösung festlegen gehören
-              zusammen („von Monitor“ übernimmt die Auflösung des gewählten Monitors). */}
-          <PanelSection
-            id="output"
-            title={locked ? 'Ausgabe-Monitor' : 'Ausgabe & Wand'}
-            icon={MonitorPlay}
-            right={pstate.outputOpen ? <Badge tone="success">aktiv</Badge> : undefined}
-          >
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Ausgabe-Monitor</span>
-              <select
-                className={selectClass}
-                value={displayId ?? ''}
-                onChange={(e) => setDisplayId(Number(e.target.value))}
+          {!locked && (
+            <PanelSection id="wall" title="Wand" icon={Ratio} summary={`${wallW} × ${wallH}`}>
+              <Field
+                label="Wand-Auflösung"
+                hint="Auf diese Größe werden neue Medien beim Import gebacken. „Vom Monitor“ übernimmt die Auflösung des Ausgabe-Monitors."
               >
-                {displays.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => void openOutput()} disabled={displayId == null}>
-                <MonitorPlay className="size-4" /> {pstate.outputOpen ? 'Auf Monitor' : 'Vollbild'}
-              </Button>
-              {pstate.outputOpen && (
-                <Button size="sm" variant="outline" onClick={() => void api.player.closeOutput()}>
-                  <MonitorX className="size-4" /> Schließen
-                </Button>
-              )}
-            </div>
-            {!locked && (
-              <div className="flex flex-col gap-1.5 border-t border-border pt-3">
-                <span className="flex items-center gap-1.5 text-sm font-medium">
-                  <Ratio className="size-3.5 text-muted-foreground" /> Wand-Auflösung
-                </span>
                 <div className="flex items-center gap-2">
                   <NumberField
                     value={wallW}
                     min={2}
                     max={16384}
+                    aria-label="Breite"
                     onCommit={(v) => setWall(v, wallH)}
                   />
                   <span className="text-muted-foreground">×</span>
@@ -570,37 +632,49 @@ export function VideoPlayer(): JSX.Element {
                     value={wallH}
                     min={2}
                     max={16384}
+                    aria-label="Höhe"
                     onCommit={(v) => setWall(wallW, v)}
                   />
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {RES_PRESETS.map((r) => (
-                    <Button
-                      key={r.label}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setWall(r.w, r.h)}
-                    >
-                      {r.label}
-                    </Button>
-                  ))}
+              </Field>
+              <div className="flex flex-wrap gap-1.5">
+                {RES_PRESETS.map((r) => (
                   <Button
-                    variant="ghost"
+                    key={r.label}
+                    variant="outline"
                     size="sm"
-                    onClick={fromMonitor}
-                    disabled={displayId == null}
-                    title="Auflösung des gewählten Ausgabe-Monitors übernehmen"
+                    onClick={() => setWall(r.w, r.h)}
                   >
-                    von Monitor
+                    {r.label}
                   </Button>
-                </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fromMonitor}
+                  disabled={displayId == null}
+                  title="Auflösung des gewählten Ausgabe-Monitors übernehmen"
+                >
+                  Vom Monitor
+                </Button>
               </div>
-            )}
-          </PanelSection>
+            </PanelSection>
+          )}
 
-          <PanelSection id="prep" title="Aufbereitung" icon={SlidersHorizontal}>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Fit-Modus (Einbacken)</span>
+          <PanelSection
+            id="prep"
+            title="Bild einpassen"
+            icon={ImageIcon}
+            summary={
+              fit === 'blur'
+                ? `Blur-Fill · Blur ${blurStrength} % · Abdunkeln ${blurDarken} %`
+                : FIT_OPTIONS.find((o) => o.value === fit)?.short
+            }
+          >
+            <Field
+              label="Fit-Modus"
+              hint="Was mit Medien in einem anderen Seitenverhältnis passiert. Gilt für neue Importe."
+            >
               <select
                 className={selectClass}
                 value={fit}
@@ -616,18 +690,10 @@ export function VideoPlayer(): JSX.Element {
                   </option>
                 ))}
               </select>
-              <span className="text-xs text-muted-foreground">
-                Gilt für neu importierte Medien.
-              </span>
-            </label>
-
+            </Field>
             {fit === 'blur' && (
-              <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/20 p-3">
-                <label className="flex flex-col gap-1">
-                  <span className="flex items-center justify-between text-xs">
-                    <span className="font-medium">Blur-Stärke</span>
-                    <span className="text-muted-foreground">{blurStrength} %</span>
-                  </span>
+              <>
+                <Field label="Blur-Stärke" aside={`${blurStrength} %`}>
                   <input
                     type="range"
                     min={0}
@@ -642,12 +708,8 @@ export function VideoPlayer(): JSX.Element {
                     }
                     className="w-full accent-primary"
                   />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="flex items-center justify-between text-xs">
-                    <span className="font-medium">Abdunkelung</span>
-                    <span className="text-muted-foreground">{blurDarken} %</span>
-                  </span>
+                </Field>
+                <Field label="Abdunkelung" aside={`${blurDarken} %`}>
                   <input
                     type="range"
                     min={0}
@@ -662,33 +724,38 @@ export function VideoPlayer(): JSX.Element {
                     }
                     className="w-full accent-primary"
                   />
-                </label>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground">
-                    Wirkt beim Einbacken (neue Importe).
-                  </span>
-                  {library.some((m) => m.fitMode === 'blur') && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        void api.player.reconvert(
-                          library.filter((m) => m.fitMode === 'blur').map((m) => m.id),
-                          { width: wallW, height: wallH }
-                        )
-                      }
-                      title="Aktuelle Blur-Einstellungen auf bereits importierte Blur-Medien anwenden (kann dauern)"
-                    >
-                      Vorhandene neu einbacken
-                    </Button>
-                  )}
-                </div>
-              </div>
+                </Field>
+                {library.some((m) => m.fitMode === 'blur') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    onClick={() =>
+                      void api.player.reconvert(
+                        library.filter((m) => m.fitMode === 'blur').map((m) => m.id),
+                        { width: wallW, height: wallH }
+                      )
+                    }
+                    title="Aktuelle Blur-Einstellungen auf bereits importierte Blur-Medien anwenden (kann dauern)"
+                  >
+                    Vorhandene neu einbacken
+                  </Button>
+                )}
+              </>
             )}
+          </PanelSection>
 
-            {!locked && (
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Encoder</span>
+          {!locked && (
+            <PanelSection
+              id="import"
+              title="Import"
+              icon={Gauge}
+              summary={`${encoderSummary} · ${importConcurrency === 1 ? 'nacheinander' : `${importConcurrency} parallel`} · Lautheit ${loudnorm ? 'an' : 'aus'}`}
+            >
+              <Field
+                label="Encoder"
+                hint="Konvertierung nach H.264/MP4 – mit der Grafikkarte, falls verfügbar."
+              >
                 <select
                   className={selectClass}
                   value={encoder}
@@ -709,15 +776,11 @@ export function VideoPlayer(): JSX.Element {
                     </option>
                   ))}
                 </select>
-                <span className="text-xs text-muted-foreground">
-                  Konvertierung nach H.264/MP4 (GPU, falls verfügbar).
-                </span>
-              </label>
-            )}
-
-            {!locked && (
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Gleichzeitige Importe</span>
+              </Field>
+              <Field
+                label="Gleichzeitige Importe"
+                hint="Mehr parallel lohnt bei vielen kurzen Clips, Bildern und mit GPU – ein langer Clip nutzt auf der CPU ohnehin alle Kerne. Während der Show lieber 1, dann bleiben Reserven für die Wiedergabe."
+              >
                 <select
                   className={selectClass}
                   value={importConcurrency}
@@ -731,97 +794,91 @@ export function VideoPlayer(): JSX.Element {
                     </option>
                   ))}
                 </select>
-                <span className="text-xs text-muted-foreground">
-                  Mehr parallel lohnt bei vielen kurzen Clips, Bildern und mit GPU – ein langer Clip
-                  nutzt auf der CPU ohnehin alle Kerne. Während der Show lieber 1, dann bleiben
-                  Reserven für die Wiedergabe.
-                </span>
-              </label>
-            )}
-
-            {!locked && (
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={loudnorm}
+              </Field>
+              <Checkbox
+                checked={loudnorm}
+                onChange={(v) => {
+                  setLoudnorm(v)
+                  void persistPlayer({ loudnormEnabled: v })
+                }}
+                label="Lautheit angleichen (EBU R128)"
+                hint="Gleicht beim Einbacken unterschiedlich laute Clips an: erst messen, dann gleichmäßig verstärken – die Dynamik bleibt erhalten, nur übersteuernde Spitzen werden begrenzt. Wirkt auf neue Importe."
+              />
+              {loudnorm && (
+                <Field label="Ziel-Lautheit">
+                  <select
+                    className={selectClass}
+                    value={loudnormI}
                     onChange={(e) => {
-                      setLoudnorm(e.target.checked)
-                      void persistPlayer({ loudnormEnabled: e.target.checked })
+                      const v = Number(e.target.value)
+                      setLoudnormI(v)
+                      void persistPlayer({ loudnormI: v })
                     }}
-                    className="size-4"
-                  />
-                  <span className="text-sm font-medium">Lautheit angleichen (EBU R128)</span>
-                </label>
-                {loudnorm && (
-                  <label className="flex items-center justify-between gap-2 pl-6">
-                    <span className="text-xs text-muted-foreground">Ziel-Lautheit</span>
-                    <select
-                      className={`${selectClass} h-8 w-auto`}
-                      value={loudnormI}
-                      onChange={(e) => {
-                        const v = Number(e.target.value)
-                        setLoudnormI(v)
-                        void persistPlayer({ loudnormI: v })
-                      }}
-                    >
-                      {LOUDNESS_CHOICES.map((c) => (
-                        <option key={c.i} value={c.i}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  Gleicht beim Einbacken unterschiedlich laute Clips an: erst messen, dann
-                  gleichmäßig verstärken – die Dynamik bleibt erhalten, nur übersteuernde Spitzen
-                  werden begrenzt. Wirkt auf neue Importe.
-                </span>
-                {library.some((m) => m.hasAudio) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="self-start"
-                    onClick={() =>
-                      void api.player.reconvert(
-                        library.filter((m) => m.hasAudio).map((m) => m.id),
-                        { width: wallW, height: wallH }
-                      )
-                    }
-                    title="Aktuelle Lautheits-Einstellung auf bereits importierte Medien mit Ton anwenden (bereits passende werden übersprungen)"
                   >
-                    Vorhandene neu einbacken
-                  </Button>
-                )}
-              </div>
-            )}
-          </PanelSection>
-
-          <PanelSection id="ndi" title="NDI-Ausgabe (Netzwerk)" icon={Radio} defaultOpen={false}>
-            <PlayerNdiPanel wallW={wallW} wallH={wallH} />
-          </PanelSection>
+                    {LOUDNESS_CHOICES.map((c) => (
+                      <option key={c.i} value={c.i}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+              {library.some((m) => m.hasAudio) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="self-start"
+                  onClick={() =>
+                    void api.player.reconvert(
+                      library.filter((m) => m.hasAudio).map((m) => m.id),
+                      { width: wallW, height: wallH }
+                    )
+                  }
+                  title="Aktuelle Lautheits-Einstellung auf bereits importierte Medien mit Ton anwenden (bereits passende werden übersprungen)"
+                >
+                  Vorhandene neu einbacken
+                </Button>
+              )}
+            </PanelSection>
+          )}
 
           {!locked && (
-            <PanelSection id="idle" title="Idle-Bild" icon={ImageIcon} defaultOpen={false}>
-              <select
-                className={selectClass}
-                value={pstate.idlePattern}
-                onChange={(e) => {
-                  const v = e.target.value
-                  if (v === 'custom') void pickIdleMedia()
-                  else void cmd({ type: 'setIdlePattern', pattern: v as PatternId | 'off' })
-                }}
+            <PanelSection
+              id="idle"
+              title="Idle-Bild"
+              icon={Clock}
+              defaultOpen={false}
+              summary={
+                pstate.idlePattern === 'off'
+                  ? 'Aus (schwarz)'
+                  : pstate.idlePattern === 'custom'
+                    ? `Eigenes ${pstate.idleMediaKind === 'video' ? 'Video' : 'Bild'}`
+                    : PATTERN_OPTIONS.find((o) => o.value === pstate.idlePattern)?.label
+              }
+            >
+              <Field
+                label="Wenn nichts läuft"
+                hint="Testbild oder eigenes Medium als Fallback auf der Ausgabe."
               >
-                <option value="off">Aus (schwarz)</option>
-                <option value="custom">Eigenes Bild/Video…</option>
-                {PATTERN_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              {pstate.idlePattern === 'custom' ? (
+                <select
+                  className={selectClass}
+                  value={pstate.idlePattern}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v === 'custom') void pickIdleMedia()
+                    else void cmd({ type: 'setIdlePattern', pattern: v as PatternId | 'off' })
+                  }}
+                >
+                  <option value="off">Aus (schwarz)</option>
+                  <option value="custom">Eigenes Bild/Video…</option>
+                  {PATTERN_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {pstate.idlePattern === 'custom' && (
                 <span className="text-xs text-muted-foreground">
                   Eigenes {pstate.idleMediaKind === 'video' ? 'Video' : 'Bild'} aktiv ·{' '}
                   <button className="underline" onClick={() => void pickIdleMedia()}>
@@ -835,41 +892,35 @@ export function VideoPlayer(): JSX.Element {
                     entfernen
                   </button>
                 </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  Testbild oder eigenes Medium als Fallback auf der Ausgabe.
-                </span>
               )}
             </PanelSection>
           )}
+
+          <PanelSection
+            id="ndi"
+            title="NDI"
+            icon={Radio}
+            defaultOpen={false}
+            summary={`„${ndiPrefs.name}“ · ${ndiPrefs.fps} fps`}
+            right={ndi.status?.running ? <Badge tone="success">sendet</Badge> : undefined}
+          >
+            <PlayerNdiPanel wallW={wallW} wallH={wallH} status={ndi.status} />
+          </PanelSection>
 
           <PanelSection
             id="remote"
             title="Fernsteuerung"
             icon={Smartphone}
             defaultOpen={false}
+            summary={`Port ${remote?.port ?? remotePort} · ${remote?.running ? 'an' : 'aus'}`}
             right={remote?.running ? <Badge tone="success">an</Badge> : undefined}
           >
-            <p className="text-xs text-muted-foreground">
-              Steuerseite im lokalen Netz – Tablet/Handy muss im selben WLAN sein. Ohne Passwort.
-            </p>
-            <label className="flex items-center justify-between gap-2 text-sm">
-              <span className="text-muted-foreground">Port</span>
-              <NumberField
-                value={remotePort}
-                min={1}
-                max={65535}
-                className="w-24"
-                onCommit={setRemotePort}
-              />
-            </label>
-            <Button
-              onClick={() => void toggleRemote()}
-              variant={remote?.running ? 'outline' : 'default'}
-              className="w-full"
+            <Field
+              label="Port"
+              hint="Steuerseite im lokalen Netz – Tablet/Handy muss im selben WLAN sein. Ohne Passwort. Ein- und ausschalten mit „Handy“ in der Ausgabe-Leiste."
             >
-              <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
-            </Button>
+              <NumberField value={remotePort} min={1} max={65535} onCommit={setRemotePort} />
+            </Field>
             {remote && <RemoteAccess status={remote} />}
           </PanelSection>
         </>
@@ -1608,10 +1659,13 @@ function ndiConfigFor(
 
 /** NDI-Ausgabe des Players (experimentell): Wandbild (und optional Ton) als
  *  NDI-Quelle ins Netz. Ohne installiertes NDI-Modul nur ein Hinweis. */
-function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX.Element {
+/** NDI-Zustand des Players: von der Ausgabe-Leiste (Ein/Aus) und dem Panel geteilt. */
+function usePlayerNdi(
+  prefs: PlayerNdiPrefs,
+  wallW: number,
+  wallH: number
+): { status: PlayerNdiStatus | null; toggle: () => Promise<void> } {
   const [status, setStatus] = useState<PlayerNdiStatus | null>(null)
-  // gemerkt in settings.json (player.ndi), in allen Fenstern gleich
-  const prefs = useSettings((s) => s.player.ndi) ?? DEFAULT_PLAYER_SETTINGS.ndi
   useEffect(() => {
     migrateLocalStorage('player:ndi', (old) => ({ player: { ndi: legacyNdi(old) } }))
   }, [])
@@ -1627,6 +1681,30 @@ function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX
     const t = setInterval(() => void api.player.ndiStatus().then(setStatus), 2000)
     return () => clearInterval(t)
   }, [status?.running])
+
+  async function toggle(): Promise<void> {
+    if (status?.running) setStatus(await api.player.ndiStop())
+    else
+      setStatus(
+        await api.player.ndiStart(
+          ndiConfigFor(prefs.mode, prefs.name, prefs.fps, prefs.audio, wallW, wallH)
+        )
+      )
+  }
+  return { status, toggle }
+}
+
+function PlayerNdiPanel({
+  wallW,
+  wallH,
+  status
+}: {
+  wallW: number
+  wallH: number
+  status: PlayerNdiStatus | null
+}): JSX.Element {
+  // gemerkt in settings.json (player.ndi), in allen Fenstern gleich
+  const prefs = useSettings((s) => s.player.ndi) ?? DEFAULT_PLAYER_SETTINGS.ndi
 
   function patch(p: Partial<PlayerNdiPrefs>): void {
     updateSettings({ player: { ndi: p } })
@@ -1704,31 +1782,14 @@ function PlayerNdiPanel({ wallW, wallH }: { wallW: number; wallH: number }): JSX
           onChange={(e) => patch({ audio: e.target.checked })}
         />
         Audio mitsenden
+        <InfoTip
+          label="Erklärung zu Audio"
+          text="Ton ist Pre-Fader (unabhängig von lokaler Lautstärke/Stumm). Volle Auflösung braucht Gigabit-LAN (~100–150 Mbit/s bei 1080p30)."
+        />
       </label>
-      <p className="text-[11px] text-muted-foreground">
-        Ton ist Pre-Fader (unabhängig von lokaler Lautstärke/Stumm). Volle Auflösung braucht
-        Gigabit-LAN (~100–150 Mbit/s bei 1080p30).
+      <p className="text-xs text-muted-foreground">
+        Ein/Aus mit „NDI“ in der Ausgabe-Leiste; Änderungen hier gelten beim nächsten Start.
       </p>
-      {running ? (
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => void api.player.ndiStop().then(setStatus)}
-        >
-          <X className="size-4" /> NDI-Ausgabe stoppen
-        </Button>
-      ) : (
-        <Button
-          className="w-full"
-          onClick={() =>
-            void api.player
-              .ndiStart(ndiConfigFor(prefs.mode, prefs.name, prefs.fps, prefs.audio, wallW, wallH))
-              .then(setStatus)
-          }
-        >
-          <Radio className="size-4" /> NDI-Ausgabe starten
-        </Button>
-      )}
       {running && (
         <p className="text-xs text-muted-foreground">
           Sendet als <span className="font-medium text-foreground">„{status.config.name}“</span> ·{' '}

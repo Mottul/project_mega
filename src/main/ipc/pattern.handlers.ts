@@ -7,13 +7,16 @@ import type {
   PatternVideoProgress,
   PatternVideoRequest
 } from '@shared/types'
+import { broadcast } from '../services/broadcast'
 import { showSaveDialog } from '../services/fileDialogs'
 import { exportColorLoop, exportPatternVideo } from '../services/patternVideo'
 import {
   closePattern,
   getCurrentConfig,
+  isPatternOpen,
   listDisplays,
   openPattern,
+  setPatternOutputSink,
   updatePattern
 } from '../services/patternWindow'
 
@@ -25,6 +28,8 @@ export function registerPatternHandlers(): void {
   ipcMain.handle(Channels.patternUpdate, (_e, config: PatternConfig) => updatePattern(config))
   ipcMain.handle(Channels.patternClose, () => closePattern())
   ipcMain.handle(Channels.patternCurrent, () => getCurrentConfig())
+  ipcMain.handle(Channels.patternIsOpen, () => isPatternOpen())
+  setPatternOutputSink((open) => broadcast(Channels.patternOutputChanged, open))
 
   ipcMain.handle(Channels.patternSavePng, async (e, bytes: Uint8Array, suggestedName: string) => {
     const win = BrowserWindow.fromWebContents(e.sender)

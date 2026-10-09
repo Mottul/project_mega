@@ -18,7 +18,6 @@ import {
   Loader2,
   Play,
   SlidersHorizontal,
-  Target,
   Trash2,
   X,
   XCircle
@@ -30,10 +29,11 @@ import { Checkbox } from '@renderer/components/ui/checkbox'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { selectClass } from '@renderer/components/ui/select'
-import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
+import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { Field } from '@renderer/components/ui/field'
+import { InfoTip } from '@renderer/components/ui/info-tip'
 import { api } from '@renderer/lib/api'
 import { useKiosk } from '@renderer/launcher/kiosk'
-import { FfmpegPanel } from './FfmpegPanel'
 import { useHandoff } from '@renderer/lib/handoff'
 import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { cn } from '@renderer/lib/utils'
@@ -322,34 +322,117 @@ export function VideoConverter(): JSX.Element {
   }
 
   const targetHint = TARGETS.find((t) => t.value === target)?.hint
+  const formatSummary = [
+    fi.label,
+    (fi.family === 'h264' || fi.family === 'hevc') &&
+      QUALITY_OPTIONS.find((q) => q.value === options.quality)?.label.split(' (')[0],
+    fi.family === 'hap' && (options.hapCompressor === 'snappy' ? 'Snappy' : 'ohne Kompressor'),
+    fi.family === 'hap' &&
+      (options.hapChunks.kind === 'auto'
+        ? 'Chunks automatisch'
+        : `${options.hapChunks.value} Chunks`),
+    (fi.family === 'hap' || fi.family === 'prores') && options.keepAlpha && 'Alpha'
+  ]
+    .filter(Boolean)
+    .join(' · ')
   const videoFormat = fi.family !== 'audio'
   const size = options.size
+  const pictureSummary = [
+    videoFormat && SIZE_CHOICES.find((o) => o.value === sizeChoice(size))?.label,
+    videoFormat &&
+      FPS_CHOICES.flatMap((g) => g.options).find((o) => o.value === fpsChoice(options.fps))?.label,
+    options.audio === 'none'
+      ? 'ohne Ton'
+      : options.audio === 'stereo'
+        ? 'Stereo'
+        : 'Ton wie Quelle',
+    options.audio !== 'none' && options.loudnorm && 'Lautheit'
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <ToolShell
       id="hap-converter"
+      bar={
+        <ToolBar
+          label="Auftrag"
+          kind="job"
+          active={activeCount > 0}
+          status={
+            activeCount > 0 ? (
+              <span>
+                {doneCount} von {jobList.length} fertig · {activeCount} aktiv
+              </span>
+            ) : inputs.length > 0 ? (
+              <span className="text-muted-foreground">
+                {fileCount} {fileCount === 1 ? 'Datei' : 'Dateien'} bereit
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Keine Dateien gewählt</span>
+            )
+          }
+        >
+          <select
+            className={cn(selectClass, 'h-8 w-72 max-w-full')}
+            value={target}
+            aria-label="Zielsystem"
+            onChange={(e) =>
+              useConverterPrefs.getState().applyTarget(e.target.value as ConverterTarget)
+            }
+          >
+            {TARGETS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          {targetHint && <InfoTip label="Erklärung zum Zielsystem" text={targetHint} />}
+          <Button
+            variant="outline"
+            size="sm"
+            className="max-w-[16rem]"
+            onClick={() => void chooseOutput()}
+            title={`Ausgabeordner: ${outputDir ?? 'neben der Quelldatei'} – vorhandene Dateien werden nie überschrieben (dann „…_2“)`}
+          >
+            <FolderOpen className="size-4 shrink-0" />
+            <span className="truncate">{outputDir ? basename(outputDir) : 'Neben der Quelle'}</span>
+          </Button>
+          {outputDir && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              aria-label="Ausgabeordner zurücksetzen"
+              title="Zurück zu: neben der Quelldatei"
+              onClick={() => {
+                setOutputDir(null)
+                void api.setSettings({ lastHapOutputDir: null })
+              }}
+            >
+              <X className="size-4" />
+            </Button>
+          )}
+          <BarDivider />
+          <Button
+            size="sm"
+            onClick={() => void start()}
+            disabled={!inputs.length || starting || !formatOk || ffmpegMissing}
+          >
+            {starting ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+            Konvertieren
+            {inputs.length > 0 ? ` (${fileCount})` : ''}
+          </Button>
+          {activeCount > 0 && (
+            <Button variant="outline" size="sm" onClick={() => void api.converter.cancelAll()}>
+              <XCircle className="size-4" /> Alle abbrechen
+            </Button>
+          )}
+        </ToolBar>
+      }
       aside={
         <>
-          <PanelSection id="target" title="Zielsystem" icon={Target}>
-            <select
-              // ohne Label-Flexbox hätte das Select die Breite der längsten Option
-              className={cn(selectClass, 'w-full')}
-              value={target}
-              aria-label="Zielsystem"
-              onChange={(e) =>
-                useConverterPrefs.getState().applyTarget(e.target.value as ConverterTarget)
-              }
-            >
-              {TARGETS.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            {targetHint && <span className="text-xs text-muted-foreground">{targetHint}</span>}
-          </PanelSection>
-
-          <PanelSection id="format" title="Format & Qualität" icon={Film}>
+          <PanelSection id="format" title="Format & Qualität" icon={Film} summary={formatSummary}>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Format</span>
               <select
@@ -415,7 +498,13 @@ export function VideoConverter(): JSX.Element {
                   </select>
                 </label>
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium">Chunks</span>
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    Chunks
+                    <InfoTip
+                      label="Erklärung zu Chunks"
+                      text="HAP wird immer auf der CPU kodiert (einen GPU-Encoder gibt es nicht) – dafür dekodiert beim Abspielen die Grafikkarte. Mehr Chunks dekodieren paralleler."
+                    />
+                  </span>
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -443,10 +532,6 @@ export function VideoConverter(): JSX.Element {
                       />
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    HAP wird immer auf der CPU kodiert (einen GPU-Encoder gibt es nicht) – dafür
-                    dekodiert beim Abspielen die Grafikkarte.
-                  </span>
                 </div>
               </>
             )}
@@ -456,6 +541,7 @@ export function VideoConverter(): JSX.Element {
             id="picture"
             title={videoFormat ? 'Bild & Ton' : 'Ton'}
             icon={SlidersHorizontal}
+            summary={pictureSummary}
           >
             {videoFormat && (
               <>
@@ -511,8 +597,10 @@ export function VideoConverter(): JSX.Element {
                     </select>
                   </>
                 )}
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium">Bildrate</span>
+                <Field
+                  label="Bildrate"
+                  hint="Show-Raster: Clips mit passender Rate bleiben, andere werden angepasst – 29,97 ↔ 30 und 23,976 ↔ 24 per minimaler Tempo-Änderung statt Bildsprung."
+                >
                   <select
                     className={selectClass}
                     value={fpsChoice(options.fps)}
@@ -528,11 +616,7 @@ export function VideoConverter(): JSX.Element {
                       </optgroup>
                     ))}
                   </select>
-                  <span className="text-xs text-muted-foreground">
-                    Show-Raster: Clips mit passender Rate bleiben, andere werden angepasst – 29,97 ↔
-                    30 und 23,976 ↔ 24 per minimaler Tempo-Änderung statt Bildsprung.
-                  </span>
-                </label>
+                </Field>
                 <Checkbox
                   checked={options.deinterlace}
                   onChange={(v) => setOpt({ deinterlace: v })}
@@ -601,17 +685,13 @@ export function VideoConverter(): JSX.Element {
                 )}
               </>
             )}
-            {videoFormat && (
-              <span className="text-xs text-muted-foreground">
-                Drehung, Spiegelung und anamorphe Pixel werden immer fest eingerechnet.
-              </span>
-            )}
           </PanelSection>
 
           <PanelSection
             id="proc"
             title="Verarbeitung"
             icon={Cpu}
+            summary={`${concurrency === 1 ? 'nacheinander' : `${concurrency} parallel`}${encoderFamily && encoder ? ` · Encoder ${encoderMode === 'cpu' ? 'CPU' : 'automatisch'}` : ''}`}
             right={
               encoder?.encoder?.hardware ? (
                 <Badge tone="success">{encoderFamily === 'prores' ? 'Hardware' : 'GPU'}</Badge>
@@ -620,8 +700,7 @@ export function VideoConverter(): JSX.Element {
           >
             {/* Rechner-Einstellung: in der Kundenansicht verborgen (wie beim Video-Player) */}
             {encoderFamily && encoder && !locked && (
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium">Encoder</span>
+              <Field label="Encoder" hint={encoder.hint}>
                 <select
                   className={selectClass}
                   value={encoderMode}
@@ -632,11 +711,12 @@ export function VideoConverter(): JSX.Element {
                   <option value="auto">{ENCODER_MODE_LABELS[encoderFamily].auto}</option>
                   <option value="cpu">{ENCODER_MODE_LABELS[encoderFamily].cpu}</option>
                 </select>
-                <span className="text-xs text-muted-foreground">{encoder.hint}</span>
-              </label>
+              </Field>
             )}
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium">Gleichzeitige Konvertierungen</span>
+            <Field
+              label="Gleichzeitige Konvertierungen"
+              hint={`Mehr parallel lohnt vor allem bei HAP (bis ${CORES} Kerne). Player-Importe haben eine eigene Spur und warten nie auf diese Liste.`}
+            >
               <select
                 className={selectClass}
                 value={concurrency}
@@ -650,43 +730,8 @@ export function VideoConverter(): JSX.Element {
                   </option>
                 ))}
               </select>
-              <span className="text-xs text-muted-foreground">
-                Mehr parallel lohnt vor allem bei HAP (bis {CORES} Kerne). Player-Importe haben eine
-                eigene Spur und warten nie auf diese Liste.
-              </span>
-            </label>
+            </Field>
           </PanelSection>
-
-          <PanelSection id="output" title="Ausgabeordner" icon={FolderOpen}>
-            <span
-              className="block truncate rounded-md border border-border bg-input/40 px-3 py-1.5 text-sm text-muted-foreground"
-              title={outputDir ?? undefined}
-            >
-              {outputDir ?? 'Neben der Quelldatei'}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => void chooseOutput()}>
-                <FolderOpen className="size-4" /> Wählen
-              </Button>
-              {outputDir && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setOutputDir(null)
-                    void api.setSettings({ lastHapOutputDir: null })
-                  }}
-                >
-                  Zurücksetzen
-                </Button>
-              )}
-            </div>
-            <span className="text-xs text-muted-foreground">
-              Vorhandene Dateien werden nie überschrieben (dann „…_2").
-            </span>
-          </PanelSection>
-          {/* Wartung – in der Kundenansicht ausgeblendet */}
-          {!locked && <FfmpegPanel />}
         </>
       }
       main={
@@ -739,19 +784,6 @@ export function VideoConverter(): JSX.Element {
                   <Images className="size-4" /> Zu einem Video zusammenfügen …
                 </Button>
               )}
-              <div className="flex-1" />
-              <Button
-                onClick={() => void start()}
-                disabled={!inputs.length || starting || !formatOk || ffmpegMissing}
-              >
-                {starting ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Play className="size-4" />
-                )}
-                Konvertieren
-                {inputs.length > 0 ? ` (${fileCount})` : ''}
-              </Button>
             </div>
 
             {inputs.length === 0 && (
@@ -819,15 +851,6 @@ export function VideoConverter(): JSX.Element {
                     onClick={() => void api.converter.clearFinished().then(refreshJobs)}
                   >
                     <Trash2 className="size-4" /> Erledigte entfernen
-                  </Button>
-                )}
-                {activeCount > 0 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void api.converter.cancelAll()}
-                  >
-                    <XCircle className="size-4" /> Alle abbrechen
                   </Button>
                 )}
               </div>

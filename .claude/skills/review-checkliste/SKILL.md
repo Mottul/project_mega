@@ -51,6 +51,16 @@ einen Test **mit** und **ohne** Schrägstrich.
 - Neue Felder: `DEFAULT_SETTINGS`, nur geänderte Felder patchen, Stores mit `version`/`migrate`.
 - Textfelder für Einstellungen puffern (`useDraft`/`TextField`).
 
+## Fenster (Oktober 2026)
+
+- **Electron meldet `'closed'` asynchron.** Wer ein Fenster schließt und sofort ein neues in
+  dieselbe Modul-Variable legt (Monitorwechsel der Ausgaben), bekommt das `'closed'` des ALTEN
+  Fensters erst danach – ein `win = null` dort verliert das neue Fenster (Zustand „zu“, Schließen
+  wirkt nicht, das Fenster bleibt verwaist offen). Immer `const self = win` im Handler und
+  `if (win !== self) return`. Regressionstest: `e2e/layout.mjs` (zweimal öffnen, dann prüfen).
+- **„Live“-Anzeigen** brauchen die Wahrheit aus dem main (Event), nicht den letzten Klick im
+  Renderer: Ausgabefenster schließen auch per Esc oder vom Betriebssystem.
+
 ## Vor dem Abschluss
 
 Hat der Befund ein Gegenstück in der echten App? Mit `/electron-e2e` nachstellen, bevor man

@@ -1,10 +1,10 @@
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Loader2, MonitorSmartphone } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Loader2, Lock } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
-import { ThemeToggle } from '@renderer/components/ThemeToggle'
-import { AccentPicker } from '@renderer/components/AccentPicker'
+import { AppMenu } from '@renderer/components/app/AppMenu'
+import { ToolChromeContext } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { windowTitle } from '@shared/brand'
 import { findTool } from '@renderer/tools/registry'
@@ -16,6 +16,8 @@ export function ToolHost(): JSX.Element {
   const navigate = useNavigate()
   const tool = id ? findTool(id) : undefined
   const kiosk = params.get('kiosk') === '1'
+  // Platz für den Knopf „Einstellungen“ des Werkzeugs (ToolShell hängt ihn per Portal ein)
+  const [settingsSlot, setSettingsSlot] = useState<HTMLElement | null>(null)
 
   // Fenstertitel = Werkzeugname · App (auch in eigenen Fenstern). Beim Verlassen
   // zurück auf den App-Namen (Launcher setzt ihn selbst wieder).
@@ -58,14 +60,24 @@ export function ToolHost(): JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center gap-3 border-b border-border px-4 py-3">
+      {/* Kopfleiste: links die ganze App (Menü „Mottulbox“), dann das Werkzeug mit seinem
+          Knopf „Einstellungen“; rechts nur Aktionen dieses Werkzeugs – mit Text, damit nichts
+          mit Einstellungen verwechselt wird. */}
+      <header className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
         {!kiosk && (
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label="Zurück">
-            <ArrowLeft className="size-4" />
-          </Button>
+          <>
+            <AppMenu />
+            <span className="mx-1 h-6 w-px bg-border" aria-hidden="true" />
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
+              <ArrowLeft className="size-4" /> Start
+            </Button>
+          </>
         )}
-        <Icon className="size-5 text-primary" />
-        <h1 className="font-semibold">{tool.name}</h1>
+        <div className="ml-1 flex min-w-0 items-center gap-2">
+          <Icon className="size-5 shrink-0 text-primary" />
+          <h1 className="truncate font-semibold">{tool.name}</h1>
+        </div>
+        <span ref={setSettingsSlot} className="ml-2 flex items-center" />
         {kiosk && (
           <span className="text-xs text-muted-foreground">
             Kundenansicht · Strg+Shift+K zum Verlassen
@@ -74,28 +86,21 @@ export function ToolHost(): JSX.Element {
         <div className="flex-1" />
         {!kiosk && (
           <>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="In neuem Fenster öffnen"
-              onClick={() => void api.openToolWindow(tool.id)}
-            >
-              <ExternalLink className="size-4" />
+            <Button variant="ghost" size="sm" onClick={() => void api.openToolWindow(tool.id)}>
+              <ExternalLink className="size-4" /> Eigenes Fenster
             </Button>
             <Button
               variant="ghost"
-              size="icon"
-              title="Als Kundenansicht starten (gesperrt, ohne Zurück)"
+              size="sm"
+              title="Gesperrt starten, ohne Zurück und ohne heikle Einstellungen"
               onClick={() => void enableKiosk()}
             >
-              <MonitorSmartphone className="size-4" />
+              <Lock className="size-4" /> Kundenansicht
             </Button>
-            <AccentPicker />
-            <ThemeToggle />
           </>
         )}
       </header>
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-hidden">
         {/* Pro Werkzeug eine Fehlergrenze (key = Tool-Id -> Wechsel setzt sie
             zurück). Ein Absturz bleibt im Inhaltsbereich; Kopfzeile/Zurück wirken. */}
         <ErrorBoundary key={tool.id} label={tool.name}>
@@ -107,7 +112,11 @@ export function ToolHost(): JSX.Element {
             }
           >
             <KioskContext.Provider value={kiosk}>
-              <Tool />
+              <ToolChromeContext.Provider value={{ settingsSlot, toolName: tool.name }}>
+                <div className="h-full overflow-auto">
+                  <Tool />
+                </div>
+              </ToolChromeContext.Provider>
             </KioskContext.Provider>
           </Suspense>
         </ErrorBoundary>

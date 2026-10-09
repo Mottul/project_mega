@@ -65,6 +65,43 @@ export const ACCENTS: Accent[] = [
     label: 'Grün',
     dark: { p: '142 70% 48%', pf: '144 60% 7%' },
     light: { p: '142 72% 33%', pf: '0 0% 100%' }
+  },
+  // Rot fehlt bewusst: Rot heißt in der App „live auf der Ausgabe“ (Ausgabe-Leiste).
+  {
+    id: 'lime',
+    label: 'Limette',
+    dark: { p: '84 78% 55%', pf: '85 60% 7%' },
+    light: { p: '84 80% 34%', pf: '80 60% 6%' }
+  },
+  {
+    id: 'cyan',
+    label: 'Cyan',
+    dark: { p: '189 85% 52%', pf: '190 70% 7%' },
+    light: { p: '191 91% 32%', pf: '0 0% 100%' }
+  },
+  {
+    id: 'indigo',
+    label: 'Indigo',
+    dark: { p: '234 85% 72%', pf: '235 55% 12%' },
+    light: { p: '239 65% 52%', pf: '0 0% 100%' }
+  },
+  {
+    id: 'orchid',
+    label: 'Orchidee',
+    dark: { p: '292 78% 70%', pf: '292 50% 10%' },
+    light: { p: '292 62% 44%', pf: '0 0% 100%' }
+  },
+  {
+    id: 'rose',
+    label: 'Rosé',
+    dark: { p: '350 90% 78%', pf: '350 55% 12%' },
+    light: { p: '345 70% 46%', pf: '0 0% 100%' }
+  },
+  {
+    id: 'silver',
+    label: 'Silber',
+    dark: { p: '220 12% 78%', pf: '220 20% 8%' },
+    light: { p: '220 10% 36%', pf: '0 0% 100%' }
   }
 ]
 
