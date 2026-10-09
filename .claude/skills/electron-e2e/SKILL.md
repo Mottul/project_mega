@@ -96,6 +96,10 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   `ResizeObserver` laufen dort gedrosselt – wer im Renderer misst, misst das erste Mal synchron.
   Ob ein Fenster ungemessen erschien, steht im Debug-Log (`ctx.userData`/avtoolbox-debug.log,
   Prüfung `assertNoJump` in `e2e/layout.mjs`).
+- **Die CI-Bildschirme sind klein** (Windows/macOS etwa 1024 × 768, Arbeitsfläche ~730 px):
+  Fenster werden dort auf Bildschirmhöhe gekürzt oder nach oben gerückt. Lage-, Größen- und
+  „wird niedriger“-Prüfungen mit einem niedrigen Werkzeug (Kreisrechner) machen; lokal auf
+  großem Bildschirm fällt das nicht auf.
 - **Kleine Werkzeuge sind keine Route im Hauptfenster mehr:** `openRoute(page, '/tool/timecode')`
   öffnet ein eigenes Fenster und springt zurück zu `/`. Für „irgendein Werkzeug öffnen“ ein großes
   nehmen (Rauchtest: `/tool/media-info`).

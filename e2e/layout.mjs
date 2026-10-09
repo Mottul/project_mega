@@ -50,11 +50,13 @@ const winInfo = (id) =>
   }, id)
 
 /** Kleines Werkzeug öffnen (Vorgabe: über die Brücke) und warten, bis es sichtbar ist –
- *  main zeigt es erst, wenn die Höhe zum Inhalt passt. */
+ *  main zeigt es erst, wenn die Höhe zum Inhalt passt. Ein von einem gescheiterten Schritt
+ *  liegengebliebenes Fenster wird vorher geschlossen (sonst käme kein neues, Folgefehler). */
 async function openSmall(
   id,
   trigger = () => page.evaluate((i) => window.api.openToolWindow(i), id)
 ) {
+  if (await winInfo(id)) await closeToolWindow(id)
   const ev = app.waitForEvent('window')
   await trigger()
   const w = await ev
@@ -332,24 +334,28 @@ try {
     [
       'Breite und Lage bleiben gemerkt, die Höhe richtet sich wieder nach dem Inhalt',
       async () => {
+        await closeToolWindow('timecode')
+        // ein niedriger Rechner: Ein hoher rückte auf kleinen Bildschirmen (CI, 1024 × 768)
+        // beim Anpassen nach oben, damit er nicht unten herausragt – dann stimmte y nicht mehr
+        await openSmall('circle-calc')
         await app.evaluate(({ BrowserWindow }) => {
           const w = BrowserWindow.getAllWindows().find(
             (x) =>
               !x.isDestroyed() &&
               !x.webContents.isDestroyed() &&
-              x.webContents.getURL().includes('#/tool/timecode?')
+              x.webContents.getURL().includes('#/tool/circle-calc?')
           )
           w.setContentSize(400, 300)
           w.setPosition(40, 50)
         })
-        await closeToolWindow('timecode')
-        const w = await openSmall('timecode')
-        const info = await winInfo('timecode')
+        await closeToolWindow('circle-calc')
+        const w = await openSmall('circle-calc')
+        const info = await winInfo('circle-calc')
         assert.equal(info.content[0], 400)
         assert.deepEqual(info.pos, [40, 50])
-        await assertFits(w, 'timecode')
-        assertNoJump('timecode')
-        await closeToolWindow('timecode')
+        await assertFits(w, 'circle-calc')
+        assertNoJump('circle-calc')
+        await closeToolWindow('circle-calc')
       }
     ],
     [
@@ -404,19 +410,20 @@ try {
     [
       'Kompaktmodus: ein offenes kleines Fenster folgt sofort und wird niedriger',
       async () => {
-        const w = await openSmall('audio-delay')
-        await assertFits(w, 'audio-delay')
-        const normal = (await winInfo('audio-delay')).content[1]
+        // niedriger Rechner: ein bildschirmhoher könnte kompakt nicht niedriger werden
+        const w = await openSmall('circle-calc')
+        await assertFits(w, 'circle-calc')
+        const normal = (await winInfo('circle-calc')).content[1]
         const compact = () =>
           w.evaluate(() => document.documentElement.classList.contains('ui-compact'))
         await page.evaluate(() => window.api.setSettings({ uiDensity: 'compact' }))
         assert.ok(await waitFor(compact, 5_000), 'Kompaktmodus kommt nicht an')
-        await assertFits(w, 'audio-delay')
-        const small = (await winInfo('audio-delay')).content[1]
+        await assertFits(w, 'circle-calc')
+        const small = (await winInfo('circle-calc')).content[1]
         assert.ok(small < normal, `kompakt ${small} px, normal ${normal} px`)
         await page.evaluate(() => window.api.setSettings({ uiDensity: 'normal' }))
         assert.ok(await waitFor(async () => !(await compact()), 5_000))
-        await assertFits(w, 'audio-delay')
+        await assertFits(w, 'circle-calc')
       }
     ],
     [
@@ -453,7 +460,7 @@ try {
     [
       'Hauptfenster schließen nimmt die kleinen Fenster mit',
       async () => {
-        assert.notEqual(await winInfo('audio-delay'), null)
+        assert.notEqual(await winInfo('circle-calc'), null)
         const exited = new Promise((r) => app.process().once('exit', () => r(true)))
         await app.evaluate(({ BrowserWindow }) => {
           setTimeout(() => {
