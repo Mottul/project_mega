@@ -120,11 +120,19 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Timer-Zustand ticken im main; Ausgabefenster (`#/output`, `#/player-output`, `#/timer-output`,
   `#/osc-monitor`) und Handy-Seiten spiegeln nur.
 - **Kleine Werkzeuge im eigenen Fenster:** `SMALL_TOOLS` in `src/shared/toolWindows.ts` nennt je
-  Rechner die gemessene Inhaltsgröße. Diese Werkzeuge öffnen sich immer in einem eigenen Fenster
-  (`openToolWindow` im main: höchstens eines je Werkzeug, Lage in `settings.toolWindowBounds`,
-  gekürzt auf den Bildschirm); `ToolHost` leitet `/tool/<id>` im Hauptfenster dorthin um und
-  zeigt im Fenster (`?fenster=1`) eine schlanke Kopfleiste. Schließt das Hauptfenster, gehen sie
-  mit. `e2e/layout.mjs` prüft, dass sie ohne Scrollen in ihr Fenster passen.
+  Rechner die Breite (eine Spalte 520 px, zwei Spalten 880 px). Diese Werkzeuge öffnen sich immer
+  in einem eigenen Fenster (`openToolWindow` im main: höchstens eines je Werkzeug, Lage und
+  Breite in `settings.toolWindowBounds`); `ToolHost` leitet `/tool/<id>` im Hauptfenster dorthin
+  um und zeigt im Fenster (`?fenster=1`) eine schlanke Kopfleiste. **Die Höhe folgt dem Inhalt:**
+  `useFitToolWindow` misst Kopfleiste + Seite und meldet sie (`api.fitToolWindow`), main setzt
+  die Höhe (`fitHeight`: Mindestmaß bis Bildschirmhöhe) und zeigt das Fenster erst dann – ohne
+  Meldung nach 1,5 s trotzdem, mit Eintrag im Debug-Log. Die erste Messung läuft synchron:
+  Im versteckten Fenster sind `requestAnimationFrame` und `ResizeObserver` gedrosselt.
+  Schließt das Hauptfenster, gehen sie mit. Die Rechner bauen auf `tools/_calc/ui` (Karten im
+  auto-fit-Raster, Felder mit Umbruch unter ~330 px, Ergebnis-Kacheln, `hint` = ⓘ).
+- **Darstellung in jedem Fenster:** `useAppearanceSync` an der App-Wurzel wendet Design,
+  Akzent und Dichte aus `settings.json` an und folgt Änderungen aus anderen Fenstern – auch in
+  Fenstern ohne App-Menü (kleine Werkzeuge). Die Vollbild-Ausgaben bleiben außen vor.
 - **Speichern – eine Regel, drei Orte** (siehe [Was wohin gehört](#was-wohin-gehört)):
   Einstellungen in `settings.json`, Arbeitsdaten im Werkzeug-Store, Bedien-Kleinigkeiten über
   `usePersistentState`. Nie direkt `localStorage` mit eigenem Parser.

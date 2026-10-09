@@ -12,7 +12,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | Skript | Prüft |
 |---|---|
 | `smoke.mjs` | Start, Kachelhöhen, Suche, Werkzeug öffnen, Programmbrücke, Datei-Dialoge merken sich den Ordner, keine Konsolenfehler |
-| `layout.mjs` | Werkzeug-Muster: Kopfleiste, App-Menü (13 Akzentfarben), Schublade (anheften/lösen/schließen, je Werkzeug gemerkt), ⓘ, Ausgabe-Leiste live/aus (Esc und Schließen von außen), Monitorwechsel von Testbild- und Player-Ausgabe, Auftrags-Leiste, kleine Werkzeuge im eigenen Fenster (Kachel, Umleitung, eines je Werkzeug, Größe/Lage gemerkt, kein Scrollen, gehen mit dem Hauptfenster) |
+| `layout.mjs` | Werkzeug-Muster: Kopfleiste, App-Menü (13 Akzentfarben), Schublade (anheften/lösen/schließen, je Werkzeug gemerkt), ⓘ, Ausgabe-Leiste live/aus (Esc und Schließen von außen), Monitorwechsel von Testbild- und Player-Ausgabe, Auftrags-Leiste, kleine Werkzeuge im eigenen Fenster (Kachel, Umleitung, eines je Werkzeug, Breite/Lage gemerkt, Höhe folgt dem Inhalt ohne Sprung, zweispaltig, 320 px ohne Querscrollen, Kompaktmodus live, gehen mit dem Hauptfenster) |
 | `testpattern.mjs` | 2-px-Rasterlinien pixelgenau (Raster und Mapping-Testbild) |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
@@ -88,6 +88,14 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   ist noch in der Liste, `getURL()` wirft dann „Object has been destroyed“. Schließen über
   `app.evaluate(… w.close())` statt `page.close()`, sonst läuft der 'close'-Handler (Lage
   merken) nicht wie beim Bediener (Helfer `closeToolWindow` in `e2e/layout.mjs`).
+- **Screenshots nach `setContentSize`:** Playwrights `page.screenshot()` kennt die neue Größe
+  nicht (liefert die alte) – über Electron aufnehmen: `(await w.webContents.capturePage())
+  .toPNG()` per `app.evaluate`, als Base64 zurückgeben. Größe und Inhalt der Seite selbst
+  (`innerHeight`, `scrollHeight`) stimmen.
+- **Versteckte Fenster** (`show: false`, bis main sie zeigt): `requestAnimationFrame` und
+  `ResizeObserver` laufen dort gedrosselt – wer im Renderer misst, misst das erste Mal synchron.
+  Ob ein Fenster ungemessen erschien, steht im Debug-Log (`ctx.userData`/avtoolbox-debug.log,
+  Prüfung `assertNoJump` in `e2e/layout.mjs`).
 - **Kleine Werkzeuge sind keine Route im Hauptfenster mehr:** `openRoute(page, '/tool/timecode')`
   öffnet ein eigenes Fenster und springt zurück zu `/`. Für „irgendein Werkzeug öffnen“ ein großes
   nehmen (Rauchtest: `/tool/media-info`).

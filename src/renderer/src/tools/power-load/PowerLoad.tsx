@@ -7,7 +7,8 @@ import {
   SelectField,
   fmt,
   parseNum,
-  trimNum
+  trimNum,
+  ReadoutGrid
 } from '../_calc/ui'
 
 // Stromlast & Absicherung. Einphasig: P = U·I·cosφ. Dreiphasig: P = √3·U·I·cosφ.
@@ -87,25 +88,39 @@ export function PowerLoad(): JSX.Element {
   const sumI = maxDevices != null && iDev != null ? maxDevices * iDev : null
 
   return (
-    <CalcPage>
+    <CalcPage note="Richtwerte ohne Anlaufströme und Leitungslängen – im Zweifel Herstellerangaben und Elektrofachkraft heranziehen.">
       <SectionCard
         title="Last"
-        desc="Leistung und Strom umrechnen – ein Feld eingeben, das andere folgt."
+        desc="Leistung oder Strom eingeben – das andere folgt."
+        hint="Einphasig: P = U · I · cos φ. Dreiphasig: P = √3 · U · I · cos φ (U = Spannung zwischen zwei Außenleitern, I = Strom je Leiter)."
       >
         <SelectField label="Anschluss" value={phase} onChange={(v) => switchPhase(v as '1' | '3')}>
-          <option value="1">Einphasig (~230 V)</option>
-          <option value="3">Dreiphasig (~400 V)</option>
+          <option value="1">Einphasig (230 V)</option>
+          <option value="3">Dreiphasig (400 V)</option>
         </SelectField>
         <NumField label="Spannung U" unit="V" value={uRaw} onChange={setURaw} />
-        <NumField label="Leistungsfaktor cosφ" value={pfRaw} onChange={setPfRaw} />
+        <NumField
+          label="Leistungsfaktor cos φ"
+          hint="1 bei rein ohmscher Last (Halogen, Heizer). Netzteile, LED-Geräte und Motoren liegen darunter – mit Leistungsfaktorkorrektur (PFC) meist bei 0,9–0,99. Dann fließt mehr Strom als P ÷ U."
+          value={pfRaw}
+          onChange={setPfRaw}
+        />
         <NumField label="Leistung P" unit="W" {...bindLoad('p')} />
         <NumField label="Strom I" unit="A" {...bindLoad('i')} />
-        {pf < 1 && <Readout label="Scheinleistung S" value={fmt(apparent)} unit="VA" />}
+        {pf < 1 && (
+          <Readout
+            label="Scheinleistung S"
+            hint="Das, was Leitung und Sicherung tatsächlich tragen: U · I (dreiphasig · √3)."
+            value={fmt(apparent)}
+            unit="VA"
+          />
+        )}
       </SectionCard>
 
       <SectionCard
         title="Geräte pro Stromkreis"
-        desc="Wie viele gleiche Geräte verträgt eine Absicherung? (Anschluss/Spannung/cosφ von oben.)"
+        desc="Wie viele gleiche Geräte verträgt eine Absicherung?"
+        hint="Anschluss, Spannung und cos φ gelten wie unter „Last“."
       >
         <NumField label="Leistung je Gerät" unit="W" value={devRaw} onChange={setDevRaw} />
         <SelectField label="Absicherung" value={breaker} onChange={setBreaker}>
@@ -114,25 +129,26 @@ export function PowerLoad(): JSX.Element {
           <option value="32">32 A (CEE)</option>
           <option value="63">63 A (CEE)</option>
         </SelectField>
-        <SelectField label="Auslastung" value={reserve} onChange={setReserve}>
+        <SelectField
+          label="Auslastung"
+          hint="Für Dauerbetrieb (ganze Show) eine Absicherung nur zu etwa 80 % belasten – Reserve für Wärme und Toleranzen."
+          value={reserve}
+          onChange={setReserve}
+        >
           <option value="1">100 % (Maximum)</option>
-          <option value="0.8">80 % (Dauerbetrieb empfohlen)</option>
+          <option value="0.8">80 % (Dauerbetrieb)</option>
         </SelectField>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <ReadoutGrid>
           <Readout label="Strom je Gerät" value={fmt(iDev)} unit="A" />
           <Readout
-            label="max. Geräte"
+            label="Max. Geräte"
             value={maxDevices != null ? String(maxDevices) : ''}
             big
             accent
           />
           <Readout label="Summe Leistung" value={fmt(sumP, 0)} unit="W" />
           <Readout label="Summe Strom" value={fmt(sumI)} unit="A" />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Richtwert ohne Anlaufströme/Leitungslängen – im Zweifel die Herstellerangaben und die
-          Elektrofachkraft heranziehen.
-        </p>
+        </ReadoutGrid>
       </SectionCard>
     </CalcPage>
   )

@@ -1,7 +1,8 @@
 // Fenster der Werkzeuge. Kleine Werkzeuge (Rechner, Umrechner) brauchen wenig Platz und öffnen
 // sich IMMER in einem eigenen, passend kleinen Fenster – nie im Hauptfenster, das bleibt für die
-// großen Werkzeuge frei. Je kleinem Werkzeug gibt es höchstens ein Fenster; Größe und Lage
-// merkt sich die App. Rein (main und Renderer nutzen es), getestet in toolWindows.test.ts.
+// großen Werkzeuge frei. Je kleinem Werkzeug gibt es höchstens ein Fenster; Lage und Breite
+// merkt sich die App, die Höhe folgt dem Inhalt. Rein (main und Renderer), getestet in
+// toolWindows.test.ts.
 
 export interface ToolWindowSize {
   /** Inhaltsgröße in px (ohne Fensterrahmen) */
@@ -26,28 +27,38 @@ export const TOOL_WINDOW: ToolWindowSize = {
   minHeight: 620
 }
 
-const SMALL_MIN = { minWidth: 400, minHeight: 300 }
+/**
+ * Kleine Werkzeuge lassen sich bis auf Handybreite schmal ziehen: Die Felder setzen ihre
+ * Beschriftung dann über die Eingabe (tools/_calc/ui).
+ */
+const SMALL_MIN = { minWidth: 320, minHeight: 200 }
 
 /**
- * Inhaltsgröße je kleinem Werkzeug: 600 px Breite (Rechner-Seite), Höhe = schlanke Kopfleiste
- * (41 px) + Seite, gemessen im echten Fenster (Oktober 2026). Kameraobjektiv und Rigging-Last
- * sind höher als ein Laptop-Bildschirm und scrollen ab 900 px. Ändert sich ein Werkzeug,
- * neu messen (e2e/layout.mjs prüft, dass die kleinen Fenster ohne Scrollen auskommen).
+ * Erste Höhe, bis der Inhalt gemessen ist. Das Fenster erscheint erst danach (main), die Zahl
+ * sieht also niemand – sie muss nur in jeden Bildschirm passen.
  */
-export const SMALL_TOOLS: Readonly<Record<string, { width: number; height: number }>> = {
-  'circle-calc': { width: 600, height: 430 },
-  'dmx-address': { width: 600, height: 480 },
-  'throw-ratio': { width: 600, height: 670 },
-  'audio-delay': { width: 600, height: 730 },
-  'projector-lumen': { width: 600, height: 780 },
-  timecode: { width: 600, height: 800 },
-  'power-load': { width: 600, height: 920 },
-  'camera-lens': { width: 600, height: 900 },
-  rigging: { width: 600, height: 900 }
-}
+const SMALL_START_HEIGHT = 600
 
-/** Werkzeuge, deren Inhalt höher ist als ihr Fenster (scrollen bewusst) */
-export const SCROLLING_SMALL_TOOLS = ['camera-lens', 'rigging']
+/** Eine Spalte: Felder untereinander */
+const ONE_COLUMN = 520
+/**
+ * Zwei Karten nebeneinander (tools/_calc/ui: ab 2 × 22rem + Abstand + Rand ≈ 772 px). Für
+ * Rechner, die einspaltig höher als ein Laptop-Bildschirm wären.
+ */
+const TWO_COLUMNS = 880
+
+/** Breite je kleinem Werkzeug; die Höhe misst das Fenster selbst (fitHeight). */
+export const SMALL_TOOLS: Readonly<Record<string, { width: number }>> = {
+  'circle-calc': { width: ONE_COLUMN },
+  'dmx-address': { width: ONE_COLUMN },
+  'throw-ratio': { width: ONE_COLUMN },
+  'audio-delay': { width: ONE_COLUMN },
+  'projector-lumen': { width: ONE_COLUMN },
+  timecode: { width: ONE_COLUMN },
+  'power-load': { width: TWO_COLUMNS },
+  'camera-lens': { width: TWO_COLUMNS },
+  rigging: { width: TWO_COLUMNS }
+}
 
 /** Kennzeichen in der Route (`/tool/<id>?fenster=1`): Das Werkzeug läuft in seinem eigenen Fenster. */
 export const OWN_WINDOW_PARAM = 'fenster'
@@ -58,7 +69,17 @@ export function isSmallTool(id: string): boolean {
 
 export function toolWindowSize(id: string): ToolWindowSize {
   const s = isSmallTool(id) ? SMALL_TOOLS[id] : null
-  return s ? { ...s, ...SMALL_MIN } : TOOL_WINDOW
+  return s ? { width: s.width, height: SMALL_START_HEIGHT, ...SMALL_MIN } : TOOL_WINDOW
+}
+
+/**
+ * Höhe des Fensterinhalts für die gemeldete Inhaltshöhe der Seite: nie kleiner als das
+ * Mindestmaß, nie höher als der Bildschirm (dann scrollt die Seite). null = Meldung unbrauchbar
+ * (kommt aus dem Renderer, also prüfen).
+ */
+export function fitHeight(requested: unknown, maxHeight: number, minHeight: number): number | null {
+  if (typeof requested !== 'number' || !Number.isFinite(requested) || requested <= 0) return null
+  return Math.round(Math.max(minHeight, Math.min(requested, maxHeight)))
 }
 
 /** Nur so viel Überlappung mit einem Bildschirm, dass man das Fenster noch greifen kann */

@@ -37,8 +37,9 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   live – oder `kind="job"` für den Auftrag) und `aside` (Schublade links aus `PanelSection`s mit
   `summary`; Felder per `Field`/`Checkbox` mit `hint` = ⓘ). Aktionen nie in die Schublade;
   App-weites (Design, Akzent, ffmpeg, yt-dlp) ins App-Menü `components/app/AppMenu.tsx`.
-  Kleine Werkzeuge (Rechner) öffnen sich immer im eigenen, kleinen Fenster: Eintrag mit gemessener
-  Inhaltsgröße in `SMALL_TOOLS` (`shared/toolWindows.ts`), nie im Hauptfenster.
+  Kleine Werkzeuge (Rechner) öffnen sich immer im eigenen, kleinen Fenster: Eintrag mit Breite in
+  `SMALL_TOOLS` (`shared/toolWindows.ts`), die Höhe folgt dem Inhalt; Bausteine aus
+  `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ, Zahlen mit Komma).
 - **Tools** liegen unter `src/renderer/src/tools/<id>/` und registrieren sich
   über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).

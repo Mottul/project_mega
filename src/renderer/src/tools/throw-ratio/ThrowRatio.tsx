@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  CalcAlert,
   CalcPage,
   NumField,
   Readout,
@@ -20,7 +21,7 @@ const ASPECTS: { key: string; label: string; val: number }[] = [
   { key: '4:3', label: '4 : 3', val: 4 / 3 },
   { key: '1:1', label: '1 : 1', val: 1 },
   { key: '21:9', label: '21 : 9', val: 21 / 9 },
-  { key: '2.35:1', label: '2.35 : 1 (Cinemascope)', val: 2.35 }
+  { key: '2.35:1', label: '2,35 : 1 (Cinemascope)', val: 2.35 }
 ]
 
 type SizeField = 'w' | 'h' | 'diag'
@@ -121,7 +122,7 @@ export function ThrowRatio(): JSX.Element {
     <CalcPage>
       <SectionCard
         title="Leinwand"
-        desc="Seitenverhältnis wählen und ein Maß eingeben – die übrigen folgen."
+        desc="Seitenverhältnis wählen, ein Maß eingeben – die übrigen folgen."
       >
         <SelectField label="Seitenverhältnis" value={aspectKey} onChange={setAspectKey}>
           {ASPECTS.map((a) => (
@@ -137,20 +138,15 @@ export function ThrowRatio(): JSX.Element {
       </SectionCard>
 
       <SectionCard
-        title="Objektiv / Abstand"
-        desc="Throw Ratio = Projektionsabstand ÷ Bildbreite. Ein Objektiv wählen, dessen TR-Bereich den Wert abdeckt."
+        title="Objektiv & Abstand"
+        desc="Throw Ratio oder Abstand eingeben – das andere folgt."
+        hint="Throw Ratio (TR) = Projektionsabstand ÷ Bildbreite. Passend ist ein Objektiv, dessen TR-Bereich den Wert abdeckt. Beispiel: 5 m Bildbreite aus 8 m Abstand ergibt TR 1,6 – ein Objektiv mit 1,2–1,8 passt."
       >
         <NumField label="Throw Ratio" {...bindThrow('tr')} />
         <NumField label="Projektionsabstand" unit="m" {...bindThrow('dist')} />
         {w == null && (
-          <p className="text-xs text-amber-400 light:text-amber-700">
-            Zuerst oben die Bildbreite festlegen.
-          </p>
+          <CalcAlert tone="warning">Zuerst die Bildbreite der Leinwand festlegen.</CalcAlert>
         )}
-        <p className="pt-1 text-xs text-muted-foreground">
-          Beispiel: Bildbreite 5 m und Abstand 8 m → TR 1.6. Ein Standardobjektiv mit z. B. 1.2–1.8
-          passt.
-        </p>
       </SectionCard>
     </CalcPage>
   )

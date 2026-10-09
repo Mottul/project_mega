@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, SectionCard, parseNum } from '../_calc/ui'
+import { CalcPage, NumField, Readout, SectionCard, parseNum, ReadoutGrid } from '../_calc/ui'
 
 // DMX-Startadresse <-> Dip-Schalter. Konvention: Schalter 1..9 bilden die Adresse
 // binär ab, wobei der Binärwert = Adresse − 1 ist (Adresse 1 = alle Schalter aus).
@@ -29,8 +29,9 @@ export function DmxAddress(): JSX.Element {
   return (
     <CalcPage>
       <SectionCard
-        title="DMX-Adresse → Dip-Schalter"
-        desc="Startadresse eingeben oder die Schalter umlegen – beides bleibt synchron."
+        title="DMX-Adresse ↔ Dip-Schalter"
+        desc="Startadresse eingeben oder Schalter umlegen – beides bleibt gleich."
+        hint="Schalter 1 hat den Wert 1, Schalter 2 den Wert 2 … Schalter 9 den Wert 256. Adresse = Summe der eingeschalteten Werte + 1 (alle aus = Adresse 1). ON ist oben. Ein 10. Schalter steuert meist Sonderfunktionen (Display, Modus) und zählt nicht zur Adresse."
       >
         <div className="max-w-xs">
           <NumField
@@ -47,7 +48,8 @@ export function DmxAddress(): JSX.Element {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-1">
+        {/* festes 9er-Raster: bleibt auch im schmalsten Fenster eine Reihe */}
+        <div className="grid max-w-sm grid-cols-9 gap-1 pt-1">
           {bits.map((on, i) => (
             <button
               key={i}
@@ -73,14 +75,10 @@ export function DmxAddress(): JSX.Element {
           ))}
         </div>
 
-        <div className="grid gap-2 pt-1 sm:grid-cols-2">
+        <ReadoutGrid>
           <Readout label="Adresse" value={addr != null ? String(addr) : ''} big accent />
-          <Readout label="Binär (Schalter 9→1)" value={addr != null ? binary : ''} />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Schalter ON = oben. Manche Geräte haben einen 10. Schalter für Sonderfunktionen (z. B.
-          Display/Modus) – der zählt hier nicht zur Adresse.
-        </p>
+          <Readout label="Binär (Schalter 9 → 1)" value={addr != null ? binary : ''} />
+        </ReadoutGrid>
       </SectionCard>
     </CalcPage>
   )

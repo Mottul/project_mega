@@ -3,6 +3,7 @@ import { Launcher } from './launcher/Launcher'
 import { ToolHost } from './launcher/ToolHost'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Toaster } from './components/Toaster'
+import { useAppearanceSync } from './components/app/useAppearance'
 import { TimerOutput } from './tools/stage-timer/TimerOutput'
 import { OutputView } from './tools/test-patterns/OutputView'
 import { PlayerOutput } from './tools/video-player/PlayerOutput'
@@ -16,6 +17,9 @@ const isOutputWindow = /^#\/(output|player-output|timer-output|player-ndi)/.test
 )
 
 export function App(): JSX.Element {
+  // Design, Akzent und Dichte folgen settings.json in jedem Fenster; die Vollbild-Ausgaben
+  // bleiben, wie main.tsx sie startet (dunkel, Normaldichte).
+  useAppearanceSync(!isOutputWindow)
   return (
     <HashRouter>
       {/* Letzte Auffanglinie: ein Render-Fehler außerhalb eines Tools reißt so

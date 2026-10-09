@@ -53,17 +53,14 @@ export function CircleCalc(): JSX.Element {
   return (
     <CalcPage>
       <SectionCard
-        title="Kreisrechner"
-        desc="Einen Wert eingeben – die anderen drei werden berechnet. Jedes Feld ist Eingabe und Ergebnis zugleich."
+        title="Kreis"
+        desc="Einen Wert eingeben – die übrigen folgen."
+        hint="Jedes Feld ist Eingabe und Ergebnis zugleich; berechnete Werte sind farbig. Ohne feste Einheit: Längen alle in derselben (z. B. cm), die Fläche dann im Quadrat davon (cm²). U = π · d, A = π · r²."
       >
         <NumField label="Durchmesser d" {...bind('d')} />
         <NumField label="Radius r" {...bind('r')} />
         <NumField label="Umfang U" {...bind('c')} />
         <NumField label="Fläche A" {...bind('a')} />
-        <p className="pt-1 text-xs text-muted-foreground">
-          Einheitenfrei: Längen in derselben Einheit (z. B. cm); die Fläche ist dann das Quadrat
-          davon (cm²). U = π·d, A = π·r².
-        </p>
       </SectionCard>
     </CalcPage>
   )

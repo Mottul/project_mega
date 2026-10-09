@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, SectionCard, fmt, parseNum } from '../_calc/ui'
+import {
+  CalcAlert,
+  CalcPage,
+  NumField,
+  Readout,
+  ReadoutGrid,
+  SectionCard,
+  fmt,
+  parseNum
+} from '../_calc/ui'
 
 // Rigging-Last: zwei Alltagsfälle.
 // 1) Traverse auf zwei Hängepunkten (einfacher Träger): Auflagerkräfte aus
@@ -11,8 +20,9 @@ import { CalcPage, NumField, Readout, SectionCard, fmt, parseNum } from '../_cal
 
 const G = 9.81
 
+/** kg -> kN mit Einheit (zweite Angabe neben dem kg-Wert) */
 function kn(kg: number | null): string {
-  return kg == null ? '' : fmt((kg * G) / 1000, 2)
+  return kg == null ? '' : `${fmt((kg * G) / 1000, 2)} kN`
 }
 
 export function Rigging(): JSX.Element {
@@ -49,71 +59,87 @@ export function Rigging(): JSX.Element {
   const level = betaDeg == null ? null : betaDeg >= 60 ? 'rot' : betaDeg >= 45 ? 'gelb' : 'ok'
 
   return (
-    <CalcPage>
+    <CalcPage note="Statische Richtwerte ohne Dynamik-, Sicherheits- und Anschlagmittel-Faktoren – Auslegung und Abnahme gehören in die Hände eines Sachkundigen (DGUV V 17/18, SQ Q2).">
       <SectionCard
         title="Traverse auf zwei Punkten"
-        desc="Punktlast auf einem einfachen Träger: wie verteilt sich die Last auf die Hängepunkte A und B?"
+        desc="Wie verteilt sich eine Punktlast auf die Hängepunkte A und B?"
+        hint="Einfacher Träger: A = F · (L − a) ÷ L, B = F · a ÷ L; das Eigengewicht tragen A und B je zur Hälfte. Mehrere Punktlasten einzeln rechnen und die Ergebnisse addieren."
       >
         <NumField label="Spannweite A–B" unit="m" value={spanRaw} onChange={setSpanRaw} />
-        <NumField label="Lastposition (von A)" unit="m" value={posRaw} onChange={setPosRaw} />
+        <NumField label="Lastposition ab A" unit="m" value={posRaw} onChange={setPosRaw} />
         <NumField label="Punktlast" unit="kg" value={loadRaw} onChange={setLoadRaw} />
-        <NumField label="Traversen-Eigengewicht" unit="kg/m" value={ownRaw} onChange={setOwnRaw} />
+        <NumField
+          label="Eigengewicht"
+          hint="Gewicht der Traverse je Meter (Datenblatt des Herstellers)."
+          unit="kg/m"
+          value={ownRaw}
+          onChange={setOwnRaw}
+        />
         {L != null && aPos != null && aPos > L && (
-          <p className="text-xs text-destructive">Lastposition liegt außerhalb der Spannweite.</p>
+          <CalcAlert tone="danger">Die Lastposition liegt außerhalb der Spannweite.</CalcAlert>
         )}
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Readout label="Punkt A" value={fmt(fA, 1)} unit="kg" big accent />
-          <Readout label="Punkt B" value={fmt(fB, 1)} unit="kg" big accent />
-          <Readout label="Punkt A" value={kn(fA)} unit="kN" />
-          <Readout label="Punkt B" value={kn(fB)} unit="kN" />
-        </div>
-        <p className="pt-1 text-xs text-muted-foreground">
-          Eigengewicht wird je zur Hälfte auf A und B verteilt. Mehrere Punktlasten: einzeln rechnen
-          und Auflagerkräfte addieren (Superposition).
-        </p>
+        <ReadoutGrid>
+          <Readout label="Punkt A" value={fmt(fA, 1)} unit="kg" sub={kn(fA)} big accent />
+          <Readout label="Punkt B" value={fmt(fB, 1)} unit="kg" sub={kn(fB)} big accent />
+        </ReadoutGrid>
       </SectionCard>
 
       <SectionCard
-        title="Bridle / Anschlagwinkel (2 Stränge)"
-        desc="Je flacher der Winkel, desto höher die Kraft im Strang – aus Höhe und Abstand der Anschlagpunkte."
+        title="Bridle (2 Stränge)"
+        desc="Je flacher der Winkel, desto höher die Kraft im Strang."
+        hint="Symmetrisches Bridle, statisch: Kraft je Strang = halbe Last ÷ cos β; β ist der Winkel eines Strangs zur Senkrechten."
       >
         <NumField label="Last" unit="kg" value={bLoadRaw} onChange={setBLoadRaw} />
-        <NumField label="Höhe (vertikal)" unit="m" value={heightRaw} onChange={setHeightRaw} />
         <NumField
-          label="Abstand der Anschlagpunkte"
+          label="Höhe"
+          hint="Senkrechter Abstand vom Lastpunkt (Zusammenführung der Stränge) bis auf die Höhe der Anschlagpunkte."
+          unit="m"
+          value={heightRaw}
+          onChange={setHeightRaw}
+        />
+        <NumField
+          label="Punktabstand"
+          hint="Waagerechter Abstand der beiden Anschlagpunkte."
           unit="m"
           value={widthRaw}
           onChange={setWidthRaw}
         />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Readout label="Kraft je Strang" value={fmt(legForce, 1)} unit="kg" big accent />
-          <Readout label="Kraft je Strang" value={kn(legForce)} unit="kN" />
-          <Readout label="Winkel zur Vertikalen" value={fmt(betaDeg, 1)} unit="°" />
+        <Readout
+          label="Kraft je Strang"
+          value={fmt(legForce, 1)}
+          unit="kg"
+          sub={kn(legForce)}
+          big
+          accent
+        />
+        <ReadoutGrid>
+          <Readout label="Winkel zur Senkrechten" value={fmt(betaDeg, 1)} unit="°" />
           <Readout
-            label="Spreizwinkel gesamt"
+            label="Spreizwinkel"
+            hint="Winkel zwischen den beiden Strängen."
             value={fmt(betaDeg != null ? betaDeg * 2 : null, 1)}
             unit="°"
           />
-          <Readout label="Lastfaktor (1/cos β)" value={fmt(factor, 2)} unit="×" />
+          <Readout
+            label="Lastfaktor"
+            hint="1 ÷ cos β: So viel mehr als die halbe Last zieht an jedem Strang."
+            value={fmt(factor, 2)}
+            unit="×"
+          />
           <Readout label="Stranglänge" value={fmt(legLen, 2)} unit="m" />
-        </div>
+        </ReadoutGrid>
         {level === 'gelb' && (
-          <p className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
-            ⚠ Winkel ≥ 45° zur Vertikalen – Strangkraft deutlich erhöht (Faktor ≥ 1,41). Höher
-            anschlagen oder Punkte enger setzen.
-          </p>
+          <CalcAlert tone="warning">
+            ⚠ Winkel ab 45° zur Senkrechten – deutlich mehr Kraft im Strang (Faktor ab 1,41). Höher
+            anschlagen oder die Punkte enger setzen.
+          </CalcAlert>
         )}
         {level === 'rot' && (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
-            ⚠ Winkel ≥ 60° zur Vertikalen – Strangkraft ≥ doppelte halbe Last (Faktor ≥ 2). So nicht
-            anschlagen!
-          </p>
+          <CalcAlert tone="danger">
+            ⚠ Winkel ab 60° zur Senkrechten – jeder Strang trägt mindestens die ganze Last (Faktor
+            ab 2). So nicht anschlagen!
+          </CalcAlert>
         )}
-        <p className="pt-1 text-xs text-muted-foreground">
-          Symmetrisches 2-Strang-Bridle, statisch. OHNE Dynamik-, Sicherheits- und
-          Anschlagmittel-Faktoren – Auslegung und Abnahme gehören in die Hände eines Sachkundigen
-          (DGUV 17/18, SQ Q2).
-        </p>
       </SectionCard>
     </CalcPage>
   )

@@ -20,6 +20,7 @@ const api: ToolboxApi = {
   getLogPath: () => ipcRenderer.invoke(Channels.appLogPath),
   pathForFile: (file) => webUtils.getPathForFile(file),
   openToolWindow: (id) => ipcRenderer.invoke(Channels.windowOpenTool, id),
+  fitToolWindow: (height) => ipcRenderer.invoke(Channels.windowFitContent, height),
 
   ffmpeg: {
     probe: (path) => ipcRenderer.invoke(Channels.ffmpegProbe, path),

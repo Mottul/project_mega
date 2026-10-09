@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isSmallTool, restoreBounds, toolWindowSize, TOOL_WINDOW } from './toolWindows'
+import { fitHeight, isSmallTool, restoreBounds, toolWindowSize, TOOL_WINDOW } from './toolWindows'
 
 const screen = { x: 0, y: 0, width: 1920, height: 1040 }
 const right = { x: 1920, y: 0, width: 1920, height: 1040 }
@@ -20,6 +20,20 @@ describe('toolWindowSize', () => {
   })
 })
 
+describe('fitHeight', () => {
+  it('übernimmt die gemessene Höhe zwischen Mindestmaß und Bildschirm', () => {
+    expect(fitHeight(431.4, 1000, 200)).toBe(431)
+    expect(fitHeight(1300, 1000, 200)).toBe(1000)
+    expect(fitHeight(50, 1000, 200)).toBe(200)
+  })
+
+  it('verwirft unbrauchbare Meldungen aus dem Renderer', () => {
+    for (const bad of [0, -5, NaN, Infinity, '500', null, undefined]) {
+      expect(fitHeight(bad, 1000, 200)).toBeNull()
+    }
+  })
+})
+
 describe('restoreBounds', () => {
   const size = toolWindowSize('circle-calc')
 
@@ -34,7 +48,7 @@ describe('restoreBounds', () => {
   })
 
   it('hält die Größe zwischen Mindestmaß und Arbeitsfläche', () => {
-    expect(restoreBounds({ x: 10, y: 10, width: 300, height: 5000 }, [screen], size)).toEqual({
+    expect(restoreBounds({ x: 10, y: 10, width: 200, height: 5000 }, [screen], size)).toEqual({
       x: 10,
       y: 10,
       width: size.minWidth,

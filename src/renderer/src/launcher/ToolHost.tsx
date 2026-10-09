@@ -10,6 +10,7 @@ import { windowTitle } from '@shared/brand'
 import { isSmallTool, OWN_WINDOW_PARAM } from '@shared/toolWindows'
 import { findTool } from '@renderer/tools/registry'
 import { KioskContext } from './kiosk'
+import { useFitToolWindow } from './useFitToolWindow'
 
 export function ToolHost(): JSX.Element {
   const { id } = useParams()
@@ -21,8 +22,15 @@ export function ToolHost(): JSX.Element {
   const ownWindow = params.get(OWN_WINDOW_PARAM) === '1'
   const small = tool ? isSmallTool(tool.id) : false
   const redirect = small && !ownWindow && !kiosk
+  // Kleines Werkzeug im eigenen Fenster: nur Name (und ggf. „Einstellungen“) – kein Weg zum
+  // Startbildschirm, kein weiteres Fenster, keine Kundenansicht; das App-Menü bleibt im
+  // Hauptfenster. Die Fensterhöhe folgt dem Inhalt.
+  const compact = small && ownWindow
   // Platz für den Knopf „Einstellungen“ des Werkzeugs (ToolShell hängt ihn per Portal ein)
   const [settingsSlot, setSettingsSlot] = useState<HTMLElement | null>(null)
+  const [header, setHeader] = useState<HTMLElement | null>(null)
+  const [page, setPage] = useState<HTMLElement | null>(null)
+  useFitToolWindow(compact, header, page)
 
   // Fenstertitel = Werkzeugname · App (auch in eigenen Fenstern). Beim Verlassen
   // zurück auf den App-Namen (Launcher setzt ihn selbst wieder).
@@ -66,10 +74,6 @@ export function ToolHost(): JSX.Element {
 
   const Icon = tool.icon
   const Tool = tool.component
-  // Kleines Werkzeug im eigenen Fenster: nur Name (und ggf. „Einstellungen“) – kein Weg zum
-  // Startbildschirm, kein weiteres Fenster, keine Kundenansicht; das App-Menü bleibt im
-  // Hauptfenster.
-  const compact = small && ownWindow
 
   async function enableKiosk(): Promise<void> {
     if (!tool) return
@@ -82,7 +86,10 @@ export function ToolHost(): JSX.Element {
       {/* Kopfleiste: links die ganze App (Menü „Mottulbox“), dann das Werkzeug mit seinem
           Knopf „Einstellungen“; rechts nur Aktionen dieses Werkzeugs – mit Text, damit nichts
           mit Einstellungen verwechselt wird. */}
-      <header className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+      <header
+        ref={setHeader}
+        className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2"
+      >
         {!kiosk && !compact && (
           <>
             <AppMenu />
@@ -135,7 +142,14 @@ export function ToolHost(): JSX.Element {
             <KioskContext.Provider value={kiosk}>
               <ToolChromeContext.Provider value={{ settingsSlot, toolName: tool.name }}>
                 <div data-testid="tool-content" className="h-full overflow-auto">
-                  <Tool />
+                  {/* eigene Hülle nur zum Messen: hat die natürliche Höhe der Seite */}
+                  {compact ? (
+                    <div ref={setPage}>
+                      <Tool />
+                    </div>
+                  ) : (
+                    <Tool />
+                  )}
                 </div>
               </ToolChromeContext.Provider>
             </KioskContext.Provider>

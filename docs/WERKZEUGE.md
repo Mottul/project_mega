@@ -57,10 +57,15 @@ Jedes Werkzeug ist gleich aufgebaut:
   Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last; an der Kachel ein
   kleines Fenster-Zeichen) öffnen sich **immer in einem eigenen, passend kleinen Fenster**, nie im
   Hauptfenster – das bleibt für die großen Werkzeuge frei. Je Werkzeug gibt es höchstens ein
-  Fenster; ein zweiter Klick holt es nach vorn. Das Fenster lässt sich bis 400 × 300 px
-  verkleinern, Größe und Lage merkt sich die App (liegt die gemerkte Lage auf einem abgesteckten
-  Bildschirm, erscheint es mittig). Die Kopfleiste zeigt nur den Namen; wer das Hauptfenster
-  schließt, schließt die kleinen Fenster mit.
+  Fenster; ein zweiter Klick holt es nach vorn. **Die Höhe folgt dem Inhalt** (auch im
+  Kompaktmodus und nach dem Breiterziehen), höchstens bis zur Bildschirmhöhe. Die Breite lässt
+  sich bis 320 px verringern – dann stehen die Beschriftungen über den Feldern. Rechner mit zwei
+  Bereichen legen sie nebeneinander, sobald das Fenster breit genug ist (etwa 770 px);
+  Stromlast, Kameraobjektiv und Rigging-Last öffnen gleich so breit. Breite und Lage merkt sich
+  die App (liegt die gemerkte Lage auf einem abgesteckten Bildschirm, erscheint es mittig). Die
+  Kopfleiste zeigt nur den Namen; wer das Hauptfenster schließt, schließt die kleinen Fenster
+  mit. Formeln, Hintergründe und Beispiele stehen hinter dem **ⓘ** am Bereich oder Feld;
+  Zahlen schreiben und zeigen die Rechner mit Komma.
 - **Kundenansicht:** „Kundenansicht“ in der Kopfleiste eines Werkzeugs sperrt es
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,
