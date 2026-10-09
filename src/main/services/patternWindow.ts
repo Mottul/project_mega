@@ -11,6 +11,17 @@ import { logLine } from './log'
 
 let win: BrowserWindow | null = null
 let currentConfig: PatternConfig | null = null
+// Meldet „Ausgabe offen/zu“ an alle Fenster (Ausgabe-Leiste des Testbilds) – auch wenn das
+// Ausgabefenster per Esc oder vom Betriebssystem geschlossen wird.
+let outputSink: (open: boolean) => void = () => {}
+
+export function setPatternOutputSink(fn: (open: boolean) => void): void {
+  outputSink = fn
+}
+
+export function isPatternOpen(): boolean {
+  return win !== null && !win.isDestroyed()
+}
 
 export function listDisplays(): DisplayInfo[] {
   const primary = screen.getPrimaryDisplay()
@@ -38,9 +49,9 @@ export function openPattern(config: PatternConfig, displayId: number): void {
 
   // Bestehendes Ausgabefenster schliessen -> sauberer (Monitor-)Wechsel, da ein
   // Vollbildfenster sich nicht zuverlaessig verschieben laesst.
-  closePattern()
+  closeWindow()
 
-  win = new BrowserWindow({
+  const w = new BrowserWindow({
     x: b.x,
     y: b.y,
     width: b.width,
@@ -59,22 +70,28 @@ export function openPattern(config: PatternConfig, displayId: number): void {
       nodeIntegration: false
     }
   })
+  win = w
   logLine('[pattern] Ausgabefenster auf Display', display.id, JSON.stringify(b))
 
-  win.on('closed', () => {
+  // Nur das AKTUELLE Fenster darf `win` leeren: Beim Monitorwechsel schließt das alte Fenster
+  // erst, wenn schon das neue in `win` steht – vorher verlor die App damit das neue Fenster.
+  w.on('closed', () => {
+    if (win !== w) return
     win = null
+    outputSink(false)
   })
   // Esc schliesst das Ausgabefenster
-  win.webContents.on('before-input-event', (_e, input) => {
+  w.webContents.on('before-input-event', (_e, input) => {
     if (input.type === 'keyDown' && input.key === 'Escape') closePattern()
   })
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send(Channels.patternRender, currentConfig)
+  w.webContents.on('did-finish-load', () => {
+    if (!w.isDestroyed()) w.webContents.send(Channels.patternRender, currentConfig)
   })
 
   const devUrl = process.env['ELECTRON_RENDERER_URL']
-  if (devUrl) void win.loadURL(`${devUrl}#/output`)
-  else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash: '/output' })
+  if (devUrl) void w.loadURL(`${devUrl}#/output`)
+  else void w.loadFile(join(__dirname, '../renderer/index.html'), { hash: '/output' })
+  outputSink(true)
 }
 
 export function updatePattern(config: PatternConfig): void {
@@ -82,7 +99,15 @@ export function updatePattern(config: PatternConfig): void {
   if (win && !win.isDestroyed()) win.webContents.send(Channels.patternRender, config)
 }
 
-export function closePattern(): void {
-  if (win && !win.isDestroyed()) win.close()
+/** Fenster schließen, ohne zu melden (beim Monitorwechsel folgt sofort das neue). */
+function closeWindow(): void {
+  const w = win
   win = null
+  if (w && !w.isDestroyed()) w.close()
+}
+
+export function closePattern(): void {
+  const wasOpen = isPatternOpen()
+  closeWindow()
+  if (wasOpen) outputSink(false)
 }

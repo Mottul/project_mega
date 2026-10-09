@@ -133,6 +133,8 @@ export const Channels = {
   patternUpdate: 'pattern:update',
   patternClose: 'pattern:close',
   patternCurrent: 'pattern:current',
+  patternIsOpen: 'pattern:isOpen',
+  patternOutputChanged: 'pattern:outputChanged', // Event: boolean (Ausgabefenster offen)
   patternRender: 'pattern:render', // Event: PatternConfig (main -> Ausgabefenster)
   patternSavePng: 'pattern:savePng',
   patternExportVideo: 'pattern:exportVideo',
@@ -373,6 +375,9 @@ export interface ToolboxApi {
     close(): Promise<void>
     /** Aktuelle Config (das Ausgabefenster holt sie beim Start). */
     current(): Promise<PatternConfig | null>
+    /** Ist das Ausgabefenster offen? (Ausgabe-Leiste, auch nach Esc im Ausgabefenster) */
+    isOpen(): Promise<boolean>
+    onOutputChanged(cb: (open: boolean) => void): () => void
     /** Render-Anweisung an das Ausgabefenster. Liefert eine Cleanup-Funktion. */
     onRender(cb: (config: PatternConfig) => void): () => void
     /** PNG speichern (Save-Dialog im main). Liefert den Pfad oder null. */

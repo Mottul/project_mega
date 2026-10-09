@@ -113,6 +113,10 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 
 ### Konsolidierung
 
+- **Restliche Werkzeuge aufs Werkzeug-Muster** (Ausgabe-/Auftrags-Leiste, Schublade links): LED-Wall,
+  NovaStar (Verbindung und Blackout in die Leiste), Netzwerk-Scanner, YouTube-Downloader
+  (Auftrags-Leiste), Packliste und die Rechner haben noch eigene Kartenlayouts. Dabei die übrigen
+  Erklärtexte hinter ⓘ legen.
 - **NDI:** `timerNdi.ts` und `playerNdi.ts` zu einem gemeinsamen Offscreen-Sender zusammenführen –
   sonst müssen Absturz-Korrekturen doppelt gepflegt werden.
 - **Auftrags-Warteschlangen:** Konverter und Player-Import teilen sich die Spuren-Warteschlange,
@@ -200,6 +204,11 @@ Damit nichts doppelt geplant wird:
   Medien an.
 - **Fernsteuerung:** Fernsteuer-App mit gemeinsamer Startseite (Port 8090), Stage-Timer am Handy,
   Bühnen-Anzeige des Timers im Browser (für Geräte ohne NDI), Zustand wird gemerkt, Start/Stopp über `registerRemoteControl()`.
+- **Werkzeug-Muster:** gleiche Kopfleiste in allen Werkzeugen (App-Menü „Mottulbox“ für Design,
+  13 Akzentfarben, ffmpeg, yt-dlp; Aktionen mit Text), Ausgabe-Leiste (rot, solange live; Auftrag
+  bernstein) und Einstellungs-Schublade links (anheftbar, Bereiche mit Zusammenfassung, ⓘ statt
+  Absätzen) für Video-Player, Stage-Timer, Testbild, Video-Konverter, Video-Generator, Jingles,
+  OSC, Medien-Info und Handbücher.
 - **Startbildschirm:** Favoriten in eigenen Kategorien, Kachelgröße, Ansicht „Favoriten“, gleich
   hohe Kacheln, Ausgabe-Status von Player und Stage-Timer.
 - **Gemeinsame Bausteine:** Medien-Endungen in `shared/`, QR-Code und `selectClass` in

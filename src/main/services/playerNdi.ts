@@ -244,11 +244,13 @@ export async function startPlayerNdi(cfg: PlayerNdiConfig): Promise<PlayerNdiSta
   })
   win.webContents.setFrameRate(config.fps)
   win.webContents.on('paint', (_e, _dirty, image) => pushFrame(g, image))
+  // Nur das AKTUELLE Fenster stoppt den Sender: 'closed' kann nach einem Neustart des Senders
+  // kommen, wenn schon das neue Fenster in `win` steht.
+  const self = win
   win.on('closed', () => {
-    if (win) {
-      win = null
-      stopPlayerNdi()
-    }
+    if (win !== self) return
+    win = null
+    stopPlayerNdi()
   })
 
   const hash = `/player-ndi?fit=${config.fit}&audio=${config.audio ? 1 : 0}`

@@ -18,7 +18,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
-import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
+import { ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
 import type { ImportProgress, ImportSummary, ManualMeta, ManualSearchHit } from '@shared/types'
@@ -179,59 +179,54 @@ export function ManualsLibrary(): JSX.Element {
     <>
       <ToolShell
         id="manuals"
-        aside={
-          <>
-            <PanelSection id="import" title="Import" icon={FileUp}>
-              <Button
-                variant="secondary"
-                className="w-full justify-start"
-                onClick={importFiles}
-                disabled={importing}
-              >
-                <FileUp className="size-4" /> PDFs importieren
-              </Button>
-              <Button
-                variant="secondary"
-                className="w-full justify-start"
-                onClick={importFolder}
-                disabled={importing}
-              >
-                <FolderUp className="size-4" /> Ordner importieren
-              </Button>
-              {(importing || progress) && (
-                <div>
-                  <Progress
-                    value={
-                      progress?.page && progress?.pageCount ? progress.page / progress.pageCount : 0
-                    }
-                    indeterminate={!progress?.pageCount}
-                  />
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {progress
-                      ? `${PROGRESS_LABEL[progress.phase]} · ${basename(progress.file)} (${progress.fileIndex}/${progress.fileCount})${
-                          progress.page && progress.pageCount
-                            ? ` · Seite ${progress.page}/${progress.pageCount}`
-                            : ''
-                        }`
-                      : 'Import läuft…'}
-                  </p>
-                </div>
-              )}
-              {summary && !importing && (
-                <p className="text-xs text-muted-foreground">
+        bar={
+          <ToolBar
+            label="Import"
+            kind="job"
+            active={importing}
+            status={
+              importing || progress ? (
+                <span className="truncate text-muted-foreground">
+                  {progress
+                    ? `${PROGRESS_LABEL[progress.phase]} · ${basename(progress.file)} (${progress.fileIndex}/${progress.fileCount})${
+                        progress.page && progress.pageCount
+                          ? ` · Seite ${progress.page}/${progress.pageCount}`
+                          : ''
+                      }`
+                    : 'Import läuft…'}
+                </span>
+              ) : summary ? (
+                <span className="text-muted-foreground">
                   Import abgeschlossen: {summary.imported} neu, {summary.skipped} übersprungen
-                  {summary.failed.length > 0 ? `, ${summary.failed.length} fehlgeschlagen` : ''}.
-                </p>
-              )}
-              <button
-                className="text-left text-xs text-muted-foreground hover:text-foreground"
-                onClick={() => void api.getLogPath().then((p) => api.showItemInFolder(p))}
-                title="Öffnet die Debug-Logdatei im Explorer (zum Mitschicken bei Problemen)"
-              >
-                Debug-Log öffnen
-              </button>
-            </PanelSection>
-          </>
+                  {summary.failed.length > 0 ? `, ${summary.failed.length} fehlgeschlagen` : ''}
+                </span>
+              ) : undefined
+            }
+          >
+            <Button size="sm" onClick={importFiles} disabled={importing}>
+              <FileUp className="size-4" /> PDFs importieren
+            </Button>
+            <Button size="sm" variant="outline" onClick={importFolder} disabled={importing}>
+              <FolderUp className="size-4" /> Ordner importieren
+            </Button>
+            {(importing || progress) && (
+              <Progress
+                className="w-40"
+                value={
+                  progress?.page && progress?.pageCount ? progress.page / progress.pageCount : 0
+                }
+                indeterminate={!progress?.pageCount}
+              />
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void api.getLogPath().then((p) => api.showItemInFolder(p))}
+              title="Öffnet die Debug-Logdatei im Explorer (zum Mitschicken bei Problemen)"
+            >
+              Debug-Log
+            </Button>
+          </ToolBar>
         }
         main={
           <div className="flex h-full flex-col">

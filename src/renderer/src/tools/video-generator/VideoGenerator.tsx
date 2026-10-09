@@ -22,7 +22,8 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { selectClass } from '@renderer/components/ui/select'
-import { ToolShell } from '@renderer/components/ToolShell'
+import { ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { FORMAT_OPTIONS } from './presets'
 import { useKiosk } from '@renderer/launcher/kiosk'
 import { api } from '@renderer/lib/api'
 import { useHandoff } from '@renderer/lib/handoff'
@@ -228,10 +229,47 @@ export function VideoGenerator(): JSX.Element {
   })()
 
   const jobList = Object.values(jobs).sort((a, b) => b.createdAt - a.createdAt)
+  const runningJobs = jobList.filter(
+    (j) => j.status === 'queued' || j.status === 'probing' || j.status === 'running'
+  )
 
   return (
     <ToolShell
       id="video-generator"
+      bar={
+        <ToolBar
+          label="Auftrag"
+          kind="job"
+          active={runningJobs.length > 0}
+          status={
+            runningJobs.length > 0 ? (
+              <>
+                <span className="max-w-[16rem] truncate font-medium">{runningJobs[0].title}</span>
+                <span className="text-muted-foreground">
+                  {Math.round(runningJobs[0].progress * 100)} %
+                  {runningJobs.length > 1 ? ` · ${runningJobs.length - 1} weitere` : ''}
+                </span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">
+                Ziel {project.output.width} × {project.output.height} ·{' '}
+                {rateText(project.output.fps)} fps ·{' '}
+                {FORMAT_OPTIONS.find((f) => f.value === project.output.format)?.label ??
+                  project.output.format}
+              </span>
+            )
+          }
+        >
+          <Button size="sm" onClick={() => void start()} disabled={!canStart}>
+            {busy === 'starting' ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Play className="size-4" />
+            )}
+            Video erzeugen
+          </Button>
+        </ToolBar>
+      }
       aside={
         <>
           {/* Auswahl zuerst: beim Bearbeiten das meistgebrauchte Panel */}
@@ -347,14 +385,6 @@ export function VideoGenerator(): JSX.Element {
                     : ''}
                 </span>
               )}
-              <Button onClick={() => void start()} disabled={!canStart}>
-                {busy === 'starting' ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Play className="size-4" />
-                )}
-                Video erzeugen
-              </Button>
             </div>
 
             {busy === 'adding' && (

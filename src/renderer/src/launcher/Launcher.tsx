@@ -4,9 +4,7 @@ import { Grid2x2, Grid3x3, LayoutGrid, Search, Square, Star } from 'lucide-react
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
-import { ThemeToggle } from '@renderer/components/ThemeToggle'
-import { DensityToggle } from '@renderer/components/DensityToggle'
-import { AccentPicker } from '@renderer/components/AccentPicker'
+import { AppMenu } from '@renderer/components/app/AppMenu'
 import { api } from '@renderer/lib/api'
 import { APP_NAME } from '@shared/brand'
 import { MottulboxLogo } from '@renderer/components/MottulboxLogo'
@@ -180,9 +178,7 @@ export function Launcher(): JSX.Element {
           </div>
           <div className="flex items-center gap-1">
             <RemoteAppButton status={remoteApp} />
-            <AccentPicker />
-            <DensityToggle />
-            <ThemeToggle />
+            <AppMenu variant="plain" align="right" />
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">

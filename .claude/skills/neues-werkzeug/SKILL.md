@@ -16,9 +16,20 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
    `lazy(() => import('./X').then((m) => ({ default: m.X })))`.
 3. **Eintragen** in `src/renderer/src/tools/registry.ts` (Import + Array `tools`) – die einzige
    Stelle, kein weiterer Menüpunkt nötig.
-4. **Oberfläche:** `ToolShell`/`PanelSection` (`components/ToolShell.tsx`) wie die anderen
-   Werkzeuge; Bausteine aus `components/ui`. Eingabefelder mit Puffer (`useDraft`, `TextField`,
-   `NumberField`). Farben nur über Tailwind-Tokens (`primary`, `border` …). Texte deutsch.
+4. **Oberfläche nach dem Werkzeug-Muster** (`components/ToolShell.tsx`, Vorbild `tools/stage-timer/`):
+   - `ToolShell` mit `main`, `bar` und `aside`. **`bar`** = `ToolBar`: hat das Werkzeug eine
+     Ausgabe (Monitor, NDI, Handy …), `label="Ausgabe"`, `active` = gerade live (rot), Schalter als
+     `BarToggle`, rechts `status` (was läuft). Sonst `kind="job"` mit dem Auftrag (Ziel, Start;
+     bernstein, solange er läuft). Weder noch: `bar` weglassen.
+   - **`aside`** = Schublade links: `PanelSection`s mit Symbol und `summary` (die wichtigsten Werte,
+     auch zugeklappt sichtbar). Felder als `Field`/`Checkbox` mit `hint` – Erklärungen hinter
+     dem ⓘ (`InfoTip`), keine Absätze unter jeder Option. **Keine Aktionen** in die Schublade
+     (Start, Import, Export, Ein/Aus) – die gehören in Leiste oder Arbeitsfläche.
+   - Was die ganze App betrifft, gehört ins App-Menü (`components/app/AppMenu.tsx`), nie ins
+     Werkzeug. Die Kopfleiste (`ToolHost`) baut das Werkzeug nicht selbst.
+   - Bausteine aus `components/ui`, Eingabefelder mit Puffer (`useDraft`, `TextField`,
+     `NumberField`), Farben nur über Tailwind-Tokens (`primary`, `border` …; Rot ist „live“).
+     Texte deutsch.
 5. **Speichern – drei Orte, nie ein eigener localStorage-Parser:**
    - Einstellungen, die main braucht (Pfade, Geräte): `settings.json` über `useSettings(sel)` und
      `updateSettings(patch)`; neues Feld in `AppSettings` und `DEFAULT_SETTINGS` (`shared/types.ts`),

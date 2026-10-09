@@ -148,12 +148,13 @@ export async function startTimerNdi(cfg: TimerNdiConfig): Promise<TimerNdiStatus
   })
   win.webContents.setFrameRate(config.fps)
   win.webContents.on('paint', (_e, _dirty, image) => pushFrame(g, image))
+  // externes Schließen (z.B. App-Ende) -> sauber stoppen. Nur das AKTUELLE Fenster: 'closed'
+  // kann nach einem Neustart des Senders kommen, wenn schon das neue in `win` steht.
+  const self = win
   win.on('closed', () => {
-    // externes Schließen (z.B. App-Ende) -> sauber stoppen
-    if (win) {
-      win = null
-      stopTimerNdi()
-    }
+    if (win !== self) return
+    win = null
+    stopTimerNdi()
   })
 
   const devUrl = process.env['ELECTRON_RENDERER_URL']

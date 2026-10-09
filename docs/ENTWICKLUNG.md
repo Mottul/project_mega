@@ -181,7 +181,12 @@ Dazu gilt:
 
 **Fertig heißt:**
 
-- Layout über `ToolShell` (Inhalt + Seiten-Panel) bzw. `toolPageClass()` für schmale Seiten;
+- Layout über `ToolShell` (siehe [WERKZEUGE.md](WERKZEUGE.md#startbildschirm--bedienung)):
+  `bar` = `ToolBar` (Ausgabe mit `BarToggle` für NDI/Handy, `active` = live; oder `kind="job"`
+  für den Auftrag), `aside` = Schublade aus `PanelSection`s mit `summary`, Felder als `Field`
+  mit `hint` (ⓘ statt Absatz). Aktionen gehören in Leiste oder Arbeitsfläche, nie in die
+  Schublade; was die ganze App betrifft, ins App-Menü (`components/app/AppMenu.tsx`). Schmale
+  Seiten ohne Einstellungen: `toolPageClass()`;
 - Bausteine aus `components/ui` (Select, Progress, Badge, NumberField …) statt eigener Varianten;
 - Speichern nach [Was wohin gehört](#was-wohin-gehört): Einstellungen in `settings.json`,
   Arbeitsdaten im Store **mit `version`** und `syncAcrossWindows`, Kleinigkeiten per

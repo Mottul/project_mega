@@ -55,7 +55,15 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
-import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
+import {
+  BarDivider,
+  BarToggle,
+  PanelSection,
+  ToolBar,
+  ToolShell
+} from '@renderer/components/ToolShell'
+import { Badge } from '@renderer/components/ui/badge'
+import { Field as SettingField } from '@renderer/components/ui/field'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
@@ -861,17 +869,17 @@ export function OscControl(): JSX.Element {
 
             <div className="flex-1" />
 
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className={cn('size-2.5 rounded-full', statusDot)} />
-              <span className="tabular-nums">
-                {status ? `${status.host}:${status.outPort}` : '–'}
-              </span>
-              {status?.listening && (
-                <span className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs">
-                  <Radio className="size-3" /> {status.inPort}
-                </span>
-              )}
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                if (mode !== 'edit') setStore({ mode: 'edit' })
+                setPicker({ x: Math.max(8, r.left - 140), y: r.bottom + 4 })
+              }}
+            >
+              <Plus className="size-4" /> Widget
+            </Button>
 
             {/* Geräte-Vorschau */}
             <div className="flex overflow-hidden rounded-md border border-border">
@@ -1025,22 +1033,12 @@ export function OscControl(): JSX.Element {
 
   const aside = (
     <>
-      <div className="border-b border-border p-3">
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full justify-center"
-          onClick={(e) => {
-            const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-            if (mode !== 'edit') setStore({ mode: 'edit' })
-            setPicker({ x: Math.max(8, r.left - 140), y: r.bottom + 4 })
-          }}
-        >
-          <Plus className="size-4" /> Widget hinzufügen
-        </Button>
-      </div>
-
-      <PanelSection id="widget" title="Widget" icon={Settings2}>
+      <PanelSection
+        id="widget"
+        title="Widget"
+        icon={Settings2}
+        summary={selected ? selected.label || selected.address || 'ohne Namen' : 'keins gewählt'}
+      >
         {selected ? (
           <WidgetEditor
             key={selected.id}
@@ -1070,6 +1068,11 @@ export function OscControl(): JSX.Element {
         id="connection"
         title="Verbindung"
         icon={Radio}
+        summary={
+          status
+            ? `${status.host}:${status.outPort}${status.listening ? ` · Feedback ${status.inPort}` : ''}`
+            : undefined
+        }
         right={<span className={cn('size-2.5 rounded-full', statusDot)} />}
       >
         <ConnectionPanel
@@ -1084,39 +1087,22 @@ export function OscControl(): JSX.Element {
         id="osc-remote"
         title="Fernsteuerung"
         icon={Wifi}
-        right={
-          <span
-            className={cn(
-              'size-2.5 rounded-full',
-              remote?.running ? 'bg-emerald-500' : 'bg-muted-foreground'
-            )}
-          />
-        }
+        defaultOpen={false}
+        summary={`Port ${remote?.port ?? remotePort} · ${remote?.running ? 'an' : 'aus'}`}
+        right={remote?.running ? <Badge tone="success">an</Badge> : undefined}
       >
-        <p className="text-sm text-muted-foreground">
-          Handy/Tablet im selben WLAN bedient diese Oberfläche (ohne Passwort). Dieses Fenster muss
-          offen bleiben.
-        </p>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-2 text-sm">
-            Port
-            <Input
-              type="number"
-              value={remotePort}
-              onChange={(e) => setRemotePort(Number(e.target.value) || 8091)}
-              disabled={remote?.running}
-              className="h-8 w-24"
-            />
-          </label>
-          <Button
-            variant={remote?.running ? 'outline' : 'default'}
-            size="sm"
-            className="ml-auto"
-            onClick={() => void toggleRemote()}
-          >
-            <Wifi className="size-4" /> {remote?.running ? 'Stoppen' : 'Aktivieren'}
-          </Button>
-        </div>
+        <SettingField
+          label="Port"
+          hint="Handy/Tablet im selben WLAN bedient diese Oberfläche (ohne Passwort). Dieses Fenster muss offen bleiben. Ein/Aus mit „Handy“ in der Ausgabe-Leiste."
+        >
+          <Input
+            type="number"
+            value={remotePort}
+            onChange={(e) => setRemotePort(Number(e.target.value) || 8091)}
+            disabled={remote?.running}
+            className="h-8 w-24"
+          />
+        </SettingField>
         {remote && <RemoteAccess status={remote} />}
       </PanelSection>
 
@@ -1151,7 +1137,45 @@ export function OscControl(): JSX.Element {
     </>
   )
 
-  return <ToolShell id="osc-control" main={main} aside={aside} asideWidth={380} />
+  const bar = (
+    <ToolBar label="Ausgabe">
+      <span className="flex items-center gap-2 text-sm">
+        <span className={cn('size-2.5 rounded-full', statusDot)} />
+        <span className="tabular-nums">
+          {status ? `${status.host}:${status.outPort}` : 'nicht verbunden'}
+        </span>
+        {status?.listening && (
+          <span
+            className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 text-xs"
+            title="Feedback-Port"
+          >
+            <Radio className="size-3" /> {status.inPort}
+          </span>
+        )}
+      </span>
+      {status?.lastError && (
+        <span className="max-w-[20rem] truncate text-xs text-destructive">{status.lastError}</span>
+      )}
+      <BarDivider />
+      <BarToggle
+        on={Boolean(remote?.running)}
+        title="Fernsteuerung fürs Handy/Tablet im selben WLAN"
+        onClick={() => void toggleRemote()}
+      >
+        Handy
+      </BarToggle>
+      <Button
+        variant="ghost"
+        size="sm"
+        title="OSC-Monitor in einem eigenen Fenster öffnen"
+        onClick={() => void api.osc.openMonitor()}
+      >
+        <Activity className="size-4" /> OSC-Monitor
+      </Button>
+    </ToolBar>
+  )
+
+  return <ToolShell id="osc-control" bar={bar} main={main} aside={aside} asideWidth={380} />
 }
 
 /** Eingehendes Feedback in passende Widgets spiegeln (ohne erneut zu senden). */

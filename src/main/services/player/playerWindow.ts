@@ -40,7 +40,11 @@ export function openPlayerOutput(displayId: number): void {
   })
   logLine('[player] Ausgabefenster auf Display', display.id, JSON.stringify(b))
 
+  // Nur das AKTUELLE Fenster darf `win` leeren: Electron meldet 'closed' asynchron – beim
+  // Monitorwechsel steht dann schon das neue Fenster in `win` und ginge sonst verloren.
+  const self = win
   win.on('closed', () => {
+    if (win !== self) return
     win = null
     setOutputOpen(false)
   })

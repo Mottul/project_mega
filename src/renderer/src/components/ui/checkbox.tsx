@@ -1,6 +1,7 @@
 import { cn } from '@renderer/lib/utils'
+import { InfoTip } from './info-tip'
 
-/** Kontrollkästchen mit Beschriftung und optionalem Hinweis darunter. */
+/** Checkbox mit Beschriftung; eine Erklärung steht hinter einem ⓘ statt darunter. */
 export function Checkbox({
   checked,
   onChange,
@@ -15,18 +16,18 @@ export function Checkbox({
   disabled?: boolean
 }): JSX.Element {
   return (
-    <label className={cn('flex items-start gap-2 text-sm', disabled && 'opacity-60')}>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-4 accent-[hsl(var(--primary))]"
-      />
-      <span>
-        {label}
-        {hint && <span className="block text-xs text-muted-foreground">{hint}</span>}
-      </span>
-    </label>
+    <div className={cn('flex items-center gap-2 text-sm', disabled && 'opacity-60')}>
+      <label className="flex min-w-0 items-center gap-2">
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+          className="size-4 shrink-0 accent-[hsl(var(--primary))]"
+        />
+        <span>{label}</span>
+      </label>
+      {hint && <InfoTip text={hint} label={`Erklärung zu „${label}“`} />}
+    </div>
   )
 }
