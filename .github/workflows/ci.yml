@@ -30,8 +30,8 @@ jobs:
       matrix:
         node: ['22.x', '24.x']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -53,8 +53,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '22.x'
           cache: npm
@@ -67,7 +67,7 @@ jobs:
         id: week
         shell: bash
         run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: resources/ffmpeg
           key: ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('scripts/download-ffmpeg.mjs') }}
