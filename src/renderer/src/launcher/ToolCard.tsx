@@ -3,12 +3,13 @@
 // Einfügemarke und Pfeil-Knöpfe zum Sortieren ohne Maus.
 
 import type { CSSProperties, DragEvent } from 'react'
-import { ChevronLeft, ChevronRight, ExternalLink, Star, Wifi } from 'lucide-react'
+import { AppWindow, ChevronLeft, ChevronRight, ExternalLink, Star, Wifi } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
 import { Card } from '@renderer/components/ui/card'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import type { ToolModule } from '@renderer/tools/types'
+import { isSmallTool } from '@shared/toolWindows'
 import type { LauncherTileSize } from '@shared/types'
 import { softHyphenate } from './text'
 import type { ToolActivity } from './useToolActivity'
@@ -94,6 +95,7 @@ export function ToolCard({
 }): JSX.Element {
   const Icon = tool.icon
   const s = SIZE[size]
+  const small = isSmallTool(tool.id)
   return (
     <Card
       role="button"
@@ -152,17 +154,20 @@ export function ToolCard({
           <Star className={cn('size-4', favorite && 'fill-current')} />
         </button>
       </div>
-      <button
-        type="button"
-        title="In neuem Fenster öffnen"
-        onClick={(e) => {
-          e.stopPropagation()
-          void api.openToolWindow(tool.id)
-        }}
-        className="absolute right-9 top-1.5 rounded-md bg-card/90 p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-      >
-        <ExternalLink className="size-4" />
-      </button>
+      {/* Kleine Werkzeuge öffnen sich ohnehin im eigenen Fenster -> kein Extra-Knopf */}
+      {!small && (
+        <button
+          type="button"
+          title="In neuem Fenster öffnen"
+          onClick={(e) => {
+            e.stopPropagation()
+            void api.openToolWindow(tool.id)
+          }}
+          className="absolute right-9 top-1.5 rounded-md bg-card/90 p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
+        >
+          <ExternalLink className="size-4" />
+        </button>
+      )}
       <div className={cn('flex gap-3', s.desc ? 'items-start' : 'items-center')}>
         <div
           className={cn(
@@ -175,18 +180,28 @@ export function ToolCard({
         <div className="min-w-0 flex-1">
           {/* rechts Platz für den Stern; min-w-0 -> Kürzen greift auch in schmalen Spalten */}
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 pr-7">
-            <h3
-              className={cn(
-                'min-w-0 font-medium',
-                s.title,
-                // klein: Name darf zweizeilig sein (sonst bliebe nur „Video-Pla…")
-                s.desc
-                  ? 'max-w-full truncate'
-                  : 'line-clamp-2 hyphens-auto break-words text-[13px] leading-tight'
+            {/* Name und Fenster-Zeichen bleiben in einer Zeile (der Name kürzt sich), sonst
+                bräche das Zeichen um und die Kachel würde höher als die anderen */}
+            <span className="flex min-w-0 max-w-full items-center gap-1.5">
+              <h3
+                className={cn(
+                  'min-w-0 font-medium',
+                  s.title,
+                  // klein: Name darf zweizeilig sein (sonst bliebe nur „Video-Pla…")
+                  s.desc
+                    ? 'max-w-full truncate'
+                    : 'line-clamp-2 hyphens-auto break-words text-[13px] leading-tight'
+                )}
+              >
+                {s.desc ? tool.name : softHyphenate(tool.name)}
+              </h3>
+              {small && (
+                // nur fürs Auge: der Name der Kachel kommt aus aria-label
+                <span title="Öffnet ein eigenes kleines Fenster" className="shrink-0">
+                  <AppWindow className="size-3.5 text-muted-foreground" aria-hidden />
+                </span>
               )}
-            >
-              {s.desc ? tool.name : softHyphenate(tool.name)}
-            </h3>
+            </span>
             {activity && (
               <Badge tone="success" dot className="shrink-0">
                 {activity.label}

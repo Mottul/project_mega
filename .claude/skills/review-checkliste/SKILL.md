@@ -60,6 +60,16 @@ einen Test **mit** und **ohne** Schrägstrich.
   `if (win !== self) return`. Regressionstest: `e2e/layout.mjs` (zweimal öffnen, dann prüfen).
 - **„Live“-Anzeigen** brauchen die Wahrheit aus dem main (Event), nicht den letzten Klick im
   Renderer: Ausgabefenster schließen auch per Esc oder vom Betriebssystem.
+- **Fenster ohne App-Menü** (kleine Werkzeuge): Was app-weit wirkt, darf nicht an einem
+  Bedienelement hängen, das dort fehlt. Die Darstellung hing am App-Menü – ein offenes kleines
+  Fenster bekam Akzent, Design und Kompaktmodus nie mit. Heute `useAppearanceSync` an der
+  App-Wurzel; neue app-weite Zustände ebenso.
+- **Feste, auf einem Rechner gemessene Maße** (Fensterhöhe) stimmen unter Linux/macOS (andere
+  Schrift) und im Kompaktmodus nicht – am echten Inhalt ausrichten. Messen im versteckten
+  Fenster: `requestAnimationFrame`/`ResizeObserver` sind dort gedrosselt, die erste Messung
+  synchron.
+- **macOS beendet die App mit dem letzten Fenster nicht** – Tests, die auf das Ende warten,
+  dort anders prüfen (Fensterzahl).
 
 ## Vor dem Abschluss
 

@@ -1,7 +1,17 @@
-import { app, BrowserWindow, ipcMain, protocol, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, screen, shell, type WebContents } from 'electron'
 import { existsSync, renameSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { APP_NAME, PREVIOUS_APP_NAMES } from '@shared/brand'
+import {
+  fitHeight,
+  isSmallTool,
+  OWN_WINDOW_PARAM,
+  restoreBounds,
+  TOOL_WINDOW,
+  toolWindowSize,
+  type ToolWindowSize,
+  type WindowBounds
+} from '@shared/toolWindows'
 import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import {
   attachWindow,
@@ -28,6 +38,7 @@ import { closeTimerOutput } from './services/timerWindow'
 import { stopTimerNdi } from './services/timerNdi'
 import { stopPlayerNdi } from './services/playerNdi'
 import { checkOnStartup } from './services/ytdlp/ytDlp'
+import { getSettings, setSettings } from './services/store'
 
 const isDev = !app.isPackaged
 
@@ -72,13 +83,29 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 // Erstellt ein App-Fenster. `hash` = Start-Route (z.B. "/tool/jingle-player");
-// `isMain` = das Hauptfenster, das beim Schließen die Vollbild-Ausgaben mitnimmt.
-function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWindow {
+// `isMain` = das Hauptfenster, das beim Schließen die Vollbild-Ausgaben und die Fenster der
+// kleinen Werkzeuge mitnimmt.
+// `size`/`bounds`: kleine Werkzeuge bekommen ein passend kleines Fenster (Inhaltsgröße).
+// `deferShow`: Der Aufrufer zeigt das Fenster selbst (kleine Werkzeuge erst mit passender Höhe).
+function createWindow(
+  opts: {
+    hash?: string
+    isMain?: boolean
+    size?: ToolWindowSize
+    bounds?: WindowBounds | null
+    deferShow?: boolean
+  } = {}
+): BrowserWindow {
+  const size = opts.size ?? TOOL_WINDOW
+  const small = size !== TOOL_WINDOW
   const win = new BrowserWindow({
-    width: 1240,
-    height: 840,
-    minWidth: 960,
-    minHeight: 620,
+    width: opts.bounds?.width ?? size.width,
+    height: opts.bounds?.height ?? size.height,
+    ...(opts.bounds ? { x: opts.bounds.x, y: opts.bounds.y } : {}),
+    minWidth: size.minWidth,
+    minHeight: size.minHeight,
+    // Maße der kleinen Fenster meinen den Inhalt (gemessen an der Seite), nicht den Rahmen
+    useContentSize: small,
     show: false,
     backgroundColor: '#09090b',
     autoHideMenuBar: true,
@@ -98,17 +125,19 @@ function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWi
     }
   })
 
-  win.once('ready-to-show', () => win.show())
+  if (!opts.deferShow) win.once('ready-to-show', () => win.show())
   // Pinch-/Strg-Rad-Seitenzoom des ganzen Fensters abschalten -> der PDF-Viewer
   // steuert den Zoom selbst (sonst zoomt/scrollt die ganze App ungewollt).
   win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
   // Nur das Hauptfenster nimmt die Vollbild-Ausgaben (Testbild/Player/Timer) mit;
-  // Zusatzfenster (z.B. parallel geöffnete Tools) lassen sie weiterlaufen.
+  // Zusatzfenster (z.B. parallel geöffnete Tools) lassen sie weiterlaufen. Die kleinen
+  // Werkzeuge gehen mit: Ihre Fenster haben keinen Weg zurück zum Startbildschirm.
   if (opts.isMain) {
     win.on('closed', () => {
       closePattern()
       closePlayerOutput()
       closeTimerOutput()
+      closeSmallToolWindows()
     })
   }
 
@@ -140,9 +169,99 @@ function createWindow(opts: { hash?: string; isMain?: boolean } = {}): BrowserWi
   return win
 }
 
+// Fenster der kleinen Werkzeuge: je Werkzeug höchstens eines (ein zweiter Klick holt es nach
+// vorn), Lage und Breite gemerkt (settings.json, toolWindowBounds), die Höhe folgt dem Inhalt
+// (fitToolWindow). Sichtbar erst mit passender Höhe – sonst spränge es beim Öffnen.
+const smallToolWindows = new Map<string, BrowserWindow>()
+const awaitingShow = new Set<BrowserWindow>()
+/** Meldet die Seite ihre Höhe nicht (Fehler beim Laden), erscheint das Fenster trotzdem. */
+const SHOW_FALLBACK_MS = 1500
+
+function showWhenFitted(win: BrowserWindow): void {
+  if (!awaitingShow.delete(win) || win.isDestroyed()) return
+  win.show()
+}
+
 /** Öffnet ein Tool in einem EIGENEN Fenster (parallel zum Hauptfenster). */
-export function openToolWindow(id: string): void {
-  createWindow({ hash: `/tool/${id}` })
+export function openToolWindow(id: unknown): void {
+  // kommt aus dem Renderer -> nur eine schlichte Werkzeug-Kennung
+  if (typeof id !== 'string' || !/^[a-z0-9-]{1,40}$/.test(id)) return
+  const hash = `/tool/${id}?${OWN_WINDOW_PARAM}=1`
+  if (!isSmallTool(id)) {
+    createWindow({ hash })
+    return
+  }
+  const open = smallToolWindows.get(id)
+  if (open && !open.isDestroyed()) {
+    if (open.isMinimized()) open.restore()
+    open.show()
+    open.focus()
+    return
+  }
+  const size = toolWindowSize(id)
+  const areas = screen.getAllDisplays().map((d) => d.workArea)
+  const win = createWindow({
+    hash,
+    size,
+    bounds: restoreBounds(getSettings().toolWindowBounds[id], areas, size),
+    deferShow: true
+  })
+  smallToolWindows.set(id, win)
+  awaitingShow.add(win)
+  win.once('ready-to-show', () =>
+    setTimeout(() => {
+      // im Log, damit ein Sprung beim Öffnen auffällt (e2e/layout.mjs prüft darauf)
+      if (awaitingShow.has(win)) logLine('[fenster] keine Höhe gemeldet, zeige ungemessen:', id)
+      showWhenFitted(win)
+    }, SHOW_FALLBACK_MS)
+  )
+  // 'closed' kommt erst später: Ein Klick in dieser Zeit holte sonst ein sterbendes Fenster
+  // nach vorn, statt ein neues zu öffnen -> schon bei 'close' austragen.
+  const release = (): void => {
+    if (smallToolWindows.get(id) === win) smallToolWindows.delete(id)
+  }
+  win.on('close', () => {
+    release()
+    // minimiert (Windows meldet dann -32000), maximiert oder Vollbild stimmt die Lage nicht
+    // -> die zuletzt gemerkte normale behalten
+    if (win.isMinimized() || win.isMaximized() || win.isFullScreen()) return
+    const [x, y] = win.getPosition()
+    const [width, height] = win.getContentSize()
+    setSettings({ toolWindowBounds: { [id]: { x, y, width, height } } })
+  })
+  win.on('closed', () => {
+    release()
+    awaitingShow.delete(win)
+  })
+}
+
+/**
+ * Kleines Werkzeugfenster auf die gemeldete Inhaltshöhe bringen: passt sich Schrift (Linux,
+ * macOS), Kompaktmodus und Breite an, statt einer festen, auf einem Rechner gemessenen Höhe.
+ * Höher als der Bildschirm wird es nie (dann scrollt die Seite); wächst es über den unteren
+ * Rand, rückt es nach oben. Maximiert oder im Vollbild bleibt die Größe, wie sie ist.
+ */
+function fitToolWindow(sender: WebContents, requested: unknown): void {
+  const win = BrowserWindow.fromWebContents(sender)
+  const id = win && [...smallToolWindows].find(([, w]) => w === win)?.[0]
+  if (!win || !id || win.isDestroyed()) return
+  if (!win.isMaximized() && !win.isFullScreen()) {
+    const area = screen.getDisplayMatching(win.getBounds()).workArea
+    const [contentWidth, contentHeight] = win.getContentSize()
+    const frame = win.getSize()[1] - contentHeight
+    const height = fitHeight(requested, area.height - frame, toolWindowSize(id).minHeight)
+    if (height != null && height !== contentHeight) {
+      win.setContentSize(contentWidth, height)
+      const b = win.getBounds()
+      const bottom = area.y + area.height
+      if (b.y + b.height > bottom) win.setPosition(b.x, Math.max(area.y, bottom - b.height))
+    }
+  }
+  showWhenFitted(win)
+}
+
+function closeSmallToolWindows(): void {
+  for (const win of [...smallToolWindows.values()]) if (!win.isDestroyed()) win.close()
 }
 
 // Einmalige userData-Übernahme nach der Umbenennung: heißt der App-Ordner neu
@@ -179,7 +298,8 @@ app.whenReady().then(() => {
   registerMediaProtocol()
   registerJingleProtocol()
   registerIpcHandlers()
-  ipcMain.handle(Channels.windowOpenTool, (_e, id: string) => openToolWindow(id))
+  ipcMain.handle(Channels.windowOpenTool, (_e, id: unknown) => openToolWindow(id))
+  ipcMain.handle(Channels.windowFitContent, (e, height: unknown) => fitToolWindow(e.sender, height))
   ipcMain.handle(Channels.windowOpenOscMonitor, () => {
     createWindow({ hash: '/osc-monitor' })
   })

@@ -48,10 +48,13 @@ try {
       }
     ],
     [
-      'Werkzeug öffnet sich über die Route /tool/timecode',
+      'Werkzeug öffnet sich über die Route /tool/media-info',
       async () => {
-        await openRoute(page, '/tool/timecode')
-        await page.getByText('Drop-Frame', { exact: false }).first().waitFor({ timeout: 10_000 })
+        await openRoute(page, '/tool/media-info')
+        await page
+          .getByText('Videodateien oder Ordner hier ablegen')
+          .first()
+          .waitFor({ timeout: 10_000 })
       }
     ],
     [

@@ -194,6 +194,7 @@ export const Channels = {
   playerNdiTapError: 'player:ndiTapError', // Renderer (NDI-Spiegel) -> main: Audio-Tap-Fehler
   // Fenster
   windowOpenTool: 'window:openTool', // Tool in eigenem Fenster öffnen
+  windowFitContent: 'window:fitContent', // kleines Werkzeugfenster auf Inhaltshöhe bringen
   // Werkzeuge
   utilExportPdf: 'util:exportPdf', // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
   utilSaveText: 'util:saveText', // Text/JSON in Datei speichern (Save-Dialog)
@@ -288,6 +289,11 @@ export interface ToolboxApi {
   pathForFile(file: File): string
   /** Öffnet ein Tool in einem eigenen Fenster (parallele Nutzung). */
   openToolWindow(id: string): Promise<void>
+  /**
+   * Kleines Werkzeugfenster: gemessene Inhaltshöhe (Kopfleiste + Seite, CSS-px) melden – main
+   * passt die Fensterhöhe an (Schrift je System, Kompaktmodus, Breite). Andere Fenster: nichts.
+   */
+  fitToolWindow(height: number): Promise<void>
 
   ffmpeg: {
     probe(path: string): Promise<ProbeResult>

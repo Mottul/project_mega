@@ -49,10 +49,23 @@ Jedes Werkzeug ist gleich aufgebaut:
   Handy-Fernsteuerung des Werkzeugs aktiv ist. Alle Kacheln einer Größe sind gleich hoch, auch
   bei kurzer Beschreibung. Der Handy-Knopf oben
   zeigt den QR-Code der [Fernsteuer-App](FERNSTEUERUNG.md).
-- **Eigene Fenster:** Jedes Werkzeug lässt sich zusätzlich in einem eigenen Fenster öffnen
-  („In neuem Fenster öffnen“ an der Kachel, „Eigenes Fenster“ in der Kopfleiste) – etwa Video-Player, Jingles
-  und Rechner gleichzeitig. Ist ein Werkzeug in mehreren Fenstern offen, zeigen alle denselben
+- **Eigene Fenster:** Jedes große Werkzeug lässt sich zusätzlich in einem eigenen Fenster öffnen
+  („In neuem Fenster öffnen“ an der Kachel, „Eigenes Fenster“ in der Kopfleiste) – etwa Video-Player
+  und Jingles gleichzeitig. Ist ein Werkzeug in mehreren Fenstern offen, zeigen alle denselben
   Stand; Änderungen kommen nach spätestens einer halben Sekunde in den anderen Fenstern an.
+- **Kleine Werkzeuge** (Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay,
+  Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last; an der Kachel ein
+  kleines Fenster-Zeichen) öffnen sich **immer in einem eigenen, passend kleinen Fenster**, nie im
+  Hauptfenster – das bleibt für die großen Werkzeuge frei. Je Werkzeug gibt es höchstens ein
+  Fenster; ein zweiter Klick holt es nach vorn. **Die Höhe folgt dem Inhalt** (auch im
+  Kompaktmodus und nach dem Breiterziehen), höchstens bis zur Bildschirmhöhe. Die Breite lässt
+  sich bis 320 px verringern – dann stehen die Beschriftungen über den Feldern. Rechner mit zwei
+  Bereichen legen sie nebeneinander, sobald das Fenster breit genug ist (etwa 770 px);
+  Stromlast, Kameraobjektiv und Rigging-Last öffnen gleich so breit. Breite und Lage merkt sich
+  die App (liegt die gemerkte Lage auf einem abgesteckten Bildschirm, erscheint es mittig). Die
+  Kopfleiste zeigt nur den Namen; wer das Hauptfenster schließt, schließt die kleinen Fenster
+  mit. Formeln, Hintergründe und Beispiele stehen hinter dem **ⓘ** am Bereich oder Feld;
+  Zahlen schreiben und zeigen die Rechner mit Komma.
 - **Kundenansicht:** „Kundenansicht“ in der Kopfleiste eines Werkzeugs sperrt es
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,

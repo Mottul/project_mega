@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, SectionCard, SelectField, fmt, parseNum } from '../_calc/ui'
+import {
+  CalcPage,
+  NumField,
+  Readout,
+  SectionCard,
+  SelectField,
+  fmt,
+  parseNum,
+  trimNum
+} from '../_calc/ui'
 import { angleOfView, diag, equiv35, fovAtDistance, framingLabel } from './optics'
 
 // Kameraobjektiv-Rechner: aus Brennweite, Sensor, optionalem Telekonverter
@@ -10,8 +19,8 @@ import { angleOfView, diag, equiv35, fovAtDistance, framingLabel } from './optic
 
 const SENSORS: { key: string; label: string; w: number; h: number }[] = [
   { key: 'ff', label: 'Vollformat (Kleinbild)', w: 36, h: 24 },
-  { key: 'apsc', label: 'APS-C (Nikon/Sony, 1.5×)', w: 23.5, h: 15.6 },
-  { key: 'apsc-c', label: 'APS-C (Canon, 1.6×)', w: 22.3, h: 14.9 },
+  { key: 'apsc', label: 'APS-C (Nikon/Sony, 1,5×)', w: 23.5, h: 15.6 },
+  { key: 'apsc-c', label: 'APS-C (Canon, 1,6×)', w: 22.3, h: 14.9 },
   { key: 's35', label: 'Super 35 (Cine)', w: 24.89, h: 18.66 },
   { key: 'mft', label: 'MFT / Four Thirds (2×)', w: 17.3, h: 13 },
   { key: '1in', label: '1 Zoll', w: 13.2, h: 8.8 },
@@ -20,8 +29,8 @@ const SENSORS: { key: string; label: string; w: number; h: number }[] = [
 
 const TELECONV: { key: string; label: string; f: number }[] = [
   { key: '1', label: 'keiner (1×)', f: 1 },
-  { key: '1.4', label: '1.4× Telekonverter', f: 1.4 },
-  { key: '1.7', label: '1.7× Telekonverter', f: 1.7 },
+  { key: '1.4', label: '1,4× Telekonverter', f: 1.4 },
+  { key: '1.7', label: '1,7× Telekonverter', f: 1.7 },
   { key: '2', label: '2× Telekonverter (Doppler)', f: 2 }
 ]
 
@@ -32,14 +41,14 @@ export function CameraLens(): JSX.Element {
   const [focalRaw, setFocalRaw] = useState('200')
   const [tcKey, setTcKey] = useState('1')
   const [distRaw, setDistRaw] = useState('25')
-  const [personRaw, setPersonRaw] = useState('1.75')
+  const [personRaw, setPersonRaw] = useState('1,75')
 
   function pickSensor(key: string): void {
     setSensorKey(key)
     const s = SENSORS.find((x) => x.key === key)
     if (s) {
-      setSensorWRaw(String(s.w))
-      setSensorHRaw(String(s.h))
+      setSensorWRaw(trimNum(s.w))
+      setSensorHRaw(trimNum(s.h))
     }
   }
 
@@ -76,9 +85,14 @@ export function CameraLens(): JSX.Element {
     <CalcPage>
       <SectionCard
         title="Kamera & Objektiv"
-        desc="Sensor wählen (oder Maße eintippen), Brennweite und – falls genutzt – einen Telekonverter."
+        desc="Sensor, Brennweite und ggf. Telekonverter wählen."
       >
-        <SelectField label="Sensor" value={sensorKey} onChange={pickSensor}>
+        <SelectField
+          label="Sensor"
+          hint="Aus der Liste wählen oder Breite und Höhe selbst eintragen (Datenblatt der Kamera)."
+          value={sensorKey}
+          onChange={pickSensor}
+        >
           {SENSORS.map((s) => (
             <option key={s.key} value={s.key}>
               {s.label}
@@ -105,12 +119,18 @@ export function CameraLens(): JSX.Element {
           }}
         />
         <NumField
-          label="Brennweite (max. Zoom)"
+          label="Brennweite"
+          hint="Die längste Brennweite des Objektivs (maximaler Zoom) – für den engsten Ausschnitt."
           unit="mm"
           value={focalRaw}
           onChange={setFocalRaw}
         />
-        <SelectField label="Telekonverter" value={tcKey} onChange={setTcKey}>
+        <SelectField
+          label="Telekonverter"
+          hint="Verlängert die Brennweite um seinen Faktor (ein 2×-Konverter heißt auch „Doppler“) und kostet Licht: 1,4× eine, 2× zwei Blendenstufen."
+          value={tcKey}
+          onChange={setTcKey}
+        >
           {TELECONV.map((t) => (
             <option key={t.key} value={t.key}>
               {t.label}
@@ -118,9 +138,15 @@ export function CameraLens(): JSX.Element {
           ))}
         </SelectField>
         {tc !== 1 && <Readout label="Effektive Brennweite" value={fmt(focalEff, 0)} unit="mm" />}
-        <Readout label="KB-Äquivalent" value={fmt(equiv, 0)} unit="mm" accent />
         <Readout
-          label="Bildwinkel (horiz. × vert.)"
+          label="KB-Äquivalent"
+          hint="Die Brennweite, die an Vollformat (Kleinbild) denselben Bildwinkel ergibt."
+          value={fmt(equiv, 0)}
+          unit="mm"
+          accent
+        />
+        <Readout
+          label="Bildwinkel (B × H)"
           value={aovH != null && aovV != null ? `${fmt(aovH, 1)} × ${fmt(aovV, 1)}` : ''}
           unit="°"
         />
@@ -128,28 +154,25 @@ export function CameraLens(): JSX.Element {
 
       <SectionCard
         title="Motiv & Bildausschnitt"
-        desc="Entfernung zur Person eingeben – die Visualisierung zeigt, wie viel bei maximalem Zoom ins Bild passt."
+        desc="Wie viel der Person passt bei maximalem Zoom ins Bild?"
+        hint="Näherung (Lochkamera): Sichtfeld = Entfernung × Sensormaß ÷ Brennweite. Beispiel: 200 mm an Vollformat in 25 m ergibt ein etwa 3 m hohes Sichtfeld – die ganze Person passt; mit 2×-Konverter (400 mm) bleiben etwa 1,5 m, also ab der Hüfte aufwärts."
       >
         <NumField label="Entfernung zur Person" unit="m" value={distRaw} onChange={setDistRaw} />
         <NumField label="Personengröße" unit="m" value={personRaw} onChange={setPersonRaw} />
         <Readout
-          label="Sichtfeld bei dieser Entfernung"
+          label="Sichtfeld"
           value={fovW != null && fovH != null ? `${fmt(fovW, 2)} × ${fmt(fovH, 2)}` : ''}
-          unit="m (B×H)"
+          unit="m (B × H)"
         />
         <Readout
           label={ratio != null ? framingLabel(ratio) : 'Bildausschnitt'}
+          hint="Anteil der Körperhöhe, der ins Bild passt – mit der Kamera mittig auf die Person gerichtet."
           value={visiblePct != null ? fmt(visiblePct, 0) : ''}
-          unit="% der Körperhöhe im Bild"
+          unit="% im Bild"
           accent
           big
         />
         <FramingView fovH={fovH} person={person} sensorW={sensorW} sensorH={sensorH} />
-        <p className="pt-1 text-xs text-muted-foreground">
-          Näherung (Lochkamera): Sichtfeld = Entfernung × Sensormaß ÷ Brennweite. Beispiel: 200 mm
-          auf Vollformat in 25 m → ~3 m hohes Sichtfeld, die ganze Person passt locker; mit
-          2×-Doppler (400 mm) bleiben ~1,5 m → etwa ab der Hüfte aufwärts.
-        </p>
       </SectionCard>
     </CalcPage>
   )
@@ -179,7 +202,7 @@ function FramingView({
   ) {
     return (
       <div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border text-center text-xs text-muted-foreground">
-        Brennweite, Sensor, Entfernung und Personengröße eingeben.
+        Sensor, Brennweite, Entfernung und Personengröße eingeben.
       </div>
     )
   }
@@ -208,8 +231,10 @@ function FramingView({
   const legW = torsoW * 0.42
   const legGap = torsoW * 0.14
   const feetY = top + personPx
-  const personShapes = (fill: string, opacity: number): JSX.Element => (
-    <g fill={fill} opacity={opacity}>
+  // Farben über Klassen (Akzent als Token), nicht als SVG-Attribut – dort wirken keine
+  // CSS-Variablen.
+  const personShapes = (className: string): JSX.Element => (
+    <g className={className}>
       <circle cx={cx} cy={headCy} r={headR} />
       <rect
         x={cx - torsoW / 2}
@@ -253,9 +278,9 @@ function FramingView({
           strokeWidth={1}
         />
         {/* ganze Person gedämpft */}
-        {personShapes('currentColor', 0.22)}
+        {personShapes('fill-current opacity-[0.22]')}
         {/* im Rahmen sichtbarer Teil in Akzentfarbe */}
-        <g clipPath="url(#camframe)">{personShapes('#ffce2c', 1)}</g>
+        <g clipPath="url(#camframe)">{personShapes('fill-primary')}</g>
         {/* Kamerarahmen */}
         <rect
           x={fx}
@@ -263,7 +288,7 @@ function FramingView({
           width={frameW}
           height={frameH}
           fill="none"
-          stroke="#ffce2c"
+          className="stroke-primary"
           strokeWidth={2}
           rx={3}
         />

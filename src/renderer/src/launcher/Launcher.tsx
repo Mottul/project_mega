@@ -7,6 +7,7 @@ import { Input } from '@renderer/components/ui/input'
 import { AppMenu } from '@renderer/components/app/AppMenu'
 import { api } from '@renderer/lib/api'
 import { APP_NAME } from '@shared/brand'
+import { isSmallTool } from '@shared/toolWindows'
 import { MottulboxLogo } from '@renderer/components/MottulboxLogo'
 import { cn } from '@renderer/lib/utils'
 import { findTool, tools } from '@renderer/tools/registry'
@@ -142,7 +143,10 @@ export function Launcher(): JSX.Element {
       remote={remoteTools.has(tool.id)}
       favorite={prefs.isFavorite(tool.id)}
       {...extras}
-      onOpen={() => navigate(`/tool/${tool.id}`)}
+      // kleine Werkzeuge immer im eigenen Fenster, nie im Hauptfenster (shared/toolWindows)
+      onOpen={() =>
+        isSmallTool(tool.id) ? void api.openToolWindow(tool.id) : navigate(`/tool/${tool.id}`)
+      }
       onToggleFavorite={() => prefs.toggle(tool.id)}
     />
   )

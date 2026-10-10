@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, SectionCard, fmt, parseNum, trimNum } from '../_calc/ui'
+import {
+  CalcPage,
+  NumField,
+  Readout,
+  SectionCard,
+  fmt,
+  parseNum,
+  trimNum,
+  ReadoutGrid
+} from '../_calc/ui'
 
 // Audio-Delay (Lautsprecher-Laufzeit) & SPL über Distanz.
 // Schallgeschwindigkeit temperaturabhängig: c = 331.3 + 0.606·T (m/s).
@@ -69,20 +78,28 @@ export function AudioDelay(): JSX.Element {
     <CalcPage>
       <SectionCard
         title="Delay (Laufzeit)"
-        desc="Verzögerung für ein Delay-/Stütz-System aus der Distanz – ein Feld eingeben, das andere folgt."
+        desc="Distanz oder Delay eingeben – das andere folgt."
+        hint="Verzögerung für Delay- und Stützlautsprecher, damit ihr Schall zeitgleich mit dem der Hauptanlage ankommt. Distanz = Abstand zwischen Haupt- und Delay-Lautsprecher in Richtung Publikum."
       >
-        <NumField label="Temperatur" unit="°C" value={tempRaw} onChange={setTempRaw} />
+        <NumField
+          label="Temperatur"
+          hint="Schall wird mit der Wärme schneller: c = 331,3 + 0,606 · T m/s (etwa 0,6 m/s je °C)."
+          unit="°C"
+          value={tempRaw}
+          onChange={setTempRaw}
+        />
         <NumField label="Distanz" unit="m" {...bindDelay('dist')} />
         <NumField label="Delay" unit="ms" {...bindDelay('delay')} />
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Readout label="Schallgeschw." value={fmt(c, 1)} unit="m/s" />
+        <ReadoutGrid>
+          <Readout label="Schallgeschwindigkeit" value={fmt(c, 1)} unit="m/s" />
           <Readout label="bei 48 kHz" value={fmt(samples48, 0)} unit="Samples" />
-        </div>
+        </ReadoutGrid>
       </SectionCard>
 
       <SectionCard
         title="Pegel über Distanz"
-        desc="Freifeld-Abnahme: −6 dB je Verdopplung der Entfernung (Inverse-Square)."
+        desc="Wie laut ist es weiter hinten?"
+        hint="Im Freifeld fällt der Pegel um 6 dB je Verdopplung der Entfernung (Abstandsgesetz). In Räumen fällt er durch Reflexionen weniger stark."
       >
         <NumField label="Pegel (Referenz)" unit="dB" value={splRaw} onChange={setSplRaw} />
         <NumField label="Referenz-Distanz" unit="m" value={dRefRaw} onChange={setDRefRaw} />

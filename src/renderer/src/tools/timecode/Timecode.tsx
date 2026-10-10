@@ -1,5 +1,16 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, SectionCard, SelectField, fmt, parseNum } from '../_calc/ui'
+import {
+  CalcAlert,
+  CalcPage,
+  NumField,
+  Readout,
+  SectionCard,
+  SelectField,
+  fmt,
+  parseNum,
+  trimNum,
+  ReadoutGrid
+} from '../_calc/ui'
 import {
   formatRealtime,
   formatTc,
@@ -43,7 +54,7 @@ export function Timecode(): JSX.Element {
   const vals: Record<Driver, string> = {
     tc: frames != null ? formatTc(framesToTc(frames, rate), rate) : '',
     frames: frames != null ? String(frames) : '',
-    real: frames != null ? String(Number(framesToSeconds(frames, rate).toFixed(4))) : ''
+    real: frames != null ? trimNum(framesToSeconds(frames, rate), 4) : ''
   }
 
   function bind(field: Driver): {
@@ -81,9 +92,14 @@ export function Timecode(): JSX.Element {
     <CalcPage>
       <SectionCard
         title="Timecode ↔ Frames ↔ Echtzeit"
-        desc="Ein Feld eingeben – die anderen folgen. Drop-Frame (29,97/59,94) lässt Frame-NUMMERN aus, keine Bilder; Schreibweise mit Semikolon (hh:mm:ss;ff)."
+        desc="Ein Feld eingeben – die übrigen folgen."
       >
-        <SelectField label="Framerate" value={rateKey} onChange={setRateKey}>
+        <SelectField
+          label="Framerate"
+          hint="Drop-Frame (29,97 und 59,94 fps) lässt Frame-NUMMERN aus, keine Bilder – Schreibweise mit Semikolon (hh:mm:ss;ff). 1 h Drop-Frame-Timecode ≙ 3599,996 s Echtzeit; Non-Drop läuft der Uhr je Stunde 3,6 s davon."
+          value={rateKey}
+          onChange={setRateKey}
+        >
           {TC_RATES.map((r) => (
             <option key={r.key} value={r.key}>
               {r.label}
@@ -99,21 +115,15 @@ export function Timecode(): JSX.Element {
           accent
         />
         {driver === 'tc' && raw.trim() !== '' && frames == null && (
-          <p className="text-xs text-destructive">
-            Ungültiger Timecode – Format hh:mm:ss:ff, Frames &lt; {rate.nominal}.
-          </p>
-        )}
-        {rate.drop && (
-          <p className="pt-1 text-xs text-muted-foreground">
-            Drop-Frame: 1 h Timecode ≙ 3599,996 s Echtzeit (kompensiert die NTSC-Rate). Non-Drop
-            läuft pro Stunde 3,6 s der Uhr davon.
-          </p>
+          <CalcAlert tone="danger">
+            Ungültiger Timecode – Format hh:mm:ss:ff, Frames unter {rate.nominal}.
+          </CalcAlert>
         )}
       </SectionCard>
 
       <SectionCard
         title="Dauer zwischen zwei Timecodes"
-        desc="z.B. Clip-Länge aus In- und Out-Punkt (B − A)."
+        desc="Zum Beispiel die Clip-Länge aus In- und Out-Punkt (B − A)."
       >
         <NumField label="Timecode A (In)" placeholder="hh:mm:ss:ff" value={tcA} onChange={setTcA} />
         <NumField
@@ -122,10 +132,10 @@ export function Timecode(): JSX.Element {
           value={tcB}
           onChange={setTcB}
         />
-        <div className="grid gap-2 sm:grid-cols-2">
+        <ReadoutGrid>
           <Readout label="Dauer (Timecode)" value={diffTc} big accent />
           <Readout label="Frames" value={diffFrames != null ? fmt(diffFrames, 0) : ''} />
-        </div>
+        </ReadoutGrid>
         <Readout
           label="Echtzeit"
           value={diffFrames != null ? formatRealtime(framesToSeconds(diffFrames, rate)) : ''}
