@@ -64,6 +64,7 @@ import {
 } from '@renderer/components/ToolShell'
 import { Badge } from '@renderer/components/ui/badge'
 import { Field as SettingField } from '@renderer/components/ui/field'
+import { Alert } from '@renderer/components/ui/alert'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
@@ -713,7 +714,7 @@ export function OscControl(): JSX.Element {
   const statusDot = status
     ? status.lastError
       ? 'bg-destructive'
-      : 'bg-emerald-500'
+      : 'bg-success'
     : 'bg-muted-foreground'
 
   const main = (
@@ -936,7 +937,7 @@ export function OscControl(): JSX.Element {
                 className={cn(
                   'flex items-center gap-1 px-3 py-1.5 text-sm transition-colors',
                   live
-                    ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
+                    ? 'bg-success/20 font-semibold text-success'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -1154,7 +1155,7 @@ export function OscControl(): JSX.Element {
         )}
       </span>
       {status?.lastError && (
-        <span className="max-w-[20rem] truncate text-xs text-destructive">{status.lastError}</span>
+        <span className="max-w-[20rem] truncate text-xs text-danger">{status.lastError}</span>
       )}
       <BarDivider />
       <BarToggle
@@ -2635,7 +2636,7 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
             type="button"
             title="Eintrag entfernen"
             onClick={() => remove(i)}
-            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive"
+            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-danger"
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -2682,7 +2683,7 @@ function TextMeterMappings({ w }: { w: OscWidget }): JSX.Element {
             type="button"
             title="Zuordnung entfernen"
             onClick={() => remove(i)}
-            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive"
+            className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-danger"
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -2832,7 +2833,7 @@ function WidgetEditor({
         <Button variant="outline" size="sm" className="flex-1" onClick={onDuplicate}>
           <Copy className="size-3.5" /> Duplizieren
         </Button>
-        <Button variant="ghost" size="sm" className="flex-1 text-destructive" onClick={onRemove}>
+        <Button variant="ghost" size="sm" className="flex-1 text-danger" onClick={onRemove}>
           <Trash2 className="size-3.5" /> Entfernen
         </Button>
       </div>
@@ -2919,7 +2920,7 @@ function WidgetEditor({
               className={cn(
                 'flex h-9 shrink-0 items-center gap-1 rounded-md border px-2 text-xs transition-colors',
                 learning
-                  ? 'animate-pulse border-emerald-500 text-emerald-400 light:text-emerald-700'
+                  ? 'animate-pulse border-success text-success'
                   : 'border-border text-muted-foreground hover:text-foreground disabled:opacity-40'
               )}
             >
@@ -3116,7 +3117,7 @@ function NovaStarDot(): JSX.Element {
     <span
       className={cn(
         'size-2.5 rounded-full',
-        status?.connected ? 'bg-emerald-500' : 'bg-muted-foreground'
+        status?.connected ? 'bg-success' : 'bg-muted-foreground'
       )}
     />
   )
@@ -3170,9 +3171,9 @@ function NovaStarPanel(): JSX.Element {
           <Wifi className="size-4" /> {connected ? 'Trennen' : 'Verbinden'}
         </Button>
       </div>
-      {status?.lastError && <p className="text-xs text-destructive">Fehler: {status.lastError}</p>}
+      {status?.lastError && <p className="text-xs text-danger">Fehler: {status.lastError}</p>}
       {connected && (
-        <p className="text-xs text-emerald-400 light:text-emerald-700">
+        <p className="text-xs text-success">
           Verbunden {status?.host}:{status?.port}
         </p>
       )}
@@ -3257,11 +3258,7 @@ function ConnectionPanel({
         Feedback empfangen (auf Port {inPort} lauschen)
       </label>
 
-      {status?.lastError && (
-        <p className="rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
-          {status.lastError}
-        </p>
-      )}
+      {status?.lastError && <Alert tone="danger">{status.lastError}</Alert>}
 
       <div className="flex items-center gap-2">
         <Button size="sm" disabled={!dirty || busy} onClick={() => void apply()}>
@@ -3311,7 +3308,7 @@ function Monitor({ log, onClear }: { log: LogEntry[]; onClear: () => void }): JS
               <SlidersHorizontal
                 className={cn(
                   'size-3 shrink-0 translate-y-0.5',
-                  e.dir === 'out' ? 'text-primary' : 'text-emerald-400 light:text-emerald-700'
+                  e.dir === 'out' ? 'text-primary' : 'text-success'
                 )}
               />
               <span className="shrink-0 text-muted-foreground">{e.dir === 'out' ? '→' : '←'}</span>

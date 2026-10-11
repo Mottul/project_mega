@@ -169,8 +169,8 @@ function Tile({
       title={title}
       className={cn(
         'min-w-0 rounded-md border border-border bg-muted/30 px-3 py-2',
-        level === 'warning' && 'border-l-4 border-l-amber-500',
-        level === 'problem' && 'border-l-4 border-l-red-500'
+        level === 'warning' && 'border-l-4 border-l-warning',
+        level === 'problem' && 'border-l-4 border-l-danger'
       )}
     >
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -318,10 +318,10 @@ export function MediaDetail({
     (!entry.info && entry.status !== 'loading' && entry.status !== 'pending')
   ) {
     return (
-      <Card className="space-y-3 border-red-500/40 p-5">
+      <Card className="space-y-3 border-danger/40 p-5">
         <Header name={name} dir={dir} path={entry.path} />
         <div className="flex items-start gap-2 text-sm">
-          <XCircle className="mt-0.5 size-4 shrink-0 text-red-400 light:text-red-600" />
+          <XCircle className="mt-0.5 size-4 shrink-0 text-danger" />
           <div className="min-w-0">
             <p className="font-medium">{entry.error ?? 'Analyse fehlgeschlagen'}</p>
             {entry.detail && (
@@ -753,8 +753,8 @@ function HintList({ hints }: { hints: MediaHint[] }): JSX.Element {
   if (!hints.length) {
     return (
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <CheckCircle2 className="size-4 text-emerald-400 light:text-emerald-700" /> Keine
-        Auffälligkeiten für das gewählte Prüfprofil.
+        <CheckCircle2 className="size-4 text-success" /> Keine Auffälligkeiten für das gewählte
+        Prüfprofil.
       </p>
     )
   }

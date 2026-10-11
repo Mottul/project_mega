@@ -39,7 +39,7 @@ export function RemoteAccess({ status }: { status: RemoteStatus }): JSX.Element 
         </p>
       ) : (
         status.app?.error && (
-          <p className="text-xs text-amber-400 light:text-amber-700">
+          <p className="text-xs text-warning">
             Fernsteuer-App nicht verfügbar ({status.app.error}) – die Adresse oben funktioniert
             trotzdem.
           </p>

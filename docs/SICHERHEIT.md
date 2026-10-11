@@ -91,7 +91,7 @@ durchgehen – beim Schritt 42 → 44 z. B. starten Datei-Dialoge ohne Startpfad
 Prüfen mit `npm audit` (alles) bzw. `npm audit --omit=dev` (nur Laufzeit-Abhängigkeiten – Electron
 selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
 
-**Stand 9. Oktober 2026** – nach den Updates auf Electron 44.5.1, better-sqlite3 13.0.3,
+**Stand 11. Oktober 2026** (unverändert seit 9. Oktober) – nach den Updates auf Electron 44.5.1, better-sqlite3 13.0.3,
 eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhängigkeiten, z. B.
 `source-map-js` 1.2.2):
 

@@ -245,7 +245,7 @@ export function JinglePlayer(): JSX.Element {
             onClick={() => s.set({ mode: 'live' })}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm transition-colors ${
               live
-                ? 'bg-emerald-500/20 font-semibold text-emerald-400 light:text-emerald-700'
+                ? 'bg-success/20 font-semibold text-success'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -716,7 +716,7 @@ function PadSettings({
         <Button
           variant="ghost"
           size="sm"
-          className="text-destructive hover:text-destructive"
+          className="text-danger hover:text-danger"
           onClick={onRemove}
         >
           <Trash2 className="size-4" /> Pad

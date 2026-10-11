@@ -224,7 +224,7 @@ export function OutputPanel({ caps }: { caps: ConvertCapabilities | null }): JSX
         </label>
       )}
       {caps && family && !caps.formats[output.format] && (
-        <p className="text-xs text-destructive">
+        <p className="text-xs text-danger">
           {family.label} kann das gebündelte ffmpeg nicht schreiben – anderes Format wählen.
         </p>
       )}
@@ -492,7 +492,7 @@ export function AudioPanel({
                     <span
                       className={cn(
                         'min-w-0 flex-1 truncate',
-                        m?.kind === 'error' && 'text-destructive'
+                        m?.kind === 'error' && 'text-danger'
                       )}
                       title={m?.kind === 'error' ? `${t}\n${m.message}` : t}
                     >

@@ -34,7 +34,8 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `CalcPage` (`note` nur für Sicherheitshinweise), `SectionCard` mit EINER kurzen `desc`-Zeile,
      Formeln/Hintergrund/Beispiel als `hint` (ⓘ) an Karte, Feld oder Ergebnis – keine Absätze;
      `NumField`/`SelectField`, Ergebnisse als `Readout` (mehrere in `ReadoutGrid` = Kacheln,
-     zweite Einheit per `sub`), Warnungen als `CalcAlert`. Zahlen mit Komma (`trimNum`, `fmt`),
+     zweite Einheit per `sub`), Warnungen als `CalcAlert`; Felder, die sich gegenseitig berechnen,
+     über `useLinkedFields` (nie eigene bind-Funktionen). Zahlen mit Komma (`trimNum`, `fmt`),
      keine hart kodierten Farben (auch nicht im SVG: `fill-primary`). Die id in `SMALL` (und ggf.
      `TWO_COLUMNS`) in `e2e/layout.mjs` aufnehmen – geprüft werden Höhe, 320 px ohne
      Querscrollen und Kompaktmodus.

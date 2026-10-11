@@ -162,7 +162,7 @@ export function PackingList(): JSX.Element {
           type="button"
           disabled={!jobSel}
           onClick={deleteSelectedJob}
-          className="shrink-0 text-muted-foreground hover:text-destructive disabled:opacity-30"
+          className="shrink-0 text-muted-foreground hover:text-danger disabled:opacity-30"
           title="Gewählten Job löschen"
         >
           <Trash2 className="size-4" />
@@ -220,7 +220,7 @@ export function PackingList(): JSX.Element {
                   <button
                     type="button"
                     onClick={() => s.removeCategory(cat)}
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    className="shrink-0 text-muted-foreground hover:text-danger"
                     title="Kategorie löschen (Positionen wandern in die erste Kategorie)"
                   >
                     <X className="size-4" />
@@ -393,7 +393,7 @@ function Row({
         <button
           type="button"
           onClick={() => s.removeItem(item.id)}
-          className="shrink-0 text-muted-foreground hover:text-destructive"
+          className="shrink-0 text-muted-foreground hover:text-danger"
           title="Entfernen"
         >
           <Trash2 className="size-4" />

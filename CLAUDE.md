@@ -39,7 +39,9 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   App-weites (Design, Akzent, ffmpeg, yt-dlp) ins App-Menü `components/app/AppMenu.tsx`.
   Kleine Werkzeuge (Rechner) öffnen sich immer im eigenen, kleinen Fenster: Eintrag mit Breite in
   `SMALL_TOOLS` (`shared/toolWindows.ts`), die Höhe folgt dem Inhalt; Bausteine aus
-  `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ, Zahlen mit Komma).
+  `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ, Zahlen mit Komma, verknüpfte Felder per
+  `useLinkedFields`). Fenster: `main/services/appWindows.ts` (`createWindow`),
+  `smallToolWindows.ts` (kleine Werkzeuge), Hauptfenster in `main/index.ts`.
 - **Tools** liegen unter `src/renderer/src/tools/<id>/` und registrieren sich
   über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).
@@ -81,7 +83,9 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 - Deutsch für UI-Texte und Kommentare; Kommentare erklären das WARUM.
 - Theme: Dunkel ist Standard, Hell über `.light` am `<html>`; Akzentfarbe über
   CSS-Variablen (`@renderer/lib/accent`). Farben immer über Tailwind-Tokens
-  (`primary`, `border`, …), nie hart kodieren.
+  (`primary`, `border`, Status `success`/`warning`/`danger` …), nie hart kodieren. Rot: `danger`
+  für Schrift, Rahmen und Tönung, `destructive` nur für volle Flächen (Knöpfe, „Live“); Hinweise
+  im Inhalt als `Alert` (`components/ui/alert`).
 - **Speichern – drei Orte, nie eigener localStorage-Parser** (Tabelle in docs/ENTWICKLUNG.md):
   Einstellungen (Pfade, Geräte/Ausgaben, Player/Timer, alles, was main braucht) in
   settings.json – Renderer: `useSettings(sel)` + `updateSettings(patch)` aus

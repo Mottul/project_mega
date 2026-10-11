@@ -51,6 +51,7 @@ import {
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
+import { Alert } from '@renderer/components/ui/alert'
 import { cn } from '@renderer/lib/utils'
 import { api } from '@renderer/lib/api'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
@@ -928,20 +929,12 @@ export function VideoPlayer(): JSX.Element {
       main={
         <div ref={mainRef} className="space-y-6 p-6">
           {ffmpegMissing && (
-            <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
-              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400 light:text-amber-700" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-400 light:text-amber-700">
-                  ffmpeg nicht gefunden
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  Zum Konvertieren der Medien wird das gebündelte ffmpeg benötigt. Im Dev-Modus über
-                  <code className="mx-1 rounded bg-muted px-1">npm run ff:fetch</code>{' '}
-                  bereitstellen; im fertigen Paket ist es enthalten.
-                  {enc?.error ? ` (${enc.error})` : ''}
-                </p>
-              </div>
-            </Card>
+            <Alert tone="warning" icon={AlertTriangle} title="ffmpeg nicht gefunden">
+              Zum Konvertieren der Medien wird das gebündelte ffmpeg benötigt. Im Dev-Modus über
+              <code className="mx-1 rounded bg-muted px-1">npm run ff:fetch</code> bereitstellen; im
+              fertigen Paket ist es enthalten.
+              {enc?.error ? ` (${enc.error})` : ''}
+            </Alert>
           )}
 
           <div className={`flex gap-6 ${wide ? 'flex-row' : 'flex-col'}`}>
@@ -1025,7 +1018,7 @@ export function VideoPlayer(): JSX.Element {
                   {finishedJobs
                     .filter((j) => j.status === 'error')
                     .map((j) => (
-                      <p key={j.id} className="truncate text-xs text-destructive" title={j.error}>
+                      <p key={j.id} className="truncate text-xs text-danger" title={j.error}>
                         {j.title}: {j.error}
                       </p>
                     ))}
@@ -1033,9 +1026,9 @@ export function VideoPlayer(): JSX.Element {
               )}
 
               {staleItems.length > 0 && (
-                <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
-                  <RefreshCw className="size-4 shrink-0 text-amber-400 light:text-amber-700" />
-                  <span className="flex-1 text-amber-400 light:text-amber-700">
+                <div className="mb-3 flex items-center gap-2 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs">
+                  <RefreshCw className="size-4 shrink-0 text-warning" />
+                  <span className="flex-1 text-warning">
                     {staleItems.length} Medium/Medien ≠ Wand-Auflösung ({wallW}×{wallH}).
                   </span>
                   <Button size="sm" variant="outline" onClick={() => void reconvertStale()}>
@@ -1106,7 +1099,7 @@ export function VideoPlayer(): JSX.Element {
                           <RefreshCw className="size-4" />
                         </button>
                         <button
-                          className="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive"
+                          className="shrink-0 rounded p-1 text-muted-foreground hover:text-danger"
                           onClick={() => void api.player.libraryDelete(m.id)}
                           title="Löschen"
                         >
@@ -1205,7 +1198,7 @@ export function VideoPlayer(): JSX.Element {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-destructive hover:text-destructive/80"
+                    className="text-danger hover:text-danger/80"
                     onClick={() => {
                       void api
                         .confirm({
@@ -1266,7 +1259,7 @@ export function VideoPlayer(): JSX.Element {
                             await persistSaved(cur.filter((x) => x.name !== p.name))
                           })
                       }
-                      className="text-muted-foreground hover:text-destructive"
+                      className="text-muted-foreground hover:text-danger"
                       title="Playlist löschen"
                       aria-label={`Playlist „${p.name}“ löschen`}
                     >
@@ -1547,7 +1540,7 @@ export function VideoPlayer(): JSX.Element {
                     Playlist · {pstate.playlist.length}
                   </span>
                   <button
-                    className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
                     onClick={() => void cmd({ type: 'clear' })}
                     title="Playlist leeren"
                   >
@@ -1800,7 +1793,7 @@ function PlayerNdiPanel({
           · <span className="tabular-nums">{status.framesSent}</span> Frames
         </p>
       )}
-      {status.error && <p className="text-xs text-destructive">{status.error}</p>}
+      {status.error && <p className="text-xs text-danger">{status.error}</p>}
     </>
   )
 }

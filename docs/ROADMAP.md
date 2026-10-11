@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 9. Oktober 2026
+**Stand:** 11. Oktober 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -115,8 +115,8 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 
 - **Restliche Werkzeuge aufs Werkzeug-Muster** (Ausgabe-/Auftrags-Leiste, Schublade links): LED-Wall,
   NovaStar (Verbindung und Blackout in die Leiste), Netzwerk-Scanner, YouTube-Downloader
-  (Auftrags-Leiste), Packliste und die Rechner haben noch eigene Kartenlayouts. Dabei die übrigen
-  Erklärtexte hinter ⓘ legen.
+  (Auftrags-Leiste) und Packliste haben noch eigene Kartenlayouts. Dabei die übrigen Erklärtexte
+  hinter ⓘ legen (die Rechner sind es schon: `tools/_calc/ui`).
 - **NDI:** `timerNdi.ts` und `playerNdi.ts` zu einem gemeinsamen Offscreen-Sender zusammenführen –
   sonst müssen Absturz-Korrekturen doppelt gepflegt werden.
 - **Auftrags-Warteschlangen:** Konverter und Player-Import teilen sich die Spuren-Warteschlange,
@@ -124,15 +124,17 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
   gemeinsame `JobQueue<T>`-Basis.
 - **Fernsteuer-Panel im Renderer** (Port, Start/Stopp, QR) als gemeinsame Komponente – heute vier
   Kopien.
-- **Statusfarben als Tokens** `success`/`warning` statt rund 30 kopierter
-  `emerald`-/`amber`-Paare.
 - **UI-Bausteine konsequent nutzen:** YouTube-Downloader auf `Progress`/`Badge`; `Select` als
   echte Komponente mit Größen-Varianten (heute eine Klassen-Konstante, dazu abgewandelte Kopien
   in Video-Player, Netzwerk-Scanner, OSC-Steuerung, Packliste und Startbildschirm).
+- **Ausgabefenster auf `createWindow`:** Testbild-, Player-, Timer- und beide NDI-Fenster laden
+  ihre Route und setzen die sicheren Vorgaben je selbst (fünf Kopien, schon leicht
+  auseinandergelaufen: `isDev && devUrl` gegenüber `devUrl`). Ein `loadRoute(win, hash)` bzw.
+  Optionen für rahmenlose Fenster in `services/appWindows.ts`.
+- **Status-Zuordnungen bündeln:** Toaster, Video-Generator und Medien-Info halten je eine eigene
+  Tabelle Stufe → Symbol + Farbe; eine gemeinsame neben den Badge-Tönen.
 - **`main/services` ordnen:** Jingle-, Timer-, NDI- und Fernsteuer-Dateien in Unterordner
   (heute 24 lose Dateien neben den Ordnern).
-- **Kleinkram:** Fenster-Handler aus `main/index.ts` in eine `window.handlers.ts`;
-  `"types": ["node"]` aus `tsconfig.web.json` entfernen.
 
 ### Große Umbauten
 
@@ -141,11 +143,11 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
   ffmpeg und yt-dlp. Braucht gebaute Installer in der CI (Releases); Windows warnt ohne Signatur
   beim Installieren, macOS geht nur mit einem Apple-Entwicklerzertifikat.
 - **IPC-Vertrag generieren:** ein generischer Preload-Proxy aus `Channels` und ein typisierter
-  `handle(Channels.x, fn)`-Wrapper. Neue Kanäle brauchen dann zwei statt vier Stellen, die 26
+  `handle(Channels.x, fn)`-Wrapper. Neue Kanäle brauchen dann zwei statt vier Stellen, die 31
   `as never`-Casts im Preload entfallen, falsche Handler-Signaturen werden zu Compile-Fehlern.
   Größter langfristiger Gewinn.
 - **Große Dateien teilen:** `OscControl.tsx` (~3.300 Zeilen) in Kacheln, Editor, Panels und
-  Fläche; `VideoPlayer.tsx` (~1.700 Zeilen) in NDI-Panel, Bibliothek/Konvertier-Liste, Playlist
+  Fläche; `VideoPlayer.tsx` (~1.800 Zeilen) in NDI-Panel, Bibliothek/Konvertier-Liste, Playlist
   und Fernsteuer-Panel.
 - **Handy-Steuerseiten** (~1.200 Zeilen HTML/CSS/JS in Template-Strings, ungelintet) als echte
   Build-Artefakte bzw. `?raw`-Importe.
@@ -169,7 +171,7 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 - **Tailwind 3 → 4** – eigene Tokens und die `light:`-Variante auf `@theme`/`@custom-variant`
   umstellen; postcss/autoprefixer entfallen, ebenso die letzten `npm audit`-Meldungen
   (`braces`-Kette).
-- **lucide-react 0.469 → 1.x** – Icon-Umbenennungen prüfen.
+- **lucide-react 0.577 → 1.x** – Icon-Umbenennungen prüfen.
 - **Beobachten:** Vite 8 (electron-vite unterstützt bis Vite 7), TypeScript 7 („tsgo“).
 
 ## Bereits erledigt
@@ -209,6 +211,15 @@ Damit nichts doppelt geplant wird:
   bernstein) und Einstellungs-Schublade links (anheftbar, Bereiche mit Zusammenfassung, ⓘ statt
   Absätzen) für Video-Player, Stage-Timer, Testbild, Video-Konverter, Video-Generator, Jingles,
   OSC, Medien-Info und Handbücher.
+- **Kleine Werkzeuge im eigenen Fenster:** Die neun Rechner öffnen sich immer in einem eigenen
+  Fenster (eines je Werkzeug, Lage gemerkt, Höhe folgt dem Inhalt, ab 320 px breit, zweispaltig
+  wenn breit genug), einheitlich mit ⓘ statt Absätzen und Zahlen mit Komma; Design, Akzent und
+  Kompaktmodus gelten live in jedem Fenster.
+- **Aufgeräumt:** Statusfarben als Tokens (`success`/`warning`/`danger` statt 126 kopierter
+  Farbklassen, ein Rot je Zweck), gemeinsame Hinweisbox `Alert` statt kopierter getönter Boxen,
+  Fensterlogik aus `main/index.ts` in `services/appWindows.ts`, `smallToolWindows.ts` und
+  `ipc/window.handlers.ts` (ohne Sonderfälle in `createWindow`), Renderer ohne Node-Typen
+  (`"types": []`), verknüpfte Rechnerfelder über einen gemeinsamen Hook.
 - **Startbildschirm:** Favoriten in eigenen Kategorien, Kachelgröße, Ansicht „Favoriten“, gleich
   hohe Kacheln, Ausgabe-Status von Player und Stage-Timer.
 - **Gemeinsame Bausteine:** Medien-Endungen in `shared/`, QR-Code und `selectClass` in

@@ -1,11 +1,12 @@
 # Mottulbox
 
-Desktop-App für Veranstaltungstechnik (Windows, macOS, Linux): 22 AV-Werkzeuge unter einem Dach –
+Desktop-App für Veranstaltungstechnik (Windows, macOS, Linux): 23 AV-Werkzeuge unter einem Dach –
 vom Video-Player für LED-Wände über Jingles, Stage-Timer und OSC-Pult bis zu Rechnern für Strom,
 Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Downloader.
 
-- **Parallel arbeiten:** Jedes Werkzeug lässt sich auch im eigenen Fenster öffnen; der
-  Startbildschirm zeigt, was gerade läuft, und ordnet Favoriten in eigenen Kategorien.
+- **Parallel arbeiten:** Große Werkzeuge lassen sich auch im eigenen Fenster öffnen, die Rechner
+  öffnen sich immer in einem eigenen, passend kleinen Fenster; der Startbildschirm zeigt, was
+  gerade läuft, und ordnet Favoriten in eigenen Kategorien.
 - **Show-tauglich:** Vollbild-Ausgaben auf wählbarem Monitor, optional NDI, eine Fehlergrenze je
   Werkzeug und eine gesperrte Kundenansicht (Start direkt in einem Werkzeug, Strg+Shift+K beendet
   sie).

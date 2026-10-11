@@ -8,7 +8,7 @@
 // - Hintergrund und Formeln hinter dem ⓘ (`hint`), sichtbar bleibt eine kurze Zeile je Karte.
 // - Unter ~330 px rückt die Beschriftung über das Feld (flex-wrap), ab ~770 px stehen zwei
 //   Karten nebeneinander (auto-fit-Raster) – ohne Medienabfragen, die Fensterbreite entscheidet.
-import { Children, createContext, useContext, useId, type ReactNode } from 'react'
+import { Children, createContext, useContext, useId, useState, type ReactNode } from 'react'
 import { Card } from '@renderer/components/ui/card'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
@@ -90,6 +90,41 @@ function RowLabel({
 /** Zeile mit Beschriftung links und Feld rechts; zu schmal -> Beschriftung darüber. */
 const rowClass = 'flex flex-wrap items-center gap-x-3 gap-y-1.5'
 const fieldBox = 'relative min-w-[8rem] flex-1'
+
+interface LinkedFieldProps {
+  value: string
+  derived: boolean
+  onChange: (v: string) => void
+  onFocus: () => void
+}
+
+/**
+ * Verknüpfte Felder (Durchmesser ↔ Radius ↔ Umfang, Leistung ↔ Strom …): Das zuletzt bearbeitete
+ * Feld ist die Quelle (`driver`, Eingabe `raw`), die übrigen zeigen ihren berechneten Wert.
+ * `bind(feld, berechnet)` liefert die Props eines NumField: Tippen macht das Feld zur Quelle; der
+ * Fokus auf einem berechneten Feld übernimmt dessen Wert als Eingabe – so springt nichts.
+ */
+export function useLinkedFields<F extends string>(
+  first: F,
+  initial: string
+): { driver: F; raw: string; bind: (field: F, computed: string) => LinkedFieldProps } {
+  const [driver, setDriver] = useState<F>(first)
+  const [raw, setRaw] = useState(initial)
+  const bind = (field: F, computed: string): LinkedFieldProps => ({
+    value: field === driver ? raw : computed,
+    derived: field !== driver,
+    onChange: (v) => {
+      setDriver(field)
+      setRaw(v)
+    },
+    onFocus: () => {
+      if (field === driver) return
+      setDriver(field)
+      setRaw(computed)
+    }
+  })
+  return { driver, raw, bind }
+}
 
 /** Eingabe- oder Ergebnisfeld mit Label und Einheit. `derived` markiert bei
  *  verknüpften Feldern den gerade BERECHNETEN Wert (Akzentfarbe) – tippt man
@@ -255,29 +290,6 @@ export function ReadoutGrid({ children }: { children: ReactNode }): JSX.Element 
         {children}
       </div>
     </InGrid.Provider>
-  )
-}
-
-/** Hinweis zur Eingabe: `warning` (bernstein, wie überall in der App) oder `danger` (rot). */
-export function CalcAlert({
-  tone,
-  children
-}: {
-  tone: 'warning' | 'danger'
-  children: ReactNode
-}): JSX.Element {
-  return (
-    <p
-      role="status"
-      className={cn(
-        'rounded-md border px-3 py-2 text-xs font-medium',
-        tone === 'warning'
-          ? 'border-amber-500/40 bg-amber-500/10 text-amber-400 light:text-amber-700'
-          : 'border-destructive/40 bg-destructive/10 text-destructive'
-      )}
-    >
-      {children}
-    </p>
   )
 }
 

@@ -18,7 +18,14 @@ module.exports = {
         'primary-foreground': 'hsl(var(--primary-foreground) / <alpha-value>)',
         accent: 'hsl(var(--accent) / <alpha-value>)',
         'accent-foreground': 'hsl(var(--accent-foreground) / <alpha-value>)',
-        destructive: 'hsl(var(--destructive) / <alpha-value>)'
+        // Rot als volle Fläche (Knöpfe, „Live“); Fehlertext, -rahmen und -tönung: danger
+        destructive: 'hsl(var(--destructive) / <alpha-value>)',
+        'destructive-foreground': 'hsl(var(--destructive-foreground) / <alpha-value>)',
+        // Status: Erfolg, Warnung/Auftrag, Fehler – je Theme in assets/main.css
+        success: 'hsl(var(--success) / <alpha-value>)',
+        warning: 'hsl(var(--warning) / <alpha-value>)',
+        'warning-foreground': 'hsl(var(--warning-foreground) / <alpha-value>)',
+        danger: 'hsl(var(--danger) / <alpha-value>)'
       },
       borderRadius: {
         lg: '0.625rem',
@@ -28,9 +35,8 @@ module.exports = {
     }
   },
   plugins: [
-    // `light:`-Variante (Hell-Theme = Klasse .light am <html>). Damit lassen sich
-    // die wenigen fest kodierten Akzentfarben (amber/emerald/red auf transluzentem
-    // Grund) im Hellmodus gezielt abdunkeln, ohne sie sonst anzufassen.
+    // `light:`-Variante (Hell-Theme = Klasse .light am <html>) für Farben ohne Token
+    // (Datenfarben wie konvex/konkav, Hintergründe von Wellenform und PDF-Ansicht).
     function ({ addVariant }) {
       addVariant('light', '.light &')
     }

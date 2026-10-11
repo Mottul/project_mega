@@ -8,7 +8,8 @@ import {
   fmt,
   parseNum,
   trimNum,
-  ReadoutGrid
+  ReadoutGrid,
+  useLinkedFields
 } from '../_calc/ui'
 
 // Stromlast & Absicherung. Einphasig: P = U·I·cosφ. Dreiphasig: P = √3·U·I·cosφ.
@@ -21,8 +22,7 @@ export function PowerLoad(): JSX.Element {
   const [phase, setPhase] = useState<'1' | '3'>('1')
   const [uRaw, setURaw] = useState('230')
   const [pfRaw, setPfRaw] = useState('1')
-  const [driver, setDriver] = useState<LoadField>('i')
-  const [loadRaw, setLoadRaw] = useState('16')
+  const load = useLinkedFields<LoadField>('i', '16')
   const [devRaw, setDevRaw] = useState('500')
   const [breaker, setBreaker] = useState('16')
   const [reserve, setReserve] = useState('1')
@@ -34,11 +34,11 @@ export function PowerLoad(): JSX.Element {
   const denom = u != null && u > 0 ? factor * u * pf : null // U·cosφ (·√3)
 
   // Leistung <-> Strom verknüpft.
-  const lBase = parseNum(loadRaw)
+  const lBase = parseNum(load.raw)
   let p: number | null = null
   let i: number | null = null
   if (lBase != null && lBase >= 0 && denom != null) {
-    if (driver === 'p') {
+    if (load.driver === 'p') {
       p = lBase
       i = p / denom
     } else {
@@ -46,30 +46,7 @@ export function PowerLoad(): JSX.Element {
       p = i * denom
     }
   }
-  const loadVals: Record<LoadField, number | null> = { p, i }
   const apparent = u != null && i != null ? factor * u * i : null // Scheinleistung VA
-
-  function bindLoad(field: LoadField): {
-    value: string
-    derived: boolean
-    onChange: (v: string) => void
-    onFocus: () => void
-  } {
-    return {
-      value: field === driver ? loadRaw : trimNum(loadVals[field], 2),
-      derived: field !== driver,
-      onChange: (v) => {
-        setDriver(field)
-        setLoadRaw(v)
-      },
-      onFocus: () => {
-        if (field !== driver) {
-          setDriver(field)
-          setLoadRaw(trimNum(loadVals[field], 2))
-        }
-      }
-    }
-  }
 
   function switchPhase(pNew: '1' | '3'): void {
     setPhase(pNew)
@@ -105,8 +82,8 @@ export function PowerLoad(): JSX.Element {
           value={pfRaw}
           onChange={setPfRaw}
         />
-        <NumField label="Leistung P" unit="W" {...bindLoad('p')} />
-        <NumField label="Strom I" unit="A" {...bindLoad('i')} />
+        <NumField label="Leistung P" unit="W" {...load.bind('p', trimNum(p, 2))} />
+        <NumField label="Strom I" unit="A" {...load.bind('i', trimNum(i, 2))} />
         {pf < 1 && (
           <Readout
             label="Scheinleistung S"

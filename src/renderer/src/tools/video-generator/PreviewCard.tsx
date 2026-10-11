@@ -142,7 +142,7 @@ export function PreviewCard({
           </Button>
         )}
       </div>
-      {error && <p className="text-xs text-destructive">Vorschau fehlgeschlagen: {error}</p>}
+      {error && <p className="text-xs text-danger">Vorschau fehlgeschlagen: {error}</p>}
 
       {mode === 'frame' && single && ep ? (
         <KenBurnsEditor
@@ -172,7 +172,7 @@ export function PreviewCard({
             {fmtDuration(rendered.elementStartSec)} bis {fmtDuration(rendered.elementEndSec)}, ohne
             Lautheitsangleichung.
             {stale && (
-              <span className="text-amber-400 light:text-amber-700">
+              <span className="text-warning">
                 {' '}
                 Das Projekt wurde seitdem geändert – neu rechnen für den aktuellen Stand.
               </span>

@@ -896,7 +896,7 @@ const Row = memo(function Row({
     devInfo ? (JSON.parse(devInfo) as [CompareKey, string][]) : []
   )
   const dev = (k: CompareKey): string | undefined =>
-    devMap.has(k) ? 'bg-amber-500/10 text-amber-400 light:text-amber-700' : undefined
+    devMap.has(k) ? 'bg-warning/10 text-warning' : undefined
   const devTitle = (k: CompareKey): string | undefined =>
     devMap.has(k) ? `Weicht ab – Mehrheit: ${devMap.get(k)}` : undefined
   const show = cols.split(',')
@@ -908,7 +908,7 @@ const Row = memo(function Row({
       <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label="Analysiere" />
     )
   } else if (entry.status === 'error' || !info) {
-    status = <XCircle className="size-4 text-red-400 light:text-red-600" aria-label="Fehler" />
+    status = <XCircle className="size-4 text-danger" aria-label="Fehler" />
   } else {
     const meta = LEVEL_META[worstLevel(hints)]
     const Icon = meta.icon
@@ -960,7 +960,7 @@ const Row = memo(function Row({
       </td>
       {entry.status === 'error' ? (
         // Fehlertext einzeilig über die Datenspalten (feste Zeilenhöhe)
-        <td colSpan={dataCols} className={cn(cell, 'text-red-400 light:text-red-600')}>
+        <td colSpan={dataCols} className={cn(cell, 'text-danger')}>
           {entry.error}
         </td>
       ) : (

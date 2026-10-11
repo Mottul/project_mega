@@ -62,7 +62,7 @@ export function CableGrid({
         <button
           type="button"
           onClick={onReset}
-          className="h-6 rounded border border-border px-2 text-[10px] text-muted-foreground hover:border-destructive hover:text-destructive"
+          className="h-6 rounded border border-border px-2 text-[10px] text-muted-foreground hover:border-danger hover:text-danger"
         >
           Reset
         </button>

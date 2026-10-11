@@ -384,7 +384,7 @@ function NdiPanel({ status }: { status: TimerNdiStatus | null }): JSX.Element {
       ) : (
         <p className="text-xs text-muted-foreground">Ein/Aus mit „NDI“ in der Ausgabe-Leiste.</p>
       )}
-      {status.error && <p className="text-xs text-destructive">{status.error}</p>}
+      {status.error && <p className="text-xs text-danger">{status.error}</p>}
     </>
   )
 }
@@ -482,7 +482,7 @@ export function StageTimer(): JSX.Element {
                 <span className="max-w-[16rem] truncate font-medium">
                   {seg.title || seg.speaker || `Abschnitt ${state.current + 1}`}
                 </span>
-                <span className={remaining < 0 ? 'text-destructive' : 'text-muted-foreground'}>
+                <span className={remaining < 0 ? 'text-danger' : 'text-muted-foreground'}>
                   {remaining < 0
                     ? `${fmtTimer(-remaining)} überzogen`
                     : `noch ${fmtTimer(remaining)}`}
@@ -895,7 +895,7 @@ export function StageTimer(): JSX.Element {
                     <button
                       type="button"
                       onClick={() => patchSegments(segs.filter((_, j) => j !== i))}
-                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      className="shrink-0 text-muted-foreground hover:text-danger"
                       title="Abschnitt löschen"
                     >
                       <Trash2 className="size-4" />

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import {
-  CalcAlert,
   CalcPage,
   NumField,
   Readout,
@@ -8,8 +7,10 @@ import {
   SelectField,
   fmt,
   parseNum,
-  trimNum
+  trimNum,
+  useLinkedFields
 } from '../_calc/ui'
+import { Alert } from '@renderer/components/ui/alert'
 
 // Projektionsverhältnis (Throw Ratio = Abstand ÷ Bildbreite). Hilft beim Wählen
 // des passenden Objektivs: oben die Leinwandmaße (Seitenverhältnis + ein Maß),
@@ -29,23 +30,21 @@ type ThrowField = 'tr' | 'dist'
 
 export function ThrowRatio(): JSX.Element {
   const [aspectKey, setAspectKey] = useState('16:9')
-  const [sizeDriver, setSizeDriver] = useState<SizeField>('w')
-  const [sizeRaw, setSizeRaw] = useState('5')
-  const [throwDriver, setThrowDriver] = useState<ThrowField>('dist')
-  const [throwRaw, setThrowRaw] = useState('8')
+  const size = useLinkedFields<SizeField>('w', '5')
+  const lens = useLinkedFields<ThrowField>('dist', '8')
 
   const aspect = ASPECTS.find((a) => a.key === aspectKey)?.val ?? 16 / 9
 
   // Leinwandmaße aus dem bearbeiteten Maß + Seitenverhältnis.
-  const sBase = parseNum(sizeRaw)
+  const sBase = parseNum(size.raw)
   let w: number | null = null
   let h: number | null = null
   let diag: number | null = null
   if (sBase != null && sBase > 0) {
-    if (sizeDriver === 'w') {
+    if (size.driver === 'w') {
       w = sBase
       h = w / aspect
-    } else if (sizeDriver === 'h') {
+    } else if (size.driver === 'h') {
       h = sBase
       w = h * aspect
     } else {
@@ -55,64 +54,18 @@ export function ThrowRatio(): JSX.Element {
     }
     if (diag == null && w != null && h != null) diag = Math.sqrt(w * w + h * h)
   }
-  const sizeVals: Record<SizeField, number | null> = { w, h, diag }
 
   // Throw Ratio <-> Abstand (über die Bildbreite verknüpft).
-  const tBase = parseNum(throwRaw)
+  const tBase = parseNum(lens.raw)
   let tr: number | null = null
   let dist: number | null = null
   if (w != null && w > 0 && tBase != null && tBase > 0) {
-    if (throwDriver === 'tr') {
+    if (lens.driver === 'tr') {
       tr = tBase
       dist = tr * w
     } else {
       dist = tBase
       tr = dist / w
-    }
-  }
-  const throwVals: Record<ThrowField, number | null> = { tr, dist }
-
-  function bindSize(field: SizeField): {
-    value: string
-    derived: boolean
-    onChange: (v: string) => void
-    onFocus: () => void
-  } {
-    return {
-      value: field === sizeDriver ? sizeRaw : trimNum(sizeVals[field], 3),
-      derived: field !== sizeDriver,
-      onChange: (v) => {
-        setSizeDriver(field)
-        setSizeRaw(v)
-      },
-      onFocus: () => {
-        if (field !== sizeDriver) {
-          setSizeDriver(field)
-          setSizeRaw(trimNum(sizeVals[field], 3))
-        }
-      }
-    }
-  }
-
-  function bindThrow(field: ThrowField): {
-    value: string
-    derived: boolean
-    onChange: (v: string) => void
-    onFocus: () => void
-  } {
-    return {
-      value: field === throwDriver ? throwRaw : trimNum(throwVals[field], 3),
-      derived: field !== throwDriver,
-      onChange: (v) => {
-        setThrowDriver(field)
-        setThrowRaw(v)
-      },
-      onFocus: () => {
-        if (field !== throwDriver) {
-          setThrowDriver(field)
-          setThrowRaw(trimNum(throwVals[field], 3))
-        }
-      }
     }
   }
 
@@ -131,9 +84,9 @@ export function ThrowRatio(): JSX.Element {
             </option>
           ))}
         </SelectField>
-        <NumField label="Bildbreite" unit="m" {...bindSize('w')} />
-        <NumField label="Bildhöhe" unit="m" {...bindSize('h')} />
-        <NumField label="Diagonale" unit="m" {...bindSize('diag')} />
+        <NumField label="Bildbreite" unit="m" {...size.bind('w', trimNum(w, 3))} />
+        <NumField label="Bildhöhe" unit="m" {...size.bind('h', trimNum(h, 3))} />
+        <NumField label="Diagonale" unit="m" {...size.bind('diag', trimNum(diag, 3))} />
         <Readout label="Bildfläche" value={fmt(area)} unit="m²" />
       </SectionCard>
 
@@ -142,11 +95,9 @@ export function ThrowRatio(): JSX.Element {
         desc="Throw Ratio oder Abstand eingeben – das andere folgt."
         hint="Throw Ratio (TR) = Projektionsabstand ÷ Bildbreite. Passend ist ein Objektiv, dessen TR-Bereich den Wert abdeckt. Beispiel: 5 m Bildbreite aus 8 m Abstand ergibt TR 1,6 – ein Objektiv mit 1,2–1,8 passt."
       >
-        <NumField label="Throw Ratio" {...bindThrow('tr')} />
-        <NumField label="Projektionsabstand" unit="m" {...bindThrow('dist')} />
-        {w == null && (
-          <CalcAlert tone="warning">Zuerst die Bildbreite der Leinwand festlegen.</CalcAlert>
-        )}
+        <NumField label="Throw Ratio" {...lens.bind('tr', trimNum(tr, 3))} />
+        <NumField label="Projektionsabstand" unit="m" {...lens.bind('dist', trimNum(dist, 3))} />
+        {w == null && <Alert tone="warning">Zuerst die Bildbreite der Leinwand festlegen.</Alert>}
       </SectionCard>
     </CalcPage>
   )

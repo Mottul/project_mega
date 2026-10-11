@@ -13,13 +13,13 @@ export const LEVEL_META: Record<
     label: 'Problem',
     tone: 'danger',
     icon: XCircle,
-    className: 'text-red-400 light:text-red-600'
+    className: 'text-danger'
   },
   warning: {
     label: 'Warnung',
     tone: 'warning',
     icon: AlertTriangle,
-    className: 'text-amber-400 light:text-amber-700'
+    className: 'text-warning'
   },
   // Info bewusst neutral: der Ton „info" folgt der wählbaren Akzentfarbe und sähe
   // bei orangem Akzent wie eine Warnung aus.
@@ -28,6 +28,6 @@ export const LEVEL_META: Record<
     label: 'OK',
     tone: 'success',
     icon: CheckCircle2,
-    className: 'text-emerald-400 light:text-emerald-700'
+    className: 'text-success'
   }
 }

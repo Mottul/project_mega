@@ -84,9 +84,10 @@ Drei Build-Ziele (electron-vite): **main** (Node: Dienste und IPC-Handler), **pr
 ```
 src/
 ├── main/
-│   ├── index.ts              # App-Lebenszyklus, Fenster (sichere Defaults), globale Fehler-Handler
+│   ├── index.ts              # App-Lebenszyklus (Start, Beenden, letztes Fenster), globale Fehler-Handler
 │   ├── ipc/                  # IPC-Handler je Bereich (*.handlers.ts), registry.ts, remoteControls.ts
 │   └── services/
+│       ├── appWindows.ts · smallToolWindows.ts  # Fenster mit sicheren Vorgaben · kleine Werkzeugfenster
 │       ├── store.ts · db.ts  # settings.json (Quelle der Wahrheit) · SQLite/FTS5 – je mit Wiederherstellung
 │       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Warteschlange, Fähigkeiten;
 │       │                     #   videoGen*: Rechenlauf, Vorschau rechnen, Zwischenspeicher, Vorschaubilder,
@@ -123,13 +124,16 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Rechner die Breite (eine Spalte 520 px, zwei Spalten 880 px). Diese Werkzeuge öffnen sich immer
   in einem eigenen Fenster (`openToolWindow` im main: höchstens eines je Werkzeug, Lage und
   Breite in `settings.toolWindowBounds`); `ToolHost` leitet `/tool/<id>` im Hauptfenster dorthin
-  um und zeigt im Fenster (`?fenster=1`) eine schlanke Kopfleiste. **Die Höhe folgt dem Inhalt:**
+  um und zeigt im Fenster (`?fenster=1`) eine schlanke Kopfleiste. Fensterlogik in
+  `services/smallToolWindows.ts` (auf `createWindow` aus `appWindows.ts`), Kanäle in
+  `ipc/window.handlers.ts`. **Die Höhe folgt dem Inhalt:**
   `useFitToolWindow` misst Kopfleiste + Seite und meldet sie (`api.fitToolWindow`), main setzt
   die Höhe (`fitHeight`: Mindestmaß bis Bildschirmhöhe) und zeigt das Fenster erst dann – ohne
   Meldung nach 1,5 s trotzdem, mit Eintrag im Debug-Log. Die erste Messung läuft synchron:
   Im versteckten Fenster sind `requestAnimationFrame` und `ResizeObserver` gedrosselt.
   Schließt das Hauptfenster, gehen sie mit. Die Rechner bauen auf `tools/_calc/ui` (Karten im
-  auto-fit-Raster, Felder mit Umbruch unter ~330 px, Ergebnis-Kacheln, `hint` = ⓘ).
+  auto-fit-Raster, Felder mit Umbruch unter ~330 px, Ergebnis-Kacheln, `hint` = ⓘ, verknüpfte
+  Felder per `useLinkedFields`).
 - **Darstellung in jedem Fenster:** `useAppearanceSync` an der App-Wurzel wendet Design,
   Akzent und Dichte aus `settings.json` an und folgt Änderungen aus anderen Fenstern – auch in
   Fenstern ohne App-Menü (kleine Werkzeuge). Die Vollbild-Ausgaben bleiben außen vor.
@@ -159,7 +163,8 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   `shared/loudness.ts`); ohne Messung wird einstufig angeglichen.
 - **Theme:** Dunkel ist Standard, Hell über die Klasse `.light` am `<html>`; die Akzentfarbe kommt
   aus CSS-Variablen (`@renderer/lib/accent`). Farben immer über Tailwind-Tokens (`primary`,
-  `border`, …), nie hart kodiert.
+  `border`, …), nie hart kodiert. Statusfarben `success`, `warning` und `danger` (Rot für Schrift,
+  Rahmen und Tönung; `destructive` nur für volle Flächen), Hinweise im Inhalt als `Alert`.
 
 ### Was wohin gehört
 

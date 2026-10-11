@@ -117,13 +117,13 @@ export function Novastar(): JSX.Element {
           <span
             className={cn(
               'flex items-center gap-1.5 text-xs',
-              connected ? 'text-emerald-400 light:text-emerald-700' : 'text-muted-foreground'
+              connected ? 'text-success' : 'text-muted-foreground'
             )}
           >
             <span
               className={cn(
                 'size-2.5 rounded-full',
-                connected ? 'bg-emerald-500' : 'bg-muted-foreground'
+                connected ? 'bg-success' : 'bg-muted-foreground'
               )}
             />
             {connected ? `verbunden ${status?.host}:${status?.port}` : 'getrennt'}
@@ -153,9 +153,7 @@ export function Novastar(): JSX.Element {
             <Wifi className="size-4" /> {connected ? 'Trennen' : 'Verbinden'}
           </Button>
         </div>
-        {status?.lastError && (
-          <p className="text-xs text-destructive">Fehler: {status.lastError}</p>
-        )}
+        {status?.lastError && <p className="text-xs text-danger">Fehler: {status.lastError}</p>}
       </Card>
 
       {/* Helligkeit, Blackout, Freeze */}

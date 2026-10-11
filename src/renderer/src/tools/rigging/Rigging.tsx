@@ -1,14 +1,6 @@
 import { useState } from 'react'
-import {
-  CalcAlert,
-  CalcPage,
-  NumField,
-  Readout,
-  ReadoutGrid,
-  SectionCard,
-  fmt,
-  parseNum
-} from '../_calc/ui'
+import { CalcPage, NumField, Readout, ReadoutGrid, SectionCard, fmt, parseNum } from '../_calc/ui'
+import { Alert } from '@renderer/components/ui/alert'
 
 // Rigging-Last: zwei Alltagsfälle.
 // 1) Traverse auf zwei Hängepunkten (einfacher Träger): Auflagerkräfte aus
@@ -76,7 +68,7 @@ export function Rigging(): JSX.Element {
           onChange={setOwnRaw}
         />
         {L != null && aPos != null && aPos > L && (
-          <CalcAlert tone="danger">Die Lastposition liegt außerhalb der Spannweite.</CalcAlert>
+          <Alert tone="danger">Die Lastposition liegt außerhalb der Spannweite.</Alert>
         )}
         <ReadoutGrid>
           <Readout label="Punkt A" value={fmt(fA, 1)} unit="kg" sub={kn(fA)} big accent />
@@ -129,16 +121,16 @@ export function Rigging(): JSX.Element {
           <Readout label="Stranglänge" value={fmt(legLen, 2)} unit="m" />
         </ReadoutGrid>
         {level === 'gelb' && (
-          <CalcAlert tone="warning">
+          <Alert tone="warning">
             ⚠ Winkel ab 45° zur Senkrechten – deutlich mehr Kraft im Strang (Faktor ab 1,41). Höher
             anschlagen oder die Punkte enger setzen.
-          </CalcAlert>
+          </Alert>
         )}
         {level === 'rot' && (
-          <CalcAlert tone="danger">
+          <Alert tone="danger">
             ⚠ Winkel ab 60° zur Senkrechten – jeder Strang trägt mindestens die ganze Last (Faktor
             ab 2). So nicht anschlagen!
-          </CalcAlert>
+          </Alert>
         )}
       </SectionCard>
     </CalcPage>

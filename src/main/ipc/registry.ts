@@ -1,4 +1,4 @@
-import { ipcMain, protocol, type BrowserWindow } from 'electron'
+import { ipcMain, protocol } from 'electron'
 import { createReadStream } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
@@ -26,6 +26,7 @@ import { registerPlayerHandlers } from './player.handlers'
 import { registerTimerHandlers } from './timer.handlers'
 import { registerUtilHandlers } from './util.handlers'
 import { registerVideoGenHandlers } from './videoGen.handlers'
+import { registerWindowHandlers } from './window.handlers'
 import { registerYoutubeHandlers } from './youtube.handlers'
 
 /** Bedient das custom `manual://`-Protocol (PDF-Bytes der Bibliothek). */
@@ -227,6 +228,8 @@ export function registerIpcHandlers(): void {
   // im eigenen Zustand hält, übernimmt sie – statt sie später mit altem Stand zu überschreiben.
   onSettingsChange((s, origin) => broadcastExcept(origin, Channels.settingsChanged, s))
   ipcMain.handle(Channels.appLogPath, () => logFilePath())
+  // Live-Job-Updates an ALLE Fenster (ein Video-Konverter im Zweitfenster bekommt dieselben)
+  converterJobs.setSink((job) => broadcast(Channels.converterUpdate, job))
 
   registerDialogHandlers()
   registerFfmpegHandlers()
@@ -237,14 +240,9 @@ export function registerIpcHandlers(): void {
   registerUtilHandlers()
   registerJingleHandlers()
   registerYoutubeHandlers()
+  registerWindowHandlers()
   registerOscHandlers()
   registerNovastarHandlers()
   registerNetscanHandlers()
   registerVideoGenHandlers()
-}
-
-/** Verbindet die Live-Job-Updates mit ALLEN Fenstern (Multi-Window: ein Video-
- *  Konverter in einem Zweitfenster bekommt dieselben Updates). */
-export function attachWindow(_win: BrowserWindow): void {
-  converterJobs.setSink((job) => broadcast(Channels.converterUpdate, job))
 }
