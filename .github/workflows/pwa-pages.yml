@@ -1,0 +1,40 @@
+name: Rechner-PWA
+
+# Baut die Rechner-PWA (vite.pwa.config.ts) und veröffentlicht sie auf GitHub Pages. Bewusst nur
+# von Hand (Actions -> Rechner-PWA -> Run workflow): Pages muss in den Repository-Einstellungen
+# einmal auf „GitHub Actions“ gestellt sein, sonst schlüge jeder automatische Lauf fehl.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Nie zwei Veröffentlichungen gleichzeitig; eine laufende wird nicht abgebrochen
+concurrency:
+  group: pwa-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Bauen und veröffentlichen
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci
+      - run: npm run pwa:build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: out-pwa
+      - id: deployment
+        uses: actions/deploy-pages@v4

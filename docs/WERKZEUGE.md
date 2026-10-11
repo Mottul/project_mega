@@ -467,6 +467,16 @@ mit Warnstufen. Richtwerte – ersetzt keinen Sachkundigen.
 - **Timecode-Rechner:** SMPTE-Timecode ↔ Frames ↔ Echtzeit, inklusive Drop-Frame (29,97/59,94),
   und Dauer zwischen In und Out.
 
+### Rechner fürs Handy (PWA)
+
+Alle neun kleinen Werkzeuge – Kreis, Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen,
+DMX-Dip-Schalter, Stromlast, Audio-Delay, Rigging-Last und Timecode – gibt es zusätzlich als
+eigenständige Web-App ohne die übrige Mottulbox: im Browser öffnen, über „Installieren“ bzw.
+„Zum Home-Bildschirm“ als App ablegen, danach läuft sie **offline**. Dieselben Rechner wie am
+Desktop (gleicher Code), Hell/Dunkel per Knopf oben rechts (dunkel → hell → wie das Gerät). Eine
+neue Version meldet sich mit „Neu laden“, sonst greift sie beim nächsten Start. Bauen und
+Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
+
 ## Übergaben zwischen Werkzeugen
 
 - **Medien-Info → Video-Konverter:** „Konvertieren“ übergibt die Dateien samt Zielsystem und

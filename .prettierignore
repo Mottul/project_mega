@@ -1,6 +1,7 @@
 # Build-Artefakte & generierte Dateien
 node_modules/
 out/
+out-pwa/
 dist/
 .vite/
 *.tsbuildinfo

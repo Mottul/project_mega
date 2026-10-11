@@ -73,6 +73,8 @@ npm run dev         # App mit Hot Reload
 | `npm run ff:update`                 | ffmpeg sofort auf den neuesten Build bringen                             |
 | `npm run electron:bin`              | Electron-Laufzeit-Binary laden                                           |
 | `npm run ndi:setup`                 | optionales NDI-Binding einrichten, siehe [NDI.md](NDI.md)                |
+| `npm run pwa:dev` · `pwa:build`     | Rechner-PWA im Browser entwickeln bzw. nach `out-pwa/` bauen ([Rechner-PWA](#rechner-pwa)) |
+| `npm run pwa:preview`               | gebaute PWA ausliefern, auch im LAN (`--host`) – fürs Handy              |
 
 Einzelner Test: `npx vitest run src/renderer/src/tools/led-wall/math.test.ts`
 
@@ -215,6 +217,10 @@ Dazu gilt:
 - UI-Texte und Kommentare auf Deutsch, Kommentare erklären das Warum;
 - das Werkzeug steht in [WERKZEUGE.md](WERKZEUGE.md) und im Überblick der [README](../README.md).
 
+Ein neuer **Rechner** (kleines Werkzeug in `SMALL_TOOLS`) gehört auch in die Rechner-PWA
+(`src/pwa/tools.ts`, der Test `src/pwa/tools.test.ts` erinnert daran) und darf deshalb weder
+`api` noch Einstellungen nutzen.
+
 ## Konventionen
 
 - **Prettier:** kein Semikolon, einfache Anführungszeichen, 100 Zeichen (`.prettierrc.json`).
@@ -249,7 +255,7 @@ Dazu gilt:
   dort `--no-sandbox`). Tricks und Stolpersteine stehen im Projekt-Skill `electron-e2e`.
 - **CI** (`.github/workflows/ci.yml`) läuft bei jedem Pull Request und auf `main`:
   - **Prüfungen** auf Linux mit Node 22 und 24: `npm ci`, Format, Lint, Typecheck (App und
-    Tests), Tests, Build.
+    Tests), Tests, Build der App und der Rechner-PWA.
   - **App** auf Linux, Windows und macOS: `npm ci`, gebündeltes ffmpeg (`ff:fetch`, je Woche
     gecacht), Unit-Tests samt Labortest des Video-Generators, Build und alle E2E-Skripte (Linux
     mit `xvfb-run`). Arbeits-Branches laufen nur über ihren Pull Request; ein neuer Push bricht
@@ -284,3 +290,35 @@ Der erste `package`-Lauf lädt electron-builder einmalig in den npx-Cache, nicht
   von SmartScreen und Gatekeeper (siehe [INSTALL.md](INSTALL.md)).
 - Ins Paket kommen `out/`, das ffmpeg des Zielsystems, das App-Icon und – falls eingerichtet – die
   Laufzeitdateien des NDI-Bindings ([NDI.md](NDI.md)).
+
+## Rechner-PWA
+
+Die Rechner gibt es zusätzlich als eigenständige Web-App fürs Handy (Bedienung:
+[WERKZEUGE.md](WERKZEUGE.md#rechner-fürs-handy-pwa)). Kein zweiter Code: Die PWA bindet dieselben
+Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
+
+- **Aufbau:** `src/pwa/` – `index.html`, `main.tsx`, `App.tsx` (Startseite + Rechner-Seite mit
+  HashRouter), `tools.ts` (die Liste, gleich `SMALL_TOOLS`), Hooks für Service Worker,
+  Installieren und Hell/Dunkel, `pwa.css` (Notch-Ränder, 16-px-Felder gegen den iOS-Zoom),
+  `public/icons/` (aus `build/icon.png` erzeugt, s. u.). Build: `vite.pwa.config.ts` (normales
+  Vite, `base: './'` – läuft in jedem Unterordner), Ausgabe `out-pwa/`.
+- **Ohne Electron:** `src/pwa/build/plugin.ts` bricht den Build ab, sobald ein Rechner (auch über
+  Umwege) `lib/api`, `lib/settings` oder `electron` hereinzieht.
+- **Offline:** Der Build erzeugt `manifest.webmanifest` und `sw.js` (`src/pwa/build/serviceWorker.ts`,
+  ohne Workbox). Der Worker lädt beim Installieren alle Dateien vor und antwortet danach nur aus
+  dem Cache; eine neue Version wartet, bis man „Neu laden“ tippt oder die App schließt.
+  Service Worker gibt es nur über HTTPS oder `localhost` – im LAN per `pwa:preview` läuft die
+  Seite, aber nicht offline und nicht installierbar.
+- **Veröffentlichen:** Workflow `.github/workflows/pwa-pages.yml` (von Hand starten: Actions →
+  „Rechner-PWA“ → Run workflow) baut und legt `out-pwa/` auf GitHub Pages. Einmalig nötig:
+  Settings → Pages → Source „GitHub Actions“. Jeder andere statische Webspace mit HTTPS geht
+  genauso (Inhalt von `out-pwa/` hochladen).
+- **Icons neu erzeugen** (nach einem neuen App-Icon, ImageMagick):
+
+  ```bash
+  D=src/pwa/public/icons; BG='rgb(23,19,31)'
+  convert build/icon.png -resize 192x192 $D/icon-192.png
+  convert build/icon.png -resize 512x512 $D/icon-512.png
+  convert build/icon.png -background "$BG" -flatten -resize 180x180 $D/apple-touch-icon.png
+  convert build/icon.png -background "$BG" -flatten -resize 420x420 -gravity center -extent 512x512 $D/maskable-512.png
+  ```
