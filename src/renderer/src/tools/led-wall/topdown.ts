@@ -17,6 +17,10 @@ export interface TopDownOptions {
   chordLabel?: number | null
   sagLabel?: number | null
   maxPx?: number // max. Renderbreite in px (Vorschau ~620, PDF kleiner)
+  /** max. Renderhöhe in px – die Arbeitsfläche passt die Draufsicht in Breite UND Höhe ein */
+  maxHeightPx?: number
+  /** ganze verfügbare Fläche nutzen statt der Faustgröße (110 px je Meter, mind. 280 px) */
+  fill?: boolean
   audienceLabel?: boolean
 }
 
@@ -64,7 +68,8 @@ export function topDownMarkup(angles: number[], opts: TopDownOptions = {}): stri
 
   // svg-Renderbreite -> Umrechnung „SVG-Einheit (m) je Bildschirm-px".
   const maxPx = opts.maxPx ?? 620
-  const svgW = Math.min(maxPx, Math.max(280, w * 110))
+  const natural = opts.fill ? maxPx : Math.min(maxPx, Math.max(280, w * 110))
+  const svgW = opts.maxHeightPx ? Math.min(natural, (opts.maxHeightPx * w) / h) : natural
   const mPerPx = w / svgW
   const sw = 1.4 * mPerPx // Modulkontur ~1,4 px
   const labelFs = 13 * mPerPx // Winkel/Maße ~13 px

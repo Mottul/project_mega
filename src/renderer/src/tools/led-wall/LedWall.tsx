@@ -1,105 +1,61 @@
-// LED-Wall-Konfigurator: Wandgröße + Modultyp -> Auflösung, 16:9-Einpassung,
-// Gewicht, Strom und Ballast; dazu zeichenbare Signal-/Strom-Verkabelungspläne
-// und (uS2+) die Curving-Planung. Export als PDF-Projektdoku.
+// LED-Wall-Konfigurator im Werkzeug-Muster (ToolShell):
+//   Leiste „Projekt“  PDF-Doku (Hoch/Quer) und Übergabe an die Packliste, rechts der Projektname
+//   Schublade         Vorlagen, Projekt, Modul, Wand (Größe, Aufbau), Curving-Form (Settings.tsx)
+//   Arbeitsfläche     Kennzahlen; große Zeichenfläche mit Ansicht, Draufsicht (uS2+), Signal-
+//                     und Stromplan; daneben Strom, Aufbau und Moduldaten
+// Die Zeichenfläche füllt die Höhe des Fensters – auf dem Laptop passt alles auf einen Blick.
 
-import { useEffect, useMemo } from 'react'
-import { ClipboardList, FileDown, Save, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, type ReactNode } from 'react'
+import {
+  Cable,
+  ClipboardList,
+  FileDown,
+  PlugZap,
+  RectangleHorizontal,
+  Spline,
+  type LucideIcon
+} from 'lucide-react'
+import { BarDivider, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
-import { Input } from '@renderer/components/ui/input'
-import { Alert } from '@renderer/components/ui/alert'
+import { InfoTip } from '@renderer/components/ui/info-tip'
+import { Segmented } from '@renderer/components/ui/segmented'
 import { api } from '@renderer/lib/api'
 import { flushStore } from '@renderer/lib/persistStorage'
+import { useElementWidth } from '@renderer/lib/useElementWidth'
+import { usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
+import { cn } from '@renderer/lib/utils'
 import { deriveFromLedWall } from '../packing-list/derive'
 import { usePacking } from '../packing-list/store'
-import { Readout, fmt } from '../_calc/ui'
+import { fmt } from '../_calc/ui'
 import { CableGrid } from './CableGrid'
-import { computeWall } from './compute'
-import { Curving } from './Curving'
+import { computeWall, type WallMetrics } from './compute'
+import { CurvingView } from './Curving'
 import { CURVE_MODE_LABELS } from './curve'
-import { MODULES, PWR_COLORS, SIG_COLORS } from './data'
-import { type Fit169 } from './math'
+import { PWR_COLORS, SIG_COLORS } from './data'
+import { FrontView, fitText } from './FrontView'
 import { exportLedWallPdf } from './print'
-import { useLedWall, type BuildMode, type LedWallPreset } from './store'
+import { BUILD_LABELS, LedWallSettings } from './Settings'
+import { useLedWall } from './store'
 import { topDownMarkup } from './topdown'
-import { LField } from './ui'
-import { cn } from '@renderer/lib/utils'
 
-/** Schematischer 16:9-Plot: Wand (Rahmen) mit zentrierter 16:9-Nutzfläche und
- *  den Letterbox-/Pillarbox-Balken (links/rechts bzw. oben/unten). */
-function Fit169Plot({ rx, ry, fit }: { rx: number; ry: number; fit: Fit169 }): JSX.Element | null {
-  if (!rx || !ry || fit.match || !fit.side) return null
-  const cw = fit.cw ?? rx
-  const ch = fit.ch ?? ry
-  const bx = fit.side === 'lr' ? (fit.barPx ?? 0) : 0
-  const by = fit.side === 'tb' ? (fit.barPx ?? 0) : 0
-  const sw = Math.max(2, rx / 150)
-  return (
-    <svg
-      viewBox={`0 0 ${rx} ${ry}`}
-      preserveAspectRatio="xMidYMid meet"
-      className="block max-h-32 w-full rounded"
-    >
-      <defs>
-        <pattern
-          id="ledwall-bars"
-          width="14"
-          height="14"
-          patternUnits="userSpaceOnUse"
-          patternTransform="rotate(45)"
-        >
-          <rect width="14" height="14" fill="#000" />
-          <line
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="14"
-            stroke="#ffffff"
-            strokeOpacity="0.16"
-            strokeWidth="4"
-          />
-        </pattern>
-      </defs>
-      {/* LED-Wall = schwarze Fläche (schraffiert) -> die Balken sind schwarz */}
-      <rect x={0} y={0} width={rx} height={ry} fill="url(#ledwall-bars)" />
-      {/* 16:9-Inhalt: farbig hervorgehoben */}
-      <rect
-        x={bx}
-        y={by}
-        width={cw}
-        height={ch}
-        className="fill-primary stroke-primary-foreground"
-        strokeWidth={sw}
-      />
-      <text
-        x={rx / 2}
-        y={ry / 2}
-        textAnchor="middle"
-        dominantBaseline="central"
-        className="fill-primary-foreground font-bold"
-        style={{ fontSize: Math.max(13, Math.min(cw, ch) / 4) }}
-      >
-        16:9
-      </text>
-      {/* Umriss der gesamten LED-Wall */}
-      <rect
-        x={sw / 2}
-        y={sw / 2}
-        width={rx - sw}
-        height={ry - sw}
-        fill="none"
-        className="stroke-foreground/60"
-        strokeWidth={sw}
-      />
-    </svg>
-  )
+type View = 'front' | 'top' | 'sig' | 'pwr'
+
+const VIEWS: { id: View; label: string; icon: LucideIcon }[] = [
+  { id: 'front', label: 'Ansicht', icon: RectangleHorizontal },
+  { id: 'top', label: 'Draufsicht', icon: Spline },
+  { id: 'sig', label: 'Signal', icon: Cable },
+  { id: 'pwr', label: 'Strom', icon: PlugZap }
+]
+
+const viewCodec: Codec<View> = {
+  parse: (raw) => (VIEWS.some((v) => v.id === raw) ? (raw as View) : null),
+  format: (v) => v
 }
 
-function SectionTitle({ children }: { children: string }): JSX.Element {
-  return (
-    <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{children}</h2>
-  )
-}
+/** Maß in m mit Komma und zwei Nachkommastellen */
+const m2 = (n: number): string =>
+  n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export function LedWall(): JSX.Element {
   const s = useLedWall()
@@ -136,13 +92,8 @@ export function LedWall(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d.rows, d.cols])
 
-  // Breite ist nur dort frei editierbar, wo sie das Curving treibt (Segment/
-  // Squircle) bzw. bei flachen Modulen. Bei Vollkreis/Builder ergibt sie sich.
-  const curve = d.curve
-  const widthEditable = !curve || curve.drivesWidth != null
-  const hasCurving = s.moduleKey === 'uS2+'
-
   function doExport(): void {
+    const curve = d.curve
     const curveForPdf = curve
       ? {
           modeLabel: CURVE_MODE_LABELS[curve.mode],
@@ -171,369 +122,415 @@ export function LedWall(): JSX.Element {
     })
   }
 
-  function saveCurrent(): void {
-    s.savePreset(s.projectName.trim() || `Vorlage ${s.presets.length + 1}`)
+  function toPackingList(): void {
+    usePacking.getState().mergeItems(deriveFromLedWall())
+    // sofort speichern: das neue Fenster liest den Stand beim Öffnen (offene Packlisten
+    // übernehmen ihn über syncAcrossWindows)
+    flushStore(usePacking)
+    void api.openToolWindow('packing-list')
   }
-  async function removePreset(p: LedWallPreset): Promise<void> {
-    const ok = await api.confirm({
-      message: `Vorlage „${p.name}" löschen?`,
-      confirmLabel: 'Löschen',
-      danger: true
-    })
-    if (ok) s.deletePreset(p.id)
-  }
+
+  const project = [s.projectName.trim(), s.customerName.trim()].filter(Boolean)
 
   return (
-    <div className={cn('ledwall-grid p-6', hasCurving && 'has-curving')}>
-      {/* Projekt */}
-      <Card className="p-5" style={{ gridArea: 'proj' }}>
-        <div className="flex items-start justify-between gap-3">
-          <SectionTitle>Projekt</SectionTitle>
-          <div className="flex items-center gap-1.5">
-            <div
-              className="flex overflow-hidden rounded-md border border-border"
-              title="Seitenformat der PDF-Doku"
-            >
-              {(
-                [
-                  [false, 'Hoch'],
-                  [true, 'Quer']
-                ] as [boolean, string][]
-              ).map(([landscape, label]) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => s.set({ pdfLandscape: landscape })}
-                  className={`px-2 py-1 text-xs transition-colors ${
-                    s.pdfLandscape === landscape
-                      ? 'bg-primary/15 font-semibold text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              title="Material in die Packliste übernehmen und in neuem Fenster öffnen"
-              onClick={() => {
-                usePacking.getState().mergeItems(deriveFromLedWall())
-                // sofort speichern: das neue Fenster liest den Stand beim Öffnen (offene
-                // Packlisten übernehmen ihn über syncAcrossWindows)
-                flushStore(usePacking)
-                void api.openToolWindow('packing-list')
-              }}
-            >
-              <ClipboardList className="size-4" /> Packliste
-            </Button>
-            <Button size="sm" onClick={doExport}>
-              <FileDown className="size-4" /> PDF exportieren
-            </Button>
-          </div>
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Projektname</span>
-            <Input
-              value={s.projectName}
-              placeholder="z.B. Messe Frankfurt 2026"
-              onChange={(e) => s.set({ projectName: e.target.value })}
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Kunde</span>
-            <Input
-              value={s.customerName}
-              placeholder="z.B. Firma XY"
-              onChange={(e) => s.set({ customerName: e.target.value })}
-            />
-          </label>
-        </div>
-
-        {/* Vorlagen: benannte Konfigurationen sichern/laden (wie bei anderen Tools) */}
-        <div className="mt-3 border-t border-border pt-3">
-          <div className="flex items-center justify-between gap-2">
-            <SectionTitle>Vorlagen</SectionTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={saveCurrent}
-              title="Aktuelle Planung als Vorlage sichern (Name = Projektname)"
-            >
-              <Save className="size-4" /> Speichern
-            </Button>
-          </div>
-          {s.presets.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {s.presets.map((p) => (
-                <div key={p.id} className="flex items-center rounded-md border border-border pl-2">
-                  <button
-                    type="button"
-                    onClick={() => s.loadPreset(p.id)}
-                    title={`Laden · gespeichert ${new Date(p.savedAt).toLocaleString('de-AT')}`}
-                    className="max-w-[16rem] truncate py-1 pr-2 text-sm hover:text-primary"
-                  >
-                    {p.name}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void removePreset(p)}
-                    aria-label="Vorlage löschen"
-                    className="px-1.5 py-1 text-muted-foreground hover:text-danger"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Noch keine Vorlagen. „Speichern" sichert die aktuelle Planung unter dem Projektnamen.
-            </p>
-          )}
-        </div>
-      </Card>
-
-      {/* Wandgröße & Aufbau */}
-      <Card className="p-5" style={{ gridArea: 'wall' }}>
-        <SectionTitle>Wandgröße &amp; Aufbau</SectionTitle>
-        <div className="mt-3 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {widthEditable ? (
-              <LField
-                label="Breite"
-                unit="m"
-                value={s.widthM}
-                onChange={(v) => s.set({ widthM: v })}
-              />
+    <ToolShell
+      id="led-wall"
+      bar={
+        <ToolBar
+          label="Projekt"
+          kind="job"
+          status={
+            project.length ? (
+              <span className="truncate">
+                <span className="font-medium">{project[0]}</span>
+                {project[1] && <span className="text-muted-foreground"> · {project[1]}</span>}
+              </span>
             ) : (
-              <div>
-                <span className="mb-1 block text-xs text-muted-foreground">
-                  Breite (aus Curving)
-                </span>
-                <div className="flex h-9 items-center rounded-md border border-primary/30 bg-primary/[0.07] px-3 text-sm font-semibold text-primary">
-                  {d.actualW} m
-                </div>
-              </div>
-            )}
-            <LField
-              label="Höhe"
-              unit="m"
-              value={s.heightM}
-              onChange={(v) => s.set({ heightM: v })}
-            />
-          </div>
-          {curve && (
-            <p className="text-xs text-muted-foreground">
-              Form:{' '}
-              <span className="font-medium text-foreground">{CURVE_MODE_LABELS[curve.mode]}</span> ·{' '}
-              {curve.mods} Module/Reihe · belegt {fmt(curve.footprintW, 2)} ×{' '}
-              {fmt(curve.footprintD, 2)} m
-            </p>
-          )}
-          <div className="flex gap-2">
-            {(
-              [
-                ['stacked', 'Ground-Stack'],
-                ['flying', 'Fliegend']
-              ] as [BuildMode, string][]
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => s.set({ buildMode: mode })}
-                className={`flex-1 rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                  s.buildMode === mode
-                    ? 'border-primary/60 bg-primary/10 font-semibold text-primary'
-                    : 'border-border text-muted-foreground hover:border-primary/40'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Tatsächlich:{' '}
-            <span className="font-medium text-foreground">
-              {d.actualW} × {d.actualH} m
-            </span>{' '}
-            ({d.cols}×{d.rows} = {d.total} Module)
-          </p>
-        </div>
-      </Card>
+              <span className="text-muted-foreground">ohne Projektnamen</span>
+            )
+          }
+        >
+          <Button size="sm" onClick={doExport}>
+            <FileDown className="size-4" /> PDF exportieren
+          </Button>
+          <Segmented
+            label="Seitenformat der PDF-Doku"
+            className="w-auto [&>button]:py-1"
+            value={s.pdfLandscape ? 'quer' : 'hoch'}
+            options={[
+              { value: 'hoch', label: 'Hoch' },
+              { value: 'quer', label: 'Quer' }
+            ]}
+            onChange={(v) => s.set({ pdfLandscape: v === 'quer' })}
+          />
+          <BarDivider />
+          <Button
+            size="sm"
+            variant="outline"
+            title="Material in die Packliste übernehmen und sie in einem eigenen Fenster öffnen"
+            onClick={toPackingList}
+          >
+            <ClipboardList className="size-4" /> In die Packliste
+          </Button>
+        </ToolBar>
+      }
+      aside={<LedWallSettings d={d} />}
+      main={<Workspace d={d} />}
+    />
+  )
+}
 
-      {/* Modultyp */}
-      <Card className="p-5" style={{ gridArea: 'mod' }}>
-        <SectionTitle>Modultyp</SectionTitle>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {Object.entries(MODULES).map(([key, m]) => (
+/** Ab dieser Breite der Arbeitsfläche stehen Zeichnung und Datenspalte nebeneinander */
+const SIDE_BY_SIDE = 860
+
+function Workspace({ d }: { d: WallMetrics }): JSX.Element {
+  const [ref, width] = useElementWidth<HTMLDivElement>()
+  // Nebeneinander füllt die Zeichnung die Fensterhöhe, die Datenspalte scrollt bei Bedarf
+  // für sich – so bleibt auf dem Laptop alles in einem Bild. Schmal: untereinander.
+  const wide = width === 0 || width >= SIDE_BY_SIDE
+  return (
+    <div ref={ref} className={cn('flex flex-col gap-4 p-4', wide && 'h-full min-h-[34rem]')}>
+      <KeyFigures d={d} width={width} />
+      <div className={cn('flex gap-4', wide ? 'min-h-0 flex-1' : 'flex-col')}>
+        <Drawing d={d} className={wide ? 'min-w-0 flex-1' : 'h-[32rem]'} />
+        <div
+          className={cn(
+            'flex flex-col gap-4',
+            wide && 'w-[19rem] shrink-0 overflow-y-auto xl:w-[22rem]'
+          )}
+        >
+          <PowerCard d={d} />
+          <BuildCard d={d} />
+          <ModuleCard d={d} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Kpi({
+  label,
+  value,
+  unit,
+  sub,
+  accent
+}: {
+  label: string
+  value: string
+  unit?: string
+  /** klein rechts neben der Beschriftung */
+  sub?: string
+  accent?: boolean
+}): JSX.Element {
+  return (
+    <div
+      className={cn(
+        'min-w-0 rounded-lg border px-3 py-2',
+        accent ? 'border-primary/40 bg-primary/[0.09]' : 'border-border bg-card'
+      )}
+    >
+      <div className="flex items-baseline gap-2 text-xs text-muted-foreground">
+        <span className={cn('truncate', accent && 'font-medium text-primary')}>{label}</span>
+        {sub && <span className="ml-auto shrink-0 tabular-nums">{sub}</span>}
+      </div>
+      <div
+        className={cn(
+          'mt-0.5 whitespace-nowrap text-lg font-bold tabular-nums tracking-tight',
+          accent && 'text-primary'
+        )}
+      >
+        {value}
+        {unit && (
+          <span
+            className={cn(
+              'ml-1 text-xs font-normal',
+              accent ? 'text-primary/70' : 'text-muted-foreground'
+            )}
+          >
+            {unit}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Kacheln je Zeile: alle sechs nebeneinander, sonst zwei gleich volle Reihen */
+function kpiColumns(width: number): number {
+  return width === 0 || width >= 880 ? 6 : width >= 440 ? 3 : 2
+}
+
+function KeyFigures({ d, width }: { d: WallMetrics; width: number }): JSX.Element {
+  const buildMode = useLedWall((s) => s.buildMode)
+  const w = parseFloat(d.actualW)
+  const h = parseFloat(d.actualH)
+  const weight = parseFloat(d.weightKg)
+  const unrolled = (d.cols * d.mod.dimW) / 1000
+  return (
+    <section
+      aria-label="Kennzahlen"
+      className="grid gap-3"
+      style={{ gridTemplateColumns: `repeat(${kpiColumns(width)}, minmax(0, 1fr))` }}
+    >
+      <Kpi
+        label="Auflösung"
+        value={`${d.resX} × ${d.resY}`}
+        unit="px"
+        sub={`${d.ratioW}:${d.ratioH}`}
+        accent
+      />
+      <Kpi label="Module" value={String(d.total)} unit="Stk." sub={`${d.cols} × ${d.rows}`} />
+      <Kpi
+        label="Größe"
+        value={`${m2(w)} × ${m2(h)}`}
+        unit="m"
+        sub={d.curve ? `Bogen ${m2(unrolled)} m` : `${fmt(w * h, 1)} m²`}
+      />
+      <Kpi label="Gewicht" value={fmt(weight, 0)} unit="kg" />
+      <Kpi
+        label="Leistung max."
+        value={fmt(d.powerMaxW, 0)}
+        unit="W"
+        sub={`${fmt(parseFloat(d.ampsMax), 1)} A`}
+      />
+      {buildMode === 'stacked' ? (
+        <Kpi
+          label="Ballast"
+          value={fmt(d.totalBallast, 0)}
+          unit="kg"
+          sub={`${d.baseUnits} × ${d.ballastPerBase} kg`}
+          accent
+        />
+      ) : (
+        <Kpi label="Last an Traverse" value={fmt(weight, 0)} unit="kg" accent />
+      )}
+    </section>
+  )
+}
+
+/** Kopfzeile der Zeichenfläche: das Wichtigste zur gezeigten Darstellung */
+function viewInfo(view: View, d: WallMetrics, grid: number[][]): string {
+  if (view === 'front') return fitText(d)
+  if (view === 'top') {
+    return d.curve ? `${CURVE_MODE_LABELS[d.curve.mode]} · 0–45° je Modul, 2,5°-Schritte` : ''
+  }
+  const chains = new Set<number>()
+  let assigned = 0
+  for (const r of grid)
+    for (const v of r)
+      if (v >= 0) {
+        chains.add(v)
+        assigned++
+      }
+  return `${chains.size} ${chains.size === 1 ? 'Kette' : 'Ketten'} · ${assigned} von ${d.total} Modulen`
+}
+
+function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.Element {
+  const s = useLedWall()
+  const [stored, setView] = usePersistentState<View>('led-wall:view', 'front', viewCodec)
+  const hasCurving = d.curve != null
+  // Draufsicht gibt es nur mit Curving; danach wieder die Ansicht
+  const view: View = stored === 'top' && !hasCurving ? 'front' : stored
+  const views = VIEWS.filter((v) => v.id !== 'top' || hasCurving)
+
+  const info = viewInfo(view, d, view === 'pwr' ? s.pwr : s.sig)
+
+  return (
+    <Card className={cn('flex min-h-[22rem] flex-col', className)}>
+      <div className="flex items-center gap-3 border-b border-border px-3 py-2">
+        <div
+          role="tablist"
+          aria-label="Darstellung"
+          className="flex rounded-md border border-border bg-muted/30 p-0.5"
+        >
+          {views.map((v) => (
             <button
-              key={key}
+              key={v.id}
               type="button"
-              onClick={() => s.set({ moduleKey: key })}
-              className={`rounded-lg border-2 p-3 text-left transition-colors ${
-                s.moduleKey === key
-                  ? 'border-primary/70 bg-primary/[0.07]'
-                  : 'border-border hover:border-primary/40'
-              }`}
-            >
-              <div className="text-base font-bold text-primary">{m.name}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">
-                PP {m.pitch} mm · {m.tag}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {m.resX}×{m.resY} px · {m.dimW}×{m.dimH} mm
-              </div>
-              {m.canCurve && (
-                <div className="mt-1 text-[10px] font-semibold text-primary">
-                  Curving 0–{m.maxAngle}°
-                </div>
+              role="tab"
+              aria-selected={view === v.id}
+              onClick={() => setView(v.id)}
+              className={cn(
+                'flex items-center gap-1.5 rounded px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+                view === v.id
+                  ? 'bg-card font-medium text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
+            >
+              <v.icon className="size-4" />
+              {v.label}
             </button>
           ))}
         </div>
-      </Card>
+        <p
+          className="min-w-0 flex-1 truncate text-right text-xs text-muted-foreground"
+          title={info}
+        >
+          {info}
+        </p>
+      </div>
+      <div
+        role="tabpanel"
+        aria-label={VIEWS.find((v) => v.id === view)?.label}
+        className="min-h-0 flex-1 p-3"
+      >
+        {view === 'front' && <FrontView d={d} buildMode={s.buildMode} />}
+        {view === 'top' && <CurvingView d={d} />}
+        {view === 'sig' && (
+          <CableGrid
+            label="Signal"
+            grid={s.sig}
+            colors={SIG_COLORS}
+            prefix="S"
+            activeChain={s.sigChain}
+            onChain={(c) => s.set({ sigChain: c })}
+            onCell={(r, c) => s.setCell('sig', r, c)}
+            onLine={(k, i) => s.fillLine('sig', k, i)}
+            onReset={() => s.resetGrid('sig')}
+          />
+        )}
+        {view === 'pwr' && (
+          <CableGrid
+            label="Strom"
+            grid={s.pwr}
+            colors={PWR_COLORS}
+            prefix="P"
+            activeChain={s.pwrChain}
+            onChain={(c) => s.set({ pwrChain: c })}
+            onCell={(r, c) => s.setCell('pwr', r, c)}
+            onLine={(k, i) => s.fillLine('pwr', k, i)}
+            onReset={() => s.resetGrid('pwr')}
+          />
+        )}
+      </div>
+    </Card>
+  )
+}
 
-      {/* Curving (nur uS2+) – eigener Bereich */}
-      {hasCurving && (
-        <div style={{ gridArea: 'curv' }}>
-          <Curving />
-        </div>
-      )}
+function SideCard({
+  title,
+  hint,
+  children
+}: {
+  title: string
+  hint?: string
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <Card className="p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{title}</h2>
+        {hint && <InfoTip text={hint} label={`Erklärung zu „${title}“`} />}
+      </div>
+      {children}
+    </Card>
+  )
+}
 
-      {/* Infos zur Wall (linke Spalte) */}
-      <div className="space-y-4" style={{ gridArea: 'info' }}>
-        <Card className="p-5">
-          <SectionTitle>Auflösung</SectionTitle>
-          <div className="mt-2 text-3xl font-bold tracking-tight">
-            {d.resX} × {d.resY}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Pixel ({d.ratioW}:{d.ratioH})
-          </p>
-          <div className="mt-3 space-y-2">
-            {d.fit169?.match ? (
-              <Alert tone="success">16:9-Content passt exakt</Alert>
-            ) : d.fit169 ? (
-              <div className="rounded-md border border-primary/30 bg-primary/[0.08] px-3 py-2 text-xs">
-                <p className="font-semibold text-primary">16:9-Content</p>
-                <p className="mt-0.5 text-muted-foreground">
-                  <span className="font-medium text-foreground">{d.fit169.barPx} px</span> Rand{' '}
-                  {d.fit169.side === 'lr' ? 'links/rechts' : 'oben/unten'} · Nutzfläche{' '}
-                  {d.fit169.cw}×{d.fit169.ch} px
-                </p>
-              </div>
-            ) : null}
-            {d.fit169 && !d.fit169.match && <Fit169Plot rx={d.resX} ry={d.resY} fit={d.fit169} />}
-            <Readout label="Pixelpitch" value={String(d.mod.pitch)} unit="mm" />
-            <Readout label="Module" value={String(d.total)} unit="Stk." />
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <SectionTitle>Technische Daten</SectionTitle>
-          <div className="mt-3 space-y-2">
-            <Readout label="Gewicht" value={fmt(parseFloat(d.weightKg), 1)} unit="kg" accent />
-            <Readout label="Tiefe" value={String(d.mod.dimD)} unit="mm" />
-            <Readout label="Schutzart" value={d.mod.ip} />
-            <Readout
-              label="Helligkeit"
-              value={
-                d.mod.brightnessMax
-                  ? `${d.mod.brightness} (max ${d.mod.brightnessMax})`
-                  : String(d.mod.brightness)
-              }
-              unit="nit"
-            />
-            <Readout label="Kontrast" value={`> ${d.mod.contrast}`} />
-            <Readout label="Refresh" value={`≥ ${d.mod.refresh}`} unit="Hz" />
-          </div>
-        </Card>
-
-        <Card className="p-5">
-          <SectionTitle>
-            {s.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend'}
-          </SectionTitle>
-          <div className="mt-3 space-y-2">
-            {s.buildMode === 'stacked' ? (
-              <>
-                <Readout label="Standfüße" value={String(d.baseUnits)} unit="Stk." />
-                <Readout label="Ballast/Fuß" value={String(d.ballastPerBase)} unit="kg" />
-                <Readout
-                  label="Ballast gesamt"
-                  value={fmt(d.totalBallast, 0)}
-                  unit="kg"
-                  big
-                  accent
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  1 LSU-Fuß pro lfd. Meter Bildbreite ({d.actualW} m → {d.baseUnits} Bases)
-                </p>
-              </>
-            ) : (
-              <>
-                <Readout
-                  label="Gewicht an Traverse"
-                  value={fmt(parseFloat(d.weightKg), 1)}
-                  unit="kg"
-                  big
-                  accent
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  Rigging-Punkte und Traverse je nach Situation planen.
-                </p>
-              </>
+/** Zeilen „Bezeichnung … Wert“ */
+function Specs({ rows }: { rows: [string, ReactNode, boolean?][] }): JSX.Element {
+  return (
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+      {rows.map(([k, v, accent]) => (
+        <div key={k} className="contents">
+          <dt className="text-muted-foreground">{k}</dt>
+          <dd
+            className={cn(
+              'text-right font-medium tabular-nums',
+              accent && 'font-semibold text-primary'
             )}
-          </div>
-        </Card>
+          >
+            {v}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
 
-        <Card className="p-5">
-          <SectionTitle>Strom</SectionTitle>
-          <div className="mt-3 space-y-2">
-            <Readout label="Typisch" value={fmt(d.powerTypW, 0)} unit="W" />
-            <Readout label="Maximal" value={fmt(d.powerMaxW, 0)} unit="W" accent />
-            <Readout label="Typisch" value={d.ampsTyp} unit="A" />
-            <Readout label="Maximal" value={d.ampsMax} unit="A" accent />
-          </div>
-          <p className="mt-2 text-[10px] text-muted-foreground">{d.mod.connector}</p>
-        </Card>
-      </div>
+function ModuleCard({ d }: { d: WallMetrics }): JSX.Element {
+  const m = d.mod
+  return (
+    <SideCard title={`Modul ${m.name}`}>
+      <Specs
+        rows={[
+          ['Typ', m.tag],
+          ['Pixelpitch', `${fmt(m.pitch, 3)} mm`],
+          ['Pixel je Modul', `${m.resX} × ${m.resY}`],
+          ['Maße', `${m.dimW} × ${m.dimH} × ${m.dimD} mm`],
+          ['Gewicht', `${fmt(m.weight, 1)} kg`],
+          [
+            'Helligkeit',
+            m.brightnessMax
+              ? `${fmt(m.brightness, 0)} nit (max. ${fmt(m.brightnessMax, 0)})`
+              : `${fmt(m.brightness, 0)} nit`
+          ],
+          ['Kontrast', `> ${m.contrast}`],
+          ['Refresh', `≥ ${fmt(m.refresh, 0)} Hz`],
+          ['Blickwinkel', m.viewAngle],
+          ['Schutzart', m.ip],
+          ['Stromanschluss', m.connector]
+        ]}
+      />
+    </SideCard>
+  )
+}
 
-      {/* Verkabelung (rechte, 2-spaltig breite Spalte; bei uS2+ unter dem Curving) */}
-      <div className="space-y-4" style={{ gridArea: 'cable' }}>
-        <Card className="p-5">
-          <SectionTitle>{`Signalverkabelung — ${d.cols}×${d.rows}`}</SectionTitle>
-          <div className="mt-3">
-            <CableGrid
-              grid={s.sig}
-              colors={SIG_COLORS}
-              prefix="S"
-              activeChain={s.sigChain}
-              onChain={(c) => s.set({ sigChain: c })}
-              onCell={(r, c) => s.setCell('sig', r, c)}
-              onLine={(k, i) => s.fillLine('sig', k, i)}
-              onReset={() => s.resetGrid('sig')}
-            />
-          </div>
-        </Card>
-        <Card className="p-5">
-          <SectionTitle>{`Stromverkabelung — ${d.cols}×${d.rows}`}</SectionTitle>
-          <div className="mt-3">
-            <CableGrid
-              grid={s.pwr}
-              colors={PWR_COLORS}
-              prefix="P"
-              activeChain={s.pwrChain}
-              onChain={(c) => s.set({ pwrChain: c })}
-              onCell={(r, c) => s.setCell('pwr', r, c)}
-              onLine={(k, i) => s.fillLine('pwr', k, i)}
-              onReset={() => s.resetGrid('pwr')}
-            />
-          </div>
-        </Card>
-      </div>
-    </div>
+function PowerCard({ d }: { d: WallMetrics }): JSX.Element {
+  return (
+    <SideCard
+      title="Strom"
+      hint={`Leistung je Modul ${d.mod.powerTyp} W typisch, ${d.mod.powerMax} W maximal; Strom bei 230 V.`}
+    >
+      <table className="w-full text-sm tabular-nums">
+        <thead>
+          <tr className="text-xs text-muted-foreground">
+            <th className="pb-1 text-left font-normal" />
+            <th className="pb-1 text-right font-normal">Leistung</th>
+            <th className="pb-1 text-right font-normal">Strom</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="text-muted-foreground">Typisch</td>
+            <td className="text-right font-medium">{fmt(d.powerTypW, 0)} W</td>
+            <td className="text-right font-medium">{fmt(parseFloat(d.ampsTyp), 1)} A</td>
+          </tr>
+          <tr className="text-primary">
+            <td>Maximal</td>
+            <td className="text-right font-semibold">{fmt(d.powerMaxW, 0)} W</td>
+            <td className="text-right font-semibold">{fmt(parseFloat(d.ampsMax), 1)} A</td>
+          </tr>
+        </tbody>
+      </table>
+    </SideCard>
+  )
+}
+
+function BuildCard({ d }: { d: WallMetrics }): JSX.Element {
+  const buildMode = useLedWall((s) => s.buildMode)
+  if (buildMode === 'flying') {
+    return (
+      <SideCard
+        title={BUILD_LABELS.flying}
+        hint="Rigging-Punkte und Traverse je nach Situation planen – etwa mit dem Rechner „Rigging-Last“."
+      >
+        <Specs rows={[['Gewicht an der Traverse', `${fmt(parseFloat(d.weightKg), 1)} kg`, true]]} />
+      </SideCard>
+    )
+  }
+  return (
+    <SideCard
+      title={`${BUILD_LABELS.stacked} (LSU)`}
+      hint={`1 LSU-Fuß je laufendem Meter Bildbreite (${m2(parseFloat(d.actualW))} m → ${d.baseUnits} Füße); der Ballast je Fuß richtet sich nach der Wandhöhe.`}
+    >
+      <Specs
+        rows={[
+          ['Standfüße', `${d.baseUnits} Stk.`],
+          ['Ballast je Fuß', `${fmt(d.ballastPerBase, 0)} kg`],
+          ['Ballast gesamt', `${fmt(d.totalBallast, 0)} kg`, true]
+        ]}
+      />
+    </SideCard>
   )
 }
