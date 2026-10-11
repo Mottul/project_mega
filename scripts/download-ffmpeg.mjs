@@ -65,7 +65,34 @@ function osKey(platform = process.platform) {
   return 'linux'
 }
 
-function download(url, dest, redirects = 0) {
+// 429/503: evermeet liefert über einen Spiegel aus, der kurz hintereinander folgende Downloads
+// je Adresse abweist (ffprobe direkt nach ffmpeg) – CI-Runner teilen sich Adressen. Warten und
+// von vorn versuchen, statt den Lauf abzubrechen.
+const RETRY_STATUS = new Set([429, 503])
+const RETRY_DELAYS = [10, 30, 60] // Sekunden, falls der Server kein Retry-After schickt
+
+/** Retry-After (Sekunden oder HTTP-Datum) -> Sekunden, auf 1–120 begrenzt. */
+function retryAfterSeconds(header, fallback) {
+  const secs = header ? Number(header) : NaN
+  const untilDate = header ? (Date.parse(header) - Date.now()) / 1000 : NaN
+  const s = Number.isFinite(secs) ? secs : Number.isFinite(untilDate) ? untilDate : fallback
+  return Math.min(120, Math.max(1, Math.ceil(s)))
+}
+
+async function download(url, dest) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await downloadOnce(url, dest)
+    } catch (e) {
+      if (!RETRY_STATUS.has(e.status) || attempt >= RETRY_DELAYS.length) throw e
+      const wait = retryAfterSeconds(e.retryAfter, RETRY_DELAYS[attempt])
+      console.log(`  … HTTP ${e.status}, neuer Versuch in ${wait} s`)
+      await new Promise((r) => setTimeout(r, wait * 1000))
+    }
+  }
+}
+
+function downloadOnce(url, dest, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 6) return reject(new Error('Zu viele Redirects'))
     https
@@ -73,12 +100,13 @@ function download(url, dest, redirects = 0) {
         const status = res.statusCode ?? 0
         if (status >= 300 && status < 400 && res.headers.location) {
           res.resume()
-          resolve(download(res.headers.location, dest, redirects + 1))
+          resolve(downloadOnce(res.headers.location, dest, redirects + 1))
           return
         }
         if (status !== 200) {
           res.resume()
-          reject(new Error(`HTTP ${status} bei ${url}`))
+          const err = new Error(`HTTP ${status} bei ${url}`)
+          reject(Object.assign(err, { status, retryAfter: res.headers['retry-after'] }))
           return
         }
         const out = createWriteStream(dest)
