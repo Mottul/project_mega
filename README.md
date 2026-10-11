@@ -66,7 +66,7 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 - **Kreisrechner**, **Audio-Delay & SPL**, **Timecode-Rechner** (SMPTE ↔ Frames ↔ Echtzeit,
   Drop-Frame).
 - **Fürs Handy:** Alle neun Rechner gibt es zusätzlich als eigenständige, offline-fähige Web-App
-  (PWA) – ohne den Rest der Mottulbox.
+  (PWA) – ohne den Rest der Mottulbox: https://mottul.github.io/project_mega/
 
 Alles im Detail: [docs/WERKZEUGE.md](docs/WERKZEUGE.md)
 
