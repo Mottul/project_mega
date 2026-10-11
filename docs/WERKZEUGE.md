@@ -471,7 +471,8 @@ mit Warnstufen. Richtwerte – ersetzt keinen Sachkundigen.
 
 Alle neun kleinen Werkzeuge – Kreis, Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen,
 DMX-Dip-Schalter, Stromlast, Audio-Delay, Rigging-Last und Timecode – gibt es zusätzlich als
-eigenständige Web-App ohne die übrige Mottulbox: im Browser öffnen, über „Installieren“ bzw.
+eigenständige Web-App ohne die übrige Mottulbox: https://mottul.github.io/project_mega/ im
+Browser öffnen, über „Installieren“ bzw.
 „Zum Home-Bildschirm“ als App ablegen, danach läuft sie **offline**. Dieselben Rechner wie am
 Desktop (gleicher Code), Hell/Dunkel per Knopf oben rechts (dunkel → hell → wie das Gerät). Eine
 neue Version meldet sich mit „Neu laden“, sonst greift sie beim nächsten Start. Bauen und

@@ -309,8 +309,12 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
   dem Cache; eine neue Version wartet, bis man „Neu laden“ tippt oder die App schließt.
   Service Worker gibt es nur über HTTPS oder `localhost` – im LAN per `pwa:preview` läuft die
   Seite, aber nicht offline und nicht installierbar.
-- **Veröffentlichen:** Workflow `.github/workflows/pwa-pages.yml` (von Hand starten: Actions →
-  „Rechner-PWA“ → Run workflow) baut und legt `out-pwa/` auf GitHub Pages. Einmalig nötig:
+- **Veröffentlichen:** Workflow `.github/workflows/pwa-pages.yml` testet die Rechner, baut und
+  legt `out-pwa/` auf GitHub Pages (https://mottul.github.io/project_mega/). Er läuft
+  automatisch bei jedem Push auf `main`, der die PWA betreffen kann (`src/pwa`, `src/renderer/src`,
+  `src/shared`, Build-Konfiguration, Pakete), und lässt sich von Hand starten (Actions →
+  „Rechner-PWA“ → Run workflow). Ein Lauf ohne echte Änderung ist harmlos: Der Build ist
+  reproduzierbar, `sw.js` bleibt gleich, die Handys melden keine neue Version. Einmalig nötig war
   Settings → Pages → Source „GitHub Actions“. Jeder andere statische Webspace mit HTTPS geht
   genauso (Inhalt von `out-pwa/` hochladen).
 - **Icons neu erzeugen** (nach einem neuen App-Icon, ImageMagick):
