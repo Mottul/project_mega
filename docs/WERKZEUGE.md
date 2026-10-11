@@ -449,7 +449,9 @@ Kabelmengen aus den gezeichneten Ketten); Export als PDF oder JSON.
 
 ### Stromlast & Absicherung
 
-Leistung ↔ Strom (1∼/3∼) und wie viele Geräte auf einen 16-/32-/63-A-Stromkreis passen.
+Leistung ↔ Strom (1∼/3∼, mit Leistungsfaktor cos φ und Scheinleistung) und wie viele gleiche
+Geräte auf einen 10- bis 63-A-Stromkreis passen – wahlweise mit 80 % Auslastung für den
+Dauerbetrieb.
 
 ### Rigging-Last
 
@@ -491,7 +493,7 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 
 | Pfad                    | Inhalt                                                                   |
 | ----------------------- | ------------------------------------------------------------------------ |
-| `settings.json`         | App-Einstellungen inkl. Zielordner, NDI und Timer-Ablauf                 |
+| `settings.json`         | App-Einstellungen inkl. Zielordner, NDI, Timer-Ablauf und Fensterlage der Rechner |
 | `library.db`            | Bibliothek von Manuals und Video-Player (SQLite)                         |
 | `player-media/`         | konvertierte Player-Medien und Thumbnails                                |
 | `player-uploads/`       | vom Handy hochgeladene Originale                                         |
@@ -499,5 +501,6 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 | `jingles/`              | Audiodateien des Jingle-Players                                          |
 | `manuals/`              | importierte Handbücher                                                   |
 | `bin/`                  | yt-dlp                                                                   |
+| `ffmpeg/`               | in der App aktualisierte ffmpeg-Builds (Windows, Linux)                  |
 | `Local Storage/`        | Werkzeug-Zustände (OSC-Projekte, LED-Wall-Planungen, Packlisten …)       |
 | `avtoolbox-debug.log`   | Debug-Log – erste Anlaufstelle bei Problemen im gepackten Build          |

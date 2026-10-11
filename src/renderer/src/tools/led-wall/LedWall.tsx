@@ -7,6 +7,7 @@ import { ClipboardList, FileDown, Save, Trash2 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { Alert } from '@renderer/components/ui/alert'
 import { api } from '@renderer/lib/api'
 import { flushStore } from '@renderer/lib/persistStorage'
 import { deriveFromLedWall } from '../packing-list/derive'
@@ -280,7 +281,7 @@ export function LedWall(): JSX.Element {
                     type="button"
                     onClick={() => void removePreset(p)}
                     aria-label="Vorlage löschen"
-                    className="px-1.5 py-1 text-muted-foreground hover:text-destructive"
+                    className="px-1.5 py-1 text-muted-foreground hover:text-danger"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -414,9 +415,7 @@ export function LedWall(): JSX.Element {
           </p>
           <div className="mt-3 space-y-2">
             {d.fit169?.match ? (
-              <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400 light:text-emerald-700">
-                16:9-Content passt exakt
-              </p>
+              <Alert tone="success">16:9-Content passt exakt</Alert>
             ) : d.fit169 ? (
               <div className="rounded-md border border-primary/30 bg-primary/[0.08] px-3 py-2 text-xs">
                 <p className="font-semibold text-primary">16:9-Content</p>

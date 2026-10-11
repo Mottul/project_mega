@@ -48,8 +48,8 @@ const viewCodec: Codec<'tiles' | 'list'> = {
 }
 
 const LEVEL_STYLE = {
-  error: { Icon: XCircle, cls: 'text-destructive' },
-  warning: { Icon: AlertTriangle, cls: 'text-amber-400 light:text-amber-700' },
+  error: { Icon: XCircle, cls: 'text-danger' },
+  warning: { Icon: AlertTriangle, cls: 'text-warning' },
   info: { Icon: Info, cls: 'text-muted-foreground' }
 } as const
 
@@ -282,8 +282,8 @@ export function VideoGenerator(): JSX.Element {
       main={
         <div className="space-y-4 p-6">
           {ffmpegMissing && (
-            <Card className="flex items-start gap-3 border-destructive/50 p-4">
-              <XCircle className="mt-0.5 size-5 shrink-0 text-destructive" />
+            <Card className="flex items-start gap-3 border-danger/50 p-4">
+              <XCircle className="mt-0.5 size-5 shrink-0 text-danger" />
               <p className="text-sm">
                 ffmpeg wurde nicht gefunden – ohne ffmpeg lässt sich kein Video erzeugen.
                 {caps?.error ? ` (${caps.error})` : ''}

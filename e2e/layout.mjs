@@ -29,25 +29,38 @@ const SMALL = [
 ]
 const TWO_COLUMNS = ['power-load', 'camera-lens', 'rigging']
 
-/** Fenster eines kleinen Werkzeugs im main (null = keins offen). Ein Fenster, das gerade
- *  schließt, steht noch in der Liste – deshalb beide isDestroyed-Prüfungen. */
-const winInfo = (id) =>
-  app.evaluate(({ BrowserWindow, screen }, i) => {
-    const w = BrowserWindow.getAllWindows().find(
-      (x) =>
-        !x.isDestroyed() &&
-        !x.webContents.isDestroyed() &&
-        x.webContents.getURL().includes(`#/tool/${i}?`)
-    )
-    if (!w) return null
-    return {
-      content: w.getContentSize(),
-      outer: w.getSize(),
-      pos: w.getPosition(),
-      visible: w.isVisible(),
-      areaHeight: screen.getDisplayMatching(w.getBounds()).workArea.height
-    }
-  }, id)
+/**
+ * Fenster eines kleinen Werkzeugs im main: eine BrowserWindow-Methode aufrufen
+ * (`toolWin(id, 'setContentSize', 400, 300)`, 'minimize', 'isMinimized', 'close' …) oder ohne
+ * Methode Größe und Lage lesen. null, wenn keins offen ist. Ein Fenster, das gerade schließt,
+ * steht noch in der Liste, deshalb beide isDestroyed-Prüfungen.
+ */
+const toolWin = (id, method, ...args) =>
+  app.evaluate(
+    ({ BrowserWindow, screen }, [i, m, a]) => {
+      const w = BrowserWindow.getAllWindows().find(
+        (v) =>
+          !v.isDestroyed() &&
+          !v.webContents.isDestroyed() &&
+          v.webContents.getURL().includes(`#/tool/${i}?`)
+      )
+      if (!w) return null
+      if (m == null) {
+        return {
+          content: w.getContentSize(),
+          outer: w.getSize(),
+          pos: w.getPosition(),
+          visible: w.isVisible(),
+          areaHeight: screen.getDisplayMatching(w.getBounds()).workArea.height
+        }
+      }
+      // Tippfehler sollen auffallen, nicht als „erledigt“ durchgehen
+      if (typeof w[m] !== 'function') throw new Error(`BrowserWindow.${m}() gibt es nicht`)
+      return w[m](...a) ?? true
+    },
+    [id, method, args]
+  )
+const winInfo = (id) => toolWin(id)
 
 /** Kleines Werkzeug öffnen (Vorgabe: über die Brücke) und warten, bis es sichtbar ist –
  *  main zeigt es erst, wenn die Höhe zum Inhalt passt. Ein von einem gescheiterten Schritt
@@ -103,16 +116,7 @@ function assertNoJump(id) {
 
 /** Fenster eines kleinen Werkzeugs schließen wie der Bediener (main merkt sich die Lage) */
 const closeToolWindow = async (id) => {
-  await app.evaluate(({ BrowserWindow }, i) => {
-    BrowserWindow.getAllWindows()
-      .find(
-        (x) =>
-          !x.isDestroyed() &&
-          !x.webContents.isDestroyed() &&
-          x.webContents.getURL().includes(`#/tool/${i}?`)
-      )
-      ?.close()
-  }, id)
+  await toolWin(id, 'close')
   assert.ok(await waitFor(async () => (await winInfo(id)) === null, 5_000), `${id} bleibt offen`)
 }
 const windowCount = () =>
@@ -338,16 +342,8 @@ try {
         // ein niedriger Rechner: Ein hoher rückte auf kleinen Bildschirmen (CI, 1024 × 768)
         // beim Anpassen nach oben, damit er nicht unten herausragt – dann stimmte y nicht mehr
         await openSmall('circle-calc')
-        await app.evaluate(({ BrowserWindow }) => {
-          const w = BrowserWindow.getAllWindows().find(
-            (x) =>
-              !x.isDestroyed() &&
-              !x.webContents.isDestroyed() &&
-              x.webContents.getURL().includes('#/tool/circle-calc?')
-          )
-          w.setContentSize(400, 300)
-          w.setPosition(40, 50)
-        })
+        await toolWin('circle-calc', 'setContentSize', 400, 300)
+        await toolWin('circle-calc', 'setPosition', 40, 50)
         await closeToolWindow('circle-calc')
         const w = await openSmall('circle-calc')
         const info = await winInfo('circle-calc')
@@ -368,6 +364,26 @@ try {
       }
     ],
     [
+      'Rechner: verknüpfte Felder – Eingabe wird Quelle, Fokus übernimmt den berechneten Wert',
+      async () => {
+        const w = await openSmall('circle-calc')
+        const field = (label) => w.getByLabel(label, { exact: true })
+        await field('Radius r').fill('2')
+        assert.ok(await waitFor(async () => (await field('Durchmesser d').inputValue()) === '4'))
+        // berechnete Felder tragen den Hinweis, die Quelle nicht
+        assert.notEqual(await field('Durchmesser d').getAttribute('title'), null)
+        assert.equal(await field('Radius r').getAttribute('title'), null)
+        // Fokus auf ein berechnetes Feld: Wert bleibt stehen, das Feld wird zur Quelle
+        await field('Umfang U').focus()
+        const umfang = await field('Umfang U').inputValue()
+        assert.match(umfang, /^12,566/)
+        assert.equal(await field('Umfang U').getAttribute('title'), null)
+        await field('Umfang U').fill('31,4159')
+        assert.ok(await waitFor(async () => (await field('Radius r').inputValue()) === '5'))
+        await closeToolWindow('circle-calc')
+      }
+    ],
+    [
       'alle neun Rechner: Höhe folgt dem Inhalt, zweispaltig wo vorgesehen, bis 320 px schmal',
       async () => {
         for (const id of SMALL) {
@@ -383,15 +399,7 @@ try {
             assert.ok(Math.abs(tops[0] - tops[1]) <= 1, `${id}: Karten nicht nebeneinander ${tops}`)
           }
           // schmalste Breite: nichts ragt seitlich heraus, die Höhe wächst mit
-          await app.evaluate(({ BrowserWindow }, i) => {
-            const x = BrowserWindow.getAllWindows().find(
-              (v) =>
-                !v.isDestroyed() &&
-                !v.webContents.isDestroyed() &&
-                v.webContents.getURL().includes(`#/tool/${i}?`)
-            )
-            x.setContentSize(320, x.getContentSize()[1])
-          }, id)
+          await toolWin(id, 'setContentSize', 320, (await winInfo(id)).content[1])
           assert.ok(
             await waitFor(async () => (await winInfo(id)).content[0] === 320, 5_000),
             `${id}: nicht auf 320 px`
@@ -434,23 +442,12 @@ try {
         if (process.platform !== 'win32') throw new Skip('nur unter Windows')
         const w = await openSmall('dmx-address')
         await assertFits(w, 'dmx-address')
-        const byId = ({ BrowserWindow }, [i, action]) => {
-          const x = BrowserWindow.getAllWindows().find(
-            (v) =>
-              !v.isDestroyed() &&
-              !v.webContents.isDestroyed() &&
-              v.webContents.getURL().includes(`#/tool/${i}?`)
-          )
-          if (action === 'minimize') x.minimize()
-          if (action === 'restore') x.restore()
-          return x.isMinimized()
-        }
-        await app.evaluate(byId, ['dmx-address', 'minimize'])
-        assert.ok(await waitFor(() => app.evaluate(byId, ['dmx-address', 'state']), 5_000))
+        await toolWin('dmx-address', 'minimize')
+        assert.ok(await waitFor(() => toolWin('dmx-address', 'isMinimized'), 5_000))
         await page.evaluate(() => window.api.setSettings({ uiDensity: 'compact' }))
         await new Promise((r) => setTimeout(r, 800))
-        await app.evaluate(byId, ['dmx-address', 'restore'])
-        assert.ok(await waitFor(async () => !(await app.evaluate(byId, ['dmx-address', 'state']))))
+        await toolWin('dmx-address', 'restore')
+        assert.ok(await waitFor(async () => !(await toolWin('dmx-address', 'isMinimized'))))
         await assertFits(w, 'dmx-address')
         await page.evaluate(() => window.api.setSettings({ uiDensity: 'normal' }))
         await assertFits(w, 'dmx-address')

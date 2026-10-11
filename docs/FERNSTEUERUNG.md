@@ -5,8 +5,9 @@ selben Netz steuern – im Browser, ohne App-Installation.
 
 ## Einschalten
 
-- Im jeweiligen Werkzeug unter **„Fernsteuerung“** aktivieren. Standardmäßig ist sie aus; sie ist
-  im lokalen Netz erreichbar und hat kein Passwort. Der Port ist einstellbar.
+- Im jeweiligen Werkzeug mit **„Handy“** in der Ausgabe-Leiste einschalten. Standardmäßig ist sie
+  aus; sie ist im lokalen Netz erreichbar und hat kein Passwort. Den Port stellt der Bereich
+  „Fernsteuerung“ der Einstellungs-Schublade ein.
 - Der **QR-Code** im Werkzeug – oder hinter dem Handy-Knopf auf dem Startbildschirm – führt direkt
   zur Fernsteuer-App.
 - Eingeschaltete Fernsteuerungen starten beim nächsten App-Start samt Port wieder. Kacheln von

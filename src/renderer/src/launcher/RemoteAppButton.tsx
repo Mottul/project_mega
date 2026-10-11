@@ -54,9 +54,7 @@ export function RemoteAppButton({ status }: { status: RemoteAppStatus | null }):
         className="relative"
       >
         <Smartphone className="size-4" />
-        {running && (
-          <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-emerald-500" />
-        )}
+        {running && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-success" />}
       </Button>
       {open && (
         <div className="absolute right-0 z-50 mt-1 w-72 space-y-3 rounded-md border border-border bg-card p-4 shadow-lg">
@@ -87,7 +85,7 @@ export function RemoteAppButton({ status }: { status: RemoteAppStatus | null }):
               – dann startet sie als App im Vollbild.
             </p>
           ) : (
-            <p className="text-xs text-amber-400 light:text-amber-700">
+            <p className="text-xs text-warning">
               {status?.error
                 ? `Nicht erreichbar: ${status.error}.`
                 : 'Noch keine Fernsteuerung aktiv – im Werkzeug unter „Fernsteuerung“ einschalten. Erst dann antwortet diese Adresse.'}

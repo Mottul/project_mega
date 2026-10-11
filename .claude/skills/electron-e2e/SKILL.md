@@ -87,7 +87,9 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   `!x.isDestroyed() && !x.webContents.isDestroyed()` prüfen – ein Fenster, das gerade schließt,
   ist noch in der Liste, `getURL()` wirft dann „Object has been destroyed“. Schließen über
   `app.evaluate(… w.close())` statt `page.close()`, sonst läuft der 'close'-Handler (Lage
-  merken) nicht wie beim Bediener (Helfer `closeToolWindow` in `e2e/layout.mjs`).
+  merken) nicht wie beim Bediener. Helfer in `e2e/layout.mjs`: `toolWin(id, methode, …args)` ruft
+  eine BrowserWindow-Methode auf (ohne Methode: Größe und Lage), `closeToolWindow`, `openSmall`,
+  `assertFits`.
 - **Screenshots nach `setContentSize`:** Playwrights `page.screenshot()` kennt die neue Größe
   nicht (liefert die alte) – über Electron aufnehmen: `(await w.webContents.capturePage())
   .toPNG()` per `app.evaluate`, als Base64 zurückgeben. Größe und Inhalt der Seite selbst

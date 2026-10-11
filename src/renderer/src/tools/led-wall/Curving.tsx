@@ -7,6 +7,7 @@
 
 import { ChevronDown } from 'lucide-react'
 import { Card } from '@renderer/components/ui/card'
+import { Alert } from '@renderer/components/ui/alert'
 import { Readout, fmt, parseNum } from '../_calc/ui'
 import { CURVE_MODE_LABELS, computeCurve } from './curve'
 import { CIRCLE_TABLE, MODULES, MODULE_W } from './data'
@@ -338,7 +339,7 @@ function BuilderMode(): JSX.Element {
                 type="button"
                 onClick={() => s.set({ builderSegs: s.builderSegs.filter((_, j) => j !== i) })}
                 title="Abschnitt entfernen"
-                className="ml-auto flex size-6 items-center justify-center rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive"
+                className="ml-auto flex size-6 items-center justify-center rounded border border-border text-muted-foreground hover:border-danger hover:text-danger"
               >
                 ×
               </button>
@@ -411,9 +412,9 @@ function SquircleMode(): JSX.Element {
         </label>
       </div>
       {!c.feasible && (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <Alert tone="danger">
           ⚠ Mindestens 2 Module pro Ecke nötig (90° ÷ 45° = 2). Eck-Module erhöhen.
-        </p>
+        </Alert>
       )}
       <div className="grid gap-2 sm:grid-cols-2">
         <Readout label="Module gesamt" value={`${sq.totalMods}`} unit="Stk." accent />

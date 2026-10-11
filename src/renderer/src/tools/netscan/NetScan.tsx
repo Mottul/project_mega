@@ -521,7 +521,7 @@ function IconBtn({
       disabled={disabled}
       className={cn(
         'rounded-md border border-border p-1.5 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-30 disabled:hover:border-border disabled:hover:text-muted-foreground',
-        active && 'border-emerald-500 text-emerald-400 light:text-emerald-700'
+        active && 'border-success text-success'
       )}
     >
       {children}

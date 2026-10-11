@@ -113,10 +113,10 @@ export function JobRow({
         />
       )}
       {job.status === 'error' && job.error && (
-        <p className="mt-2 text-xs text-destructive">{job.error}</p>
+        <p className="mt-2 text-xs text-danger">{job.error}</p>
       )}
       {job.status === 'done' && warnings.length > 0 && (
-        <ul className="mt-2 space-y-0.5 text-xs text-amber-400 light:text-amber-700">
+        <ul className="mt-2 space-y-0.5 text-xs text-warning">
           {warnings.map((h, i) => (
             <li key={`${h.id}-${i}`}>{h.text}</li>
           ))}

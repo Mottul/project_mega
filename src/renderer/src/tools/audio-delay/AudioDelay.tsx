@@ -7,7 +7,8 @@ import {
   fmt,
   parseNum,
   trimNum,
-  ReadoutGrid
+  ReadoutGrid,
+  useLinkedFields
 } from '../_calc/ui'
 
 // Audio-Delay (Lautsprecher-Laufzeit) & SPL über Distanz.
@@ -18,8 +19,7 @@ type DelayField = 'dist' | 'delay'
 
 export function AudioDelay(): JSX.Element {
   const [tempRaw, setTempRaw] = useState('20')
-  const [driver, setDriver] = useState<DelayField>('dist')
-  const [delayRaw, setDelayRaw] = useState('10')
+  const delay = useLinkedFields<DelayField>('dist', '10')
 
   const [splRaw, setSplRaw] = useState('100')
   const [dRefRaw, setDRefRaw] = useState('1')
@@ -28,11 +28,11 @@ export function AudioDelay(): JSX.Element {
   const tParsed = parseNum(tempRaw)
   const c = 331.3 + 0.606 * (tParsed == null ? 20 : tParsed) // m/s
 
-  const base = parseNum(delayRaw)
+  const base = parseNum(delay.raw)
   let dist: number | null = null
   let delayMs: number | null = null
   if (base != null && base >= 0) {
-    if (driver === 'dist') {
+    if (delay.driver === 'dist') {
       dist = base
       delayMs = (base / c) * 1000
     } else {
@@ -40,30 +40,7 @@ export function AudioDelay(): JSX.Element {
       dist = (base / 1000) * c
     }
   }
-  const delayVals: Record<DelayField, number | null> = { dist, delay: delayMs }
   const samples48 = delayMs == null ? null : (delayMs / 1000) * 48000
-
-  function bindDelay(field: DelayField): {
-    value: string
-    derived: boolean
-    onChange: (v: string) => void
-    onFocus: () => void
-  } {
-    return {
-      value: field === driver ? delayRaw : trimNum(delayVals[field], 3),
-      derived: field !== driver,
-      onChange: (v) => {
-        setDriver(field)
-        setDelayRaw(v)
-      },
-      onFocus: () => {
-        if (field !== driver) {
-          setDriver(field)
-          setDelayRaw(trimNum(delayVals[field], 3))
-        }
-      }
-    }
-  }
 
   // Pegel über Distanz.
   const spl = parseNum(splRaw)
@@ -88,8 +65,8 @@ export function AudioDelay(): JSX.Element {
           value={tempRaw}
           onChange={setTempRaw}
         />
-        <NumField label="Distanz" unit="m" {...bindDelay('dist')} />
-        <NumField label="Delay" unit="ms" {...bindDelay('delay')} />
+        <NumField label="Distanz" unit="m" {...delay.bind('dist', trimNum(dist, 3))} />
+        <NumField label="Delay" unit="ms" {...delay.bind('delay', trimNum(delayMs, 3))} />
         <ReadoutGrid>
           <Readout label="Schallgeschwindigkeit" value={fmt(c, 1)} unit="m/s" />
           <Readout label="bei 48 kHz" value={fmt(samples48, 0)} unit="Samples" />

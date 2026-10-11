@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import {
-  CalcAlert,
   CalcPage,
   NumField,
   Readout,
@@ -9,7 +8,8 @@ import {
   fmt,
   parseNum,
   trimNum,
-  ReadoutGrid
+  ReadoutGrid,
+  useLinkedFields
 } from '../_calc/ui'
 import {
   formatRealtime,
@@ -21,6 +21,7 @@ import {
   tcToFrames,
   TC_RATES
 } from './tc'
+import { Alert } from '@renderer/components/ui/alert'
 
 // SMPTE-Timecode-Rechner: Timecode <-> Frames <-> Echtzeit (verknüpfte Felder,
 // das zuletzt bearbeitete ist die Quelle) + Differenz/Dauer zwischen zwei
@@ -30,8 +31,7 @@ type Driver = 'tc' | 'frames' | 'real'
 
 export function Timecode(): JSX.Element {
   const [rateKey, setRateKey] = useState('25')
-  const [driver, setDriver] = useState<Driver>('tc')
-  const [raw, setRaw] = useState('01:00:00:00')
+  const { driver, raw, bind } = useLinkedFields<Driver>('tc', '01:00:00:00')
 
   const [tcA, setTcA] = useState('01:00:00:00')
   const [tcB, setTcB] = useState('01:05:30:00')
@@ -55,28 +55,6 @@ export function Timecode(): JSX.Element {
     tc: frames != null ? formatTc(framesToTc(frames, rate), rate) : '',
     frames: frames != null ? String(frames) : '',
     real: frames != null ? trimNum(framesToSeconds(frames, rate), 4) : ''
-  }
-
-  function bind(field: Driver): {
-    value: string
-    derived: boolean
-    onChange: (v: string) => void
-    onFocus: () => void
-  } {
-    return {
-      value: field === driver ? raw : vals[field],
-      derived: field !== driver,
-      onChange: (v) => {
-        setDriver(field)
-        setRaw(v)
-      },
-      onFocus: () => {
-        if (field !== driver) {
-          setDriver(field)
-          setRaw(vals[field])
-        }
-      }
-    }
   }
 
   // Differenz B − A
@@ -106,18 +84,18 @@ export function Timecode(): JSX.Element {
             </option>
           ))}
         </SelectField>
-        <NumField label="Timecode" placeholder="hh:mm:ss:ff" {...bind('tc')} />
-        <NumField label="Frames (gesamt)" {...bind('frames')} />
-        <NumField label="Echtzeit" unit="s" {...bind('real')} />
+        <NumField label="Timecode" placeholder="hh:mm:ss:ff" {...bind('tc', vals.tc)} />
+        <NumField label="Frames (gesamt)" {...bind('frames', vals.frames)} />
+        <NumField label="Echtzeit" unit="s" {...bind('real', vals.real)} />
         <Readout
           label="Echtzeit (hh:mm:ss.ms)"
           value={frames != null ? formatRealtime(framesToSeconds(frames, rate)) : ''}
           accent
         />
         {driver === 'tc' && raw.trim() !== '' && frames == null && (
-          <CalcAlert tone="danger">
+          <Alert tone="danger">
             Ungültiger Timecode – Format hh:mm:ss:ff, Frames unter {rate.nominal}.
-          </CalcAlert>
+          </Alert>
         )}
       </SectionCard>
 

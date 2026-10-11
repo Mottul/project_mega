@@ -32,6 +32,7 @@ import { selectClass } from '@renderer/components/ui/select'
 import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
+import { Alert } from '@renderer/components/ui/alert'
 import { api } from '@renderer/lib/api'
 import { useKiosk } from '@renderer/launcher/kiosk'
 import { useHandoff } from '@renderer/lib/handoff'
@@ -737,22 +738,18 @@ export function VideoConverter(): JSX.Element {
       main={
         <div className="mx-auto max-w-3xl space-y-6 p-6">
           {(ffmpegMissing || !formatOk) && (
-            <Card className="flex items-start gap-3 border-amber-500/40 bg-amber-500/10 p-4">
-              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-400 light:text-amber-700" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-400 light:text-amber-700">
-                  {ffmpegMissing ? 'ffmpeg nicht gefunden' : `${fi.label} nicht verfügbar`}
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  {ffmpegMissing
-                    ? 'Im Dev-Modus über scripts/download-ffmpeg.mjs bereitstellen oder ein ffmpeg im PATH installieren.'
-                    : fi.family === 'hap'
-                      ? 'Das gebündelte ffmpeg kennt den HAP-Encoder nicht (libsnappy fehlt). Bitte ein HAP-fähiges ffmpeg über das Download-Skript bereitstellen.'
-                      : 'Das gebündelte ffmpeg enthält den nötigen Encoder nicht – anderes Format wählen.'}
-                  {caps?.error ? ` (${caps.error})` : ''}
-                </p>
-              </div>
-            </Card>
+            <Alert
+              tone="warning"
+              icon={AlertTriangle}
+              title={ffmpegMissing ? 'ffmpeg nicht gefunden' : `${fi.label} nicht verfügbar`}
+            >
+              {ffmpegMissing
+                ? 'Im Dev-Modus über scripts/download-ffmpeg.mjs bereitstellen oder ein ffmpeg im PATH installieren.'
+                : fi.family === 'hap'
+                  ? 'Das gebündelte ffmpeg kennt den HAP-Encoder nicht (libsnappy fehlt). Bitte ein HAP-fähiges ffmpeg über das Download-Skript bereitstellen.'
+                  : 'Das gebündelte ffmpeg enthält den nötigen Encoder nicht – anderes Format wählen.'}
+              {caps?.error ? ` (${caps.error})` : ''}
+            </Alert>
           )}
 
           {/* Eingang (auch Drop-Ziel für Dateien/Ordner) */}
@@ -813,8 +810,8 @@ export function VideoConverter(): JSX.Element {
                 className={cn(
                   'space-y-1 rounded-md border px-3 py-2 text-xs',
                   summaryLevel === 'problem'
-                    ? 'border-red-500/40 bg-red-500/10'
-                    : 'border-amber-500/40 bg-amber-500/10'
+                    ? 'border-danger/40 bg-danger/10'
+                    : 'border-warning/40 bg-warning/10'
                 )}
               >
                 {summary.map((c) => {
@@ -981,7 +978,7 @@ function JobRow({
         />
       )}
       {job.status === 'error' && job.error && (
-        <p className="mt-2 text-xs text-destructive">{job.error}</p>
+        <p className="mt-2 text-xs text-danger">{job.error}</p>
       )}
     </div>
   )
@@ -1019,9 +1016,9 @@ function InputRow({
       </Badge>
     )
   } else if (meta.kind === 'error') {
-    source = <span className="text-red-400 light:text-red-600">{meta.message}</span>
+    source = <span className="text-danger">{meta.message}</span>
   } else if (!meta.result.ok) {
-    source = <span className="text-red-400 light:text-red-600">{meta.result.error}</span>
+    source = <span className="text-danger">{meta.result.error}</span>
   } else {
     const info = meta.result.info
     const v = info.video[0]
@@ -1034,7 +1031,7 @@ function InputRow({
       .filter(Boolean)
       .join(' · ')
     if (plan && !plan.ok) {
-      result = <span className="text-red-400 light:text-red-600">{plan.error}</span>
+      result = <span className="text-danger">{plan.error}</span>
     } else if (plan?.ok) {
       const p = plan.plan
       const pv = p.video

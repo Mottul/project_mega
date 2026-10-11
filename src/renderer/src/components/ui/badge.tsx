@@ -6,9 +6,9 @@ export type BadgeTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
 const tones: Record<BadgeTone, string> = {
   neutral: 'bg-muted text-muted-foreground',
   info: 'bg-primary/20 text-primary',
-  success: 'bg-emerald-500/20 text-emerald-400 light:text-emerald-700',
-  warning: 'bg-amber-500/20 text-amber-400 light:text-amber-700',
-  danger: 'bg-destructive/20 text-red-400 light:text-red-600'
+  success: 'bg-success/20 text-success',
+  warning: 'bg-warning/20 text-warning',
+  danger: 'bg-danger/20 text-danger'
 }
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {

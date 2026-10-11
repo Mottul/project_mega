@@ -7,7 +7,8 @@ verfügbar“.
 
 ## Bedienung
 
-Im jeweiligen Werkzeug im Seiten-Panel **„NDI-Ausgabe (Netzwerk)“**:
+Ein- und ausschalten mit **„NDI“** in der Ausgabe-Leiste des Werkzeugs (sie ist rot umrandet,
+solange etwas live ist); eingestellt wird im Bereich **„NDI“** der Einstellungs-Schublade:
 
 | Werkzeug     | Einstellungen                                                                                                      |
 | ------------ | ------------------------------------------------------------------------------------------------------------------ |

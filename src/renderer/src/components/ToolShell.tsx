@@ -216,8 +216,8 @@ export function ToolBar({
       className={cn(
         'flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-2 transition-colors',
         !active && 'bg-card/60',
-        active && live && 'bg-destructive/10 ring-2 ring-inset ring-destructive',
-        active && !live && 'bg-amber-500/10 ring-2 ring-inset ring-amber-500'
+        active && live && 'bg-danger/10 ring-2 ring-inset ring-danger',
+        active && !live && 'bg-warning/10 ring-2 ring-inset ring-warning'
       )}
     >
       <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
@@ -227,7 +227,9 @@ export function ToolBar({
         <span
           className={cn(
             'rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider',
-            live ? 'bg-destructive text-white' : 'bg-amber-500 text-black'
+            live
+              ? 'bg-destructive text-destructive-foreground'
+              : 'bg-warning text-warning-foreground'
           )}
         >
           {live ? 'Live' : 'Läuft'}
@@ -265,13 +267,11 @@ export function BarToggle({
       className={cn(
         'inline-flex h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 disabled:pointer-events-none disabled:opacity-50',
         on
-          ? 'border-emerald-500/50 bg-emerald-500/10 text-foreground'
+          ? 'border-success/50 bg-success/10 text-foreground'
           : 'border-border bg-background/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
       )}
     >
-      <span
-        className={cn('size-2 rounded-full', on ? 'bg-emerald-500' : 'bg-muted-foreground/50')}
-      />
+      <span className={cn('size-2 rounded-full', on ? 'bg-success' : 'bg-muted-foreground/50')} />
       {children}
     </button>
   )

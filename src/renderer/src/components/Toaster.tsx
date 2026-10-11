@@ -9,9 +9,9 @@ import { cn } from '@renderer/lib/utils'
 
 const META: Record<ToastKind, { icon: LucideIcon; cls: string }> = {
   info: { icon: Info, cls: 'text-primary' },
-  success: { icon: CheckCircle2, cls: 'text-emerald-500 light:text-emerald-700' },
-  warning: { icon: AlertTriangle, cls: 'text-amber-500 light:text-amber-700' },
-  error: { icon: XCircle, cls: 'text-destructive' }
+  success: { icon: CheckCircle2, cls: 'text-success' },
+  warning: { icon: AlertTriangle, cls: 'text-warning' },
+  error: { icon: XCircle, cls: 'text-danger' }
 }
 
 export function Toaster(): JSX.Element {

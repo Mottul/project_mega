@@ -256,7 +256,7 @@ function Tile(p: ItemProps): JSX.Element {
           p.selected
             ? 'border-primary ring-2 ring-primary/40'
             : 'border-border hover:border-primary/50',
-          error && 'border-destructive'
+          error && 'border-danger'
         )}
       >
         <div className="relative">
@@ -265,7 +265,7 @@ function Tile(p: ItemProps): JSX.Element {
             {p.index + 1}
           </span>
           {error && (
-            <span className="absolute right-1 top-1 rounded bg-destructive px-1 text-white">
+            <span className="absolute right-1 top-1 rounded bg-destructive px-1 text-destructive-foreground">
               <AlertTriangle className="size-3" />
             </span>
           )}
@@ -313,7 +313,7 @@ function TransitionChip({
       }
       className={cn(
         'mx-1 flex w-[4.75rem] flex-col items-center justify-center gap-0.5 self-center rounded-md border border-dashed px-1 py-1.5 text-[10px] leading-tight text-muted-foreground hover:border-primary/60 hover:text-foreground',
-        shortened ? 'border-amber-500/70 text-amber-400 light:text-amber-700' : 'border-border'
+        shortened ? 'border-warning/70 text-warning' : 'border-border'
       )}
     >
       {loop ? <Repeat className="size-3.5" /> : <span className="text-xs">⇄</span>}
@@ -343,7 +343,7 @@ function Row(p: ItemProps & { last: boolean; loop: boolean }): JSX.Element {
         'flex cursor-default items-center gap-3 px-2 py-1.5 text-sm',
         p.selected ? 'bg-primary/10' : 'hover:bg-muted/40',
         p.dropBefore && 'border-t-2 border-t-primary',
-        error && 'text-destructive'
+        error && 'text-danger'
       )}
     >
       <span className="w-8 shrink-0 text-right text-xs tabular-nums text-muted-foreground">

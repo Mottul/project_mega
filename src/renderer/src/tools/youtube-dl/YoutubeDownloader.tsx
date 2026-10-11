@@ -17,6 +17,7 @@ import {
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
+import { Alert } from '@renderer/components/ui/alert'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
@@ -191,19 +192,17 @@ export function YoutubeDownloader(): JSX.Element {
         ) : status.available ? (
           <span className="flex items-center gap-2 text-sm">
             {status.upToDate === false ? (
-              <AlertTriangle className="size-4 text-amber-400 light:text-amber-700" />
+              <AlertTriangle className="size-4 text-warning" />
             ) : (
-              <CheckCircle2 className="size-4 text-emerald-400 light:text-emerald-700" />
+              <CheckCircle2 className="size-4 text-success" />
             )}
             yt-dlp <span className="font-mono text-xs text-muted-foreground">{status.version}</span>
             <span className="text-xs text-muted-foreground">
               ({status.location === 'managed' ? 'verwaltet' : 'System-PATH'})
             </span>
-            {status.upToDate === true && (
-              <span className="text-xs text-emerald-400 light:text-emerald-700">aktuell</span>
-            )}
+            {status.upToDate === true && <span className="text-xs text-success">aktuell</span>}
             {status.upToDate === false && (
-              <span className="text-xs text-amber-400 light:text-amber-700">
+              <span className="text-xs text-warning">
                 neuer verfügbar: {status.latest}
                 {status.location === 'path' && ' (vom System verwaltet)'}
               </span>
@@ -211,8 +210,7 @@ export function YoutubeDownloader(): JSX.Element {
           </span>
         ) : (
           <span className="flex items-center gap-2 text-sm">
-            <AlertTriangle className="size-4 text-amber-400 light:text-amber-700" /> yt-dlp nicht
-            gefunden
+            <AlertTriangle className="size-4 text-warning" /> yt-dlp nicht gefunden
           </span>
         )}
         <div className="flex-1" />
@@ -232,15 +230,15 @@ export function YoutubeDownloader(): JSX.Element {
       </p>
 
       {problem && (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <Alert tone="danger">
           Aktualisierung fehlgeschlagen: {problem} – Internetverbindung prüfen.
           {status?.available && ' Der vorhandene Stand bleibt nutzbar.'}
-        </p>
+        </Alert>
       )}
       {status && !status.ffmpeg && (
-        <p className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 light:text-amber-700">
+        <Alert tone="warning">
           ffmpeg nicht gefunden – Zusammenführen von Bild/Ton kann fehlschlagen.
-        </p>
+        </Alert>
       )}
 
       {/* Eingabe */}
@@ -267,11 +265,7 @@ export function YoutubeDownloader(): JSX.Element {
             </Button>
           )}
         </div>
-        {probeError && (
-          <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {probeError}
-          </p>
-        )}
+        {probeError && <Alert tone="danger">{probeError}</Alert>}
         {!cfg.outputDir && status?.available && (
           <p className="text-xs text-muted-foreground">Zuerst einen Zielordner wählen.</p>
         )}
@@ -409,7 +403,7 @@ function JobRow({ job }: { job: YtJob }): JSX.Element {
           <button
             type="button"
             onClick={() => void api.youtube.cancel(job.id)}
-            className="text-muted-foreground hover:text-destructive"
+            className="text-muted-foreground hover:text-danger"
             title="Abbrechen"
           >
             <X className="size-4" />
@@ -429,7 +423,7 @@ function JobRow({ job }: { job: YtJob }): JSX.Element {
       <div className="mt-1.5 flex items-center gap-2">
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <div
-            className={`h-full transition-[width] ${failed ? 'bg-destructive' : done ? 'bg-emerald-500' : 'bg-primary'}`}
+            className={`h-full transition-[width] ${failed ? 'bg-destructive' : done ? 'bg-success' : 'bg-primary'}`}
             style={{ width: `${done ? 100 : Math.round(job.progress * 100)}%` }}
           />
         </div>
@@ -445,7 +439,7 @@ function JobRow({ job }: { job: YtJob }): JSX.Element {
                   : `${Math.round(job.progress * 100)}%${job.eta ? ` · ${job.eta}` : ''}`}
         </span>
       </div>
-      {failed && job.error && <p className="mt-1 text-xs text-destructive">{job.error}</p>}
+      {failed && job.error && <p className="mt-1 text-xs text-danger">{job.error}</p>}
       {!failed && job.speed && running && (
         <p className="mt-0.5 text-[11px] text-muted-foreground">{job.speed}</p>
       )}

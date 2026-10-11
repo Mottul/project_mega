@@ -371,7 +371,7 @@ export function PdfViewer({ manualId, initialPage = 1 }: PdfViewerProps): JSX.El
           </div>
         )}
         {error ? (
-          <p className="p-6 text-center text-sm text-destructive">
+          <p className="p-6 text-center text-sm text-danger">
             PDF konnte nicht geladen werden: {error}
           </p>
         ) : (

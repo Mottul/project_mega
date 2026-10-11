@@ -44,7 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!error) return this.props.children
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-        <AlertTriangle className="size-10 text-destructive" />
+        <AlertTriangle className="size-10 text-danger" />
         <div>
           <p className="font-semibold">
             {this.props.label

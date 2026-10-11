@@ -20,7 +20,14 @@
   --primary-foreground: 240 8% 8%;
   --accent: 240 4% 16%;
   --accent-foreground: 0 0% 98%;
+  /* Rot: destructive = volle Fläche (Knöpfe, „Live“), danger = Schrift, Rahmen, Tönung */
   --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  /* Statusfarben (Text, Punkte, getönte Flächen): hell genug für dunklen Grund */
+  --success: 158 64% 52%;
+  --warning: 43 96% 56%;
+  --warning-foreground: 240 8% 8%;
+  --danger: 0 91% 71%;
 }
 
 :root.light {
@@ -39,6 +46,12 @@
   --accent: 240 12% 92%;
   --accent-foreground: 240 12% 12%;
   --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 100%;
+  /* Statusfarben dunkler -> auf hellem Grund lesbar */
+  --success: 163 94% 24%;
+  --warning: 26 90% 37%;
+  --warning-foreground: 0 0% 100%;
+  --danger: 0 72% 51%;
 }
 
 @layer base {

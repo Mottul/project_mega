@@ -77,7 +77,7 @@ export function FfmpegSettings(): JSX.Element {
           </div>
           {st.progress !== null && <Progress value={st.progress} />}
           {st.lastError ? (
-            <p className="text-xs text-destructive">{st.lastError}</p>
+            <p className="text-xs text-danger">{st.lastError}</p>
           ) : (
             st.lastResult && <p className="text-xs text-muted-foreground">{st.lastResult}</p>
           )}
