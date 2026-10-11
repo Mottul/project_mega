@@ -34,7 +34,13 @@ export function inSources(file: string, sources: string[]): boolean {
   return sources.some((s) => f === s || f.startsWith(`${s}/`))
 }
 
-/** Tailwind-`content`: Ordner als Glob über ihre Quelltexte, Dateien wie sie sind */
+/**
+ * Tailwind-`content`: Ordner als Glob über ihre Quelltexte, Dateien wie sie sind – ohne Tests,
+ * die landen nicht in der PWA (eine Klasse in einem Test darf keine neue Version auslösen).
+ */
 export function tailwindContent(sources: string[]): string[] {
-  return sources.map((s) => (/\.[a-z]+$/i.test(s) ? s : `${s}/**/*.{html,ts,tsx}`))
+  return [
+    ...sources.map((s) => (/\.[a-z]+$/i.test(s) ? s : `${s}/**/*.{html,ts,tsx}`)),
+    '!**/*.test.{ts,tsx}'
+  ]
 }

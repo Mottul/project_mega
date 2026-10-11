@@ -1,15 +1,16 @@
-import { createRequire } from 'node:module'
 import { resolve } from 'path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import autoprefixer from 'autoprefixer'
-import tailwindcss, { type Config } from 'tailwindcss'
+import tailwindcss from 'tailwindcss'
 import { SMALL_TOOLS } from './src/shared/toolWindows'
 import { pwaPlugins } from './src/pwa/build/plugin'
 import { pwaSources, tailwindContent } from './src/pwa/build/sources'
+// Als Import (nicht per require): Vite beobachtet die Datei dann, und pwa:dev startet neu, wenn
+// sich Farben oder Theme ändern
+import appTailwind from './tailwind.config.js'
 
-// Farben, Theme & Co. wie in der App – aber Klassen nur aus dem, was die PWA einbindet
-const appTailwind = createRequire(import.meta.url)('./tailwind.config.js') as Config
+// Farben und Theme wie in der App, Klassen aber nur aus dem, was die PWA einbindet
 const sources = pwaSources(resolve('.'), Object.keys(SMALL_TOOLS))
 
 // Rechner-PWA: die kleinen Werkzeuge (Rechner) als eigenständige Web-App fürs Handy – derselbe

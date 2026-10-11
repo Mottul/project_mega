@@ -28,5 +28,6 @@ describe('Tailwind-Quellen der Rechner-PWA', () => {
     const content = tailwindContent(src)
     expect(content).toContain('/p/src/pwa/**/*.{html,ts,tsx}')
     expect(content).toContain('/p/src/renderer/src/components/ErrorBoundary.tsx')
+    expect(content).toContain('!**/*.test.{ts,tsx}')
   })
 })

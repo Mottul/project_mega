@@ -306,8 +306,8 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
 - **Ohne Electron:** `src/pwa/build/plugin.ts` bricht den Build ab, sobald ein Rechner (auch über
   Umwege) `lib/api`, `lib/settings` oder `electron` hereinzieht.
 - **Eigenes CSS:** Tailwind nimmt die Klassen der PWA nur aus ihren Quellen
-  (`src/pwa/build/sources.ts`: PWA, Rechner, `_calc`, `components/ui`, `lib` …), nicht aus dem
-  ganzen Renderer – sonst änderte jede neue Klasse in irgendeinem Werkzeug das PWA-CSS, und die
+  (`src/pwa/build/sources.ts`: PWA, Rechner, `_calc`, `components/ui`, `lib` …, ohne Tests),
+  nicht aus dem ganzen Renderer – sonst änderte jede neue Klasse in irgendeinem Werkzeug das PWA-CSS, und die
   Handys meldeten eine neue Version. Bindet die PWA eine Renderer-Datei außerhalb der Liste ein,
   bricht der Build mit ihrem Namen ab: dann in `sources.ts` eintragen.
 - **Offline:** Der Build erzeugt `manifest.webmanifest` und `sw.js` (`src/pwa/build/serviceWorker.ts`,
@@ -325,9 +325,13 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
   Settings → Pages → Source „GitHub Actions“. Jeder andere statische Webspace mit HTTPS geht
   genauso (Inhalt von `out-pwa/` hochladen).
 - **App-Icon** (`build/icon.png`, 1024 px, und `build/icon.ico`): das Logo in Gold `#ffce2c` auf
-  `#17131f` mit 184 px Eckenradius, 717 px breit und mittig, gezeichnet wie `drawLogo` in
-  `tools/test-patterns/mappingCard.ts` (Canvas, Hörner und Fühler am Kopfumriss abgeschnitten);
-  `icon.ico` enthält 16–256 px als PNG.
+  `#17131f`, gezeichnet wie `drawLogo` in `tools/test-patterns/mappingCard.ts` (Canvas, Hörner und
+  Fühler am Kopfumriss abgeschnitten). PNG: Eckenradius 18 % (184 px), Logo 70 % breit (717 px),
+  mittig. `icon.ico` (Setup, Deinstaller, Taskleiste) enthält 16–256 px als PNG, jede Stufe
+  **direkt in ihrer Größe gezeichnet, nicht herunterskaliert** (das verschmiert und gibt dunkle
+  Säume): 16/24/32 px ohne die Fühler und größer (Logo 14,25/21,5/28 px breit, 0,5/1/1,5 px
+  höher gesetzt, Eckenradius 18/16/18 %), 48/64 px 36,5/47 px breit (Ecken 20/18 %), 128/256 px
+  wie das PNG.
 - **Icons neu erzeugen** (nach einem neuen App-Icon, ImageMagick):
 
   ```bash

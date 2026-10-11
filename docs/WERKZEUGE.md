@@ -494,7 +494,8 @@ Browser öffnen, über „Installieren“ bzw.
 Desktop (gleicher Code). Der Knopf **„Darstellung“** oben rechts stellt wie das App-Menü der
 Mottulbox Design (Dunkel, Hell, wie das Gerät) und Akzentfarbe ein; das Handy merkt sich beides.
 Eine neue Version meldet sich mit „Neu laden“, sonst greift sie beim nächsten Start – das kommt nur
-vor, wenn sich an den Rechnern oder ihren Bausteinen etwas geändert hat. Bauen und
+vor, wenn sich an den Rechnern selbst, an gemeinsamen Bedienelementen oder an den Farben etwas
+geändert hat, nicht bei Änderungen an anderen Werkzeugen. Bauen und
 Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
 
 ## Übergaben zwischen Werkzeugen

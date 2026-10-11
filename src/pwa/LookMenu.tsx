@@ -1,5 +1,7 @@
 // Knopf „Darstellung“ oben rechts in der Rechner-PWA: Design und Akzentfarbe wie im App-Menü
-// der Mottulbox. Klappt als Feld unter dem Knopf auf; Tippen daneben oder Escape schließt.
+// der Mottulbox. Klappt als Feld unter dem Knopf auf; Tippen daneben oder Escape schließt. Eine
+// unsichtbare Fläche fängt das Tippen daneben ab – sonst öffnete derselbe Tipp auf dem Handy
+// gleich den Rechner darunter.
 import { useEffect, useRef, useState } from 'react'
 import { Monitor, Moon, Palette, Sun } from 'lucide-react'
 import type { ThemeMode } from '@shared/types'
@@ -25,31 +27,31 @@ function Heading({ children }: { children: string }): JSX.Element {
 
 export function LookMenu({ look }: { look: PwaLook }): JSX.Element {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
-    // pointerdown statt mousedown: auf dem Handy schließt so schon das Antippen daneben
-    const onDown = (e: PointerEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      // Fokus zurück auf den Knopf, statt ihn mit dem Feld auf <body> fallen zu lassen
+      button.current?.focus()
     }
-    window.addEventListener('pointerdown', onDown)
     window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('pointerdown', onDown)
-      window.removeEventListener('keydown', onKey)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
+      {open && (
+        <div aria-hidden="true" className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+      )}
       <Button
+        ref={button}
         variant="ghost"
         size="icon"
         aria-label="Darstellung"
+        aria-haspopup="dialog"
         aria-expanded={open}
         title="Darstellung: Design und Akzentfarbe"
         onClick={() => setOpen((o) => !o)}
