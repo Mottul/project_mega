@@ -22,8 +22,10 @@
   "include": [
     "src/renderer/src/**/*.ts",
     "src/renderer/src/**/*.tsx",
+    "src/pwa/**/*.ts",
+    "src/pwa/**/*.tsx",
     "src/preload/index.d.ts",
     "src/shared/**/*"
   ],
-  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+  "exclude": ["src/pwa/build/**", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
 }

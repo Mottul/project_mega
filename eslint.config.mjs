@@ -12,6 +12,7 @@ export default tseslint.config(
   {
     ignores: [
       'out/**',
+      'out-pwa/**',
       'dist/**',
       'node_modules/**',
       'build/**',

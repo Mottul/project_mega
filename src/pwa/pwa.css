@@ -1,0 +1,32 @@
+/* Ergänzungen für die Rechner-PWA auf dem Handy (Basis: renderer/assets/main.css). */
+
+/* Installiert läuft die App randlos (viewport-fit=cover): Notch, Statusleiste und
+   Home-Balken aussparen. Im Browser-Tab sind die Werte 0 -> normale Abstände. */
+.pwa-safe-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+.pwa-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pwa-safe-x {
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+}
+
+/* Kein Gummiband-Scrollen der ganzen Seite (nur der Inhalt scrollt) und kein grauer
+   Tipp-Blitz auf Android */
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* iOS zoomt beim Antippen in jedes Feld unter 16 px hinein – auf Touch-Geräten daher 16 px.
+   :root davor schlägt die Tailwind-Klasse text-sm der Felder. */
+@media (pointer: coarse) {
+  :root input,
+  :root select,
+  :root textarea {
+    font-size: 16px;
+  }
+}

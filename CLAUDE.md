@@ -16,6 +16,7 @@ npm test                # Vitest (einmalig; test:watch für Watch)
 npm run e2e             # App bauen + E2E-Skripte (Playwright, e2e/; `-- timer` wählt aus)
 npm run build           # typecheck + electron-vite build -> out/
 npm run package         # Installer via electron-builder (holt ffmpeg)
+npm run pwa:build       # Rechner-PWA (Browser, ohne Electron) -> out-pwa/; pwa:dev, pwa:preview
 ```
 
 Ein einzelner Test: `npx vitest run src/renderer/src/tools/led-wall/math.test.ts`
@@ -42,6 +43,9 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ, Zahlen mit Komma, verknüpfte Felder per
   `useLinkedFields`). Fenster: `main/services/appWindows.ts` (`createWindow`),
   `smallToolWindows.ts` (kleine Werkzeuge), Hauptfenster in `main/index.ts`.
+- **Rechner-PWA** (`src/pwa/`, `vite.pwa.config.ts`): die kleinen Werkzeuge zusätzlich als
+  Web-App fürs Handy, gleiche Module ohne Electron (Liste `src/pwa/tools.ts` = `SMALL_TOOLS`).
+  Rechner dürfen daher weder `api` noch Einstellungen nutzen – der PWA-Build bricht sonst ab.
 - **Tools** liegen unter `src/renderer/src/tools/<id>/` und registrieren sich
   über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).

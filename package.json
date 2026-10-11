@@ -31,6 +31,9 @@
     "ff:update": "node scripts/download-ffmpeg.mjs --force",
     "electron:bin": "node scripts/fetch-electron-bin.mjs",
     "package": "node -e \"for (const d of ['dist/.icon-ico','dist/.icon-set']) require('node:fs').rmSync(d,{recursive:true,force:true})\" && node scripts/download-ffmpeg.mjs --max-age 1 && npm run ff:fetch && npm run build && npx --yes electron-builder@26",
+    "pwa:dev": "vite --config vite.pwa.config.ts",
+    "pwa:build": "vite build --config vite.pwa.config.ts",
+    "pwa:preview": "vite preview --config vite.pwa.config.ts --host",
     "package:dir": "npm run build && npx --yes electron-builder@26 --dir"
   },
   "dependencies": {
