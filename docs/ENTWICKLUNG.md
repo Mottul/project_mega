@@ -298,12 +298,18 @@ Die Rechner gibt es zusätzlich als eigenständige Web-App fürs Handy (Bedienun
 Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
 
 - **Aufbau:** `src/pwa/` – `index.html`, `main.tsx`, `App.tsx` (Startseite + Rechner-Seite mit
-  HashRouter), `tools.ts` (die Liste, gleich `SMALL_TOOLS`), Hooks für Service Worker,
-  Installieren und Hell/Dunkel, `pwa.css` (Notch-Ränder, 16-px-Felder gegen den iOS-Zoom),
+  HashRouter), `tools.ts` (die Liste, gleich `SMALL_TOOLS`), `LookMenu.tsx` (Design und
+  Akzentfarbe, gemerkt im Boot-Spiegel von `lib/theme` und `lib/accent`), Hooks für Service
+  Worker und Installieren, `pwa.css` (Notch-Ränder, 16-px-Felder gegen den iOS-Zoom),
   `public/icons/` (aus `build/icon.png` erzeugt, s. u.). Build: `vite.pwa.config.ts` (normales
   Vite, `base: './'` – läuft in jedem Unterordner), Ausgabe `out-pwa/`.
 - **Ohne Electron:** `src/pwa/build/plugin.ts` bricht den Build ab, sobald ein Rechner (auch über
   Umwege) `lib/api`, `lib/settings` oder `electron` hereinzieht.
+- **Eigenes CSS:** Tailwind nimmt die Klassen der PWA nur aus ihren Quellen
+  (`src/pwa/build/sources.ts`: PWA, Rechner, `_calc`, `components/ui`, `lib` …, ohne Tests),
+  nicht aus dem ganzen Renderer – sonst änderte jede neue Klasse in irgendeinem Werkzeug das PWA-CSS, und die
+  Handys meldeten eine neue Version. Bindet die PWA eine Renderer-Datei außerhalb der Liste ein,
+  bricht der Build mit ihrem Namen ab: dann in `sources.ts` eintragen.
 - **Offline:** Der Build erzeugt `manifest.webmanifest` und `sw.js` (`src/pwa/build/serviceWorker.ts`,
   ohne Workbox). Der Worker lädt beim Installieren alle Dateien vor und antwortet danach nur aus
   dem Cache; eine neue Version wartet, bis man „Neu laden“ tippt oder die App schließt.
@@ -313,10 +319,19 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
   legt `out-pwa/` auf GitHub Pages (https://mottul.github.io/project_mega/). Er läuft
   automatisch bei jedem Push auf `main`, der die PWA betreffen kann (`src/pwa`, `src/renderer/src`,
   `src/shared`, Build-Konfiguration, Pakete), und lässt sich von Hand starten (Actions →
-  „Rechner-PWA“ → Run workflow). Ein Lauf ohne echte Änderung ist harmlos: Der Build ist
-  reproduzierbar, `sw.js` bleibt gleich, die Handys melden keine neue Version. Einmalig nötig war
+  „Rechner-PWA“ → Run workflow). Ein Lauf, der die PWA nicht betrifft, ist harmlos: Der Build ist
+  reproduzierbar – solange sich weder ihre Quellen noch `main.css`, die Tailwind-Konfiguration
+  oder Pakete ändern, bleibt `sw.js` gleich, und die Handys melden keine neue Version. Einmalig nötig war
   Settings → Pages → Source „GitHub Actions“. Jeder andere statische Webspace mit HTTPS geht
   genauso (Inhalt von `out-pwa/` hochladen).
+- **App-Icon** (`build/icon.png`, 1024 px, und `build/icon.ico`): das Logo in Gold `#ffce2c` auf
+  `#17131f`, gezeichnet wie `drawLogo` in `tools/test-patterns/mappingCard.ts` (Canvas, Hörner und
+  Fühler am Kopfumriss abgeschnitten). PNG: Eckenradius 18 % (184 px), Logo 70 % breit (717 px),
+  mittig. `icon.ico` (Setup, Deinstaller, Taskleiste) enthält 16–256 px als PNG, jede Stufe
+  **direkt in ihrer Größe gezeichnet, nicht herunterskaliert** (das verschmiert und gibt dunkle
+  Säume): 16/24/32 px ohne die Fühler und größer (Logo 14,25/21,5/28 px breit, 0,5/1/1,5 px
+  höher gesetzt, Eckenradius 18/16/18 %), 48/64 px 36,5/47 px breit (Ecken 20/18 %), 128/256 px
+  wie das PNG.
 - **Icons neu erzeugen** (nach einem neuen App-Icon, ImageMagick):
 
   ```bash

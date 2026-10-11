@@ -22,6 +22,7 @@ import {
 } from '@shared/types'
 import {
   LOGO_ASPECT,
+  LOGO_HEAD_PATH,
   LOGO_HEAD_STROKE,
   LOGO_MITER_LIMIT,
   LOGO_PARTS,
@@ -402,9 +403,21 @@ function plate(ctx: Ctx, x: number, y: number, w: number, h: number, r: number):
 }
 
 // Mottulbox-Logo mittig bei (x, y) – mit denselben Strich-Regeln wie die SVG-Komponente
-let logoPaths: { path: Path2D; head: boolean }[] | null = null
+let logoPaths: { path: Path2D; head: boolean; outside: boolean }[] | null = null
+// Alles außer dem Kopf (gerade Regel: Rechteck + Kopfumriss) – Hörner und Fühler enden am Kopf
+let outsideHead: Path2D | null = null
 function drawLogo(ctx: Ctx, x: number, y: number, height: number, color: string): void {
-  logoPaths ??= LOGO_PARTS.map((p) => ({ path: new Path2D(p.d), head: !!p.head }))
+  logoPaths ??= LOGO_PARTS.map((p) => ({
+    path: new Path2D(p.d),
+    head: !!p.head,
+    outside: !!p.outside
+  }))
+  if (!outsideHead) {
+    const VB = LOGO_VIEWBOX
+    outsideHead = new Path2D()
+    outsideHead.rect(VB.x - 50, VB.y - 50, VB.width + 100, VB.height + 100)
+    outsideHead.addPath(new Path2D(LOGO_HEAD_PATH))
+  }
   const k = height / LOGO_VIEWBOX.height
   ctx.save()
   ctx.translate(x - (LOGO_VIEWBOX.width * k) / 2, y - height / 2)
@@ -415,10 +428,15 @@ function drawLogo(ctx: Ctx, x: number, y: number, height: number, color: string)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'miter'
   ctx.miterLimit = LOGO_MITER_LIMIT
-  for (const { path, head } of logoPaths) {
+  for (const { path, head, outside } of logoPaths) {
     ctx.lineWidth = head ? LOGO_HEAD_STROKE : LOGO_STROKE
+    if (outside) {
+      ctx.save()
+      ctx.clip(outsideHead, 'evenodd')
+    }
     if (!head) ctx.fill(path)
     ctx.stroke(path)
+    if (outside) ctx.restore()
   }
   ctx.restore()
 }

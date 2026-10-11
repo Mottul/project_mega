@@ -7,8 +7,10 @@
 // CSS-Variable --logo-paper füllen. Feste Farben (z.B. Gold auf Dunkel fürs
 // App-Icon) setzt der Aufrufer per color/--logo-paper.
 
+import { useId } from 'react'
 import {
   LOGO_ASPECT,
+  LOGO_HEAD_PATH,
   LOGO_HEAD_STROKE,
   LOGO_MITER_LIMIT,
   LOGO_PARTS,
@@ -29,6 +31,14 @@ export function MottulboxLogo({
   /** Für Screenreader; leer lassen, wenn daneben schon der Name steht. */
   title?: string
 }): JSX.Element {
+  const maskId = useId()
+  const part = (p: (typeof LOGO_PARTS)[number], i: number): JSX.Element =>
+    p.head ? (
+      // Kopf: Fläche folgt --logo-paper (Standard: offen)
+      <path key={i} d={p.d} fill="var(--logo-paper, none)" strokeWidth={LOGO_HEAD_STROKE} />
+    ) : (
+      <path key={i} d={p.d} />
+    )
   return (
     <svg
       viewBox={VIEW_BOX}
@@ -39,6 +49,26 @@ export function MottulboxLogo({
       aria-label={title || undefined}
       aria-hidden={title ? undefined : true}
     >
+      {/* Hörner und Fühler enden am Kopfumriss: Kopffläche schwarz = ausgeblendet */}
+      <defs>
+        <mask
+          id={maskId}
+          maskUnits="userSpaceOnUse"
+          x={LOGO_VIEWBOX.x}
+          y={LOGO_VIEWBOX.y}
+          width={LOGO_VIEWBOX.width}
+          height={LOGO_VIEWBOX.height}
+        >
+          <rect
+            x={LOGO_VIEWBOX.x}
+            y={LOGO_VIEWBOX.y}
+            width={LOGO_VIEWBOX.width}
+            height={LOGO_VIEWBOX.height}
+            fill="white"
+          />
+          <path d={LOGO_HEAD_PATH} fill="black" />
+        </mask>
+      </defs>
       <g
         fill="currentColor"
         stroke="currentColor"
@@ -46,14 +76,8 @@ export function MottulboxLogo({
         strokeLinecap="round"
         strokeMiterlimit={LOGO_MITER_LIMIT}
       >
-        {LOGO_PARTS.map((p, i) =>
-          p.head ? (
-            // Kopf: Fläche folgt --logo-paper (Standard: offen)
-            <path key={i} d={p.d} fill="var(--logo-paper, none)" strokeWidth={LOGO_HEAD_STROKE} />
-          ) : (
-            <path key={i} d={p.d} />
-          )
-        )}
+        <g mask={`url(#${maskId})`}>{LOGO_PARTS.map((p, i) => (p.outside ? part(p, i) : null))}</g>
+        {LOGO_PARTS.map((p, i) => (p.outside ? null : part(p, i)))}
       </g>
     </svg>
   )

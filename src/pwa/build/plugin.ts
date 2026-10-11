@@ -2,6 +2,9 @@
 // - Wächter: Die Rechner laufen im Browser ohne Electron. Zieht ein Rechner (auch über Umwege)
 //   die Programmbrücke oder die Einstellungen herein, bricht der Build ab – statt dass die
 //   Seite erst auf dem Handy mit „window.api ist undefined“ scheitert.
+// - Quellen-Prüfung: Das PWA-CSS enthält nur die Tailwind-Klassen der Quellen aus sources.ts.
+//   Bindet die PWA eine Renderer-Datei außerhalb davon ein, fehlten deren Klassen – der Build
+//   bricht dann ab, statt die Seite auf dem Handy ungestylt zu zeigen.
 // - Manifest und Service Worker: entstehen erst am Ende des Builds, weil der Worker die fertige
 //   Dateiliste (Namen mit Hash) zum Vorladen braucht.
 import { createHash } from 'node:crypto'
@@ -10,6 +13,7 @@ import { join, relative, sep } from 'node:path'
 import type { Plugin } from 'vite'
 import { PWA_BACKGROUND } from '../colors'
 import { SW_FILE, serviceWorkerSource } from './serviceWorker'
+import { inSources } from './sources'
 
 /** Module, die window.api/Electron voraussetzen (Pfad nach der Alias-Auflösung) */
 const FORBIDDEN = /[\\/]renderer[\\/]src[\\/]lib[\\/](api|settings)(\.tsx?)?$/
@@ -49,7 +53,34 @@ function publicFiles(dir: string): string[] {
     .map((e) => relative(dir, join(e.parentPath, e.name)).split(sep).join('/'))
 }
 
-export function pwaPlugins(): Plugin[] {
+export function pwaPlugins({
+  sources,
+  rendererRoot
+}: {
+  /** Tailwind-Quellen der PWA (sources.ts) */
+  sources: string[]
+  /** src/renderer/src – nur dort liegen Klassen, die das PWA-CSS braucht */
+  rendererRoot: string
+}): Plugin[] {
+  const renderer = rendererRoot.replace(/\\/g, '/')
+  const covered: Plugin = {
+    name: 'mottulbox-pwa-sources',
+    apply: 'build',
+    buildEnd(err) {
+      if (err) return
+      const missing = [...this.getModuleIds()]
+        .map((id) => id.split('?')[0].replace(/\\/g, '/'))
+        .filter((id) => id.startsWith(`${renderer}/`) && /\.[jt]sx?$/.test(id))
+        .filter((id) => !inSources(id, sources))
+      if (missing.length) {
+        this.error(
+          `Rechner-PWA: ${missing.join(', ')} fehlt in den Tailwind-Quellen der PWA ` +
+            '(src/pwa/build/sources.ts) – dort eintragen, sonst fehlen im PWA-CSS seine Klassen.'
+        )
+      }
+    }
+  }
+
   const guard: Plugin = {
     name: 'mottulbox-pwa-guard',
     enforce: 'pre',
@@ -102,5 +133,5 @@ export function pwaPlugins(): Plugin[] {
     }
   }
 
-  return [guard, output]
+  return [guard, covered, output]
 }

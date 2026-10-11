@@ -2,8 +2,7 @@
 // Rechner selbst sind dieselben Komponenten wie in der Desktop-App (tools/<id>).
 import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { HashRouter, Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, Loader2, Monitor, Moon, RefreshCw, Sun } from 'lucide-react'
-import type { ThemeMode } from '@shared/types'
+import { ArrowLeft, Download, Loader2, RefreshCw } from 'lucide-react'
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import { MottulboxLogo } from '@renderer/components/MottulboxLogo'
 import { Button, buttonVariants } from '@renderer/components/ui/button'
@@ -11,32 +10,15 @@ import { Card } from '@renderer/components/ui/card'
 import { findPwaTool, PWA_TOOLS } from './tools'
 import { useInstallPrompt } from './useInstallPrompt'
 import { useServiceWorker } from './useServiceWorker'
-import { useThemeMode } from './useThemeMode'
+import { LookMenu } from './LookMenu'
+import { usePwaLook } from './useLook'
 
 const TITLE = 'Mottulbox Rechner'
 
-const THEME_LABEL: Record<ThemeMode, { icon: typeof Sun; label: string }> = {
-  dark: { icon: Moon, label: 'Dunkel' },
-  light: { icon: Sun, label: 'Hell' },
-  system: { icon: Monitor, label: 'wie das Gerät' }
-}
-
 export function App(): JSX.Element {
-  const theme = useThemeMode()
+  const look = usePwaLook()
   const sw = useServiceWorker()
-  const themeInfo = THEME_LABEL[theme.mode]
-  const ThemeIcon = themeInfo.icon
-  const themeButton = (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={theme.cycle}
-      aria-label={`Darstellung: ${themeInfo.label} – tippen zum Wechseln`}
-      title={`Darstellung: ${themeInfo.label}`}
-    >
-      <ThemeIcon className="size-5" />
-    </Button>
-  )
+  const lookButton = <LookMenu look={look} />
 
   return (
     <HashRouter>
@@ -50,8 +32,8 @@ export function App(): JSX.Element {
           </div>
         )}
         <Routes>
-          <Route path="/" element={<Home themeButton={themeButton} />} />
-          <Route path="/:id" element={<CalcView themeButton={themeButton} />} />
+          <Route path="/" element={<Home lookButton={lookButton} />} />
+          <Route path="/:id" element={<CalcView lookButton={lookButton} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
@@ -72,7 +54,7 @@ function Scroll({ children }: { children: ReactNode }): JSX.Element {
   return <main className="pwa-safe-bottom min-h-0 flex-1 overflow-y-auto">{children}</main>
 }
 
-function Home({ themeButton }: { themeButton: ReactNode }): JSX.Element {
+function Home({ lookButton }: { lookButton: ReactNode }): JSX.Element {
   useEffect(() => {
     document.title = TITLE
   }, [])
@@ -81,7 +63,7 @@ function Home({ themeButton }: { themeButton: ReactNode }): JSX.Element {
       <Header>
         <MottulboxLogo height={30} className="shrink-0 text-primary" title="" />
         <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">{TITLE}</h1>
-        {themeButton}
+        {lookButton}
       </Header>
       <Scroll>
         <div className="pwa-safe-x mx-auto max-w-5xl space-y-4 py-4">
@@ -141,7 +123,7 @@ function InstallHint(): JSX.Element | null {
   )
 }
 
-function CalcView({ themeButton }: { themeButton: ReactNode }): JSX.Element {
+function CalcView({ lookButton }: { lookButton: ReactNode }): JSX.Element {
   const { id } = useParams()
   const tool = findPwaTool(id)
   useEffect(() => {
@@ -169,7 +151,7 @@ function CalcView({ themeButton }: { themeButton: ReactNode }): JSX.Element {
         </Link>
         <Icon className="size-5 shrink-0 text-primary" />
         <h1 className="min-w-0 flex-1 truncate font-semibold">{tool.name}</h1>
-        {themeButton}
+        {lookButton}
       </Header>
       <Scroll>
         <ErrorBoundary label={tool.name}>
