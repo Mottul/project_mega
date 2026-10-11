@@ -72,7 +72,14 @@ export function registerUtilHandlers(): void {
 
       const win = new BrowserWindow({
         show: false,
-        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+        // nur statisches HTML drucken: ohne Preload (keine App-API) und ohne JavaScript – ein
+        // Name aus der Planung kann so nie als Skript laufen
+        webPreferences: {
+          sandbox: true,
+          contextIsolation: true,
+          nodeIntegration: false,
+          javascript: false
+        }
       })
       try {
         await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)

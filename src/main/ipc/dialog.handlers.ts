@@ -8,7 +8,10 @@ import {
 } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { ConfirmOptions, NotifyOptions, SelectPathsOptions } from '@shared/types'
+import { stat } from 'node:fs/promises'
 import { showOpenDialog } from '../services/fileDialogs'
+import { logLine } from '../services/log'
+import { shellTarget } from '../services/windowPolicy'
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(Channels.dialogSelect, async (_e, options: SelectPathsOptions) => {
@@ -64,11 +67,30 @@ export function registerDialogHandlers(): void {
     if (win && !win.isDestroyed()) win.webContents.focus()
   })
 
-  ipcMain.handle(Channels.shellOpenPath, async (_e, target: string) => {
-    await shell.openPath(target)
+  // openPath öffnet eine DATEI mit ihrem Standardprogramm – bei .exe, .bat, .lnk … startet es
+  // also ein Programm. Deshalb nur lokale Ordner (heute: der Medienordner des Players).
+  ipcMain.handle(Channels.shellOpenPath, async (_e, target: unknown) => {
+    const dir = shellTarget(target, { network: false })
+    const isDir = dir
+      ? await stat(dir).then(
+          (s) => s.isDirectory(),
+          () => false
+        )
+      : false
+    if (!dir || !isDir) {
+      logLine('[shell] Ordner öffnen abgelehnt:', String(target).slice(0, 200))
+      return
+    }
+    await shell.openPath(dir)
   })
 
-  ipcMain.handle(Channels.shellShowItem, (_e, target: string) => {
-    shell.showItemInFolder(target)
+  // „Im Ordner zeigen“ startet nichts – auch für Dateien auf dem NAS (Netzwerkpfade erlaubt).
+  ipcMain.handle(Channels.shellShowItem, (_e, target: unknown) => {
+    const path = shellTarget(target, { network: true })
+    if (!path) {
+      logLine('[shell] Im Ordner zeigen abgelehnt:', String(target).slice(0, 200))
+      return
+    }
+    shell.showItemInFolder(path)
   })
 }

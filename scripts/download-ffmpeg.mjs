@@ -10,8 +10,13 @@
 // --max-age: aktuell halten – neu laden, wenn der vorhandene Build älter ist (Stand in
 // stand.json neben den Binaries). Läuft vor `dev`/`start`/`e2e` und beim Paketieren; schlägt
 // das Laden fehl (offline, ffmpeg gerade in Benutzung), geht es mit dem vorhandenen weiter.
+//
+// Geprüft wird jeder Download, bevor er ausgepackt wird: BtbN gegen die checksums.sha256
+// DESSELBEN Releases (wie die Aktualisierung in der App, services/ffmpeg/ffmpegUpdate.ts),
+// evermeet gegen die veröffentlichte Größe der versionierten Datei (evermeet signiert nur per GPG).
 
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import {
   chmodSync,
   copyFileSync,
@@ -22,6 +27,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync
 } from 'node:fs'
 import https from 'node:https'
@@ -44,9 +50,10 @@ const SOURCES = {
   },
   mac: {
     type: 'evermeet',
-    urls: {
-      ffmpeg: 'https://evermeet.cx/ffmpeg/getrelease/zip',
-      ffprobe: 'https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip'
+    // je Binary: Name, Version, Größe und Adresse der versionierten zip
+    infos: {
+      ffmpeg: 'https://evermeet.cx/ffmpeg/info/ffmpeg/release',
+      ffprobe: 'https://evermeet.cx/ffmpeg/info/ffprobe/release'
     },
     bins: ['ffmpeg', 'ffprobe']
   }
@@ -81,6 +88,42 @@ function download(url, dest, redirects = 0) {
       })
       .on('error', reject)
   })
+}
+
+/** Kleine Textantwort (Prüfsummen, Infos) laden – über dieselben Umleitungen wie download(). */
+async function fetchText(url) {
+  const tmp = join(tmpdir(), `ff-text-${process.pid}-${Date.now()}`)
+  try {
+    await download(url, tmp)
+    return readFileSync(tmp, 'utf8')
+  } finally {
+    rmSync(tmp, { force: true })
+  }
+}
+
+function sha256(file) {
+  return createHash('sha256').update(readFileSync(file)).digest('hex')
+}
+
+/** Prüfsummen-Datei: je Zeile „<sha256>  <dateiname>“ (wie checksumFor in ffmpegUpdatePlan.ts). */
+function checksumFor(text, name) {
+  for (const line of text.split('\n')) {
+    const m = /^([0-9a-f]{64})\s+\*?(\S+)$/i.exec(line.trim())
+    if (m && m[2] === name) return m[1].toLowerCase()
+  }
+  return null
+}
+
+/** BtbN: Archiv gegen die checksums.sha256 desselben Releases prüfen. */
+async function verifyBtbN(url, archive) {
+  const name = url.slice(url.lastIndexOf('/') + 1)
+  const sums = await fetchText(url.slice(0, url.lastIndexOf('/') + 1) + 'checksums.sha256')
+  const expected = checksumFor(sums, name)
+  if (!expected) throw new Error(`keine Prüfsumme für ${name} veröffentlicht`)
+  const actual = sha256(archive)
+  // „latest“ kann zwischen beiden Downloads wechseln – dann einfach später noch einmal
+  if (actual !== expected) throw new Error(`Prüfsumme von ${name} stimmt nicht – nicht übernommen`)
+  console.log(`  ✓ Prüfsumme stimmt (${actual.slice(0, 12)}…)`)
 }
 
 function run(cmd, args) {
@@ -159,15 +202,26 @@ async function build(targetOs) {
   try {
     if (src.type === 'evermeet') {
       for (const bin of src.bins) {
+        const info = JSON.parse(await fetchText(src.infos[bin]))
+        const zipInfo = info?.download?.zip
+        if (!zipInfo?.url || !Number.isFinite(zipInfo.size)) {
+          throw new Error(`evermeet: keine Download-Angaben für ${bin}`)
+        }
         const zip = join(tmp, `${bin}.zip`)
-        console.log(`  ↓ ${src.urls[bin]}`)
-        await download(src.urls[bin], zip)
+        console.log(`  ↓ ${zipInfo.url}`)
+        await download(zipInfo.url, zip)
+        const size = statSync(zip).size
+        if (size !== zipInfo.size) {
+          throw new Error(`${bin}: ${size} statt ${zipInfo.size} Bytes – nicht übernommen`)
+        }
+        console.log(`  ✓ Größe stimmt (${bin} ${info.version})`)
         extract(zip, tmp, 'zip')
       }
     } else {
       const archive = join(tmp, src.type === 'zip' ? 'ffmpeg.zip' : 'ffmpeg.tar.xz')
       console.log(`  ↓ ${src.url}`)
       await download(src.url, archive)
+      await verifyBtbN(src.url, archive)
       extract(archive, tmp, src.type)
     }
 
@@ -201,7 +255,7 @@ async function build(targetOs) {
     writeFileSync(
       join(outDir, 'stand.json'),
       JSON.stringify(
-        { geladen: new Date().toISOString(), quelle: src.url ?? src.urls, version },
+        { geladen: new Date().toISOString(), quelle: src.url ?? src.infos, version },
         null,
         2
       ) + '\n'

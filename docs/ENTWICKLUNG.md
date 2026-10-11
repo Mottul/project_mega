@@ -33,9 +33,11 @@ npm run dev         # App mit Hot Reload
 
 - **ffmpeg:** `npm run ff:fetch` lädt ein HAP-fähiges ffmpeg (mit libsnappy) aus offiziellen
   Quellen – BtbN (Windows, Linux), evermeet.cx (macOS) – nach `resources/ffmpeg/<os>/` (nicht im
-  Git). Die gängigen npm-ffmpeg-Pakete können kein HAP. Vorhandenes wird nicht erneut geladen
-  (`--force` erzwingt es, `--platform win|mac|linux` bzw. `--all` für andere Systeme). Ohne ffmpeg
-  zeigen die betroffenen Werkzeuge einen Hinweis; im fertigen Paket ist es enthalten.
+  Git) und prüft jeden Download vor dem Auspacken (BtbN: Prüfsumme, evermeet: Größe; siehe
+  [SICHERHEIT.md](SICHERHEIT.md)). Die gängigen npm-ffmpeg-Pakete können kein HAP. Vorhandenes
+  wird nicht erneut geladen (`--force` erzwingt es, `--platform win|mac|linux` bzw. `--all` für
+  andere Systeme). Ohne ffmpeg zeigen die betroffenen Werkzeuge einen Hinweis; im fertigen Paket
+  ist es enthalten.
   **Bleibt automatisch aktuell:** Die Quellen liefern täglich neue Builds. `npm run dev`,
   `npm start` und `npm run e2e` laden vorher den neuesten, wenn der vorhandene älter als 7 Tage
   ist (Stand in `resources/ffmpeg/<os>/stand.json`); `npm run package` nimmt einen höchstens einen
@@ -90,6 +92,7 @@ src/
 │   ├── ipc/                  # IPC-Handler je Bereich (*.handlers.ts), registry.ts, remoteControls.ts
 │   └── services/
 │       ├── appWindows.ts · smallToolWindows.ts  # Fenster mit sicheren Vorgaben · kleine Werkzeugfenster
+│       ├── windowGuards.ts · windowPolicy.ts    # Wächter für alle Fenster · ihre Regeln (rein, getestet)
 │       ├── store.ts · db.ts  # settings.json (Quelle der Wahrheit) · SQLite/FTS5 – je mit Wiederherstellung
 │       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Warteschlange, Fähigkeiten;
 │       │                     #   videoGen*: Rechenlauf, Vorschau rechnen, Zwischenspeicher, Vorschaubilder,

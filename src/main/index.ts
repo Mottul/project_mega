@@ -10,6 +10,7 @@ import {
   registerMediaProtocol
 } from './ipc/registry'
 import { createWindow } from './services/appWindows'
+import { installWindowGuards } from './services/windowGuards'
 import { closePattern } from './services/patternWindow'
 import { closePlayerOutput } from './services/player/playerWindow'
 import { closeSmallToolWindows } from './services/smallToolWindows'
@@ -112,6 +113,7 @@ app.whenReady().then(() => {
   logLine('appPath=', app.getAppPath())
   logLine('resourcesPath=', process.resourcesPath)
   logLine('userData=', app.getPath('userData'))
+  installWindowGuards() // vor dem ersten Fenster: gilt für alle
   registerManualProtocol()
   registerMediaProtocol()
   registerJingleProtocol()

@@ -4,7 +4,7 @@
 // wenn das Fenster nicht fokussiert ist.
 
 import { BrowserWindow, screen } from 'electron'
-import { join } from 'node:path'
+import { loadRoute, secureWebPreferences } from './appWindows'
 import { logLine } from './log'
 import { setTimerOutputOpen } from './stageTimer'
 
@@ -27,13 +27,7 @@ export function openTimerOutput(displayId: number): void {
     backgroundColor: '#000000',
     skipTaskbar: true,
     title: 'Stage-Timer',
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      backgroundThrottling: false
-    }
+    webPreferences: secureWebPreferences({ backgroundThrottling: false })
   })
   logLine('[timer] Ausgabefenster auf Display', display.id, JSON.stringify(b))
 
@@ -49,9 +43,7 @@ export function openTimerOutput(displayId: number): void {
     if (input.type === 'keyDown' && input.key === 'Escape') closeTimerOutput()
   })
 
-  const devUrl = process.env['ELECTRON_RENDERER_URL']
-  if (devUrl) void win.loadURL(`${devUrl}#/timer-output`)
-  else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash: '/timer-output' })
+  loadRoute(win, '/timer-output')
 
   setTimerOutputOpen(true)
 }

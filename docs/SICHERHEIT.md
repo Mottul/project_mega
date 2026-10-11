@@ -23,8 +23,11 @@ aufgesetzt:
 - **Externe Programme aus offiziellen Quellen:** ffmpeg (BtbN, evermeet.cx) und die
   Electron-Binary per HTTPS beim Einrichten; die Electron-Binary wird gegen die SHA-256-Summe aus
   `electron/checksums.json` geprüft (kommt mit dem npm-Paket, also über die Integrity der
-  Lock-Datei abgesichert). yt-dlp lädt die App selbst und vergleicht dabei die Prüfsumme des
-  Releases.
+  Lock-Datei abgesichert). ffmpeg prüft `scripts/download-ffmpeg.mjs` vor dem Auspacken: BtbN
+  gegen die `checksums.sha256` desselben Releases, evermeet.cx nur gegen die veröffentlichte Größe
+  der versionierten Datei (es gibt dort nur GPG-Signaturen) – das fängt abgebrochene oder
+  vertauschte Downloads, kein verändertes Release. yt-dlp lädt die App selbst und vergleicht dabei
+  die Prüfsumme des Releases.
 - **ffmpeg in der fertigen App** (Windows, Linux; abschaltbar im Video-Konverter): einmal am Tag
   der neueste Build von BtbN, der **mindestens 7 Tage alt** ist (dieselbe Regel wie für npm-Pakete;
   bis dahin hat ihn auch die CI getestet). Download nur von
@@ -104,10 +107,22 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
 
 ## Die App
 
-- **Abgeschottete Fenster:** `sandbox`, `contextIsolation` und `nodeIntegration: false` in allen
-  Fenstern (Haupt-, Werkzeug-, Ausgabe-, NDI- und PDF-Fenster). Der Preload gibt nur eine
-  typisierte API frei, nie rohes `ipcRenderer`. Haupt- und Werkzeugfenster öffnen keine neuen
-  Fenster (`window.open` gesperrt); externe Links gehen an den Standardbrowser.
+- **Abgeschottete Fenster:** `sandbox`, `contextIsolation`, `nodeIntegration: false` und keine
+  Webviews in allen Fenstern mit App-Seite (Haupt-, Werkzeug-, Ausgabe- und NDI-Fenster, eine
+  Quelle: `secureWebPreferences` in `services/appWindows.ts`). Der Preload gibt nur eine
+  typisierte API frei, nie rohes `ipcRenderer`. Das unsichtbare Fenster für den PDF-Export
+  (`utilExportPdf`) hat keinen Preload und kein JavaScript. Die fertige App lädt nie eine Seite aus
+  `ELECTRON_RENDERER_URL`, beim Entwickeln nur einen lokalen Vite-Server.
+- **Fenster-Wächter für alle Fenster** (`services/windowGuards.ts`, über `web-contents-created`,
+  auch für künftige): keine neuen Fenster (`window.open` gesperrt), keine Navigation weg von der
+  App-Seite – so bekommt nie eine fremde Seite die App-API –, keine Webviews. Externe Links gehen
+  an den Standardbrowser, und zwar nur http(s). Browser-Berechtigungen nur für die App-Seite und
+  nur Vollbild, Schreiben in die Zwischenablage und die Wahl des Audio-Ausgabegeräts; Kamera,
+  Mikrofon, Standort, Benachrichtigungen usw. nie. Regeln rein und getestet in
+  `windowPolicy.ts`, in der echten App per E2E `security`.
+- **Shell-Aufrufe:** „Ordner öffnen“ (`shell.openPath` startet Dateien mit ihrem Programm) nur
+  für vorhandene lokale Ordner; „Im Ordner zeigen“ nur mit absolutem Pfad (Netzwerkpfade erlaubt,
+  es startet nichts).
 - **Eigene Protokolle** für Handbücher, Player-Medien und Jingles (`manual:`, `media:`, `jingle:`)
   liefern nur Dateien aus den App-Ablagen – der Renderer braucht keinen `file://`-Zugriff.
   `media://vgen/…` liefert nur Vorschaubilder (`vgen-cache/thumbs`, nur `.jpg`) und gerechnete

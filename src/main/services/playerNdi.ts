@@ -10,7 +10,7 @@
 // Bild/Ton über die vom SDK gestempelten Zeiten (clockVideo/clockAudio).
 
 import { BrowserWindow, ipcMain } from 'electron'
-import { join } from 'node:path'
+import { loadRoute, secureWebPreferences } from './appWindows'
 import { Channels } from '@shared/ipc-contracts'
 import {
   DEFAULT_PLAYER_NDI,
@@ -231,16 +231,12 @@ export async function startPlayerNdi(cfg: PlayerNdiConfig): Promise<PlayerNdiSta
     width: config.width,
     height: config.height,
     frame: false,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
+    webPreferences: secureWebPreferences({
       offscreen: true,
       backgroundThrottling: false,
       // Der Spiegel spielt programmatisch (Engine steuert play/pause)
       autoplayPolicy: 'no-user-gesture-required'
-    }
+    })
   })
   win.webContents.setFrameRate(config.fps)
   win.webContents.on('paint', (_e, _dirty, image) => pushFrame(g, image))
@@ -254,9 +250,7 @@ export async function startPlayerNdi(cfg: PlayerNdiConfig): Promise<PlayerNdiSta
   })
 
   const hash = `/player-ndi?fit=${config.fit}&audio=${config.audio ? 1 : 0}`
-  const devUrl = process.env['ELECTRON_RENDERER_URL']
-  if (devUrl) void win.loadURL(`${devUrl}#${hash}`)
-  else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash })
+  loadRoute(win, hash)
 
   // Standbilder/Pausen: regelmäßig invalidieren -> kontinuierlicher NDI-Takt.
   invalidateTimer = setInterval(
