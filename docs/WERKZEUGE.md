@@ -257,16 +257,33 @@ DMX-Startadresse in Dip-Schalter umrechnen und zurück (binär, 9 Schalter, 1–
 
 ### LED-Wall-Konfigurator
 
-- **Wand:** Größe und Modultyp (Bestand: 496-2,0 / uS2+ / rX3ioBF) → Auflösung, 16:9-Einpassung,
-  Gewicht, Strom und Ballast (LSU-Füße).
-- **Verkabelung:** zeichenbare Signal- und Strompläne mit farbcodierten Ketten.
-- **Curving-Planung** für uS2+: Vollkreis-Tabelle mit auswählbaren Kreisen, Kreissegment aus
-  Sehne und Stichhöhe (auch als Start für den Segment-Builder), freier Segment-Builder und
-  Squircle – je mit Draufsicht, Winkelverteilung und belegter Grundfläche B × T. Die
-  Curving-Form bestimmt Modulzahl und Breite der Wand mit.
-- **Vorlagen:** Planungen unter Namen speichern und wieder laden.
-- **PDF-Projektdoku** (wahlweise Querformat) inklusive Draufsicht und Winkeln; Übergabe an die
-  [Packliste](#packliste).
+Aufgebaut wie die anderen Werkzeuge: Die **Leiste „Projekt“** exportiert die PDF-Doku (Hoch oder
+Quer) und übergibt das Material an die [Packliste](#packliste); rechts stehen Projekt und Kunde.
+Die **Schublade** hält alles, was die Wand festlegt, die **Arbeitsfläche** zeigt, was daraus folgt –
+auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
+
+- **Schublade:** Vorlagen (Planungen unter dem Projektnamen speichern und laden), Projekt und
+  Kunde, Modul (Bestand: 496-2,0 / uS2+ / rX3ioBF), Wand (Breite, Höhe – gerundet auf ganze
+  Module –, Ground-Stack oder fliegend) und beim uS2+ die Curving-Form.
+- **Kennzahlen:** Auflösung mit Seitenverhältnis, Module (Spalten × Reihen), Größe (mit Fläche
+  bzw. abgewickeltem Bogen), Gewicht, maximale Leistung (Strom bei 230 V), Ballast bzw. Last an
+  der Traverse.
+- **Zeichenfläche** mit Reitern, so groß wie das Fenster:
+  - **Ansicht:** Vorderansicht mit Modulraster, 16:9-Nutzfläche und den schwarzen Rändern (in
+    Pixeln), Maßketten in Metern und Pixeln; Ground-Stack auf seinen Standfüßen mit einer Person
+    (1,80 m) zum Größenvergleich, fliegend an der Traverse.
+  - **Draufsicht** (nur uS2+): die Curving-Form in voller Größe mit Radius, Modulen je Reihe,
+    Bogen, belegter Grundfläche B × T, Gewicht je Reihe und Winkelverteilung.
+  - **Signal** und **Strom:** zeichenbare Pläne mit farbcodierten Ketten – Modul anklicken weist
+    es der gewählten Kette zu, Spalten- und Zeilenköpfe ganze Linien; die Ketten-Knöpfe zählen
+    ihre Module, die Zellen wachsen mit dem Platz.
+- **Daneben:** Strom (typisch und maximal in W und A), Aufbau (LSU-Füße, Ballast je Fuß und
+  gesamt bzw. Gewicht an der Traverse) und die Daten des Moduls. Ist die Arbeitsfläche schmal,
+  stehen Zeichnung und Daten untereinander.
+- **Curving-Planung** für uS2+: Vollkreise mit gleichem Winkel je Modul zur Auswahl, Kreissegment
+  aus Sehne (Wandbreite) und Stichhöhe (auch als Start für den Builder), freier Segment-Builder
+  und Squircle. Die Form bestimmt Modulzahl und Breite der Wand mit.
+- **PDF-Projektdoku** inklusive Draufsicht, Winkeln und Verkabelungsplänen.
 
 ### Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen
 

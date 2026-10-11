@@ -113,7 +113,7 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 
 ### Konsolidierung
 
-- **Restliche Werkzeuge aufs Werkzeug-Muster** (Ausgabe-/Auftrags-Leiste, Schublade links): LED-Wall,
+- **Restliche Werkzeuge aufs Werkzeug-Muster** (Ausgabe-/Auftrags-Leiste, Schublade links):
   NovaStar (Verbindung und Blackout in die Leiste), Netzwerk-Scanner, YouTube-Downloader
   (Auftrags-Leiste) und Packliste haben noch eigene Kartenlayouts. Dabei die übrigen Erklärtexte
   hinter ⓘ legen (die Rechner sind es schon: `tools/_calc/ui`).
@@ -210,7 +210,8 @@ Damit nichts doppelt geplant wird:
   13 Akzentfarben, ffmpeg, yt-dlp; Aktionen mit Text), Ausgabe-Leiste (rot, solange live; Auftrag
   bernstein) und Einstellungs-Schublade links (anheftbar, Bereiche mit Zusammenfassung, ⓘ statt
   Absätzen) für Video-Player, Stage-Timer, Testbild, Video-Konverter, Video-Generator, Jingles,
-  OSC, Medien-Info und Handbücher.
+  OSC, Medien-Info, Handbücher und LED-Wall (Arbeitsfläche ohne Scrollen: Kennzahlen,
+  Zeichenfläche mit Ansicht, Draufsicht, Signal- und Stromplan).
 - **Kleine Werkzeuge im eigenen Fenster:** Die neun Rechner öffnen sich immer in einem eigenen
   Fenster (eines je Werkzeug, Lage gemerkt, Höhe folgt dem Inhalt, ab 320 px breit, zweispaltig
   wenn breit genug), einheitlich mit ⓘ statt Absätzen und Zahlen mit Komma; Design, Akzent und

@@ -309,6 +309,53 @@ try {
       }
     ],
     [
+      'LED-Wall: Projekt-Leiste, Schublade, Darstellungen – Draufsicht nur mit Curving',
+      async () => {
+        await tool('led-wall')
+        assert.equal(await bar().getAttribute('data-kind'), 'job')
+        assert.equal(
+          await bar()
+            .getByRole('button', { name: /PDF exportieren/ })
+            .count(),
+          1
+        )
+        await drawer().waitFor({ timeout: 10_000 })
+        const tab = (name) => page.getByRole('tab', { name, exact: true })
+        const figures = page.getByRole('region', { name: 'Kennzahlen' })
+        assert.equal(await tab('Ansicht').getAttribute('aria-selected'), 'true')
+        // flaches Modul (Vorgabe): keine Draufsicht
+        assert.equal(await tab('Draufsicht').count(), 0)
+        // Größe in der Schublade -> Kennzahlen folgen (496-mm-Module: 6 m -> 12 Spalten)
+        await drawer()
+          .getByLabel(/^Breite/)
+          .fill('6')
+        await figures.getByText('12 × 5').waitFor({ timeout: 5_000 })
+        // Curving-Modul: Draufsicht erscheint und zeigt die Kennzahlen der Form
+        await drawer()
+          .getByRole('radio', { name: /^uS2\+/ })
+          .click()
+        await tab('Draufsicht').click()
+        await page.getByRole('tabpanel').getByText('Radius').waitFor({ timeout: 5_000 })
+        // Signalplan: Modul anklicken weist es der Kette zu, der Ketten-Knopf zählt mit
+        await tab('Signal').click()
+        await page.getByRole('button', { name: 'Modul Zeile 1, Spalte 1', exact: true }).click()
+        await page
+          .getByRole('button', { name: 'Modul Zeile 1, Spalte 1 – S1', exact: true })
+          .waitFor({ timeout: 5_000 })
+        assert.equal(
+          await page.getByRole('button', { name: 'Signal-Kette 1: 1 Module', exact: true }).count(),
+          1
+        )
+        // zurück zum flachen Modul: aus der Draufsicht wird wieder die Ansicht
+        await tab('Draufsicht').click()
+        await drawer()
+          .getByRole('radio', { name: /^496-2,0/ })
+          .click()
+        assert.equal(await tab('Draufsicht').count(), 0)
+        assert.equal(await tab('Ansicht').getAttribute('aria-selected'), 'true')
+      }
+    ],
+    [
       'Kleines Werkzeug: Kachel öffnet ein eigenes, kleines Fenster; das Hauptfenster bleibt',
       async () => {
         await openRoute(page, '/')
