@@ -4,8 +4,9 @@ name: Rechner-PWA
 # (Voraussetzung: Settings -> Pages -> Source „GitHub Actions“).
 # - Automatisch bei jedem Push auf main, der die PWA betreffen kann. Die Pfade sind bewusst weit
 #   gefasst (alles, was die Rechner über Umwege einbinden: UI-Bausteine, lib, Styles, Pakete): Ein
-#   Lauf ohne echte Änderung schadet nicht – der Build ist reproduzierbar, sw.js bleibt gleich
-#   und die Handys melden keine neue Version.
+#   Lauf, der die PWA nicht betrifft, schadet nicht – der Build ist reproduzierbar, und weil ihr
+#   CSS nur aus ihren eigenen Quellen kommt (src/pwa/build/sources.ts), bleibt sw.js gleich und
+#   die Handys melden keine neue Version.
 # - Von Hand: Actions -> Rechner-PWA -> Run workflow.
 on:
   push:
@@ -16,7 +17,6 @@ on:
       - 'src/shared/**'
       - 'vite.pwa.config.ts'
       - 'tailwind.config.js'
-      - 'postcss.config.js'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/pwa-pages.yml'

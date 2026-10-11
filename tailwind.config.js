@@ -1,12 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
-  content: [
-    './src/renderer/index.html',
-    './src/renderer/src/**/*.{ts,tsx}',
-    // Rechner-PWA (vite.pwa.config.ts)
-    './src/pwa/**/*.{html,ts,tsx}'
-  ],
+  // Die Rechner-PWA hat eigene Quellen (vite.pwa.config.ts, src/pwa/build/sources.ts)
+  content: ['./src/renderer/index.html', './src/renderer/src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {

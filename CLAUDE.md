@@ -46,6 +46,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 - **Rechner-PWA** (`src/pwa/`, `vite.pwa.config.ts`): die kleinen Werkzeuge zusätzlich als
   Web-App fürs Handy, gleiche Module ohne Electron (Liste `src/pwa/tools.ts` = `SMALL_TOOLS`).
   Rechner dürfen daher weder `api` noch Einstellungen nutzen – der PWA-Build bricht sonst ab.
+  Ihr CSS nimmt Tailwind-Klassen nur aus `src/pwa/build/sources.ts` (neue Abhängigkeit dort
+  eintragen, der Build meldet sie).
 - **Tools** liegen unter `src/renderer/src/tools/<id>/` und registrieren sich
   über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).
