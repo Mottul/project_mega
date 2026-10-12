@@ -73,13 +73,17 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 - **Konvertierung:** EIN Kern für Video-Konverter (Tool-id `hap-converter`) und Player-Import;
   der Video-Generator nutzt ihn mit (Zeitachse/Filter rein in `shared/videoGenPlan.ts`), der
   Testbild-Export nur `runFfmpeg()` und die Farbkennung. Analyse per `probeMediaInfo` (Cache), alle Entscheidungen in
-  `shared/convertPlan.ts` (rein, getestet, auch Vorschau im Renderer), Argumente/Runner/
-  Warteschlange (Spuren `player`/`converter`) in `main/services/convert/`. Neue Korrekturen
+  `shared/convertPlan.ts` (rein, getestet, auch Vorschau im Renderer), Argumente/Runner in
+  `main/services/convert/`. Neue Korrekturen
   und Formate dort einbauen, nicht je Tool; ffmpeg immer über `runFfmpeg()`, Pfade nur über
   `ffmpegBinPath()` (liefert ggf. den in der App aktualisierten Build). GPU-/Schnell-Encoder
   nur nach Probelauf (`convert/encoders.ts`, Wahl in `shared/encoderChoice.ts`), Aufträge über
   `encodeWithFallback()` (GPU scheitert -> einmal CPU). Lautheit zweistufig: vor dem Lauf
   `measureLoudness()`, Ergebnis als `loudness` an `buildConvertArgs` (`shared/loudness.ts`).
+- **Aufträge** (Konverter, Player-Import, Video-Generator, YouTube-Downloader): eine Warteschlange
+  mit Spuren `player`/`converter`/`download` (`services/jobs/queue.ts`), jede Auftragsliste erbt
+  von `JobList` (`services/jobs/jobList.ts`: melden, abbrechen, Fertige entfernen, Fehler vs.
+  Abbruch) und schreibt nur ihr `run()`.
 - **Native/optionale Module:** better-sqlite3 (ab 13 über N-API: die Binaries liegen im Paket und
   laufen unter jeder Electron- und Node-Version, kein Rebuild, KEIN node-gyp im Baum); NDI-Binding
   `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`); NDI-Ausgaben nur über den

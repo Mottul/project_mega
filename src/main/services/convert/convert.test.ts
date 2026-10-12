@@ -8,7 +8,6 @@ vi.mock('electron', () => ({
 
 const { buildConvertArgs, buildLoudnessMeasureArgs, h264Level } = await import('./args')
 const { capabilitiesFrom, parseEncoderNames, parseFilterNames } = await import('./capabilities')
-const { ConvertQueue } = await import('./queue')
 const { ffmpegErrorText } = await import('./runFfmpeg')
 const { computeChunks, uniqueOutputPath } = await import('./converterJobs')
 import { planConversion, type ConvertPlan } from '@shared/convertPlan'
@@ -232,81 +231,6 @@ describe('Fähigkeiten, Fehlertexte, Warteschlange', () => {
     expect(ffmpegErrorText(1, stderr)).toBe(
       'ffmpeg beendet mit Code 1 – width not divisible by 2 (1919x1080)'
     )
-  })
-
-  it('Spuren: Player wartet nie auf den Konverter, Limits je Spur, Entfernen vor Start', async () => {
-    const q = new ConvertQueue()
-    const started: string[] = []
-    const gates: Record<string, () => void> = {}
-    const job = (id: string) => () =>
-      new Promise<void>((res) => {
-        started.push(id)
-        gates[id] = res
-      })
-    q.add('k1', 'converter', job('k1'))
-    q.add('k2', 'converter', job('k2'))
-    q.add('k3', 'converter', job('k3'))
-    q.add('p1', 'player', job('p1'))
-    await Promise.resolve()
-    await Promise.resolve()
-    expect(started).toEqual(['k1', 'p1'])
-    expect(q.remove('k3')).toBe(true)
-    gates.k1()
-    await new Promise((r) => setTimeout(r, 0))
-    expect(started).toEqual(['k1', 'p1', 'k2'])
-    q.setLimit('converter', 2)
-    expect(q.runningCount('converter')).toBe(1)
-  })
-
-  it('gleicher Sperr-Schlüssel nie gleichzeitig: wartet ohne Platz, andere ziehen vorbei', async () => {
-    const q = new ConvertQueue()
-    q.setLimit('player', 2)
-    const started: string[] = []
-    const gates: Record<string, () => void> = {}
-    const job = (id: string) => () =>
-      new Promise<void>((res) => {
-        started.push(id)
-        gates[id] = res
-      })
-    q.add('a1', 'player', job('a1'), 'clip.mp4')
-    q.add('a2', 'player', job('a2'), 'clip.mp4')
-    q.add('b', 'player', job('b'), 'other.mp4')
-    q.add('a3', 'player', job('a3'), 'clip.mp4')
-    await Promise.resolve()
-    expect(started).toEqual(['a1', 'b'])
-    // der wartende Doppelgänger ist noch abbrechbar
-    expect(q.remove('a3')).toBe(true)
-    gates.a1()
-    await new Promise((r) => setTimeout(r, 0))
-    expect(started).toEqual(['a1', 'b', 'a2'])
-    expect(q.runningCount('player')).toBe(2)
-  })
-
-  it('idle(): wartet auf laufende Aufträge samt Aufräumen, auch auf nachrückende', async () => {
-    const q = new ConvertQueue()
-    const gates: Record<string, () => void> = {}
-    const cleaned: string[] = []
-    // wie ein Auftrag: erst das Ende des Laufs, danach noch Aufräumen
-    const job = (id: string) => () =>
-      new Promise<void>((res) => (gates[id] = res)).then(async () => {
-        await new Promise((r) => setTimeout(r, 5))
-        cleaned.push(id)
-      })
-    q.add('a', 'converter', job('a'))
-    q.add('b', 'converter', job('b'))
-    expect(q.busy()).toBe(true)
-    let idle = false
-    const waiting = q.idle().then(() => (idle = true))
-    await new Promise((r) => setTimeout(r, 0))
-    gates.a()
-    await new Promise((r) => setTimeout(r, 20))
-    // a ist fertig, b ist nachgerückt und läuft noch
-    expect(cleaned).toEqual(['a'])
-    expect(idle).toBe(false)
-    gates.b()
-    await waiting
-    expect(cleaned).toEqual(['a', 'b'])
-    expect(q.busy()).toBe(false)
   })
 })
 
