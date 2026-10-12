@@ -54,9 +54,9 @@ jobs:
       # main parallel läuft und noch nicht fertig ist
       - run: npx vitest run src/pwa src/renderer/src/tools
       - run: npm run pwa:build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: out-pwa
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
