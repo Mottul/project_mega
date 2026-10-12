@@ -14,7 +14,7 @@ import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { Select } from '@renderer/components/ui/select'
-import { PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { api } from '@renderer/lib/api'
 import {
@@ -27,6 +27,8 @@ import {
 import { PATTERN_OPTIONS, SOLID_OPTIONS, moduleCells, renderToCanvas } from './patterns'
 import { PatternPreview } from './PatternPreview'
 import { MappingSettings } from './MappingSettings'
+import { ToneSection, ToneToggle, useTestTone } from './tone/TestTone'
+import { toneSummary } from './tone/plan'
 
 const RES_PRESETS = [
   { label: '1280 × 720', w: 1280, h: 720 },
@@ -76,6 +78,7 @@ export function TestPatterns(): JSX.Element {
   const [presets, setPresets] = useState<PatternPreset[]>([])
   const [presetName, setPresetName] = useState('')
   const [selectedPreset, setSelectedPreset] = useState('')
+  const tone = useTestTone()
 
   // Monitore + Presets laden; bevorzugt einen nicht-primaeren (Beamer/Wand) vorauswaehlen
   useEffect(() => {
@@ -233,6 +236,8 @@ export function TestPatterns(): JSX.Element {
   const isCycle = config.pattern === 'colorcycle'
   const isScroll = config.pattern === 'scroll'
   const isMapping = config.pattern === 'mapping'
+  // AV-Sync gibt es nur live (Blitz im Ausgabefenster, Piep hier) – ein Export wäre schwarz
+  const isSync = config.pattern === 'avsync'
   const showScale = config.pattern === 'grid' || config.pattern === 'geometry'
   const mc = moduleCells(config.width, config.height)
   const gridCells = {
@@ -246,7 +251,7 @@ export function TestPatterns(): JSX.Element {
       bar={
         <ToolBar
           label="Ausgabe"
-          active={outputOpen}
+          active={outputOpen || tone.playing}
           status={
             <>
               <span className="max-w-[16rem] truncate font-medium">
@@ -255,6 +260,9 @@ export function TestPatterns(): JSX.Element {
               <span className="text-muted-foreground">
                 {config.width} × {config.height}
               </span>
+              {tone.playing && (
+                <span className="text-muted-foreground">Ton: {toneSummary(tone.settings)}</span>
+              )}
             </>
           }
         >
@@ -296,6 +304,8 @@ export function TestPatterns(): JSX.Element {
               <MonitorPlay className="size-4" /> Vollbild starten
             </Button>
           )}
+          <BarDivider />
+          <ToneToggle tone={tone} />
         </ToolBar>
       }
       aside={
@@ -351,7 +361,12 @@ export function TestPatterns(): JSX.Element {
               <span className="text-sm font-medium">Testbild</span>
               <Select
                 value={config.pattern}
-                onChange={(e) => patch({ pattern: e.target.value as PatternConfig['pattern'] })}
+                onChange={(e) => {
+                  const pattern = e.target.value as PatternConfig['pattern']
+                  patch({ pattern })
+                  // Blitz ohne Piep misst nichts: den passenden Testton gleich mitwählen
+                  if (pattern === 'avsync') tone.patch({ signal: 'avsync' })
+                }}
               >
                 {PATTERN_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -493,6 +508,13 @@ export function TestPatterns(): JSX.Element {
             )}
           </PanelSection>
 
+          <ToneSection
+            tone={tone}
+            onSignalChange={(signal) => {
+              if (signal === 'avsync') patch({ pattern: 'avsync' })
+            }}
+          />
+
           <PanelSection
             id="res"
             title="Auflösung & Anzeige"
@@ -577,7 +599,11 @@ export function TestPatterns(): JSX.Element {
           <Card className="space-y-4 p-5">
             <h2 className="font-medium">Export</h2>
             <div className="flex flex-wrap items-end gap-3">
-              <Button variant="secondary" onClick={() => void savePng()} disabled={busy !== null}>
+              <Button
+                variant="secondary"
+                onClick={() => void savePng()}
+                disabled={busy !== null || isSync}
+              >
                 <ImageIcon className="size-4" /> PNG speichern
               </Button>
               <div className="mx-2 h-9 w-px bg-border" />
@@ -613,10 +639,17 @@ export function TestPatterns(): JSX.Element {
                   onCommit={setVidFps}
                 />
               </label>
-              <Button onClick={() => void exportVideo()} disabled={busy !== null}>
+              <Button onClick={() => void exportVideo()} disabled={busy !== null || isSync}>
                 <Film className="size-4" /> {isCycle ? 'Loop exportieren' : 'Video exportieren'}
               </Button>
             </div>
+
+            {isSync && (
+              <p className="text-xs text-muted-foreground">
+                AV-Sync läuft nur live: Vollbild starten und „Ton“ einschalten – Blitz und Piep
+                kommen zu jeder vollen Sekunde.
+              </p>
+            )}
 
             {isCycle && (
               <p className="text-xs text-muted-foreground">

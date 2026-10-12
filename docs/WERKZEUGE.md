@@ -192,8 +192,25 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
     Uhrzeit (ausblendbar); ohne Mittelscheibe auf Schildern über und unter der Mitte.
   - Akzent- und Hintergrundfarbe frei wählbar oder per Schnellwahl. Raster, Lineal und Schrift
     passen sich dem Hintergrund an (hell auf dunkel, dunkel auf hell).
-- **Bewegte Muster:** Pixelcheck-Loop, Scroll, Timecode.
+- **Bewegte Muster:** Pixelcheck-Loop, Scroll, Timecode, AV-Sync (siehe Testton).
 - **Vollbild-Ausgabe** auf wählbarem Monitor, pixelgenau und live.
+- **Testton** – „Ton“ in der Ausgabe-Leiste, eingestellt im Bereich „Testton“ der Schublade,
+  gespielt auf dem gewählten Ausgabegerät:
+  - Sinus mit freier Frequenz (Schnellwahl 100 Hz, 1 kHz, 10 kHz), Sweep 20 Hz – 20 kHz
+    (logarithmisch, Dauer einstellbar), rosa und weißes Rauschen, Metronom (Tempo, Schläge je
+    Takt, betonte Eins), Polaritätspuls für Polaritätsprüfer.
+  - Kanal-Kennung: 1 kHz auf beiden Kanälen, links setzt er einmal aus, rechts zweimal je 4 s
+    (angelehnt an GLITS der BBC) – vertauschte Kanäle hört man sofort. Alle übrigen Signale
+    wahlweise auf beiden Kanälen, nur links, nur rechts oder sekündlich abwechselnd.
+  - Pegel als Spitzenpegel in dBFS, Vorgabe −18 dBFS; gedeckelt bei −6 dBFS und beim Start
+    über 0,5 s eingeblendet, ein Signalwechsel wird übergeblendet – schont Ohren und Hochtöner.
+    Rauschen hat seine Spitzen begrenzt: der Effektivwert liegt 12 dB unter dem Pegel.
+  - **AV-Sync:** Das Testbild „AV-Sync“ blitzt zu jeder vollen Sekunde weiß, im selben Moment
+    piept der Ton. Ein Messgerät oder ein Zeitlupen-Video vor der Wand zeigt die Verzögerung des
+    Bildwegs (LED-Prozessor, Beamer). Die Ausgabelatenz des Rechners ist im Ton schon
+    herausgerechnet; mit „Versatz Ton“ an einem direkt angeschlossenen Monitor auf 0 eichen.
+    Wählt man eines von beiden, zieht das andere mit; exportieren lässt es sich nicht (nur live).
+  - Der Ton endet beim Verlassen des Werkzeugs.
 - **Export** als PNG oder Video: H.264 mit festgelegter Rec.-709-Farbmatrix (farbtreu auf
   HD-Playern) oder HAP Q.
 - **Presets** für wiederkehrende Einstellungen.

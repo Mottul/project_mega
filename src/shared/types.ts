@@ -584,6 +584,7 @@ export type PatternId =
   | 'scroll'
   | 'timecode'
   | 'mapping'
+  | 'avsync'
 
 export type SolidColor =
   'white' | 'black' | 'red' | 'green' | 'blue' | 'cyan' | 'magenta' | 'yellow' | 'gray18' | 'gray50'
@@ -678,6 +679,47 @@ export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   mappingCell: null,
   mappingHidden: [],
   mappingGridAccent: false
+}
+
+/** Testton des Testbild-Werkzeugs: läuft im Werkzeug-Fenster (WebAudio) auf dem gewählten
+ *  Ausgabegerät; AV-Sync piept im Takt des Blitz-Testbilds (gemeinsame Wanduhr). */
+export type ToneSignal =
+  'sine' | 'sweep' | 'pink' | 'white' | 'metronome' | 'ident' | 'polarity' | 'avsync'
+
+/** Kanäle: beide gleich, nur einer, oder sekündlich abwechselnd */
+export type ToneChannels = 'both' | 'left' | 'right' | 'alternate'
+
+export interface PatternToneSettings {
+  signal: ToneSignal
+  /** Sinus in Hz (20–20.000) */
+  frequency: number
+  /** Spitzenpegel in dBFS, gedeckelt (−60 bis −6) */
+  levelDb: number
+  channels: ToneChannels
+  /** Dauer eines Sweeps 20 Hz → 20 kHz in Sekunden */
+  sweepSeconds: number
+  /** Metronom */
+  bpm: number
+  beatsPerBar: number
+  /** Eins betonen (höherer Klick) */
+  accent: boolean
+  /** AV-Sync: Ton gegenüber dem Blitz verschieben (ms, + = später), zum Eichen */
+  syncOffsetMs: number
+  /** Ausgabegerät (leer = Standardgerät) */
+  deviceId: string
+}
+
+export const DEFAULT_PATTERN_TONE: PatternToneSettings = {
+  signal: 'sine',
+  frequency: 1000,
+  levelDb: -18,
+  channels: 'both',
+  sweepSeconds: 10,
+  bpm: 120,
+  beatsPerBar: 4,
+  accent: true,
+  syncOffsetMs: 0,
+  deviceId: ''
 }
 
 export interface ColorLoopRequest {
@@ -1588,6 +1630,8 @@ export interface AppSettings {
   lastHapFormat: HapFormat
   lastImportDir: string | null
   patternPresets: PatternPreset[]
+  /** Testton des Testbild-Werkzeugs (Signal, Pegel, Ausgabegerät) */
+  patternTone: PatternToneSettings
   theme: ThemeMode
   accent: AccentId
   player: PlayerSettings
@@ -1651,6 +1695,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastHapFormat: 'hap_q',
   lastImportDir: null,
   patternPresets: [],
+  patternTone: DEFAULT_PATTERN_TONE,
   theme: 'dark', // bisheriges Erscheinungsbild bleibt Standard
   accent: 'gold', // Gold-Marke bleibt Standard
   player: DEFAULT_PLAYER_SETTINGS,
