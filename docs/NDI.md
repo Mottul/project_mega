@@ -48,4 +48,24 @@ Binary, der Zielrechner braucht also keine eigene NDI-Installation.
 > Install-Skripte fremder Pakete (allow-scripts). Das Paket landet dann ohne NDI-SDK und
 > unkompiliert in `node_modules`, und electron-builder packt undeklarierte Module nicht mit.
 
+## Aufbau (Entwicklung)
+
+| Datei                            | Aufgabe                                                                                                            |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `main/services/ndi.ts`           | Binding laden (paketiert → `vendor/` → `node_modules`), Konstanten normalisieren, NDI einmal initialisieren        |
+| `main/services/ndiSender.ts`     | **ein** Offscreen-Sender für beide Werkzeuge: unsichtbares Fenster auf einer App-Route, paint-Frames → NDI, Ton, Start/Stopp/Abbau |
+| `main/services/ndiFrames.ts`     | Eingaben begrenzen, Video- und Audioframes bauen (rein, getestet)                                                  |
+| `timerNdi.ts` · `playerNdi.ts`   | dünne Hüllen: Konfiguration, Status, Route; der Player nimmt die Tonblöcke seines Spiegelfensters an               |
+
+Was der Sender absichert (jeweils schon einmal schiefgegangen): Der native Sender wird erst
+zerstört, wenn kein Send mehr läuft (sonst Absturz beim Stoppen), und vor dem nächsten Erstellen
+abgewartet. Ein Stopp oder zweiter Start mitten im Start baut den gerade erstellten Sender wieder
+ab, statt ein verwaistes Fenster zu öffnen, das unbemerkt weitersendet. `closed` zählt nur vom
+aktuellen Fenster. Tonblöcke aus dem Spiegel werden geprüft (gleich lange Float32-Kanäle), bevor
+das Binding sie liest.
+
+Prüfen: `npx vitest run src/main/services/ndi` (Sender mit nachgebautem Binding) und
+`npm run e2e -- ndi` mit dem echten Binding – ohne `vendor/grandiose` (so in der CI) überspringt
+das Skript seine Schritte.
+
 NDI ist eine Marke von Vizrt/NewTek; die Lizenzbedingungen des SDK beachten.
