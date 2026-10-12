@@ -160,9 +160,13 @@ try {
         )
         assert.equal(await show(pg, 'title'), 'Keynote')
         assert.equal(await show(pg, 'speaker'), 'Anna')
+        // Die Zeit läuft: großzügig warten – hakt der Strom kurz, baut die Seite ihn neu auf, und
+        // das kann auf langsamen Rechnern (Windows in der CI) einen zweiten Anlauf brauchen
         const t1 = await show(pg, 'digits')
-        await sleep(2200)
-        assert.notEqual(t1, await show(pg, 'digits'))
+        assert.ok(
+          await waitFor(async () => (await show(pg, 'digits')) !== t1, 10_000),
+          `steht bei ${t1}`
+        )
       }
     ],
     [

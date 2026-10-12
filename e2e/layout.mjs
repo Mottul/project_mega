@@ -393,14 +393,18 @@ try {
         }
         for (const [id, name] of Object.entries(toggles)) {
           await tool(id)
-          assert.equal(await bar().getByRole('button', { name, exact: true }).count(), 1, id)
+          // warten statt sofort zählen: Auf langsamen Rechnern (macOS in der CI) ist die
+          // Schublade beim ersten Blick noch nicht gefüllt
+          const toggle = bar().getByRole('button', { name, exact: true })
+          assert.ok(
+            await waitFor(async () => (await toggle.count()) === 1, 5_000),
+            `${id}: „${name}“ in der Leiste ${await toggle.count()}×`
+          )
           await drawer().waitFor({ timeout: 5_000 })
-          assert.equal(
-            await drawer()
-              .getByRole('button', { name: /^Fernsteuerung/ })
-              .count(),
-            1,
-            id
+          const section = drawer().getByRole('button', { name: /^Fernsteuerung/ })
+          assert.ok(
+            await waitFor(async () => (await section.count()) === 1, 5_000),
+            `${id}: Bereich „Fernsteuerung“ ${await section.count()}× in der Schublade`
           )
         }
         // Jingle-Player wirklich ein- und ausschalten – auf eigenem Port, damit eine laufende
