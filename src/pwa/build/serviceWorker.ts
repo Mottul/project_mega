@@ -5,7 +5,11 @@
 // Ablauf:
 // - install: ALLE Dateien in einen Cache je Version laden -> danach komplett offline.
 // - fetch: nur aus dem Cache (Seitenaufrufe bekommen index.html), sonst Netz. Die Dateinamen
-//   tragen einen Hash, eine Version ist also in sich stimmig. ignoreVary: Server wie Vite oder
+//   tragen einen Hash, eine Version ist also in sich stimmig. Ausnahme: manifest.webmanifest und
+//   die Symbole (feste Namen) zuerst aus dem Netz, offline aus dem Cache – sonst sähe der Browser
+//   bei seiner Prüfung auf ein geändertes App-Symbol nur die alten Dateien dieses Workers, und
+//   Android erneuerte Symbol und Startbildschirm der installierten App nicht (so geschehen mit dem
+//   korrigierten Logo, 12. Oktober 2026). ignoreVary: Server wie Vite oder
 //   GitHub Pages schicken „Vary: Origin“, die Modul-Skripte (crossorigin) aber einen Origin-
 //   Kopf, den das Vorladen nicht hatte – ohne ignoreVary fände der Cache offline nichts.
 // - Neue Version: Der neue Worker wartet, bis die Seite ihn per Nachricht „skipWaiting“ startet
@@ -49,16 +53,24 @@ self.addEventListener('message', (e) => {
   if (e.data === ${JSON.stringify(SKIP_WAITING)}) self.skipWaiting()
 })
 
+// Manifest und Symbole: feste Namen, ändern sich ohne neuen Dateinamen -> Netz zuerst
+const fresh = (path) => path.endsWith('/manifest.webmanifest') || path.includes('/icons/')
+
+const fromCache = (key) =>
+  caches.open(CACHE).then((c) => c.match(key, { ignoreSearch: true, ignoreVary: true }))
+
 self.addEventListener('fetch', (e) => {
   const req = e.request
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return
+  const url = new URL(req.url)
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return
+  if (fresh(url.pathname)) {
+    e.respondWith(
+      fetch(req).catch(() => fromCache(req).then((hit) => hit || Response.error()))
+    )
+    return
+  }
   const key = req.mode === 'navigate' ? './index.html' : req
-  e.respondWith(
-    caches
-      .open(CACHE)
-      .then((c) => c.match(key, { ignoreSearch: true, ignoreVary: true }))
-      .then((hit) => hit || fetch(req))
-  )
+  e.respondWith(fromCache(key).then((hit) => hit || fetch(req)))
 })
 `
 }
