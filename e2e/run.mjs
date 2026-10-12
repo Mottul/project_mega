@@ -11,6 +11,7 @@ const all = [
   'player',
   'video-generator',
   'shutdown',
+  'ndi',
   'ffmpeg-update'
 ]
 const wanted = process.argv.slice(2)

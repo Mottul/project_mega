@@ -1,201 +1,43 @@
-// NDI-Ausgabe des Stage-Timers (experimentell). Ein unsichtbares Offscreen-
-// BrowserWindow rendert die Timer-Anzeige (#/timer-output) in der gewünschten
-// Auflösung; die paint-Frames (BGRA) gehen als NDI-Videoquelle ins Netz.
-// Architektur wie beim Tool "Vingester" (Electron-Offscreen -> NDI).
+// NDI-Ausgabe des Stage-Timers (experimentell): Der gemeinsame Offscreen-Sender (ndiSender.ts)
+// rendert die Timer-Anzeige (#/timer-output) in der gewünschten Auflösung und schickt sie als
+// NDI-Quelle ins Netz. Hier nur, was den Timer betrifft: Konfiguration, Status, und dass der
+// Timer weiß, ob NDI läuft (Status auf dem Startbildschirm).
 //
-// Das NDI-Binding ist BEWUSST optional und wird erst zur Laufzeit geladen:
-// ohne Modul läuft die App unverändert, die UI zeigt "nicht verfügbar".
-//
-// Einrichtung: `npm run ndi:setup` (siehe scripts/setup-ndi.mjs + docs/NDI.md).
-// Das Binding liegt danach unter vendor/grandiose (NICHT in node_modules --
-// npm-Lifecycle-Scripts sind bei neueren npm-Versionen blockiert und
-// electron-builder packt undeklarierte node_modules nicht mit). Geladen wird
-// der Reihe nach: resources/vendor/grandiose (paketiert, via extraResources),
-// <App>/vendor/grandiose (Entwicklung), zuletzt ein regulär installiertes
-// 'grandiose'. Die NDI-Runtime-DLL kopiert der grandiose-Build selbst neben
-// das Binary (build/Release) -- der Sender braucht keine NDI-Installation.
+// Einrichtung des optionalen Bindings: `npm run ndi:setup` (siehe ndi.ts und docs/NDI.md).
 
-import { BrowserWindow } from 'electron'
-import { loadRoute, secureWebPreferences } from './appWindows'
 import { Channels } from '@shared/ipc-contracts'
 import { DEFAULT_TIMER_NDI, type TimerNdiConfig, type TimerNdiStatus } from '@shared/types'
 import { broadcast } from './broadcast'
-import { logLine } from './log'
+import { clampNdiSize } from './ndiFrames'
+import { OffscreenNdiSender } from './ndiSender'
 import { setTimerNdiActive } from './stageTimer'
-import { ensureNdiInitialized, getNdiLoadError, loadGrandiose, type Grandiose } from './ndi'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-let win: BrowserWindow | null = null
-let sender: any = null
-// destroy() des Senders ist asynchron -> vor dem nächsten Erstellen abwarten,
-// sonst kollidiert Stop->Start (NDIlib_send_create kann fehlschlagen).
-let senderTeardown: Promise<void> | null = null
-let invalidateTimer: ReturnType<typeof setInterval> | null = null
-let sending = false // ein Send in Flight -> neue Frames verwerfen (kein Stau)
-let framesSent = 0
-let lastError: string | null = null
 let config: TimerNdiConfig = { ...DEFAULT_TIMER_NDI }
 
-export function getTimerNdiStatus(): TimerNdiStatus {
-  return {
-    available: loadGrandiose() != null,
-    running: win != null,
-    config,
-    framesSent,
-    error: lastError ?? getNdiLoadError()
-  }
-}
-
-function emitStatus(): void {
+const ndi = new OffscreenNdiSender('[timer-ndi]', () => {
   const status = getTimerNdiStatus()
   broadcast(Channels.timerNdiChanged, status)
   setTimerNdiActive(status.running)
-}
+})
 
-/** paint-Frame (BGRA) als NDI-Videoframe senden; bei laufendem Send verwerfen. */
-function pushFrame(g: Grandiose, image: Electron.NativeImage): void {
-  if (!sender || sending) return
-  const size = image.getSize()
-  if (size.width < 2 || size.height < 2) return
-  const data = image.toBitmap() // BGRA, eigene Kopie (Send ist asynchron)
-  sending = true
-  const frame = {
-    type: 'video',
-    xres: size.width,
-    yres: size.height,
-    frameRateN: config.fps * 1000,
-    frameRateD: 1000,
-    pictureAspectRatio: size.width / size.height,
-    frameFormatType: g.FORMAT_TYPE_PROGRESSIVE ?? 1,
-    // KEIN timecode-Feld: laut grandiose_send.cc optional, Default ist
-    // NDIlib_send_timecode_synthesize (SDK stempelt selbst). Wenn gesetzt,
-    // muss es number/bigint sein -- ein Array wird hart abgelehnt.
-    lineStrideBytes: size.width * 4,
-    fourCC: g.FOURCC_BGRA ?? g.FOURCC_BGRX ?? 0,
-    data
+export function getTimerNdiStatus(): TimerNdiStatus {
+  return {
+    available: ndi.available,
+    running: ndi.running,
+    config,
+    framesSent: ndi.framesSent,
+    error: ndi.error
   }
-  void Promise.resolve(sender.video(frame))
-    .then(() => {
-      framesSent++
-      if (lastError) {
-        lastError = null
-        emitStatus()
-      }
-    })
-    .catch((err: unknown) => {
-      lastError = `NDI-Send fehlgeschlagen: ${err instanceof Error ? err.message : String(err)}`
-      logLine('[timer-ndi]', lastError)
-      emitStatus()
-    })
-    .finally(() => {
-      sending = false
-    })
 }
 
 export async function startTimerNdi(cfg: TimerNdiConfig): Promise<TimerNdiStatus> {
-  const g = loadGrandiose()
-  if (!g) return getTimerNdiStatus()
-  stopTimerNdi(false)
-
-  config = {
-    name: cfg.name.trim() || DEFAULT_TIMER_NDI.name,
-    width: Math.max(320, Math.min(3840, Math.round(cfg.width))),
-    height: Math.max(180, Math.min(2160, Math.round(cfg.height))),
-    fps: Math.max(1, Math.min(60, Math.round(cfg.fps)))
-  }
-  framesSent = 0
-  lastError = null
-
-  // Ausstehendes destroy() eines vorherigen Senders erst abschließen lassen.
-  if (senderTeardown) {
-    await senderTeardown.catch(() => {})
-    senderTeardown = null
-  }
-  await ensureNdiInitialized(g)
-
-  try {
-    sender = await g.send({ name: config.name, clockVideo: true, clockAudio: false })
-  } catch (firstErr) {
-    // Transiente Fehler (z.B. Teardown/Netzwerk gerade im Umbruch) einmal abfedern.
-    await new Promise((r) => setTimeout(r, 400))
-    try {
-      sender = await g.send({ name: config.name, clockVideo: true, clockAudio: false })
-    } catch {
-      const msg = firstErr instanceof Error ? firstErr.message : String(firstErr)
-      lastError =
-        `NDI-Sender nicht erstellt: ${msg} -- Hinweise: Windows-Firewall-Abfrage für die App ` +
-        `ZULASSEN (privates Netzwerk), aktive Netzwerkverbindung nötig, ggf. App neu starten.`
-      logLine('[timer-ndi]', lastError)
-      emitStatus()
-      return getTimerNdiStatus()
-    }
-  }
-
-  win = new BrowserWindow({
-    show: false,
-    width: config.width,
-    height: config.height,
-    frame: false,
-    webPreferences: secureWebPreferences({ offscreen: true, backgroundThrottling: false })
-  })
-  win.webContents.setFrameRate(config.fps)
-  win.webContents.on('paint', (_e, _dirty, image) => pushFrame(g, image))
-  // externes Schließen (z.B. App-Ende) -> sauber stoppen. Nur das AKTUELLE Fenster: 'closed'
-  // kann nach einem Neustart des Senders kommen, wenn schon das neue in `win` steht.
-  const self = win
-  win.on('closed', () => {
-    if (win !== self) return
-    win = null
-    stopTimerNdi()
-  })
-
-  loadRoute(win, '/timer-output')
-
-  // Die Anzeige ist meist statisch (1 Repaint/s) -> regelmäßig invalidieren,
-  // damit ein kontinuierlicher NDI-Frame-Takt entsteht.
-  invalidateTimer = setInterval(
-    () => {
-      if (win && !win.isDestroyed()) win.webContents.invalidate()
-    },
-    Math.round(1000 / config.fps)
-  )
-
-  logLine('[timer-ndi] gestartet:', config.name, `${config.width}x${config.height}@${config.fps}`)
-  emitStatus()
+  if (!ndi.available) return getTimerNdiStatus()
+  config = clampNdiSize(cfg, DEFAULT_TIMER_NDI)
+  await ndi.start(config, { route: '/timer-output' })
   return getTimerNdiStatus()
 }
 
 export function stopTimerNdi(emit = true): TimerNdiStatus {
-  if (invalidateTimer) {
-    clearInterval(invalidateTimer)
-    invalidateTimer = null
-  }
-  if (win) {
-    const w = win
-    win = null // vor destroy nullen -> 'closed'-Handler stoppt nicht doppelt
-    if (!w.isDestroyed()) w.destroy()
-  }
-  if (sender) {
-    const s = sender
-    sender = null
-    // Erst laufende Sends abklingen lassen, DANN zerstören: destroy während
-    // eines asynchronen video()-Aufrufs ist ein Use-after-free (Absturz).
-    senderTeardown = (async () => {
-      const t0 = Date.now()
-      while (sending && Date.now() - t0 < 1500) {
-        await new Promise((r) => setTimeout(r, 25))
-      }
-      try {
-        await s.destroy?.()
-      } catch {
-        // Binding ohne destroy() -> GC übernimmt
-      }
-    })()
-  }
-  if (emit) {
-    logLine('[timer-ndi] gestoppt')
-    emitStatus()
-  }
+  ndi.stop(emit)
   return getTimerNdiStatus()
 }

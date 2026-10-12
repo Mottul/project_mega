@@ -103,15 +103,13 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 
 ### Konsolidierung
 
-- **NDI:** `timerNdi.ts` und `playerNdi.ts` zu einem gemeinsamen Offscreen-Sender zusammenführen –
-  sonst müssen Absturz-Korrekturen doppelt gepflegt werden.
 - **Auftrags-Warteschlangen:** Konverter und Player-Import teilen sich die Spuren-Warteschlange,
   halten aber je eigene Auftragslisten; der YouTube-Downloader hat eine ganz eigene. Eine
   gemeinsame `JobQueue<T>`-Basis.
 - **Status-Zuordnungen bündeln:** Toaster, Video-Generator und Medien-Info halten je eine eigene
   Tabelle Stufe → Symbol + Farbe; eine gemeinsame neben den Badge-Tönen.
 - **`main/services` ordnen:** Jingle-, Timer-, NDI- und Fernsteuer-Dateien in Unterordner
-  (heute 24 lose Dateien neben den Ordnern).
+  (heute 34 lose Dateien neben den Ordnern).
 
 ### Große Umbauten
 

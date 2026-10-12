@@ -102,6 +102,7 @@ src/
 │       ├── player/           # Bibliothek, Import, Wiedergabezustand, Ausgabefenster, Fernsteuerung
 │       ├── manuals/ · osc/ · novastar/ · netscan/ · ytdlp/   # Dienste einzelner Werkzeuge
 │       ├── remoteHttp.ts · remoteApp*.ts · remotePwa.ts      # Fernsteuer-Basis, Fernsteuer-App, Web-App
+│       ├── ndi.ts · ndiSender.ts · ndiFrames.ts  # NDI: Binding laden · Offscreen-Sender für Timer und Player · Frames (rein)
 │       └── …                 # Stage-Timer, Jingles, NDI, Testbild-Export, Log
 ├── preload/index.ts          # contextBridge → window.api (typisiert)
 ├── shared/                   # IPC-Vertrag, Domain-Typen, Konvertierungs-Plan, Video-Generator-Plan, Medien-Endungen, Marke, Werkzeug-Fenster

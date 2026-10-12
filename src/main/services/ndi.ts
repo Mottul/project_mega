@@ -1,10 +1,19 @@
 // Gemeinsamer Lader für das optionale NDI-Binding (rse/grandiose) -- genutzt
-// von Timer- und Player-NDI-Ausgabe. Bevorzugt wird das .node-Binary DIREKT
-// geladen (build/Release/grandiose.node): so braucht die paketierte App
-// grandioses node_modules (bindings) nicht -- electron-builder kopiert
-// node_modules in extraResources nämlich nicht mit. Der Verzeichnis-/Paket-
-// Require bleibt als Fallback für ein regulär installiertes Modul.
+// vom Offscreen-Sender (ndiSender.ts) für Timer- und Player-NDI-Ausgabe.
+// Bevorzugt wird das .node-Binary DIREKT geladen (build/Release/grandiose.node):
+// so braucht die paketierte App grandioses node_modules (bindings) nicht --
+// electron-builder kopiert node_modules in extraResources nämlich nicht mit.
+// Der Verzeichnis-/Paket-Require bleibt als Fallback für ein regulär
+// installiertes Modul.
+//
 // Einrichtung: `npm run ndi:setup` (siehe scripts/setup-ndi.mjs + docs/NDI.md).
+// Das Binding liegt danach unter vendor/grandiose (NICHT in node_modules --
+// npm-Lifecycle-Scripts sind bei neueren npm-Versionen blockiert und
+// electron-builder packt undeklarierte node_modules nicht mit). Geladen wird
+// der Reihe nach: resources/vendor/grandiose (paketiert, via extraResources),
+// <App>/vendor/grandiose (Entwicklung), zuletzt ein regulär installiertes
+// 'grandiose'. Die NDI-Runtime-DLL kopiert der grandiose-Build selbst neben
+// das Binary (build/Release) -- der Sender braucht keine NDI-Installation.
 
 import { app } from 'electron'
 import { join } from 'node:path'

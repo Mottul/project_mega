@@ -82,7 +82,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   `measureLoudness()`, Ergebnis als `loudness` an `buildConvertArgs` (`shared/loudness.ts`).
 - **Native/optionale Module:** better-sqlite3 (ab 13 über N-API: die Binaries liegen im Paket und
   laufen unter jeder Electron- und Node-Version, kein Rebuild, KEIN node-gyp im Baum); NDI-Binding
-  `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`).
+  `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`); NDI-Ausgaben nur über den
+  gemeinsamen Offscreen-Sender `services/ndiSender.ts` (Timer und Player sind dünne Hüllen).
 
 ## Konventionen
 

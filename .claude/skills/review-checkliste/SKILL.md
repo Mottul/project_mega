@@ -29,6 +29,11 @@ Zusätzlich gilt der allgemeine `/code-review`.
   anderen Fenster gespeicherte. Einstellungen ersetzen Listen, sie mergen sie nicht → frischen
   Stand holen (`api.getSettings()`) und daraus filtern.
 - Der Einstellungs-Broadcast erreicht das auslösende Fenster nicht; mehrere Fenster mitdenken.
+- **Ein Start mit `await` kann von einem Stopp oder zweiten Start überholt werden.** Die
+  NDI-Sender öffneten nach dem Erstellen des Senders ihr Offscreen-Fenster, auch wenn inzwischen
+  gestoppt oder neu gestartet war → verwaiste Fenster, die unbemerkt weitersendeten (Oktober 2026).
+  Generation zählen (Start und Stopp erhöhen), nach jedem `await` vergleichen und das gerade
+  Erstellte wieder abbauen (`services/ndiSender.ts`, Regressionstest `e2e/ndi.mjs`).
 - **zustand-Store und lokaler `useState` nach `await` nicht im selben Atemzug setzen, wenn ein
   Effekt beide liest.** Der Store rendert sofort (useSyncExternalStore), der lokale Zustand erst
   im nächsten Durchlauf – ein Wächter-Effekt sieht den Mischstand und dreht die Änderung zurück
