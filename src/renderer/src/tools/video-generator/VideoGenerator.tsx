@@ -21,7 +21,7 @@ import {
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Segmented } from '@renderer/components/ui/segmented'
-import { selectClass } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { FORMAT_OPTIONS } from './presets'
 import { useKiosk } from '@renderer/launcher/kiosk'
@@ -319,9 +319,9 @@ export function VideoGenerator(): JSX.Element {
               </Button>
               {elements.length > 1 && (
                 <>
-                  <select
+                  <Select
                     aria-label="Sortieren"
-                    className={selectClass}
+
                     value=""
                     onChange={(e) => e.target.value && sortBy(e.target.value as SortKey)}
                   >
@@ -329,7 +329,7 @@ export function VideoGenerator(): JSX.Element {
                     <option value="name">nach Name</option>
                     <option value="date">nach Aufnahmedatum</option>
                     <option value="type">nach Typ</option>
-                  </select>
+                  </Select>
                   <Button
                     variant="outline"
                     size="icon"

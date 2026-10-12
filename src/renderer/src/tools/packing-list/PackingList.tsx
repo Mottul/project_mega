@@ -28,6 +28,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Field } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
+import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { deriveFromLedWall } from './derive'
 import { parse, serialize } from './io'
@@ -403,10 +404,6 @@ function Row({
 }): JSX.Element {
   const s = usePacking()
   const up = (patch: Partial<PackItem>): void => s.updateItem(item.id, patch)
-  // Eigene Select-Klassen (NICHT selectClass) – das enthielt w-full und hätte das
-  // Namensfeld zerquetscht.
-  const catSelect =
-    'h-7 w-40 shrink-0 rounded-md border border-border bg-input/40 px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
   return (
     <div className={`px-3 py-2 ${item.checked ? 'opacity-50' : ''}`}>
       {/* Zeile 1: Verschieben · Haken · Position (groß) · Menge · Einheit · Entfernen */}
@@ -455,10 +452,11 @@ function Row({
       </div>
       {/* Zeile 2: Kategorie (kompakt) · Notiz – Einzug unter das Namensfeld */}
       <div className="mt-1.5 flex items-center gap-2 pl-12">
-        <select
+        <Select
+          size="xs"
           value={item.category}
           onChange={(e) => up({ category: e.target.value })}
-          className={catSelect}
+          className="w-40 shrink-0"
           title="Kategorie wechseln"
         >
           {categories.map((c) => (
@@ -469,7 +467,7 @@ function Row({
           {!categories.includes(item.category) && (
             <option value={item.category}>{item.category}</option>
           )}
-        </select>
+        </Select>
         <Input
           value={item.note}
           placeholder="Notiz"

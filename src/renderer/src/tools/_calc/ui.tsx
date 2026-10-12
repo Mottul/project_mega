@@ -12,12 +12,8 @@ import { Children, createContext, useContext, useId, useState, type ReactNode } 
 import { Card } from '@renderer/components/ui/card'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
-import { selectClass as selectBase } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { cn } from '@renderer/lib/utils'
-
-// Rechner-Layouts sind zentriert -> volle Breite. Basis-Styling kommt aus dem
-// gemeinsamen Select-Baustein (eine Quelle).
-export const selectClass = `${selectBase} w-full`
 
 /**
  * Zentrierte Rechner-Seite. Mehrere Karten stehen nebeneinander, sobald zwei je 22rem breit
@@ -198,14 +194,9 @@ export function SelectField({
     <div className={rowClass}>
       <RowLabel htmlFor={id} label={label} hint={hint} />
       <div className={fieldBox}>
-        <select
-          id={id}
-          className={selectClass}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        >
+        <Select id={id} className="w-full" value={value} onChange={(e) => onChange(e.target.value)}>
           {children}
-        </select>
+        </Select>
       </div>
     </div>
   )

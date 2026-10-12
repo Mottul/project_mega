@@ -20,7 +20,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { DecimalField } from '@renderer/components/ui/decimal-field'
 import { NumberField } from '@renderer/components/ui/number-field'
-import { selectClass } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { PanelSection } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
 import { useSettings } from '@renderer/lib/settings'
@@ -117,8 +117,8 @@ export function OutputPanel({ caps }: { caps: ConvertCapabilities | null }): JSX
     >
       <label className="block space-y-1">
         <span className={label}>Größe</span>
-        <select
-          className={`${selectClass} w-full`}
+        <Select
+          className="w-full"
           value={preset}
           onChange={(e) => {
             const p = SIZE_PRESETS.find((x) => x.id === e.target.value)
@@ -131,7 +131,7 @@ export function OutputPanel({ caps }: { caps: ConvertCapabilities | null }): JSX
             </option>
           ))}
           <option value="custom">Eigene Größe</option>
-        </select>
+        </Select>
       </label>
       <div className="flex items-center gap-2">
         <NumberField
@@ -172,8 +172,8 @@ export function OutputPanel({ caps }: { caps: ConvertCapabilities | null }): JSX
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1">
           <span className={label}>Bildrate</span>
-          <select
-            className={`${selectClass} w-full`}
+          <Select
+            className="w-full"
             value={fpsValue}
             onChange={(e) => setOutput({ fps: VGEN_FPS[Number(e.target.value)].value })}
           >
@@ -182,12 +182,12 @@ export function OutputPanel({ caps }: { caps: ConvertCapabilities | null }): JSX
                 {f.label} fps
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="space-y-1">
           <span className={label}>Format</span>
-          <select
-            className={`${selectClass} w-full`}
+          <Select
+            className="w-full"
             value={output.format}
             onChange={(e) =>
               setOutput({ format: e.target.value as VgenProject['output']['format'] })
@@ -202,14 +202,14 @@ export function OutputPanel({ caps }: { caps: ConvertCapabilities | null }): JSX
                 {f.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
       {longGop && (
         <label className="block space-y-1">
           <span className={label}>Qualität</span>
-          <select
-            className={`${selectClass} w-full`}
+          <Select
+            className="w-full"
             value={output.quality}
             onChange={(e) =>
               setOutput({ quality: e.target.value as VgenProject['output']['quality'] })
@@ -220,7 +220,7 @@ export function OutputPanel({ caps }: { caps: ConvertCapabilities | null }): JSX
                 {q.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       {caps && family && !caps.formats[output.format] && (
@@ -282,9 +282,9 @@ function TransitionFields({
 }): JSX.Element {
   return (
     <div className="flex items-center gap-2">
-      <select
+      <Select
         aria-label="Übergang"
-        className={`${selectClass} min-w-0 flex-1`}
+        className="min-w-0 flex-1"
         value={value.kind}
         onChange={(e) => onChange({ ...value, kind: e.target.value as VgenTransitionKind })}
       >
@@ -293,7 +293,7 @@ function TransitionFields({
             {t.label}
           </option>
         ))}
-      </select>
+      </Select>
       {value.kind !== 'cut' && (
         <DecimalField
           aria-label="Übergangsdauer"
@@ -321,9 +321,9 @@ function KenBurnsFields({
 }): JSX.Element {
   return (
     <div className="flex items-center gap-2">
-      <select
+      <Select
         aria-label={allowCustom ? 'Ken Burns der Auswahl' : 'Ken Burns'}
-        className={`${selectClass} min-w-0 flex-1`}
+        className="min-w-0 flex-1"
         value={value.mode}
         onChange={(e) =>
           onChange({ mode: e.target.value as VgenKenBurnsMode, strength: value.strength })
@@ -334,11 +334,11 @@ function KenBurnsFields({
             {m.label}
           </option>
         ))}
-      </select>
+      </Select>
       {value.mode !== 'off' && value.mode !== 'custom' && (
-        <select
+        <Select
           aria-label="Stärke"
-          className={`${selectClass} w-24`}
+          className="w-24"
           value={value.strength}
           onChange={(e) => onChange({ ...value, strength: e.target.value as VgenKenBurnsStrength })}
         >
@@ -347,7 +347,7 @@ function KenBurnsFields({
               {s.label}
             </option>
           ))}
-        </select>
+        </Select>
       )}
     </div>
   )
@@ -389,8 +389,8 @@ export function DefaultsPanel(): JSX.Element {
       </div>
       <label className="block space-y-1">
         <span className={label}>Einpassen</span>
-        <select
-          className={`${selectClass} w-full`}
+        <Select
+          className="w-full"
           value={d.fit}
           onChange={(e) => setDefaults({ fit: e.target.value as VgenFit })}
         >
@@ -399,7 +399,7 @@ export function DefaultsPanel(): JSX.Element {
               {f.label}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
     </PanelSection>
   )
@@ -603,8 +603,8 @@ export function AudioPanel({
             )}
             <label className="block space-y-1">
               <span className={label}>Unter Originalton absenken</span>
-              <select
-                className={`${selectClass} w-full`}
+              <Select
+                className="w-full"
                 value={String(music.duckDb)}
                 onChange={(e) => setMusic({ duckDb: Number(e.target.value) })}
               >
@@ -616,7 +616,7 @@ export function AudioPanel({
                     {c.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <Button
               variant="outline"
@@ -635,8 +635,8 @@ export function AudioPanel({
       </div>
       <label className="block space-y-1">
         <span className={label}>Lautheit (EBU R128, am fertigen Mix)</span>
-        <select
-          className={`${selectClass} w-full`}
+        <Select
+          className="w-full"
           value={loudnorm ? String(loudnorm.i) : ''}
           onChange={(e) =>
             setProject({
@@ -650,7 +650,7 @@ export function AudioPanel({
               {c.label}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
     </PanelSection>
   )
@@ -790,8 +790,8 @@ export function SelectionPanel({
 
       <label className="block space-y-1">
         <span className={label}>Einpassen</span>
-        <select
-          className={`${selectClass} w-full`}
+        <Select
+          className="w-full"
           value={fit === undefined ? 'mixed' : (fit ?? '')}
           onChange={(e) =>
             update(ids, { fit: e.target.value ? (e.target.value as VgenFit) : null })
@@ -804,15 +804,15 @@ export function SelectionPanel({
               {f.label}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       {images.length > 0 && (
         <div className="space-y-1">
           <span className={label}>Ken Burns</span>
-          <select
+          <Select
             aria-label="Ken-Burns-Einstellung"
-            className={`${selectClass} w-full`}
+            className="w-full"
             value={kb === undefined ? 'mixed' : kb ? 'own' : ''}
             onChange={(e) =>
               update(
@@ -826,7 +826,7 @@ export function SelectionPanel({
             {kb === undefined && <option value="mixed">gemischt</option>}
             <option value="">Vorgabe ({kbLabel(defaults.kenBurns.mode)})</option>
             <option value="own">Eigene Einstellung</option>
-          </select>
+          </Select>
           {kb && (
             <KenBurnsFields
               value={kb}
@@ -862,8 +862,8 @@ export function SelectionPanel({
 
       <div className="space-y-1">
         <span className={label}>Übergang danach</span>
-        <select
-          className={`${selectClass} w-full`}
+        <Select
+          className="w-full"
           value={tr === undefined ? 'mixed' : tr ? 'own' : ''}
           onChange={(e) =>
             update(ids, {
@@ -877,7 +877,7 @@ export function SelectionPanel({
             {defaults.transition.kind !== 'cut' ? ` ${sec(defaults.transition.durationSec)}` : ''})
           </option>
           <option value="own">Eigener Übergang</option>
-        </select>
+        </Select>
         {tr && <TransitionFields value={tr} onChange={(t) => update(ids, { transition: t })} />}
         {lastSelected && !loop && (
           <p className="text-xs text-muted-foreground">

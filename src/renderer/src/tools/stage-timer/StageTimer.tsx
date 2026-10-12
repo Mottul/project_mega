@@ -41,7 +41,7 @@ import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/compone
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
-import { cn } from '@renderer/lib/utils'
+import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { useDraft } from '@renderer/lib/useDraft'
@@ -56,7 +56,6 @@ import {
   type TimerNdiStatus,
   type TimerSegment
 } from '@shared/types'
-import { selectClass } from '../_calc/ui'
 import { displayUrls, fmtTimer, parseDuration } from './format'
 import { TimerDisplay } from './TimerDisplay'
 
@@ -278,8 +277,8 @@ function NdiPanel({ status }: { status: TimerNdiStatus | null }): JSX.Element {
       </Field>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Auflösung">
-          <select
-            className={selectClass}
+          <Select
+            className="w-full"
             disabled={running}
             value={`${cfg.width}x${cfg.height}`}
             onChange={(e) => {
@@ -292,11 +291,11 @@ function NdiPanel({ status }: { status: TimerNdiStatus | null }): JSX.Element {
                 {w} × {h}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Bildrate">
-          <select
-            className={selectClass}
+          <Select
+            className="w-full"
             disabled={running}
             value={cfg.fps}
             onChange={(e) => patchCfg({ fps: Number(e.target.value) })}
@@ -306,7 +305,7 @@ function NdiPanel({ status }: { status: TimerNdiStatus | null }): JSX.Element {
                 {f} fps
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       {running ? (
@@ -429,8 +428,9 @@ export function StageTimer(): JSX.Element {
             )
           }
         >
-          <select
-            className={cn(selectClass, 'h-8 w-64 max-w-full')}
+          <Select
+            size="sm"
+            className="w-64 max-w-full"
             aria-label="Ausgabe-Monitor"
             value={displayId ?? ''}
             onChange={(e) => setDisplayId(Number(e.target.value))}
@@ -440,7 +440,7 @@ export function StageTimer(): JSX.Element {
                 {d.label}
               </option>
             ))}
-          </select>
+          </Select>
           {state.outputOpen ? (
             <Button size="sm" variant="destructive" onClick={() => void api.timer.closeOutput()}>
               <X className="size-4" /> Vollbild beenden
@@ -488,8 +488,8 @@ export function StageTimer(): JSX.Element {
             }
           >
             <Field label="Anzeige">
-              <select
-                className={selectClass}
+              <Select
+                className="w-full"
                 value={state.displayMode}
                 onChange={(e) =>
                   cmd({ type: 'setDisplayMode', mode: e.target.value as 'timer' | 'clock' })
@@ -497,7 +497,7 @@ export function StageTimer(): JSX.Element {
               >
                 <option value="timer">Timer (Restzeit)</option>
                 <option value="clock">Uhr</option>
-              </select>
+              </Select>
             </Field>
             {isClock ? (
               <>
@@ -529,8 +529,8 @@ export function StageTimer(): JSX.Element {
               summary={`${END_LABEL[state.endBehavior]} · Gelb ab ${fmtTimer(state.warnSec)} · Rot ab ${fmtTimer(state.alertSec)}`}
             >
               <Field label="Wenn die Zeit abgelaufen ist">
-                <select
-                  className={selectClass}
+                <Select
+                  className="w-full"
                   value={state.endBehavior}
                   onChange={(e) =>
                     cmd({
@@ -542,7 +542,7 @@ export function StageTimer(): JSX.Element {
                   <option value="overtime">Überziehung zählen (rot)</option>
                   <option value="stop">Bei 0:00 stehen bleiben</option>
                   <option value="next">Automatisch nächster Abschnitt</option>
-                </select>
+                </Select>
               </Field>
               {state.endBehavior === 'overtime' && (
                 <Checkbox

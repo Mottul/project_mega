@@ -19,7 +19,7 @@ import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
-import { selectClass } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
@@ -240,8 +240,8 @@ export function YoutubeDownloader(): JSX.Element {
             }
           >
             <Field label="Format">
-              <select
-                className={`${selectClass} w-full`}
+              <Select
+                className="w-full"
                 value={cfg.format}
                 onChange={(e) => setCfg({ format: e.target.value as YtFormatId })}
               >
@@ -250,15 +250,15 @@ export function YoutubeDownloader(): JSX.Element {
                     {FORMAT_LABEL[f]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             {cfg.format === 'video' && (
               <Field
                 label="Max. Auflösung"
                 hint="Höchstens diese Höhe; ist das Video kleiner, kommt es in seiner Größe."
               >
-                <select
-                  className={`${selectClass} w-full`}
+                <Select
+                  className="w-full"
                   value={cfg.maxHeight ?? 'best'}
                   onChange={(e) =>
                     setCfg({
@@ -271,7 +271,7 @@ export function YoutubeDownloader(): JSX.Element {
                       {h.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
             )}
           </PanelSection>
