@@ -230,6 +230,9 @@ Frei belegbares Steuerpult, das OSC an MadMapper & Co. sendet.
 
 Steuert NovaStar-LED-Prozessoren (NovaPro UHD Jr & Co.) über TCP 5200 – Vorabversion.
 
+- **Leiste „Prozessor“:** Verbinden/Trennen, Blackout, Einfrieren und Fade to Black. Sie ist rot,
+  solange eine Verbindung besteht – dann wirkt jeder Klick sofort auf der Wand. IP und Port stehen
+  in der Schublade, ebenso Dauer und Ziel-Helligkeit des Ausblendens.
 - Helligkeit, Fade-to-Black (weiche Rampe, als Umschalter mit Ziel-Helligkeit), Blackout und
   Freeze (ein gemeinsamer Anzeigemodus) sowie Preset-/Szenen-Abruf.
 - Eigener, abhängigkeitsfreier Paket-Codec (Header 0x55AA + Prüfsumme); die Befehlsbytes sind
@@ -240,7 +243,8 @@ Steuert NovaStar-LED-Prozessoren (NovaPro UHD Jr & Co.) über TCP 5200 – Vorab
 ### Netzwerk-Scanner
 
 Findet Geräte im lokalen Netz und zeigt IP, Hersteller (aus der MAC-Adresse) und vermuteten
-Gerätetyp.
+Gerätetyp. Adapter, „Scannen“/„Stopp“ und der Fortschritt stehen in der Leiste „Scan“
+(bernstein, solange er läuft); Einstellungen braucht der Scanner keine.
 
 - **Erkennung:** TCP-Sweep über typische AV-Ports (NovaStar 5200, RTSP/ONVIF, PJLink,
   HTTP/SSH/RDP …), ATEM per UDP-Handshake, Bonjour/mDNS-Namen.
@@ -439,7 +443,8 @@ Geräte-Handbücher (PDF) offline durchsuchen.
 
 ### YouTube-Downloader
 
-Wrapper um yt-dlp.
+Wrapper um yt-dlp. Adresse und „Laden“ stehen in der Leiste „Download“ (bernstein, solange
+Downloads laufen oder warten), Format und Zielordner in der Schublade.
 
 - Video (MP4) oder Audio (MP3/M4A) mit Auflösungsdeckel; Warteschlange mit Fortschritt, Tempo und
   Restzeit (zwei Downloads parallel, „Alle abbrechen“); Muxing über das gebündelte ffmpeg.
@@ -452,8 +457,8 @@ Wrapper um yt-dlp.
 - **Video in einer Playlist** (`watch?v=…&list=…`): nur dieses Video ist vorgewählt, „Nur dieses
   Video laden“ startet es direkt.
 - yt-dlp lädt die App selbst als eigenständiges Programm (Prüfsumme wird verglichen) und prüft
-  beim Start auf neue Versionen – abschaltbar im Menü „Mottulbox“, der Knopf **Prüfen** stößt es
-  von Hand an.
+  beim Start auf neue Versionen. Version, diese Prüfung und **Jetzt prüfen** stehen wie bei ffmpeg
+  im Menü „Mottulbox“; fehlt yt-dlp, bietet der Downloader das Herunterladen direkt an.
 - Nur freigegebene oder eigene Inhalte laden.
 
 ## Strom, Rigging & Aufbau
@@ -462,7 +467,9 @@ Wrapper um yt-dlp.
 
 Material-Checkliste mit Mengen, Einheiten und Notizen – abhakbar, nach Kategorie gruppiert,
 als Jobs speicherbar. Aus der LED-Wall-Konfiguration befüllbar (Module, Standfüße, Ballast,
-Kabelmengen aus den gezeichneten Ketten); Export als PDF oder JSON.
+Kabelmengen aus den gezeichneten Ketten); Export als PDF oder JSON. PDF, JSON und „Aus LED-Wall
+übernehmen“ stehen in der Leiste „Projekt“, Projektname und gespeicherte Jobs (laden, löschen,
+aktuelle speichern) in der Schublade – wie die Vorlagen des LED-Wall-Konfigurators.
 
 ### Stromlast & Absicherung
 

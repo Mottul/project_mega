@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 11. Oktober 2026
+**Stand:** 12. Oktober 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -103,10 +103,6 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 
 ### Konsolidierung
 
-- **Restliche Werkzeuge aufs Werkzeug-Muster** (Ausgabe-/Auftrags-Leiste, Schublade links):
-  NovaStar (Verbindung und Blackout in die Leiste), Netzwerk-Scanner, YouTube-Downloader
-  (Auftrags-Leiste) und Packliste haben noch eigene Kartenlayouts. Dabei die übrigen Erklärtexte
-  hinter ⓘ legen (die Rechner sind es schon: `tools/_calc/ui`).
 - **NDI:** `timerNdi.ts` und `playerNdi.ts` zu einem gemeinsamen Offscreen-Sender zusammenführen –
   sonst müssen Absturz-Korrekturen doppelt gepflegt werden.
 - **Auftrags-Warteschlangen:** Konverter und Player-Import teilen sich die Spuren-Warteschlange,
@@ -114,9 +110,9 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
   gemeinsame `JobQueue<T>`-Basis.
 - **Fernsteuer-Panel im Renderer** (Port, Start/Stopp, QR) als gemeinsame Komponente – heute vier
   Kopien.
-- **UI-Bausteine konsequent nutzen:** YouTube-Downloader auf `Progress`/`Badge`; `Select` als
-  echte Komponente mit Größen-Varianten (heute eine Klassen-Konstante, dazu abgewandelte Kopien
-  in Video-Player, Netzwerk-Scanner, OSC-Steuerung, Packliste und Startbildschirm).
+- **UI-Bausteine konsequent nutzen:** `Select` als echte Komponente mit Größen-Varianten (heute
+  eine Klassen-Konstante, dazu abgewandelte Kopien in Video-Player, OSC-Steuerung, Packliste und
+  Startbildschirm).
 - **Status-Zuordnungen bündeln:** Toaster, Video-Generator und Medien-Info halten je eine eigene
   Tabelle Stufe → Symbol + Farbe; eine gemeinsame neben den Badge-Tönen.
 - **`main/services` ordnen:** Jingle-, Timer-, NDI- und Fernsteuer-Dateien in Unterordner
@@ -202,7 +198,9 @@ Damit nichts doppelt geplant wird:
   bernstein) und Einstellungs-Schublade links (anheftbar, Bereiche mit Zusammenfassung, ⓘ statt
   Absätzen) für Video-Player, Stage-Timer, Testbild, Video-Konverter, Video-Generator, Jingles,
   OSC, Medien-Info, Handbücher und LED-Wall (Arbeitsfläche ohne Scrollen: Kennzahlen,
-  Zeichenfläche mit Ansicht, Draufsicht, Signal- und Stromplan).
+  Zeichenfläche mit Ansicht, Draufsicht, Signal- und Stromplan), seit 12. Oktober auch NovaStar
+  (Verbindung, Blackout, Einfrieren, Fade in der Leiste), Netzwerk-Scanner, YouTube-Downloader
+  (yt-dlp-Version und Prüfen jetzt im App-Menü) und Packliste – damit alle großen Werkzeuge.
 - **Kleine Werkzeuge im eigenen Fenster:** Die neun Rechner öffnen sich immer in einem eigenen
   Fenster (eines je Werkzeug, Lage gemerkt, Höhe folgt dem Inhalt, ab 320 px breit, zweispaltig
   wenn breit genug), einheitlich mit ⓘ statt Absätzen und Zahlen mit Komma; Design, Akzent und

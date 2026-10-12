@@ -2,6 +2,8 @@
 // Video-Mischer/ATEM, PTZ-Kameras, Projektoren, Rechner …) über einen aktiven
 // TCP-Sweep + ARP (Hersteller aus der MAC) + Bonjour/mDNS-Namen. Der Scan läuft
 // im main-Prozess; hier werden Fortschritt und Geräte live gespiegelt.
+// Werkzeug-Muster: Leiste „Scan“ (Adapter, Scannen/Stopp, Fortschritt – bernstein, solange er
+// läuft), darunter die Geräteliste. Einstellungen hat der Scanner keine (keine Schublade).
 
 import {
   useEffect,
@@ -31,17 +33,19 @@ import {
   Smartphone,
   Video,
   Volume2,
-  Wand2,
-  Wifi
+  Wand2
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import type { NetDevice, NetDeviceType, NetInterface, NetScanProgress } from '@shared/types'
 import { Badge, type BadgeTone } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
+import { ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Card } from '@renderer/components/ui/card'
+import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
+import { selectClass } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { toast } from '@renderer/lib/toast'
@@ -211,32 +215,51 @@ export function NetScan(): JSX.Element {
   const pct = progress.total > 0 ? progress.scanned / progress.total : 0
 
   return (
-    <div className={toolPageClass('5xl')}>
-      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Sucht Geräte im lokalen Netz per aktivem Scan (typische AV-Ports), erkennt den Hersteller
-        über die MAC-Adresse und liest Bonjour/mDNS-Namen. Nur im eigenen Netzwerk verwenden.
-      </div>
-
-      {/* Steuerung */}
-      <Card className="space-y-3 p-5">
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="min-w-0 flex-1">
-            <span className="mb-1 block text-xs text-muted-foreground">Netzwerk-Adapter</span>
-            <select
-              value={iface}
-              onChange={(e) => setIface(e.target.value)}
-              disabled={progress.running || interfaces.length === 0}
-              className="block h-9 w-full min-w-0 rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
-            >
-              {interfaces.length === 0 && <option value="">kein Adapter gefunden</option>}
-              {interfaces.map((i) => (
-                <option key={i.address} value={i.address}>
-                  {i.label} · {i.address} · {i.hosts} Hosts
-                </option>
-              ))}
-            </select>
-          </label>
+    <ToolShell
+      id="netscan"
+      bar={
+        <ToolBar
+          label="Scan"
+          kind="job"
+          active={progress.running}
+          status={
+            progress.running || progress.scanned > 0 ? (
+              <>
+                <span className="text-muted-foreground">{PHASE_LABEL[progress.phase]}</span>
+                <span className="w-24">
+                  <Progress
+                    value={pct}
+                    indeterminate={progress.running && progress.phase === 'resolve'}
+                  />
+                </span>
+                <span>
+                  {progress.scanned}/{progress.total} · {progress.found} gefunden
+                </span>
+              </>
+            ) : selected ? (
+              <span className="text-muted-foreground">
+                {selected.address} / {selected.netmask} · {selected.hosts} Hosts
+              </span>
+            ) : null
+          }
+        >
+          <select
+            value={iface}
+            aria-label="Netzwerk-Adapter"
+            title="Netzwerk-Adapter – gescannt wird sein Subnetz"
+            onChange={(e) => setIface(e.target.value)}
+            disabled={progress.running || interfaces.length === 0}
+            className={cn(selectClass, 'h-8 max-w-[22rem]')}
+          >
+            {interfaces.length === 0 && <option value="">kein Adapter gefunden</option>}
+            {interfaces.map((i) => (
+              <option key={i.address} value={i.address}>
+                {i.label} · {i.address} · {i.hosts} Hosts
+              </option>
+            ))}
+          </select>
           <Button
+            size="sm"
             onClick={() => void startOrStop()}
             disabled={!iface}
             variant={progress.running ? 'outline' : 'default'}
@@ -251,167 +274,152 @@ export function NetScan(): JSX.Element {
               </>
             )}
           </Button>
-        </div>
-
-        {selected && (
-          <p className="text-xs text-muted-foreground">
-            Subnetz von {selected.address} / {selected.netmask} · {selected.hosts} Hosts
-          </p>
-        )}
-
-        {(progress.running || progress.scanned > 0) && (
-          <div className="space-y-1.5">
-            <Progress
-              value={pct}
-              indeterminate={progress.running && progress.phase === 'resolve'}
-            />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                {progress.running && <Wifi className="size-3.5 animate-pulse text-primary" />}
-                {PHASE_LABEL[progress.phase]}
-              </span>
-              <span className="tabular-nums">
-                {progress.scanned}/{progress.total} geprüft · {progress.found} gefunden
-              </span>
-            </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Ergebnisse */}
-      {devices.length === 0 ? (
-        <Card className="flex h-32 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-          {progress.running ? 'Suche läuft …' : 'Noch keine Geräte. „Scannen" starten.'}
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {devices.map((d) => {
-            const key = deviceKey(d.mac, d.ip)
-            const override = typeOverrides[key]
-            const effType = override ?? d.type
-            const meta = TYPE_META[effType]
-            const hasWeb = d.ports.some((p) => WEB_PORTS.includes(p))
-            const oui = d.mac ? d.mac.slice(0, 8) : null
-            // Klick öffnet das Menü – erneuter Klick auf denselben Auslöser schließt es
-            // wieder (der Außenklick-Handler ignoriert Auslöser per data-Attribut).
-            const openTypeMenu = (e: ReactMouseEvent<HTMLElement>): void => {
-              const r = e.currentTarget.getBoundingClientRect()
-              setTypeMenu((cur) =>
-                cur && cur.key === key
-                  ? null
-                  : { key, detected: d.type, x: r.left, y: r.bottom + 4 }
-              )
-            }
-            return (
-              <Card key={d.ip} className="flex items-center gap-3 p-3">
-                {/* Typ-Symbol = Auswahlknopf; manuell gesetzt -> kleiner Marker. */}
-                <button
-                  type="button"
-                  data-typemenu-trigger
-                  onClick={openTypeMenu}
-                  title={`Typ: ${meta.label}${override ? ' (manuell)' : ''} – ändern`}
-                  className="relative flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-primary transition-colors hover:border-primary/50 hover:bg-muted/40"
-                >
-                  <meta.icon className="size-5" />
-                  {override && (
-                    <span
-                      className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card"
-                      title="manuell festgelegt"
-                    />
-                  )}
-                </button>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input
-                      value={labels[key] ?? ''}
-                      placeholder={d.hostname || 'Bezeichnung …'}
-                      onChange={(e) => setLabel(key, e.target.value)}
-                      className="h-7 w-44 text-sm"
-                    />
+          <InfoTip
+            label="Erklärung zum Scan"
+            text="Sucht Geräte im lokalen Netz per aktivem Scan (typische AV-Ports), erkennt den Hersteller über die MAC-Adresse und liest Bonjour/mDNS-Namen. Nur im eigenen Netzwerk verwenden."
+          />
+        </ToolBar>
+      }
+      main={
+        <div className={toolPageClass('5xl')}>
+          {/* Ergebnisse */}
+          {devices.length === 0 ? (
+            <Card className="flex h-32 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+              {progress.running ? 'Suche läuft …' : 'Noch keine Geräte – oben „Scannen“ starten.'}
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 px-1">
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+                  {devices.length === 1 ? '1 Gerät' : `${devices.length} Geräte`}
+                </h2>
+                <InfoTip
+                  label="Erklärung zur Geräteliste"
+                  text="Symbol oder Typ-Etikett anklicken, um den Gerätetyp – und damit das Symbol – selbst festzulegen (bleibt gespeichert). Rechts: IP kopieren, Web-Oberfläche öffnen, IP an die NovaStar- bzw. OSC-Steuerung übergeben."
+                />
+              </div>
+              {devices.map((d) => {
+                const key = deviceKey(d.mac, d.ip)
+                const override = typeOverrides[key]
+                const effType = override ?? d.type
+                const meta = TYPE_META[effType]
+                const hasWeb = d.ports.some((p) => WEB_PORTS.includes(p))
+                const oui = d.mac ? d.mac.slice(0, 8) : null
+                // Klick öffnet das Menü – erneuter Klick auf denselben Auslöser schließt es
+                // wieder (der Außenklick-Handler ignoriert Auslöser per data-Attribut).
+                const openTypeMenu = (e: ReactMouseEvent<HTMLElement>): void => {
+                  const r = e.currentTarget.getBoundingClientRect()
+                  setTypeMenu((cur) =>
+                    cur && cur.key === key
+                      ? null
+                      : { key, detected: d.type, x: r.left, y: r.bottom + 4 }
+                  )
+                }
+                return (
+                  <Card key={d.ip} className="flex items-center gap-3 p-3">
+                    {/* Typ-Symbol = Auswahlknopf; manuell gesetzt -> kleiner Marker. */}
                     <button
                       type="button"
                       data-typemenu-trigger
                       onClick={openTypeMenu}
-                      title="Typ ändern"
-                      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+                      title={`Typ: ${meta.label}${override ? ' (manuell)' : ''} – ändern`}
+                      className="relative flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-primary transition-colors hover:border-primary/50 hover:bg-muted/40"
                     >
-                      <Badge tone={meta.tone} className="cursor-pointer hover:opacity-80">
-                        {meta.label}
-                        <ChevronDown className="size-3 opacity-70" />
-                      </Badge>
+                      <meta.icon className="size-5" />
+                      {override && (
+                        <span
+                          className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-primary ring-2 ring-card"
+                          title="manuell festgelegt"
+                        />
+                      )}
                     </button>
-                    {d.ports.map((p) => (
-                      <Badge key={p} tone="neutral" title={`Port ${p}`}>
-                        {PORT_LABEL[p] ?? p}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                    <span className="font-mono text-foreground">{d.ip}</span>
-                    {d.vendor ? (
-                      <span>{d.vendor}</span>
-                    ) : (
-                      oui && <span className="font-mono">OUI {oui}</span>
-                    )}
-                    {d.hostname && <span className="truncate">{d.hostname}</span>}
-                    {d.rttMs != null && <span className="tabular-nums">{d.rttMs} ms</span>}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <IconBtn
-                    title={copied === d.ip ? 'kopiert!' : 'IP kopieren'}
-                    onClick={() => copyIp(d.ip)}
-                    active={copied === d.ip}
-                  >
-                    <Copy className="size-4" />
-                  </IconBtn>
-                  <IconBtn
-                    title="Web-Oberfläche öffnen"
-                    onClick={() => openWeb(d)}
-                    disabled={!hasWeb}
-                  >
-                    <ExternalLink className="size-4" />
-                  </IconBtn>
-                  <IconBtn
-                    title="IP im NovaStar-Tool verwenden"
-                    onClick={() => openInNovastar(d.ip)}
-                  >
-                    <MonitorCog className="size-4" />
-                  </IconBtn>
-                  <IconBtn
-                    title="IP in der OSC-Steuerung verwenden"
-                    onClick={() => openInOsc(d.ip)}
-                  >
-                    <Radio className="size-4" />
-                  </IconBtn>
-                </div>
-              </Card>
-            )
-          })}
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          value={labels[key] ?? ''}
+                          placeholder={d.hostname || 'Bezeichnung …'}
+                          onChange={(e) => setLabel(key, e.target.value)}
+                          className="h-7 w-44 text-sm"
+                        />
+                        <button
+                          type="button"
+                          data-typemenu-trigger
+                          onClick={openTypeMenu}
+                          title="Typ ändern"
+                          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+                        >
+                          <Badge tone={meta.tone} className="cursor-pointer hover:opacity-80">
+                            {meta.label}
+                            <ChevronDown className="size-3 opacity-70" />
+                          </Badge>
+                        </button>
+                        {d.ports.map((p) => (
+                          <Badge key={p} tone="neutral" title={`Port ${p}`}>
+                            {PORT_LABEL[p] ?? p}
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        <span className="font-mono text-foreground">{d.ip}</span>
+                        {d.vendor ? (
+                          <span>{d.vendor}</span>
+                        ) : (
+                          oui && <span className="font-mono">OUI {oui}</span>
+                        )}
+                        {d.hostname && <span className="truncate">{d.hostname}</span>}
+                        {d.rttMs != null && <span className="tabular-nums">{d.rttMs} ms</span>}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <IconBtn
+                        title={copied === d.ip ? 'kopiert!' : 'IP kopieren'}
+                        onClick={() => copyIp(d.ip)}
+                        active={copied === d.ip}
+                      >
+                        <Copy className="size-4" />
+                      </IconBtn>
+                      <IconBtn
+                        title="Web-Oberfläche öffnen"
+                        onClick={() => openWeb(d)}
+                        disabled={!hasWeb}
+                      >
+                        <ExternalLink className="size-4" />
+                      </IconBtn>
+                      <IconBtn
+                        title="IP im NovaStar-Tool verwenden"
+                        onClick={() => openInNovastar(d.ip)}
+                      >
+                        <MonitorCog className="size-4" />
+                      </IconBtn>
+                      <IconBtn
+                        title="IP in der OSC-Steuerung verwenden"
+                        onClick={() => openInOsc(d.ip)}
+                      >
+                        <Radio className="size-4" />
+                      </IconBtn>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+
+          {typeMenu && (
+            <TypeMenu
+              x={typeMenu.x}
+              y={typeMenu.y}
+              detected={typeMenu.detected}
+              current={typeOverrides[typeMenu.key] ?? null}
+              onPick={(t) => {
+                setType(typeMenu.key, t)
+                setTypeMenu(null)
+              }}
+              onClose={() => setTypeMenu(null)}
+            />
+          )}
         </div>
-      )}
-
-      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <Wand2 className="size-3 shrink-0" />
-        Tipp: Symbol oder Typ-Etikett anklicken, um den Gerätetyp – und damit das Symbol – manuell
-        zu setzen (bleibt gespeichert). <MonitorCog className="inline size-3" /> übergibt die IP an
-        die NovaStar-Steuerung.
-      </p>
-
-      {typeMenu && (
-        <TypeMenu
-          x={typeMenu.x}
-          y={typeMenu.y}
-          detected={typeMenu.detected}
-          current={typeOverrides[typeMenu.key] ?? null}
-          onPick={(t) => {
-            setType(typeMenu.key, t)
-            setTypeMenu(null)
-          }}
-          onClose={() => setTypeMenu(null)}
-        />
-      )}
-    </div>
+      }
+    />
   )
 }
 
