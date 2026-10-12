@@ -838,7 +838,8 @@ export function VideoPlayer(): JSX.Element {
                 >
                   <option value="off">Aus (schwarz)</option>
                   <option value="custom">Eigenes Bild/Video…</option>
-                  {PATTERN_OPTIONS.map((o) => (
+                  {/* AV-Sync blitzt jede Sekunde – als Ruhebild auf der Wand ungeeignet */}
+                  {PATTERN_OPTIONS.filter((o) => o.value !== 'avsync').map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>

@@ -50,7 +50,8 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   nahtlosen Schleife prüfen.
 - **Stage-Timer:** Teleprompter (scrollender Text auf dem Referentenmonitor); Steuerung per OSC
   (Start/Pause/±1 min aus Companion oder Stream Deck – heute nur über die HTTP-Fernsteuerung).
-- **Testbildgenerator:** Audio-Testtöne (Sinus, Rosa Rauschen, Sweep, Kanal-Identifikation).
+- **Testbildgenerator:** AV-Sync auch als Video mit Ton exportieren (für Medienserver und Player
+  ohne Mottulbox).
 - **Jingle-Player:** Ducking, MIDI-Pads.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.

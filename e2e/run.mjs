@@ -7,6 +7,7 @@ const all = [
   'layout',
   'security',
   'testpattern',
+  'testton',
   'timer',
   'player',
   'video-generator',

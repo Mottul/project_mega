@@ -33,7 +33,10 @@ Zusätzlich gilt der allgemeine `/code-review`.
   NDI-Sender öffneten nach dem Erstellen des Senders ihr Offscreen-Fenster, auch wenn inzwischen
   gestoppt oder neu gestartet war → verwaiste Fenster, die unbemerkt weitersendeten (Oktober 2026).
   Generation zählen (Start und Stopp erhöhen), nach jedem `await` vergleichen und das gerade
-  Erstellte wieder abbauen (`services/ndiSender.ts`, Regressionstest `e2e/ndi.mjs`).
+  Erstellte wieder abbauen (`services/ndiSender.ts`, Regressionstest `e2e/ndi.mjs`). Ebenso
+  beim Testton: Ein React-Effekt rief `update()`, während `start()` noch auf das Gerät
+  wartete – zwei Stimmen spielten gleichzeitig (doppelter Pegel). Während des Starts nur den
+  Stand merken, `start()` baut danach mit dem neuesten (`tone/engine.ts`, `e2e/testton.mjs`).
 - **zustand-Store und lokaler `useState` nach `await` nicht im selben Atemzug setzen, wenn ein
   Effekt beide liest.** Der Store rendert sofort (useSyncExternalStore), der lokale Zustand erst
   im nächsten Durchlauf – ein Wächter-Effekt sieht den Mischstand und dreht die Änderung zurück

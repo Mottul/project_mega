@@ -25,7 +25,8 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 - **Stage-Timer & Uhr** – Sprechzeit-Timer mit Abschnitten, Farbwarnung, Bühnen-Nachrichten,
   Vollbild-Anzeige, NDI, Handy-Fernsteuerung.
 - **Testbildgenerator** – statische, bewegte und Mapping-Testbilder, pixelgenaue Vollbild-Ausgabe,
-  PNG-/Video-Export.
+  PNG-/Video-Export; Testtöne (Sinus, Sweep, Rauschen, Metronom, Kanal-Kennung, Polarität) und
+  AV-Sync-Messung (Blitz + Piep).
 
 **🎛️ Steuerung**
 

@@ -4,6 +4,7 @@
 
 import type { PatternConfig, PatternId, SolidColor } from '@shared/types'
 import { drawMappingCard } from './mappingCard'
+import { syncFlashOn } from './tone/plan'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -22,12 +23,13 @@ export const PATTERN_OPTIONS: { value: PatternId; label: string }[] = [
   { value: 'convergence', label: 'Konvergenz (Feingitter)' },
   { value: 'colorcycle', label: 'Pixelcheck-Loop (Vollfarben-Zyklus)' },
   { value: 'scroll', label: 'Bewegt: Scroll-Balken (Tearing)' },
-  { value: 'timecode', label: 'Bewegt: Timecode (Latenz)' }
+  { value: 'timecode', label: 'Bewegt: Timecode (Latenz)' },
+  { value: 'avsync', label: 'AV-Sync: Blitz + Piep (Bildverzögerung)' }
 ]
 
 // Muster, die ueber die Zeit animiert werden (Output-Fenster + Vorschau laufen dann
 // in einer Animationsschleife).
-const ANIMATED = new Set<PatternId>(['colorcycle', 'scroll', 'timecode', 'mapping'])
+const ANIMATED = new Set<PatternId>(['colorcycle', 'scroll', 'timecode', 'mapping', 'avsync'])
 
 export function isAnimated(pattern: PatternId): boolean {
   return ANIMATED.has(pattern)
@@ -40,7 +42,10 @@ export function isAnimated(pattern: PatternId): boolean {
  * mit 60 fps (spart GPU/CPU bei 4K-Ausgaben).
  */
 export function frameKey(pattern: PatternId, timeMs: number): number {
-  return pattern === 'mapping' ? Math.floor(timeMs / 1000) : timeMs
+  if (pattern === 'mapping') return Math.floor(timeMs / 1000)
+  // AV-Sync: nur beim Ein- und Ausschalten des Blitzes neu zeichnen
+  if (pattern === 'avsync') return Math.floor(timeMs / 1000) * 2 + (syncFlashOn(timeMs) ? 1 : 0)
+  return timeMs
 }
 
 export const SOLID_OPTIONS: { value: SolidColor; label: string }[] = [
@@ -451,8 +456,30 @@ export function drawPattern(
     case 'mapping':
       drawMappingCard(ctx, cfg, timeMs, nominal)
       return // Auflösung/Label stehen bereits im Bild
+    case 'avsync':
+      drawAvSync(ctx, w, h, timeMs)
+      return // Label nur im dunklen Bild, sonst stört es die Messung
   }
   if (cfg.showInfo) drawInfoLabel(ctx, cfg, nominal)
+}
+
+/**
+ * AV-Sync: schwarz, zu jeder vollen Sekunde der Wanduhr ein weißer Vollbild-Blitz – im selben
+ * Moment piept der Testton (tone/engine.ts). Ein Messgerät oder eine Zeitlupen-Aufnahme vor der
+ * Wand zeigt den Abstand zwischen Blitz und Piep: die Verzögerung des Bildwegs.
+ */
+function drawAvSync(ctx: Ctx, w: number, h: number, timeMs: number): void {
+  if (syncFlashOn(timeMs)) {
+    fill(ctx, w, h, '#ffffff')
+    return
+  }
+  fill(ctx, w, h, '#000000')
+  const fontPx = Math.max(14, Math.round(h * 0.03))
+  ctx.font = `600 ${fontPx}px system-ui, sans-serif`
+  ctx.fillStyle = '#3a3a3a'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('AV-SYNC  ·  Blitz und Piep zu jeder vollen Sekunde', w / 2, h / 2)
 }
 
 /** Rendert ein Pattern in ein neues Offscreen-Canvas in voller Zielauflösung. */

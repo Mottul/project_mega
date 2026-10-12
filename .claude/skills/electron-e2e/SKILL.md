@@ -14,6 +14,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `smoke.mjs` | Start, Kachelhöhen, Suche, Werkzeug öffnen, Programmbrücke, Datei-Dialoge merken sich den Ordner, keine Konsolenfehler |
 | `layout.mjs` | Werkzeug-Muster: Kopfleiste, Leiste/Schublade von LED-Wall, NovaStar, Netzwerk-Scanner, YouTube-Downloader und Packliste, yt-dlp im App-Menü, App-Menü (13 Akzentfarben), Schublade (anheften/lösen/schließen, je Werkzeug gemerkt), ⓘ, Ausgabe-Leiste live/aus (Esc und Schließen von außen), Monitorwechsel von Testbild- und Player-Ausgabe, Auftrags-Leiste, LED-Wall (Projekt-Leiste, Reiter, Draufsicht nur mit Curving, Kette zeichnen), kleine Werkzeuge im eigenen Fenster (Kachel, Umleitung, eines je Werkzeug, Breite/Lage gemerkt, Höhe folgt dem Inhalt ohne Sprung, zweispaltig, 320 px ohne Querscrollen, Kompaktmodus live, gehen mit dem Hauptfenster) |
 | `testpattern.mjs` | 2-px-Rasterlinien pixelgenau (Raster und Mapping-Testbild) |
+| `testton.mjs` | Testton gemessen: Analysator vor dem Ausgang (`AudioNode.prototype.connect` umgelenkt, je Kanal einer) – Einblenden und Pegel −18 dBFS, Deckel −6 dBFS, 1 kHz, alle Signale unter dem Pegel, Kanal „Links“, Kennungs-Pausen je Kanal, AV-Sync-Piep zur vollen Sekunde (gemessen etwa −55 ms = Ausgabelatenz), Blitz in der Vorschau, Ton endet beim Verlassen. Ohne laufende Audioausgabe übersprungen |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
 | `ffmpeg-update.mjs` | ffmpeg-Aktualisierung der fertigen App gegen einen lokalen Schein-Release-Server (`MOTTULBOX_FFMPEG_RELEASES_URL`): 7-Tage-Regel, Prüfsumme, Aktivierung nach Neustart (`launchApp({ userData })`), zurück zum mitgelieferten |
@@ -53,6 +54,12 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   ihre Konfiguration nur beim Öffnen: erst `/`, dann die Zielroute.
 - **Gesteuerte Checkboxen:** `.check()` scheitert, wenn der Zustand erst nach dem Speichern
   umspringt – `click()` und dann mit `waitFor` auf das Ergebnis warten.
+- **Ton messen statt hören:** vor dem Start per `page.evaluate` `AudioNode.prototype.connect`
+  umlenken – jede Verbindung zum `AudioDestinationNode` bekommt zusätzlich Splitter und
+  Analysatoren (je Kanal); Spitzen per `getFloatTimeDomainData`, Frequenz per FFT, Verläufe per
+  `setInterval` in der Seite (Beispiel `e2e/testton.mjs`). Der Analysator sieht den Ton um die
+  Ausgabelatenz früher, als er aus dem Gerät kommt. Messfenster so legen, dass beide Grenzen
+  sicher im Ton liegen, nicht in einer Pause.
 - **Zeichenflächen haben Fenstergröße:** vor Pixelprüfungen `page.setViewportSize(…)`, gelesen
   wird mit `getImageData`.
 - **Fernsteuer-Seiten** in `openBrowserWindow` öffnen (unsichtbares Electron-Fenster ohne
