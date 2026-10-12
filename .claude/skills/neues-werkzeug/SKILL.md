@@ -40,7 +40,9 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `TWO_COLUMNS`) in `e2e/layout.mjs` aufnehmen – geprüft werden Höhe, 320 px ohne
      Querscrollen und Kompaktmodus.
    - Bausteine aus `components/ui`, Eingabefelder mit Puffer (`useDraft`, `TextField`,
-     `NumberField`), Farben nur über Tailwind-Tokens (`primary`, `border` …; Rot ist „live“).
+     `NumberField`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten
+     Zeilen – nie ein rohes `<select>` mit eigenen Klassen), Farben nur über Tailwind-Tokens
+     (`primary`, `border` …; Rot ist „live“).
      Texte deutsch.
 5. **Speichern – drei Orte, nie ein eigener localStorage-Parser:**
    - Einstellungen, die main braucht (Pfade, Geräte): `settings.json` über `useSettings(sel)` und

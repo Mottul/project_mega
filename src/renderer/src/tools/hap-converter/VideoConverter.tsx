@@ -28,7 +28,7 @@ import { Card } from '@renderer/components/ui/card'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
-import { selectClass } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
@@ -374,8 +374,9 @@ export function VideoConverter(): JSX.Element {
             )
           }
         >
-          <select
-            className={cn(selectClass, 'h-8 w-72 max-w-full')}
+          <Select
+            size="sm"
+            className="w-72 max-w-full"
             value={target}
             aria-label="Zielsystem"
             onChange={(e) =>
@@ -387,7 +388,7 @@ export function VideoConverter(): JSX.Element {
                 {t.label}
               </option>
             ))}
-          </select>
+          </Select>
           {targetHint && <InfoTip label="Erklärung zum Zielsystem" text={targetHint} />}
           <Button
             variant="outline"
@@ -436,8 +437,7 @@ export function VideoConverter(): JSX.Element {
           <PanelSection id="format" title="Format & Qualität" icon={Film} summary={formatSummary}>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Format</span>
-              <select
-                className={selectClass}
+              <Select
                 value={options.format}
                 onChange={(e) => setOpt({ format: e.target.value as ConvertFormat }, true)}
               >
@@ -451,13 +451,12 @@ export function VideoConverter(): JSX.Element {
                     ))}
                   </optgroup>
                 ))}
-              </select>
+              </Select>
             </label>
             {(fi.family === 'h264' || fi.family === 'hevc') && (
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">Qualität</span>
-                <select
-                  className={selectClass}
+                <Select
                   value={options.quality}
                   onChange={(e) => setOpt({ quality: e.target.value as ConvertQuality }, true)}
                 >
@@ -466,7 +465,7 @@ export function VideoConverter(): JSX.Element {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
             {fi.family === 'h264' && (
@@ -489,14 +488,13 @@ export function VideoConverter(): JSX.Element {
               <>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium">Kompressor</span>
-                  <select
-                    className={selectClass}
+                  <Select
                     value={options.hapCompressor}
                     onChange={(e) => setOpt({ hapCompressor: e.target.value as HapCompressor })}
                   >
                     <option value="snappy">Snappy (kleinere Dateien, Standard)</option>
                     <option value="none">Keiner (schneller, größere Dateien)</option>
-                  </select>
+                  </Select>
                 </label>
                 <div className="flex flex-col gap-1.5">
                   <span className="flex items-center gap-2 text-sm font-medium">
@@ -548,8 +546,7 @@ export function VideoConverter(): JSX.Element {
               <>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium">Auflösung</span>
-                  <select
-                    className={selectClass}
+                  <Select
                     value={sizeChoice(size)}
                     onChange={(e) => setOpt({ size: sizeFromChoice(e.target.value, size) }, true)}
                   >
@@ -558,7 +555,7 @@ export function VideoConverter(): JSX.Element {
                         {o.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 {size.mode === 'exact' && (
                   <>
@@ -582,8 +579,8 @@ export function VideoConverter(): JSX.Element {
                       />
                       <span className="text-xs text-muted-foreground">px</span>
                     </div>
-                    <select
-                      className={cn(selectClass, 'w-full')}
+                    <Select
+                      className="w-full"
                       value={size.fit}
                       aria-label="Einpassen"
                       onChange={(e) =>
@@ -595,15 +592,14 @@ export function VideoConverter(): JSX.Element {
                           {o.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </>
                 )}
                 <Field
                   label="Bildrate"
                   hint="Show-Raster: Clips mit passender Rate bleiben, andere werden angepasst – 29,97 ↔ 30 und 23,976 ↔ 24 per minimaler Tempo-Änderung statt Bildsprung."
                 >
-                  <select
-                    className={selectClass}
+                  <Select
                     value={fpsChoice(options.fps)}
                     onChange={(e) => setOpt({ fps: fpsFromChoice(e.target.value) })}
                   >
@@ -616,7 +612,7 @@ export function VideoConverter(): JSX.Element {
                         ))}
                       </optgroup>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
                 <Checkbox
                   checked={options.deinterlace}
@@ -639,8 +635,7 @@ export function VideoConverter(): JSX.Element {
             )}
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Ton</span>
-              <select
-                className={selectClass}
+              <Select
                 value={options.audio}
                 onChange={(e) => setOpt({ audio: e.target.value as ConvertOptions['audio'] }, true)}
               >
@@ -651,7 +646,7 @@ export function VideoConverter(): JSX.Element {
                 </option>
                 <option value="stereo">Stereo (Downmix) 48 kHz</option>
                 {videoFormat && <option value="none">Ohne Ton</option>}
-              </select>
+              </Select>
             </label>
             {options.audio !== 'none' && (
               <>
@@ -664,8 +659,9 @@ export function VideoConverter(): JSX.Element {
                 {options.loudnorm && (
                   <label className="flex items-center justify-between gap-2 pl-6">
                     <span className="text-xs text-muted-foreground">Ziel-Lautheit</span>
-                    <select
-                      className={cn(selectClass, 'h-8 w-auto')}
+                    <Select
+                      size="sm"
+                      className="w-auto"
                       value={options.loudnorm.i}
                       onChange={(e) =>
                         setOpt({
@@ -681,7 +677,7 @@ export function VideoConverter(): JSX.Element {
                           {c.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                 )}
               </>
@@ -702,8 +698,7 @@ export function VideoConverter(): JSX.Element {
             {/* Rechner-Einstellung: in der Kundenansicht verborgen (wie beim Video-Player) */}
             {encoderFamily && encoder && !locked && (
               <Field label="Encoder" hint={encoder.hint}>
-                <select
-                  className={selectClass}
+                <Select
                   value={encoderMode}
                   onChange={(e) =>
                     updateSettings({ converter: { encoder: e.target.value as EncoderMode } })
@@ -711,15 +706,14 @@ export function VideoConverter(): JSX.Element {
                 >
                   <option value="auto">{ENCODER_MODE_LABELS[encoderFamily].auto}</option>
                   <option value="cpu">{ENCODER_MODE_LABELS[encoderFamily].cpu}</option>
-                </select>
+                </Select>
               </Field>
             )}
             <Field
               label="Gleichzeitige Konvertierungen"
               hint={`Mehr parallel lohnt vor allem bei HAP (bis ${CORES} Kerne). Player-Importe haben eine eigene Spur und warten nie auf diese Liste.`}
             >
-              <select
-                className={selectClass}
+              <Select
                 value={concurrency}
                 onChange={(e) =>
                   useConverterPrefs.getState().setConcurrency(Number(e.target.value))
@@ -730,7 +724,7 @@ export function VideoConverter(): JSX.Element {
                     {n === 1 ? '1 (nacheinander)' : `${n} parallel`}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
           </PanelSection>
         </>

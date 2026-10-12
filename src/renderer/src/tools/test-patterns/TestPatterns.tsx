@@ -13,10 +13,9 @@ import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
-import { selectClass } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { InfoTip } from '@renderer/components/ui/info-tip'
-import { cn } from '@renderer/lib/utils'
 import { api } from '@renderer/lib/api'
 import {
   DEFAULT_PATTERN_CONFIG,
@@ -259,8 +258,9 @@ export function TestPatterns(): JSX.Element {
             </>
           }
         >
-          <select
-            className={cn(selectClass, 'h-8 w-64 max-w-full')}
+          <Select
+            size="sm"
+            className="w-64 max-w-full"
             aria-label="Ausgabe-Monitor"
             value={displayId ?? ''}
             onChange={(e) => setDisplayId(Number(e.target.value))}
@@ -270,7 +270,7 @@ export function TestPatterns(): JSX.Element {
                 {d.label}
               </option>
             ))}
-          </select>
+          </Select>
           {outputOpen ? (
             <>
               <Button size="sm" variant="destructive" onClick={() => void closeFullscreen()}>
@@ -312,8 +312,8 @@ export function TestPatterns(): JSX.Element {
             }
           >
             <div className="flex items-center gap-2">
-              <select
-                className={`${selectClass} flex-1`}
+              <Select
+                className="flex-1"
                 value={selectedPreset}
                 onChange={(e) => applyPreset(e.target.value)}
               >
@@ -323,7 +323,7 @@ export function TestPatterns(): JSX.Element {
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               <Button variant="ghost" size="sm" onClick={deletePreset} disabled={!selectedPreset}>
                 Löschen
               </Button>
@@ -349,8 +349,7 @@ export function TestPatterns(): JSX.Element {
           >
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Testbild</span>
-              <select
-                className={selectClass}
+              <Select
                 value={config.pattern}
                 onChange={(e) => patch({ pattern: e.target.value as PatternConfig['pattern'] })}
               >
@@ -359,7 +358,7 @@ export function TestPatterns(): JSX.Element {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             {isMapping && <MappingSettings config={config} patch={patch} />}
@@ -367,8 +366,7 @@ export function TestPatterns(): JSX.Element {
             {isSolid && (
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">Farbe</span>
-                <select
-                  className={selectClass}
+                <Select
                   value={config.solid}
                   onChange={(e) => patch({ solid: e.target.value as PatternConfig['solid'] })}
                 >
@@ -377,7 +375,7 @@ export function TestPatterns(): JSX.Element {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
 
@@ -585,14 +583,13 @@ export function TestPatterns(): JSX.Element {
               <div className="mx-2 h-9 w-px bg-border" />
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium">Video</span>
-                <select
-                  className={selectClass}
+                <Select
                   value={vidFormat}
                   onChange={(e) => setVidFormat(e.target.value as PatternVideoFormat)}
                 >
                   <option value="mp4">MP4 (H.264)</option>
                   <option value="hap_q">HAP Q (.mov)</option>
-                </select>
+                </Select>
               </label>
               {!isCycle && (
                 <label className="flex flex-col gap-1.5">

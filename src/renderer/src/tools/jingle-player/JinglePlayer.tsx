@@ -21,11 +21,10 @@ import { Input } from '@renderer/components/ui/input'
 import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
 import { InfoTip } from '@renderer/components/ui/info-tip'
-import { cn } from '@renderer/lib/utils'
+import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { useDraft } from '@renderer/lib/useDraft'
 import type { JingleRemoteSnapshot } from '@shared/types'
-import { selectClass } from '../_calc/ui'
 import { useJingleEngine } from './engine'
 import { Waveform } from './Waveform'
 import { HOTKEYS, PAD_COLORS, useJingles, type Pad } from './store'
@@ -218,8 +217,9 @@ export function JinglePlayer(): JSX.Element {
             <Play className="size-4" /> Live
           </button>
         </div>
-        <select
-          className={`${selectClass} h-8 w-auto`}
+        <Select
+          size="sm"
+          className="w-auto"
           value={s.columns}
           onChange={(e) => s.set({ columns: Number(e.target.value) })}
           title="Spalten"
@@ -229,7 +229,7 @@ export function JinglePlayer(): JSX.Element {
               {n} Spalten
             </option>
           ))}
-        </select>
+        </Select>
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <input
             type="checkbox"
@@ -364,8 +364,9 @@ export function JinglePlayer(): JSX.Element {
         )
       }
     >
-      <select
-        className={cn(selectClass, 'h-8 w-60 max-w-full')}
+      <Select
+        size="sm"
+        className="w-60 max-w-full"
         aria-label="Audio-Ausgabe"
         value={s.outputDeviceId}
         onChange={(e) => s.set({ outputDeviceId: e.target.value })}
@@ -376,7 +377,7 @@ export function JinglePlayer(): JSX.Element {
             {d.label || `Ausgabegerät ${i + 1}`}
           </option>
         ))}
-      </select>
+      </Select>
       {noLabels && (
         <InfoTip
           label="Erklärung zur Audio-Ausgabe"
@@ -611,19 +612,19 @@ function PadSettings({
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Modus</span>
-          <select
-            className={selectClass}
+          <Select
+            className="w-full"
             value={pad.mode}
             onChange={(e) => onChange({ mode: e.target.value as Pad['mode'] })}
           >
             <option value="oneshot">One-Shot</option>
             <option value="toggle">Toggle</option>
-          </select>
+          </Select>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Fade-Out</span>
-          <select
-            className={selectClass}
+          <Select
+            className="w-full"
             value={pad.fadeMs}
             onChange={(e) => onChange({ fadeMs: Number(e.target.value) })}
           >
@@ -632,7 +633,7 @@ function PadSettings({
             <option value={400}>400 ms</option>
             <option value={1000}>1 s</option>
             <option value={2000}>2 s</option>
-          </select>
+          </Select>
         </label>
       </div>
 

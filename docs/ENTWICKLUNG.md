@@ -214,7 +214,8 @@ Dazu gilt:
   mit `hint` (ⓘ statt Absatz). Aktionen gehören in Leiste oder Arbeitsfläche, nie in die
   Schublade; was die ganze App betrifft, ins App-Menü (`components/app/AppMenu.tsx`). Schmale
   Seiten ohne Einstellungen: `toolPageClass()`;
-- Bausteine aus `components/ui` (Select, Progress, Badge, NumberField …) statt eigener Varianten;
+- Bausteine aus `components/ui` (Select, Progress, Badge, NumberField …) statt eigener Varianten –
+  Auswahllisten nur als `<Select>` (Größen `md`, `sm` für Leisten, `xs` für dichte Zeilen);
 - Speichern nach [Was wohin gehört](#was-wohin-gehört): Einstellungen in `settings.json`,
   Arbeitsdaten im Store **mit `version`** und `syncAcrossWindows`, Kleinigkeiten per
   `usePersistentState`;

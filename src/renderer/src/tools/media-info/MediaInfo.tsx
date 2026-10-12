@@ -32,7 +32,7 @@ import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Progress } from '@renderer/components/ui/progress'
-import { selectClass } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { PanelSection, ToolShell } from '@renderer/components/ToolShell'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { api } from '@renderer/lib/api'
@@ -324,8 +324,7 @@ export function MediaInfo(): JSX.Element {
           >
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Zielsystem</span>
-              <select
-                className={selectClass}
+              <Select
                 value={profile.target}
                 onChange={(e) =>
                   useMediaInfoPrefs
@@ -338,12 +337,11 @@ export function MediaInfo(): JSX.Element {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Show-Raster</span>
-              <select
-                className={selectClass}
+              <Select
                 value={profile.raster}
                 onChange={(e) =>
                   useMediaInfoPrefs.getState().setProfile({ raster: e.target.value as ShowRaster })
@@ -354,12 +352,11 @@ export function MediaInfo(): JSX.Element {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium">Datenträger</span>
-              <select
-                className={selectClass}
+              <Select
                 value={profile.medium}
                 onChange={(e) =>
                   useMediaInfoPrefs
@@ -372,7 +369,7 @@ export function MediaInfo(): JSX.Element {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <span className="text-xs text-muted-foreground">
               Die Hinweise (Ampel) richten sich nach dem Profil – ein Wechsel bewertet sofort neu.

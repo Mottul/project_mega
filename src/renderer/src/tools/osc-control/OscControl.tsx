@@ -57,6 +57,7 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
 import { Alert } from '@renderer/components/ui/alert'
+import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
@@ -2799,7 +2800,8 @@ function WidgetEditor({
               <Tv className="size-3.5 shrink-0" /> NovaStar
             </div>
           ) : (
-            <select
+            <Select
+              className="w-full"
               value={w.type}
               onChange={(e) => {
                 const type = e.target.value as OscWidgetType
@@ -2810,14 +2812,13 @@ function WidgetEditor({
                   patch.items = makeWidget(type).items
                 update(w.id, patch)
               }}
-              className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
             >
               {WIDGET_ORDER.map((t) => (
                 <option key={t} value={t}>
                   {WIDGET_TYPE_LABEL[t]}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </Field>
       </div>
@@ -2826,15 +2827,15 @@ function WidgetEditor({
 
       {w.type === 'meter' && (
         <Field label="Quelle">
-          <select
+          <Select
             value={w.source}
             onChange={(e) => update(w.id, { source: e.target.value as 'osc' | 'video' | 'text' })}
-            className="h-9 w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+            className="w-full"
           >
             <option value="osc">OSC-Feedback (Zahl)</option>
             <option value="text">OSC-Text (String)</option>
             <option value="video">Video-Restzeit</option>
-          </select>
+          </Select>
         </Field>
       )}
 

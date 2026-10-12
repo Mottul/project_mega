@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
+import { Select } from '@renderer/components/ui/select'
 import { useDraft } from '@renderer/lib/useDraft'
 import { cn } from '@renderer/lib/utils'
 import type { ToolModule } from '@renderer/tools/types'
@@ -356,19 +357,19 @@ function GroupHeader({
           >
             <Pencil className="size-3.5" />
           </button>
-          <select
+          <Select
+            size="xs"
             aria-label={`Breite der Kategorie ${group.name}`}
             title="Breite"
             value={group.span}
             onChange={(e) => onSpan(Number(e.target.value))}
-            className="h-6 rounded-md border border-border bg-input/40 px-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
           >
             {SPAN_OPTIONS.map((o) => (
               <option key={o.span} value={o.span}>
                 {o.label}
               </option>
             ))}
-          </select>
+          </Select>
           <button
             type="button"
             className={btn}

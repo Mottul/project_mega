@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
-import { selectClass } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { cn } from '@renderer/lib/utils'
 import {
   DEFAULT_PATTERN_CONFIG,
@@ -223,8 +223,7 @@ export function MappingSettings({
 
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">Raster</span>
-        <select
-          className={selectClass}
+        <Select
           value={custom ? 'custom' : 'auto'}
           aria-label="Rastergröße"
           onChange={(e) =>
@@ -235,7 +234,7 @@ export function MappingSettings({
         >
           <option value="auto">Automatisch ({lay.u} px)</option>
           <option value="custom">Eigene Größe (z. B. Cabinet)</option>
-        </select>
+        </Select>
         {custom && (
           <div className="flex items-center gap-2">
             <NumberField

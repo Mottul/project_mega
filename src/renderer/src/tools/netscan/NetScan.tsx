@@ -45,7 +45,7 @@ import { Card } from '@renderer/components/ui/card'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
-import { selectClass } from '@renderer/components/ui/select'
+import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { toast } from '@renderer/lib/toast'
@@ -243,13 +243,14 @@ export function NetScan(): JSX.Element {
             ) : null
           }
         >
-          <select
+          <Select
+            size="sm"
             value={iface}
             aria-label="Netzwerk-Adapter"
             title="Netzwerk-Adapter – gescannt wird sein Subnetz"
             onChange={(e) => setIface(e.target.value)}
             disabled={progress.running || interfaces.length === 0}
-            className={cn(selectClass, 'h-8 max-w-[22rem]')}
+            className="max-w-[22rem]"
           >
             {interfaces.length === 0 && <option value="">kein Adapter gefunden</option>}
             {interfaces.map((i) => (
@@ -257,7 +258,7 @@ export function NetScan(): JSX.Element {
                 {i.label} · {i.address} · {i.hosts} Hosts
               </option>
             ))}
-          </select>
+          </Select>
           <Button
             size="sm"
             onClick={() => void startOrStop()}

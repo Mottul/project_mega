@@ -52,7 +52,7 @@ import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Alert } from '@renderer/components/ui/alert'
-import { cn } from '@renderer/lib/utils'
+import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
@@ -82,9 +82,6 @@ import {
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
 import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
-
-const selectClass =
-  'h-9 rounded-md border border-border bg-input/40 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70'
 
 const FIT_OPTIONS: { value: FitMode; label: string; short: string }[] = [
   { value: 'blur', label: 'Blur-Fill (unscharfer Hintergrund)', short: 'Blur-Fill' },
@@ -537,8 +534,9 @@ export function VideoPlayer(): JSX.Element {
             )
           }
         >
-          <select
-            className={cn(selectClass, 'h-8 w-64 max-w-full')}
+          <Select
+            size="sm"
+            className="w-64 max-w-full"
             aria-label="Ausgabe-Monitor"
             value={displayId ?? ''}
             onChange={(e) => setDisplayId(Number(e.target.value))}
@@ -548,7 +546,7 @@ export function VideoPlayer(): JSX.Element {
                 {d.label}
               </option>
             ))}
-          </select>
+          </Select>
           {pstate.outputOpen ? (
             <>
               <Button size="sm" variant="destructive" onClick={() => void api.player.closeOutput()}>
@@ -649,8 +647,7 @@ export function VideoPlayer(): JSX.Element {
               label="Fit-Modus"
               hint="Was mit Medien in einem anderen Seitenverhältnis passiert. Gilt für neue Importe."
             >
-              <select
-                className={selectClass}
+              <Select
                 value={fit}
                 onChange={(e) => {
                   const v = e.target.value as FitMode
@@ -663,7 +660,7 @@ export function VideoPlayer(): JSX.Element {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             {fit === 'blur' && (
               <>
@@ -730,8 +727,7 @@ export function VideoPlayer(): JSX.Element {
                 label="Encoder"
                 hint="Konvertierung nach H.264/MP4 – mit der Grafikkarte, falls verfügbar."
               >
-                <select
-                  className={selectClass}
+                <Select
                   value={encoder}
                   onChange={(e) => {
                     setEncoder(e.target.value)
@@ -749,14 +745,13 @@ export function VideoPlayer(): JSX.Element {
                       {a.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field
                 label="Gleichzeitige Importe"
                 hint="Mehr parallel lohnt bei vielen kurzen Clips, Bildern und mit GPU – ein langer Clip nutzt auf der CPU ohnehin alle Kerne. Während der Show lieber 1, dann bleiben Reserven für die Wiedergabe."
               >
-                <select
-                  className={selectClass}
+                <Select
                   value={importConcurrency}
                   onChange={(e) =>
                     updateSettings({ player: { importConcurrency: Number(e.target.value) } })
@@ -767,7 +762,7 @@ export function VideoPlayer(): JSX.Element {
                       {n === 1 ? '1 (nacheinander)' : `${n} parallel`}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Checkbox
                 checked={loudnorm}
@@ -780,8 +775,7 @@ export function VideoPlayer(): JSX.Element {
               />
               {loudnorm && (
                 <Field label="Ziel-Lautheit">
-                  <select
-                    className={selectClass}
+                  <Select
                     value={loudnormI}
                     onChange={(e) => {
                       const v = Number(e.target.value)
@@ -794,7 +788,7 @@ export function VideoPlayer(): JSX.Element {
                         {c.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
               )}
               {library.some((m) => m.hasAudio) && (
@@ -834,8 +828,7 @@ export function VideoPlayer(): JSX.Element {
                 label="Wenn nichts läuft"
                 hint="Testbild oder eigenes Medium als Fallback auf der Ausgabe."
               >
-                <select
-                  className={selectClass}
+                <Select
                   value={pstate.idlePattern}
                   onChange={(e) => {
                     const v = e.target.value
@@ -850,7 +843,7 @@ export function VideoPlayer(): JSX.Element {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               {pstate.idlePattern === 'custom' && (
                 <span className="text-xs text-muted-foreground">
@@ -1452,8 +1445,8 @@ export function VideoPlayer(): JSX.Element {
                     {Math.round((pstate.muted ? 0 : pstate.volume) * 100)} %
                   </span>
                 </div>
-                <select
-                  className={`${selectClass} h-8`}
+                <Select
+                  size="sm"
                   value={pstate.transition}
                   onChange={(e) =>
                     void cmd({
@@ -1465,7 +1458,7 @@ export function VideoPlayer(): JSX.Element {
                 >
                   <option value="cut">Schnitt (Cut)</option>
                   <option value="crossfade">Überblenden (Overlap)</option>
-                </select>
+                </Select>
                 {pstate.transition === 'crossfade' && (
                   <NumberField
                     value={pstate.transitionMs}
@@ -1698,8 +1691,8 @@ function PlayerNdiPanel({
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Auflösung</span>
-          <select
-            className={`${selectClass} w-full`}
+          <Select
+            className="w-full"
             disabled={running}
             value={prefs.mode}
             onChange={(e) => patch({ mode: e.target.value as NdiMode })}
@@ -1709,12 +1702,12 @@ function PlayerNdiPanel({
                 {m.label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs text-muted-foreground">Bildrate</span>
-          <select
-            className={`${selectClass} w-full`}
+          <Select
+            className="w-full"
             disabled={running}
             value={prefs.fps}
             onChange={(e) => patch({ fps: Number(e.target.value) })}
@@ -1724,7 +1717,7 @@ function PlayerNdiPanel({
                 {f} fps
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
       <label className="flex items-center gap-2 text-sm">
