@@ -5,17 +5,17 @@
 // ffmpeg beendet ist; darauf wird gewartet (mit Zeitgrenze), danach wird hart beendet.
 
 import { converterJobs } from './convert/converterJobs'
-import { convertQueue } from './convert/queue'
 import { killAllFfmpeg, runningFfmpegCount } from './convert/runFfmpeg'
 import { videoGenJobs } from './convert/videoGenJobs'
 import { cancelPreview, previewBusy, previewIdle } from './convert/videoGenPreview'
+import { jobQueue } from './jobs/queue'
 import { logLine } from './log'
 import { convertManager } from './player/convertManager'
 import { ytManager } from './ytdlp/ytDlp'
 
 /** Läuft oder wartet etwas, das beim Beenden abgebrochen werden muss? */
 export function hasRunningWork(): boolean {
-  return runningFfmpegCount() > 0 || convertQueue.busy() || previewBusy() || ytManager.busy()
+  return runningFfmpegCount() > 0 || jobQueue.busy() || previewBusy()
 }
 
 /**
@@ -36,7 +36,7 @@ export async function stopAllWork(timeoutMs = 3000): Promise<void> {
     timer = setTimeout(() => resolve('timeout'), timeoutMs)
   })
   const result = await Promise.race([
-    Promise.all([convertQueue.idle(), previewIdle()]).then(() => 'done' as const),
+    Promise.all([jobQueue.idle(), previewIdle()]).then(() => 'done' as const),
     timeout
   ])
   clearTimeout(timer)

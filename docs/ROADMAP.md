@@ -103,9 +103,6 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 
 ### Konsolidierung
 
-- **Auftrags-Warteschlangen:** Konverter und Player-Import teilen sich die Spuren-Warteschlange,
-  halten aber je eigene Auftragslisten; der YouTube-Downloader hat eine ganz eigene. Eine
-  gemeinsame `JobQueue<T>`-Basis.
 - **Status-Zuordnungen bündeln:** Toaster, Video-Generator und Medien-Info halten je eine eigene
   Tabelle Stufe → Symbol + Farbe; eine gemeinsame neben den Badge-Tönen.
 - **`main/services` ordnen:** Jingle-, Timer-, NDI- und Fernsteuer-Dateien in Unterordner

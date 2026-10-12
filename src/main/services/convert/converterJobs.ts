@@ -19,7 +19,6 @@ import type {
   EncoderInfo
 } from '@shared/types'
 import { collectConvertInputs, probeMediaInfo } from '../ffmpeg/mediaInfo'
-import { logLine } from '../log'
 import { getSettings } from '../store'
 import { buildConvertArgs } from './args'
 import { getConvertCapabilities } from './capabilities'
@@ -31,10 +30,9 @@ import {
   resolveConverterEncoder,
   type EncoderFamily
 } from './encoders'
-import { convertQueue } from './queue'
-import { FfmpegCanceledError, runFfmpeg } from './runFfmpeg'
-
-type Sink = (job: ConverterJob) => void
+import { JobList } from '../jobs/jobList'
+import { jobQueue } from '../jobs/queue'
+import { runFfmpeg } from './runFfmpeg'
 
 interface JobSpec {
   options: ConvertOptions
@@ -75,38 +73,24 @@ export function uniqueOutputPath(
   }
 }
 
-const isFinished = (j: ConverterJob): boolean =>
-  j.status === 'done' || j.status === 'error' || j.status === 'canceled'
-
-class ConverterJobs {
-  private jobs = new Map<string, ConverterJob>()
-  private specs = new Map<string, JobSpec>()
-  private aborts = new Map<string, AbortController>()
+class ConverterJobs extends JobList<ConverterJob, JobSpec> {
   // vergebene, aber noch nicht geschriebene Ausgaben (Groß/klein egal: macOS/Windows)
   private reserved = new Set<string>()
-  private sink: Sink = () => {}
 
-  setSink(sink: Sink): void {
-    this.sink = sink
+  constructor() {
+    super('converter', '[konverter]')
   }
 
-  list(): ConverterJob[] {
-    return [...this.jobs.values()]
+  protected label(job: ConverterJob): string {
+    return job.inputPath
   }
 
-  // Methode statt Feldzugriff: der Status kann sich durch cancel() jederzeit ändern
-  // (sonst „weiß" TypeScript nach einem await fälschlich noch den alten Wert)
-  private isCanceled(job: ConverterJob): boolean {
-    return job.status === 'canceled'
-  }
-
-  private update(job: ConverterJob, patch: Partial<ConverterJob>): void {
-    Object.assign(job, patch)
-    this.sink({ ...job, steps: [...job.steps] })
+  protected snapshot(job: ConverterJob): ConverterJob {
+    return { ...job, steps: [...job.steps] }
   }
 
   async enqueue(req: ConverterEnqueueRequest): Promise<{ jobIds: string[] }> {
-    convertQueue.setLimit('converter', req.concurrency)
+    jobQueue.setLimit('converter', req.concurrency)
     const files = await collectConvertInputs(req.inputs, req.options.format === 'wav')
     const encoderMode = getSettings().converter.encoder === 'cpu' ? 'cpu' : 'auto'
     const jobIds: string[] = []
@@ -129,21 +113,13 @@ class ConverterJobs {
         durationSec: null,
         createdAt: Date.now()
       }
-      this.jobs.set(id, job)
-      this.specs.set(id, { options: req.options, outputDir: req.outputDir, encoderMode })
-      this.sink({ ...job })
-      convertQueue.add(id, 'converter', () => this.run(job))
+      this.add(job, { options: req.options, outputDir: req.outputDir, encoderMode })
       jobIds.push(id)
     }
     return { jobIds }
   }
 
-  private async run(job: ConverterJob): Promise<void> {
-    if (this.isCanceled(job)) return
-    const spec = this.specs.get(job.id)
-    if (!spec) return
-    const abort = new AbortController()
-    this.aborts.set(job.id, abort)
+  protected async run(job: ConverterJob, spec: JobSpec, signal: AbortSignal): Promise<void> {
     let output: string | null = null
     try {
       this.update(job, { status: 'probing' })
@@ -160,7 +136,7 @@ class ConverterJobs {
       }
       // Lautheit vorab messen (gehört zur Analyse): der eigentliche Lauf braucht die Werte
       const loudness = await measureLoudness(plan, job.inputPath, {
-        signal: abort.signal,
+        signal,
         onProgress: (p) => this.update(job, { progress: p })
       })
       if (this.isCanceled(job)) return
@@ -217,7 +193,7 @@ class ConverterJobs {
         })
         await runFfmpeg(args, {
           durationSec: plan.durationSec,
-          signal: abort.signal,
+          signal,
           onProgress: (p) => this.update(job, { progress: p })
         })
       }
@@ -236,37 +212,9 @@ class ConverterJobs {
     } catch (err) {
       // halbfertige Ausgabe nie liegen lassen (sähe wie ein fertiger Clip aus)
       if (output) removeQuietly(output)
-      if (err instanceof FfmpegCanceledError || this.isCanceled(job)) {
-        if (!this.isCanceled(job)) this.update(job, { status: 'canceled' })
-        return
-      }
-      const message = err instanceof Error ? err.message : String(err)
-      logLine('[konverter] Fehler', job.inputPath, '->', message)
-      this.update(job, { status: 'error', error: message })
+      this.fail(job, err)
     } finally {
-      this.aborts.delete(job.id)
       if (output) this.reserved.delete(output.toLowerCase())
-    }
-  }
-
-  cancel(id: string): void {
-    const job = this.jobs.get(id)
-    if (!job || isFinished(job)) return
-    convertQueue.remove(id)
-    this.update(job, { status: 'canceled' })
-    this.aborts.get(id)?.abort()
-  }
-
-  cancelAll(): void {
-    for (const id of this.jobs.keys()) this.cancel(id)
-  }
-
-  clearFinished(): void {
-    for (const [id, job] of this.jobs) {
-      if (isFinished(job)) {
-        this.jobs.delete(id)
-        this.specs.delete(id)
-      }
     }
   }
 }

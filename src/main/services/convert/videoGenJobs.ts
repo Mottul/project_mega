@@ -49,12 +49,10 @@ import {
   resolveConverterEncoder,
   type EncoderFamily
 } from './encoders'
-import { convertQueue } from './queue'
+import { JobList } from '../jobs/jobList'
 import { FfmpegCanceledError, runFfmpeg } from './runFfmpeg'
 import { ensureDirs, freeBytes, jobDir, piecesDir, prune, removeQuietly } from './videoGenCache'
 import { analyzeProject, pieceTasks, renderPieces, vgenCapabilities } from './videoGenRender'
-
-type Sink = (job: VgenJob) => void
 
 const STAGE_TEXT: Record<VgenJobStage, string> = {
   analyze: 'Analyse',
@@ -64,35 +62,27 @@ const STAGE_TEXT: Record<VgenJobStage, string> = {
   encode: 'Kodieren'
 }
 
-const isFinished = (j: VgenJob): boolean =>
-  j.status === 'done' || j.status === 'error' || j.status === 'canceled'
-
 function encoderFamily(format: VgenProject['output']['format']): EncoderFamily | null {
   const f = CONVERT_FORMATS[format].family
   return f === 'h264' || f === 'hevc' || f === 'prores' ? f : null
 }
 
-class VideoGenJobs {
-  private jobs = new Map<string, VgenJob>()
-  private specs = new Map<string, VgenEnqueueRequest>()
-  private aborts = new Map<string, AbortController>()
-  private sink: Sink = () => {}
-
-  setSink(sink: Sink): void {
-    this.sink = sink
+class VideoGenJobs extends JobList<VgenJob, VgenEnqueueRequest> {
+  constructor() {
+    // eine Spur mit dem Konverter: teilt sich GPU-Sitzungen und Rechenzeit
+    super('converter', '[vgen]')
   }
 
-  list(): VgenJob[] {
-    return [...this.jobs.values()]
+  protected label(job: VgenJob): string {
+    return job.outputPath
   }
 
-  private isCanceled(job: VgenJob): boolean {
-    return job.status === 'canceled'
+  protected snapshot(job: VgenJob): VgenJob {
+    return { ...job, hints: [...job.hints] }
   }
 
-  private update(job: VgenJob, patch: Partial<VgenJob>): void {
-    Object.assign(job, patch)
-    this.sink({ ...job, hints: [...job.hints] })
+  protected canceledPatch(): Partial<VgenJob> {
+    return { status: 'canceled', stageText: 'Abgebrochen', finishedAt: Date.now() }
   }
 
   /** Projekt und Zieldatei sind schon geprüft (videoGen.handlers.ts). */
@@ -118,20 +108,12 @@ class VideoGenJobs {
       hints: [],
       createdAt: Date.now()
     }
-    this.jobs.set(id, job)
-    this.specs.set(id, req)
-    this.sink({ ...job })
-    convertQueue.add(id, 'converter', () => this.run(job))
+    this.add(job, req)
     return { jobId: id }
   }
 
-  private async run(job: VgenJob): Promise<void> {
-    if (this.isCanceled(job)) return
-    const spec = this.specs.get(job.id)
-    if (!spec) return
+  protected async run(job: VgenJob, spec: VgenEnqueueRequest, signal: AbortSignal): Promise<void> {
     const project = spec.project
-    const abort = new AbortController()
-    this.aborts.set(job.id, abort)
     const work = jobDir(job.id)
     let outputStarted = false
     // Fortschritt: Arbeit in Bildern (Stücke + Endlauf); der Ton zählt wenig, er ist schnell
@@ -162,7 +144,7 @@ class VideoGenJobs {
 
       // 2./3. Element-Stücke und Übergänge
       const { transitionFiles } = await renderPieces(plan, tasks, {
-        signal: abort.signal,
+        signal,
         tag: job.id.slice(0, 8),
         isCanceled: () => this.isCanceled(job),
         onPiece: (cached) => {
@@ -187,8 +169,8 @@ class VideoGenJobs {
         out: mix
       })
       await writeFile(graphFile, audio.graph)
-      await runFfmpeg(audio.args, { durationSec: plan.durationSec, signal: abort.signal })
-      const finalMix = await this.loudness(plan, project, mix, work, abort.signal, (text) =>
+      await runFfmpeg(audio.args, { durationSec: plan.durationSec, signal })
+      const finalMix = await this.loudness(plan, project, mix, work, signal, (text) =>
         report('audio', text)
       )
       doneUnits += plan.totalFrames * 0.1
@@ -216,7 +198,7 @@ class VideoGenJobs {
         outputStarted = true
         await runFfmpeg(this.finalArgs(plan, project, list, finalMix, enc, job.outputPath), {
           durationSec: plan.durationSec,
-          signal: abort.signal,
+          signal,
           onProgress: (p) => {
             doneUnits = encodeBase + p * plan.totalFrames
             report('encode', STAGE_TEXT.encode)
@@ -256,21 +238,8 @@ class VideoGenJobs {
     } catch (err) {
       // halbfertige Ausgabe nie liegen lassen (sähe wie ein fertiges Video aus)
       if (outputStarted) await removeQuietly(job.outputPath)
-      if (err instanceof FfmpegCanceledError || this.isCanceled(job)) {
-        if (!this.isCanceled(job))
-          this.update(job, { status: 'canceled', stageText: 'Abgebrochen' })
-        return
-      }
-      const message = err instanceof Error ? err.message : String(err)
-      logLine('[vgen] Fehler', job.outputPath, '->', message)
-      this.update(job, {
-        status: 'error',
-        stageText: 'Fehler',
-        error: message,
-        finishedAt: Date.now()
-      })
+      this.fail(job, err, { stageText: 'Fehler', finishedAt: Date.now() })
     } finally {
-      this.aborts.delete(job.id)
       await removeQuietly(work)
     }
   }
@@ -383,27 +352,6 @@ class VideoGenJobs {
       ...containerArgs(info.container),
       ...['-progress', 'pipe:1', '-nostats', '-y', out]
     ]
-  }
-
-  cancel(id: string): void {
-    const job = this.jobs.get(id)
-    if (!job || isFinished(job)) return
-    convertQueue.remove(id)
-    this.update(job, { status: 'canceled', stageText: 'Abgebrochen', finishedAt: Date.now() })
-    this.aborts.get(id)?.abort()
-  }
-
-  cancelAll(): void {
-    for (const id of this.jobs.keys()) this.cancel(id)
-  }
-
-  clearFinished(): void {
-    for (const [id, job] of this.jobs) {
-      if (isFinished(job)) {
-        this.jobs.delete(id)
-        this.specs.delete(id)
-      }
-    }
   }
 }
 

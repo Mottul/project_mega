@@ -25,6 +25,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import type { YtEnqueueRequest, YtJob, YtProbeResult, YtToolStatus } from '@shared/types'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
+import { JobList } from '../jobs/jobList'
 import { getSettings } from '../store'
 import { logLine } from '../log'
 import {
@@ -35,8 +36,6 @@ import {
   sanitizeRequest,
   ytErrorText
 } from './ytRequest'
-
-type Sink = (job: YtJob) => void
 
 const LATEST_URL = 'https://github.com/yt-dlp/yt-dlp/releases/latest'
 const USER_AGENT = 'MegaToolBox' // manche GitHub-CDN-Edges verlangen einen UA
@@ -286,7 +285,7 @@ export async function ensureUpToDate(): Promise<YtToolStatus> {
     if (found?.location !== 'path' && (!found || versionOf(found.bin) !== tag)) {
       // Waehrend eines laufenden Downloads laesst sich die Binary unter Windows
       // nicht ersetzen -- dann beim naechsten Start bzw. per Knopf erneut.
-      if (ytManager.isBusy()) throw new Error('Download läuft — Aktualisierung später möglich')
+      if (ytManager.running()) throw new Error('Download läuft — Aktualisierung später möglich')
       await downloadVerified(tag)
     }
   } catch (err) {
@@ -328,35 +327,19 @@ function killTree(proc: ChildProcessWithoutNullStreams): void {
   } else proc.kill('SIGKILL')
 }
 
-class YtManager {
-  private jobs = new Map<string, YtJob>()
-  private procs = new Map<string, ChildProcessWithoutNullStreams>()
-  private sink: Sink = () => {}
-  private active = 0
-  private concurrency = 2
+// Downloads laufen in der Spur „download“ der gemeinsamen Warteschlange (zwei gleichzeitig);
+// Abbrechen löst das Signal aus, das yt-dlp samt ffmpeg beendet. Läuft einer, wird die Binary
+// nicht ersetzt (running()).
+class YtManager extends JobList<YtJob, YtEnqueueRequest> {
   // streng steigend: mehrere Aufträge in derselben Millisekunde (Playlist) bleiben sortierbar
   private lastCreated = 0
 
-  setSink(sink: Sink): void {
-    this.sink = sink
+  constructor() {
+    super('download', '[yt-dlp]')
   }
 
-  list(): YtJob[] {
-    return [...this.jobs.values()]
-  }
-
-  /** Laeuft gerade ein Job? Dann die Binary nicht ersetzen. */
-  isBusy(): boolean {
-    return this.active > 0
-  }
-
-  private update(job: YtJob, patch: Partial<YtJob>): void {
-    Object.assign(job, patch)
-    this.sink({ ...job })
-  }
-
-  private isCanceled(job: YtJob): boolean {
-    return job.status === 'canceled'
+  protected label(job: YtJob): string {
+    return job.url
   }
 
   enqueue(request: YtEnqueueRequest): { jobId: string } {
@@ -376,37 +359,13 @@ class YtManager {
       outputFile: null,
       createdAt: (this.lastCreated = Math.max(Date.now(), this.lastCreated + 1))
     }
-    this.jobs.set(id, job)
-    this.params.set(id, req)
-    this.sink({ ...job })
-    this.schedule()
+    this.add(job, req)
     return { jobId: id }
   }
 
-  private params = new Map<string, YtEnqueueRequest>()
-
-  private schedule(): void {
-    if (this.active >= this.concurrency) return
-    for (const job of this.jobs.values()) {
-      if (this.active >= this.concurrency) break
-      if (job.status === 'queued') {
-        this.active++
-        this.run(job).finally(() => {
-          this.active--
-          this.schedule()
-        })
-      }
-    }
-  }
-
-  private run(job: YtJob): Promise<void> {
+  protected run(job: YtJob, req: YtEnqueueRequest, signal: AbortSignal): Promise<void> {
     return new Promise((resolve) => {
-      if (this.isCanceled(job)) {
-        resolve()
-        return
-      }
       const found = locateBinary()
-      const req = this.params.get(job.id)!
       if (!found) {
         this.update(job, {
           status: 'error',
@@ -419,7 +378,12 @@ class YtManager {
       const proc = spawn(found.bin, buildDownloadArgs(req, ffmpegBinPath('ffmpeg')), {
         windowsHide: true
       })
-      this.procs.set(job.id, proc)
+      const onAbort = (): void => killTree(proc)
+      signal.addEventListener('abort', onAbort, { once: true })
+      const finish = (): void => {
+        signal.removeEventListener('abort', onAbort)
+        resolve()
+      }
       let outBuf = ''
       let errTail = ''
 
@@ -454,14 +418,13 @@ class YtManager {
         errTail = (errTail + chunk.toString()).slice(-2000)
       })
       proc.on('error', (err) => {
-        this.procs.delete(job.id)
-        this.update(job, { status: 'error', error: err.message })
-        resolve()
+        this.fail(job, err)
+        finish()
       })
       proc.on('close', (code) => {
-        this.procs.delete(job.id)
-        if (this.isCanceled(job)) {
-          resolve()
+        // nach 'error' (z. B. Start gescheitert) kann noch 'close' kommen: Fehlertext behalten
+        if (this.isCanceled(job) || job.status === 'error') {
+          finish()
           return
         }
         if (code === 0) this.update(job, { status: 'done', progress: 1, speed: null, eta: null })
@@ -470,40 +433,9 @@ class YtManager {
             status: 'error',
             error: errTail.trim().split('\n').pop() || `yt-dlp beendet mit Code ${code}`
           })
-        resolve()
+        finish()
       })
     })
-  }
-
-  cancel(id: string): void {
-    const job = this.jobs.get(id)
-    if (!job) return
-    if (job.status === 'queued') {
-      this.update(job, { status: 'canceled' })
-    } else if (job.status === 'running') {
-      this.update(job, { status: 'canceled' })
-      const proc = this.procs.get(id)
-      if (proc) killTree(proc)
-    }
-  }
-
-  /** Alle Downloads abbrechen (Beenden der App); yt-dlp lässt nur .part-Dateien zurück. */
-  cancelAll(): void {
-    for (const id of this.jobs.keys()) this.cancel(id)
-  }
-
-  /** Läuft gerade ein yt-dlp-Prozess? */
-  busy(): boolean {
-    return this.procs.size > 0
-  }
-
-  clearFinished(): void {
-    for (const [id, job] of this.jobs) {
-      if (job.status === 'done' || job.status === 'error' || job.status === 'canceled') {
-        this.jobs.delete(id)
-        this.params.delete(id)
-      }
-    }
   }
 }
 

@@ -1,10 +1,11 @@
-// Gemeinsame Warteschlange für Konvertierungen. Zwei Spuren: Der Player-Import hat eine
-// eigene (wartet nie auf einen langen Konverter-Stapel – die Show-Vorbereitung geht
-// vor), der Video-Konverter so viele, wie der Nutzer parallel erlaubt.
+// Gemeinsame Warteschlange aller Aufträge. Drei Spuren: Der Player-Import hat eine eigene (wartet
+// nie auf einen langen Konverter-Stapel – die Show-Vorbereitung geht vor), Video-Konverter und
+// Video-Generator teilen sich so viele, wie der Nutzer parallel erlaubt (GPU-Sitzungen), die
+// Downloads des YouTube-Downloaders laufen daneben (Netz statt Rechenzeit).
 // Aufträge mit gleichem Sperr-Schlüssel laufen nie gleichzeitig: Der wartende bleibt in der
 // Schlange (abbrechbar, belegt keinen Platz), andere Aufträge ziehen an ihm vorbei.
 
-export type Lane = 'player' | 'converter'
+export type Lane = 'player' | 'converter' | 'download'
 
 interface Entry {
   id: string
@@ -13,13 +14,13 @@ interface Entry {
   key?: string
 }
 
-export class ConvertQueue {
+export class JobQueue {
   private waiting: Entry[] = []
   private running = new Map<string, Lane>()
   private busyKeys = new Set<string>()
   /** laufende start()-Aufrufe samt Aufräumen – für idle() beim Beenden der App */
   private active = new Set<Promise<void>>()
-  private limits: Record<Lane, number> = { player: 1, converter: 1 }
+  private limits: Record<Lane, number> = { player: 1, converter: 1, download: 2 }
 
   setLimit(lane: Lane, n: number): void {
     this.limits[lane] = Math.max(1, Math.min(8, Math.round(n) || 1))
@@ -90,4 +91,4 @@ export class ConvertQueue {
   }
 }
 
-export const convertQueue = new ConvertQueue()
+export const jobQueue = new JobQueue()

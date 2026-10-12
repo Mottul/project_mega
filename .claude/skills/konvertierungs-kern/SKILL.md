@@ -7,8 +7,8 @@ description: Den gemeinsamen Mottulbox-Konvertierungs-Kern erweitern – neue Ko
 
 Ein Kern für alle: Analyse per `probeMediaInfo` (Cache, `main/services/ffmpeg/mediaInfo.ts`, Parser
 rein in `mediaInfoParse.ts`), **alle Entscheidungen in `src/shared/convertPlan.ts`**
-(`planConversion`, rein, getestet, auch Vorschau im Renderer), Argumente/Runner/Warteschlange in
-`src/main/services/convert/`. Neue Korrekturen und Formate **dort** einbauen, nicht je Werkzeug.
+(`planConversion`, rein, getestet, auch Vorschau im Renderer), Argumente/Runner in
+`src/main/services/convert/`, Warteschlange und Auftragslisten in `src/main/services/jobs/`. Neue Korrekturen und Formate **dort** einbauen, nicht je Werkzeug.
 
 | Aufgabe | Ort |
 |---|---|
@@ -18,7 +18,8 @@ rein in `mediaInfoParse.ts`), **alle Entscheidungen in `src/shared/convertPlan.t
 | Fähigkeiten des gebündelten ffmpeg (Filter, Encoder) | `convert/capabilities.ts` |
 | Lautheit (EBU R128, zweistufig) | `shared/loudness.ts` (rein) + `convert/loudness.ts` (`measureLoudness`), Ergebnis als `loudness` an `buildConvertArgs` |
 | ffmpeg ausführen | **immer** `runFfmpeg()` (Fortschritt aus `-progress`, Abbruch per `AbortSignal`, Fehlertext); Pfade nur über `ffmpegBinPath()` – es liefert den in der App aktualisierten Build (`ffmpeg/ffmpegUpdate.ts`, gilt ab dem nächsten Start), sonst den mitgelieferten |
-| Warteschlange | `convert/queue.ts` (Spuren `player`/`converter`, Grenze `setLimit`, Ausschluss gleicher Quellen) |
+| Warteschlange | `jobs/queue.ts` (Spuren `player`/`converter`/`download`, Grenze `setLimit`, Ausschluss gleicher Quellen) |
+| Auftragsliste | von `JobList` erben (`jobs/jobList.ts`): `add(job, spec, key?)`, nur `run(job, spec, signal)` schreiben, Fehler an `fail()`, Aufräumen nach Abbruch in `onCanceled`; Muster `convert/converterJobs.ts` |
 | Video-Generator | Zeitachse, Ken Burns, Filter, Bildliste (auch Ausschnitte), Ton-Graph, Musik, Absenken rein in `shared/videoGenPlan.ts` (+ Labortest `convert/videoGen.lab.test.ts` mit echtem ffmpeg); gemeinsame Schritte `convert/videoGenRender.ts`, Rechenlauf `convert/videoGenJobs.ts`, „Vorschau rechnen“ `convert/videoGenPreview.ts` |
 
 ## Vorgehen

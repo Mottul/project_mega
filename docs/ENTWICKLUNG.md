@@ -95,7 +95,8 @@ src/
 │       ├── appWindows.ts · smallToolWindows.ts  # Fenster mit sicheren Vorgaben · kleine Werkzeugfenster
 │       ├── windowGuards.ts · windowPolicy.ts    # Wächter für alle Fenster · ihre Regeln (rein, getestet)
 │       ├── store.ts · db.ts  # settings.json (Quelle der Wahrheit) · SQLite/FTS5 – je mit Wiederherstellung
-│       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Warteschlange, Fähigkeiten;
+│       ├── jobs/             # Warteschlange (Spuren player/converter/download) und Basis aller Auftragslisten
+│       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Fähigkeiten;
 │       │                     #   videoGen*: Rechenlauf, Vorschau rechnen, Zwischenspeicher, Vorschaubilder,
 │       │                     #   Quelladressen (Live-Vorschau) des Video-Generators
 │       ├── ffmpeg/           # ffmpeg-Pfade, Medien-Info (ffprobe-Analyse, Parser, Cache)
@@ -161,8 +162,8 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Analyse, Encoder, Lautheit und Warteschlange (Zeitachse, Filter und Befehle rein in
   `shared/videoGenPlan.ts`), der Testbild-Export nur `runFfmpeg()` und die Farbkennung. Analyse per
   `probeMediaInfo` (mit Cache), alle Entscheidungen in `shared/convertPlan.ts` (rein, getestet,
-  auch für die Vorschau im Renderer), Argumente, Runner und Warteschlange in
-  `main/services/convert/`. Neue Korrekturen und Formate gehören dorthin, nicht ins einzelne
+  auch für die Vorschau im Renderer), Argumente und Runner in
+  `main/services/convert/`, Warteschlange und Auftragslisten in `main/services/jobs/`. Neue Korrekturen und Formate gehören dorthin, nicht ins einzelne
   Werkzeug; ffmpeg läuft immer über `runFfmpeg()`. Encoder (GPU bzw. schnelles ProRes) kommen aus
   `convert/encoders.ts`: Kandidaten erst nach Mini-Probelauf nutzen, Auswahl über
   `shared/encoderChoice.ts` (auch für die Anzeige im Konverter), Aufträge über

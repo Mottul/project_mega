@@ -19,7 +19,7 @@ Zusätzlich gilt der allgemeine `/code-review`.
   löschen.
 - **Ausschluss gehört in die Warteschlange, nicht in einen belegten Slot.** Wer im Slot auf ein
   Schloss wartet, blockiert andere Quellen und lässt sich nicht abbrechen. Wartende bleiben in
-  `waiting` (`ConvertQueue.add(…, key)`).
+  `waiting` (`JobQueue.add(…, key)`, in Auftragslisten `add(job, spec, key)`).
 - Fehlerpfade räumen auf: Ausgabedateien, halbfertige Einträge, Sperren (`finally`).
 
 ## Zustand nach `await`

@@ -14,9 +14,10 @@ import type { ConvertJob, ConvertOptions, MediaKind, PlayerImportRequest } from 
 import { buildConvertArgs } from '../convert/args'
 import { getConvertCapabilities } from '../convert/capabilities'
 import { measureLoudness } from '../convert/loudness'
-import { convertQueue } from '../convert/queue'
 import { FfmpegCanceledError, runFfmpeg } from '../convert/runFfmpeg'
 import { probeMediaInfo } from '../ffmpeg/mediaInfo'
+import { JobList } from '../jobs/jobList'
+import { jobQueue } from '../jobs/queue'
 import { logLine } from '../log'
 import { getSettings, onSettingsChange } from '../store'
 import { CPU_ENCODERS, encodeWithFallback } from '../convert/encoders'
@@ -40,7 +41,6 @@ const IMAGE_EXT = new Set(dotted(STILL_IMAGE_EXTENSIONS))
 const MEDIA_EXT = new Set([...VIDEO_EXT, ...IMAGE_EXT, '.gif'])
 export const ALLOWED_MEDIA_EXT = MEDIA_EXT
 
-type JobSink = (job: ConvertJob) => void
 type LibrarySink = () => void
 
 function readEntries(dir: string): Dirent<string>[] {
@@ -149,31 +149,19 @@ async function prepare(sourcePath: string, kindIn: MediaKind, spec: Spec): Promi
   }
 }
 
-class ConvertManager {
-  private jobs = new Map<string, ConvertJob>()
-  private aborts = new Map<string, AbortController>()
-  private specs = new Map<string, Spec>()
-  private sink: JobSink = () => {}
+class ConvertManager extends JobList<ConvertJob, Spec> {
   private librarySink: LibrarySink = () => {}
 
-  setSink(sink: JobSink): void {
-    this.sink = sink
+  constructor() {
+    super('player', '[player]')
   }
+
   setLibrarySink(sink: LibrarySink): void {
     this.librarySink = sink
   }
 
-  list(): ConvertJob[] {
-    return [...this.jobs.values()]
-  }
-
-  private isCanceled(job: ConvertJob): boolean {
-    return job.status === 'canceled'
-  }
-
-  private update(job: ConvertJob, patch: Partial<ConvertJob>): void {
-    Object.assign(job, patch)
-    this.sink({ ...job })
+  protected label(job: ConvertJob): string {
+    return job.sourcePath
   }
 
   // Eigene Spur der gemeinsamen Warteschlange: Importe warten nie auf den Video-Konverter.
@@ -182,15 +170,10 @@ class ConvertManager {
   // mit demselben Schlüssel oder ein Auftrag, der das eben gebackene Medium als Dublette
   // löscht). Der Name statt des Pfads, weil der Dedup-Schlüssel den Ordner nicht kennt –
   // Kopien desselben Clips in Tag1/ und Tag2/ sind eine Quelle.
-  private queue(job: ConvertJob): void {
+  private queue(job: ConvertJob, spec: Spec): void {
     // Parallelität aus den Einstellungen (wirkt auch auf schon wartende Aufträge)
-    convertQueue.setLimit('player', getSettings().player.importConcurrency ?? 2)
-    convertQueue.add(
-      job.id,
-      'player',
-      () => this.run(job),
-      `player:${basename(job.sourcePath).toLowerCase()}`
-    )
+    jobQueue.setLimit('player', getSettings().player.importConcurrency ?? 2)
+    this.add(job, spec, `player:${basename(job.sourcePath).toLowerCase()}`)
   }
 
   enqueue(req: PlayerImportRequest): { jobIds: string[] } {
@@ -216,16 +199,13 @@ class ConvertManager {
         encoder: null,
         createdAt: Date.now()
       }
-      this.jobs.set(id, job)
-      this.specs.set(id, {
+      this.queue(job, {
         fit: req.fitMode,
         width,
         height,
         ...currentBlur(),
         loudnorm: currentLoudnorm()
       })
-      this.sink({ ...job })
-      this.queue(job)
       jobIds.push(id)
     }
     return { jobIds }
@@ -259,8 +239,7 @@ class ConvertManager {
         encoder: null,
         createdAt: Date.now()
       }
-      this.jobs.set(id, job)
-      this.specs.set(id, {
+      this.queue(job, {
         fit: it.fit,
         width: job.targetWidth,
         height: job.targetHeight,
@@ -268,15 +247,18 @@ class ConvertManager {
         loudnorm: currentLoudnorm(),
         reconvertId: it.reconvertId
       })
-      this.sink({ ...job })
-      this.queue(job)
       jobIds.push(id)
     }
     return { jobIds }
   }
 
   /** Plan ausführen (Fortschritt am Auftrag, Abbrechen über den AbortController). */
-  private async convert(job: ConvertJob, p: Prepared, output: string): Promise<void> {
+  private async convert(
+    job: ConvertJob,
+    p: Prepared,
+    output: string,
+    signal: AbortSignal
+  ): Promise<void> {
     const copy = Boolean(p.plan.video?.copy)
     const encoder =
       p.kind === 'image' || copy ? undefined : await resolveEncoder(getSettings().player.encoder)
@@ -284,7 +266,7 @@ class ConvertManager {
     if (this.isCanceled(job)) throw new FfmpegCanceledError()
     // Lautheit vorab messen (noch Status „Analyse“) – der Lauf braucht die Messwerte
     const loudness = await measureLoudness(p.plan, job.sourcePath, {
-      signal: this.aborts.get(job.id)?.signal
+      signal
     })
     if (this.isCanceled(job)) throw new FfmpegCanceledError()
     const run = async (enc: string | undefined): Promise<void> => {
@@ -301,7 +283,7 @@ class ConvertManager {
       })
       await runFfmpeg(args, {
         durationSec: p.plan.durationSec,
-        signal: this.aborts.get(job.id)?.signal,
+        signal,
         onProgress: (v) => this.update(job, { progress: v })
       })
     }
@@ -315,14 +297,15 @@ class ConvertManager {
     job: ConvertJob,
     input: string,
     output: string,
-    p: Prepared
+    p: Prepared,
+    signal: AbortSignal
   ): Promise<boolean> {
     this.update(job, { status: 'thumbnail' })
     try {
       const seek = Math.min(1, (p.durationSec ?? 1) * 0.1)
       await runFfmpeg(
         buildThumbArgs({ input, output, seekSec: seek, isVideo: p.kind !== 'image' }),
-        { signal: this.aborts.get(job.id)?.signal }
+        { signal }
       )
       return existsSync(output)
     } catch (thumbErr) {
@@ -337,19 +320,14 @@ class ConvertManager {
     }
   }
 
-  private async run(job: ConvertJob): Promise<void> {
-    if (this.isCanceled(job)) return
-    const spec = this.specs.get(job.id)!
-    this.aborts.set(job.id, new AbortController())
-    try {
-      if (spec.reconvertId) await this.runReconvert(job, spec, spec.reconvertId)
-      else await this.runImport(job, spec)
-    } finally {
-      this.aborts.delete(job.id)
-    }
+  protected run(job: ConvertJob, spec: Spec, signal: AbortSignal): Promise<void> {
+    return spec.reconvertId
+      ? this.runReconvert(job, spec, spec.reconvertId, signal)
+      : this.runImport(job, spec, signal)
   }
 
-  private async runImport(job: ConvertJob, spec: Spec): Promise<void> {
+  private async runImport(job: ConvertJob, spec: Spec, signal: AbortSignal): Promise<void> {
+    let inserted = false
     try {
       const convKey = convKeyFor(
         job.sourcePath,
@@ -378,9 +356,9 @@ class ConvertManager {
       const thumbName = `${job.id}_thumb.jpg`
       const thumbPath = mediaFilePath(thumbName)
 
-      await this.convert(job, p, output)
+      await this.convert(job, p, output, signal)
       if (this.isCanceled(job)) return
-      const thumbOk = await this.thumbnail(job, output, thumbPath, p)
+      const thumbOk = await this.thumbnail(job, output, thumbPath, p, signal)
       if (this.isCanceled(job)) return
 
       const sizeBytes = (() => {
@@ -416,19 +394,15 @@ class ConvertManager {
         sizeBytes,
         sourcePath: job.sourcePath
       })
+      inserted = true
       this.update(job, { status: 'done', progress: 1, mediaId: item.id })
       this.librarySink()
     } catch (err) {
-      if (this.isCanceled(job) || err instanceof FfmpegCanceledError) {
-        // erst jetzt ist ffmpeg beendet -> Reste sicher löschbar (Windows sperrt offene Dateien)
-        this.removeOutputs(job.id)
-        if (!this.isCanceled(job)) this.update(job, { status: 'canceled' })
-        return
-      }
-      this.update(job, {
-        status: 'error',
-        error: err instanceof Error ? err.message : String(err)
-      })
+      // erst jetzt ist ffmpeg beendet -> Reste sicher löschbar (Windows sperrt offene Dateien).
+      // Auch nach einem Fehler: Die Dateien gehören nur diesem Auftrag, ohne Bibliothekseintrag
+      // blieben sie sonst verwaist im Medienordner liegen. Mit Eintrag gehören sie der Bibliothek.
+      if (!inserted) this.removeOutputs(job.id)
+      this.fail(job, err)
     }
   }
 
@@ -445,7 +419,12 @@ class ConvertManager {
 
   // Neu-Konvertierung eines vorhandenen Mediums (gleiche id). In Temp-Dateien
   // konvertieren, dann die alten ersetzen -> die laufende Wiedergabe bricht nicht ab.
-  private async runReconvert(job: ConvertJob, spec: Spec, id: string): Promise<void> {
+  private async runReconvert(
+    job: ConvertJob,
+    spec: Spec,
+    id: string,
+    signal: AbortSignal
+  ): Promise<void> {
     const ext = storedExtFor(job.kind ?? kindOf(job.sourcePath))
     try {
       // Inzwischen entfernt – etwa als Dublette, weil ein anderes Medium eben auf denselben
@@ -485,9 +464,9 @@ class ConvertManager {
       }
       const reTitle = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), p.suffix)
 
-      await this.convert(job, p, tmpStored)
+      await this.convert(job, p, tmpStored, signal)
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
-      const thumbOk = await this.thumbnail(job, tmpStored, tmpThumb, p)
+      const thumbOk = await this.thumbnail(job, tmpStored, tmpThumb, p, signal)
       if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
 
       // Rückversicherung wie beim Import: UNIQUE erst prüfen, dann Dateien tauschen – sonst
@@ -537,31 +516,13 @@ class ConvertManager {
       this.librarySink()
     } catch (err) {
       this.cleanupReconvertTmp(id, ext)
-      if (this.isCanceled(job) || err instanceof FfmpegCanceledError) {
-        if (!this.isCanceled(job)) this.update(job, { status: 'canceled' })
-        return
-      }
-      this.update(job, {
-        status: 'error',
-        error: err instanceof Error ? err.message : String(err)
-      })
+      this.fail(job, err)
     }
   }
 
-  cancel(id: string): void {
-    const job = this.jobs.get(id)
-    if (!job) return
-    if (job.status === 'done' || job.status === 'error' || job.status === 'canceled') return
-    convertQueue.remove(id)
-    this.update(job, { status: 'canceled' })
-    this.aborts.get(id)?.abort()
-    // unfertige Ausgaben aufräumen (ein noch laufender Import räumt nach Prozessende nach)
+  // unfertige Ausgaben aufräumen (ein noch laufender Import räumt nach Prozessende nach)
+  protected onCanceled(id: string): void {
     this.removeOutputs(id)
-  }
-
-  /** Alle offenen Importe abbrechen (Beenden der App). */
-  cancelAll(): void {
-    for (const id of this.jobs.keys()) this.cancel(id)
   }
 
   private removeOutputs(id: string): void {
@@ -571,15 +532,6 @@ class ConvertManager {
         if (existsSync(f)) rmSync(f)
       } catch {
         // ignorieren (z.B. unter Windows noch geöffnet)
-      }
-    }
-  }
-
-  clearFinished(): void {
-    for (const [id, job] of this.jobs) {
-      if (job.status === 'done' || job.status === 'error' || job.status === 'canceled') {
-        this.jobs.delete(id)
-        this.specs.delete(id)
       }
     }
   }
@@ -618,4 +570,4 @@ class ConvertManager {
 export const convertManager = new ConvertManager()
 
 // Geänderte Parallelität sofort anwenden (auch auf schon wartende Importe)
-onSettingsChange((s) => convertQueue.setLimit('player', s.player.importConcurrency ?? 2))
+onSettingsChange((s) => jobQueue.setLimit('player', s.player.importConcurrency ?? 2))
