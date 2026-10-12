@@ -3,7 +3,7 @@
 // den Display-Bounds). Der Fensterinhalt (#/player-output) treibt das HTML5-Video.
 
 import { BrowserWindow, screen } from 'electron'
-import { join } from 'node:path'
+import { loadRoute, secureWebPreferences } from '../appWindows'
 import { logLine } from '../log'
 import { setOutputOpen } from './playerState'
 
@@ -27,16 +27,12 @@ export function openPlayerOutput(displayId: number): void {
     backgroundColor: '#000000',
     skipTaskbar: true,
     title: 'Player-Ausgabe',
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      // programmatischer play() (nahtloser Wechsel, entstummt) darf ohne Nutzergeste
-      // laufen; Throttling im Hintergrund aus -> Ausgabe darf nie einschlafen.
+    // programmatischer play() (nahtloser Wechsel, entstummt) darf ohne Nutzergeste
+    // laufen; Throttling im Hintergrund aus -> Ausgabe darf nie einschlafen.
+    webPreferences: secureWebPreferences({
       autoplayPolicy: 'no-user-gesture-required',
       backgroundThrottling: false
-    }
+    })
   })
   logLine('[player] Ausgabefenster auf Display', display.id, JSON.stringify(b))
 
@@ -52,9 +48,7 @@ export function openPlayerOutput(displayId: number): void {
   // Tastendruck verschwinden. Geschlossen wird über die App (Ausgabe-Schalter)
   // oder den dezenten Button im Ausgabefenster.
 
-  const devUrl = process.env['ELECTRON_RENDERER_URL']
-  if (devUrl) void win.loadURL(`${devUrl}#/player-output`)
-  else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash: '/player-output' })
+  loadRoute(win, '/player-output')
 
   setOutputOpen(true)
 }

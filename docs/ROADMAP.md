@@ -21,11 +21,9 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
    Abstand, [SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)) – als Nächstes kommen u. a.
    pdfjs-dist 6.4.299 und Electron 44.7.0. Eine neue Electron-Hauptversion vor dem Merge an den
    Breaking Changes prüfen.
-2. **Restliche Härtungen** – Fenster-Wächter, `shellOpenPath`-Allowlist, Prüfsumme für den
-   ffmpeg-Download beim Einrichten (siehe [Sicherheit](#sicherheit)).
-3. **Paketierung in der CI** – Installer je Betriebssystem probeweise bauen (heute prüft die CI
+2. **Paketierung in der CI** – Installer je Betriebssystem probeweise bauen (heute prüft die CI
    Build, Tests und E2E auf allen drei, aber nicht `electron-builder`).
-4. **App-Aktualisierung** – darauf aufbauend (siehe [Große Umbauten](#große-umbauten)).
+3. **App-Aktualisierung** – darauf aufbauend (siehe [Große Umbauten](#große-umbauten)).
 
 ## Funktionen
 
@@ -102,14 +100,6 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
   geprüft, Uploads begrenzt – wer im selben Netz ist, kann aber steuern.
 - **CSP ohne `'unsafe-inline'`** für Skripte im Produktiv-Build; braucht eine eigene Dev-CSP, weil
   der Vite-Dev-Server eine Inline-Präambel lädt. (`'unsafe-eval'` ist bereits entfernt.)
-- **Zentrale Fenster-Wächter** (`web-contents-created`: Berechtigungen, `will-navigate`,
-  `setWindowOpenHandler`) auch für Ausgabe-, NDI- und PDF-Fenster – heute nur in Haupt- und
-  Werkzeugfenstern.
-- **`shellOpenPath`/`shellShowItem`** nur für App-Ablage und gewählte Ausgabeordner.
-- **Prüfsumme** für den ffmpeg-Download beim Einrichten (`scripts/download-ffmpeg.mjs` lädt
-  „latest“ ungeprüft). Die Aktualisierung in der App prüft schon gegen die `checksums.sha256` von
-  BtbN – dieselbe Logik lässt sich übernehmen; yt-dlp prüft gegen `SHA2-256SUMS`, die
-  Electron-Binary gegen `checksums.json`.
 
 ### Konsolidierung
 
@@ -127,10 +117,6 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 - **UI-Bausteine konsequent nutzen:** YouTube-Downloader auf `Progress`/`Badge`; `Select` als
   echte Komponente mit Größen-Varianten (heute eine Klassen-Konstante, dazu abgewandelte Kopien
   in Video-Player, Netzwerk-Scanner, OSC-Steuerung, Packliste und Startbildschirm).
-- **Ausgabefenster auf `createWindow`:** Testbild-, Player-, Timer- und beide NDI-Fenster laden
-  ihre Route und setzen die sicheren Vorgaben je selbst (fünf Kopien, schon leicht
-  auseinandergelaufen: `isDev && devUrl` gegenüber `devUrl`). Ein `loadRoute(win, hash)` bzw.
-  Optionen für rahmenlose Fenster in `services/appWindows.ts`.
 - **Status-Zuordnungen bündeln:** Toaster, Video-Generator und Medien-Info halten je eine eigene
   Tabelle Stufe → Symbol + Farbe; eine gemeinsame neben den Badge-Tönen.
 - **`main/services` ordnen:** Jingle-, Timer-, NDI- und Fernsteuer-Dateien in Unterordner
@@ -197,6 +183,11 @@ Damit nichts doppelt geplant wird:
 - **Kleine Härtungen:** Uploads der Player-Fernsteuerung begrenzt (8 GB je Datei, 2 GB Reserve,
   Aufräumen bei Abbruch), Fernsteuer-Befehle von Player und Jingle feldweise geprüft, CSP ohne
   `unsafe-eval`, yt-dlp nur mit http(s)-Adressen hinter `--`.
+- **Fenster-Wächter und Shell:** Wächter für alle Fenster (`services/windowGuards.ts`: keine neuen
+  Fenster, keine fremde Navigation, keine Webviews, Berechtigungen nach Allowlist); alle Fenster
+  mit App-Seite über `secureWebPreferences`/`loadRoute` (statt fünf Kopien in den
+  Ausgabefenstern); „Ordner öffnen“ nur für lokale Ordner, „Im Ordner zeigen“ nur mit absolutem
+  Pfad; ffmpeg-Download beim Einrichten geprüft (BtbN: Prüfsumme, evermeet: Größe).
 - **Konvertierung:** gemeinsamer Kern für Video-Konverter, Player-Import und Testbild-Export
   (ersetzt den alten HAP-Auftragsmanager), eigene Player-Spur (parallele Importe einstellbar,
   dieselbe Quelle nie doppelt), Medien-Info als Analyse-Werkzeug;

@@ -16,7 +16,7 @@
 // das Binary (build/Release) -- der Sender braucht keine NDI-Installation.
 
 import { BrowserWindow } from 'electron'
-import { join } from 'node:path'
+import { loadRoute, secureWebPreferences } from './appWindows'
 import { Channels } from '@shared/ipc-contracts'
 import { DEFAULT_TIMER_NDI, type TimerNdiConfig, type TimerNdiStatus } from '@shared/types'
 import { broadcast } from './broadcast'
@@ -137,14 +137,7 @@ export async function startTimerNdi(cfg: TimerNdiConfig): Promise<TimerNdiStatus
     width: config.width,
     height: config.height,
     frame: false,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      offscreen: true,
-      backgroundThrottling: false
-    }
+    webPreferences: secureWebPreferences({ offscreen: true, backgroundThrottling: false })
   })
   win.webContents.setFrameRate(config.fps)
   win.webContents.on('paint', (_e, _dirty, image) => pushFrame(g, image))
@@ -157,9 +150,7 @@ export async function startTimerNdi(cfg: TimerNdiConfig): Promise<TimerNdiStatus
     stopTimerNdi()
   })
 
-  const devUrl = process.env['ELECTRON_RENDERER_URL']
-  if (devUrl) void win.loadURL(`${devUrl}#/timer-output`)
-  else void win.loadFile(join(__dirname, '../renderer/index.html'), { hash: '/timer-output' })
+  loadRoute(win, '/timer-output')
 
   // Die Anzeige ist meist statisch (1 Repaint/s) -> regelmäßig invalidieren,
   // damit ein kontinuierlicher NDI-Frame-Takt entsteht.

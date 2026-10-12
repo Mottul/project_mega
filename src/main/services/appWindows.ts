@@ -1,15 +1,54 @@
-// App-Fenster mit sicheren Vorgaben (Sandbox, keine neuen Fenster, DevTools per F12): Haupt- und
-// Werkzeugfenster. Was ein Fenster darüber hinaus tut, verdrahtet der Aufrufer – das Hauptfenster
-// in index.ts, die kleinen Werkzeugfenster in smallToolWindows.ts. Ausgabefenster (Testbild,
-// Player, Timer) haben eigene Dienste.
-import { app, BrowserWindow, shell } from 'electron'
+// App-Fenster mit sicheren Vorgaben: Haupt- und Werkzeugfenster (createWindow) und die Bausteine,
+// die auch Ausgabe- und NDI-Fenster nutzen (secureWebPreferences, loadRoute). Was ein Fenster
+// darüber hinaus tut, verdrahtet der Aufrufer – das Hauptfenster in index.ts, die kleinen
+// Werkzeugfenster in smallToolWindows.ts. Für ALLE Fenster gelten außerdem die Wächter aus
+// windowGuards.ts (keine neuen Fenster, keine fremde Navigation, Berechtigungen).
+import { app, BrowserWindow, type WebPreferences } from 'electron'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { APP_NAME } from '@shared/brand'
 import { TOOL_WINDOW, type ToolWindowSize, type WindowBounds } from '@shared/toolWindows'
 import { appIconPath } from './appIcon'
 import { logLine } from './log'
+import { devServerUrl, type AppPages } from './windowPolicy'
 
-const isDev = !app.isPackaged
+const indexFile = join(__dirname, '../renderer/index.html')
+const devUrl = devServerUrl(app.isPackaged, process.env['ELECTRON_RENDERER_URL'])
+
+/** Wo die App-Seite liegt – die Wächter lassen nur sie zu. */
+export const appPages: AppPages = {
+  indexFile: pathToFileURL(indexFile).href,
+  devOrigin: devUrl ? new URL(devUrl).origin : null
+}
+
+/**
+ * Sichere Vorgaben für jedes Fenster mit App-Seite: Sandbox, getrennter Kontext, kein Node, keine
+ * Webviews; die Seite spricht nur über die typisierte API des Preloads. Zusätzliche Optionen
+ * (Autoplay, Offscreen …) können diese vier nicht überschreiben.
+ */
+export function secureWebPreferences(
+  extra: Omit<
+    WebPreferences,
+    'preload' | 'sandbox' | 'contextIsolation' | 'nodeIntegration' | 'webviewTag'
+  > = {}
+): WebPreferences {
+  return {
+    ...extra,
+    preload: join(__dirname, '../preload/index.js'),
+    sandbox: true,
+    contextIsolation: true,
+    nodeIntegration: false,
+    webviewTag: false
+  }
+}
+
+/** Route der App-Seite laden: beim Entwickeln vom Vite-Server, sonst die gebaute index.html. */
+export function loadRoute(win: BrowserWindow, hash: string): void {
+  const onLoadErr = (e: unknown): void =>
+    logLine('[window] Laden fehlgeschlagen:', e instanceof Error ? e.message : String(e))
+  if (devUrl) win.loadURL(devUrl + (hash ? `#${hash}` : '')).catch(onLoadErr)
+  else win.loadFile(indexFile, hash ? { hash } : undefined).catch(onLoadErr)
+}
 
 // Erstellt ein App-Fenster. `hash` = Start-Route (z.B. "/tool/jingle-player");
 // `size`/`bounds`: Größe und gemerkte Lage; `useContentSize`: die Maße meinen den Inhalt, nicht
@@ -39,27 +78,15 @@ export function createWindow(
     // das Fenster automatisch (Electron spiegelt page-title-updated).
     title: APP_NAME,
     icon: appIconPath(),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      // sichere Defaults
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      // erlaubt der In-App-Vorschau des Players, ohne Nutzergeste (auto-advance,
-      // entstummt) weiterzuspielen
-      autoplayPolicy: 'no-user-gesture-required'
-    }
+    // erlaubt der In-App-Vorschau des Players, ohne Nutzergeste (auto-advance,
+    // entstummt) weiterzuspielen
+    webPreferences: secureWebPreferences({ autoplayPolicy: 'no-user-gesture-required' })
   })
 
   if (!opts.deferShow) win.once('ready-to-show', () => win.show())
   // Pinch-/Strg-Rad-Seitenzoom des ganzen Fensters abschalten -> der PDF-Viewer
   // steuert den Zoom selbst (sonst zoomt/scrollt die ganze App ungewollt).
   win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
-  // Externe Links im Standardbrowser oeffnen, keine neuen Fenster zulassen
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http:') || url.startsWith('https:')) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
 
   // F12 / Strg+Shift+I oeffnet die DevTools (auch im gepackten App -> Diagnose)
   win.webContents.on('before-input-event', (_e, input) => {
@@ -69,16 +96,6 @@ export function createWindow(
     }
   })
 
-  const devUrl = process.env['ELECTRON_RENDERER_URL']
-  const hash = opts.hash ?? ''
-  const onLoadErr = (e: unknown): void =>
-    logLine('[window] Laden fehlgeschlagen:', e instanceof Error ? e.message : String(e))
-  if (isDev && devUrl) {
-    win.loadURL(devUrl + (hash ? `#${hash}` : '')).catch(onLoadErr)
-  } else {
-    win
-      .loadFile(join(__dirname, '../renderer/index.html'), hash ? { hash } : undefined)
-      .catch(onLoadErr)
-  }
+  loadRoute(win, opts.hash ?? '')
   return win
 }

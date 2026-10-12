@@ -63,7 +63,9 @@ jobs:
       # Electron-Binary für die E2E-Läufe (mit Prüfsumme; npm ci führt keine Skripte aus)
       - run: npm run electron:bin
       # ffmpeg wie im Installer (HAP-fähig); die Quelle liefert täglich neue Builds -> je Woche
-      # einmal laden, sonst aus dem Cache
+      # einmal laden, sonst aus dem Cache. Ändert sich nur das Skript, gilt der Build derselben
+      # Woche weiter (restore-keys): Der Download-Spiegel von evermeet (macOS) lässt je Adresse nur
+      # einen Download in längerer Zeit zu und weist ffprobe direkt nach ffmpeg mit HTTP 429 ab.
       - name: Woche für den ffmpeg-Cache
         id: week
         shell: bash
@@ -72,6 +74,7 @@ jobs:
         with:
           path: resources/ffmpeg
           key: ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('scripts/download-ffmpeg.mjs') }}
+          restore-keys: ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-
       - run: npm run ff:fetch
       # mit ffmpeg läuft auch der Labortest des Video-Generators (bild- und samplegenau)
       - run: npm test

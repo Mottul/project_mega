@@ -4,7 +4,7 @@
 // richtigen Monitor und deckt ihn pixelgenau ab.
 
 import { BrowserWindow, screen } from 'electron'
-import { join } from 'node:path'
+import { loadRoute, secureWebPreferences } from './appWindows'
 import { Channels } from '@shared/ipc-contracts'
 import type { DisplayInfo, PatternConfig } from '@shared/types'
 import { logLine } from './log'
@@ -63,12 +63,7 @@ export function openPattern(config: PatternConfig, displayId: number): void {
     backgroundColor: '#000000',
     skipTaskbar: true,
     title: 'Testbild',
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false
-    }
+    webPreferences: secureWebPreferences()
   })
   win = w
   logLine('[pattern] Ausgabefenster auf Display', display.id, JSON.stringify(b))
@@ -88,9 +83,7 @@ export function openPattern(config: PatternConfig, displayId: number): void {
     if (!w.isDestroyed()) w.webContents.send(Channels.patternRender, currentConfig)
   })
 
-  const devUrl = process.env['ELECTRON_RENDERER_URL']
-  if (devUrl) void w.loadURL(`${devUrl}#/output`)
-  else void w.loadFile(join(__dirname, '../renderer/index.html'), { hash: '/output' })
+  loadRoute(w, '/output')
   outputSink(true)
 }
 
