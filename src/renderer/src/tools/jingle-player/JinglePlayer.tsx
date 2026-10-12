@@ -13,29 +13,19 @@ import {
   Settings2,
   Square,
   Trash2,
-  Upload,
-  Wifi
+  Upload
 } from 'lucide-react'
-import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
-import {
-  BarDivider,
-  BarToggle,
-  PanelSection,
-  ToolBar,
-  ToolShell
-} from '@renderer/components/ToolShell'
-import { Field } from '@renderer/components/ui/field'
+import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { cn } from '@renderer/lib/utils'
 import { api } from '@renderer/lib/api'
-import { toast } from '@renderer/lib/toast'
 import { useDraft } from '@renderer/lib/useDraft'
-import type { JingleRemoteSnapshot, RemoteStatus } from '@shared/types'
+import type { JingleRemoteSnapshot } from '@shared/types'
 import { selectClass } from '../_calc/ui'
-import { RemoteAccess } from '@renderer/components/RemoteAccess'
 import { useJingleEngine } from './engine'
 import { Waveform } from './Waveform'
 import { HOTKEYS, PAD_COLORS, useJingles, type Pad } from './store'
@@ -53,8 +43,7 @@ export function JinglePlayer(): JSX.Element {
   const live = s.mode === 'live'
   const [selectedPadId, setSelectedPadId] = useState<string | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
-  const [remote, setRemote] = useState<RemoteStatus | null>(null)
-  const [remotePort, setRemotePort] = useState(8089)
+  const rc = useRemoteControl(api.jingles, 8089)
 
   const engine = useJingleEngine({
     pads: bank.pads,
@@ -64,22 +53,13 @@ export function JinglePlayer(): JSX.Element {
   const engineRef = useRef(engine)
   engineRef.current = engine
 
-  // Fernsteuerung: Status + Trigger vom Handy an die Engine geben.
+  // Fernsteuerung: Trigger vom Handy an die Engine geben.
   useEffect(() => {
-    // Status inkl. gemerktem Port (läuft sie nicht, steht dort der zuletzt benutzte)
-    void api.jingles.remoteStatus().then((s) => {
-      setRemote(s)
-      setRemotePort(s.port)
-    })
-    const offChanged = api.jingles.onRemoteChanged(setRemote)
     const offCmd = api.jingles.onRemoteCommand((cmd) => {
       if (cmd.type === 'stopAll') engineRef.current.stopAll()
       else if (cmd.type === 'trigger') engineRef.current.trigger(cmd.padId)
     })
-    return () => {
-      offChanged()
-      offCmd()
-    }
+    return offCmd
   }, [])
 
   // Schnappschuss der Bank/Wiedergabe an den Server (für die Handy-Seite).
@@ -110,20 +90,6 @@ export function JinglePlayer(): JSX.Element {
       })
     }
   }, [])
-
-  async function toggleRemote(): Promise<void> {
-    if (remote?.running) setRemote(await api.jingles.remoteStop())
-    else {
-      try {
-        setRemote(await api.jingles.remoteStart(remotePort))
-      } catch (e) {
-        toast.error(
-          `Fernsteuerung konnte nicht starten (Port ${remotePort} belegt?)`,
-          e instanceof Error ? e.message : undefined
-        )
-      }
-    }
-  }
 
   // Ausgabegeräte auflisten (Labels brauchen u.U. eine Audio-Berechtigung).
   useEffect(() => {
@@ -359,28 +325,10 @@ export function JinglePlayer(): JSX.Element {
         )}
       </PanelSection>
 
-      <PanelSection
-        id="remote"
-        title="Fernsteuerung"
-        icon={Wifi}
-        defaultOpen={false}
-        summary={`Port ${remote?.port ?? remotePort} · ${remote?.running ? 'an' : 'aus'}`}
-        right={remote?.running ? <Badge tone="success">an</Badge> : undefined}
-      >
-        <Field
-          label="Port"
-          hint="Handy/Tablet im selben WLAN steuert die Pads (ohne Passwort). Dieses Fenster muss offen bleiben. Ein/Aus mit „Handy“ in der Ausgabe-Leiste."
-        >
-          <Input
-            className="h-8 w-24"
-            type="number"
-            value={remotePort}
-            onChange={(e) => setRemotePort(Number(e.target.value) || 8089)}
-            disabled={remote?.running}
-          />
-        </Field>
-        {remote && <RemoteAccess status={remote} />}
-      </PanelSection>
+      <RemoteSection
+        rc={rc}
+        hint="Das Handy spielt die Pads und stoppt alles. Dieses Fenster muss dafür offen bleiben. Ein/Aus mit „Handy“ in der Ausgabe-Leiste."
+      />
 
       <PanelSection
         id="set"
@@ -436,13 +384,7 @@ export function JinglePlayer(): JSX.Element {
         />
       )}
       <BarDivider />
-      <BarToggle
-        on={Boolean(remote?.running)}
-        title="Fernsteuerung fürs Handy/Tablet im selben WLAN"
-        onClick={() => void toggleRemote()}
-      >
-        Handy
-      </BarToggle>
+      <RemoteToggle rc={rc} />
       <Button variant="destructive" size="sm" onClick={() => engine.stopAll()}>
         <Square className="size-4" /> Stopp (Esc)
       </Button>

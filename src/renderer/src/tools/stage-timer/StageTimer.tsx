@@ -18,7 +18,6 @@ import {
   Plus,
   Radio,
   RotateCcw,
-  Smartphone,
   Square,
   Timer as TimerIcon,
   Trash2,
@@ -26,7 +25,6 @@ import {
   X
 } from 'lucide-react'
 import { QrCode } from '@renderer/components/QrCode'
-import { RemoteAccess } from '@renderer/components/RemoteAccess'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
@@ -39,13 +37,13 @@ import {
   ToolBar,
   ToolShell
 } from '@renderer/components/ToolShell'
+import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { cn } from '@renderer/lib/utils'
 import { api } from '@renderer/lib/api'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
-import { toast } from '@renderer/lib/toast'
 import { useDraft } from '@renderer/lib/useDraft'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import {
@@ -154,70 +152,6 @@ function SegText({
         onCommit(e.target.value)
       }}
     />
-  )
-}
-
-/** Fernsteuer-Server des Timers – Handy-Steuerung UND Bühnen-Anzeige im Browser laufen darüber.
- *  Ein Zustand für Ausgabe-Leiste und Panels. Der Timer läuft im main-Prozess, die Steuerseite
- *  funktioniert daher auch, wenn dieses Werkzeug danach geschlossen wird. */
-function useTimerRemote(): {
-  remote: RemoteStatus | null
-  port: number
-  setPort: (p: number) => void
-  toggle: () => Promise<void>
-} {
-  const [remote, setRemote] = useState<RemoteStatus | null>(null)
-  const [port, setPort] = useState(8092)
-
-  useEffect(() => {
-    void api.timer.remoteStatus().then((s) => {
-      setRemote(s)
-      setPort(s.port)
-    })
-    return api.timer.onRemoteChanged(setRemote)
-  }, [])
-
-  async function toggle(): Promise<void> {
-    if (remote?.running) setRemote(await api.timer.remoteStop())
-    else {
-      try {
-        setRemote(await api.timer.remoteStart(port))
-      } catch (e) {
-        toast.error(
-          `Fernsteuerung konnte nicht starten (Port ${port} belegt?)`,
-          e instanceof Error ? e.message : undefined
-        )
-      }
-    }
-  }
-  return { remote, port, setPort, toggle }
-}
-
-function RemotePanel({
-  remote,
-  port,
-  setPort
-}: {
-  remote: RemoteStatus | null
-  port: number
-  setPort: (p: number) => void
-}): JSX.Element {
-  return (
-    <>
-      <Field
-        label="Port"
-        hint="Handy/Tablet im selben WLAN startet/pausiert den Timer, wechselt Abschnitte und schickt Nachrichten an die Bühne (ohne Passwort). Ein/Aus mit „Handy & Browser“ in der Ausgabe-Leiste."
-      >
-        <Input
-          className="h-8 w-24"
-          type="number"
-          value={port}
-          onChange={(e) => setPort(Number(e.target.value) || 8092)}
-          disabled={remote?.running}
-        />
-      </Field>
-      {remote && <RemoteAccess status={remote} />}
-    </>
   )
 }
 
@@ -402,7 +336,9 @@ export function StageTimer(): JSX.Element {
   const [displayId, setDisplayId] = useState<number | null>(null)
   const [msgText, setMsgText] = useState('')
   const [msgFlash, setMsgFlash] = useState(false)
-  const rc = useTimerRemote()
+  // Der Timer läuft im main-Prozess: Die Steuerseite funktioniert auch, wenn dieses Werkzeug
+  // danach geschlossen wird. Handy-Steuerung UND Bühnen-Anzeige im Browser laufen über diesen Server.
+  const rc = useRemoteControl(api.timer, 8092)
   const ndiCfg = useSettings((s) => s.timer.ndi) ?? DEFAULT_TIMER_SETTINGS.ndi
   const ndi = useTimerNdi(ndiCfg)
 
@@ -532,13 +468,11 @@ export function StageTimer(): JSX.Element {
           >
             NDI
           </BarToggle>
-          <BarToggle
-            on={Boolean(rc.remote?.running)}
+          <RemoteToggle
+            rc={rc}
+            label="Handy & Browser"
             title="Fernsteuerung fürs Handy und Bühnen-Anzeige im Browser (ein gemeinsamer Server)"
-            onClick={() => void rc.toggle()}
-          >
-            Handy &amp; Browser
-          </BarToggle>
+          />
         </ToolBar>
       }
       aside={
@@ -663,16 +597,10 @@ export function StageTimer(): JSX.Element {
             <NdiPanel status={ndi.status} />
           </PanelSection>
 
-          <PanelSection
-            id="remote"
-            title="Fernsteuerung"
-            icon={Smartphone}
-            defaultOpen={false}
-            summary={`Port ${rc.remote?.port ?? rc.port} · ${rc.remote?.running ? 'an' : 'aus'}`}
-            right={rc.remote?.running ? <Badge tone="success">an</Badge> : undefined}
-          >
-            <RemotePanel remote={rc.remote} port={rc.port} setPort={rc.setPort} />
-          </PanelSection>
+          <RemoteSection
+            rc={rc}
+            hint="Das Handy startet und pausiert den Timer, wechselt Abschnitte und schickt Nachrichten an die Bühne. Ein/Aus mit „Handy & Browser“ in der Ausgabe-Leiste."
+          />
         </>
       }
       main={

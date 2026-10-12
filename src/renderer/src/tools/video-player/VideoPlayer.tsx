@@ -28,7 +28,6 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
-  Smartphone,
   Trash2,
   Volume1,
   Volume2,
@@ -48,6 +47,7 @@ import {
   ToolBar,
   ToolShell
 } from '@renderer/components/ToolShell'
+import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
@@ -74,7 +74,6 @@ import {
   type PatternId,
   type PlayerEncoderStatus,
   type PlayerState,
-  type RemoteStatus,
   type SavedPlaylist,
   type SettingsPatch,
   type TransitionMode,
@@ -82,7 +81,6 @@ import {
 } from '@shared/types'
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
 import { PlaybackEngine } from './PlaybackEngine'
-import { RemoteAccess } from '@renderer/components/RemoteAccess'
 import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 
 const selectClass =
@@ -171,8 +169,7 @@ export function VideoPlayer(): JSX.Element {
     setShowFps((v) => !v)
   }
 
-  const [remote, setRemote] = useState<RemoteStatus | null>(null)
-  const [remotePort, setRemotePort] = useState(8088)
+  const rc = useRemoteControl(api.player, 8088)
   const [saved, setSaved] = useState<SavedPlaylist[]>([])
   const [naming, setNaming] = useState(false)
   const [nameInput, setNameInput] = useState('')
@@ -204,13 +201,11 @@ export function VideoPlayer(): JSX.Element {
       setBlurDarken(s.player.blurDarken ?? 0)
       setLoudnorm(s.player.loudnormEnabled ?? false)
       setLoudnormI(s.player.loudnormI ?? -16)
-      setRemotePort(s.player.remotePort)
       setSaved(s.player.savedPlaylists ?? [])
       if (s.player.outputDisplayId != null) setDisplayId(s.player.outputDisplayId)
     }
     void api.getSettings().then(applySettings)
     const offSettings = api.onSettingsChanged(applySettings)
-    void api.player.remoteStatus().then(setRemote)
 
     const offJob = api.player.onConvertUpdate((job) => {
       setJobs((prev) => ({ ...prev, [job.id]: job }))
@@ -219,14 +214,12 @@ export function VideoPlayer(): JSX.Element {
     const offLib = api.player.onLibraryChanged(() => loadLibrary())
     const offState = api.player.onState(setPstate)
     const offTick = api.player.onTick((t) => setTick(t))
-    const offRemote = api.player.onRemoteChanged(setRemote)
     return () => {
       offSettings()
       offJob()
       offLib()
       offState()
       offTick()
-      offRemote()
     }
   }, [])
 
@@ -440,20 +433,6 @@ export function VideoPlayer(): JSX.Element {
     await api.player.openOutput(displayId)
   }
 
-  async function toggleRemote(): Promise<void> {
-    if (remote?.running) setRemote(await api.player.remoteStop())
-    else
-      try {
-        setRemote(await api.player.remoteStart(remotePort))
-      } catch (e) {
-        void api.notify({
-          message: `Fernsteuerung konnte nicht starten (Port ${remotePort} belegt?).`,
-          detail: e instanceof Error ? e.message : undefined,
-          kind: 'error'
-        })
-      }
-  }
-
   async function persistSaved(next: SavedPlaylist[]): Promise<void> {
     setSaved(next)
     await api.setSettings({ player: { savedPlaylists: next } })
@@ -603,13 +582,7 @@ export function VideoPlayer(): JSX.Element {
           >
             NDI
           </BarToggle>
-          <BarToggle
-            on={Boolean(remote?.running)}
-            title="Fernsteuerung fürs Handy/Tablet im selben WLAN"
-            onClick={() => void toggleRemote()}
-          >
-            Handy
-          </BarToggle>
+          <RemoteToggle rc={rc} />
         </ToolBar>
       }
       aside={
@@ -908,22 +881,10 @@ export function VideoPlayer(): JSX.Element {
             <PlayerNdiPanel wallW={wallW} wallH={wallH} status={ndi.status} />
           </PanelSection>
 
-          <PanelSection
-            id="remote"
-            title="Fernsteuerung"
-            icon={Smartphone}
-            defaultOpen={false}
-            summary={`Port ${remote?.port ?? remotePort} · ${remote?.running ? 'an' : 'aus'}`}
-            right={remote?.running ? <Badge tone="success">an</Badge> : undefined}
-          >
-            <Field
-              label="Port"
-              hint="Steuerseite im lokalen Netz – Tablet/Handy muss im selben WLAN sein. Ohne Passwort. Ein- und ausschalten mit „Handy“ in der Ausgabe-Leiste."
-            >
-              <NumberField value={remotePort} min={1} max={65535} onCommit={setRemotePort} />
-            </Field>
-            {remote && <RemoteAccess status={remote} />}
-          </PanelSection>
+          <RemoteSection
+            rc={rc}
+            hint="Das Handy steuert die Wiedergabe und lädt Medien hoch. Ein/Aus mit „Handy“ in der Ausgabe-Leiste."
+          />
         </>
       }
       main={

@@ -383,6 +383,55 @@ try {
       }
     ],
     [
+      'Fernsteuerung überall gleich: „Handy“ in der Leiste, Port und QR-Code in der Schublade',
+      async () => {
+        const toggles = {
+          'video-player': 'Handy',
+          'jingle-player': 'Handy',
+          'osc-control': 'Handy',
+          'stage-timer': 'Handy & Browser'
+        }
+        for (const [id, name] of Object.entries(toggles)) {
+          await tool(id)
+          assert.equal(await bar().getByRole('button', { name, exact: true }).count(), 1, id)
+          await drawer().waitFor({ timeout: 5_000 })
+          assert.equal(
+            await drawer()
+              .getByRole('button', { name: /^Fernsteuerung/ })
+              .count(),
+            1,
+            id
+          )
+        }
+        // Jingle-Player wirklich ein- und ausschalten – auf eigenem Port, damit eine laufende
+        // Mottulbox nicht stört
+        await tool('jingle-player')
+        const section = drawer().getByRole('button', { name: /^Fernsteuerung/ })
+        if ((await section.getAttribute('aria-expanded')) !== 'true') await section.click()
+        const port = drawer().getByLabel('Port', { exact: true })
+        await port.fill('18089')
+        await port.press('Enter')
+        const handy = bar().getByRole('button', { name: 'Handy', exact: true })
+        await handy.click()
+        assert.ok(
+          await waitFor(async () => (await handy.getAttribute('aria-pressed')) === 'true', 10_000),
+          'Fernsteuerung startet nicht'
+        )
+        const st = await page.evaluate(() => window.api.jingles.remoteStatus())
+        assert.equal(st.port, 18089)
+        // Zusammenfassung und Zugang (QR-Code, Adressen) folgen dem Status. Gezeigt wird die
+        // Adresse in der Fernsteuer-App, sonst die direkte.
+        await drawer().getByText('Port 18089 · an').waitFor({ timeout: 5_000 })
+        const shown = st.app?.urls?.[0] ?? st.urls[0]
+        await drawer().getByText(shown, { exact: true }).first().waitFor({ timeout: 5_000 })
+        await handy.click()
+        assert.ok(
+          await waitFor(async () => (await handy.getAttribute('aria-pressed')) === 'false', 10_000),
+          'Fernsteuerung stoppt nicht'
+        )
+      }
+    ],
+    [
       'Kleines Werkzeug: Kachel öffnet ein eigenes, kleines Fenster; das Hauptfenster bleibt',
       async () => {
         await openRoute(page, '/')

@@ -108,8 +108,6 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 - **Auftrags-Warteschlangen:** Konverter und Player-Import teilen sich die Spuren-Warteschlange,
   halten aber je eigene Auftragslisten; der YouTube-Downloader hat eine ganz eigene. Eine
   gemeinsame `JobQueue<T>`-Basis.
-- **Fernsteuer-Panel im Renderer** (Port, Start/Stopp, QR) als gemeinsame Komponente – heute vier
-  Kopien.
 - **UI-Bausteine konsequent nutzen:** `Select` als echte Komponente mit Größen-Varianten (heute
   eine Klassen-Konstante, dazu abgewandelte Kopien in Video-Player, OSC-Steuerung, Packliste und
   Startbildschirm).
