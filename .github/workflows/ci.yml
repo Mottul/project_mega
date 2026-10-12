@@ -35,6 +35,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+      # Zuerst und ohne Abhängigkeiten: Dateinamen, die sich unter Windows/macOS nicht sauber
+      # auschecken lassen (nur in der Schreibweise verschieden, reservierte Namen)
+      - run: npm run check:files
       # Ohne Install-Skripte (.npmrc); Build und Tests brauchen die Electron-Binary nicht.
       - run: npm ci
       - run: npm run format:check

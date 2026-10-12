@@ -10,6 +10,7 @@ UI-Sprache und Code-Kommentare sind Deutsch.
 npm run dev             # Entwicklung (Hot Reload)
 npm run lint            # ESLint (Flat Config, --max-warnings 0)
 npm run format:check    # Prettier-Prüfung (format = schreiben)
+npm run check:files     # Dateinamen, die unter Windows/macOS kollidieren (auch in der CI)
 npm run typecheck       # tsc: node- + web-Projekt
 npm run typecheck:test  # tsc: Testdateien
 npm test                # Vitest (einmalig; test:watch für Watch)

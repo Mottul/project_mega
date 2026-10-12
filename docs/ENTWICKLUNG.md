@@ -65,6 +65,7 @@ npm run dev         # App mit Hot Reload
 | `npm test` · `npm run test:watch`   | Vitest einmalig bzw. im Watch-Modus                                      |
 | `npm run lint` · `lint:fix`         | ESLint (warnungsfrei: `--max-warnings 0`)                                |
 | `npm run format` · `format:check`   | Prettier schreiben bzw. prüfen                                           |
+| `npm run check:files`               | Dateinamen, die unter Windows/macOS kollidieren (nur Groß-/Kleinschreibung verschieden, reservierte Namen) |
 | `npm run typecheck`                 | TypeScript: main/preload/shared **und** renderer                         |
 | `npm run typecheck:test`            | TypeScript: Testdateien                                                  |
 | `npm run build`                     | Typecheck + Produktions-Bundles nach `out/`                              |

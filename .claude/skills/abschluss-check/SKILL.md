@@ -6,8 +6,10 @@ description: Prüfung vor dem Abschluss einer Änderung in Mottulbox – Prettie
 # Abschluss-Check
 
 1. **Geänderte Dateien** ansehen: `git status --short`. Markdown ist von Prettier ausgenommen.
-2. **Format:** `npm run format:check`. Prettier steht auf `endOfLine: auto`, deshalb besteht der
-   Lauf auch unter Windows mit CRLF-Dateien. Bei Treffern nur die betroffenen Dateien
+2. **Format und Dateinamen:** `npm run format:check` und `npm run check:files` (neue Datei, die sich
+   von einer vorhandenen nur in der Groß-/Kleinschreibung unterscheidet? Unter Windows/macOS liegt
+   dann nur eine auf der Platte, Git meldet die andere dauernd als geändert). Prettier steht auf
+   `endOfLine: auto`, deshalb besteht der Lauf auch unter Windows mit CRLF-Dateien. Bei Treffern nur die betroffenen Dateien
    formatieren (`npx prettier --write <Dateien>`), **nie** `npm run format` auf alles. Die
    Git-Warnung „LF will be replaced by CRLF“ ist harmlos.
 3. **Lint** (warnungsfrei): `npm run lint`.
