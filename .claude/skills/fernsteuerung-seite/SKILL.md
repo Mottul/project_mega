@@ -11,6 +11,13 @@ Start/Stopp/Merken/Autostart: `registerRemoteControl()` in `ipc/remoteControls.t
 Fernsteuer-App (Port 8090, `remoteAppServer.ts`) bindet laufende Fernsteuerungen unter `/<id>/`
 ein; zusätzliche Links auf ihrer Startseite über `links` in der App-Definition.
 
+**Im Werkzeug (Renderer)** immer die gemeinsamen Bausteine aus `components/RemoteControl.tsx`,
+nie eigene Kopien: `useRemoteControl(api.<werkzeug>, standardPort, nachDemStart?)` (Status,
+gemerkter Port, Ein/Aus mit Meldung bei belegtem Port), `RemoteToggle` als Schalter „Handy“ in
+der Ausgabe-Leiste und `RemoteSection` als Bereich „Fernsteuerung“ der Schublade (Port, QR-Code,
+Adressen). Die Preload-API der Fernsteuerung braucht dafür `remoteStatus`, `remoteStart`,
+`remoteStop` und `onRemoteChanged`.
+
 ## Regeln
 
 1. **API-Pfade immer relativ** (`api/state`, nie `/api/state`), sonst bricht der Mount unter

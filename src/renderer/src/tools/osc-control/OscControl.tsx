@@ -47,29 +47,20 @@ import type {
   OscMessage,
   OscRemoteSnapshot,
   OscSettings,
-  OscStatus,
-  RemoteStatus
+  OscStatus
 } from '@shared/types'
 import { APP_SLUG } from '@shared/brand'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
-import {
-  BarDivider,
-  BarToggle,
-  PanelSection,
-  ToolBar,
-  ToolShell
-} from '@renderer/components/ToolShell'
-import { Badge } from '@renderer/components/ui/badge'
-import { Field as SettingField } from '@renderer/components/ui/field'
+import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
 import { Alert } from '@renderer/components/ui/alert'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { useDraft } from '@renderer/lib/useDraft'
 import { useHandoff } from '@renderer/lib/handoff'
-import { RemoteAccess } from '@renderer/components/RemoteAccess'
 import {
   makeWidget,
   MAX_CH,
@@ -239,8 +230,8 @@ export function OscControl(): JSX.Element {
   const [picker, setPicker] = useState<{ gx?: number; gy?: number; x: number; y: number } | null>(
     null
   )
-  const [remote, setRemote] = useState<RemoteStatus | null>(null)
-  const [remotePort, setRemotePort] = useState(8091)
+  // Fernsteuerung; nach dem Start bekommt der Server sofort den aktuellen Stand
+  const rc = useRemoteControl(api.osc, 8091, () => publishSnapshot())
   const [video, setVideo] = useState<VideoInfo>({
     playing: false,
     remainingSec: null,
@@ -439,14 +430,9 @@ export function OscControl(): JSX.Element {
     }
   }, [pushLog])
 
-  // Fernsteuerung: Status beobachten + Steuerbefehle vom Handy/Tablet anwenden
-  // (Live-Wert aktualisieren UND OSC senden – wie eine lokale Bedienung).
+  // Steuerbefehle vom Handy/Tablet anwenden (Live-Wert aktualisieren UND OSC senden – wie eine
+  // lokale Bedienung).
   useEffect(() => {
-    void api.osc.remoteStatus().then((s) => {
-      setRemote(s)
-      setRemotePort(s.port)
-    })
-    const offChanged = api.osc.onRemoteChanged(setRemote)
     const offCmd = api.osc.onRemoteCommand((cmd) => {
       const st = useOscSurface.getState()
       // Set-Wechsel vom Handy: kein Widget-Bezug -> vor der Widget-Suche behandeln.
@@ -532,10 +518,7 @@ export function OscControl(): JSX.Element {
         send(fmsg(w.address, cmd.delta * (Math.abs(w.onValue) || 1)))
       }
     })
-    return () => {
-      offChanged()
-      offCmd()
-    }
+    return offCmd
   }, [send, sendMany, runNova])
 
   // Schnappschuss der Oberfläche an den Fernsteuer-Server – gedrosselt, da sich
@@ -686,19 +669,6 @@ export function OscControl(): JSX.Element {
   const placePick = useCallback((gx: number, gy: number, x: number, y: number): void => {
     setPicker((p) => (p ? null : { gx, gy, x, y }))
   }, [])
-
-  async function toggleRemote(): Promise<void> {
-    if (remote?.running) {
-      setRemote(await api.osc.remoteStop())
-    } else {
-      try {
-        setRemote(await api.osc.remoteStart(remotePort))
-        publishSnapshot() // dem Server sofort den aktuellen Stand geben
-      } catch {
-        // Port belegt o.ä. – Status bleibt unverändert
-      }
-    }
-  }
 
   function onAdd(type: OscWidgetType, pos?: { gx: number; gy: number }): void {
     const id = useOscSurface.getState().addWidget(type, pos)
@@ -1084,28 +1054,11 @@ export function OscControl(): JSX.Element {
         />
       </PanelSection>
 
-      <PanelSection
+      <RemoteSection
+        rc={rc}
         id="osc-remote"
-        title="Fernsteuerung"
-        icon={Wifi}
-        defaultOpen={false}
-        summary={`Port ${remote?.port ?? remotePort} · ${remote?.running ? 'an' : 'aus'}`}
-        right={remote?.running ? <Badge tone="success">an</Badge> : undefined}
-      >
-        <SettingField
-          label="Port"
-          hint="Handy/Tablet im selben WLAN bedient diese Oberfläche (ohne Passwort). Dieses Fenster muss offen bleiben. Ein/Aus mit „Handy“ in der Ausgabe-Leiste."
-        >
-          <Input
-            type="number"
-            value={remotePort}
-            onChange={(e) => setRemotePort(Number(e.target.value) || 8091)}
-            disabled={remote?.running}
-            className="h-8 w-24"
-          />
-        </SettingField>
-        {remote && <RemoteAccess status={remote} />}
-      </PanelSection>
+        hint="Das Handy bedient diese Oberfläche. Dieses Fenster muss dafür offen bleiben. Ein/Aus mit „Handy“ in der Ausgabe-Leiste."
+      />
 
       <PanelSection
         id="novastar"
@@ -1158,13 +1111,7 @@ export function OscControl(): JSX.Element {
         <span className="max-w-[20rem] truncate text-xs text-danger">{status.lastError}</span>
       )}
       <BarDivider />
-      <BarToggle
-        on={Boolean(remote?.running)}
-        title="Fernsteuerung fürs Handy/Tablet im selben WLAN"
-        onClick={() => void toggleRemote()}
-      >
-        Handy
-      </BarToggle>
+      <RemoteToggle rc={rc} />
       <Button
         variant="ghost"
         size="sm"
