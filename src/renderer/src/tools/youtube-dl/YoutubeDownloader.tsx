@@ -1,37 +1,37 @@
-// YouTube-Downloader (yt-dlp). Die Binary liegt in userData/bin und wird beim
-// App-Start automatisch geprüft und bei Bedarf ersetzt (geprüfte Prüfsumme, im
-// main-Prozess); der Knopf stößt dieselbe Prüfung von Hand an. Jede Adresse wird
-// vor dem Laden analysiert: ein Video geht direkt in die Queue, eine Playlist zeigt
-// ihre Einträge zur Auswahl (je Eintrag ein Download). Muxing über das gebündelte ffmpeg.
+// YouTube-Downloader (yt-dlp), im Werkzeug-Muster:
+//   Leiste „Download“   Adresse + Laden – bernstein, solange Downloads laufen oder warten
+//   Schublade           Format (Video/Audio, Auflösung), Zielordner
+//   Arbeitsfläche       Hinweise, Playlist-Auswahl, Downloads
+// yt-dlp selbst (Version, Prüfung, Aktualisierung) steht im App-Menü wie ffmpeg
+// (components/app/YtdlpSettings); hier nur ein Hinweis, wenn es fehlt. Jede Adresse wird vor
+// dem Laden analysiert: ein Video geht direkt in die Queue, eine Playlist zeigt ihre Einträge
+// zur Auswahl (je Eintrag ein Download). Muxing über das gebündelte ffmpeg.
 
 import { useEffect, useRef, useState } from 'react'
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Download,
-  FolderOpen,
-  Loader2,
-  RefreshCw,
-  X
-} from 'lucide-react'
+import { AlertTriangle, Download, FileVideo, FolderOpen, Loader2, X } from 'lucide-react'
+import { PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { useYtdlp, YtdlpUpdateButton } from '@renderer/components/app/YtdlpSettings'
+import { Alert } from '@renderer/components/ui/alert'
+import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { Field } from '@renderer/components/ui/field'
+import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
-import { Alert } from '@renderer/components/ui/alert'
+import { Progress } from '@renderer/components/ui/progress'
+import { selectClass } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
+import { toolPageClass } from '@renderer/lib/toolPage'
 import { errorText } from '@renderer/lib/utils'
 import {
   DEFAULT_YOUTUBE_SETTINGS,
   type YoutubeSettings,
   type YtEnqueueRequest,
   type YtFormatId,
-  type YtJob,
-  type YtToolStatus
+  type YtJob
 } from '@shared/types'
-import { selectClass } from '../_calc/ui'
-import { toolPageClass } from '@renderer/lib/toolPage'
 import { PlaylistPicker } from './PlaylistPicker'
 import { initialSelection, playlistRequests, urlProblem, type YtPlaylist } from './playlist'
 
@@ -50,15 +50,28 @@ function legacySettings(old: Record<string, unknown>): Partial<YoutubeSettings> 
   return out
 }
 
+const FORMAT_LABEL: Record<YtFormatId, string> = {
+  video: 'Video (MP4)',
+  'audio-mp3': 'Nur Audio (MP3)',
+  'audio-m4a': 'Nur Audio (M4A)'
+}
+const HEIGHTS: { value: string; label: string }[] = [
+  { value: 'best', label: 'Beste' },
+  { value: '2160', label: '2160p (4K)' },
+  { value: '1080', label: '1080p' },
+  { value: '720', label: '720p' },
+  { value: '480', label: '480p' }
+]
+
+/** Nur der letzte Ordnername – die Zusammenfassung ist schmal */
+const folderName = (p: string): string => p.split(/[\\/]/).filter(Boolean).pop() ?? p
+
 export function YoutubeDownloader(): JSX.Element {
-  const [status, setStatus] = useState<YtToolStatus | null>(null)
-  const [updating, setUpdating] = useState(false)
-  const [updateError, setUpdateError] = useState<string | null>(null)
+  const yt = useYtdlp()
   const [url, setUrl] = useState('')
   // Vorgaben + Zielordner liegen in settings.json (bleiben über Fenster hinweg aktuell)
   const cfg = useSettings((s) => s.youtube) ?? DEFAULT_YOUTUBE_SETTINGS
   const setCfg = (patch: Partial<YoutubeSettings>): void => updateSettings({ youtube: patch })
-  const autoUpdate = useSettings((s) => s.ytdlpAutoUpdate) ?? true
   const [jobs, setJobs] = useState<YtJob[]>([])
   const jobMap = useRef<Map<string, YtJob>>(new Map())
   // Adress-Analyse: läuft / Fehler / erkannte Playlist samt Auswahl
@@ -70,7 +83,6 @@ export function YoutubeDownloader(): JSX.Element {
   const probeSeq = useRef(0)
 
   useEffect(() => {
-    void api.youtube.status().then(setStatus)
     void api.youtube.list().then((list) => {
       jobMap.current = new Map(list.map((j) => [j.id, j]))
       setJobs([...jobMap.current.values()])
@@ -80,29 +92,12 @@ export function YoutubeDownloader(): JSX.Element {
       setJobs([...jobMap.current.values()].sort((a, b) => b.createdAt - a.createdAt))
     })
     migrateLocalStorage('youtube-dl-settings', (old) => ({ youtube: legacySettings(old) }))
-    // Die Startprüfung läuft im main-Prozess und kann jederzeit fertig werden.
-    const offStatus = api.youtube.onStatusUpdate(setStatus)
-    return () => {
-      offJobs()
-      offStatus()
-    }
+    return offJobs
   }, [])
 
   async function pickDir(): Promise<void> {
     const paths = await api.selectPaths({ title: 'Zielordner wählen', directories: true })
     if (paths[0]) setCfg({ outputDir: paths[0] })
-  }
-
-  async function updateTool(): Promise<void> {
-    setUpdating(true)
-    setUpdateError(null)
-    try {
-      setStatus(await api.youtube.updateTool())
-    } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setUpdating(false)
-    }
   }
 
   const base = (): Pick<YtEnqueueRequest, 'format' | 'maxHeight' | 'outputDir'> => ({
@@ -174,78 +169,34 @@ export function YoutubeDownloader(): JSX.Element {
     setPlaylist(null)
   }
 
-  const busy = updating || !!status?.checking
-  const problem = updateError ?? status?.lastError ?? null
+  const status = yt.status
   const ready = status?.available && !!cfg.outputDir
-  const pending = jobs.filter((j) => j.status === 'running' || j.status === 'queued')
+  const running = jobs.filter((j) => j.status === 'running')
+  const queued = jobs.filter((j) => j.status === 'queued')
+  const pending = [...running, ...queued]
   const active = pending.length > 0
+  const height = HEIGHTS.find((h) => h.value === String(cfg.maxHeight ?? 'best'))?.label
 
   return (
-    <div className={toolPageClass('full')}>
-      {/* yt-dlp-Status */}
-      <Card className="flex flex-wrap items-center gap-3 p-4">
-        {status == null || busy ? (
-          <span className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            {status?.available ? 'Prüfe auf neue Version…' : 'Lade yt-dlp…'}
-          </span>
-        ) : status.available ? (
-          <span className="flex items-center gap-2 text-sm">
-            {status.upToDate === false ? (
-              <AlertTriangle className="size-4 text-warning" />
-            ) : (
-              <CheckCircle2 className="size-4 text-success" />
-            )}
-            yt-dlp <span className="font-mono text-xs text-muted-foreground">{status.version}</span>
-            <span className="text-xs text-muted-foreground">
-              ({status.location === 'managed' ? 'verwaltet' : 'System-PATH'})
-            </span>
-            {status.upToDate === true && <span className="text-xs text-success">aktuell</span>}
-            {status.upToDate === false && (
-              <span className="text-xs text-warning">
-                neuer verfügbar: {status.latest}
-                {status.location === 'path' && ' (vom System verwaltet)'}
+    <ToolShell
+      id="youtube-dl"
+      bar={
+        <ToolBar
+          label="Download"
+          kind="job"
+          active={active}
+          status={
+            active ? (
+              <span>
+                {running.length} läuft{running.length === 1 ? '' : 'en'}
+                {queued.length > 0 && ` · ${queued.length} wartet`}
               </span>
-            )}
-          </span>
-        ) : (
-          <span className="flex items-center gap-2 text-sm">
-            <AlertTriangle className="size-4 text-warning" /> yt-dlp nicht gefunden
-          </span>
-        )}
-        <div className="flex-1" />
-        <Button
-          variant={status?.available ? 'outline' : 'default'}
-          size="sm"
-          disabled={busy}
-          onClick={() => void updateTool()}
+            ) : null
+          }
         >
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-          {status?.available ? 'Prüfen' : 'yt-dlp herunterladen'}
-        </Button>
-      </Card>
-
-      <p className="px-1 text-xs text-muted-foreground">
-        Automatisch beim Start prüfen: {autoUpdate ? 'an' : 'aus'} (im Menü „Mottulbox“).
-      </p>
-
-      {problem && (
-        <Alert tone="danger">
-          Aktualisierung fehlgeschlagen: {problem} – Internetverbindung prüfen.
-          {status?.available && ' Der vorhandene Stand bleibt nutzbar.'}
-        </Alert>
-      )}
-      {status && !status.ffmpeg && (
-        <Alert tone="warning">
-          ffmpeg nicht gefunden – Zusammenführen von Bild/Ton kann fehlschlagen.
-        </Alert>
-      )}
-
-      {/* Eingabe */}
-      <Card className="space-y-3 p-4">
-        <div className="flex gap-2">
           <Input
             value={url}
+            aria-label="Adresse eines Videos oder einer Playlist"
             placeholder="Adresse eines Videos oder einer Playlist einfügen…"
             onChange={(e) => {
               setUrl(e.target.value)
@@ -254,137 +205,197 @@ export function YoutubeDownloader(): JSX.Element {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && ready && !probing) void submit()
             }}
+            className="h-8 w-[30rem] min-w-0 max-w-full flex-1"
           />
           {probing ? (
-            <Button variant="outline" onClick={cancelProbe} title="Analyse abbrechen">
+            <Button size="sm" variant="outline" onClick={cancelProbe} title="Analyse abbrechen">
               <Loader2 className="size-4 animate-spin" /> Prüfe…
             </Button>
           ) : (
-            <Button disabled={!ready || !url.trim()} onClick={() => void submit()}>
+            <Button
+              size="sm"
+              disabled={!ready || !url.trim()}
+              title={!cfg.outputDir ? 'Zuerst einen Zielordner wählen' : undefined}
+              onClick={() => void submit()}
+            >
               <Download className="size-4" /> Laden
             </Button>
           )}
-        </div>
-        {probeError && <Alert tone="danger">{probeError}</Alert>}
-        {!cfg.outputDir && status?.available && (
-          <p className="text-xs text-muted-foreground">Zuerst einen Zielordner wählen.</p>
-        )}
-
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="block">
-            <span className="mb-1 block text-xs text-muted-foreground">Format</span>
-            <select
-              className={`${selectClass} w-auto`}
-              value={cfg.format}
-              onChange={(e) => setCfg({ format: e.target.value as YtFormatId })}
-            >
-              <option value="video">Video (MP4)</option>
-              <option value="audio-mp3">Nur Audio (MP3)</option>
-              <option value="audio-m4a">Nur Audio (M4A)</option>
-            </select>
-          </label>
-          {cfg.format === 'video' && (
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">Max. Auflösung</span>
+          <InfoTip
+            label="Erklärung zum Laden"
+            text="Ein Video wird sofort geladen. Bei einer Playlist erscheinen ihre Einträge zur Auswahl – je Eintrag ein Download. Format und Zielordner stehen in den Einstellungen."
+          />
+        </ToolBar>
+      }
+      aside={
+        <>
+          <PanelSection
+            id="format"
+            title="Format"
+            icon={FileVideo}
+            summary={
+              cfg.format === 'video'
+                ? `${FORMAT_LABEL.video} · ${height}`
+                : FORMAT_LABEL[cfg.format]
+            }
+          >
+            <Field label="Format">
               <select
-                className={`${selectClass} w-auto`}
-                value={cfg.maxHeight ?? 'best'}
-                onChange={(e) =>
-                  setCfg({ maxHeight: e.target.value === 'best' ? null : Number(e.target.value) })
-                }
+                className={`${selectClass} w-full`}
+                value={cfg.format}
+                onChange={(e) => setCfg({ format: e.target.value as YtFormatId })}
               >
-                <option value="best">Beste</option>
-                <option value="2160">2160p (4K)</option>
-                <option value="1080">1080p</option>
-                <option value="720">720p</option>
-                <option value="480">480p</option>
+                {(Object.keys(FORMAT_LABEL) as YtFormatId[]).map((f) => (
+                  <option key={f} value={f}>
+                    {FORMAT_LABEL[f]}
+                  </option>
+                ))}
               </select>
-            </label>
-          )}
-          <label className="block min-w-[200px] flex-1">
-            <span className="mb-1 block text-xs text-muted-foreground">Zielordner</span>
-            <div className="flex gap-2">
-              <Input
-                readOnly
-                value={cfg.outputDir}
-                placeholder="Ordner wählen…"
-                className="cursor-default"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => void pickDir()}
-                title="Ordner wählen"
+            </Field>
+            {cfg.format === 'video' && (
+              <Field
+                label="Max. Auflösung"
+                hint="Höchstens diese Höhe; ist das Video kleiner, kommt es in seiner Größe."
               >
-                <FolderOpen className="size-4" />
-              </Button>
-            </div>
-          </label>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Playlists werden erkannt – dann lassen sich die gewünschten Einträge auswählen. Nur
-          Inhalte herunterladen, für die du die Rechte/Erlaubnis hast (YouTube-Nutzungsbedingungen
-          beachten). yt-dlp regelmäßig aktualisieren, wenn Downloads scheitern.
-        </p>
-      </Card>
-
-      {playlist && (
-        <PlaylistPicker
-          playlist={playlist}
-          selected={selected}
-          onSelected={setSelected}
-          options={{ folder: cfg.playlistFolder, numbers: cfg.playlistNumbers }}
-          onOptions={(o) =>
-            setCfg({
-              ...(o.folder !== undefined ? { playlistFolder: o.folder } : {}),
-              ...(o.numbers !== undefined ? { playlistNumbers: o.numbers } : {})
-            })
-          }
-          ready={!!ready}
-          onDownload={downloadSelection}
-          onDownloadVideo={() => {
-            if (!playlist.videoUrl) return
-            void enqueueAll([{ ...base(), url: playlist.videoUrl }])
-            setPlaylist(null)
-          }}
-          onClose={() => setPlaylist(null)}
-          onOpenNested={(nested) => void submit(nested)}
-        />
-      )}
-
-      {/* Jobs */}
-      {jobs.length > 0 && (
-        <Card className="divide-y divide-border">
-          <div className="flex items-center justify-between px-4 py-2">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-              Downloads
-            </h2>
-            <div className="flex gap-1">
-              {pending.length > 1 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => pending.forEach((j) => void api.youtube.cancel(j.id))}
+                <select
+                  className={`${selectClass} w-full`}
+                  value={cfg.maxHeight ?? 'best'}
+                  onChange={(e) =>
+                    setCfg({
+                      maxHeight: e.target.value === 'best' ? null : Number(e.target.value)
+                    })
+                  }
                 >
-                  Alle abbrechen
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={active}
-                onClick={() => void api.youtube.clearFinished()}
-              >
-                Erledigte entfernen
+                  {HEIGHTS.map((h) => (
+                    <option key={h.value} value={h.value}>
+                      {h.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
+          </PanelSection>
+          <PanelSection
+            id="target"
+            title="Zielordner"
+            icon={FolderOpen}
+            summary={cfg.outputDir ? folderName(cfg.outputDir) : 'noch keiner gewählt'}
+          >
+            {cfg.outputDir && (
+              <p className="break-all text-xs text-muted-foreground">{cfg.outputDir}</p>
+            )}
+            <Button variant="outline" size="sm" onClick={() => void pickDir()}>
+              <FolderOpen className="size-4" />{' '}
+              {cfg.outputDir ? 'Anderen wählen…' : 'Ordner wählen…'}
+            </Button>
+          </PanelSection>
+        </>
+      }
+      main={
+        <div className={toolPageClass('4xl')}>
+          {status && !status.available && (
+            <Alert
+              tone="warning"
+              icon={AlertTriangle}
+              title={yt.busy ? 'yt-dlp wird geladen…' : 'yt-dlp fehlt'}
+            >
+              <p>
+                Der Downloader braucht yt-dlp. Die App holt es und prüft es gegen seine Prüfsumme.
+              </p>
+              <div className="mt-2">
+                <YtdlpUpdateButton yt={yt} />
+              </div>
+            </Alert>
+          )}
+          {yt.problem && (
+            <Alert tone="danger">
+              Aktualisierung von yt-dlp fehlgeschlagen: {yt.problem} – Internetverbindung prüfen.
+              {status?.available && ' Der vorhandene Stand bleibt nutzbar.'}
+            </Alert>
+          )}
+          {status && !status.ffmpeg && (
+            <Alert tone="warning">
+              ffmpeg nicht gefunden – Zusammenführen von Bild und Ton kann fehlschlagen.
+            </Alert>
+          )}
+          {status?.available && !cfg.outputDir && (
+            <Alert tone="warning" icon={FolderOpen} title="Zuerst einen Zielordner wählen">
+              <Button variant="outline" size="sm" className="mt-1" onClick={() => void pickDir()}>
+                <FolderOpen className="size-4" /> Ordner wählen…
               </Button>
-            </div>
-          </div>
-          {jobs.map((j) => (
-            <JobRow key={j.id} job={j} />
-          ))}
-        </Card>
-      )}
-    </div>
+            </Alert>
+          )}
+          {probeError && <Alert tone="danger">{probeError}</Alert>}
+
+          {playlist && (
+            <PlaylistPicker
+              playlist={playlist}
+              selected={selected}
+              onSelected={setSelected}
+              options={{ folder: cfg.playlistFolder, numbers: cfg.playlistNumbers }}
+              onOptions={(o) =>
+                setCfg({
+                  ...(o.folder !== undefined ? { playlistFolder: o.folder } : {}),
+                  ...(o.numbers !== undefined ? { playlistNumbers: o.numbers } : {})
+                })
+              }
+              ready={!!ready}
+              onDownload={downloadSelection}
+              onDownloadVideo={() => {
+                if (!playlist.videoUrl) return
+                void enqueueAll([{ ...base(), url: playlist.videoUrl }])
+                setPlaylist(null)
+              }}
+              onClose={() => setPlaylist(null)}
+              onOpenNested={(nested) => void submit(nested)}
+            />
+          )}
+
+          {jobs.length > 0 ? (
+            <Card className="divide-y divide-border">
+              <div className="flex items-center justify-between px-4 py-2">
+                <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+                  Downloads
+                </h2>
+                <div className="flex gap-1">
+                  {pending.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => pending.forEach((j) => void api.youtube.cancel(j.id))}
+                    >
+                      Alle abbrechen
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={active}
+                    onClick={() => void api.youtube.clearFinished()}
+                  >
+                    Erledigte entfernen
+                  </Button>
+                </div>
+              </div>
+              {jobs.map((j) => (
+                <JobRow key={j.id} job={j} />
+              ))}
+            </Card>
+          ) : (
+            !playlist && (
+              <Card className="flex h-32 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                Noch keine Downloads – oben eine Adresse einfügen und „Laden“.
+              </Card>
+            )
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Nur Inhalte herunterladen, für die du die Rechte bzw. eine Erlaubnis hast
+            (YouTube-Nutzungsbedingungen beachten).
+          </p>
+        </div>
+      }
+    />
   )
 }
 
@@ -394,17 +405,27 @@ function JobRow({ job }: { job: YtJob }): JSX.Element {
   const canceled = job.status === 'canceled'
   const running = job.status === 'running' || job.status === 'queued'
   return (
-    <div className="px-4 py-2.5">
+    <div className="space-y-1.5 px-4 py-2.5">
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate text-sm" title={job.title ?? job.url}>
           {job.title ?? job.url}
         </span>
+        {done && <Badge tone="success">Fertig</Badge>}
+        {failed && <Badge tone="danger">Fehler</Badge>}
+        {canceled && <Badge tone="neutral">Abgebrochen</Badge>}
+        {job.status === 'queued' && <Badge tone="neutral">Wartet</Badge>}
+        {job.status === 'running' && (
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {Math.round(job.progress * 100)} %{job.eta ? ` · ${job.eta}` : ''}
+          </span>
+        )}
         {running && (
           <button
             type="button"
             onClick={() => void api.youtube.cancel(job.id)}
             className="text-muted-foreground hover:text-danger"
             title="Abbrechen"
+            aria-label="Abbrechen"
           >
             <X className="size-4" />
           </button>
@@ -415,33 +436,16 @@ function JobRow({ job }: { job: YtJob }): JSX.Element {
             onClick={() => void api.showItemInFolder(job.outputFile!)}
             className="text-muted-foreground hover:text-foreground"
             title="Im Ordner zeigen"
+            aria-label="Im Ordner zeigen"
           >
             <FolderOpen className="size-4" />
           </button>
         )}
       </div>
-      <div className="mt-1.5 flex items-center gap-2">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-          <div
-            className={`h-full transition-[width] ${failed ? 'bg-destructive' : done ? 'bg-success' : 'bg-primary'}`}
-            style={{ width: `${done ? 100 : Math.round(job.progress * 100)}%` }}
-          />
-        </div>
-        <span className="w-28 shrink-0 text-right text-xs text-muted-foreground">
-          {done
-            ? 'Fertig'
-            : failed
-              ? 'Fehler'
-              : canceled
-                ? 'Abgebrochen'
-                : job.status === 'queued'
-                  ? 'Wartet…'
-                  : `${Math.round(job.progress * 100)}%${job.eta ? ` · ${job.eta}` : ''}`}
-        </span>
-      </div>
-      {failed && job.error && <p className="mt-1 text-xs text-danger">{job.error}</p>}
-      {!failed && job.speed && running && (
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{job.speed}</p>
+      {job.status === 'running' && <Progress value={job.progress} />}
+      {failed && job.error && <p className="text-xs text-danger">{job.error}</p>}
+      {!failed && job.speed && job.status === 'running' && (
+        <p className="text-[11px] text-muted-foreground">{job.speed}</p>
       )}
     </div>
   )

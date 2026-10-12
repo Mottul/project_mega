@@ -5,14 +5,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, Monitor, Moon, Rows2, Rows4, Settings2, Sun } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
-import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { MottulboxLogo } from '@renderer/components/MottulboxLogo'
 import { ACCENTS, accentSwatch } from '@renderer/lib/accent'
-import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { cn } from '@renderer/lib/utils'
 import type { ThemeMode, UiDensity } from '@shared/types'
 import { FfmpegSettings } from './FfmpegSettings'
+import { YtdlpSettings } from './YtdlpSettings'
 import { useAppearance } from './useAppearance'
 
 const THEMES: { value: ThemeMode; label: string; Icon: typeof Moon }[] = [
@@ -42,7 +41,6 @@ export function AppMenu({
   align?: 'left' | 'right'
 }): JSX.Element {
   const look = useAppearance()
-  const ytdlpAuto = useSettings((s) => s.ytdlpAutoUpdate) ?? true
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -149,12 +147,7 @@ export function AppMenu({
 
           <section className="space-y-2">
             <Heading>yt-dlp</Heading>
-            <Checkbox
-              checked={ytdlpAuto}
-              onChange={(on) => void updateSettings({ ytdlpAutoUpdate: on })}
-              label="Beim Start auf neue Version prüfen"
-              hint="Version und „Prüfen“ stehen im YouTube-Downloader."
-            />
+            <YtdlpSettings />
           </section>
         </div>
       )}

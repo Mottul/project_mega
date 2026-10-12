@@ -1,15 +1,19 @@
 // Packliste: editierbare Positionen (Menge/Einheit/Notiz/Kategorie), abhakbar,
 // gruppiert nach frei anlegbaren Kategorien. Befüllbar aus der LED-Wall-
-// Konfiguration, Export als PDF.
+// Konfiguration, Export als PDF. Werkzeug-Muster:
+//   Leiste „Projekt“   PDF, JSON sichern/laden, aus der LED-Wall übernehmen
+//   Schublade          Projektname, gespeicherte Jobs (wie die Vorlagen der LED-Wall)
+//   Arbeitsfläche      die Kategorien mit ihren Positionen
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
+  Bookmark,
+  Briefcase,
   Check,
   ChevronDown,
   ChevronUp,
   Download,
   FileDown,
-  FolderOpen,
   FolderPlus,
   LayoutGrid,
   Plus,
@@ -19,14 +23,16 @@ import {
   Upload,
   X
 } from 'lucide-react'
+import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { Field } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
 import { api } from '@renderer/lib/api'
 import { deriveFromLedWall } from './derive'
 import { parse, serialize } from './io'
 import { exportPackingPdf } from './print'
-import { usePacking, type PackItem } from './store'
+import { usePacking, type PackItem, type SavedJob } from './store'
 import { toolPageClass } from '@renderer/lib/toolPage'
 import { useDraft } from '@renderer/lib/useDraft'
 
@@ -40,7 +46,6 @@ const slug = (s: string): string =>
 
 export function PackingList(): JSX.Element {
   const s = usePacking()
-  const [jobSel, setJobSel] = useState('')
 
   // Gruppen in Kategorie-Reihenfolge; unbekannte Kategorien (Altdaten) hinten anhängen.
   const groups = useMemo(() => {
@@ -68,21 +73,16 @@ export function PackingList(): JSX.Element {
       danger: true
     })
   }
-  function saveCurrentJob(): void {
-    s.saveJob(s.projectName)
-    const name = s.projectName.trim()
-    if (name) {
-      const j = usePacking.getState().saved.find((x) => x.name === name)
-      if (j) setJobSel(j.id)
-    }
+  async function loadJob(job: SavedJob): Promise<void> {
+    if (await confirmReplace()) s.loadJob(job.id)
   }
-  async function loadSelectedJob(): Promise<void> {
-    if (jobSel && (await confirmReplace())) s.loadJob(jobSel)
-  }
-  function deleteSelectedJob(): void {
-    if (!jobSel) return
-    s.deleteJob(jobSel)
-    setJobSel('')
+  async function deleteJob(job: SavedJob): Promise<void> {
+    const ok = await api.confirm({
+      message: `Job „${job.name}“ löschen?`,
+      confirmLabel: 'Löschen',
+      danger: true
+    })
+    if (ok) s.deleteJob(job.id)
   }
   async function exportJson(): Promise<void> {
     const text = serialize({
@@ -107,168 +107,222 @@ export function PackingList(): JSX.Element {
     if (await confirmReplace()) s.replaceAll(snap)
   }
 
+  const name = s.projectName.trim()
+
   return (
-    <div className={toolPageClass('full')}>
-      <Card className="flex flex-wrap items-center gap-2 p-4">
-        <Input
-          className="h-9 max-w-xs flex-1"
-          placeholder="Projektname"
-          value={s.projectName}
-          onChange={(e) => s.set({ projectName: e.target.value })}
-        />
-        <div className="flex-1" />
-        <Button variant="outline" size="sm" onClick={() => s.mergeItems(deriveFromLedWall())}>
-          <LayoutGrid className="size-4" /> Aus LED-Wall übernehmen
-        </Button>
-        <Button
-          size="sm"
-          disabled={s.items.length === 0}
-          onClick={() => void exportPackingPdf(s.projectName, s.items)}
+    <ToolShell
+      id="packing-list"
+      bar={
+        <ToolBar
+          label="Projekt"
+          kind="job"
+          status={
+            <span className="truncate">
+              {name ? (
+                <span className="font-medium">{name}</span>
+              ) : (
+                <span className="text-muted-foreground">ohne Projektnamen</span>
+              )}
+              <span className="text-muted-foreground">
+                {' '}
+                · {openCount} von {s.items.length} offen
+              </span>
+            </span>
+          }
         >
-          <FileDown className="size-4" /> PDF
-        </Button>
-      </Card>
-
-      {/* Gespeicherte Jobs (wiederkehrende Packlisten) + Datei-Import/-Export. */}
-      <Card className="flex flex-wrap items-center gap-2 p-3">
-        <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-          Jobs
-        </span>
-        <select
-          value={jobSel}
-          onChange={(e) => setJobSel(e.target.value)}
-          disabled={s.saved.length === 0}
-          className="h-8 w-56 max-w-full rounded-md border border-border bg-input/40 px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 disabled:opacity-50"
-          title="Gespeicherten Job wählen"
-        >
-          <option value="">
-            {s.saved.length === 0 ? 'noch keine gespeichert' : `Job wählen … (${s.saved.length})`}
-          </option>
-          {s.saved.map((j) => (
-            <option key={j.id} value={j.id}>
-              {j.name}
-            </option>
-          ))}
-        </select>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!jobSel}
-          onClick={() => void loadSelectedJob()}
-        >
-          <FolderOpen className="size-4" /> Laden
-        </Button>
-        <button
-          type="button"
-          disabled={!jobSel}
-          onClick={deleteSelectedJob}
-          className="shrink-0 text-muted-foreground hover:text-danger disabled:opacity-30"
-          title="Gewählten Job löschen"
-        >
-          <Trash2 className="size-4" />
-        </button>
-        <div className="flex-1" />
-        <Button variant="default" size="sm" onClick={saveCurrentJob}>
-          <Save className="size-4" /> Aktuellen speichern
-        </Button>
-        <span className="mx-1 h-5 w-px bg-border" />
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={s.items.length === 0}
-          onClick={() => void exportJson()}
-          title="Als JSON-Datei exportieren (Backup/Weitergabe)"
-        >
-          <Download className="size-4" /> Export
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void importJson()}
-          title="Aus JSON-Datei importieren"
-        >
-          <Upload className="size-4" /> Import
-        </Button>
-      </Card>
-
-      {/* Masonry (CSS-Spalten): Kategorien fließen und füllen die Höhe aus, statt
-          dass die kürzere Spalte Platz bis zur nächsten Reihe verschenkt. */}
-      <div className="gap-4 xl:columns-2 2xl:columns-3">
-        {groups.map(([cat, items]) => {
-          const catIndex = s.categories.indexOf(cat)
-          return (
-            <Card key={cat} className="mb-4 break-inside-avoid overflow-hidden">
-              <div className="flex items-center gap-1.5 border-b border-border bg-muted/30 px-3 py-2">
-                <ReorderCtl
-                  canUp={catIndex > 0}
-                  canDown={catIndex >= 0 && catIndex < s.categories.length - 1}
-                  onUp={() => s.moveCategory(cat, -1)}
-                  onDown={() => s.moveCategory(cat, 1)}
-                  title="Kategorie verschieben"
-                />
-                <CategoryName
-                  value={cat}
-                  onCommit={(v) => s.renameCategory(cat, v)}
-                  className="h-7 max-w-[240px] flex-1 text-xs font-bold uppercase tracking-wide text-primary"
-                />
-                <span className="text-xs text-muted-foreground">{items.length}</span>
-                <div className="flex-1" />
-                <Button variant="ghost" size="sm" onClick={() => s.addItem(cat)}>
-                  <Plus className="size-4" /> Position
-                </Button>
-                {s.categories.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => s.removeCategory(cat)}
-                    className="shrink-0 text-muted-foreground hover:text-danger"
-                    title="Kategorie löschen (Positionen wandern in die erste Kategorie)"
+          <Button
+            size="sm"
+            disabled={s.items.length === 0}
+            onClick={() => void exportPackingPdf(s.projectName, s.items)}
+          >
+            <FileDown className="size-4" /> PDF exportieren
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={s.items.length === 0}
+            onClick={() => void exportJson()}
+            title="Als JSON-Datei sichern oder weitergeben"
+          >
+            <Download className="size-4" /> JSON
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void importJson()}
+            title="Packliste aus einer JSON-Datei laden (ersetzt die aktuelle)"
+          >
+            <Upload className="size-4" /> Import
+          </Button>
+          <BarDivider />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => s.mergeItems(deriveFromLedWall())}
+            title="Module, Standfüße, Ballast und Kabel aus dem LED-Wall-Konfigurator ergänzen"
+          >
+            <LayoutGrid className="size-4" /> Aus LED-Wall übernehmen
+          </Button>
+        </ToolBar>
+      }
+      aside={
+        <>
+          <PanelSection
+            id="project"
+            title="Projekt"
+            icon={Briefcase}
+            summary={name || 'ohne Namen'}
+          >
+            <Field
+              label="Projektname"
+              hint="Steht auf der PDF und ist der Name, unter dem der Job gespeichert wird."
+            >
+              <Input
+                placeholder="Projektname"
+                value={s.projectName}
+                onChange={(e) => s.set({ projectName: e.target.value })}
+              />
+            </Field>
+          </PanelSection>
+          <PanelSection
+            id="jobs"
+            title="Gespeicherte Jobs"
+            icon={Bookmark}
+            summary={s.saved.length === 0 ? 'keine gespeichert' : `${s.saved.length} gespeichert`}
+          >
+            {s.saved.length > 0 && (
+              <ul className="space-y-1">
+                {s.saved.map((j) => (
+                  <li
+                    key={j.id}
+                    className="flex items-center gap-1 rounded-md border border-border bg-card/60"
                   >
-                    <X className="size-4" />
-                  </button>
-                )}
-              </div>
-              <div className="divide-y divide-border">
-                {items.length === 0 ? (
-                  <p className="px-3 py-2 text-xs text-muted-foreground">Keine Positionen.</p>
-                ) : (
-                  items.map((it, idx) => (
-                    <Row
-                      key={it.id}
-                      item={it}
-                      categories={s.categories}
-                      canUp={idx > 0}
-                      canDown={idx < items.length - 1}
+                    <button
+                      type="button"
+                      onClick={() => void loadJob(j)}
+                      title="Job laden – ersetzt die aktuelle Packliste"
+                      className="min-w-0 flex-1 px-2.5 py-1.5 text-left hover:text-primary"
+                    >
+                      <span className="block truncate text-sm font-medium">{j.name}</span>
+                      <span className="block text-[11px] text-muted-foreground">
+                        {j.items.length} Positionen ·{' '}
+                        {new Date(j.savedAt).toLocaleString('de-AT', {
+                          dateStyle: 'short',
+                          timeStyle: 'short'
+                        })}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteJob(j)}
+                      aria-label={`Job „${j.name}“ löschen`}
+                      className="mr-1 rounded p-1.5 text-muted-foreground hover:text-danger"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              disabled={s.items.length === 0}
+              onClick={() => s.saveJob(s.projectName)}
+              title="Gespeichert wird unter dem Projektnamen – gleicher Name überschreibt den Job"
+            >
+              <Save className="size-4" /> Aktuelle Liste speichern
+            </Button>
+          </PanelSection>
+        </>
+      }
+      main={
+        <div className={toolPageClass('full')}>
+          {/* Masonry (CSS-Spalten): Kategorien fließen und füllen die Höhe aus, statt
+              dass die kürzere Spalte Platz bis zur nächsten Reihe verschenkt. */}
+          <div className="gap-4 xl:columns-2 2xl:columns-3">
+            {groups.map(([cat, items]) => {
+              const catIndex = s.categories.indexOf(cat)
+              return (
+                <Card key={cat} className="mb-4 break-inside-avoid overflow-hidden">
+                  <div className="flex items-center gap-1.5 border-b border-border bg-muted/30 px-3 py-2">
+                    <ReorderCtl
+                      canUp={catIndex > 0}
+                      canDown={catIndex >= 0 && catIndex < s.categories.length - 1}
+                      onUp={() => s.moveCategory(cat, -1)}
+                      onDown={() => s.moveCategory(cat, 1)}
+                      title="Kategorie verschieben"
                     />
-                  ))
-                )}
-              </div>
-            </Card>
-          )
-        })}
-      </div>
+                    <CategoryName
+                      value={cat}
+                      onCommit={(v) => s.renameCategory(cat, v)}
+                      className="h-7 max-w-[240px] flex-1 text-xs font-bold uppercase tracking-wide text-primary"
+                    />
+                    <span className="text-xs text-muted-foreground">{items.length}</span>
+                    <div className="flex-1" />
+                    <Button variant="ghost" size="sm" onClick={() => s.addItem(cat)}>
+                      <Plus className="size-4" /> Position
+                    </Button>
+                    {s.categories.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => s.removeCategory(cat)}
+                        className="shrink-0 text-muted-foreground hover:text-danger"
+                        title="Kategorie löschen (Positionen wandern in die erste Kategorie)"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="divide-y divide-border">
+                    {items.length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">Keine Positionen.</p>
+                    ) : (
+                      items.map((it, idx) => (
+                        <Row
+                          key={it.id}
+                          item={it}
+                          categories={s.categories}
+                          canUp={idx > 0}
+                          canDown={idx < items.length - 1}
+                        />
+                      ))
+                    )}
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => s.addItem()}>
-          <Plus className="size-4" /> Position
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => s.addCategory()}>
-          <FolderPlus className="size-4" /> Kategorie
-        </Button>
-        <div className="flex-1" />
-        <span className="text-xs text-muted-foreground">{openCount} offen</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={s.items.every((i) => !i.checked)}
-          onClick={() => s.clearChecked()}
-        >
-          <Check className="size-4" /> Abgehakte entfernen
-        </Button>
-        <Button variant="ghost" size="sm" disabled={s.items.length === 0} onClick={() => s.reset()}>
-          <RotateCcw className="size-4" /> Leeren
-        </Button>
-      </div>
-    </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => s.addItem()}>
+              <Plus className="size-4" /> Position
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => s.addCategory()}>
+              <FolderPlus className="size-4" /> Kategorie
+            </Button>
+            <div className="flex-1" />
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={s.items.every((i) => !i.checked)}
+              onClick={() => s.clearChecked()}
+            >
+              <Check className="size-4" /> Abgehakte entfernen
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={s.items.length === 0}
+              onClick={() => s.reset()}
+            >
+              <RotateCcw className="size-4" /> Leeren
+            </Button>
+          </div>
+        </div>
+      }
+    />
   )
 }
 

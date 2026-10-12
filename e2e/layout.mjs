@@ -356,6 +356,33 @@ try {
       }
     ],
     [
+      'NovaStar, Netzwerk-Scanner, YouTube-Downloader, Packliste: Leiste und Schublade wie alle',
+      async () => {
+        // [Leiste, Schublade?] – der Netzwerk-Scanner hat keine Einstellungen
+        const expected = {
+          novastar: ['output', true],
+          netscan: ['job', false],
+          'youtube-dl': ['job', true],
+          'packing-list': ['job', true]
+        }
+        for (const [id, [kind, hasDrawer]] of Object.entries(expected)) {
+          await tool(id)
+          assert.equal(await bar().getAttribute('data-kind'), kind, id)
+          assert.equal(await settingsBtn().count(), hasDrawer ? 1 : 0, id)
+        }
+        // NovaStar ohne Verbindung: nicht live, Blackout & Co. gesperrt
+        await tool('novastar')
+        assert.equal(await barActive(), false)
+        for (const name of ['Blackout', 'Einfrieren', 'Fade to Black']) {
+          assert.equal(await bar().getByRole('button', { name }).isDisabled(), true, name)
+        }
+        // yt-dlp (Version, Prüfen) steht jetzt wie ffmpeg im App-Menü
+        await page.getByRole('button', { name: 'Mottulbox', exact: true }).click()
+        await page.getByTestId('ytdlp-settings').waitFor({ timeout: 10_000 })
+        await page.keyboard.press('Escape')
+      }
+    ],
+    [
       'Kleines Werkzeug: Kachel öffnet ein eigenes, kleines Fenster; das Hauptfenster bleibt',
       async () => {
         await openRoute(page, '/')

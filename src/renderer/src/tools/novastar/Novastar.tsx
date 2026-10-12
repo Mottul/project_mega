@@ -1,16 +1,40 @@
+// NovaStar-Prozessor-Steuerung (NovaPro UHD Jr & Co.) über TCP 5200, im Werkzeug-Muster:
+//   Leiste „Prozessor“   Verbinden/Trennen, Blackout, Einfrieren, Fade to Black – rot, solange
+//                        verbunden: Dann wirkt jeder Klick sofort auf der Wand.
+//   Schublade            Verbindung (IP, Port), Ausblenden (Dauer, Ziel)
+//   Arbeitsfläche        Helligkeit, Presets, Roh-Befehl
+// Paket-Bytes abgeglichen mit dem Bitfocus-Companion-Modul (siehe novastarCodec).
+
 import { useEffect, useRef, useState } from 'react'
-import { Power, Radio, Send, Snowflake, Sun, Wifi } from 'lucide-react'
+import { Link2, Moon, Radio, Send, Sun } from 'lucide-react'
 import type { NovastarStatus } from '@shared/types'
+import {
+  BarDivider,
+  BarToggle,
+  PanelSection,
+  ToolBar,
+  ToolShell
+} from '@renderer/components/ToolShell'
+import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { Checkbox } from '@renderer/components/ui/checkbox'
+import { Field } from '@renderer/components/ui/field'
+import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
 import { api } from '@renderer/lib/api'
-import { cn } from '@renderer/lib/utils'
-import { toolPageClass } from '@renderer/lib/toolPage'
 import { useHandoff } from '@renderer/lib/handoff'
+import { toolPageClass } from '@renderer/lib/toolPage'
 
-// NovaStar-Prozessor-Steuerung (NovaPro UHD Jr & Co.) über TCP 5200.
-// Paket-Bytes abgeglichen mit dem Bitfocus-Companion-Modul (siehe novastarCodec).
+/** Überschrift einer Karte der Arbeitsfläche (wie in den übrigen Werkzeugen) */
+function CardTitle({ children, hint }: { children: string; hint?: string }): JSX.Element {
+  return (
+    <div className="flex items-center gap-2">
+      <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{children}</h2>
+      {hint && <InfoTip text={hint} label={`Erklärung zu „${children}“`} />}
+    </div>
+  )
+}
 
 export function Novastar(): JSX.Element {
   const [host, setHost] = useState('')
@@ -100,219 +124,238 @@ export function Novastar(): JSX.Element {
     else if (host.trim()) setStatus(await api.novastar.connect(host, port))
   }
 
+  const target =
+    fadeUpTarget.trim() === '' ? 'zurück auf den letzten Wert' : `auf ${fadeUpTarget} %`
+
   return (
-    <div className={toolPageClass('2xl')}>
-      <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-        Befehls-Bytes für NovaPro UHD Jr &amp; Co. (TCP 5200), abgeglichen mit dem
-        Bitfocus-Companion- Modul. Blackout und Freeze sind ein gemeinsamer Anzeigemodus (schließen
-        sich gegenseitig aus). Bei anderen Modellen ggf. den <i>Roh-Befehl</i> nutzen.
-      </div>
-
-      {/* Verbindung */}
-      <Card className="space-y-3 p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-            Verbindung
-          </h2>
-          <span
-            className={cn(
-              'flex items-center gap-1.5 text-xs',
-              connected ? 'text-success' : 'text-muted-foreground'
-            )}
-          >
-            <span
-              className={cn(
-                'size-2.5 rounded-full',
-                connected ? 'bg-success' : 'bg-muted-foreground'
-              )}
-            />
-            {connected ? `verbunden ${status?.host}:${status?.port}` : 'getrennt'}
-          </span>
-        </div>
-        <div className="flex items-end gap-2">
-          <label className="flex-1">
-            <span className="mb-1 block text-xs text-muted-foreground">Prozessor-IP</span>
-            <Input
-              value={host}
-              placeholder="z. B. 192.168.0.10"
-              onChange={(e) => setHost(e.target.value)}
-              disabled={connected}
-            />
-          </label>
-          <label className="w-24">
-            <span className="mb-1 block text-xs text-muted-foreground">Port</span>
-            <Input
-              type="number"
-              value={port}
-              onChange={(e) => setPort(Number(e.target.value) || 5200)}
-              disabled={connected}
-              className="tabular-nums"
-            />
-          </label>
-          <Button variant={connected ? 'outline' : 'default'} onClick={() => void connect()}>
-            <Wifi className="size-4" /> {connected ? 'Trennen' : 'Verbinden'}
-          </Button>
-        </div>
-        {status?.lastError && <p className="text-xs text-danger">Fehler: {status.lastError}</p>}
-      </Card>
-
-      {/* Helligkeit, Blackout, Freeze */}
-      <Card className="space-y-4 p-5">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">Bild</h2>
-        <div>
-          <div className="mb-1.5 flex items-center justify-between text-sm">
-            <span className="flex items-center gap-1.5 text-muted-foreground">
-              <Sun className="size-4" /> Helligkeit
-            </span>
-            <span className="tabular-nums text-foreground">{Math.round(bright)} %</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={bright}
-            onChange={(e) => {
-              applyBright(Number(e.target.value))
-              setFaded(false)
-            }}
-            className="w-full accent-primary"
-            disabled={!connected}
-          />
-        </div>
-
-        <div className="flex flex-wrap items-end gap-2">
+    <ToolShell
+      id="novastar"
+      bar={
+        <ToolBar
+          label="Prozessor"
+          active={connected}
+          status={
+            connected ? (
+              <span className="truncate">
+                verbunden <span className="font-mono">{`${status?.host}:${status?.port}`}</span> ·{' '}
+                {Math.round(bright)} %
+              </span>
+            ) : (
+              <span className="text-muted-foreground">getrennt</span>
+            )
+          }
+        >
           <Button
-            variant={faded ? 'default' : 'outline'}
-            onClick={toggleFade}
-            disabled={!connected}
-            className="flex-1"
-          >
-            {faded ? 'Aufblenden' : 'Fade to Black'}
-          </Button>
-          <label className="w-24">
-            <span className="mb-1 block text-xs text-muted-foreground">Fade-Dauer (s)</span>
-            <Input
-              type="number"
-              step="0.5"
-              min={0.1}
-              value={ftbSec}
-              onChange={(e) => setFtbSec(Number(e.target.value) || 2)}
-              className="tabular-nums"
-            />
-          </label>
-          <label className="w-24">
-            <span className="mb-1 block text-xs text-muted-foreground">Ziel %</span>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              placeholder="letzter"
-              value={fadeUpTarget}
-              onChange={(e) => setFadeUpTarget(e.target.value)}
-              className="tabular-nums"
-            />
-          </label>
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            variant={black ? 'default' : 'outline'}
-            onClick={toggleBlackout}
-            disabled={!connected}
-            className={cn('flex-1', black && 'bg-destructive hover:bg-destructive/90')}
-          >
-            <Power className="size-4" /> {black ? 'Blackout AUS' : 'Blackout (sofort)'}
-          </Button>
-          <Button
-            variant={frozen ? 'default' : 'outline'}
-            onClick={toggleFreeze}
-            disabled={!connected}
-            className="flex-1"
-          >
-            <Snowflake className="size-4" /> {frozen ? 'Auftauen' : 'Einfrieren'}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          „Fade to Black" blendet die Helligkeit weich aus und beim erneuten Klick wieder auf – auf
-          den „Ziel %"-Wert, sonst auf den letzten Wert vor dem Ausblenden. „Blackout" schaltet den
-          Anzeigemodus sofort hart auf Schwarz. Blackout und Einfrieren teilen sich diesen
-          Anzeigemodus – nur eines gleichzeitig; das aktive ausschalten geht zurück auf Normal.
-        </p>
-      </Card>
-
-      {/* Presets */}
-      <Card className="space-y-3 p-5">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-          Presets / Szenen
-        </h2>
-        <div className="flex flex-wrap gap-1.5">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-            <Button
-              key={n}
-              variant="outline"
-              size="sm"
-              disabled={!connected}
-              onClick={() => void api.novastar.preset(n)}
-              className="w-10 tabular-nums"
-            >
-              {n}
-            </Button>
-          ))}
-        </div>
-        <div className="flex items-end gap-2">
-          <label className="w-28">
-            <span className="mb-1 block text-xs text-muted-foreground">Preset-Nr. (1–26)</span>
-            <Input
-              type="number"
-              min={1}
-              max={26}
-              value={preset}
-              onChange={(e) => setPreset(Number(e.target.value) || 1)}
-              className="tabular-nums"
-            />
-          </label>
-          <Button
-            variant="outline"
-            disabled={!connected}
-            onClick={() => void api.novastar.preset(preset)}
-          >
-            Abrufen
-          </Button>
-        </div>
-      </Card>
-
-      {/* Roh-Befehl */}
-      <Card className="space-y-3 p-5">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-          <Radio className="mr-1 inline size-3.5" /> Roh-Befehl (erweitert)
-        </h2>
-        <Input
-          value={rawHex}
-          spellCheck={false}
-          placeholder="Hex, z. B. 55 AA 00 ... (Inhalt; Prüfsumme optional automatisch)"
-          onChange={(e) => setRawHex(e.target.value)}
-          className="font-mono text-xs"
-        />
-        <div className="flex items-center justify-between gap-2">
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={rawChecksum}
-              onChange={(e) => setRawChecksum(e.target.checked)}
-              className="size-4"
-            />
-            Prüfsumme automatisch anhängen
-          </label>
-          <Button
-            variant="outline"
             size="sm"
-            disabled={!connected || !rawHex.trim()}
-            onClick={() => void api.novastar.raw(rawHex, rawChecksum)}
+            variant={connected ? 'outline' : 'default'}
+            disabled={!connected && !host.trim()}
+            title={!connected && !host.trim() ? 'Zuerst die Prozessor-IP eintragen' : undefined}
+            onClick={() => void connect()}
           >
-            <Send className="size-4" /> Senden
+            <Link2 className="size-4" /> {connected ? 'Trennen' : 'Verbinden'}
           </Button>
+          <BarDivider />
+          <BarToggle
+            on={black}
+            disabled={!connected}
+            title="Anzeigemodus sofort hart auf Schwarz (ausschalten: zurück auf Normal)"
+            onClick={toggleBlackout}
+          >
+            Blackout
+          </BarToggle>
+          <BarToggle
+            on={frozen}
+            disabled={!connected}
+            title="Bild einfrieren (ausschalten: zurück auf Normal)"
+            onClick={toggleFreeze}
+          >
+            Einfrieren
+          </BarToggle>
+          <BarToggle
+            on={faded}
+            disabled={!connected}
+            title={
+              faded
+                ? `Wieder aufblenden (${target})`
+                : `Helligkeit in ${ftbSec} s weich auf 0 % (erneut: wieder aufblenden)`
+            }
+            onClick={toggleFade}
+          >
+            Fade to Black
+          </BarToggle>
+        </ToolBar>
+      }
+      aside={
+        <>
+          <PanelSection
+            id="connection"
+            title="Verbindung"
+            icon={Link2}
+            summary={host.trim() ? `${host.trim()}:${port}` : 'keine IP'}
+          >
+            <Field
+              label="Prozessor-IP"
+              hint="Die IP lässt sich auch im Netzwerk-Scanner übernehmen (Gerät mit LED-Prozessor-Symbol)."
+            >
+              <Input
+                value={host}
+                placeholder="z. B. 192.168.0.10"
+                onChange={(e) => setHost(e.target.value)}
+                disabled={connected}
+              />
+            </Field>
+            <Field label="Port" hint="Steuer-Port der NovaStar-Prozessoren: 5200.">
+              <Input
+                type="number"
+                value={port}
+                onChange={(e) => setPort(Number(e.target.value) || 5200)}
+                disabled={connected}
+                className="tabular-nums"
+              />
+            </Field>
+          </PanelSection>
+          <PanelSection
+            id="fade"
+            title="Ausblenden"
+            icon={Moon}
+            summary={`${ftbSec} s · ${target}`}
+          >
+            <Field label="Dauer" aside="Sekunden">
+              <Input
+                type="number"
+                step="0.5"
+                min={0.1}
+                value={ftbSec}
+                onChange={(e) => setFtbSec(Number(e.target.value) || 2)}
+                className="tabular-nums"
+              />
+            </Field>
+            <Field
+              label="Aufblenden auf"
+              aside="%"
+              hint="Leer: zurück auf den Wert vor dem Ausblenden."
+            >
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                placeholder="letzter Wert"
+                value={fadeUpTarget}
+                onChange={(e) => setFadeUpTarget(e.target.value)}
+                className="tabular-nums"
+              />
+            </Field>
+          </PanelSection>
+        </>
+      }
+      main={
+        <div className={toolPageClass('3xl')}>
+          {!connected &&
+            (status?.lastError ? (
+              <Alert tone="danger">Verbindung fehlgeschlagen: {status.lastError}</Alert>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nicht verbunden – Prozessor-IP in den Einstellungen eintragen und oben „Verbinden“
+                wählen.
+              </p>
+            ))}
+
+          <Card className="space-y-3 p-5">
+            <CardTitle hint="„Fade to Black“ (oben) blendet die Helligkeit weich aus und beim erneuten Klick wieder auf. „Blackout“ schaltet den Anzeigemodus sofort hart auf Schwarz; Blackout und Einfrieren teilen sich diesen Modus – nur eines gleichzeitig.">
+              Helligkeit
+            </CardTitle>
+            <div className="flex items-center gap-4">
+              <Sun className="size-5 shrink-0 text-muted-foreground" />
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={bright}
+                aria-label="Helligkeit"
+                onChange={(e) => {
+                  applyBright(Number(e.target.value))
+                  setFaded(false)
+                }}
+                className="w-full accent-primary"
+                disabled={!connected}
+              />
+              <span className="w-24 shrink-0 whitespace-nowrap text-right text-2xl font-bold tabular-nums">
+                {Math.round(bright)} %
+              </span>
+            </div>
+          </Card>
+
+          <Card className="space-y-3 p-5">
+            <CardTitle>Presets / Szenen</CardTitle>
+            <div className="flex flex-wrap gap-1.5">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <Button
+                  key={n}
+                  variant="outline"
+                  size="sm"
+                  disabled={!connected}
+                  onClick={() => void api.novastar.preset(n)}
+                  className="w-10 tabular-nums"
+                >
+                  {n}
+                </Button>
+              ))}
+            </div>
+            <div className="flex items-end gap-2">
+              <Field label="Preset-Nr. (1–26)" className="w-36">
+                <Input
+                  type="number"
+                  min={1}
+                  max={26}
+                  value={preset}
+                  onChange={(e) => setPreset(Number(e.target.value) || 1)}
+                  className="tabular-nums"
+                />
+              </Field>
+              <Button
+                variant="outline"
+                disabled={!connected}
+                onClick={() => void api.novastar.preset(preset)}
+              >
+                Abrufen
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="space-y-3 p-5">
+            <CardTitle hint="Befehls-Bytes für NovaPro UHD Jr & Co. (TCP 5200), abgeglichen mit dem Bitfocus-Companion-Modul. Bei anderen Modellen den Befehl hier selbst senden.">
+              Roh-Befehl (erweitert)
+            </CardTitle>
+            <Input
+              value={rawHex}
+              spellCheck={false}
+              aria-label="Roh-Befehl in Hex"
+              placeholder="Hex, z. B. 55 AA 00 ..."
+              onChange={(e) => setRawHex(e.target.value)}
+              className="font-mono text-xs"
+            />
+            <div className="flex items-center justify-between gap-2">
+              <Checkbox
+                checked={rawChecksum}
+                onChange={setRawChecksum}
+                label="Prüfsumme automatisch anhängen"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!connected || !rawHex.trim()}
+                onClick={() => void api.novastar.raw(rawHex, rawChecksum)}
+              >
+                <Send className="size-4" /> Senden
+              </Button>
+            </div>
+          </Card>
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Radio className="size-3.5" /> Befehle gehen per TCP direkt an den Prozessor; die
+            Anzeige zeigt den zuletzt gesendeten Stand, nicht den des Geräts.
+          </p>
         </div>
-      </Card>
-    </div>
+      }
+    />
   )
 }
