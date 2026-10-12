@@ -502,7 +502,11 @@ Desktop (gleicher Code). Der Knopf **„Darstellung“** oben rechts stellt wie 
 Mottulbox Design (Dunkel, Hell, wie das Gerät) und Akzentfarbe ein; das Handy merkt sich beides.
 Eine neue Version meldet sich mit „Neu laden“, sonst greift sie beim nächsten Start – das kommt nur
 vor, wenn sich an den Rechnern selbst, an gemeinsamen Bedienelementen oder an den Farben etwas
-geändert hat, nicht bei Änderungen an anderen Werkzeugen. Bauen und
+geändert hat, nicht bei Änderungen an anderen Werkzeugen. **Symbol und Startbildschirm** der
+installierten App legt das Handy beim Installieren fest: Android erneuert sie nach einer
+Änderung von selbst, sobald Chrome sie bemerkt (beim Start, höchstens einmal am Tag, unter
+Umständen mit Rückfrage); iOS nie – dort die App vom Home-Bildschirm entfernen und neu hinzufügen.
+Wer nicht warten will: auch unter Android entfernen und neu installieren. Bauen und
 Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
 
 ## Übergaben zwischen Werkzeugen

@@ -317,6 +317,9 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
 - **Offline:** Der Build erzeugt `manifest.webmanifest` und `sw.js` (`src/pwa/build/serviceWorker.ts`,
   ohne Workbox). Der Worker lädt beim Installieren alle Dateien vor und antwortet danach nur aus
   dem Cache; eine neue Version wartet, bis man „Neu laden“ tippt oder die App schließt.
+  Ausnahme: `manifest.webmanifest` und `icons/` (feste Namen ohne Hash) kommen zuerst aus dem
+  Netz, offline aus dem Cache – sonst sähe der Browser bei seiner Prüfung auf ein geändertes
+  App-Symbol nur die alten Dateien, und Android erneuerte Symbol und Startbildschirm nicht.
   Service Worker gibt es nur über HTTPS oder `localhost` – im LAN per `pwa:preview` läuft die
   Seite, aber nicht offline und nicht installierbar.
 - **Veröffentlichen:** Workflow `.github/workflows/pwa-pages.yml` testet die Rechner, baut und
