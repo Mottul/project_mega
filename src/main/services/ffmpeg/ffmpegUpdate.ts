@@ -31,6 +31,7 @@ import {
   statSync,
   writeFileSync
 } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { FfmpegToolStatus } from '@shared/types'
 import { parseEncoderNames, parseFilterNames } from '../convert/capabilities'
@@ -304,6 +305,21 @@ async function selfTest(dir: string): Promise<string> {
   return version
 }
 
+/**
+ * Ordner löschen, ohne dass ein Rest den Lauf scheitern lässt: Unter Windows hält ein
+ * Virenscanner frisch entpackte .exe oft noch kurz fest (ENOTEMPTY/EBUSY/EPERM) – erst ein paar
+ * Mal neu versuchen (asynchron, der main-Prozess wartet nicht), dann liegen lassen; beim nächsten
+ * Start räumt activateAndPrune() die Reste weg. Vorher meldete ein erfolgreich installierter Build
+ * deshalb einen Fehler (CI unter Windows, 12. Oktober 2026).
+ */
+async function removeDir(p: string): Promise<void> {
+  try {
+    await rm(p, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  } catch (err) {
+    logLine('[ffmpeg] Aufräumen später:', p, err instanceof Error ? err.message : String(err))
+  }
+}
+
 async function install(c: BuildCandidate): Promise<void> {
   const work = file(`tmp-${randomUUID().slice(0, 8)}`)
   mkdirSync(join(work, 'x'), { recursive: true })
@@ -349,7 +365,7 @@ async function install(c: BuildCandidate): Promise<void> {
     )
     logLine('[ffmpeg] neuer Build bereit (ab dem nächsten Start):', c.build, version)
   } finally {
-    rmSync(work, { recursive: true, force: true })
+    await removeDir(work)
   }
 }
 
@@ -467,8 +483,6 @@ function activateAndPrune(): void {
   // nur aktiver und vorheriger Build bleiben; Reste abgebrochener Läufe weg
   const keep = new Set([active?.build, active?.previous].filter(Boolean))
   for (const e of readdirSync(root(), { withFileTypes: true })) {
-    if (e.isDirectory() && !keep.has(e.name)) {
-      rmSync(join(root(), e.name), { recursive: true, force: true })
-    }
+    if (e.isDirectory() && !keep.has(e.name)) void removeDir(join(root(), e.name))
   }
 }

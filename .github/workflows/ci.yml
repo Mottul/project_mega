@@ -66,9 +66,11 @@ jobs:
       # Electron-Binary für die E2E-Läufe (mit Prüfsumme; npm ci führt keine Skripte aus)
       - run: npm run electron:bin
       # ffmpeg wie im Installer (HAP-fähig); die Quelle liefert täglich neue Builds -> je Woche
-      # einmal laden, sonst aus dem Cache. Ändert sich nur das Skript, gilt der Build derselben
-      # Woche weiter (restore-keys): Der Download-Spiegel von evermeet (macOS) lässt je Adresse nur
-      # einen Download in längerer Zeit zu und weist ffprobe direkt nach ffmpeg mit HTTP 429 ab.
+      # einmal laden, sonst aus dem Cache. Der Download-Spiegel von evermeet (macOS) lässt je Adresse
+      # nur einen Download in längerer Zeit zu und weist ffprobe direkt nach ffmpeg mit HTTP 429 ab –
+      # deshalb greift der Cache notfalls auf eine frühere Woche zurück (restore-keys; vorher fand
+      # jeder Montag nichts und lud alles neu), und geladen wird wie bei `npm run dev` nur, wenn der
+      # Build älter als 7 Tage ist. Scheitert das, läuft es mit dem vorhandenen Build weiter.
       - name: Woche für den ffmpeg-Cache
         id: week
         shell: bash
@@ -77,8 +79,10 @@ jobs:
         with:
           path: resources/ffmpeg
           key: ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('scripts/download-ffmpeg.mjs') }}
-          restore-keys: ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-
-      - run: npm run ff:fetch
+          restore-keys: |
+            ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-
+            ffmpeg-${{ runner.os }}-
+      - run: node scripts/download-ffmpeg.mjs --max-age 7
       # mit ffmpeg läuft auch der Labortest des Video-Generators (bild- und samplegenau)
       - run: npm test
       - run: npx electron-vite build
