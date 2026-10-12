@@ -24,6 +24,7 @@
     "e2e:run": "node scripts/fetch-electron-bin.mjs && node e2e/run.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "check:files": "node scripts/check-filenames.mjs",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "ndi:setup": "node scripts/setup-ndi.mjs",
