@@ -236,9 +236,13 @@ try {
               const out = []
               const t0 = Date.now()
               const loop = () => {
-                const px = g.getImageData(canvas.width >> 1, canvas.height >> 2, 1, 1).data
-                out.push([Date.now() % 1000, px[0]])
-                if (Date.now() - t0 < 3200) requestAnimationFrame(loop)
+                // Anlaufzeit verwerfen: Die Ton-Messung davor hat die Seite beschäftigt, auf
+                // langsamen Rechnern (macOS in der CI) zeigt das erste Bild noch den alten Blitz
+                if (Date.now() - t0 >= 300) {
+                  const px = g.getImageData(canvas.width >> 1, canvas.height >> 2, 1, 1).data
+                  out.push([Date.now() % 1000, px[0]])
+                }
+                if (Date.now() - t0 < 3500) requestAnimationFrame(loop)
                 else resolve(out)
               }
               requestAnimationFrame(loop)
