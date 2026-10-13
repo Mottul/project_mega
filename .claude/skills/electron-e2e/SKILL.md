@@ -17,6 +17,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `testton.mjs` | Testton gemessen: Analysator vor dem Ausgang (`AudioNode.prototype.connect` umgelenkt, je Kanal einer) – Einblenden und Pegel −18 dBFS, Deckel −6 dBFS, 1 kHz, alle Signale unter dem Pegel, Kanal „Links“, Kennungs-Pausen je Kanal, AV-Sync-Piep zur vollen Sekunde (gemessen etwa −55 ms = Ausgabelatenz), Blitz in der Vorschau, Ton endet beim Verlassen. Ohne laufende Audioausgabe übersprungen |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
+| `osc.mjs` | OSC-Steuerung gegen einen lokalen UDP-Empfänger: leeres Set, Kacheln aller Arten über „+ Widget“, Learn, Schalter im Live-Modus, Befehle vom Handy (`api/command`), Feedback per UDP an den Feedback-Port, Monitor; Zustand über `api/state` der Handy-Fernsteuerung |
 | `ffmpeg-update.mjs` | ffmpeg-Aktualisierung der fertigen App gegen einen lokalen Schein-Release-Server (`MOTTULBOX_FFMPEG_RELEASES_URL`): 7-Tage-Regel, Prüfsumme, Aktivierung nach Neustart (`launchApp({ userData })`), zurück zum mitgelieferten |
 | `ndi.mjs` | NDI-Ausgabe von Timer und Player mit dem echten Binding (ohne `vendor/grandiose`, z. B. in der CI, übersprungen): Bilder gehen raus, Werte begrenzt, Start/Stopp in schneller Folge ohne verwaiste Offscreen-Fenster, Fenster von außen geschlossen |
 | `youtube.mjs` | YouTube-Downloader mit echtem yt-dlp gegen einen lokalen Server (direkte Dateiadressen, kein Netz): fertiger Download, Abbrechen mitten im Laden (Verbindung und Prozess weg), höchstens zwei gleichzeitig, Beenden der App mitten im Download, Anmeldung per cookies.txt (Adresse nur mit Cookie), Cloudflare-artige Sperre (403 mit `cf-mitigated`, erst der zweite Versuch als Browser kommt durch). yt-dlp aus `MOTTULBOX_E2E_YTDLP` oder der installierten Mottulbox, sonst übersprungen (CI) |
@@ -70,6 +71,12 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Verbindungsabbruch:** eine TCP-Weiterleitung, die Sockets „einfriert“ (Beispiel
   `e2e/timer.mjs`), bildet das halboffene WLAN-Aussetzen nach; Erholung großzügig abwarten.
 - **Testmedien per lavfi** (`findFfmpeg()`), ohne ffmpeg `throw new Skip(…)`.
+- **Frische Stores sind nicht leer:** Die OSC-Steuerung startet mit einem Beispiel-Set (fünf
+  Kacheln) – Zählungen und eindeutige Knöpfe („AUS“) nur in einem neu angelegten Set.
+- **Zustand eines Werkzeugs mit Handy-Fernsteuerung** über deren `api/state` lesen und Befehle per
+  `api/command` schicken (eigener Port, vorher `portFree`): so sieht der Test, was das Handy sieht.
+- **UDP-Ziele** (OSC): `dgram`-Socket auf Port 0 binden, die App per `setConfig` dorthin zeigen;
+  Pakete im Test lesen und schreiben (OSC-Kodierung steht in `e2e/osc.mjs`).
 - **Datei- und Speicherdialoge** ebenso per `app.evaluate` ersetzen: `dialog.showOpenDialog` /
   `dialog.showSaveDialog` liefern feste Pfade (Beispiel `e2e/video-generator.mjs`). Die Optionen
   stehen im letzten Argument (davor ggf. das Elternfenster) – so lässt sich auch der Startpfad

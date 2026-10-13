@@ -10,6 +10,7 @@ const all = [
   'testton',
   'timer',
   'player',
+  'osc',
   'video-generator',
   'shutdown',
   'ndi',

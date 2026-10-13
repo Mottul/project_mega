@@ -80,9 +80,31 @@ nennen.
 
 ## 6. Große Komponenten teilen
 
-Vorbild: `VideoPlayer.tsx` (1.765 → 291 Zeilen, 13. Oktober 2026) in `Library`, `ConvertQueue`,
-`PlaybackPanel`, `Playlist`, `SetupPanels`, `NdiPanel`, `usePlayback`, `format`. Nächster Kandidat:
-`OscControl.tsx` (Kacheln, Editor, Panels, Fläche).
+Vorbilder (13. Oktober 2026): `VideoPlayer.tsx` (1.765 → 291 Zeilen: `Library`, `ConvertQueue`,
+`PlaybackPanel`, `Playlist`, `SetupPanels`, `NdiPanel`, `usePlayback`, `format`) und `OscControl.tsx`
+(3.276 → 387 Zeilen: Bedienelemente, Kachel, Fläche, Editor, Panels, Kopfzeile, fünf Hooks).
+
+**Oberste Ebene per Werkzeug, nicht von Hand:**
+
+```bash
+node .claude/skills/aufraeumen/teilen.mjs plan.json            # Vorschau: Zeilen, Bezüge, Probleme
+node .claude/skills/aufraeumen/teilen.mjs plan.json --apply
+```
+
+Der Plan nennt je neuer Datei die Deklarationsnamen (Format im Kopf des Skripts). Code und
+Kommentare wandern wörtlich, der TypeScript-Checker löst jeden Bezeichner auf: jedes Modul
+bekommt genau seine Importe, Gebrauchtes ein `export`, die Quelle einen neuen Importblock
+(fehlen ihr Importe für Neues, erst ergänzen – Überzähliges räumt das Werkzeug weg). Es lehnt ab,
+was beim Laden bräche: neue Module, die aus der Quelle importieren (Kreis), und Namen, die
+zugleich importiert und deklariert sind (Icon `Send` neben `type Send` – vorher umbenennen, OSC:
+`SendFn`). Bewährte Aufteilung: Gemeinsames (Hilfen, Typen, Kontext) in eine Blattdatei
+(`oscShared.ts`), sonst nach Bereich.
+
+**Innerhalb einer Komponente** (Hooks, große JSX-Blöcke) gibt es keine Deklarationen zum Greifen:
+Blöcke per Skript an eindeutigen Markierungszeilen ausschneiden (Anfang inklusive, Ende
+exklusive) und wörtlich in den Rumpf des neuen Hooks bzw. der Komponente setzen, an der alten
+Stelle der Aufruf (`const runNova = useNovaRunner(pushLog)`). Typecheck nennt dann fehlende
+Importe der neuen Dateien; ein Lauf von `teilen.mjs` danach räumt die Quelle auf.
 
 - **Zustand, den mehrere Teile brauchen, bleibt oben** und geht als Props hinunter (Wand,
   Fit, Bibliothek, Wiedergabezustand); auch das Abonnement, das ihn lädt (`applySettings` setzt
@@ -104,11 +126,16 @@ node .claude/skills/aufraeumen/texte.mjs alt/Gross.tsx alt/Gross.tsx neu/A.tsx n
 ```
 
 Vergleicht Texte, Titel, Klassen und Befehle der Fassung aus HEAD mit den neuen Dateien; jeden
-fehlenden Treffer erklären können (erwartet: umbenannte Variablen, aufgeteilte Klassen).
+fehlenden Treffer erklären können (erwartet: umbenannte Variablen, aufgeteilte Klassen). In zwei
+Schritten committet, vergleicht der zweite Lauf gegen den ersten Commit.
 Dazu ein **Vorher/Nachher-Screenshot** der echten App mit Inhalt (`/electron-e2e`, Harness
 `launchApp`, Testclip per lavfi als Standbild, Wiedergabe angehalten): `git stash push -u`,
 `npx electron-vite build`, Aufnahme, `git stash pop`, bauen, Aufnahme – beim Video-Player waren
-beide PNGs byte-gleich. Danach die E2E des Werkzeugs (`npm run e2e -- player`) und alle.
+beide PNGs byte-gleich. Weichen sie ab: `node .claude/skills/aufraeumen/pixel.mjs vorher.png
+nachher.png` zeigt Pixelzahl, größte Abweichung und Rechteck – bei der OSC-Steuerung lag es genau
+auf einer Kachel, die nach dem letzten Klick ihre Hover-Leiste noch ausblendete (Maus weg und
+Übergänge abwarten). **Hat das Werkzeug keinen E2E-Test, zuerst einen schreiben** und gegen den
+alten Stand grün bekommen (so entstand `e2e/osc.mjs`); danach die E2E des Werkzeugs und alle.
 
 ## Abschluss
 
