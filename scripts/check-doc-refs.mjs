@@ -40,7 +40,16 @@ export function findMissing(text, files) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const out = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8', maxBuffer: 64 << 20 })
+  // auch neue, noch nicht vorgemerkte Dateien: sonst prüft der lokale Lauf ein frisch angelegtes
+  // Skill nicht, und erst die CI meldet seine Verweise
+  const out = execFileSync(
+    'git',
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+    {
+      encoding: 'utf8',
+      maxBuffer: 64 << 20
+    }
+  )
   const files = out.split('\0').filter(Boolean)
   const docs = files.filter(
     (f) =>

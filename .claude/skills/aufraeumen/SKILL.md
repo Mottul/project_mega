@@ -37,11 +37,12 @@ node .claude/skills/aufraeumen/move.mjs --apply alt/datei.ts=neuer/ordner/ …
 ```
 
 Ohne `--apply` nur Vorschau. Das Skript verschiebt per `git mv` (Historie bleibt), nimmt Tests
-neben der Datei mit (`x.test.ts`, `x.lab.test.ts`) und rechnet jeden Import neu: relative
+neben der Datei mit (`<name>.test.ts`, `<name>.lab.test.ts`) und rechnet jeden Import neu: relative
 Pfade, `@shared/`/`@renderer/`, `import()`, `vi.mock(…)`, `require`, Endungen wie `?asset`.
 Danach `npm run typecheck`, `npm run typecheck:test` und die Tests des Bereichs.
 
-- **Dateinamen beim Umzug behalten** (`timer/timerRemoteServer.ts`, nicht `timer/remoteServer.ts`):
+- **Dateinamen beim Umzug behalten** (`timer/timerRemoteServer.ts` bleibt so, auch wenn
+  `player/` die Kurzform `remoteServer.ts` nutzt):
   eindeutige Namen finden sich per Suche, und die Doku darf weiter den bloßen Namen nennen.
 - `__dirname` in main-Dateien zeigt auf das gebündelte `out/main`, nicht auf die Quelle – ein
   Umzug ändert daran nichts. Tests mit Pfaden relativ zur Quelle (`__fixtures__/`) prüfen.
@@ -67,7 +68,8 @@ Prüft jeden Dateiverweis in Backticks in `CLAUDE.md`, `README.md`, `docs/*.md` 
 `SKILL.md` der Projekt-Skills (voller Pfad, Teilpfad oder bloßer Name; läuft auch in der CI).
 Treffer per Suchen/Ersetzen auf den neuen Pfad ändern – Skills zuerst, sie lenken die nächste
 Arbeit. Gibt es eine Datei nur im Build, zur Laufzeit oder in einem Paket, gehört ihr Name in
-`ELSEWHERE` in `scripts/check-doc-refs.mjs`.
+`ELSEWHERE` in `scripts/check-doc-refs.mjs`. Beispiele und Platzhalter mit spitzen Klammern
+schreiben (`<name>.test.ts`) – die prüft sie nicht. Neue, noch nicht vorgemerkte Dateien zählen mit.
 
 ## 5. Zusammenlegen
 
