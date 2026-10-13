@@ -1,7 +1,8 @@
 // ESLint-Flat-Config: TypeScript (main/preload/renderer/shared) + React-Hooks.
 // Bewusst OHNE type-aware Linting (schnell, kein tsconfig-Projekt nötig) und
 // mit eslint-config-prettier am Ende, damit Formatfragen allein Prettier gehören.
-// Gelintet wird der Quellcode; Build-Skripte/JS-Configs bleiben außen vor.
+// Gelintet wird der Quellcode; Build-Skripte, Skill-Helfer (.claude/) und JS-Configs bleiben
+// außen vor.
 
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
@@ -18,6 +19,7 @@ export default tseslint.config(
       'build/**',
       'resources/**',
       'scripts/**',
+      '.claude/**',
       'e2e/**',
       'vendor/**',
       '*.config.js',

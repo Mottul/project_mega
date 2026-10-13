@@ -4,8 +4,8 @@
 // wenn das Fenster nicht fokussiert ist.
 
 import { BrowserWindow, screen } from 'electron'
-import { loadRoute, secureWebPreferences } from './appWindows'
-import { logLine } from './log'
+import { loadRoute, secureWebPreferences } from '../windows/appWindows'
+import { logLine } from '../log'
 import { setTimerOutputOpen } from './stageTimer'
 
 let win: BrowserWindow | null = null

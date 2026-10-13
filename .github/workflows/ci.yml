@@ -40,6 +40,8 @@ jobs:
       - run: npm run check:files
       # Ohne Install-Skripte (.npmrc); Build und Tests brauchen die Electron-Binary nicht.
       - run: npm ci
+      # Dateien, die Doku und Skills nennen, gibt es noch (nach npm ci: Verweise in Pakete zählen)
+      - run: npm run check:refs
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck

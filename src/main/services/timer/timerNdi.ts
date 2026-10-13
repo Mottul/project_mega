@@ -7,9 +7,9 @@
 
 import { Channels } from '@shared/ipc-contracts'
 import { DEFAULT_TIMER_NDI, type TimerNdiConfig, type TimerNdiStatus } from '@shared/types'
-import { broadcast } from './broadcast'
-import { clampNdiSize } from './ndiFrames'
-import { OffscreenNdiSender } from './ndiSender'
+import { broadcast } from '../broadcast'
+import { clampNdiSize } from '../ndi/ndiFrames'
+import { OffscreenNdiSender } from '../ndi/ndiSender'
 import { setTimerNdiActive } from './stageTimer'
 
 let config: TimerNdiConfig = { ...DEFAULT_TIMER_NDI }

@@ -3,7 +3,7 @@
 // den Display-Bounds). Der Fensterinhalt (#/player-output) treibt das HTML5-Video.
 
 import { BrowserWindow, screen } from 'electron'
-import { loadRoute, secureWebPreferences } from '../appWindows'
+import { loadRoute, secureWebPreferences } from '../windows/appWindows'
 import { logLine } from '../log'
 import { setOutputOpen } from './playerState'
 

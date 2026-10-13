@@ -3,7 +3,7 @@
 // Button faded alles aus. Live-Updates per SSE. Bewusst ohne Framework/Build.
 // API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App läuft.
 
-import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from './remotePwa'
+import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from '../remote/remotePwa'
 
 export const JINGLE_MOBILE_PAGE = `<!DOCTYPE html>
 <html lang="de">

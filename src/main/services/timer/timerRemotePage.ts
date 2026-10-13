@@ -5,7 +5,7 @@
 // API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App läuft.
 // Achtung Template-Literal: im Client-JS keine Backslashes, Backticks oder ${…}.
 
-import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from './remotePwa'
+import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from '../remote/remotePwa'
 
 export const TIMER_MOBILE_PAGE = `<!DOCTYPE html>
 <html lang="de">

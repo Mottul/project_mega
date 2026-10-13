@@ -4,10 +4,10 @@
 // richtigen Monitor und deckt ihn pixelgenau ab.
 
 import { BrowserWindow, screen } from 'electron'
-import { loadRoute, secureWebPreferences } from './appWindows'
+import { loadRoute, secureWebPreferences } from '../windows/appWindows'
 import { Channels } from '@shared/ipc-contracts'
 import type { DisplayInfo, PatternConfig } from '@shared/types'
-import { logLine } from './log'
+import { logLine } from '../log'
 
 let win: BrowserWindow | null = null
 let currentConfig: PatternConfig | null = null

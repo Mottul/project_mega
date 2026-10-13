@@ -109,11 +109,11 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
 
 - **Abgeschottete Fenster:** `sandbox`, `contextIsolation`, `nodeIntegration: false` und keine
   Webviews in allen Fenstern mit App-Seite (Haupt-, Werkzeug-, Ausgabe- und NDI-Fenster, eine
-  Quelle: `secureWebPreferences` in `services/appWindows.ts`). Der Preload gibt nur eine
+  Quelle: `secureWebPreferences` in `services/windows/appWindows.ts`). Der Preload gibt nur eine
   typisierte API frei, nie rohes `ipcRenderer`. Das unsichtbare Fenster für den PDF-Export
   (`utilExportPdf`) hat keinen Preload und kein JavaScript. Die fertige App lädt nie eine Seite aus
   `ELECTRON_RENDERER_URL`, beim Entwickeln nur einen lokalen Vite-Server.
-- **Fenster-Wächter für alle Fenster** (`services/windowGuards.ts`, über `web-contents-created`,
+- **Fenster-Wächter für alle Fenster** (`services/windows/windowGuards.ts`, über `web-contents-created`,
   auch für künftige): keine neuen Fenster (`window.open` gesperrt), keine Navigation weg von der
   App-Seite – so bekommt nie eine fremde Seite die App-API –, keine Webviews. Externe Links gehen
   an den Standardbrowser, und zwar nur http(s). Browser-Berechtigungen nur für die App-Seite und

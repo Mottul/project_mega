@@ -232,13 +232,6 @@ export function noiseSamples(
   return out
 }
 
-/** Effektivwert eines Puffers in dB (bezogen auf 1 = Vollaussteuerung) */
-export function rmsDb(samples: Float32Array): number {
-  let sum = 0
-  for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i]
-  return 10 * Math.log10(sum / samples.length)
-}
-
 /** Positiver Puls (angehobene Kosinus-Form, 1 ms): Polaritätsprüfer werten die Richtung aus */
 export function polarityPulse(sampleRate: number): Float32Array<ArrayBuffer> {
   const n = Math.max(8, Math.round(sampleRate / 1000))

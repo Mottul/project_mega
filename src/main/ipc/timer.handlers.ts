@@ -8,17 +8,17 @@ import {
   restoreTimerSetup,
   setTimerSetupSink,
   setTimerSinks
-} from '../services/stageTimer'
+} from '../services/timer/stageTimer'
 import { getSettings, setSettings } from '../services/store'
-import { closeTimerOutput, openTimerOutput } from '../services/timerWindow'
-import { getTimerNdiStatus, startTimerNdi, stopTimerNdi } from '../services/timerNdi'
+import { closeTimerOutput, openTimerOutput } from '../services/timer/timerWindow'
+import { getTimerNdiStatus, startTimerNdi, stopTimerNdi } from '../services/timer/timerNdi'
 import {
   getTimerRemoteStatus,
   pushTimerRemoteState,
   pushTimerRemoteTick,
   startTimerRemote,
   stopTimerRemote
-} from '../services/timerRemoteServer'
+} from '../services/timer/timerRemoteServer'
 import { registerRemoteControl } from './remoteControls'
 
 export function registerTimerHandlers(): void {

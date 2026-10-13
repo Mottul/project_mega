@@ -9,8 +9,8 @@ import {
   toolWindowSize
 } from '@shared/toolWindows'
 import { createWindow } from './appWindows'
-import { logLine } from './log'
-import { getSettings, setSettings } from './store'
+import { logLine } from '../log'
+import { getSettings, setSettings } from '../store'
 
 // Fenster der kleinen Werkzeuge: je Werkzeug höchstens eines (ein zweiter Klick holt es nach
 // vorn), Lage und Breite gemerkt (settings.json, toolWindowBounds), die Höhe folgt dem Inhalt

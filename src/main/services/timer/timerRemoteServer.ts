@@ -6,7 +6,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { StageTimerState, StageTimerTick, TimerCommand } from '@shared/types'
-import { createRemoteHost, readBody, sendJson } from './remoteHttp'
+import { createRemoteHost, readBody, sendJson } from '../remote/remoteHttp'
 import { applyTimerCommand, getTimerState } from './stageTimer'
 import { TIMER_DISPLAY_PAGE } from './timerDisplayPage'
 import { TIMER_MOBILE_PAGE } from './timerRemotePage'

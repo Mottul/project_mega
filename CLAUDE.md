@@ -11,6 +11,7 @@ npm run dev             # Entwicklung (Hot Reload)
 npm run lint            # ESLint (Flat Config, --max-warnings 0)
 npm run format:check    # Prettier-Prüfung (format = schreiben)
 npm run check:files     # Dateinamen, die unter Windows/macOS kollidieren (auch in der CI)
+npm run check:refs      # Dateiverweise in CLAUDE.md, docs/ und Skills existieren (auch in der CI)
 npm run typecheck       # tsc: node- + web-Projekt
 npm run typecheck:test  # tsc: Testdateien
 npm test                # Vitest (einmalig; test:watch für Watch)
@@ -26,7 +27,9 @@ Ein einzelner Test: `npx vitest run src/renderer/src/tools/led-wall/math.test.ts
 
 Drei Build-Targets (electron-vite, CJS für main/preload): `src/main` (Node,
 Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
-(React SPA mit HashRouter). Aliase: `@shared`, `@renderer`.
+(React SPA mit HashRouter). Aliase: `@shared`, `@renderer`. Dienste im main je Bereich in
+`src/main/services/<bereich>/` (`windows`, `remote`, `ndi`, `player`, `timer`, `convert` …); lose
+Dateien dort nur fürs ganze Programm (`store`, `db`, `log`, `broadcast`, `fileDialogs`, `shutdown`).
 
 - **IPC-Vertrag:** `src/shared/ipc-contracts.ts` definiert `Channels` +
   `ToolboxApi` als einzige Quelle; `src/shared/types.ts` alle Domain-Typen.
@@ -42,7 +45,7 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   Kleine Werkzeuge (Rechner) öffnen sich immer im eigenen, kleinen Fenster: Eintrag mit Breite in
   `SMALL_TOOLS` (`shared/toolWindows.ts`), die Höhe folgt dem Inhalt; Bausteine aus
   `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ, Zahlen mit Komma, verknüpfte Felder per
-  `useLinkedFields`). Fenster: `main/services/appWindows.ts` (`createWindow`),
+  `useLinkedFields`). Fenster: `main/services/windows/appWindows.ts` (`createWindow`),
   `smallToolWindows.ts` (kleine Werkzeuge), Hauptfenster in `main/index.ts`.
 - **Rechner-PWA** (`src/pwa/`, `vite.pwa.config.ts`): die kleinen Werkzeuge zusätzlich als
   Web-App fürs Handy, gleiche Module ohne Electron (Liste `src/pwa/tools.ts` = `SMALL_TOOLS`).
@@ -63,7 +66,7 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   `#/timer-output`, `#/osc-monitor`); der main-Prozess bleibt autoritativ
   (Player-/Timer-Zustand tickt im main, Renderer spiegeln).
 - **Handy-Fernsteuerungen** (Player/Jingle/OSC/Timer): dependency-freie HTTP-Server je Tool
-  (`services/remoteHttp.ts`), Steuerseiten als HTML-Strings. Die Fernsteuer-App
+  (`services/remote/remoteHttp.ts`), Steuerseiten als HTML-Strings. Die Fernsteuer-App
   (`remoteApp*.ts`, fester Port 8090) bindet laufende Fernsteuerungen unter `/<id>/` ein ->
   Steuerseiten sprechen ihre API IMMER relativ an (`api/…`, nie `/api/…`); PWA-Kopf und
   Client-Skript kommen aus `remotePwa.ts`. Start/Stopp/Merken/Autostart je Fernsteuerung
@@ -87,7 +90,7 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 - **Native/optionale Module:** better-sqlite3 (ab 13 über N-API: die Binaries liegen im Paket und
   laufen unter jeder Electron- und Node-Version, kein Rebuild, KEIN node-gyp im Baum); NDI-Binding
   `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`); NDI-Ausgaben nur über den
-  gemeinsamen Offscreen-Sender `services/ndiSender.ts` (Timer und Player sind dünne Hüllen).
+  gemeinsamen Offscreen-Sender `services/ndi/ndiSender.ts` (Timer und Player sind dünne Hüllen).
 
 ## Konventionen
 
@@ -98,7 +101,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
   CSS-Variablen (`@renderer/lib/accent`). Farben immer über Tailwind-Tokens
   (`primary`, `border`, Status `success`/`warning`/`danger` …), nie hart kodieren. Rot: `danger`
   für Schrift, Rahmen und Tönung, `destructive` nur für volle Flächen (Knöpfe, „Live“); Hinweise
-  im Inhalt als `Alert` (`components/ui/alert`).
+  im Inhalt als `Alert` (`components/ui/alert`); Symbol und Farbe je Statusstufe aus `STATUS`
+  (`components/ui/status`).
 - **Speichern – drei Orte, nie eigener localStorage-Parser** (Tabelle in docs/ENTWICKLUNG.md):
   Einstellungen (Pfade, Geräte/Ausgaben, Player/Timer, alles, was main braucht) in
   settings.json – Renderer: `useSettings(sel)` + `updateSettings(patch)` aus
@@ -116,6 +120,6 @@ Ausgearbeitete Pläne für größere Vorhaben: `docs/PLAN-*.md` (z. B. Video-Gen
 Umsetzung lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überführen und löschen.
 Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
 `abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,
-`review-checkliste`, `abhaengigkeiten`).
+`review-checkliste`, `abhaengigkeiten`, `aufraeumen`).
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.

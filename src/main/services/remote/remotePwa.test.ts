@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { JINGLE_MOBILE_PAGE } from './jingleRemotePage'
-import { OSC_MOBILE_PAGE } from './oscRemotePage'
-import { MOBILE_PAGE } from './player/remotePage'
+import { JINGLE_MOBILE_PAGE } from '../jingle/jingleRemotePage'
+import { OSC_MOBILE_PAGE } from '../osc/oscRemotePage'
+import { MOBILE_PAGE } from '../player/remotePage'
 import { REMOTE_APP_PAGE } from './remoteAppPage'
 import { HOME_BUTTON, pwaManifest } from './remotePwa'
-import { TIMER_MOBILE_PAGE } from './timerRemotePage'
+import { TIMER_MOBILE_PAGE } from '../timer/timerRemotePage'
 
 const PAGES = {
   jingle: JINGLE_MOBILE_PAGE,

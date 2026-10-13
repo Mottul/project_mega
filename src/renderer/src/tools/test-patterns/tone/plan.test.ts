@@ -10,13 +10,19 @@ import {
   noiseSamples,
   normalizeTone,
   polarityPulse,
-  rmsDb,
   sweepStarts,
   syncBeeps,
   syncFlashOn,
   ticks,
   toneSummary
 } from './plan'
+
+/** Effektivwert eines Puffers in dB (bezogen auf 1 = Vollaussteuerung) */
+function rmsDb(samples: Float32Array): number {
+  let sum = 0
+  for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i]
+  return 10 * Math.log10(sum / samples.length)
+}
 
 /** reproduzierbarer Zufall für die Rauschtests */
 function seeded(seed: number): () => number {

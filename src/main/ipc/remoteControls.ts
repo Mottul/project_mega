@@ -8,7 +8,7 @@ import { Channels } from '@shared/ipc-contracts'
 import type { RemoteControlId, RemoteControlSetting, RemoteStatus } from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { logLine } from '../services/log'
-import { getRemoteAppStatus, syncRemoteApp, withAppLink } from '../services/remoteAppServer'
+import { getRemoteAppStatus, syncRemoteApp, withAppLink } from '../services/remote/remoteAppServer'
 import { getSettings, setSettings } from '../services/store'
 
 export interface RemoteControlDef {

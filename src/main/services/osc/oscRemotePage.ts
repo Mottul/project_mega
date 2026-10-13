@@ -6,7 +6,7 @@
 // (kein Sprung auf den Berührungspunkt), wie auf dem Desktop.
 // API-Pfade relativ (api/…), damit die Seite auch unter der Fernsteuer-App läuft.
 
-import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from './remotePwa'
+import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from '../remote/remotePwa'
 
 export const OSC_MOBILE_PAGE = `<!DOCTYPE html>
 <html lang="de">

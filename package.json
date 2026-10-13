@@ -25,6 +25,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:files": "node scripts/check-filenames.mjs",
+    "check:refs": "node scripts/check-doc-refs.mjs",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "ndi:setup": "node scripts/setup-ndi.mjs",

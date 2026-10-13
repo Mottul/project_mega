@@ -30,7 +30,7 @@ import {
   setTickSink
 } from '../services/player/playerState'
 import { closePlayerOutput, openPlayerOutput } from '../services/player/playerWindow'
-import { getPlayerNdiStatus, startPlayerNdi, stopPlayerNdi } from '../services/playerNdi'
+import { getPlayerNdiStatus, startPlayerNdi, stopPlayerNdi } from '../services/player/playerNdi'
 import {
   getRemoteStatus,
   pushRemoteLibrary,

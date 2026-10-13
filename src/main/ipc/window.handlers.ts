@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
-import { createWindow } from '../services/appWindows'
-import { fitToolWindow, openToolWindow } from '../services/smallToolWindows'
+import { createWindow } from '../services/windows/appWindows'
+import { fitToolWindow, openToolWindow } from '../services/windows/smallToolWindows'
 
 /** Werkzeug in eigenem Fenster, Höhe kleiner Werkzeugfenster, OSC-Monitor. */
 export function registerWindowHandlers(): void {

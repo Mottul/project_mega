@@ -1,4 +1,4 @@
-// Fenster-Wächter und Shell-Kanäle in der echten App (services/windowGuards.ts, windowPolicy.ts):
+// Fenster-Wächter und Shell-Kanäle in der echten App (services/windows/windowGuards.ts, windowPolicy.ts):
 // keine fremde Navigation und keine neuen Fenster – im Hauptfenster wie im Ausgabefenster –,
 // Browser-Berechtigungen nur nach Allowlist, „Ordner öffnen“ nur für lokale Ordner.
 // Öffnet kurz die Testbild-Ausgabe auf dem ersten Bildschirm.
