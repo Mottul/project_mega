@@ -130,7 +130,10 @@ const CASES = [
   { name: '16zu9', w: 1920, h: 1080, wall: { w: 1280, h: 1024 } }
 ]
 
-describe.skipIf(!have)('Labor Player-Import: Blur-Rand', () => {
+// Echte Kodierläufe: auf CI-Rechnern dauert einer leicht länger als die 5 s Vorgabe von Vitest
+const LAB = { timeout: 120_000 }
+
+describe.skipIf(!have)('Labor Player-Import: Blur-Rand', LAB, () => {
   for (const enc of encoders) {
     for (const c of CASES) {
       {
@@ -161,36 +164,40 @@ describe.skipIf(!have)('Labor Player-Import: Blur-Rand', () => {
   }
 })
 
-describe.skipIf(!have)('Labor: Video aus dem Konverter (Laptop-Playout) beim Player-Import', () => {
-  for (const enc of encoders) {
-    it(`${enc}: gleiche Größe wie die Wand -> nur umverpacken, kein zweites Kodieren`, async () => {
-      // Kameradatei, die der Konverter neu kodiert (MPEG-2 mit PCM-Ton)
-      const cam = join(dir, `kamera-${enc}.mov`)
-      ff([
-        ...['-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=25:d=3'],
-        ...['-f', 'lavfi', '-i', 'sine=frequency=440:duration=3:sample_rate=48000'],
-        ...['-c:v', 'mpeg2video', '-q:v', '4', '-c:a', 'pcm_s16le', '-shortest', '-y', cam]
-      ])
-      const conv = presetOptions('laptop', DEFAULT_OPTIONS)
-      const cp = planConversion(await deepInfo(cam), conv, caps!)
-      expect(cp.ok).toBe(true)
-      if (!cp.ok) return
-      const laptop = join(dir, `laptop-${enc}.mp4`)
-      const cargs = buildConvertArgs(cp.plan, conv, { input: cam, output: laptop, encoder: enc })
-      ff(cargs.filter((a) => a !== '-hide_banner'))
+describe.skipIf(!have)(
+  'Labor: Video aus dem Konverter (Laptop-Playout) beim Player-Import',
+  LAB,
+  () => {
+    for (const enc of encoders) {
+      it(`${enc}: gleiche Größe wie die Wand -> nur umverpacken, kein zweites Kodieren`, async () => {
+        // Kameradatei, die der Konverter neu kodiert (MPEG-2 mit PCM-Ton)
+        const cam = join(dir, `kamera-${enc}.mov`)
+        ff([
+          ...['-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=25:d=3'],
+          ...['-f', 'lavfi', '-i', 'sine=frequency=440:duration=3:sample_rate=48000'],
+          ...['-c:v', 'mpeg2video', '-q:v', '4', '-c:a', 'pcm_s16le', '-shortest', '-y', cam]
+        ])
+        const conv = presetOptions('laptop', DEFAULT_OPTIONS)
+        const cp = planConversion(await deepInfo(cam), conv, caps!)
+        expect(cp.ok).toBe(true)
+        if (!cp.ok) return
+        const laptop = join(dir, `laptop-${enc}.mp4`)
+        const cargs = buildConvertArgs(cp.plan, conv, { input: cam, output: laptop, encoder: enc })
+        ff(cargs.filter((a) => a !== '-hide_banner'))
 
-      const opts = playerOptions(
-        'video',
-        { fit: 'blur', width: 1920, height: 1080, blurStrength: 50, blurDarken: 0 },
-        null
-      )
-      const pp = planConversion(await deepInfo(laptop), opts, caps!)
-      expect(pp.ok).toBe(true)
-      if (!pp.ok) return
-      expect(
-        { video: pp.plan.video?.copy, audio: pp.plan.audio?.codec },
-        `Schritte: ${pp.plan.steps.join(' | ')} – Filter: ${pp.plan.video?.filters.join(',')}`
-      ).toEqual({ video: true, audio: 'copy' })
-    })
+        const opts = playerOptions(
+          'video',
+          { fit: 'blur', width: 1920, height: 1080, blurStrength: 50, blurDarken: 0 },
+          null
+        )
+        const pp = planConversion(await deepInfo(laptop), opts, caps!)
+        expect(pp.ok).toBe(true)
+        if (!pp.ok) return
+        expect(
+          { video: pp.plan.video?.copy, audio: pp.plan.audio?.codec },
+          `Schritte: ${pp.plan.steps.join(' | ')} – Filter: ${pp.plan.video?.filters.join(',')}`
+        ).toEqual({ video: true, audio: 'copy' })
+      })
+    }
   }
-})
+)
