@@ -172,7 +172,10 @@ function convVariant(spec: Spec, kind: MediaKind): string | undefined {
   const blur = spec.fit === 'blur' ? `b${spec.blurStrength}d${spec.blurDarken}v2` : ''
   const l = spec.loudnorm
   const loud = kind === 'video' && l ? `l${l.i}_${l.tp}_${l.lra}` : ''
-  return [blur, loud].filter(Boolean).join('_') || undefined
+  // „a2“: Ton wieder mit 192 kbit/s – mit Quick Sync gerechnete Videos hatten nur 45–79 kbit/s
+  // (Bild-Option ohne :v, Oktober 2026). Ältere Videos gelten damit als veraltet.
+  const audio = kind === 'video' ? 'a2' : ''
+  return [blur, loud, audio].filter(Boolean).join('_') || undefined
 }
 
 interface Prepared {

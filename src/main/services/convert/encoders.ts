@@ -77,6 +77,11 @@ function halfRate(rate: string): string {
  * Ausgabe-Argumente eines Hardware-Encoders. Mit `compat` (nur H.264): festes Level und
  * Bitraten-Deckel für USB-/LED-Player – qualitätsbasierte Modi kennen keinen Deckel,
  * deshalb dort ein Spitzen-begrenzter VBR-Modus.
+ *
+ * Allgemeine Encoder-Optionen (global_quality, level, maxrate, bufsize, g) IMMER mit `:v`:
+ * Ohne gelten sie für jeden Encoder des Laufs, auch für den Ton. Der AAC-Encoder schaltet bei
+ * global_quality auf Qualitätsstufen um und ignoriert -b:a – mit Quick Sync kamen 45–79 statt
+ * 192 kbit/s heraus (Oktober 2026). Encoder-eigene Optionen (cq, rc, qp_i …) betrifft das nicht.
  */
 export function hardwareEncoderArgs(
   encoder: string,
@@ -90,7 +95,7 @@ export function hardwareEncoderArgs(
     const q = GPU_QUALITY.nvenc[quality] + off
     const args = ['-c:v', encoder, '-preset', 'p5', '-rc', 'vbr', '-cq', String(q), '-b:v', '0']
     if (compat) {
-      args.push('-maxrate', compat.maxrate, '-bufsize', compat.bufsize)
+      args.push('-maxrate:v', compat.maxrate, '-bufsize:v', compat.bufsize)
       args.push('-profile:v', 'high', '-level:v', compat.level)
     }
     return args
@@ -102,17 +107,17 @@ export function hardwareEncoderArgs(
         encoder,
         '-profile:v',
         'high',
-        '-level',
+        '-level:v',
         compat.level.replace('.', ''),
         '-b:v',
         halfRate(compat.maxrate),
-        '-maxrate',
+        '-maxrate:v',
         compat.maxrate,
-        '-bufsize',
+        '-bufsize:v',
         compat.bufsize
       ]
     }
-    return ['-c:v', encoder, '-global_quality', String(GPU_QUALITY.qsv[quality] + off)]
+    return ['-c:v', encoder, '-global_quality:v', String(GPU_QUALITY.qsv[quality] + off)]
   }
   if (encoder.endsWith('_amf')) {
     if (compat) {
@@ -125,13 +130,13 @@ export function hardwareEncoderArgs(
         'vbr_peak',
         '-b:v',
         halfRate(compat.maxrate),
-        '-maxrate',
+        '-maxrate:v',
         compat.maxrate,
-        '-bufsize',
+        '-bufsize:v',
         compat.bufsize,
         '-profile:v',
         'high',
-        '-level',
+        '-level:v',
         compat.level
       ]
     }
