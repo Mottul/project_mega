@@ -1,5 +1,6 @@
 // Video-Player: Playlist löschen nur nach Rückfrage (auch mit „anderem Fenster“), parallele
-// Importe, dieselbe Quelle zweimal, gleichnamige Kopien aus verschiedenen Ordnern.
+// Importe, dieselbe Quelle zweimal, gleichnamige Kopien aus verschiedenen Ordnern, Import-Art
+// „Unverändert“ (Datei 1:1, kein Neu-Einbacken, ProRes abgelehnt, Wiedergabe mit Rändern).
 // Aus den Cloud-Läufen vom 7. Oktober 2026 übernommen. Die Importe brauchen das gebündelte
 // ffmpeg (`npm run ff:fetch`); ohne es werden sie übersprungen.
 //
@@ -11,7 +12,17 @@
 
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  utimesSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -55,6 +66,22 @@ function makeClip(name, seconds = 6, tone = 400) {
   ])
   return file
 }
+
+/** Quelle in beliebiger Größe und Art (vcodec + Ton), z.B. für „Unverändert“ */
+function makeSource(name, w, h, vcodec = ['-c:v', 'libx264', '-pix_fmt', 'yuv420p']) {
+  if (!ffmpeg) throw new Skip('ffmpeg fehlt (npm run ff:fetch)')
+  const file = join(clipsDir, name)
+  execFileSync(ffmpeg, [
+    ...['-v', 'error', '-y', '-f', 'lavfi', '-i', `testsrc2=s=${w}x${h}:r=25:d=3`],
+    ...['-f', 'lavfi', '-i', 'sine=f=500:d=3'],
+    ...vcodec,
+    ...['-c:a', 'aac', '-shortest', file]
+  ])
+  return file
+}
+const sha = (file) => createHash('sha256').update(readFileSync(file)).digest('hex')
+const mediaDir = () => join(ctx.userData, 'player-media')
+const library = () => w.evaluate(() => window.api.player.libraryList())
 
 /** Importiert und wartet, bis alle Aufträge fertig sind; liefert Liste und höchste Parallelität. */
 async function importAndWait(sources, expectedJobs, fitMode = 'bars') {
@@ -201,6 +228,112 @@ try {
           f.endsWith('.mp4')
         )
         assert.equal(files.length, lib.length, `${files.length} Dateien, ${lib.length} Einträge`)
+      }
+    ],
+    [
+      'Unverändert: Datei bitgleich in der Bibliothek, Maße der Quelle, „Unverändert“ im Titel',
+      async () => {
+        // kleiner als die Wand und als MOV: Endung und Maße bleiben, nichts wird umgerechnet
+        const src = makeSource('Roh.mov', 640, 360)
+        const { list } = await importAndWait([src], 1, 'original')
+        assert.equal(list[0].status, 'done', list[0].error)
+        const item = (await library()).find((m) => m.id === list[0].mediaId)
+        assert.ok(item, 'kein Bibliothekseintrag')
+        assert.equal(item.fitMode, 'original')
+        assert.deepEqual([item.width, item.height], [640, 360])
+        assert.match(item.title, / · Unverändert$/)
+        const stored = join(mediaDir(), `${item.id}.mov`)
+        assert.ok(existsSync(stored), 'Kopie fehlt')
+        assert.equal(sha(stored), sha(src), 'Kopie ist nicht bitgleich')
+        // ein zweiter Import derselben Datei legt nichts Neues an
+        await importAndWait([src], 1, 'original')
+        assert.equal((await library()).filter((m) => m.originalName === 'Roh.mov').length, 1)
+      }
+    ],
+    [
+      'Unverändert: kein Neu-Einbacken bei anderer Wandgröße – nur, wenn ausdrücklich umgestellt',
+      async () => {
+        const item = (await library()).find((m) => m.originalName === 'Roh.mov')
+        const big = { width: 1920, height: 1080 }
+        const res = await w.evaluate(
+          ([id, wall]) => window.api.player.reconvert([id], wall),
+          [item.id, big]
+        )
+        assert.deepEqual(res, { jobIds: [], skipped: 0 })
+        // ausdrücklich auf „Ränder“ umgestellt: gebacken, Endung wechselt .mov -> .mp4
+        await w.evaluate(() => window.api.player.convertClearFinished())
+        await w.evaluate(
+          ([id, wall]) => window.api.player.reconvert([id], wall, 'bars'),
+          [item.id, big]
+        )
+        assert.ok(
+          await waitFor(async () => finished(await convertList()), 60_000),
+          'Neu-Einbacken nicht fertig'
+        )
+        const after = (await library()).find((m) => m.id === item.id)
+        assert.equal(after.fitMode, 'bars')
+        assert.deepEqual([after.width, after.height], [1920, 1080])
+        assert.ok(existsSync(join(mediaDir(), `${item.id}.mp4`)), 'gebackene Datei fehlt')
+        assert.ok(!existsSync(join(mediaDir(), `${item.id}.mov`)), 'alte Kopie liegt noch da')
+        // und zurück auf „unverändert“: wieder die bitgleiche Kopie
+        await w.evaluate(() => window.api.player.convertClearFinished())
+        await w.evaluate(
+          ([id, wall]) => window.api.player.reconvert([id], wall, 'original'),
+          [item.id, big]
+        )
+        assert.ok(await waitFor(async () => finished(await convertList()), 60_000))
+        const back = (await library()).find((m) => m.id === item.id)
+        assert.equal(back.fitMode, 'original')
+        assert.equal(sha(join(mediaDir(), `${item.id}.mov`)), sha(join(clipsDir, 'Roh.mov')))
+        assert.ok(!existsSync(join(mediaDir(), `${item.id}.mp4`)))
+      }
+    ],
+    [
+      'Unverändert: ProRes wird mit klarer Meldung abgelehnt, ohne Reste',
+      async () => {
+        const src = makeSource('Kamera.mov', 640, 360, ['-c:v', 'prores_ks', '-profile:v', '0'])
+        const { list } = await importAndWait([src], 1, 'original')
+        assert.equal(list[0].status, 'error')
+        assert.match(list[0].error, /ProRes kann der Player nicht direkt abspielen/)
+        const left = readdirSync(mediaDir()).filter((n) => n.startsWith(list[0].id))
+        assert.deepEqual(left, [])
+      }
+    ],
+    [
+      'Wiedergabe: unverändertes Medium mit Rändern eingepasst, gebackene füllen die Wand',
+      async () => {
+        const item = (await library()).find((m) => m.originalName === 'Roh.mov')
+        const baked = (await library()).find((m) => m.fitMode !== 'original')
+        await w.evaluate(
+          (ids) => window.api.player.command({ type: 'replace', mediaIds: ids }),
+          [item.id, baked.id]
+        )
+        const displays = await w.evaluate(() => window.api.screen.list())
+        await w.evaluate((id) => window.api.player.openOutput(id), displays[0].id)
+        const out = await waitFor(
+          async () => app.windows().find((p) => p.url().includes('player-output')) ?? null,
+          10_000
+        )
+        assert.ok(out, 'Ausgabefenster fehlt')
+        // Beide Ebenen sind geladen (die zweite hält das nächste Medium vor, sichtbar wird sie
+        // per Deckkraft) – geprüft wird das Element, das genau dieses Medium zeigt
+        const fitOf = (id) =>
+          out.evaluate((mid) => {
+            const el = [...document.querySelectorAll('video, img')].find(
+              (e) => e.style.display === 'block' && (e.getAttribute('src') ?? '').includes(mid)
+            )
+            return el ? el.style.objectFit : null
+          }, id)
+        await w.evaluate(() => window.api.player.command({ type: 'goto', index: 0 }))
+        assert.ok(
+          await waitFor(async () => (await fitOf(item.id)) === 'contain', 10_000),
+          'unverändertes Medium nicht eingepasst'
+        )
+        assert.ok(
+          await waitFor(async () => (await fitOf(baked.id)) === 'fill', 10_000),
+          'gebackenes Medium füllt nicht'
+        )
+        await w.evaluate(() => window.api.player.closeOutput())
       }
     ]
   ])

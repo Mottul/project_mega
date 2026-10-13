@@ -4,10 +4,16 @@
 // „Playlist leeren“ und das „ended“-Signal des Ausgabefensters bleiben dem Rechner
 // vorbehalten. Rein -> testbar.
 
-import type { FitMode, LoopMode, PlayerCommand, TransitionMode } from '@shared/types'
+import {
+  FIT_MODES,
+  type FitMode,
+  type LoopMode,
+  type PlayerCommand,
+  type TransitionMode
+} from '@shared/types'
 
 const LOOP: readonly LoopMode[] = ['none', 'one', 'all']
-const FIT: readonly FitMode[] = ['blur', 'bars', 'stretch']
+const FIT: readonly FitMode[] = FIT_MODES
 const TRANSITION: readonly TransitionMode[] = ['cut', 'crossfade']
 /** Medien-IDs sind UUIDs; nie beliebiger Text. */
 const MEDIA_ID = /^[\w-]{1,64}$/

@@ -770,7 +770,12 @@ export type MediaKind = 'video' | 'image' | 'gif'
 // blur  = unscharfer, formatfüllender Hintergrund + scharfer Inhalt mittig
 // bars  = Letter-/Pillarbox (schwarze Ränder), Originalformat erhalten
 // stretch = auf exakte Wand-Auflösung ziehen (verzerrt; gut bei Mini-Abweichungen)
-export type FitMode = 'blur' | 'bars' | 'stretch'
+// original = unverändert: Datei 1:1 in die Bibliothek kopiert, beim Abspielen eingepasst
+//            (Ränder, ganzes Bild) – nur Formate, die Chromium direkt abspielt
+export type FitMode = 'blur' | 'bars' | 'stretch' | 'original'
+
+/** Alle Einpass-Arten (Allowlist für Eingaben aus Renderer und Fernsteuerung) */
+export const FIT_MODES: readonly FitMode[] = ['blur', 'bars', 'stretch', 'original']
 
 export type LoopMode = 'none' | 'one' | 'all'
 
@@ -792,7 +797,7 @@ export interface MediaItem {
   url: string
   /** media://library/<thumb> – Vorschaubild, oder null. */
   thumbUrl: string | null
-  width: number // Ziel-/Wand-Auflösung, in der eingebacken wurde
+  width: number // Wand-Auflösung, in der eingebacken wurde (unverändert: Maße der Datei)
   height: number
   durationSec: number | null // null = Standbild (freie Standzeit)
   fitMode: FitMode

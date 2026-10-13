@@ -77,6 +77,8 @@ function mediaContentType(path: string): string {
       return 'image/jpeg'
     case '.png':
       return 'image/png'
+    case '.webp':
+      return 'image/webp'
     case '.gif':
       return 'image/gif'
     default:

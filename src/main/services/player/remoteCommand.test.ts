@@ -30,6 +30,11 @@ describe('Player-Fernsteuerung – Befehlsprüfung', () => {
       type: 'setDefaultFit',
       fit: 'bars'
     })
+    // „Unverändert“: Uploads vom Handy 1:1 übernehmen
+    expect(parse({ type: 'setDefaultFit', fit: 'original' })).toEqual({
+      type: 'setDefaultFit',
+      fit: 'original'
+    })
     expect(parse({ type: 'setTransition', transition: 'cut' })).toEqual({
       type: 'setTransition',
       transition: 'cut'

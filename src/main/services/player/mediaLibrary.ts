@@ -158,9 +158,13 @@ export function updateMediaConversion(
     sizeBytes: number
     thumbName: string | null
     title?: string // optional: Fit-Hinweis im Namen mitziehen
+    /** neue Datei, wenn die Endung wechselt (unverändert .mov <-> gebacken .mp4) */
+    storedName?: string
   }
 ): MediaItem | null {
-  const titleSet = patch.title !== undefined ? ', title=@title' : ''
+  const titleSet =
+    (patch.title !== undefined ? ', title=@title' : '') +
+    (patch.storedName !== undefined ? ', stored_name=@stored_name' : '')
   getDb()
     .prepare(
       `UPDATE media_items SET width=@width, height=@height, duration_sec=@duration_sec,
@@ -177,9 +181,17 @@ export function updateMediaConversion(
       conv_key: patch.convKey,
       size_bytes: patch.sizeBytes,
       thumb_name: patch.thumbName,
-      ...(patch.title !== undefined ? { title: patch.title } : {})
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.storedName !== undefined ? { stored_name: patch.storedName } : {})
     })
   return getMedia(id)
+}
+
+/** Dateiname der gespeicherten Datei (null = unbekannt) */
+export function storedNameOf(id: string): string | null {
+  const row = getDb().prepare('SELECT stored_name FROM media_items WHERE id = ?').get(id) as
+    { stored_name: string } | undefined
+  return row?.stored_name ?? null
 }
 
 export function listMedia(): MediaItem[] {

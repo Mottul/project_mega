@@ -34,7 +34,7 @@ Adresse antwortet, solange am Rechner mindestens eine Fernsteuerung läuft.
   Kamera – sie werden wie beim Import auf die Wand gerechnet. Höchstens 8 GB je Datei, und auf dem
   Rechner müssen danach noch 2 GB frei bleiben; abgewiesene Dateien meldet die Seite mit Grund.
   Dazu Übergang (Schnitt oder Überblenden samt Dauer), Bild-Standzeit und Aufbereitung neuer
-  Uploads (Letterbox, Blur, Strecken).
+  Uploads (Letterbox, Blur, Strecken, Unverändert).
 - **Jingle-Player:** Pad-Raster der aktuellen Bank mit Live-Status und „Alles stoppen“. Der Ton
   kommt vom Rechner – dort muss der Jingle-Player geöffnet sein.
 - **OSC-Steuerung:** dieselbe Oberfläche wie am Rechner, Sets umschaltbar; gesendet wird vom

@@ -3,7 +3,12 @@ import { join } from 'node:path'
 import { ipcMain } from 'electron'
 import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
-import type { PlayerCommand, PlayerImportRequest } from '@shared/types'
+import {
+  FIT_MODES,
+  type FitMode,
+  type PlayerCommand,
+  type PlayerImportRequest
+} from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { showOpenDialog } from '../services/fileDialogs'
 import { convertManager } from '../services/player/convertManager'
@@ -65,9 +70,11 @@ export function registerPlayerHandlers(): void {
 
   // Bibliothek & Konvertierung
   ipcMain.handle(Channels.playerEncoders, () => detectEncoders())
-  ipcMain.handle(Channels.playerImport, (_e, req: PlayerImportRequest) =>
-    convertManager.enqueue(req)
-  )
+  ipcMain.handle(Channels.playerImport, (_e, req: PlayerImportRequest) => {
+    // Einpass-Art nur aus der festen Liste (sonst die sichere Vorgabe)
+    const fitMode = FIT_MODES.includes(req?.fitMode) ? req.fitMode : 'blur'
+    return convertManager.enqueue({ ...req, fitMode })
+  })
   ipcMain.handle(Channels.playerConvertList, () => convertManager.list())
   ipcMain.handle(Channels.playerConvertCancel, (_e, id: string) => convertManager.cancel(id))
   ipcMain.handle(Channels.playerConvertClear, () => convertManager.clearFinished())
@@ -113,16 +120,12 @@ export function registerPlayerHandlers(): void {
   ipcMain.handle(Channels.playerMediaDir, () => mediaDir())
   ipcMain.handle(
     Channels.playerReconvert,
-    (
-      _e,
-      mediaIds: string[],
-      wall: { width: number; height: number },
-      fit?: 'blur' | 'bars' | 'stretch'
-    ) => {
+    (_e, mediaIds: string[], wall: { width: number; height: number }, fitIn?: FitMode) => {
+      const fit = fitIn && FIT_MODES.includes(fitIn) ? fitIn : undefined
       const items: {
         sourcePath: string
         title: string
-        fit: 'blur' | 'bars' | 'stretch'
+        fit: FitMode
         width: number
         height: number
         reconvertId: string
@@ -130,6 +133,9 @@ export function registerPlayerHandlers(): void {
       let skipped = 0
       for (const id of mediaIds) {
         const m = getMedia(id)
+        // Unverändert übernommen: hängt nicht an der Wandgröße und nicht an Blur oder Lautheit –
+        // nur neu, wenn ausdrücklich eine andere Einpass-Art gewählt wird
+        if (m?.fitMode === 'original' && (!fit || fit === 'original')) continue
         if (!m || !m.sourcePath) {
           skipped++
           continue

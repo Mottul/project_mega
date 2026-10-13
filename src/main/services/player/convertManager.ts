@@ -3,8 +3,21 @@
 // Bibliothek ab. Analyse, Plan (Drehung, Pixel, Halbbilder, Bildrate, HDR, Fit, Ton,
 // Umverpacken) und ffmpeg-Ausführung kommen aus dem gemeinsamen Konvertierungs-Kern
 // (wie beim Video-Konverter); hier bleibt nur, was die Bibliothek braucht.
+// Import-Art „unverändert“: kein Umrechnen – die Datei wird nach einer Prüfung (spielt Chromium
+// sie direkt?) 1:1 in die Bibliothek kopiert und beim Abspielen eingepasst.
 
-import { existsSync, readdirSync, renameSync, rmSync, statSync, type Dirent } from 'node:fs'
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+  type Dirent
+} from 'node:fs'
+import { stat } from 'node:fs/promises'
+import { pipeline } from 'node:stream/promises'
 import { randomUUID } from 'node:crypto'
 import { basename, extname, join } from 'node:path'
 import { planConversion, type ConvertPlan } from '@shared/convertPlan'
@@ -22,7 +35,15 @@ import { logLine } from '../log'
 import { getSettings, onSettingsChange } from '../store'
 import { CPU_ENCODERS, encodeWithFallback } from '../convert/encoders'
 import { buildThumbArgs, resolveEncoder } from './encoder'
-import { analyzeFit, playerOptions, type PlayerSpec } from './playerPlan'
+import {
+  analyzeFit,
+  DIRECT_EXTENSIONS,
+  directKind,
+  directPlayProblem,
+  directStoredExt,
+  playerOptions,
+  type PlayerSpec
+} from './playerPlan'
 import {
   convKeyFor,
   deleteMedia,
@@ -33,6 +54,7 @@ import {
   isImageExt,
   mediaFilePath,
   storedExtFor,
+  storedNameOf,
   updateMediaConversion
 } from './mediaLibrary'
 
@@ -75,6 +97,44 @@ function kindOf(path: string): MediaKind {
   if (isGifExt(path)) return 'gif'
   if (isImageExt(path)) return 'image'
   return 'video'
+}
+
+/** Art des Mediums je nach Import-Art: unverändert zeigt der Player GIFs als Bild */
+function kindFor(path: string, fit: PlayerImportRequest['fitMode']): MediaKind {
+  return fit === 'original' ? directKind(path) : kindOf(path)
+}
+
+/** Datei 1:1 kopieren, abbrechbar, mit Fortschritt (höchstens eine Meldung je Prozent) */
+async function copyWithProgress(
+  src: string,
+  dst: string,
+  signal: AbortSignal,
+  onProgress: (p: number) => void
+): Promise<void> {
+  const total = (await stat(src)).size || 1
+  let done = 0
+  let last = 0
+  const rs = createReadStream(src)
+  rs.on('data', (chunk: Buffer | string) => {
+    done += chunk.length
+    const p = done / total
+    if (p - last >= 0.01) {
+      last = p
+      onProgress(Math.min(0.999, p))
+    }
+  })
+  await pipeline(rs, createWriteStream(dst), { signal })
+}
+
+/** Was „Medium herstellen“ liefert – gleich für unverändert und gebacken */
+interface Made {
+  kind: MediaKind
+  ext: string
+  output: string
+  durationSec: number | null
+  hasAudio: boolean
+  width: number
+  height: number
 }
 
 function titleWithSuffix(base: string, suffix: string): string {
@@ -197,7 +257,7 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
         fitMode: req.fitMode,
         targetWidth: width,
         targetHeight: height,
-        kind: kindOf(src),
+        kind: kindFor(src, req.fitMode),
         mediaId: null,
         encoder: null,
         createdAt: Date.now()
@@ -237,7 +297,7 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
         fitMode: it.fit,
         targetWidth: Math.max(2, Math.round(it.width)),
         targetHeight: Math.max(2, Math.round(it.height)),
-        kind: kindOf(it.sourcePath),
+        kind: kindFor(it.sourcePath, it.fit),
         mediaId: it.reconvertId,
         encoder: null,
         createdAt: Date.now()
@@ -300,14 +360,14 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
     job: ConvertJob,
     input: string,
     output: string,
-    p: Prepared,
+    m: { durationSec: number | null; kind: MediaKind },
     signal: AbortSignal
   ): Promise<boolean> {
     this.update(job, { status: 'thumbnail' })
     try {
-      const seek = Math.min(1, (p.durationSec ?? 1) * 0.1)
+      const seek = Math.min(1, (m.durationSec ?? 1) * 0.1)
       await runFfmpeg(
-        buildThumbArgs({ input, output, seekSec: seek, isVideo: p.kind !== 'image' }),
+        buildThumbArgs({ input, output, seekSec: seek, isVideo: m.kind !== 'image' }),
         { signal }
       )
       return existsSync(output)
@@ -329,44 +389,101 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
       : this.runImport(job, spec, signal)
   }
 
+  /** Dedup-Schlüssel: unverändert hängt nur an der Quelle, gebacken auch an Wand und Look */
+  private keyFor(job: ConvertJob, spec: Spec): string {
+    return spec.fit === 'original'
+      ? convKeyFor(job.sourcePath, 'original', 0, 0)
+      : convKeyFor(
+          job.sourcePath,
+          spec.fit,
+          spec.width,
+          spec.height,
+          convVariant(spec, job.kind ?? kindOf(job.sourcePath))
+        )
+  }
+
+  /**
+   * Medium herstellen: unverändert kopieren (nach der Prüfung, ob der Player es direkt kann)
+   * oder analysieren, planen und auf die Wand backen. `name(ext)` = Zieldatei; null = abgebrochen.
+   */
+  private async make(
+    job: ConvertJob,
+    spec: Spec,
+    name: (ext: string) => string,
+    signal: AbortSignal
+  ): Promise<Made | null> {
+    const base = basename(job.sourcePath, extname(job.sourcePath))
+    this.update(job, { status: 'probing' })
+    if (spec.fit === 'original') {
+      const res = await probeMediaInfo(job.sourcePath, { deep: true })
+      if (this.isCanceled(job)) return null
+      if (!res.ok) throw new Error(res.detail ? `${res.error} (${res.detail})` : res.error)
+      const problem = directPlayProblem(res.info, job.sourcePath, process.platform)
+      if (problem) throw new Error(problem)
+      const kind = directKind(job.sourcePath)
+      const ext = directStoredExt(job.sourcePath)
+      const output = name(ext)
+      const v = res.info.video[0]
+      this.update(job, {
+        title: titleWithSuffix(base, analyzeFit('original', null, null, 0, 0).suffix),
+        kind,
+        status: 'converting',
+        progress: 0,
+        encoder: 'unverändert'
+      })
+      await copyWithProgress(job.sourcePath, output, signal, (p) =>
+        this.update(job, { progress: p })
+      )
+      return {
+        kind,
+        ext,
+        output,
+        durationSec: kind === 'image' ? null : res.info.durationSec,
+        hasAudio: kind !== 'image' && res.info.audio.length > 0,
+        width: v?.displayWidth ?? 0,
+        height: v?.displayHeight ?? 0
+      }
+    }
+    const p = await prepare(job.sourcePath, job.kind ?? kindOf(job.sourcePath), spec)
+    if (this.isCanceled(job)) return null
+    this.update(job, { title: titleWithSuffix(base, p.suffix), kind: p.kind })
+    const ext = storedExtFor(p.kind)
+    const output = name(ext)
+    await this.convert(job, p, output, signal)
+    return {
+      kind: p.kind,
+      ext,
+      output,
+      durationSec: p.durationSec,
+      hasAudio: p.kind !== 'image' && Boolean(p.plan.audio),
+      width: spec.width,
+      height: spec.height
+    }
+  }
+
   private async runImport(job: ConvertJob, spec: Spec, signal: AbortSignal): Promise<void> {
     let inserted = false
     try {
-      const convKey = convKeyFor(
-        job.sourcePath,
-        spec.fit,
-        spec.width,
-        spec.height,
-        convVariant(spec, job.kind ?? kindOf(job.sourcePath))
-      )
+      const convKey = this.keyFor(job, spec)
 
-      // Dedup: gleiche Quelle, gleicher Fit, gleiche Auflösung, gleicher Look, gleiche Lautheit.
+      // Dedup: gleiche Quelle, gleicher Fit, gleiche Auflösung, gleicher Look, gleiche Lautheit
+      // (unverändert: gleiche Quelle).
       const existing = findByConvKey(convKey)
       if (existing) {
         this.update(job, { status: 'done', progress: 1, mediaId: existing.id })
         return
       }
 
-      this.update(job, { status: 'probing' })
-      const p = await prepare(job.sourcePath, job.kind ?? kindOf(job.sourcePath), spec)
-      if (this.isCanceled(job)) return
-      const title = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), p.suffix)
-      this.update(job, { title, kind: p.kind })
-
-      const storedName = `${job.id}${storedExtFor(p.kind)}`
-      const output = mediaFilePath(storedName)
+      const made = await this.make(job, spec, (ext) => mediaFilePath(`${job.id}${ext}`), signal)
+      if (!made || this.isCanceled(job)) return
       // eigener Suffix -> kollidiert nicht mit der gebackenen Bild-Datei (${id}.jpg)
       const thumbName = `${job.id}_thumb.jpg`
-      const thumbPath = mediaFilePath(thumbName)
-
-      await this.convert(job, p, output, signal)
-      if (this.isCanceled(job)) return
-      const thumbOk = await this.thumbnail(job, output, thumbPath, p, signal)
+      const thumbOk = await this.thumbnail(job, made.output, mediaFilePath(thumbName), made, signal)
       if (this.isCanceled(job)) return
 
       const sizeBytes = (() => {
         try {
-          return statSync(output).size
+          return statSync(made.output).size
         } catch {
           return 0
         }
@@ -383,16 +500,16 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
       }
       const item = insertMedia({
         id: job.id,
-        kind: p.kind,
+        kind: made.kind,
         title: job.title,
         originalName: basename(job.sourcePath),
-        storedName,
+        storedName: basename(made.output),
         thumbName: thumbOk ? thumbName : null,
-        width: spec.width,
-        height: spec.height,
-        durationSec: p.durationSec,
+        width: made.width,
+        height: made.height,
+        durationSec: made.durationSec,
         fitMode: spec.fit,
-        hasAudio: p.kind !== 'image' && Boolean(p.plan.audio),
+        hasAudio: made.hasAudio,
         convKey,
         sizeBytes,
         sourcePath: job.sourcePath
@@ -409,8 +526,12 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
     }
   }
 
-  private cleanupReconvertTmp(id: string, ext: string): void {
-    for (const name of [`${id}__re${ext}`, `${id}__re_thumb.jpg`]) {
+  /** Mögliche Endungen der Dateien eines Mediums (gebacken oder unverändert kopiert) */
+  private static readonly EXTS = [...new Set(['.mp4', '.jpg', ...DIRECT_EXTENSIONS])]
+
+  private cleanupReconvertTmp(id: string): void {
+    const names = [...ConvertManager.EXTS.map((e) => `${id}__re${e}`), `${id}__re_thumb.jpg`]
+    for (const name of names) {
       try {
         const f = mediaFilePath(name)
         if (existsSync(f)) rmSync(f)
@@ -428,23 +549,17 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
     id: string,
     signal: AbortSignal
   ): Promise<void> {
-    const ext = storedExtFor(job.kind ?? kindOf(job.sourcePath))
     try {
       // Inzwischen entfernt – etwa als Dublette, weil ein anderes Medium eben auf denselben
       // Stand gebacken wurde (zwei Lautheits-/Blur-Fassungen desselben Clips): nichts tun.
       // Sonst hielte dieser Auftrag seinerseits das neu gebackene Medium für die Dublette
       // und löschte es – am Ende wären beide weg.
-      if (!getMedia(id)) {
+      const before = getMedia(id)
+      if (!before) {
         this.update(job, { status: 'done', progress: 1, mediaId: null })
         return
       }
-      const convKey = convKeyFor(
-        job.sourcePath,
-        spec.fit,
-        spec.width,
-        spec.height,
-        convVariant(spec, job.kind ?? kindOf(job.sourcePath))
-      )
+      const convKey = this.keyFor(job, spec)
       const collision = findByConvKey(convKey)
       if (collision && collision.id === id) {
         this.update(job, { status: 'done', progress: 1, mediaId: id }) // bereits in dieser Auflösung
@@ -452,40 +567,43 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
       }
       if (collision && collision.id !== id) deleteMedia(collision.id) // Duplikat -> UNIQUE frei
 
-      const tmpStored = mediaFilePath(`${id}__re${ext}`)
       const tmpThumb = mediaFilePath(`${id}__re_thumb.jpg`)
-
-      this.update(job, { status: 'probing' })
-      // Art der gespeicherten Datei bleibt (sonst passte die Endung nicht mehr)
-      const p = await prepare(job.sourcePath, job.kind ?? kindOf(job.sourcePath), spec)
-      if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
-      // z.B. früher als Video übernommenes Einzelbild-GIF, das jetzt als Standbild gilt
-      if (storedExtFor(p.kind) !== ext) {
+      const made = await this.make(job, spec, (ext) => mediaFilePath(`${id}__re${ext}`), signal)
+      if (!made || this.isCanceled(job)) return this.cleanupReconvertTmp(id)
+      // Art bleibt (Bild bleibt Bild, Video bleibt Video), sonst passte die Playlist nicht – z.B.
+      // ein früher als Video übernommenes Einzelbild-GIF, das jetzt als Standbild gilt
+      if (made.kind !== before.kind) {
         throw new Error(
           'Art des Mediums hat sich geändert – bitte aus der Bibliothek entfernen und neu importieren'
         )
       }
-      const reTitle = titleWithSuffix(basename(job.sourcePath, extname(job.sourcePath)), p.suffix)
-
-      await this.convert(job, p, tmpStored, signal)
-      if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
-      const thumbOk = await this.thumbnail(job, tmpStored, tmpThumb, p, signal)
-      if (this.isCanceled(job)) return this.cleanupReconvertTmp(id, ext)
+      const thumbOk = await this.thumbnail(job, made.output, tmpThumb, made, signal)
+      if (this.isCanceled(job)) return this.cleanupReconvertTmp(id)
 
       // Rückversicherung wie beim Import: UNIQUE erst prüfen, dann Dateien tauschen – sonst
       // passten die Dateien danach nicht mehr zum Bibliothekseintrag
       const late = findByConvKey(convKey)
       if (late && late.id !== id) deleteMedia(late.id)
 
-      // Dateien tauschen
-      const finalStored = mediaFilePath(`${id}${ext}`)
+      // Dateien tauschen; die Endung kann wechseln (unverändert .mov <-> gebacken .mp4)
+      const oldStored = storedNameOf(id)
+      const finalName = `${id}${made.ext}`
+      const finalStored = mediaFilePath(finalName)
       const finalThumb = mediaFilePath(`${id}_thumb.jpg`)
       try {
         if (existsSync(finalStored)) rmSync(finalStored)
       } catch {
         // ignorieren
       }
-      renameSync(tmpStored, finalStored)
+      renameSync(made.output, finalStored)
+      if (oldStored && oldStored !== finalName) {
+        try {
+          const old = mediaFilePath(oldStored)
+          if (existsSync(old)) rmSync(old)
+        } catch {
+          // ignorieren (z.B. unter Windows noch geöffnet)
+        }
+      }
       if (thumbOk) {
         try {
           if (existsSync(finalThumb)) rmSync(finalThumb)
@@ -504,21 +622,22 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
       })()
 
       updateMediaConversion(id, {
-        width: spec.width,
-        height: spec.height,
-        durationSec: p.durationSec,
+        width: made.width,
+        height: made.height,
+        durationSec: made.durationSec,
         fitMode: spec.fit,
-        hasAudio: p.kind !== 'image' && Boolean(p.plan.audio),
+        hasAudio: made.hasAudio,
         convKey,
         sizeBytes,
         thumbName: existsSync(finalThumb) ? `${id}_thumb.jpg` : null,
         // Namens-Zusatz an das tatsächliche Ergebnis anpassen (Original/Scale/Fit).
-        title: reTitle
+        title: job.title,
+        ...(oldStored !== finalName ? { storedName: finalName } : {})
       })
       this.update(job, { status: 'done', progress: 1, mediaId: id })
       this.librarySink()
     } catch (err) {
-      this.cleanupReconvertTmp(id, ext)
+      this.cleanupReconvertTmp(id)
       this.fail(job, err)
     }
   }
@@ -529,7 +648,7 @@ class ConvertManager extends JobList<ConvertJob, Spec> {
   }
 
   private removeOutputs(id: string): void {
-    for (const name of [`${id}.mp4`, `${id}.jpg`, `${id}_thumb.jpg`]) {
+    for (const name of [...ConvertManager.EXTS.map((e) => `${id}${e}`), `${id}_thumb.jpg`]) {
       try {
         const f = mediaFilePath(name)
         if (existsSync(f)) rmSync(f)
