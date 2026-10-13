@@ -105,6 +105,13 @@ Playlist-Player für LED-Wände und Beamer.
   mehr lohnt bei vielen kurzen Clips, Bildern oder mit GPU-Encoder; während der Show lieber 1,
   damit die Wiedergabe genug Luft hat. Dieselbe Datei wird nie doppelt gleichzeitig gerechnet –
   zweimal hineingezogen, landet sie einmal in der Bibliothek.
+- **Unverändert** (vierte Einpass-Art neben Blur, Ränder, Strecken): keine Umrechnung – die Datei
+  wird 1:1 in die Bibliothek kopiert (spielt weiter, wenn der Stick weg ist) und beim Abspielen mit
+  Rändern eingepasst. Nur, was der Player direkt kann: H.264 (8 bit, 4:2:0) und unter Windows/macOS
+  H.265 in MP4/MOV, VP9/AV1, WebM mit VP8/VP9/AV1, Ton AAC/MP3/Opus/FLAC sowie Bilder und GIFs.
+  ProRes, HAP, MPEG-2, DNxHD, AVI, MKV, PCM- oder AC-3-Ton werden beim Import mit Hinweis
+  abgelehnt. Kein Deinterlace, keine HDR-Anpassung, keine Lautheit; eine andere Wandgröße backt
+  diese Medien nicht neu ein – nur „Neu einbacken“ mit einer anderen Einpass-Art rechnet sie um.
 - **Lautheit angleichen** (optional, EBU R128): Ziel −23, −16 oder −14 LUFS, gemessen und
   angewandt wie im [Video-Konverter](#video-konverter). Gilt für neue Importe; „Vorhandene neu
   einbacken“ bringt die Bibliothek auf die aktuelle Einstellung (bereits passende Medien werden

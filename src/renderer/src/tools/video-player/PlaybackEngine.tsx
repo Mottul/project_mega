@@ -126,6 +126,10 @@ export function PlaybackEngine({
     const img = imgRefs.current[slot]
     slotItems.current[slot] = item
     if (!v || !img) return
+    // Unverändert übernommene Medien haben nicht die Wandgröße: ganz zeigen, mit Rändern
+    const fit = item?.fitMode === 'original' ? 'contain' : objectFit
+    v.style.objectFit = fit
+    img.style.objectFit = fit
     if (!item) {
       v.pause()
       v.removeAttribute('src')

@@ -86,7 +86,12 @@ import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 const FIT_OPTIONS: { value: FitMode; label: string; short: string }[] = [
   { value: 'blur', label: 'Blur-Fill (unscharfer Hintergrund)', short: 'Blur-Fill' },
   { value: 'bars', label: 'Schwarze Ränder (Letter-/Pillarbox)', short: 'Schwarze Ränder' },
-  { value: 'stretch', label: 'Strecken (auf Wand-Auflösung ziehen)', short: 'Strecken' }
+  { value: 'stretch', label: 'Strecken (auf Wand-Auflösung ziehen)', short: 'Strecken' },
+  {
+    value: 'original',
+    label: 'Unverändert (nicht umrechnen)',
+    short: 'Unverändert'
+  }
 ]
 
 const RES_PRESETS = [
@@ -470,8 +475,11 @@ export function VideoPlayer(): JSX.Element {
     }
   }
 
-  // Medien, die nicht in der aktuellen Wand-Auflösung vorliegen.
-  const staleItems = library.filter((m) => m.width !== wallW || m.height !== wallH)
+  // Medien, die nicht in der aktuellen Wand-Auflösung vorliegen. Unverändert übernommene
+  // haben die Maße ihrer Datei und werden beim Abspielen eingepasst – nie „veraltet“.
+  const staleItems = library.filter(
+    (m) => m.fitMode !== 'original' && (m.width !== wallW || m.height !== wallH)
+  )
   async function reconvertStale(): Promise<void> {
     if (staleItems.length === 0) return
     const res = await api.player.reconvert(
@@ -645,7 +653,7 @@ export function VideoPlayer(): JSX.Element {
           >
             <Field
               label="Fit-Modus"
-              hint="Was mit Medien in einem anderen Seitenverhältnis passiert. Gilt für neue Importe."
+              hint="Was mit Medien in einem anderen Seitenverhältnis passiert. Gilt für neue Importe. Unverändert: keine Umrechnung – die Datei wird 1:1 übernommen und beim Abspielen mit Rändern eingepasst; nur Formate, die der Player direkt kann (H.264/H.265 in MP4/MOV, VP9/AV1, Bilder), ohne Deinterlace, HDR-Anpassung und Lautheit."
             >
               <Select
                 value={fit}
@@ -1011,7 +1019,9 @@ export function VideoPlayer(): JSX.Element {
                     <FolderInput className="size-5" />
                     Medien hierher ziehen oder über „Dateien"/„Ordner" importieren.
                     <span className="text-xs">
-                      Konvertierung auf {wallW}×{wallH}.
+                      {fit === 'original'
+                        ? 'Unverändert übernommen, beim Abspielen eingepasst.'
+                        : `Konvertierung auf ${wallW}×${wallH}.`}
                     </span>
                   </p>
                 ) : view === 'list' ? (

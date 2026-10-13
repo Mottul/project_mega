@@ -82,6 +82,7 @@ ${pwaHead('#09090b')}
   @media (prefers-reduced-motion: reduce){ .setpanel .caret { transition:none; } }
   .modes.two { grid-template-columns:1fr 1fr; margin-top:0; }
   .modes.three { grid-template-columns:1fr 1fr 1fr; margin-top:0; }
+  .modes.two { grid-template-columns:1fr 1fr; margin-top:6px; }
   .stepper { display:flex; align-items:center; gap:8px; }
   .stepper button { min-width:48px; font-size:22px; }
   .stepper .v { font-size:16px; min-width:64px; text-align:center; }
@@ -112,6 +113,9 @@ ${pwaHead('#09090b')}
           <button id="fit-blur">Blur</button>
           <button id="fit-bars">Letterbox</button>
           <button id="fit-stretch">Strecken</button>
+        </div>
+        <div class="modes two">
+          <button id="fit-original">Unverändert</button>
         </div>
       </div>
       <div>
@@ -226,11 +230,12 @@ ${pwaHead('#09090b')}
 
   function curItem(){ return state && state.index>=0 ? state.playlist[state.index] : null; }
 
+  var FITS = { blur:'Blur', bars:'Letterbox', stretch:'Strecken', original:'Unverändert' };
   function render(){
     if(!state) return;
     var c=curItem();
     el('title').textContent = c ? c.title : 'Nichts ausgewählt';
-    el('meta').textContent = c ? (c.width+'×'+c.height+' · '+c.fitMode) : (state.playlist.length+' in der Playlist');
+    el('meta').textContent = c ? (c.width+'×'+c.height+' · '+(FITS[c.fitMode]||c.fitMode)) : (state.playlist.length+' in der Playlist');
     el('play').innerHTML = svg(state.playing?IC.pause:IC.play, 26);
     var dur = state.durationSec || (c && c.durationSec) || 0;
     el('dur').textContent = fmt(dur);
@@ -261,6 +266,7 @@ ${pwaHead('#09090b')}
     el('fit-blur').className = f==='blur'?'on':'';
     el('fit-bars').className = f==='bars'?'on':'';
     el('fit-stretch').className = f==='stretch'?'on':'';
+    el('fit-original').className = f==='original'?'on':'';
     el('dur-val').textContent = (state.imageDurationSec||10)+'s';
     renderSaved();
     renderPlaylist();
@@ -331,6 +337,7 @@ ${pwaHead('#09090b')}
   el('fit-blur').addEventListener('click',function(){ api({type:'setDefaultFit',fit:'blur'}); });
   el('fit-bars').addEventListener('click',function(){ api({type:'setDefaultFit',fit:'bars'}); });
   el('fit-stretch').addEventListener('click',function(){ api({type:'setDefaultFit',fit:'stretch'}); });
+  el('fit-original').addEventListener('click',function(){ api({type:'setDefaultFit',fit:'original'}); });
   el('dur-dec').addEventListener('click',function(){ var v=(state&&state.imageDurationSec)||10; api({type:'setImageDuration',seconds:Math.max(1,v-1)}); });
   el('dur-inc').addEventListener('click',function(){ var v=(state&&state.imageDurationSec)||10; api({type:'setImageDuration',seconds:Math.min(3600,v+1)}); });
   el('view-toggle').addEventListener('click',function(){ setLibView(libView==='grid'?'list':'grid'); });
