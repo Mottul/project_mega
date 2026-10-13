@@ -461,7 +461,7 @@ Geräte-Handbücher (PDF) offline durchsuchen.
 ### YouTube-Downloader
 
 Wrapper um yt-dlp. Adresse und „Laden“ stehen in der Leiste „Download“ (bernstein, solange
-Downloads laufen oder warten), Format und Zielordner in der Schublade.
+Downloads laufen oder warten), Format, Zielordner und Anmeldung in der Schublade.
 
 - Video (MP4) oder Audio (MP3/M4A) mit Auflösungsdeckel; Warteschlange mit Fortschritt, Tempo und
   Restzeit (zwei Downloads parallel, „Alle abbrechen“); Muxing über das gebündelte ffmpeg.
@@ -473,6 +473,17 @@ Downloads laufen oder warten), Format und Zielordner in der Schublade.
   vorangestellter Nummer („03 - Titel“). Sehr lange Playlists: die ersten 500 Einträge.
 - **Video in einer Playlist** (`watch?v=…&list=…`): nur dieses Video ist vorgewählt, „Nur dieses
   Video laden“ startet es direkt.
+- **Anmeldung** für altersbeschränkte oder nur angemeldet sichtbare Videos („Sign in to confirm
+  your age“): Bereich „Anmeldung“ – Cookies aus Firefox, Chrome, Edge, Brave, Opera, Vivaldi,
+  Chromium, Safari (Mac) oder aus einer exportierten cookies.txt (Netscape-Format). yt-dlp liest
+  sie bei jedem Abruf selbst; dort bei YouTube angemeldet sein. Unter Windows sperren Chrome und
+  Edge ihre Cookies für andere Programme – dort Firefox oder eine cookies.txt nutzen, den Browser
+  beim Laden am besten schließen.
+- **Seiten, die Programme aussperren** (Cloudflare-Schutz, HTTP 403): Prüfen und Laden werden
+  automatisch ein zweites Mal als Browser versucht (Browser-Nachahmung von yt-dlp). Gegen eine
+  echte Rätselseite hilft auch das nicht – dann im Browser laden.
+- **Fehler verständlich:** Anmeldung nötig, Cookies gesperrt oder verschlüsselt, kein Profil
+  gefunden, Seite blockt – jeweils mit dem nächsten Schritt statt der englischen yt-dlp-Zeile.
 - yt-dlp lädt die App selbst als eigenständiges Programm (Prüfsumme wird verglichen) und prüft
   beim Start auf neue Versionen. Version, diese Prüfung und **Jetzt prüfen** stehen wie bei ffmpeg
   im Menü „Mottulbox“; fehlt yt-dlp, bietet der Downloader das Herunterladen direkt an.

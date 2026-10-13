@@ -2,8 +2,11 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { YtEnqueueRequest } from '@shared/types'
 import {
+  authArgs,
   buildDownloadArgs,
   buildProbeArgs,
+  explainYtError,
+  needsImpersonation,
   normalizeUrl,
   numberDigits,
   parseProbeJson,
@@ -198,5 +201,92 @@ describe('Playlist-Analyse', () => {
       ytErrorText('WARNING: x\nERROR: [youtube:tab] PLx: The playlist does not exist.\n')
     ).toBe('[youtube:tab] PLx: The playlist does not exist.')
     expect(ytErrorText('')).toBeNull()
+  })
+})
+
+describe('Anmeldung und Seitenschutz', () => {
+  const ok = (): boolean => true
+  it('Cookies: nur bekannte Browser, eine Datei nur, wenn sie geprüft ist', () => {
+    expect(authArgs({ cookies: 'none', cookiesFile: '' })).toEqual([])
+    expect(authArgs({ cookies: 'firefox', cookiesFile: '' })).toEqual([
+      '--cookies-from-browser',
+      'firefox'
+    ])
+    // fremder Wert aus settings.json: nie an yt-dlp
+    expect(authArgs({ cookies: 'firefox; rm' as never, cookiesFile: '' })).toEqual([])
+    expect(authArgs({ cookies: 'file', cookiesFile: ' /k/cookies.txt ' }, { fileOk: ok })).toEqual([
+      '--cookies',
+      '/k/cookies.txt'
+    ])
+    expect(authArgs({ cookies: 'file', cookiesFile: '/k/cookies.txt' })).toEqual([])
+    expect(authArgs({ cookies: 'file', cookiesFile: '' }, { fileOk: ok })).toEqual([])
+    expect(authArgs({ cookies: 'edge', cookiesFile: '' }, { impersonate: true })).toEqual([
+      '--cookies-from-browser',
+      'edge',
+      '--impersonate',
+      'chrome'
+    ])
+  })
+
+  it('Zusatz-Argumente stehen vor dem „--“ der Adresse', () => {
+    const extra = ['--cookies-from-browser', 'firefox']
+    const dl = buildDownloadArgs(BASE, 'ffmpeg', extra)
+    expect(dl.slice(-4)).toEqual([...extra, '--', BASE.url])
+    const probe = buildProbeArgs('https://x.test/p', extra)
+    expect(probe.slice(-4)).toEqual([...extra, '--', 'https://x.test/p'])
+  })
+
+  it('Cloudflare-Sperre erkennen (zweiter Versuch als Browser)', () => {
+    const cf =
+      'ERROR: [generic] Got HTTP Error 403 caused by Cloudflare anti-bot challenge; try again with  --extractor-args "generic:impersonate"'
+    expect(needsImpersonation(cf)).toBe(true)
+    expect(needsImpersonation('ERROR: HTTP Error 404: Not Found')).toBe(false)
+    expect(explainYtError(cf, { cookies: 'none', impersonated: true })).toMatch(/Cloudflare/)
+    expect(
+      explainYtError('ERROR: unable to download video data: HTTP Error 403: Forbidden', {
+        cookies: 'none',
+        impersonated: true
+      })
+    ).toMatch(/HTTP 403\), auch mit Browser-Nachahmung/)
+    expect(
+      explainYtError('ERROR: Impersonate target "chrome" is not available', {
+        cookies: 'none',
+        impersonated: true
+      })
+    ).toMatch(/eigenständige yt-dlp/)
+  })
+
+  it('Anmeldung nötig: Hinweis je nachdem, ob Cookies eingestellt sind', () => {
+    const age =
+      'ERROR: [youtube] AqNFJUihSHg: Sign in to confirm your age. Use --cookies-from-browser or --cookies for the authentication.'
+    expect(explainYtError(age, { cookies: 'none', impersonated: false })).toMatch(
+      /^Anmeldung nötig .*„Anmeldung“/
+    )
+    expect(explainYtError(age, { cookies: 'firefox', impersonated: false })).toMatch(
+      /trotz Cookies/
+    )
+    const bot = "ERROR: [youtube] x: Sign in to confirm you're not a bot."
+    expect(explainYtError(bot, { cookies: 'none', impersonated: false })).toMatch(/Bot-Prüfung/)
+  })
+
+  it('Cookie-Probleme verständlich: Chrome-Verschlüsselung, gesperrte Datenbank, kein Profil', () => {
+    const ctx = { cookies: 'chrome' as const, impersonated: false }
+    expect(
+      explainYtError(
+        'ERROR: Failed to decrypt with DPAPI. See https://github.com/yt-dlp/yt-dlp/issues/10927',
+        ctx
+      )
+    ).toMatch(/Firefox wählen oder eine cookies.txt/)
+    expect(explainYtError('ERROR: Could not copy Chrome cookie database. See …', ctx)).toMatch(
+      /Browser schließen/
+    )
+    expect(
+      explainYtError('ERROR: could not find firefox cookies database in "/home/a/.mozilla"', {
+        ...ctx,
+        cookies: 'firefox'
+      })
+    ).toMatch(/keine Cookies gefunden/)
+    // Unbekanntes bleibt die Zeile von yt-dlp
+    expect(explainYtError('ERROR: Video unavailable', ctx)).toBe('Video unavailable')
   })
 })

@@ -1539,14 +1539,34 @@ export interface YoutubeSettings {
   playlistFolder: boolean
   /** Playlist-Position voranstellen („03 - Titel“) */
   playlistNumbers: boolean
+  /** Anmeldung für Altersfreigabe u. Ä.: Cookies aus einem Browser oder einer cookies.txt.
+   *  Die Mottulbox liest sie nicht selbst – yt-dlp holt sie bei jedem Abruf. */
+  cookies: YtCookieSource
+  /** Pfad der cookies.txt (Netscape-Format) bei cookies = 'file' */
+  cookiesFile: string
 }
+
+/** Woher yt-dlp die Cookies nimmt (Namen wie bei --cookies-from-browser) */
+export type YtCookieSource =
+  | 'none'
+  | 'firefox'
+  | 'chrome'
+  | 'edge'
+  | 'brave'
+  | 'opera'
+  | 'vivaldi'
+  | 'chromium'
+  | 'safari'
+  | 'file'
 
 export const DEFAULT_YOUTUBE_SETTINGS: YoutubeSettings = {
   outputDir: '',
   format: 'video',
   maxHeight: 1080,
   playlistFolder: true,
-  playlistNumbers: true
+  playlistNumbers: true,
+  cookies: 'none',
+  cookiesFile: ''
 }
 
 /** Video-Konverter: Encoder-Wahl für H.264, H.265 und ProRes. */
