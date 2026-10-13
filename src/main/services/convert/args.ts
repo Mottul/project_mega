@@ -64,7 +64,7 @@ export function videoEncoderArgs(
   opts: EncoderOptions,
   io: Pick<ConvertIo, 'encoder' | 'hapChunks'>
 ): string[] {
-  const gop = v.gop ? ['-g', String(v.gop)] : []
+  const gop = v.gop ? ['-g:v', String(v.gop)] : []
   switch (CONVERT_FORMATS[format].family) {
     case 'hap':
       return [
@@ -93,7 +93,14 @@ export function videoEncoderArgs(
         ...gop
       ]
       if (compat) {
-        args.push('-level:v', compat.level, '-maxrate', compat.maxrate, '-bufsize', compat.bufsize)
+        args.push(
+          '-level:v',
+          compat.level,
+          '-maxrate:v',
+          compat.maxrate,
+          '-bufsize:v',
+          compat.bufsize
+        )
       }
       return args
     }

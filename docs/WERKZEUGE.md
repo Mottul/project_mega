@@ -96,7 +96,9 @@ Playlist-Player für LED-Wände und Beamer.
   vor Gebrauch geprüft, sonst übernimmt libx264; scheitert die GPU mitten im Import (Treiber,
   Sitzungslimit), wird er einmal auf der CPU wiederholt. Blur-Medien, die bis Oktober 2026 mit
   Intel Quick Sync gerechnet wurden, haben rechts einen grünen Rand – „Vorhandene neu einbacken“
-  (unter Blur-Stärke) rechnet sie neu.
+  (unter Blur-Stärke) rechnet sie neu. Ebenso hatten Videos, deren Bild mit Quick Sync gerechnet
+  wurde, bis Oktober 2026 nur 40–80 kbit/s Ton (auch im Video-Konverter und Video-Generator);
+  solche Medien gelten jetzt als veraltet und werden beim Neu-Einbacken mit 192 kbit/s gerechnet.
 - **Über den gemeinsamen Konvertierungs-Kern** (siehe [Video-Konverter](#video-konverter)):
   Deinterlace, HDR → SDR, konstante Bildrate, Drehung von Handyfotos und -videos (auch EXIF) und
   anamorphe Pixel werden richtig eingerechnet; passendes H.264 wird nur umverpackt. Bilder werden mit frei wählbarer

@@ -37,6 +37,10 @@ rein in `mediaInfoParse.ts`), **alle Entscheidungen in `src/shared/convertPlan.t
    (Quick Sync: nv12) erst ganz am Ende**, nach dem geplanten planaren Format: Sonst handeln Filter
    wie `overlay` schon nv12 aus – ffmpegs overlay lässt dabei den Farbanteil rechts leer, der
    Blur-Rand wurde grün (Oktober 2026). Neue Filterketten mit GPU-Encodern im Labor prüfen.
+   **Allgemeine Encoder-Optionen immer mit `:v`** (`-global_quality:v`, `-level:v`, `-maxrate:v`,
+   `-bufsize:v`, `-g:v`): Ohne gelten sie auch für den Ton – `global_quality` schaltete den
+   AAC-Encoder auf Qualitätsstufen, mit Quick Sync kamen 37–79 statt 192 kbit/s heraus. Der
+   Unit-Test in `encoders.test.ts` verbietet sie ohne `:v`, der Labortest misst die Ton-Bitrate.
 5. **Ändert sich das Ergebnis für schon importierte Medien?** Dann die Variante im
    Bibliotheks-Schlüssel erhöhen (`convVariant` in `player/convertManager.ts`), sonst halten
    Import und „Neu einbacken“ das alte Medium für aktuell.

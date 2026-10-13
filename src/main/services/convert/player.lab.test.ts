@@ -2,7 +2,8 @@
 // Imports (playerOptions -> planConversion -> buildConvertArgs) mit dem gebündelten ffmpeg –
 // je Encoder, den dieser Rechner hat (der Import nimmt bevorzugt die GPU). Geprüft wird das
 // Bild selbst: Die Quelle ist einfarbig magenta, also darf im Ergebnis nirgends Grün stehen
-// (Grün = Nullen in YUV, typisch für nicht beschriebene Bildbereiche).
+// (Grün = Nullen in YUV, typisch für nicht beschriebene Bildbereiche). Dazu der Weg Konverter
+// (Laptop-Playout) -> Import: nur umverpacken, und der Ton behält seine 192 kbit/s.
 // Ohne gebündeltes ffmpeg (CI, frischer Checkout ohne `npm run ff:fetch`) übersprungen.
 
 import { execFileSync } from 'node:child_process'
@@ -184,6 +185,10 @@ describe.skipIf(!have)(
         const laptop = join(dir, `laptop-${enc}.mp4`)
         const cargs = buildConvertArgs(cp.plan, conv, { input: cam, output: laptop, encoder: enc })
         ff(cargs.filter((a) => a !== '-hide_banner'))
+        // Ton wie geplant mit 192 kbit/s – Bild-Optionen ohne :v (Quick Sync: global_quality)
+        // schalteten den AAC-Encoder auf Qualitätsstufen und drückten ihn auf 45–79 kbit/s
+        const audioRate = info(laptop).audio[0]?.bitRate ?? 0
+        expect(audioRate, `Ton ${audioRate} bit/s`).toBeGreaterThan(150_000)
 
         const opts = playerOptions(
           'video',

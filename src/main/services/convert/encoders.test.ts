@@ -30,7 +30,7 @@ vi.mock('node:child_process', async () => {
     spawn: (_bin: string, args: string[]) => {
       const proc = new EventEmitter()
       const enc = args[args.indexOf('-c:v') + 1]
-      const compat = args.includes('-maxrate')
+      const compat = args.includes('-maxrate:v')
       sim.probes.push(compat ? `${enc}+compat` : enc)
       const ok = compat ? sim.compatWorks.has(enc) : sim.works.has(enc)
       setImmediate(() => proc.emit('close', ok ? 0 : 1))
@@ -80,7 +80,7 @@ describe('GPU-Encoder: Kandidaten und Argumente', () => {
       '-b:v',
       '0'
     ])
-    expect(hardwareEncoderArgs('h264_qsv')).toEqual(['-c:v', 'h264_qsv', '-global_quality', '23'])
+    expect(hardwareEncoderArgs('h264_qsv')).toEqual(['-c:v', 'h264_qsv', '-global_quality:v', '23'])
     expect(after(hardwareEncoderArgs('h264_amf'), '-qp_i')).toBe('22')
     expect(after(hardwareEncoderArgs('h264_amf'), '-qp_p')).toBe('22')
     expect(hardwareEncoderArgs('h264_videotoolbox')).toEqual([
@@ -94,24 +94,48 @@ describe('GPU-Encoder: Kandidaten und Argumente', () => {
   it('Qualitätsstufen; H.265 wie bei x265 zwei Stufen höher', () => {
     expect(after(hardwareEncoderArgs('h264_nvenc', 'high'), '-cq')).toBe('19')
     expect(after(hardwareEncoderArgs('hevc_nvenc', 'standard'), '-cq')).toBe('25')
-    expect(after(hardwareEncoderArgs('hevc_qsv', 'small'), '-global_quality')).toBe('30')
+    expect(after(hardwareEncoderArgs('hevc_qsv', 'small'), '-global_quality:v')).toBe('30')
     // VideoToolbox: größer = besser
     expect(after(hardwareEncoderArgs('hevc_videotoolbox', 'high'), '-q:v')).toBe('65')
     expect(hardwareEncoderArgs('prores_videotoolbox')).toEqual(['-c:v', 'prores_videotoolbox'])
   })
 
+  it('Bild-Optionen nie ohne :v – sonst wirken sie auch auf den Ton (AAC: 45–79 statt 192 kbit/s)', () => {
+    // allgemeine Optionen von AVCodecContext; ohne Stream-Angabe gelten sie für jeden Encoder
+    const general = [
+      '-global_quality',
+      '-level',
+      '-maxrate',
+      '-bufsize',
+      '-g',
+      '-b',
+      '-q',
+      '-profile'
+    ]
+    const encoders = ['h264_nvenc', 'hevc_nvenc', 'h264_qsv', 'hevc_qsv', 'h264_amf', 'hevc_amf']
+    for (const enc of [...encoders, 'h264_videotoolbox', 'hevc_videotoolbox']) {
+      for (const compat of [undefined, enc.startsWith('h264_') ? COMPAT : undefined]) {
+        const args = hardwareEncoderArgs(enc, 'standard', compat)
+        expect(
+          args.filter((a) => general.includes(a)),
+          `${enc}${compat ? ' compat' : ''}`
+        ).toEqual([])
+      }
+    }
+  })
+
   it('Player-Boxen: Level und Bitraten-Deckel je Encoder in dessen Schreibweise', () => {
     const nv = hardwareEncoderArgs('h264_nvenc', 'standard', COMPAT)
-    expect(after(nv, '-maxrate')).toBe('60M')
-    expect(after(nv, '-bufsize')).toBe('120M')
+    expect(after(nv, '-maxrate:v')).toBe('60M')
+    expect(after(nv, '-bufsize:v')).toBe('120M')
     expect(after(nv, '-level:v')).toBe('4.2')
     const qsv = hardwareEncoderArgs('h264_qsv', 'standard', COMPAT)
-    expect(after(qsv, '-level')).toBe('42')
+    expect(after(qsv, '-level:v')).toBe('42')
     expect(after(qsv, '-b:v')).toBe('30M')
-    expect(qsv).not.toContain('-global_quality')
+    expect(qsv).not.toContain('-global_quality:v')
     const amf = hardwareEncoderArgs('h264_amf', 'standard', COMPAT)
     expect(after(amf, '-rc')).toBe('vbr_peak')
-    expect(after(amf, '-level')).toBe('4.2')
+    expect(after(amf, '-level:v')).toBe('4.2')
     expect(amf).not.toContain('-qp_i')
     // VideoToolbox kennt keinen Deckel -> Player-Boxen bekommen dort die CPU (compat=false)
     expect(hardwareEncoderArgs('h264_videotoolbox', 'standard', COMPAT)).not.toContain('-maxrate')
