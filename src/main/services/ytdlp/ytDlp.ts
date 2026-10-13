@@ -22,15 +22,24 @@ import {
   writeFileSync
 } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
-import { join } from 'node:path'
-import type { YtEnqueueRequest, YtJob, YtProbeResult, YtToolStatus } from '@shared/types'
+import { isAbsolute, join } from 'node:path'
+import type {
+  YtCookieSource,
+  YtEnqueueRequest,
+  YtJob,
+  YtProbeResult,
+  YtToolStatus
+} from '@shared/types'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 import { JobList } from '../jobs/jobList'
 import { getSettings } from '../store'
 import { logLine } from '../log'
 import {
+  authArgs,
   buildDownloadArgs,
   buildProbeArgs,
+  explainYtError,
+  needsImpersonation,
   normalizeUrl,
   parseProbeJson,
   sanitizeRequest,
@@ -327,6 +336,30 @@ function killTree(proc: ChildProcessWithoutNullStreams): void {
   } else proc.kill('SIGKILL')
 }
 
+/**
+ * Anmeldung aus den Einstellungen, bei jedem Aufruf frisch gelesen (in einem anderen Fenster
+ * geändert gilt sofort). Eine gewählte cookies.txt muss es geben – sonst lieber eine klare
+ * Meldung als ein Download ohne Anmeldung, der mit einer englischen Fehlerzeile scheitert.
+ */
+function auth(impersonate: boolean): { args: string[]; cookies: YtCookieSource } {
+  const yt = getSettings().youtube
+  const fileOk = (p: string): boolean => {
+    try {
+      return isAbsolute(p) && statSync(p).isFile()
+    } catch {
+      return false
+    }
+  }
+  if (yt.cookies === 'file' && !fileOk(yt.cookiesFile.trim())) {
+    throw new Error(
+      yt.cookiesFile.trim()
+        ? `cookies.txt nicht gefunden: ${yt.cookiesFile} – unter „Anmeldung“ neu wählen.`
+        : 'Keine cookies.txt gewählt – unter „Anmeldung“ eine Datei wählen.'
+    )
+  }
+  return { args: authArgs(yt, { impersonate, fileOk }), cookies: yt.cookies }
+}
+
 // Downloads laufen in der Spur „download“ der gemeinsamen Warteschlange (zwei gleichzeitig);
 // Abbrechen löst das Signal aus, das yt-dlp samt ffmpeg beendet. Läuft einer, wird die Binary
 // nicht ersetzt (running()).
@@ -363,29 +396,72 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
     return { jobId: id }
   }
 
-  protected run(job: YtJob, req: YtEnqueueRequest, signal: AbortSignal): Promise<void> {
+  protected async run(job: YtJob, req: YtEnqueueRequest, signal: AbortSignal): Promise<void> {
+    const found = locateBinary()
+    if (!found) {
+      this.update(job, { status: 'error', error: 'yt-dlp nicht gefunden – zuerst herunterladen.' })
+      return
+    }
+    let first: { args: string[]; cookies: YtCookieSource }
+    try {
+      first = auth(false)
+    } catch (err) {
+      this.fail(job, err)
+      return
+    }
+    this.update(job, { status: 'running' })
+    let res = await this.attempt(job, found.bin, req, first.args, signal)
+    let impersonated = false
+    if (res.code !== 0 && !this.isCanceled(job) && needsImpersonation(res.errTail)) {
+      // Seite sperrt Programme aus (Cloudflare): einmal so tun, als sei es ein Browser
+      logLine('[yt-dlp] Seite blockt automatische Abrufe – zweiter Versuch als Browser:', job.url)
+      impersonated = true
+      res = await this.attempt(job, found.bin, req, auth(true).args, signal)
+    }
+    // abgebrochen, oder 'error' beim Start (Fehlertext steht schon)
+    if (this.isCanceled(job) || job.status === 'error') return
+    if (res.code === 0) {
+      this.update(job, { status: 'done', progress: 1, speed: null, eta: null })
+      return
+    }
+    logLine('[yt-dlp] Fehler', job.url, '->', ytErrorText(res.errTail) ?? `Code ${res.code}`)
+    this.update(job, {
+      status: 'error',
+      error:
+        explainYtError(res.errTail, { cookies: first.cookies, impersonated }) ??
+        `yt-dlp beendet mit Code ${res.code}`
+    })
+  }
+
+  /** Ein yt-dlp-Lauf; Abbrechen beendet ihn samt ffmpeg. Liefert Code und Ende von stderr. */
+  private attempt(
+    job: YtJob,
+    bin: string,
+    req: YtEnqueueRequest,
+    extra: string[],
+    signal: AbortSignal
+  ): Promise<{ code: number | null; errTail: string }> {
     return new Promise((resolve) => {
-      const found = locateBinary()
-      if (!found) {
-        this.update(job, {
-          status: 'error',
-          error: 'yt-dlp nicht gefunden – zuerst herunterladen.'
-        })
-        resolve()
+      // ein schon ausgelöstes Signal meldet kein 'abort' mehr – dann gar nicht erst starten
+      if (signal.aborted) {
+        resolve({ code: null, errTail: '' })
         return
       }
-      this.update(job, { status: 'running' })
-      const proc = spawn(found.bin, buildDownloadArgs(req, ffmpegBinPath('ffmpeg')), {
+      const proc = spawn(bin, buildDownloadArgs(req, ffmpegBinPath('ffmpeg'), extra), {
         windowsHide: true
       })
       const onAbort = (): void => killTree(proc)
       signal.addEventListener('abort', onAbort, { once: true })
-      const finish = (): void => {
-        signal.removeEventListener('abort', onAbort)
-        resolve()
-      }
       let outBuf = ''
       let errTail = ''
+      let settled = false
+      // nach 'error' (z. B. Start gescheitert) kann noch 'close' kommen: nur einmal melden
+      const finish = (code: number | null): void => {
+        if (settled) return
+        settled = true
+        signal.removeEventListener('abort', onAbort)
+        resolve({ code, errTail })
+      }
 
       const handleLine = (line: string): void => {
         const pct = /\[download\]\s+([\d.]+)%/.exec(line)
@@ -419,22 +495,9 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
       })
       proc.on('error', (err) => {
         this.fail(job, err)
-        finish()
+        finish(null)
       })
-      proc.on('close', (code) => {
-        // nach 'error' (z. B. Start gescheitert) kann noch 'close' kommen: Fehlertext behalten
-        if (this.isCanceled(job) || job.status === 'error') {
-          finish()
-          return
-        }
-        if (code === 0) this.update(job, { status: 'done', progress: 1, speed: null, eta: null })
-        else
-          this.update(job, {
-            status: 'error',
-            error: errTail.trim().split('\n').pop() || `yt-dlp beendet mit Code ${code}`
-          })
-        finish()
-      })
+      proc.on('close', (code) => finish(code))
     })
   }
 }
@@ -451,18 +514,41 @@ const PROBE_MAX_BYTES = 64 * 1024 * 1024
  * Adresse vor dem Laden analysieren: einzelnes Video oder Playlist samt Einträgen.
  * Flach (`--flat-playlist`): die Videos einer Playlist werden dabei nicht abgerufen.
  */
-export function probeUrl(rawUrl: string): Promise<YtProbeResult> {
-  let url: string
-  try {
-    url = normalizeUrl(rawUrl)
-  } catch (err) {
-    return Promise.reject(err)
-  }
+export async function probeUrl(rawUrl: string): Promise<YtProbeResult> {
+  const url = normalizeUrl(rawUrl)
   const found = locateBinary()
-  if (!found) return Promise.reject(new Error('yt-dlp nicht gefunden – zuerst herunterladen.'))
+  if (!found) throw new Error('yt-dlp nicht gefunden – zuerst herunterladen.')
+  const first = auth(false)
+  let res = await probeOnce(found.bin, url, first.args)
+  let impersonated = false
+  if (res.code !== 0 && needsImpersonation(res.errTail)) {
+    logLine('[yt-dlp] Seite blockt automatische Abrufe – Analyse als Browser:', url)
+    impersonated = true
+    res = await probeOnce(found.bin, url, auth(true).args)
+  }
+  if (res.code !== 0) {
+    logLine('[yt-dlp] Analyse fehlgeschlagen', url, '->', ytErrorText(res.errTail) ?? res.code)
+    throw new Error(
+      explainYtError(res.errTail, { cookies: first.cookies, impersonated }) ??
+        `yt-dlp beendet mit Code ${res.code}`
+    )
+  }
+  try {
+    return parseProbeJson(JSON.parse(res.stdout), url)
+  } catch (err) {
+    logLine('[yt-dlp] Analyse nicht lesbar:', err instanceof Error ? err.message : String(err))
+    throw new Error('Antwort von yt-dlp nicht lesbar', { cause: err })
+  }
+}
 
+/** Ein Analyse-Lauf mit Zeit- und Größengrenze */
+function probeOnce(
+  bin: string,
+  url: string,
+  extra: string[]
+): Promise<{ code: number | null; stdout: string; errTail: string }> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(found.bin, buildProbeArgs(url), { windowsHide: true })
+    const proc = spawn(bin, buildProbeArgs(url, extra), { windowsHide: true })
     const chunks: Buffer[] = []
     let size = 0
     let errTail = ''
@@ -489,22 +575,8 @@ export function probeUrl(rawUrl: string): Promise<YtProbeResult> {
       errTail = (errTail + c.toString()).slice(-4000)
     })
     proc.on('error', (err) => finish(() => reject(err)))
-    proc.on('close', (code) => {
-      if (code !== 0) {
-        finish(() => reject(new Error(ytErrorText(errTail) ?? `yt-dlp beendet mit Code ${code}`)))
-        return
-      }
-      finish(() => {
-        try {
-          resolve(parseProbeJson(JSON.parse(Buffer.concat(chunks).toString('utf-8')), url))
-        } catch (err) {
-          logLine(
-            '[yt-dlp] Analyse nicht lesbar:',
-            err instanceof Error ? err.message : String(err)
-          )
-          reject(new Error('Antwort von yt-dlp nicht lesbar'))
-        }
-      })
-    })
+    proc.on('close', (code) =>
+      finish(() => resolve({ code, stdout: Buffer.concat(chunks).toString('utf-8'), errTail }))
+    )
   })
 }

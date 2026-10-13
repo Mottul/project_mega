@@ -1,6 +1,6 @@
 // YouTube-Downloader (yt-dlp), im Werkzeug-Muster:
 //   Leiste „Download“   Adresse + Laden – bernstein, solange Downloads laufen oder warten
-//   Schublade           Format (Video/Audio, Auflösung), Zielordner
+//   Schublade           Format (Video/Audio, Auflösung), Zielordner, Anmeldung (Cookies)
 //   Arbeitsfläche       Hinweise, Playlist-Auswahl, Downloads
 // yt-dlp selbst (Version, Prüfung, Aktualisierung) steht im App-Menü wie ffmpeg
 // (components/app/YtdlpSettings); hier nur ein Hinweis, wenn es fehlt. Jede Adresse wird vor
@@ -8,7 +8,7 @@
 // zur Auswahl (je Eintrag ein Download). Muxing über das gebündelte ffmpeg.
 
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Download, FileVideo, FolderOpen, Loader2, X } from 'lucide-react'
+import { AlertTriangle, Download, FileVideo, FolderOpen, KeyRound, Loader2, X } from 'lucide-react'
 import { PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { useYtdlp, YtdlpUpdateButton } from '@renderer/components/app/YtdlpSettings'
 import { Alert } from '@renderer/components/ui/alert'
@@ -28,6 +28,7 @@ import { errorText } from '@renderer/lib/utils'
 import {
   DEFAULT_YOUTUBE_SETTINGS,
   type YoutubeSettings,
+  type YtCookieSource,
   type YtEnqueueRequest,
   type YtFormatId,
   type YtJob
@@ -55,6 +56,21 @@ const FORMAT_LABEL: Record<YtFormatId, string> = {
   'audio-mp3': 'Nur Audio (MP3)',
   'audio-m4a': 'Nur Audio (M4A)'
 }
+/** Woher yt-dlp die Cookies nimmt; Safari gibt es nur auf dem Mac */
+const COOKIE_SOURCES: { value: YtCookieSource; label: string; mac?: boolean }[] = [
+  { value: 'none', label: 'Keine (ohne Anmeldung)' },
+  { value: 'firefox', label: 'Firefox' },
+  { value: 'chrome', label: 'Chrome' },
+  { value: 'edge', label: 'Edge' },
+  { value: 'brave', label: 'Brave' },
+  { value: 'opera', label: 'Opera' },
+  { value: 'vivaldi', label: 'Vivaldi' },
+  { value: 'chromium', label: 'Chromium' },
+  { value: 'safari', label: 'Safari', mac: true },
+  { value: 'file', label: 'cookies.txt-Datei' }
+]
+const IS_MAC = /Mac/i.test(navigator.userAgent)
+
 const HEIGHTS: { value: string; label: string }[] = [
   { value: 'best', label: 'Beste' },
   { value: '2160', label: '2160p (4K)' },
@@ -94,6 +110,14 @@ export function YoutubeDownloader(): JSX.Element {
     migrateLocalStorage('youtube-dl-settings', (old) => ({ youtube: legacySettings(old) }))
     return offJobs
   }, [])
+
+  async function pickCookies(): Promise<void> {
+    const paths = await api.selectPaths({
+      title: 'cookies.txt wählen',
+      filters: [{ name: 'Cookies (Netscape-Format)', extensions: ['txt'] }]
+    })
+    if (paths[0]) setCfg({ cookiesFile: paths[0] })
+  }
 
   async function pickDir(): Promise<void> {
     const paths = await api.selectPaths({ title: 'Zielordner wählen', directories: true })
@@ -288,6 +312,56 @@ export function YoutubeDownloader(): JSX.Element {
               <FolderOpen className="size-4" />{' '}
               {cfg.outputDir ? 'Anderen wählen…' : 'Ordner wählen…'}
             </Button>
+          </PanelSection>
+          <PanelSection
+            id="auth"
+            title="Anmeldung"
+            icon={KeyRound}
+            defaultOpen={false}
+            summary={
+              cfg.cookies === 'none'
+                ? 'ohne'
+                : cfg.cookies === 'file'
+                  ? cfg.cookiesFile
+                    ? `Datei ${folderName(cfg.cookiesFile)}`
+                    : 'cookies.txt – keine gewählt'
+                  : `Cookies aus ${COOKIE_SOURCES.find((c) => c.value === cfg.cookies)?.label}`
+            }
+          >
+            <Field
+              label="Cookies aus"
+              hint="Für altersbeschränkte oder nur angemeldet sichtbare Videos: yt-dlp nimmt die Anmeldung des Browsers (dort bei YouTube angemeldet sein). Die Cookies liest yt-dlp bei jedem Abruf selbst – die Mottulbox speichert sie nicht. Unter Windows sperren Chrome und Edge ihre Cookies für andere Programme: dort Firefox wählen oder eine cookies.txt nutzen. Den Browser beim Laden am besten schließen."
+            >
+              <Select
+                className="w-full"
+                value={cfg.cookies}
+                onChange={(e) => setCfg({ cookies: e.target.value as YtCookieSource })}
+              >
+                {COOKIE_SOURCES.filter((c) => !c.mac || IS_MAC || cfg.cookies === c.value).map(
+                  (c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  )
+                )}
+              </Select>
+            </Field>
+            {cfg.cookies === 'file' && (
+              <Field
+                label="cookies.txt"
+                hint="Im Netscape-Format, z. B. mit einer Browser-Erweiterung wie „Get cookies.txt LOCALLY“ exportiert. yt-dlp hält die Datei beim Laden aktuell."
+              >
+                <div className="flex flex-col items-start gap-1.5">
+                  {cfg.cookiesFile && (
+                    <p className="break-all text-xs text-muted-foreground">{cfg.cookiesFile}</p>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => void pickCookies()}>
+                    <KeyRound className="size-4" />{' '}
+                    {cfg.cookiesFile ? 'Andere wählen…' : 'Datei wählen…'}
+                  </Button>
+                </div>
+              </Field>
+            )}
           </PanelSection>
         </>
       }

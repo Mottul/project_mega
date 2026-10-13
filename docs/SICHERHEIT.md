@@ -145,5 +145,10 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   Abgebrochene oder abgewiesene Uploads hinterlassen keine Dateien.
 - **yt-dlp-Aufrufe** nehmen nur http(s)-Adressen an, und die Adresse steht immer hinter `--`: eine
   Eingabe, die mit „-“ beginnt, wird nie als Option gelesen.
+- **Cookies für yt-dlp** (Anmeldung, aus): Die App liest, speichert und überträgt keine Cookies.
+  Sie gibt yt-dlp nur den Browsernamen (feste Liste) oder den Pfad einer vom Nutzer gewählten
+  cookies.txt (absolut, muss existieren) mit; die Einstellung liest der main bei jedem Aufruf aus
+  settings.json, nie aus der Anfrage des Renderers. yt-dlp schreibt eine cookies.txt beim Laden
+  aktualisiert zurück.
 - **Robust bei Fehlern:** Fehlergrenze je Werkzeug, globale Fehler-Handler mit Debug-Log und
   Wiederherstellung korrupter `settings.json`/`library.db` (Kopie sichern, neu anlegen, melden).

@@ -3,7 +3,13 @@
 // nach `--`: eine Eingabe, die mit „-“ beginnt, darf nie als Option gelesen werden.
 
 import { join } from 'node:path'
-import type { YtEnqueueRequest, YtPlaylistEntry, YtProbeResult } from '@shared/types'
+import type {
+  YoutubeSettings,
+  YtCookieSource,
+  YtEnqueueRequest,
+  YtPlaylistEntry,
+  YtProbeResult
+} from '@shared/types'
 
 /** So viele Einträge analysiert die Playlist-Erkennung höchstens (Kanäle haben Tausende). */
 export const PROBE_LIMIT = 500
@@ -38,13 +44,14 @@ export function safeFolderName(name: string): string {
 }
 
 /** Argumente für die flache Analyse: Playlist-Einträge ohne die Videos selbst abzurufen. */
-export function buildProbeArgs(url: string, limit = PROBE_LIMIT): string[] {
+export function buildProbeArgs(url: string, extra: string[] = [], limit = PROBE_LIMIT): string[] {
   return [
     '--flat-playlist',
     '--dump-single-json',
     '--no-warnings',
     '--playlist-items',
     `1:${limit}`,
+    ...extra,
     '--',
     url
   ]
@@ -52,7 +59,11 @@ export function buildProbeArgs(url: string, limit = PROBE_LIMIT): string[] {
 
 /** Argumente für einen Download. Verzeichnis über -P (kein Ausgabe-Template: ein „%“ im
  *  Pfad bliebe sonst nicht erhalten), Dateiname über -o; Playlists optional im Unterordner. */
-export function buildDownloadArgs(req: YtEnqueueRequest, ffmpeg: string): string[] {
+export function buildDownloadArgs(
+  req: YtEnqueueRequest,
+  ffmpeg: string,
+  extra: string[] = []
+): string[] {
   const dir = req.subfolder ? join(req.outputDir, safeFolderName(req.subfolder)) : req.outputDir
   const args = ['--newline', '--no-playlist', '--ffmpeg-location', ffmpeg]
   if (req.format === 'video') {
@@ -65,8 +76,89 @@ export function buildDownloadArgs(req: YtEnqueueRequest, ffmpeg: string): string
   const n = req.number
   const prefix = n ? `${String(n.index).padStart(n.digits, '0')} - ` : ''
   args.push('-P', dir, '-o', `${prefix}%(title)s.%(ext)s`)
-  args.push('--', req.url)
+  args.push(...extra, '--', req.url)
   return args
+}
+
+/* -------------------- Anmeldung, Browser-Nachahmung, Fehler -------------------- */
+
+/** Browser, aus denen yt-dlp Cookies lesen kann (Namen wie bei --cookies-from-browser) */
+export const COOKIE_BROWSERS: Exclude<YtCookieSource, 'none' | 'file'>[] = [
+  'firefox',
+  'chrome',
+  'edge',
+  'brave',
+  'opera',
+  'vivaldi',
+  'chromium',
+  'safari'
+]
+
+/**
+ * Zusatz-Argumente vor dem `--` der Adresse: Cookies (aus dem Browser oder einer cookies.txt)
+ * und auf Wunsch die Browser-Nachahmung. Nur bekannte Browser; eine Datei nur, wenn `fileOk`
+ * sie bestätigt (absolut, vorhanden) – sonst liefe yt-dlp ohne Anmeldung los.
+ */
+export function authArgs(
+  yt: Pick<YoutubeSettings, 'cookies' | 'cookiesFile'>,
+  opts: { impersonate?: boolean; fileOk?: (path: string) => boolean } = {}
+): string[] {
+  const args: string[] = []
+  const file = typeof yt.cookiesFile === 'string' ? yt.cookiesFile.trim() : ''
+  if (yt.cookies === 'file') {
+    if (file && (opts.fileOk?.(file) ?? false)) args.push('--cookies', file)
+  } else if ((COOKIE_BROWSERS as string[]).includes(yt.cookies)) {
+    args.push('--cookies-from-browser', yt.cookies)
+  }
+  // Seitenabruf UND Download wie ein Browser (generic:impersonate allein deckt nur den ersten
+  // Abruf ab, der Download scheiterte danach mit 403 – im Labor nachgestellt)
+  if (opts.impersonate) args.push('--impersonate', 'chrome')
+  return args
+}
+
+/** Sperrt die Seite Programme aus (Cloudflare)? Dann einmal mit Browser-Nachahmung versuchen. */
+export function needsImpersonation(stderr: string): boolean {
+  return /Cloudflare anti-bot challenge|generic:impersonate/i.test(stderr)
+}
+
+/**
+ * Verständliche Meldung zu bekannten yt-dlp-Fehlern (Anmeldung, Cookies, Seitenschutz),
+ * sonst die letzte Fehlerzeile. `cookies`: was eingestellt war; `impersonated`: zweiter Versuch
+ * mit Browser-Nachahmung lief schon.
+ */
+export function explainYtError(
+  stderr: string,
+  ctx: { cookies: YtCookieSource; impersonated: boolean }
+): string | null {
+  const t = stderr
+  if (/impersonate target .*(not available|unavailable)|curl_cffi/i.test(t)) {
+    return 'Die Seite blockt automatische Abrufe; diesem yt-dlp fehlt die Browser-Nachahmung. Im App-Menü das eigenständige yt-dlp laden.'
+  }
+  if (needsImpersonation(t)) {
+    return 'Die Seite blockt automatische Abrufe (Cloudflare-Schutz) – auch mit Browser-Nachahmung. Im Browser öffnen und dort laden.'
+  }
+  if (/Failed to decrypt with DPAPI|app.?bound/i.test(t)) {
+    return 'Chrome und Edge verschlüsseln ihre Cookies unter Windows so, dass andere Programme sie nicht lesen können. Unter „Anmeldung“ Firefox wählen oder eine cookies.txt nutzen.'
+  }
+  if (/could not copy .*cookie database|database is locked/i.test(t)) {
+    return 'Der Browser sperrt seine Cookies, solange er läuft – Browser schließen und erneut versuchen.'
+  }
+  if (/could not find .*(cookies? database|profile)|failed to (find|load) .*cookies/i.test(t)) {
+    return 'Im gewählten Browser wurden keine Cookies gefunden – ist er installiert und schon benutzt worden? Sonst unter „Anmeldung“ einen anderen wählen.'
+  }
+  if (
+    /sign in to confirm|--cookies-from-browser or --cookies|use --cookies|login required|account (is )?required/i.test(
+      t
+    )
+  ) {
+    return ctx.cookies === 'none'
+      ? 'Anmeldung nötig (Altersfreigabe oder Bot-Prüfung): Unter „Anmeldung“ den Browser wählen, der bei YouTube angemeldet ist.'
+      : 'Die Seite verlangt trotz Cookies eine Anmeldung – im gewählten Browser anmelden (bei Altersfreigabe mit einem volljährigen Konto) und erneut versuchen.'
+  }
+  if (ctx.impersonated && /HTTP Error 403/i.test(t)) {
+    return 'Die Seite verweigert den Abruf (HTTP 403), auch mit Browser-Nachahmung.'
+  }
+  return ytErrorText(t)
 }
 
 /** Anfrage aus dem Renderer prüfen und auf erlaubte Werte bringen (wirft bei Unsinn). */

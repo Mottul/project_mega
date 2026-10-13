@@ -1,7 +1,8 @@
 // YouTube-Downloader mit dem echten yt-dlp gegen einen lokalen Server (kein Netz, keine fremde
 // Seite): yt-dlp lädt direkte Dateiadressen über seinen allgemeinen Extraktor. Geprüft wird die
 // Auftragsliste: fertiger Download, Abbrechen mitten im Laden, höchstens zwei gleichzeitig,
-// Beenden der App mitten im Download. yt-dlp kommt aus MOTTULBOX_E2E_YTDLP oder aus der
+// Beenden der App mitten im Download. Dazu die Anmeldung per cookies.txt und eine Seite, die
+// Programme aussperrt wie Cloudflare (erst der zweite Versuch als Browser kommt durch). yt-dlp kommt aus MOTTULBOX_E2E_YTDLP oder aus der
 // installierten Mottulbox; ohne yt-dlp oder ffmpeg (so in der CI) werden die Schritte übersprungen.
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
@@ -57,11 +58,31 @@ async function run() {
 
   // /clip.mp4 sofort, /langsam-N.mp4 tröpfelnd (1 KB je 100 ms) – bleibt lange „läuft“
   const open = new Set()
+  const cfSeen = { blocked: 0, browser: 0 }
   const server = createServer((req, res) => {
     const name = req.url?.split('?')[0] ?? ''
     if (!name.endsWith('.mp4')) {
       res.writeHead(404).end()
       return
+    }
+    // /anmeldung/…: nur mit Cookie „geheim=ja“ (wie ein Video, das eine Anmeldung braucht)
+    if (name.startsWith('/anmeldung/') && !/geheim=ja/.test(req.headers.cookie ?? '')) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' }).end('Anmeldung nötig')
+      return
+    }
+    // /cf/…: sperrt alles aus, was nicht wie ein Browser fragt – so meldet es Cloudflare
+    if (name.startsWith('/cf/')) {
+      if (!('sec-ch-ua' in req.headers)) {
+        cfSeen.blocked++
+        res.writeHead(403, {
+          'Content-Type': 'text/html',
+          server: 'cloudflare',
+          'cf-mitigated': 'challenge'
+        })
+        res.end('<html><head><title>Just a moment...</title></head></html>')
+        return
+      }
+      cfSeen.browser++
     }
     res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': clip.length })
     if (req.method === 'HEAD') return res.end()
@@ -159,6 +180,50 @@ async function run() {
           )
           await sleep(500)
           assert.equal(await statusOf(id), 'canceled') // kein späterer Fehler überschreibt das
+        }
+      ],
+      [
+        'Anmeldung per cookies.txt: geschützte Adresse lädt nur mit der Datei',
+        async () => {
+          const setYt = (patch) =>
+            page.evaluate((p) => window.api.setSettings({ youtube: p }), patch)
+          const ohne = await enqueue(`${base}/anmeldung/ohne.mp4`, 'ohne')
+          assert.ok(await waitFor(async () => (await statusOf(ohne)) === 'error', 60_000))
+          // Netscape-Format; yt-dlp liest die Einstellung bei jedem Aufruf aus dem main
+          const jar = join(work, 'cookies.txt')
+          writeFileSync(
+            jar,
+            '# Netscape HTTP Cookie File\n127.0.0.1\tFALSE\t/\tFALSE\t0\tgeheim\tja\n'
+          )
+          await setYt({ cookies: 'file', cookiesFile: jar })
+          const mit = await enqueue(`${base}/anmeldung/mit.mp4`, 'mit')
+          assert.ok(
+            await waitFor(async () => (await statusOf(mit)) === 'done', 60_000),
+            JSON.stringify(await job(mit))
+          )
+          // Datei weg: klare Meldung statt eines Downloads ohne Anmeldung
+          await setYt({ cookiesFile: join(work, 'fehlt.txt') })
+          const weg = await enqueue(`${base}/anmeldung/weg.mp4`, 'weg')
+          assert.ok(await waitFor(async () => (await statusOf(weg)) === 'error', 30_000))
+          assert.match((await job(weg)).error, /cookies\.txt nicht gefunden/)
+          await setYt({ cookies: 'none', cookiesFile: '' })
+        }
+      ],
+      [
+        'Seite sperrt Programme aus (Cloudflare): zweiter Versuch als Browser kommt durch',
+        async () => {
+          // erst die Analyse der Adresse, dann der Download – beide brauchen den zweiten Versuch
+          const probe = await page.evaluate(
+            (u) => window.api.youtube.probe(u),
+            `${base}/cf/sperre.mp4`
+          )
+          assert.equal(probe.kind, 'video')
+          const id = await enqueue(`${base}/cf/sperre.mp4`, 'sperre')
+          assert.ok(
+            await waitFor(async () => (await statusOf(id)) === 'done', 60_000),
+            JSON.stringify(await job(id))
+          )
+          assert.ok(cfSeen.blocked >= 2 && cfSeen.browser >= 2, JSON.stringify(cfSeen))
         }
       ],
       [
