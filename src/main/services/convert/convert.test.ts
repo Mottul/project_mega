@@ -86,6 +86,16 @@ describe('buildConvertArgs', () => {
     )
     expect(after(q, '-vf')?.endsWith('format=nv12')).toBe(true)
     expect(after(q, '-c:v')).toBe('h264_qsv')
+    // erst im geplanten Format zu Ende rechnen, dann nv12 – sonst handelt overlay (Blur-Fit)
+    // nv12 aus und lässt den Farbanteil rechts leer: grüner Rand
+    const blur = argsFor(
+      mediaInfo(),
+      { size: { mode: 'exact', width: 2560, height: 1080, fit: 'blur' } },
+      { encoder: 'h264_qsv' }
+    )
+    expect(after(blur, '-vf')).toMatch(/overlay=[^,]*,.*format=yuv420p,format=nv12$/)
+    // ohne Formatwechsel (CPU) nur einmal
+    expect(after(argsFor(mediaInfo(), {}), '-vf')).not.toMatch(/format=yuv420p,format=/)
   })
 
   it('H.265 mit hvc1, ProRes 4444 mit Profil 4, WAV mit RF64, Kopie ohne Filter', () => {

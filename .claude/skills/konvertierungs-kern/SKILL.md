@@ -20,6 +20,7 @@ rein in `mediaInfoParse.ts`), **alle Entscheidungen in `src/shared/convertPlan.t
 | ffmpeg ausführen | **immer** `runFfmpeg()` (Fortschritt aus `-progress`, Abbruch per `AbortSignal`, Fehlertext); Pfade nur über `ffmpegBinPath()` – es liefert den in der App aktualisierten Build (`ffmpeg/ffmpegUpdate.ts`, gilt ab dem nächsten Start), sonst den mitgelieferten |
 | Warteschlange | `jobs/queue.ts` (Spuren `player`/`converter`/`download`, Grenze `setLimit`, Ausschluss gleicher Quellen) |
 | Auftragsliste | von `JobList` erben (`jobs/jobList.ts`): `add(job, spec, key?)`, nur `run(job, spec, signal)` schreiben, Fehler an `fail()`, Aufräumen nach Abbruch in `onCanceled`; Muster `convert/converterJobs.ts` |
+| Labor Player-Import | `convert/player.lab.test.ts`: Quellen per lavfi durch Plan und Argumente des Imports, je Encoder, den der Rechner hat (CPU und GPU); prüft Pixel im Ergebnis (Blur-Rand ohne Grün) und dass ein Video aus dem Konverter (Laptop-Playout) nur umverpackt wird |
 | Video-Generator | Zeitachse, Ken Burns, Filter, Bildliste (auch Ausschnitte), Ton-Graph, Musik, Absenken rein in `shared/videoGenPlan.ts` (+ Labortest `convert/videoGen.lab.test.ts` mit echtem ffmpeg); gemeinsame Schritte `convert/videoGenRender.ts`, Rechenlauf `convert/videoGenJobs.ts`, „Vorschau rechnen“ `convert/videoGenPreview.ts` |
 
 ## Vorgehen
@@ -32,11 +33,17 @@ rein in `mediaInfoParse.ts`), **alle Entscheidungen in `src/shared/convertPlan.t
    und mit echter ffprobe-Ausgabe als Fixture testen (`__fixtures__/`). Beispiel: die
    EXIF-Drehung von Fotos steckt nur in den Frame-Seitendaten (`3x3 displaymatrix`).
 4. **GPU-/Schnell-Encoder nur nach Probelauf**; Aufträge über `encodeWithFallback()` (scheitert
-   die GPU, einmal CPU). Halbfertige Ausgabedatei bei Fehler löschen.
-5. **Wirkt die Änderung auf Player-Import und Konverter?** Beide prüfen (Bibliothek-Dedup-Schlüssel
+   die GPU, einmal CPU). Halbfertige Ausgabedatei bei Fehler löschen. **Pixelformat des Encoders
+   (Quick Sync: nv12) erst ganz am Ende**, nach dem geplanten planaren Format: Sonst handeln Filter
+   wie `overlay` schon nv12 aus – ffmpegs overlay lässt dabei den Farbanteil rechts leer, der
+   Blur-Rand wurde grün (Oktober 2026). Neue Filterketten mit GPU-Encodern im Labor prüfen.
+5. **Ändert sich das Ergebnis für schon importierte Medien?** Dann die Variante im
+   Bibliotheks-Schlüssel erhöhen (`convVariant` in `player/convertManager.ts`), sonst halten
+   Import und „Neu einbacken“ das alte Medium für aktuell.
+6. **Wirkt die Änderung auf Player-Import und Konverter?** Beide prüfen (Bibliothek-Dedup-Schlüssel
    `convKeyFor` in `player/mediaLibrary.ts` beachten: Änderungen am Ergebnis brauchen ggf. eine
    neue Variante im Schlüssel).
-6. **Parallelität:** Sperren müssen dieselbe Identität nutzen wie die Deduplizierung; Ausschluss
+7. **Parallelität:** Sperren müssen dieselbe Identität nutzen wie die Deduplizierung; Ausschluss
    gleicher Quellen gehört in die Warteschlange, nicht in einen belegten Slot (siehe
    `/review-checkliste`).
-7. Abschluss: `/abschluss-check`; Doku in `docs/WERKZEUGE.md` (Video-Konverter/Player).
+8. Abschluss: `/abschluss-check`; Doku in `docs/WERKZEUGE.md` (Video-Konverter/Player).
