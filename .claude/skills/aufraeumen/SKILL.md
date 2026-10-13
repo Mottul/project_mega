@@ -1,6 +1,6 @@
 ---
 name: aufraeumen
-description: Mottulbox aufräumen – Bestandsaufnahme (toter Code, verwaiste Dateien, ungenutzte Pakete, große Dateien), Dateien verschieben mit automatisch neu gerechneten Importen, Ordnung in main/services, Doku- und Skill-Verweise nachziehen. Verwenden, wenn Code umzieht, Ordner neu geordnet, große Dateien geteilt oder Reste entfernt werden sollen.
+description: Mottulbox aufräumen – Bestandsaufnahme (toter Code, verwaiste Dateien, ungenutzte Pakete, große Dateien), Dateien verschieben mit automatisch neu gerechneten Importen, große Komponenten aufteilen ohne sichtbare Änderung, Ordnung in main/services, Doku- und Skill-Verweise nachziehen. Verwenden, wenn Code umzieht, Ordner neu geordnet, große Dateien geteilt oder Reste entfernt werden sollen.
 ---
 
 # Aufräumen
@@ -77,6 +77,38 @@ Kopierte Tabellen und Bausteine an eine Stelle neben das, was sie ergänzen (Sta
 `components/ui/status.ts` neben den Badge-Tönen; Werkzeuge bilden ihre Stufennamen darauf ab).
 Ändert das Zusammenlegen sichtbar etwas (Toast „Info“ jetzt neutral statt in Akzentfarbe), im PR
 nennen.
+
+## 6. Große Komponenten teilen
+
+Vorbild: `VideoPlayer.tsx` (1.765 → 291 Zeilen, 13. Oktober 2026) in `Library`, `ConvertQueue`,
+`PlaybackPanel`, `Playlist`, `SetupPanels`, `NdiPanel`, `usePlayback`, `format`. Nächster Kandidat:
+`OscControl.tsx` (Kacheln, Editor, Panels, Fläche).
+
+- **Zustand, den mehrere Teile brauchen, bleibt oben** und geht als Props hinunter (Wand,
+  Fit, Bibliothek, Wiedergabezustand); auch das Abonnement, das ihn lädt (`applySettings` setzt
+  viele Felder auf einmal – nicht zerreißen).
+- **Zustand, den nur ein Teil braucht, zieht samt Laden und Abo mit** (Konvertier-Aufträge in
+  `ConvertQueue`, Ansicht und Drag-Zustand in `Library`, gemerkte Vorschau-Schalter in
+  `PlaybackPanel`). Ein Rückruf nach oben (`onDone`) über eine Ref, damit das Abo nicht bei
+  jedem Rendern neu bindet.
+- **Logik ohne Oberfläche als Hook** (`usePlayback`: Tick, Ziehen am Regler, Tastatur) – Leiste
+  und Karte lesen dieselbe Position, der Hook liefert sie beiden.
+- Kommentare, Texte und Klassen wörtlich übernehmen; nur Variablennamen dürfen sich ändern.
+  Funktionen, die ein Effekt mit `[]` aufruft, auf Modulebene legen (sonst meldet
+  `react-hooks/exhaustive-deps` sie, und `--max-warnings 0` bricht).
+
+**Prüfen, dass nichts verloren ging:**
+
+```bash
+node .claude/skills/aufraeumen/texte.mjs alt/Gross.tsx alt/Gross.tsx neu/A.tsx neu/B.tsx …
+```
+
+Vergleicht Texte, Titel, Klassen und Befehle der Fassung aus HEAD mit den neuen Dateien; jeden
+fehlenden Treffer erklären können (erwartet: umbenannte Variablen, aufgeteilte Klassen).
+Dazu ein **Vorher/Nachher-Screenshot** der echten App mit Inhalt (`/electron-e2e`, Harness
+`launchApp`, Testclip per lavfi als Standbild, Wiedergabe angehalten): `git stash push -u`,
+`npx electron-vite build`, Aufnahme, `git stash pop`, bauen, Aufnahme – beim Video-Player waren
+beide PNGs byte-gleich. Danach die E2E des Werkzeugs (`npm run e2e -- player`) und alle.
 
 ## Abschluss
 
