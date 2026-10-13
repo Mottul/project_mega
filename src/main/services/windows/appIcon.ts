@@ -4,7 +4,7 @@
 import { app, nativeImage } from 'electron'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { logLine } from './log'
+import { logLine } from '../log'
 
 /** Pfad zu icon.png (gepackt: extraResources, Entwicklung: build/). Auf macOS
  *  kommt das Fenster-Icon aus dem Bundle, dort hat er für Fenster keine Wirkung. */

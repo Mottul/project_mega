@@ -30,7 +30,8 @@ Preload per Typ zur Vollständigkeit – `npm run typecheck` zeigt vergessene St
   ungeprüften Pfade oder URLs an ffmpeg, Shell oder `openPath`. Kein `file://`, kein neues
   Protokoll-Schema ohne Eintrag in `docs/SICHERHEIT.md`.
 - Der Renderer spricht **nur** über `api` (`@renderer/lib/api`), nie direkt mit `ipcRenderer`.
-- Logik aus dem Handler in einen Dienst (`src/main/services/…`) oder in `src/shared/` ziehen
+- Logik aus dem Handler in einen Dienst im Ordner seines Bereichs (`src/main/services/<bereich>/`,
+  siehe `/aufraeumen`) oder in `src/shared/` ziehen
   und dort mit vitest testen; der Handler bleibt eine dünne Hülle.
 - ffmpeg-Aufrufe immer über `runFfmpeg()` (siehe CLAUDE.md, Abschnitt Konvertierung).
 - **Datei-Dialoge** immer über `showOpenDialog`/`showSaveDialog` aus `services/fileDialogs.ts`,

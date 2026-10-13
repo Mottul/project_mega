@@ -5,7 +5,7 @@
 // gereicht (der wendet sie an und sendet OSC).
 
 import type { OscRemoteCommand, OscRemoteSnapshot } from '@shared/types'
-import { createSnapshotServer } from './remoteHttp'
+import { createSnapshotServer } from '../remote/remoteHttp'
 import { OSC_MOBILE_PAGE } from './oscRemotePage'
 
 const EMPTY: OscRemoteSnapshot = {

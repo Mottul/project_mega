@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { JingleImportResult, JingleRemoteSnapshot } from '@shared/types'
-import { cleanupJingles, importJingle, readJingleBytes } from '../services/jingleLibrary'
+import { cleanupJingles, importJingle, readJingleBytes } from '../services/jingle/jingleLibrary'
 import {
   forgetJingleSnapshot,
   getJingleRemoteStatus,
@@ -9,7 +9,7 @@ import {
   setJingleCommandSink,
   startJingleRemote,
   stopJingleRemote
-} from '../services/jingleRemoteServer'
+} from '../services/jingle/jingleRemoteServer'
 import { publishFrom, registerRemoteControl, sendToSource } from './remoteControls'
 
 let wired = false

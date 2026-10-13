@@ -614,24 +614,6 @@ export type MappingElement =
   | 'clock'
   | 'seconds'
 
-export const MAPPING_ELEMENTS: MappingElement[] = [
-  'grid',
-  'ruler',
-  'diagonals',
-  'circles',
-  'frame',
-  'corners',
-  'axes',
-  'up',
-  'disc',
-  'fields',
-  'labels',
-  'logo',
-  'info',
-  'clock',
-  'seconds'
-]
-
 export interface PatternConfig {
   pattern: PatternId
   width: number

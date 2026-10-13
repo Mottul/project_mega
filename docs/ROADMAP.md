@@ -3,14 +3,13 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 12. Oktober 2026
+**Stand:** 13. Oktober 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
   [neue Werkzeuge](#neue-werkzeuge), [Verzahnung](#verzahnung), [Ideen](#ideen)
 - [Technik & Qualität](#technik--qualität) – [Sicherheit](#sicherheit),
-  [Konsolidierung](#konsolidierung), [Große Umbauten](#große-umbauten), [Tests & CI](#tests--ci),
-  [Upgrades](#upgrades)
+  [Große Umbauten](#große-umbauten), [Tests & CI](#tests--ci), [Upgrades](#upgrades)
 - [Bereits erledigt](#bereits-erledigt)
 
 ## Als Nächstes
@@ -102,13 +101,6 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 - **CSP ohne `'unsafe-inline'`** für Skripte im Produktiv-Build; braucht eine eigene Dev-CSP, weil
   der Vite-Dev-Server eine Inline-Präambel lädt. (`'unsafe-eval'` ist bereits entfernt.)
 
-### Konsolidierung
-
-- **Status-Zuordnungen bündeln:** Toaster, Video-Generator und Medien-Info halten je eine eigene
-  Tabelle Stufe → Symbol + Farbe; eine gemeinsame neben den Badge-Tönen.
-- **`main/services` ordnen:** Jingle-, Timer-, NDI- und Fernsteuer-Dateien in Unterordner
-  (heute 34 lose Dateien neben den Ordnern).
-
 ### Große Umbauten
 
 - **App-Aktualisierung** (`electron-updater` über GitHub Releases): Electron mit Chromium und
@@ -170,7 +162,7 @@ Damit nichts doppelt geplant wird:
 - **Kleine Härtungen:** Uploads der Player-Fernsteuerung begrenzt (8 GB je Datei, 2 GB Reserve,
   Aufräumen bei Abbruch), Fernsteuer-Befehle von Player und Jingle feldweise geprüft, CSP ohne
   `unsafe-eval`, yt-dlp nur mit http(s)-Adressen hinter `--`.
-- **Fenster-Wächter und Shell:** Wächter für alle Fenster (`services/windowGuards.ts`: keine neuen
+- **Fenster-Wächter und Shell:** Wächter für alle Fenster (`services/windows/windowGuards.ts`: keine neuen
   Fenster, keine fremde Navigation, keine Webviews, Berechtigungen nach Allowlist); alle Fenster
   mit App-Seite über `secureWebPreferences`/`loadRoute` (statt fünf Kopien in den
   Ausgabefenstern); „Ordner öffnen“ nur für lokale Ordner, „Im Ordner zeigen“ nur mit absolutem
@@ -198,13 +190,15 @@ Damit nichts doppelt geplant wird:
   Kompaktmodus gelten live in jedem Fenster.
 - **Aufgeräumt:** Statusfarben als Tokens (`success`/`warning`/`danger` statt 126 kopierter
   Farbklassen, ein Rot je Zweck), gemeinsame Hinweisbox `Alert` statt kopierter getönter Boxen,
-  Fensterlogik aus `main/index.ts` in `services/appWindows.ts`, `smallToolWindows.ts` und
+  Fensterlogik aus `main/index.ts` in `services/windows/appWindows.ts`, `smallToolWindows.ts` und
   `ipc/window.handlers.ts` (ohne Sonderfälle in `createWindow`), Renderer ohne Node-Typen
-  (`"types": []`), verknüpfte Rechnerfelder über einen gemeinsamen Hook.
+  (`"types": []`), verknüpfte Rechnerfelder über einen gemeinsamen Hook; `main/services` nach
+  Bereichen in Unterordnern (Fernsteuerung, Timer, Jingle, OSC, NDI, Testbild, Fenster), eine
+  Status-Tabelle (`components/ui/status.ts`) für Toasts und Hinweise.
 - **Startbildschirm:** Favoriten in eigenen Kategorien, Kachelgröße, Ansicht „Favoriten“, gleich
   hohe Kacheln, Ausgabe-Status von Player und Stage-Timer.
-- **Gemeinsame Bausteine:** Medien-Endungen in `shared/`, QR-Code und `selectClass` in
-  `components/`.
+- **Gemeinsame Bausteine:** Medien-Endungen in `shared/`, QR-Code und Auswahlliste
+  (`Select`) in `components/`.
 - **CI auf drei Betriebssystemen:** Unit-Tests (mit Labortest), Build und alle E2E-Skripte der
   echten App auf Linux, Windows und macOS; Prüfungen (Format, Lint, Typen) auf Node 22 und 24.
 - **Werkzeuge:** OSC (Learn-Modus, Auswahl, Bank, Poti/Encoder, Anzeige, Label,

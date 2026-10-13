@@ -37,11 +37,11 @@ const h = vi.hoisted(() => {
 })
 
 vi.mock('electron', () => ({ BrowserWindow: h.FakeWindow }))
-vi.mock('./appWindows', () => ({
+vi.mock('../windows/appWindows', () => ({
   loadRoute: vi.fn(),
   secureWebPreferences: (o: object) => o
 }))
-vi.mock('./log', () => ({ logLine: vi.fn() }))
+vi.mock('../log', () => ({ logLine: vi.fn() }))
 vi.mock('./ndi', () => ({
   loadGrandiose: () => (h.available.value ? h.g : null),
   getNdiLoadError: () => (h.available.value ? null : 'NDI-Modul nicht geladen'),
@@ -49,7 +49,7 @@ vi.mock('./ndi', () => ({
 }))
 
 const { OffscreenNdiSender } = await import('./ndiSender')
-const { loadRoute } = await import('./appWindows')
+const { loadRoute } = await import('../windows/appWindows')
 
 const size = { name: 'Bühne', width: 640, height: 360, fps: 25 }
 const image = { getSize: () => ({ width: 4, height: 2 }), toBitmap: () => Buffer.alloc(32) }

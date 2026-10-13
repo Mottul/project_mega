@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setparamsFor, tagsFor } from '@shared/convertPlan'
 import type { ColorLoopRequest, PatternVideoRequest } from '@shared/types'
-import { runFfmpeg } from './convert/runFfmpeg'
+import { runFfmpeg } from '../convert/runFfmpeg'
 
 /** Breite/Höhe aus dem IHDR-Block einer PNG (Bytes 16–23, Big Endian). */
 export function pngSize(png: Uint8Array): { width: number; height: number } | null {

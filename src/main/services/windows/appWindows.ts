@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url'
 import { APP_NAME } from '@shared/brand'
 import { TOOL_WINDOW, type ToolWindowSize, type WindowBounds } from '@shared/toolWindows'
 import { appIconPath } from './appIcon'
-import { logLine } from './log'
+import { logLine } from '../log'
 import { devServerUrl, type AppPages } from './windowPolicy'
 
 const indexFile = join(__dirname, '../renderer/index.html')

@@ -4,13 +4,13 @@
 // Start/Stopp laufen über ipc/remoteControls (gleicht danach syncRemoteApp() ab).
 
 import type { RemoteAppStatus, RemoteControlId, RemoteStatus } from '@shared/types'
-import { appIconPng } from './appIcon'
-import { handleJingleRemote, isJingleRemoteRunning } from './jingleRemoteServer'
-import { handleOscRemote, isOscRemoteRunning } from './oscRemoteServer'
-import { handleRemote, isRemoteRunning } from './player/remoteServer'
+import { appIconPng } from '../windows/appIcon'
+import { handleJingleRemote, isJingleRemoteRunning } from '../jingle/jingleRemoteServer'
+import { handleOscRemote, isOscRemoteRunning } from '../osc/oscRemoteServer'
+import { handleRemote, isRemoteRunning } from '../player/remoteServer'
 import { createRemoteApp } from './remoteApp'
 import { setPwaIconSource } from './remotePwa'
-import { handleTimerRemote, isTimerRemoteRunning } from './timerRemoteServer'
+import { handleTimerRemote, isTimerRemoteRunning } from '../timer/timerRemoteServer'
 
 export const REMOTE_APP_PORT = 8090
 

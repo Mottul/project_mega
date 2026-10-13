@@ -17,7 +17,7 @@ import {
   setOscCommandSink,
   startOscRemote,
   stopOscRemote
-} from '../services/oscRemoteServer'
+} from '../services/osc/oscRemoteServer'
 import { publishFrom, registerRemoteControl, sendToSource } from './remoteControls'
 
 let wired = false

@@ -11,7 +11,7 @@ import type { ConfirmOptions, NotifyOptions, SelectPathsOptions } from '@shared/
 import { stat } from 'node:fs/promises'
 import { showOpenDialog } from '../services/fileDialogs'
 import { logLine } from '../services/log'
-import { shellTarget } from '../services/windowPolicy'
+import { shellTarget } from '../services/windows/windowPolicy'
 
 export function registerDialogHandlers(): void {
   ipcMain.handle(Channels.dialogSelect, async (_e, options: SelectPathsOptions) => {

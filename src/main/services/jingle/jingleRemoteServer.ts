@@ -5,7 +5,7 @@
 // Renderer gereicht (der spielt das Audio).
 
 import type { JingleRemoteCommand, JingleRemoteSnapshot } from '@shared/types'
-import { createSnapshotServer } from './remoteHttp'
+import { createSnapshotServer } from '../remote/remoteHttp'
 import { JINGLE_MOBILE_PAGE } from './jingleRemotePage'
 
 const EMPTY: JingleRemoteSnapshot = {

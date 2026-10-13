@@ -66,6 +66,7 @@ npm run dev         # App mit Hot Reload
 | `npm run lint` · `lint:fix`         | ESLint (warnungsfrei: `--max-warnings 0`)                                |
 | `npm run format` · `format:check`   | Prettier schreiben bzw. prüfen                                           |
 | `npm run check:files`               | Dateinamen, die unter Windows/macOS kollidieren (nur Groß-/Kleinschreibung verschieden, reservierte Namen) |
+| `npm run check:refs`                | Dateiverweise in CLAUDE.md, README, docs/ und den Projekt-Skills existieren noch (nach Umzügen) |
 | `npm run typecheck`                 | TypeScript: main/preload/shared **und** renderer                         |
 | `npm run typecheck:test`            | TypeScript: Testdateien                                                  |
 | `npm run build`                     | Typecheck + Produktions-Bundles nach `out/`                              |
@@ -91,20 +92,23 @@ src/
 ├── main/
 │   ├── index.ts              # App-Lebenszyklus (Start, Beenden, letztes Fenster), globale Fehler-Handler
 │   ├── ipc/                  # IPC-Handler je Bereich (*.handlers.ts), registry.ts, remoteControls.ts
-│   └── services/
-│       ├── appWindows.ts · smallToolWindows.ts  # Fenster mit sicheren Vorgaben · kleine Werkzeugfenster
-│       ├── windowGuards.ts · windowPolicy.ts    # Wächter für alle Fenster · ihre Regeln (rein, getestet)
+│   └── services/             # lose Dateien nur fürs ganze Programm, sonst je Bereich ein Ordner
 │       ├── store.ts · db.ts  # settings.json (Quelle der Wahrheit) · SQLite/FTS5 – je mit Wiederherstellung
+│       ├── fileDialogs.ts · broadcast.ts · log.ts · shutdown.ts  # Dialoge (merken den Ordner) · an alle Fenster · Log · Beenden
+│       ├── windows/          # appWindows (Fenster mit sicheren Vorgaben), smallToolWindows (kleine
+│       │                     #   Werkzeugfenster), windowGuards + windowPolicy (Wächter, Regeln rein), appIcon
 │       ├── jobs/             # Warteschlange (Spuren player/converter/download) und Basis aller Auftragslisten
 │       ├── convert/          # Konvertierungs-Kern: ffmpeg-Argumente, Encoder (GPU), Runner, Fähigkeiten;
 │       │                     #   videoGen*: Rechenlauf, Vorschau rechnen, Zwischenspeicher, Vorschaubilder,
 │       │                     #   Quelladressen (Live-Vorschau) des Video-Generators
 │       ├── ffmpeg/           # ffmpeg-Pfade, Medien-Info (ffprobe-Analyse, Parser, Cache)
-│       ├── player/           # Bibliothek, Import, Wiedergabezustand, Ausgabefenster, Fernsteuerung
-│       ├── manuals/ · osc/ · novastar/ · netscan/ · ytdlp/   # Dienste einzelner Werkzeuge
-│       ├── remoteHttp.ts · remoteApp*.ts · remotePwa.ts      # Fernsteuer-Basis, Fernsteuer-App, Web-App
-│       ├── ndi.ts · ndiSender.ts · ndiFrames.ts  # NDI: Binding laden · Offscreen-Sender für Timer und Player · Frames (rein)
-│       └── …                 # Stage-Timer, Jingles, NDI, Testbild-Export, Log
+│       ├── remote/           # Fernsteuer-Basis (remoteHttp), Fernsteuer-App (remoteApp*), Web-App (remotePwa)
+│       ├── ndi/              # Binding laden (ndi), Offscreen-Sender für Timer und Player (ndiSender), Frames (rein)
+│       ├── player/           # Bibliothek, Import, Wiedergabezustand, Ausgabefenster, Fernsteuerung, NDI
+│       ├── timer/            # Stage-Timer: Zustand, Ausgabefenster, Fernsteuerung, Bühnen-Anzeige, NDI
+│       ├── jingle/ · osc/    # Jingle-Bibliothek · OSC – je mit Fernsteuerung
+│       ├── pattern/          # Testbild-Ausgabefenster und Video-Export
+│       └── manuals/ · novastar/ · netscan/ · ytdlp/   # Dienste einzelner Werkzeuge
 ├── preload/index.ts          # contextBridge → window.api (typisiert)
 ├── shared/                   # IPC-Vertrag, Domain-Typen, Konvertierungs-Plan, Video-Generator-Plan, Medien-Endungen, Marke, Werkzeug-Fenster
 └── renderer/src/
@@ -133,7 +137,7 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   in einem eigenen Fenster (`openToolWindow` im main: höchstens eines je Werkzeug, Lage und
   Breite in `settings.toolWindowBounds`); `ToolHost` leitet `/tool/<id>` im Hauptfenster dorthin
   um und zeigt im Fenster (`?fenster=1`) eine schlanke Kopfleiste. Fensterlogik in
-  `services/smallToolWindows.ts` (auf `createWindow` aus `appWindows.ts`), Kanäle in
+  `services/windows/smallToolWindows.ts` (auf `createWindow` aus `appWindows.ts`), Kanäle in
   `ipc/window.handlers.ts`. **Die Höhe folgt dem Inhalt:**
   `useFitToolWindow` misst Kopfleiste + Seite und meldet sie (`api.fitToolWindow`), main setzt
   die Höhe (`fitHeight`: Mindestmaß bis Bildschirmhöhe) und zeigt das Fenster erst dann – ohne
@@ -150,7 +154,7 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   `usePersistentState`. Nie direkt `localStorage` mit eigenem Parser.
 - **Eingabefelder mit Puffer:** `useDraft()` (`@renderer/lib/useDraft`) übernimmt den externen
   Wert nur, solange das Feld nicht fokussiert ist.
-- **Fernsteuerungen:** abhängigkeitsfreie HTTP-Server je Werkzeug (`services/remoteHttp.ts`),
+- **Fernsteuerungen:** abhängigkeitsfreie HTTP-Server je Werkzeug (`services/remote/remoteHttp.ts`),
   Steuerseiten als HTML-Strings. Die Fernsteuer-App (fester Port 8090) bindet sie unter `/<id>/`
   ein – Steuerseiten sprechen ihre API deshalb **immer relativ** an (`api/…`, nie `/api/…`).
   Start, Stopp, Merken und Autostart laufen über `registerRemoteControl()`

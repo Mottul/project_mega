@@ -12,10 +12,10 @@
 import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import { DEFAULT_PLAYER_NDI, type PlayerNdiConfig, type PlayerNdiStatus } from '@shared/types'
-import { broadcast } from './broadcast'
-import { logLine } from './log'
-import { clampNdiSize, isAudioChunk } from './ndiFrames'
-import { OffscreenNdiSender } from './ndiSender'
+import { broadcast } from '../broadcast'
+import { logLine } from '../log'
+import { clampNdiSize, isAudioChunk } from '../ndi/ndiFrames'
+import { OffscreenNdiSender } from '../ndi/ndiSender'
 
 let config: PlayerNdiConfig = { ...DEFAULT_PLAYER_NDI }
 let audioReceived = 0 // vom Spiegelfenster angekommene PCM-Blöcke (Diagnose)

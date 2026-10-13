@@ -7,7 +7,7 @@ import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@sha
 import type { SettingsPatch } from '@shared/types'
 import { broadcast, broadcastExcept } from '../services/broadcast'
 import { converterJobs } from '../services/convert/converterJobs'
-import { jingleContentType, resolveJingleFile } from '../services/jingleLibrary'
+import { jingleContentType, resolveJingleFile } from '../services/jingle/jingleLibrary'
 import { logFilePath, logLine } from '../services/log'
 import { resolveManualFile } from '../services/manuals/manualsService'
 import { resolveMediaFile } from '../services/player/mediaLibrary'

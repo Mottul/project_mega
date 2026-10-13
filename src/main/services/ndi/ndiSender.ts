@@ -14,8 +14,8 @@
 // Werkzeuge zeigen "nicht verfügbar".
 
 import { BrowserWindow } from 'electron'
-import { loadRoute, secureWebPreferences } from './appWindows'
-import { logLine } from './log'
+import { loadRoute, secureWebPreferences } from '../windows/appWindows'
+import { logLine } from '../log'
 import { ensureNdiInitialized, getNdiLoadError, loadGrandiose, type Grandiose } from './ndi'
 import { audioFrame, peakOf, videoFrame, type NdiSize } from './ndiFrames'
 

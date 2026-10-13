@@ -5,7 +5,7 @@
 // Template-Literal und kein ${} im Client-JS, da diese Datei selbst ein Template-
 // Literal ist (Icons daher als zusammengesetzte SVG-Strings).
 
-import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from '../remotePwa'
+import { FS_BUTTON, HOME_BUTTON, PWA_SCRIPT, pwaHead } from '../remote/remotePwa'
 
 export const MOBILE_PAGE = `<!doctype html>
 <html lang="de">

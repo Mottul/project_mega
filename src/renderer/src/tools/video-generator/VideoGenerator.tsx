@@ -6,10 +6,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle,
   FolderOpen,
   FolderSearch,
-  Info,
   LayoutGrid,
   List,
   Loader2,
@@ -22,6 +20,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
+import { STATUS } from '@renderer/components/ui/status'
 import { ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { FORMAT_OPTIONS } from './presets'
 import { useKiosk } from '@renderer/launcher/kiosk'
@@ -47,11 +46,7 @@ const viewCodec: Codec<'tiles' | 'list'> = {
   format: (v) => v
 }
 
-const LEVEL_STYLE = {
-  error: { Icon: XCircle, cls: 'text-danger' },
-  warning: { Icon: AlertTriangle, cls: 'text-warning' },
-  info: { Icon: Info, cls: 'text-muted-foreground' }
-} as const
+const LEVEL_STYLE = { error: STATUS.danger, warning: STATUS.warning, info: STATUS.info }
 
 export function VideoGenerator(): JSX.Element {
   const navigate = useNavigate()
@@ -430,9 +425,9 @@ export function VideoGenerator(): JSX.Element {
                   return (
                     <li
                       key={`${h.id}-${i}`}
-                      className={cn('flex items-start gap-2 text-xs', st.cls)}
+                      className={cn('flex items-start gap-2 text-xs', st.className)}
                     >
-                      <st.Icon className="mt-0.5 size-3.5 shrink-0" />
+                      <st.icon className="mt-0.5 size-3.5 shrink-0" />
                       <button
                         type="button"
                         className="text-left hover:underline disabled:no-underline"

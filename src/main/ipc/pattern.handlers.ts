@@ -9,7 +9,7 @@ import type {
 } from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import { showSaveDialog } from '../services/fileDialogs'
-import { exportColorLoop, exportPatternVideo } from '../services/patternVideo'
+import { exportColorLoop, exportPatternVideo } from '../services/pattern/patternVideo'
 import {
   closePattern,
   getCurrentConfig,
@@ -18,7 +18,7 @@ import {
   openPattern,
   setPatternOutputSink,
   updatePattern
-} from '../services/patternWindow'
+} from '../services/pattern/patternWindow'
 
 export function registerPatternHandlers(): void {
   ipcMain.handle(Channels.screenList, () => listDisplays())

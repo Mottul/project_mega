@@ -19,7 +19,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { networkInterfaces } from 'node:os'
 import type { RemoteStatus } from '@shared/types'
-import { logLine } from './log'
+import { logLine } from '../log'
 import { servePwaAsset } from './remotePwa'
 
 /** 169.254.x.x = automatische Link-Local-Adresse (APIPA): wird vergeben, wenn

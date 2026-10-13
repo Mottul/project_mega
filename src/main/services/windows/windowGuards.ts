@@ -7,7 +7,7 @@
 // - Browser-Berechtigungen nur nach Allowlist (windowPolicy.permissionAllowed)
 import { app, session, shell, type WebContents } from 'electron'
 import { appPages } from './appWindows'
-import { logLine } from './log'
+import { logLine } from '../log'
 import { isAppPage, isWebUrl, permissionAllowed } from './windowPolicy'
 
 function openInBrowser(url: string): void {

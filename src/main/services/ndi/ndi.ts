@@ -17,7 +17,7 @@
 
 import { app } from 'electron'
 import { join } from 'node:path'
-import { logLine } from './log'
+import { logLine } from '../log'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type Grandiose = {

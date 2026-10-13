@@ -5,7 +5,7 @@ description: Handy-/Browser-Seite einer Mottulbox-Fernsteuerung bauen oder ände
 
 # Fernsteuer-Seite
 
-Server: `services/remoteHttp.ts` (`createRemoteHost`, `sendJson`, `readBody`), je Werkzeug ein
+Server: `services/remote/remoteHttp.ts` (`createRemoteHost`, `sendJson`, `readBody`), je Werkzeug ein
 `…RemoteServer.ts` mit der Seite als HTML-String (`…RemotePage.ts`, Anzeige: `timerDisplayPage.ts`).
 Start/Stopp/Merken/Autostart: `registerRemoteControl()` in `ipc/remoteControls.ts`. Die
 Fernsteuer-App (Port 8090, `remoteAppServer.ts`) bindet laufende Fernsteuerungen unter `/<id>/`
