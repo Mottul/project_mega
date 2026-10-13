@@ -106,7 +106,10 @@ interface Spec extends PlayerSpec {
  * „Neu einbacken“ wendet eine geänderte Einstellung an, statt das Medium für aktuell zu halten.
  */
 function convVariant(spec: Spec, kind: MediaKind): string | undefined {
-  const blur = spec.fit === 'blur' ? `b${spec.blurStrength}d${spec.blurDarken}` : ''
+  // „v2“: Blur-Rand ohne grünen Streifen (mit Quick Sync gerechnet war er rechts grün, Oktober
+  // 2026). Ältere Blur-Medien gelten damit als veraltet – „Vorhandene neu einbacken“ rechnet sie
+  // neu, statt sie für aktuell zu halten.
+  const blur = spec.fit === 'blur' ? `b${spec.blurStrength}d${spec.blurDarken}v2` : ''
   const l = spec.loudnorm
   const loud = kind === 'video' && l ? `l${l.i}_${l.tp}_${l.lra}` : ''
   return [blur, loud].filter(Boolean).join('_') || undefined

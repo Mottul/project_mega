@@ -94,7 +94,9 @@ Playlist-Player für LED-Wände und Beamer.
   Blur-Fill, schwarze Ränder oder Strecken – und als H.264/MP4 abgelegt, das Chromium
   hardwarebeschleunigt abspielt. GPU-Encoder (NVENC, QSV, AMF, VideoToolbox) werden erkannt und
   vor Gebrauch geprüft, sonst übernimmt libx264; scheitert die GPU mitten im Import (Treiber,
-  Sitzungslimit), wird er einmal auf der CPU wiederholt.
+  Sitzungslimit), wird er einmal auf der CPU wiederholt. Blur-Medien, die bis Oktober 2026 mit
+  Intel Quick Sync gerechnet wurden, haben rechts einen grünen Rand – „Vorhandene neu einbacken“
+  (unter Blur-Stärke) rechnet sie neu.
 - **Über den gemeinsamen Konvertierungs-Kern** (siehe [Video-Konverter](#video-konverter)):
   Deinterlace, HDR → SDR, konstante Bildrate, Drehung von Handyfotos und -videos (auch EXIF) und
   anamorphe Pixel werden richtig eingerechnet; passendes H.264 wird nur umverpackt. Bilder werden mit frei wählbarer

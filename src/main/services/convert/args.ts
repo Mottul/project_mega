@@ -184,9 +184,15 @@ export function buildConvertArgs(plan: ConvertPlan, opts: ConvertOptions, io: Co
     if (v.copy) {
       args.push('-c:v', 'copy')
     } else {
-      // Quick Sync arbeitet intern mit nv12
+      // Quick Sync arbeitet intern mit nv12. Erst im geplanten (planaren) Format zu Ende rechnen,
+      // dann umwandeln: Sonst handeln Filter wie overlay schon nv12 aus – ffmpegs overlay
+      // beschreibt dabei den Farbanteil rechts nicht (grüner Rand beim Blur-Fit, im Labor
+      // nachgestellt: player.lab.test.ts).
       const pixFmt = v.pixFmt && io.encoder ? encoderPixFmt(io.encoder, v.pixFmt) : v.pixFmt
-      const chain = [...v.filters, ...(pixFmt ? [`format=${pixFmt}`] : [])]
+      const formats = [v.pixFmt, pixFmt].filter((f, i, all): f is string =>
+        Boolean(f && all.indexOf(f) === i)
+      )
+      const chain = [...v.filters, ...formats.map((f) => `format=${f}`)]
       if (chain.length) args.push('-vf', chain.join(','))
       args.push(...videoEncoderArgs(plan.format, v, opts, io))
       // Konstante Bildrate erzwingen: alte AVIs/Streams haben Zeitstempel-Lücken (fehlende
