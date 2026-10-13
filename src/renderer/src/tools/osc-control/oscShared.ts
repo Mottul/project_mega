@@ -11,7 +11,7 @@ export const ROW_H = 38
 export const GAP = 8
 
 /** Geräte-Vorschau: logische Auflösung (CSS-Pixel) gängiger Geräte, Hochformat. */
-type DeviceKey = 'off' | 'phone' | 'tablet'
+export type DeviceKey = 'off' | 'phone' | 'tablet'
 export const DEVICES: Record<Exclude<DeviceKey, 'off'>, { w: number; h: number; label: string }> = {
   phone: { w: 390, h: 844, label: 'Handy' },
   tablet: { w: 834, h: 1112, label: 'Tablet' }

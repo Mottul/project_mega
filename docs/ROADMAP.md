@@ -111,8 +111,6 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
   `handle(Channels.x, fn)`-Wrapper. Neue Kanäle brauchen dann zwei statt vier Stellen, die 31
   `as never`-Casts im Preload entfallen, falsche Handler-Signaturen werden zu Compile-Fehlern.
   Größter langfristiger Gewinn.
-- **Große Dateien teilen:** `OscControl.tsx` (~3.300 Zeilen) in Kacheln, Editor, Panels und
-  Fläche – Vorgehen wie beim Video-Player (Skill `aufraeumen`, Abschnitt 6).
 - **Handy-Steuerseiten** (~1.200 Zeilen HTML/CSS/JS in Template-Strings, ungelintet) als echte
   Build-Artefakte bzw. `?raw`-Importe.
 
@@ -194,7 +192,9 @@ Damit nichts doppelt geplant wird:
   (`"types": []`), verknüpfte Rechnerfelder über einen gemeinsamen Hook; `main/services` nach
   Bereichen in Unterordnern (Fernsteuerung, Timer, Jingle, OSC, NDI, Testbild, Fenster), eine
   Status-Tabelle (`components/ui/status.ts`) für Toasts und Hinweise; `VideoPlayer.tsx` von 1.765 auf
-  291 Zeilen (Bibliothek, Konvertier-Liste, Wiedergabe, Playlist, Schublade, NDI je eigene Datei).
+  291 Zeilen (Bibliothek, Konvertier-Liste, Wiedergabe, Playlist, Schublade, NDI je eigene Datei),
+  `OscControl.tsx` von 3.276 auf 387 (Bedienelemente, Kachel, Fläche, Editor, Panels, Kopfzeile,
+  Hooks), dazu der erste E2E-Test der OSC-Steuerung.
 - **Startbildschirm:** Favoriten in eigenen Kategorien, Kachelgröße, Ansicht „Favoriten“, gleich
   hohe Kacheln, Ausgabe-Status von Player und Stage-Timer.
 - **Gemeinsame Bausteine:** Medien-Endungen in `shared/`, QR-Code und Auswahlliste
