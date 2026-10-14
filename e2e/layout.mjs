@@ -182,14 +182,21 @@ try {
         assert.equal(await drawer().getAttribute('data-pinned'), 'false')
         assert.equal(await drawer().evaluate((el) => getComputedStyle(el).position), 'absolute')
         await page.getByRole('button', { name: 'Einstellungen schließen' }).click()
-        assert.equal(await drawer().count(), 0)
+        // warten statt sofort zählen: Auf macOS in der CI war die Schublade direkt nach dem
+        // Klick noch nicht weg (1 statt 0)
+        const gone = async () =>
+          assert.ok(
+            await waitFor(async () => (await drawer().count()) === 0, 5_000),
+            `Schublade noch ${await drawer().count()}× da`
+          )
+        await gone()
         assert.equal(await settingsBtn().getAttribute('aria-expanded'), 'false')
         // anderes Werkzeug: eigene Schublade, weiter offen
         await tool('test-patterns')
         await drawer().waitFor({ timeout: 10_000 })
         // zurück: zu und gelöst gemerkt
         await tool('stage-timer')
-        assert.equal(await drawer().count(), 0)
+        await gone()
         await settingsBtn().click()
         await drawer().waitFor({ timeout: 5_000 })
         assert.equal(await drawer().getAttribute('data-pinned'), 'false')
