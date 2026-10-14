@@ -17,18 +17,22 @@ import { cn } from '@renderer/lib/utils'
 
 /**
  * Zentrierte Rechner-Seite. Mehrere Karten stehen nebeneinander, sobald zwei je 22rem breit
- * Platz haben; `note` steht darunter über die ganze Breite (Sicherheitshinweise).
+ * Platz haben; `note` steht darunter über die ganze Breite (Sicherheitshinweise), `head` darüber
+ * (eine Anzeige, die die volle Breite braucht – das Spektrum des RTA).
  */
 export function CalcPage({
   children,
-  note
+  note,
+  head
 }: {
   children: ReactNode
   note?: ReactNode
+  head?: ReactNode
 }): JSX.Element {
   const multi = Children.toArray(children).length > 1
   return (
-    <div className={cn('mx-auto space-y-4 p-4 sm:p-6', multi ? 'max-w-5xl' : 'max-w-2xl')}>
+    <div className={cn('mx-auto space-y-4 p-4 sm:p-6', multi || head ? 'max-w-5xl' : 'max-w-2xl')}>
+      {head}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] items-start gap-4 sm:gap-5">
         {children}
       </div>

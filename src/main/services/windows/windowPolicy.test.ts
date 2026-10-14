@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { devServerUrl, isAppPage, isWebUrl, permissionAllowed, shellTarget } from './windowPolicy'
+import {
+  appRoute,
+  devServerUrl,
+  isAppPage,
+  isWebUrl,
+  permissionAllowed,
+  shellTarget
+} from './windowPolicy'
 
 const built = { indexFile: 'file:///E:/Mottulbox/out/renderer/index.html', devOrigin: null }
 const dev = { indexFile: built.indexFile, devOrigin: 'http://localhost:5173' }
@@ -71,6 +78,48 @@ describe('permissionAllowed', () => {
   it('verweigert fremden Seiten alles', () => {
     expect(permissionAllowed('request', 'fullscreen', false)).toBe(false)
     expect(permissionAllowed('check', 'speaker-selection', false)).toBe(false)
+  })
+
+  it('Mikrofon nur für den RTA: nur auf seiner Route, nur Ton', () => {
+    const rta = 'file:///C:/app/out/renderer/index.html#/tool/rta?fenster=1'
+    expect(appRoute(rta)).toBe('/tool/rta')
+    expect(
+      permissionAllowed('request', 'media', true, { pageUrl: rta, mediaTypes: ['audio'] })
+    ).toBe(true)
+    expect(permissionAllowed('check', 'media', true, { pageUrl: rta, mediaType: 'audio' })).toBe(
+      true
+    )
+    // Kamera nie, auch nicht zusammen mit dem Ton
+    expect(
+      permissionAllowed('request', 'media', true, { pageUrl: rta, mediaTypes: ['video'] })
+    ).toBe(false)
+    expect(
+      permissionAllowed('request', 'media', true, { pageUrl: rta, mediaTypes: ['audio', 'video'] })
+    ).toBe(false)
+    expect(permissionAllowed('request', 'media', true, { pageUrl: rta, mediaTypes: [] })).toBe(
+      false
+    )
+    expect(permissionAllowed('check', 'media', true, { pageUrl: rta, mediaType: 'video' })).toBe(
+      false
+    )
+    // andere Seiten der App und fremde Seiten nie
+    for (const page of [
+      'file:///C:/app/out/renderer/index.html#/',
+      'file:///C:/app/out/renderer/index.html#/tool/jingle-player',
+      'file:///C:/app/out/renderer/index.html#/tool/rta-falsch'
+    ]) {
+      expect(
+        permissionAllowed('request', 'media', true, { pageUrl: page, mediaTypes: ['audio'] }),
+        page
+      ).toBe(false)
+      expect(
+        permissionAllowed('check', 'media', true, { pageUrl: page, mediaType: 'audio' }),
+        page
+      ).toBe(false)
+    }
+    expect(
+      permissionAllowed('request', 'media', false, { pageUrl: rta, mediaTypes: ['audio'] })
+    ).toBe(false)
   })
 })
 

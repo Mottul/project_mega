@@ -17,6 +17,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `testton.mjs` | Testton gemessen: Analysator vor dem Ausgang (`AudioNode.prototype.connect` umgelenkt, je Kanal einer) – Einblenden und Pegel −18 dBFS, Deckel −6 dBFS, 1 kHz, alle Signale unter dem Pegel, Kanal „Links“, Kennungs-Pausen je Kanal, AV-Sync-Piep zur vollen Sekunde (gemessen etwa −55 ms = Ausgabelatenz), Blitz in der Vorschau, Ton endet beim Verlassen. Ohne laufende Audioausgabe übersprungen |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
+| `rta.mjs` | RTA mit eingespeistem Mikrofon (Fake-Gerät liest eine WAV, Signale per lavfi): Sinus 1 kHz −20 dBFS – Pegel, Terz und Nachbarn über die Fadenkreuz-Ablesung, Feedback-Finder (H5), Kalibrieren auf 94 dB, Referenz/Differenz 0 dB, Stopp; rosa Rauschen – Terzen 63 Hz … 4 kHz flach, kein Feedback. Freigabe über die echte Berechtigungsregel |
 | `osc.mjs` | OSC-Steuerung gegen einen lokalen UDP-Empfänger: leeres Set, Kacheln aller Arten über „+ Widget“, Learn, Schalter im Live-Modus, Befehle vom Handy (`api/command`), Feedback per UDP an den Feedback-Port, Monitor; Zustand über `api/state` der Handy-Fernsteuerung |
 | `ffmpeg-update.mjs` | ffmpeg-Aktualisierung der fertigen App gegen einen lokalen Schein-Release-Server (`MOTTULBOX_FFMPEG_RELEASES_URL`): 7-Tage-Regel, Prüfsumme, Aktivierung nach Neustart (`launchApp({ userData })`), zurück zum mitgelieferten |
 | `ndi.mjs` | NDI-Ausgabe von Timer und Player mit dem echten Binding (ohne `vendor/grandiose`, z. B. in der CI, übersprungen): Bilder gehen raus, Werte begrenzt, Start/Stopp in schneller Folge ohne verwaiste Offscreen-Fenster, Fenster von außen geschlossen |
@@ -71,6 +72,13 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Verbindungsabbruch:** eine TCP-Weiterleitung, die Sockets „einfriert“ (Beispiel
   `e2e/timer.mjs`), bildet das halboffene WLAN-Aussetzen nach; Erholung großzügig abwarten.
 - **Testmedien per lavfi** (`findFfmpeg()`), ohne ffmpeg `throw new Skip(…)`.
+- **Mikrofon einspeisen:** `launchApp({ args: ['--use-fake-device-for-media-stream',
+  '--use-file-for-fake-audio-capture=<datei.wav>'] })` (Beispiel `e2e/rta.mjs`). **Nicht**
+  `--use-fake-ui-for-media-stream`:
+  Das umgeht die Berechtigungsregel der App – so blieb unbemerkt, dass sie dem RTA das Mikrofon
+  sperrte. Chromium spielt die Datei in Schleife; an der Naht spritzt es kurz breitbandig (eine
+  Nachbarterz las −56 statt −134 dB) – Signale lang machen (60 s). Ganze Werte zeigt die
+  Oberfläche ohne „,0“ (`fmt`) – Muster mit optionaler Nachkommastelle.
 - **Frische Stores sind nicht leer:** Die OSC-Steuerung startet mit einem Beispiel-Set (fünf
   Kacheln) – Zählungen und eindeutige Knöpfe („AUS“) nur in einem neu angelegten Set.
 - **Zustand eines Werkzeugs mit Handy-Fernsteuerung** über deren `api/state` lesen und Befehle per
@@ -115,7 +123,8 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   Ob ein Fenster ungemessen erschien, steht im Debug-Log (`ctx.userData`/avtoolbox-debug.log,
   Prüfung `assertNoJump` in `e2e/layout.mjs`).
 - **Die CI-Bildschirme sind klein** (Windows/macOS etwa 1024 × 768, Arbeitsfläche ~730 px):
-  Fenster werden dort auf Bildschirmhöhe gekürzt oder nach oben gerückt. Lage-, Größen- und
+  Fenster werden dort auf Bildschirmhöhe gekürzt oder nach oben gerückt; ein Klick weiter unten
+  scrollt die Seite – vor Mausbewegungen auf ein Element `scrollIntoViewIfNeeded()`. Lage-, Größen- und
   „wird niedriger“-Prüfungen mit einem niedrigen Werkzeug (Kreisrechner) machen; lokal auf
   großem Bildschirm fällt das nicht auf.
 - **Kleine Werkzeuge sind keine Route im Hauptfenster mehr:** `openRoute(page, '/tool/timecode')`
@@ -130,6 +139,9 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Das Hauptfenster erscheint erst bei `ready-to-show`**, manchmal nach dem ersten Inhalt;
   `launchApp` wartet deshalb, bis es sichtbar ist (sonst galt es beim Schließen einer Ausgabe
   noch nicht als gezeigt, und die App beendete sich – timer.mjs war jeden zweiten Lauf rot).
+- **macOS hält verdeckten Fenstern `requestAnimationFrame` an** (lokal unter Windows unsichtbar):
+  Was im Bildtakt misst oder zählt, steht dort still – der RTA maß in der CI nichts. Messen per
+  Timer; Gegenprobe lokal: Fenster minimieren und prüfen, dass Werte nachkommen (`e2e/rta.mjs`).
 - **Windows meldet minimierte Fenster als unsichtbar** (`isVisible()` = false) – nie daraus
   schließen, dass kein Fenster mehr offen ist. **macOS zeichnet minimierte Fenster nicht neu**:
   Bei minimiertem Fenster den Zustand im main prüfen (`app.evaluate`), nicht in dessen Seite.

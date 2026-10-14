@@ -11,6 +11,7 @@ const all = [
   'timer',
   'player',
   'osc',
+  'rta',
   'video-generator',
   'shutdown',
   'ndi',

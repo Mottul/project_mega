@@ -4,7 +4,7 @@
 // - keine Navigation weg von der App-Seite (ein Link oder ein Skript in einem Handbuch, einem
 //   Export o. Ä. kann die App-API so nie einer fremden Seite geben)
 // - keine Webviews
-// - Browser-Berechtigungen nur nach Allowlist (windowPolicy.permissionAllowed)
+// - Browser-Berechtigungen nur nach Allowlist (windowPolicy.permissionAllowed); Mikrofon nur RTA
 import { app, session, shell, type WebContents } from 'electron'
 import { appPages } from './appWindows'
 import { logLine } from '../log'
@@ -37,7 +37,10 @@ export function installWindowGuards(): void {
     isAppPage(url || contents?.getURL(), appPages)
   const denied = new Set<string>()
   session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) => {
-    const ok = permissionAllowed('request', permission, fromApp(details.requestingUrl, contents))
+    const ok = permissionAllowed('request', permission, fromApp(details.requestingUrl, contents), {
+      pageUrl: contents?.getURL(),
+      mediaTypes: 'mediaTypes' in details ? details.mediaTypes : undefined
+    })
     // je Berechtigung einmal ins Log – zeigt, falls eine Funktion doch eine braucht
     if (!ok && !denied.has(permission)) {
       denied.add(permission)
@@ -46,6 +49,9 @@ export function installWindowGuards(): void {
     callback(ok)
   })
   session.defaultSession.setPermissionCheckHandler((contents, permission, _origin, details) =>
-    permissionAllowed('check', permission, fromApp(details.requestingUrl, contents))
+    permissionAllowed('check', permission, fromApp(details.requestingUrl, contents), {
+      pageUrl: contents?.getURL(),
+      mediaType: details.mediaType
+    })
   )
 }

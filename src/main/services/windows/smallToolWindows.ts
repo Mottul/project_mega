@@ -4,6 +4,7 @@ import { BrowserWindow, screen, type WebContents } from 'electron'
 import {
   fitHeight,
   isSmallTool,
+  measuresInBackground,
   OWN_WINDOW_PARAM,
   restoreBounds,
   toolWindowSize
@@ -49,7 +50,9 @@ export function openToolWindow(id: unknown): void {
     bounds: restoreBounds(getSettings().toolWindowBounds[id], areas, size),
     // Maße meinen den Inhalt (gemessen an der Seite), nicht den Rahmen
     useContentSize: true,
-    deferShow: true
+    deferShow: true,
+    // Messwerkzeuge (RTA) messen weiter, auch wenn ihr Fenster verdeckt ist
+    ...(measuresInBackground(id) ? { backgroundThrottling: false } : {})
   })
   smallToolWindows.set(id, win)
   awaitingShow.add(win)

@@ -53,9 +53,23 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `tools/media-info/store.ts`). Keine Vorschaubilder oder abgeleiteten Daten speichern.
    - Bedien-Kleinigkeiten: `usePersistentState(key, vorgabe, codec)`.
 6. **Braucht das Werkzeug main?** → Skill `ipc-kanal`.
+   - **Browser-Berechtigung** (Mikrofon, …): Die App verweigert sie allen Seiten
+     (`main/services/windows/windowPolicy.ts`). Freigabe nur je Route und so eng wie möglich –
+     der RTA bekommt nur Ton, nur auf `#/tool/rta` (`MIC_ROUTES`); Unit-Test dazu und ein Schritt
+     im E2E `security` (hier erlaubt, anderswo weiter gesperrt). Doku: `docs/SICHERHEIT.md`,
+     macOS-Hinweistext in `electron-builder.yml` (`extendInfo`). Im Browser (PWA) fragt das
+     Gerät selbst, nur über HTTPS.
+   - **Zeichnen auf Canvas:** Farben aus den Design-Tokens lesen, nie fest (Muster `readTheme`
+     in `tools/rta/draw.ts`: CSS-Variablen „H S% L%“ -> `hsl(…)`, neu bei Änderungen an
+     `class`/`style` von `<html>`). Farbskalen über Akzent und Schrift, nicht über
+     Warnung/Gefahr – die sind wie viele Akzentfarben gelb bzw. rot (das Spektrogramm war
+     sonst einfarbig). Messen per Timer, Zeichnen per `requestAnimationFrame` (über Refs, React
+     nur ~5× je Sekunde): macOS hält verdeckten Fenstern die Bilder an – der RTA maß dort im
+     Bildtakt gar nichts. Ein Werkzeug, das laufend misst, bekommt in `SMALL_TOOLS`
+     `measures: true` (Fenster ohne Hintergrund-Drosselung).
 7. **Optional:** Aktivitätsanzeige auf dem Startbildschirm in `launcher/useToolActivity.ts`;
    Kundenansicht über `useKiosk()` (`launcher/kiosk.tsx`), wenn Teile ausgeblendet werden müssen.
 8. **Doku:** Abschnitt in `docs/WERKZEUGE.md` (passende Kategorie), Eintrag im README-Überblick,
    erledigten Punkt aus `docs/ROADMAP.md` streichen; Fernsteuerung → `docs/FERNSTEUERUNG.md`.
    Gibt es einen `docs/PLAN-*.md` dazu, nach der Umsetzung nach WERKZEUGE überführen und löschen.
-9. **Abschluss:** `/abschluss-check`; für das neue Werkzeug ein E2E-Skript `e2e/<id>.mjs` nach dem Vorbild von `e2e/smoke.mjs` anlegen (`launchApp` aus `e2e/harness.mjs`).
+9. **Abschluss:** `/abschluss-check`; für das neue Werkzeug ein E2E-Skript `e2e/<id>.mjs` nach dem Vorbild von `e2e/smoke.mjs` anlegen (`launchApp` aus `e2e/harness.mjs`). Rechenkern vorher mit Labortests auf synthetischen Signalen absichern (Vorbild `tools/rta/*.test.ts` mit `testSignals.ts`: nachgebauter Web-Audio-Analysator).

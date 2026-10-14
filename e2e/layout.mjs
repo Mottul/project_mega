@@ -25,9 +25,10 @@ const SMALL = [
   'timecode',
   'power-load',
   'camera-lens',
-  'rigging'
+  'rigging',
+  'rta'
 ]
-const TWO_COLUMNS = ['power-load', 'camera-lens', 'rigging']
+const TWO_COLUMNS = ['power-load', 'camera-lens', 'rigging', 'rta']
 
 /**
  * Fenster eines kleinen Werkzeugs im main: eine BrowserWindow-Methode aufrufen
@@ -511,7 +512,7 @@ try {
       }
     ],
     [
-      'alle neun Rechner: Höhe folgt dem Inhalt, zweispaltig wo vorgesehen, bis 320 px schmal',
+      'alle kleinen Werkzeuge: Höhe folgt dem Inhalt, zweispaltig wo vorgesehen, bis 320 px schmal',
       async () => {
         for (const id of SMALL) {
           const w = await openSmall(id)
@@ -522,7 +523,8 @@ try {
               .getByTestId('tool-content')
               .locator('h2')
               .evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)))
-            assert.equal(tops.length, 2, id)
+            // die ersten beiden Karten nebeneinander (der RTA hat vier unter dem Spektrum)
+            assert.ok(tops.length >= 2, id)
             assert.ok(Math.abs(tops[0] - tops[1]) <= 1, `${id}: Karten nicht nebeneinander ${tops}`)
           }
           // schmalste Breite: nichts ragt seitlich heraus, die Höhe wächst mit

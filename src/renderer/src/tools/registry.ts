@@ -17,6 +17,7 @@ import { riggingTool } from './rigging'
 import { stageTimerTool } from './stage-timer'
 import { testPatternsTool } from './test-patterns'
 import { throwRatioTool } from './throw-ratio'
+import { rtaTool } from './rta'
 import { timecodeTool } from './timecode'
 import { videoGeneratorTool } from './video-generator'
 import { videoPlayerTool } from './video-player'
@@ -46,6 +47,7 @@ export const tools: ToolModule[] = [
   dmxAddressTool,
   powerLoadTool,
   audioDelayTool,
+  rtaTool,
   riggingTool,
   timecodeTool
 ]

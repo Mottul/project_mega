@@ -44,19 +44,49 @@ export function isAppPage(url: string | undefined, pages: AppPages): boolean {
 /**
  * Browser-Berechtigungen: Die App braucht fast keine. Erlaubt nur für die App-Seite selbst:
  * Vollbild, Text in die Zwischenablage und (als Abfrage) die Wahl des Audio-Ausgabegeräts im
- * Jingle-Player. Kamera, Mikrofon, Standort, Benachrichtigungen, MIDI, USB … nie – auch nicht
- * „media“ als Abfrage: Die Ausgabegeräte behalten ihre Namen auch ohne (gemessen), eine Seite
- * sähe damit aber die Namen aller Mikrofone.
+ * Jingle-Player. Kamera, Standort, Benachrichtigungen, MIDI, USB … nie. Das Mikrofon („media“)
+ * nur der RTA auf seiner Route und nur Ton – jeder anderen Seite nie, auch nicht als Abfrage:
+ * Die Ausgabegeräte behalten ihre Namen auch ohne (gemessen), eine Seite sähe damit aber die
+ * Namen aller Mikrofone.
  */
 const REQUESTS = new Set(['fullscreen', 'clipboard-sanitized-write'])
 const CHECKS = new Set(['fullscreen', 'clipboard-sanitized-write', 'speaker-selection'])
+/** Routen, die das Mikrofon bekommen (RTA, Echtzeit-Analysator) */
+const MIC_ROUTES = new Set(['/tool/rta'])
+
+/** Route einer App-Seite aus dem Hash: `…/index.html#/tool/rta?fenster=1` -> `/tool/rta` */
+export function appRoute(url: string | undefined): string {
+  try {
+    return new URL(url ?? '').hash.replace(/^#/, '').split('?')[0] || '/'
+  } catch {
+    return ''
+  }
+}
+
+/** Zusammenhang einer Berechtigung (aus den Details von Electron) */
+export interface PermissionContext {
+  /** Adresse der fragenden Seite samt Hash (webContents.getURL) */
+  pageUrl?: string
+  /** Anfrage: angeforderte Medien (details.mediaTypes) */
+  mediaTypes?: string[]
+  /** Abfrage: gefragtes Medium (details.mediaType: audio, video, unknown) */
+  mediaType?: string
+}
 
 export function permissionAllowed(
   kind: 'request' | 'check',
   permission: string,
-  fromApp: boolean
+  fromApp: boolean,
+  ctx: PermissionContext = {}
 ): boolean {
-  return fromApp && (kind === 'request' ? REQUESTS : CHECKS).has(permission)
+  if (!fromApp) return false
+  if (permission === 'media') {
+    if (!MIC_ROUTES.has(appRoute(ctx.pageUrl))) return false
+    if (kind === 'check') return ctx.mediaType !== 'video'
+    const types = ctx.mediaTypes ?? []
+    return types.length > 0 && types.every((t) => t === 'audio')
+  }
+  return (kind === 'request' ? REQUESTS : CHECKS).has(permission)
 }
 
 /**

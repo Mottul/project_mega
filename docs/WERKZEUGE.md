@@ -14,7 +14,7 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   Manuals-Bibliothek, YouTube-Downloader
 - [Strom, Rigging & Aufbau](#strom-rigging--aufbau) – Packliste, Stromlast & Absicherung,
   Rigging-Last
-- [Rechner](#rechner) – Kreisrechner, Audio-Delay & SPL, Timecode-Rechner
+- [Rechner](#rechner) – Kreisrechner, Audio-Delay & SPL, RTA (Echtzeit-Analysator), Timecode-Rechner
 - [Übergaben zwischen Werkzeugen](#übergaben-zwischen-werkzeugen)
 - [Wo die Daten liegen](#wo-die-daten-liegen)
 
@@ -54,7 +54,7 @@ Jedes Werkzeug ist gleich aufgebaut:
   und Jingles gleichzeitig. Ist ein Werkzeug in mehreren Fenstern offen, zeigen alle denselben
   Stand; Änderungen kommen nach spätestens einer halben Sekunde in den anderen Fenstern an.
 - **Kleine Werkzeuge** (Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay,
-  Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last; an der Kachel ein
+  RTA, Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last; an der Kachel ein
   kleines Fenster-Zeichen) öffnen sich **immer in einem eigenen, passend kleinen Fenster**, nie im
   Hauptfenster – das bleibt für die großen Werkzeuge frei. Je Werkzeug gibt es höchstens ein
   Fenster; ein zweiter Klick holt es nach vorn. **Die Höhe folgt dem Inhalt** (auch im
@@ -530,10 +530,45 @@ mit Warnstufen. Richtwerte – ersetzt keinen Sachkundigen.
 - **Timecode-Rechner:** SMPTE-Timecode ↔ Frames ↔ Echtzeit, inklusive Drop-Frame (29,97/59,94),
   und Dauer zwischen In und Out.
 
+### RTA (Echtzeit-Analysator)
+
+Spektrum des Mikrofons in Echtzeit – am Rechner mit jedem Eingang (Audio-Interface mit
+Messmikrofon), am Handy in der Web-App.
+
+- **Messen** startet das Mikrofon ohne die Sprachfilter der Geräte (Echo- und Rauschunterdrückung,
+  automatischer Pegel); filtert ein Gerät trotzdem, steht das in der Statuszeile.
+- **Spektrum** als Bänder (1/1, 1/3, 1/6 oder 1/12 Oktave nach IEC 61260) und als feine Kurve
+  (1/24 Oktave), beides zusammen oder einzeln. Gemessen wird mit fünf FFT-Fenstern zugleich
+  (Multi-Time-Window): tiefe Frequenzen fein aufgelöst, hohe mit schneller Antwort. Bewertung
+  **Z, A oder C** (IEC 61672). Spitzen je Band gehalten oder langsam fallend.
+- **Mittelung** aus, schnell (125 ms), langsam (1 s) oder unendlich – für rosa Rauschen am
+  ruhigsten. **Einfrieren** hält die Anzeige an, **Zurücksetzen** beginnt Mittelung, Spitzen,
+  Leq und Max neu.
+- **Pegel:** LAF/LAS (bzw. C/Z), **Leq** seit dem Start, **Max** und die **Aussteuerung**
+  (größter Abtastwert, mit Warnung bei Übersteuerung).
+- **Ablesen:** Zeiger bzw. Finger aufs Spektrum zeigt Frequenz, nächste Note mit Cent, Band- und
+  Kurvenpegel.
+- **Spektrogramm** (zuschaltbar): laufender Wasserfall unter dem Spektrum.
+- **Referenzen:** die aktuelle Kurve merken (bis zu sechs, benennbar, ein-/ausblendbar) und
+  vergleichen; **Differenz** zeigt die laufende Messung minus der Referenz (0 dB = gleich).
+  Gespeichert wird unbewertet in 1/24 Oktave – eine Referenz passt so zu jeder Auflösung und
+  Bewertung.
+- **Kalibrierung:** ohne zeigt der RTA dBFS (relativ zur Vollaussteuerung). Mit einem
+  Kalibrator (94 oder 114 dB) auf dem Mikrofon setzt **Kalibrieren** den Offset, danach dB SPL;
+  der Offset lässt sich auch eintippen. **Korrekturdatei** eines Messmikrofons (miniDSP UMIK,
+  Dayton, REW – „Frequenz dB“ je Zeile) bereinigt dessen Frequenzgang.
+- **Feedback-Finder:** meldet schmale, stehende Spitzen (deutlich über der Umgebung ±1/6
+  Oktave und an derselben Frequenz) mit Frequenz, Note, Pegel und einem Filter-Vorschlag
+  (Glocke 1/10 Oktave, Absenkung nach Prominenz); Empfindlichkeit niedrig/mittel/hoch; eine
+  Liste behält die gefundenen Frequenzen fürs Einpegeln.
+- **Grenzen:** Handymikrofone messen unter ~100 Hz und ganz oben zu wenig – für Vergleiche und
+  Feedback reicht das, für Messungen ein Messmikrofon nehmen. Am Handy bleibt der Bildschirm
+  während der Messung an.
+
 ### Rechner fürs Handy (PWA)
 
-Alle neun kleinen Werkzeuge – Kreis, Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen,
-DMX-Dip-Schalter, Stromlast, Audio-Delay, Rigging-Last und Timecode – gibt es zusätzlich als
+Alle zehn kleinen Werkzeuge – Kreis, Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen,
+DMX-Dip-Schalter, Stromlast, Audio-Delay, RTA, Rigging-Last und Timecode – gibt es zusätzlich als
 eigenständige Web-App ohne die übrige Mottulbox: https://mottul.github.io/project_mega/ im
 Browser öffnen, über „Installieren“ bzw.
 „Zum Home-Bildschirm“ als App ablegen, danach läuft sie **offline**. Dieselben Rechner wie am

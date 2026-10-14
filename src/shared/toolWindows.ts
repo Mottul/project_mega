@@ -47,12 +47,17 @@ const ONE_COLUMN = 520
  */
 const TWO_COLUMNS = 880
 
-/** Breite je kleinem Werkzeug; die Höhe misst das Fenster selbst (fitHeight). */
-export const SMALL_TOOLS: Readonly<Record<string, { width: number }>> = {
+/**
+ * Breite je kleinem Werkzeug; die Höhe misst das Fenster selbst (fitHeight). `measures`: misst
+ * laufend (RTA) – sein Fenster wird im Hintergrund nicht gedrosselt, sonst stünde die Messung
+ * still, sobald es verdeckt ist (Leq, Max).
+ */
+export const SMALL_TOOLS: Readonly<Record<string, { width: number; measures?: boolean }>> = {
   'circle-calc': { width: ONE_COLUMN },
   'dmx-address': { width: ONE_COLUMN },
   'throw-ratio': { width: ONE_COLUMN },
   'audio-delay': { width: ONE_COLUMN },
+  rta: { width: TWO_COLUMNS, measures: true },
   'projector-lumen': { width: ONE_COLUMN },
   timecode: { width: ONE_COLUMN },
   'power-load': { width: TWO_COLUMNS },
@@ -62,6 +67,11 @@ export const SMALL_TOOLS: Readonly<Record<string, { width: number }>> = {
 
 /** Kennzeichen in der Route (`/tool/<id>?fenster=1`): Das Werkzeug läuft in seinem eigenen Fenster. */
 export const OWN_WINDOW_PARAM = 'fenster'
+
+/** Misst das kleine Werkzeug laufend (Fenster ohne Hintergrund-Drosselung)? */
+export function measuresInBackground(id: string): boolean {
+  return isSmallTool(id) && SMALL_TOOLS[id].measures === true
+}
 
 export function isSmallTool(id: string): boolean {
   return Object.prototype.hasOwnProperty.call(SMALL_TOOLS, id)
