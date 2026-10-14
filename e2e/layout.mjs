@@ -15,6 +15,21 @@ const bar = () => page.getByTestId('tool-bar')
 const drawer = () => page.getByTestId('settings-drawer')
 const settingsBtn = () => page.getByRole('button', { name: 'Einstellungen', exact: true })
 const barActive = async () => (await bar().getAttribute('data-active')) === 'true'
+/** Anzahl abwarten statt sofort zählen: Auf macOS in der CI sind Leiste und Schublade direkt
+ *  nach dem Öffnen oder einem Klick oft noch nicht nachgezogen. */
+async function expectCount(locator, n, what) {
+  assert.ok(
+    await waitFor(async () => (await locator.count()) === n, 5_000),
+    `${what}: ${await locator.count()}× statt ${n}×`
+  )
+}
+/** Attribut abwarten statt sofort lesen (gleicher Grund) */
+async function expectAttr(locator, name, value, what) {
+  assert.ok(
+    await waitFor(async () => (await locator.getAttribute(name)) === value, 5_000),
+    `${what}: ${name}=${await locator.getAttribute(name)} statt ${value}`
+  )
+}
 /** Kleine Werkzeuge (shared/toolWindows: SMALL_TOOLS) und die zweispaltig geöffneten */
 const SMALL = [
   'circle-calc',
@@ -182,21 +197,14 @@ try {
         assert.equal(await drawer().getAttribute('data-pinned'), 'false')
         assert.equal(await drawer().evaluate((el) => getComputedStyle(el).position), 'absolute')
         await page.getByRole('button', { name: 'Einstellungen schließen' }).click()
-        // warten statt sofort zählen: Auf macOS in der CI war die Schublade direkt nach dem
-        // Klick noch nicht weg (1 statt 0)
-        const gone = async () =>
-          assert.ok(
-            await waitFor(async () => (await drawer().count()) === 0, 5_000),
-            `Schublade noch ${await drawer().count()}× da`
-          )
-        await gone()
+        await expectCount(drawer(), 0, 'Schublade nach dem Schließen')
         assert.equal(await settingsBtn().getAttribute('aria-expanded'), 'false')
         // anderes Werkzeug: eigene Schublade, weiter offen
         await tool('test-patterns')
         await drawer().waitFor({ timeout: 10_000 })
         // zurück: zu und gelöst gemerkt
         await tool('stage-timer')
-        await gone()
+        await expectCount(drawer(), 0, 'Schublade beim Zurückkehren')
         await settingsBtn().click()
         await drawer().waitFor({ timeout: 5_000 })
         assert.equal(await drawer().getAttribute('data-pinned'), 'false')
@@ -321,11 +329,10 @@ try {
       async () => {
         await tool('led-wall')
         assert.equal(await bar().getAttribute('data-kind'), 'job')
-        assert.equal(
-          await bar()
-            .getByRole('button', { name: /PDF exportieren/ })
-            .count(),
-          1
+        await expectCount(
+          bar().getByRole('button', { name: /PDF exportieren/ }),
+          1,
+          '„PDF exportieren“ in der Leiste'
         )
         await drawer().waitFor({ timeout: 10_000 })
         const tab = (name) => page.getByRole('tab', { name, exact: true })
@@ -350,17 +357,18 @@ try {
         await page
           .getByRole('button', { name: 'Modul Zeile 1, Spalte 1 – S1', exact: true })
           .waitFor({ timeout: 5_000 })
-        assert.equal(
-          await page.getByRole('button', { name: 'Signal-Kette 1: 1 Module', exact: true }).count(),
-          1
+        await expectCount(
+          page.getByRole('button', { name: 'Signal-Kette 1: 1 Module', exact: true }),
+          1,
+          'Ketten-Knopf'
         )
         // zurück zum flachen Modul: aus der Draufsicht wird wieder die Ansicht
         await tab('Draufsicht').click()
         await drawer()
           .getByRole('radio', { name: /^496-2,0/ })
           .click()
-        assert.equal(await tab('Draufsicht').count(), 0)
-        assert.equal(await tab('Ansicht').getAttribute('aria-selected'), 'true')
+        await expectCount(tab('Draufsicht'), 0, 'Reiter „Draufsicht“ beim flachen Modul')
+        await expectAttr(tab('Ansicht'), 'aria-selected', 'true', 'Reiter „Ansicht“')
       }
     ],
     [

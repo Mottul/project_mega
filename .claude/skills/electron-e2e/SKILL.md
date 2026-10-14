@@ -49,6 +49,10 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 ## Was sich bewährt hat (jeweils schon in Skripten gelöst)
 
 - **Zustand über die Brücke setzen** statt klicken: `page.evaluate(() => window.api.…)`.
+- **Nach Öffnen oder Klick nie sofort zählen oder Attribute lesen:** Auf macOS in der CI sind
+  Leiste und Schublade dann oft noch nicht nachgezogen (rot bei #153: Schublade noch da, Knopf
+  „PDF exportieren“ noch nicht da). `expectCount(locator, n, was)` / `expectAttr(…)` in
+  `e2e/layout.mjs` warten bis 5 s; sonst `assert.ok(await waitFor(…))` mit Trefferzahl in der Meldung.
 - **Native Dialoge ersetzen** (`api.confirm` → `dialog.showMessageBox` im main): Stub per
   `app.evaluate`; mit `holdConfirm` bleibt er offen, bis man ihn beantwortet.
 - **Einstellungs-Broadcast erreicht das auslösende Fenster nicht.** „Ein anderes Fenster
