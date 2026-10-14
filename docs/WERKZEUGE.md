@@ -548,7 +548,12 @@ Messmikrofon), am Handy in der Web-App.
   (größter Abtastwert, mit Warnung bei Übersteuerung).
 - **Ablesen:** Zeiger bzw. Finger aufs Spektrum zeigt Frequenz, nächste Note mit Cent, Band- und
   Kurvenpegel.
-- **Spektrogramm** (zuschaltbar): laufender Wasserfall unter dem Spektrum.
+- **Spektrogramm** unter dem Spektrum (Anzeige → Spektrogramm), Farbe = Pegel, eine Zeile je
+  0,1 s (gut 15 s Verlauf): **Wasserfall** – Frequenz waagrecht auf derselben Achse wie das
+  Spektrum, eine Linie steht also genau unter ihrer Spitze, die Zeit läuft nach unten; oder
+  **Zeitachse waagrecht** – Zeit nach links, Frequenz senkrecht. Beide mit Oktav-Gitter und
+  Beschriftung; Zeiger bzw. Finger zeigt Frequenz, Note, Pegel und wie lange es her ist, das
+  Fadenkreuz des Spektrums läuft durch den Wasserfall weiter.
 - **Referenzen:** die aktuelle Kurve merken (bis zu sechs, benennbar, ein-/ausblendbar) und
   vergleichen; **Differenz** zeigt die laufende Messung minus der Referenz (0 dB = gleich).
   Gespeichert wird unbewertet in 1/24 Oktave – eine Referenz passt so zu jeder Auflösung und

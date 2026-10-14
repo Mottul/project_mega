@@ -201,6 +201,21 @@ export function subBandPowers(
   return out
 }
 
+/** Lage einer Frequenz im 1/24-Raster: gebrochener Index in SUB_BANDS (Bandmitte = ganzzahlig) */
+export function subPosition(f: number): number {
+  return Math.log(f / SUB_BANDS[0].fc) / Math.log(SUB_BANDS[1].fc / SUB_BANDS[0].fc)
+}
+
+/** Pegel an einer gebrochenen Lage im 1/24-Raster (linear zwischen den Nachbarn), sonst −∞ */
+export function levelAt(curve: ArrayLike<number>, pos: number): number {
+  if (!(pos >= 0) || pos > curve.length - 1) return -Infinity
+  const i = Math.floor(pos)
+  const a = curve[i]
+  const b = curve[Math.min(curve.length - 1, i + 1)]
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return Number.isFinite(a) ? a : b
+  return a + (b - a) * (pos - i)
+}
+
 /** Summe der 1/24-Leistungen je Anzeige-Band */
 export function bandPowers(sub: ArrayLike<number>, bands: readonly Band[]): Float64Array {
   return Float64Array.from(bands, (b) => {

@@ -120,6 +120,41 @@ async function bandAt(w, f) {
   return m ? { band: m[1], db: num(m[2]) } : null
 }
 
+/**
+ * Helligkeit des Spektrogramms bei Frequenz f (0–255): Wasserfall in der neuesten Zeile, an der
+ * Stelle, an der f auch im Spektrum steht; Zeitachse in der neuesten Spalte an der Höhe von f.
+ */
+async function spectroBrightness(w, mode, f) {
+  return w.getByTestId('rta-spectro').evaluate(
+    (c, [mode, f]) => {
+      const dpr = c.width / c.clientWidth
+      const wCss = c.clientWidth
+      const hCss = c.clientHeight
+      let x
+      let y
+      if (mode === 'waterfall') {
+        x = 36 + (Math.log(f / 20) / Math.log(1000)) * (wCss - 36 - 8)
+        y = 3
+      } else {
+        x = wCss - 8 - 4
+        y = (Math.log(20000 / f) / Math.log(1000)) * hCss
+      }
+      // hellster Wert in einem kleinen Fenster: die Linie eines Sinus ist nur ~1 px breit bzw. hoch
+      const r = 3 * dpr
+      const x0 = Math.max(0, Math.round(x * dpr - r))
+      const y0 = Math.max(0, Math.round(y * dpr - r))
+      const size = Math.round(2 * r) + 1
+      const d = c.getContext('2d').getImageData(x0, y0, size, size).data
+      let max = 0
+      for (let i = 0; i < d.length; i += 4) {
+        max = Math.max(max, 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2])
+      }
+      return Math.round(max)
+    },
+    [mode, f]
+  )
+}
+
 const steps = (file, list) => async () => {
   if (!ffmpeg) {
     console.log(`RTA – ${list.title}
@@ -233,6 +268,51 @@ try {
             JSON.stringify(await bandAt(w, 1000))
           )
           await w.getByRole('button', { name: 'Differenz zu Referenz 1' }).click()
+        }
+      ],
+      [
+        'Wasserfall: 1-kHz-Linie genau unter der Spitze, Ablesung mit Frequenz, Pegel und Zeit',
+        async () => {
+          await w.getByLabel('Spektrogramm', { exact: true }).selectOption('waterfall')
+          const spectro = w.getByTestId('rta-spectro')
+          await spectro.waitFor()
+          // erst eine Weile Zeilen sammeln (eine je 100 ms)
+          await new Promise((r) => setTimeout(r, 1500))
+          assert.ok(
+            await waitFor(async () => {
+              const on = await spectroBrightness(w, 'waterfall', 1000)
+              const off = await spectroBrightness(w, 'waterfall', 630)
+              return on > off + 60
+            }, 5_000),
+            `Wasserfall 1 kHz ${await spectroBrightness(w, 'waterfall', 1000)}, 630 Hz ${await spectroBrightness(w, 'waterfall', 630)}`
+          )
+          await spectro.scrollIntoViewIfNeeded()
+          const box = await spectro.boundingBox()
+          const t = Math.log(1000 / 20) / Math.log(1000)
+          await w.mouse.move(box.x + 36 + t * (box.width - 44), box.y + 5)
+          const tip = w.getByText(/ vor \d|· jetzt/)
+          await tip.waitFor({ timeout: 5_000 })
+          const text = (await tip.locator('xpath=ancestor::div[1]').innerText()).replace('−', '-')
+          assert.match(text, /(99\d|1\.0[01]\d) Hz/)
+          const db = /(-\d+(?:,\d+)?) dBFS/.exec(text)
+          assert.ok(db && Number(db[1].replace(',', '.')) > -30, text)
+        }
+      ],
+      [
+        'Zeitachse waagrecht: 1 kHz in der neuesten Spalte hell, 630 Hz dunkel; aus schaltet ab',
+        async () => {
+          await w.getByLabel('Spektrogramm', { exact: true }).selectOption('timeline')
+          await new Promise((r) => setTimeout(r, 1500))
+          assert.ok(
+            await waitFor(async () => {
+              const on = await spectroBrightness(w, 'timeline', 1000)
+              const off = await spectroBrightness(w, 'timeline', 630)
+              return on > off + 60
+            }, 5_000),
+            `Zeitachse 1 kHz ${await spectroBrightness(w, 'timeline', 1000)}, 630 Hz ${await spectroBrightness(w, 'timeline', 630)}`
+          )
+          await w.getByLabel('Spektrogramm', { exact: true }).selectOption('off')
+          assert.equal(await w.getByTestId('rta-spectro').count(), 0)
         }
       ],
       [
