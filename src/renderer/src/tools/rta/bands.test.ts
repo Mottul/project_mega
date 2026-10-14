@@ -3,10 +3,12 @@ import {
   bandPowers,
   bandsFor,
   FFT_SIZES,
+  levelAt,
   mapSubBands,
   msToDb,
   SUB_BANDS,
   subBandPowers,
+  subPosition,
   weightingDb
 } from './bands'
 import { analyserSpectra, pink, sine, white } from './testSignals'
@@ -78,6 +80,22 @@ describe('Bänder nach IEC 61260', () => {
     for (const m of map) expect(m.bins.length).toBeGreaterThan(0)
     expect(map[0].analyser).toBe(0) // 20 Hz: 32768
     expect(map[map.length - 1].analyser).toBe(FFT_SIZES.length - 1) // 20 kHz: 2048
+  })
+})
+
+describe('Lage im 1/24-Raster (Wasserfall, Ablesung)', () => {
+  it('Bandmitten liegen auf ganzen Indizes, 1 kHz zwischen dem 4. und 5. Teil seiner Terz', () => {
+    expect(subPosition(SUB_BANDS[0].fc)).toBeCloseTo(0, 9)
+    expect(subPosition(SUB_BANDS[100].fc)).toBeCloseTo(100, 9)
+    expect(subPosition(1000)).toBeCloseTo(17 * 8 + 3.5, 9)
+  })
+
+  it('Pegel dazwischen linear, außerhalb und bei Stille −∞', () => {
+    const c = [-60, -40, -Infinity]
+    expect(levelAt(c, 0.5)).toBeCloseTo(-50, 9)
+    expect(levelAt(c, 1.5)).toBe(-40)
+    expect(levelAt(c, -1)).toBe(-Infinity)
+    expect(levelAt(c, 5)).toBe(-Infinity)
   })
 })
 

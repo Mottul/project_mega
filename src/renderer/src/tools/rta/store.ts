@@ -11,6 +11,9 @@ import type { Channel } from './engine'
 import type { Sensitivity } from './feedback'
 
 export type ViewMode = 'bars' | 'curve' | 'both'
+/** Spektrogramm: aus, Wasserfall (Frequenz waagrecht wie das Spektrum, Zeit nach unten) oder
+ *  Zeitachse waagrecht (Frequenz senkrecht) */
+export type SpectroMode = 'off' | 'waterfall' | 'timeline'
 export type ScaleMode = 'auto' | 'fixed'
 
 /** Referenzkurve: unbewertete 1/24-Pegel (dBFS, ohne Offset, mit Mikrofon-Korrektur) */
@@ -32,7 +35,7 @@ export interface RtaPrefs {
   meter: MeterSpeed
   view: ViewMode
   scale: ScaleMode
-  spectrogram: boolean
+  spectrogram: SpectroMode
   feedback: boolean
   sensitivity: Sensitivity
   deviceId: string | null
@@ -63,7 +66,7 @@ export const DEFAULT_RTA: RtaPrefs = {
   meter: 'F',
   view: 'both',
   scale: 'auto',
-  spectrogram: false,
+  spectrogram: 'off',
   feedback: true,
   sensitivity: 'mid',
   deviceId: null,
@@ -73,6 +76,18 @@ export const DEFAULT_RTA: RtaPrefs = {
   correction: null,
   references: [],
   diffRef: null
+}
+
+/**
+ * Gemerkten Stand älterer Versionen übernehmen. Version 1 kannte das Spektrogramm nur als
+ * Ein/Aus (true = die heutige Zeitachse); der Wasserfall ist neu und die bessere Vorgabe.
+ */
+export function migrateRta(persisted: unknown, version: number): Partial<RtaPrefs> {
+  const p = { ...(persisted as Record<string, unknown>) }
+  if (version < 2 && typeof p.spectrogram === 'boolean') {
+    p.spectrogram = p.spectrogram ? 'waterfall' : 'off'
+  }
+  return p as Partial<RtaPrefs>
 }
 
 export const useRta = create<RtaState>()(
@@ -112,8 +127,8 @@ export const useRta = create<RtaState>()(
     {
       name: 'rta',
       storage: debouncedStorage(),
-      version: 1,
-      migrate: (persisted) => persisted as RtaState,
+      version: 2,
+      migrate: (persisted, version) => migrateRta(persisted, version) as RtaState,
       // gespeicherte Werte über die Vorgabe legen: neue Felder späterer Versionen bekommen so
       // ihren Vorgabewert statt undefined
       merge: (persisted, current) => ({ ...current, ...(persisted as Partial<RtaPrefs>) }),

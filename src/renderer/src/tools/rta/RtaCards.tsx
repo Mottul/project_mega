@@ -20,7 +20,7 @@ import {
   type Sensitivity
 } from './feedback'
 import type { Channel } from './engine'
-import { MAX_REFERENCES, useRta, type ScaleMode } from './store'
+import { MAX_REFERENCES, useRta, type ScaleMode, type SpectroMode } from './store'
 
 /** Tailwind-Klassen je Referenzfarbe (gleiche Reihenfolge wie REF_TOKENS in draw.ts) */
 const REF_DOT: Record<(typeof REF_TOKENS)[number], string> = {
@@ -396,12 +396,16 @@ export function DisplayCard(): JSX.Element {
         <option value="auto">Automatisch</option>
         <option value="fixed">Fest</option>
       </SelectField>
-      <Checkbox
-        checked={p.spectrogram}
-        onChange={(spectrogram) => set({ spectrogram })}
+      <SelectField
         label="Spektrogramm"
-        hint="Laufender Wasserfall unter dem Spektrum: Frequenz nach oben, Zeit nach links, Farbe = Pegel."
-      />
+        hint="Unter dem Spektrum, Farbe = Pegel, eine Zeile je 0,1 s. Wasserfall: Frequenz waagrecht wie im Spektrum darüber (eine Linie steht genau unter ihrer Spitze), Zeit läuft nach unten. Zeitachse: Zeit waagrecht, Frequenz senkrecht. Zeiger bzw. Finger zeigt Frequenz, Note, Pegel und wie lange es her ist."
+        value={p.spectrogram}
+        onChange={(v) => set({ spectrogram: v as SpectroMode })}
+      >
+        <option value="off">Aus</option>
+        <option value="waterfall">Wasserfall</option>
+        <option value="timeline">Zeitachse waagrecht</option>
+      </SelectField>
       <Checkbox
         checked={p.feedback}
         onChange={(feedback) => set({ feedback })}

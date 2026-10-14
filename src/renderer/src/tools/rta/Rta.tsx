@@ -17,9 +17,11 @@ import {
   bandPowers,
   bandsFor,
   dbToMs,
+  levelAt,
   freqText,
   msToDb,
   SUB_BANDS,
+  subPosition,
   weightingGains,
   type Resolution,
   type Weighting
@@ -28,7 +30,12 @@ import {
   drawGraph,
   heatLut,
   PAD,
-  pushSpectrogram,
+  drawSpectroAxes,
+  pushSpectro,
+  renderSpectro,
+  ROW_MS,
+  spectroFreq,
+  spectroRow,
   readTheme,
   xToFreq,
   type GraphData,
@@ -81,12 +88,21 @@ const READ_EVERY_MS = 200
 /** Messtakt (ms): unabhängig vom Bildtakt, der in verdeckten Fenstern ausbleibt */
 const MEASURE_MS = 20
 
-/** Ein berechnetes Bild: Spektrum ohne Fadenkreuz, Achse fürs Spektrogramm, dessen Spalte */
+/** Ein berechnetes Bild: Spektrum ohne Fadenkreuz und die Pegelachse (auch fürs Spektrogramm) */
 interface FrameData {
   graph: Omit<GraphData, 'hoverX'>
   absTop: number
-  liveDb: number[] | null
 }
+
+/** Zeiger über Spektrum oder Spektrogramm (CSS-Pixel in dessen Fläche) */
+interface Pointer {
+  x: number
+  y: number
+  area: 'graph' | 'spectro'
+}
+
+/** Verlauf des Spektrogramms: so viele Zeilen (ROW_MS) – mehr, als eine Fläche zeigt */
+const HISTORY_ROWS = 1200
 /** Pegelumfang des Spektrogramms (dB): enger als das Spektrum, sonst fehlt der Kontrast. Oben
  *  10 dB unter dem Spektrum – die 1/24-Bänder liegen rund 9 dB unter den Terzen. */
 const SPECTROGRAM_RANGE = 60
@@ -112,7 +128,7 @@ export function Rta(): JSX.Element {
   const [inputs, setInputs] = useState<{ id: string; label: string }[]>([])
   const [frozen, setFrozen] = useState(false)
   const [read, setRead] = useState<Readings>(EMPTY)
-  const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
+  const [hover, setHover] = useState<Pointer | null>(null)
   const unsupported = unsupportedReason()
 
   const engine = useRef(new RtaEngine())
@@ -129,6 +145,15 @@ export function Rta(): JSX.Element {
   const graphBox = useRef<HTMLDivElement>(null)
   const graph = useRef<HTMLCanvasElement>(null)
   const spec = useRef<HTMLCanvasElement>(null)
+  const specAxes = useRef<HTMLCanvasElement>(null)
+  const specBox = useRef<HTMLDivElement>(null)
+  // Verlauf (neueste Zeile zuerst, Anzeige-dB je 1/24-Band), Sammeln der nächsten Zeile,
+  // noch nicht gezeichnete Zeilen, „alles neu zeichnen“ und Stand der Achsenebene
+  const history = useRef<Float32Array[]>([])
+  const rowAcc = useRef({ sum: new Float64Array(SUB_BANDS.length), n: 0, since: 0 })
+  const pendingRows = useRef(0)
+  const specDirty = useRef(true)
+  const axesKey = useRef('')
   const theme = useRef<Theme | null>(null)
   const lut = useRef<Uint8ClampedArray | null>(null)
   const scaleTop = useRef<number | null>(null)
@@ -151,12 +176,22 @@ export function Rta(): JSX.Element {
   }, [p.weighting, p.averaging, p.peak, p.meter, p.resolution])
   useEffect(() => engine.current.setCorrection(p.correction?.points ?? null), [p.correction])
   useEffect(() => tracker.current.setSensitivity(p.sensitivity), [p.sensitivity])
+  useEffect(() => {
+    specDirty.current = true
+    axesKey.current = ''
+    if (p.spectrogram === 'off') {
+      history.current = []
+      pendingRows.current = 0
+    }
+  }, [p.spectrogram])
 
   /* ---- Farben aus den Tokens, neu bei Design- oder Akzentwechsel ---- */
   useEffect(() => {
     const load = (): void => {
       theme.current = readTheme()
       lut.current = heatLut(theme.current)
+      specDirty.current = true
+      axesKey.current = ''
     }
     load()
     const mo = new MutationObserver(load)
@@ -281,6 +316,23 @@ export function Rta(): JSX.Element {
         })
         tracker.current.update(cands, now / 1000)
       }
+      if (cur.spectrogram !== 'off') {
+        // eine Zeile je ROW_MS: Mittel der Leistungen (bewertet, Augenblick) im Zeitraum
+        const acc = rowAcc.current
+        for (let i = 0; i < acc.sum.length; i++) acc.sum[i] += pr.live[i]
+        acc.n++
+        if (acc.since === 0) acc.since = now
+        if (now - acc.since >= ROW_MS) {
+          const off = cur.offset ?? 0
+          const row = Float32Array.from(acc.sum, (v) => msToDb(v / acc.n) + off)
+          history.current.unshift(row)
+          if (history.current.length > HISTORY_ROWS) history.current.length = HISTORY_ROWS
+          pendingRows.current++
+          acc.sum.fill(0)
+          acc.n = 0
+          acc.since = now
+        }
+      }
       if (!fz) {
         frame.current = compute(cur, now)
         if (!raf) {
@@ -373,13 +425,12 @@ export function Rta(): JSX.Element {
         top,
         range
       },
-      absTop,
-      liveDb: cur.spectrogram ? Array.from(pr.live, (v) => msToDb(v) + off) : null
+      absTop
     }
   }
 
   /** Spektrum und Spektrogramm zeichnen */
-  function paint(f: FrameData, cur: typeof p, hv: { x: number; y: number } | null): void {
+  function paint(f: FrameData, cur: typeof p, hv: Pointer | null): void {
     const canvas = graph.current
     const th = theme.current
     if (!canvas || !th) return
@@ -393,40 +444,57 @@ export function Rta(): JSX.Element {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawGraph(ctx, w, h, { ...f.graph, hoverX: hv?.x ?? null }, th)
+    // Fadenkreuz auch, wenn der Zeiger im Wasserfall steht (gleiche Frequenzachse)
+    const hoverX = hv && (hv.area === 'graph' || cur.spectrogram === 'waterfall') ? hv.x : null
+    drawGraph(ctx, w, h, { ...f.graph, hoverX }, th)
 
     const sc = spec.current
-    if (cur.spectrogram && f.liveDb && sc && lut.current) {
+    const mode = cur.spectrogram
+    if (mode !== 'off' && sc && lut.current) {
       const sw = Math.round(sc.clientWidth * dpr)
       const sh = Math.round(sc.clientHeight * dpr)
-      if (sc.width !== sw || sc.height !== sh) {
-        sc.width = sw
-        sc.height = sh
-      }
+      const scale = { top: f.absTop - 10, range: SPECTROGRAM_RANGE }
       const sctx = sc.getContext('2d')
       if (sctx) {
-        pushSpectrogram(
-          sctx,
-          sw,
-          sh,
-          f.liveDb,
-          f.absTop - 10,
-          SPECTROGRAM_RANGE,
-          lut.current,
-          Math.max(1, Math.round(dpr))
-        )
+        // neue Größe, anderer Modus, anderes Design oder zu viel verpasst: alles aus dem Verlauf
+        if (sc.width !== sw || sc.height !== sh || specDirty.current || pendingRows.current > 50) {
+          sc.width = sw
+          sc.height = sh
+          renderSpectro(sctx, mode, dpr, history.current, scale, lut.current)
+          specDirty.current = false
+        } else {
+          for (let i = Math.min(pendingRows.current, history.current.length) - 1; i >= 0; i--) {
+            pushSpectro(sctx, mode, dpr, history.current[i], scale, lut.current)
+          }
+        }
+        pendingRows.current = 0
+      }
+      const ax = specAxes.current
+      const key = `${mode}|${sc.clientWidth}|${sc.clientHeight}|${dpr}`
+      if (ax && axesKey.current !== key) {
+        axesKey.current = key
+        ax.width = Math.round(sc.clientWidth * dpr)
+        ax.height = Math.round(sc.clientHeight * dpr)
+        const actx = ax.getContext('2d')
+        if (actx) {
+          actx.setTransform(dpr, 0, 0, dpr, 0, 0)
+          drawSpectroAxes(actx, mode, sc.clientWidth, sc.clientHeight, th)
+        }
       }
     }
   }
 
   /* ---- Ablesen per Zeiger/Finger ---- */
-  function onPointer(e: PointerEvent<HTMLDivElement>): void {
-    const r = e.currentTarget.getBoundingClientRect()
-    setHover({ x: e.clientX - r.left, y: e.clientY - r.top })
-  }
+  const pointerIn =
+    (area: Pointer['area']) =>
+    (e: PointerEvent<HTMLDivElement>): void => {
+      const r = e.currentTarget.getBoundingClientRect()
+      setHover({ x: e.clientX - r.left, y: e.clientY - r.top, area })
+    }
+  const onPointer = pointerIn('graph')
   const box = graphBox.current
   const hoverInfo = (() => {
-    if (!hover || !box) return null
+    if (!hover || hover.area !== 'graph' || !box) return null
     const w = box.clientWidth
     if (hover.x < PAD.l || hover.x > w - PAD.r) return null
     const f = xToFreq(hover.x, w)
@@ -437,6 +505,19 @@ export function Rta(): JSX.Element {
     const fine = si >= 0 ? shown.current.curve?.[si] : undefined
     const note = noteOf(f)
     return { f, bandLabel: bi >= 0 ? bands[bi].label : '', band, fine, note }
+  })()
+
+  // Ablesung im Spektrogramm: Frequenz, Note, Pegel und wie lange es her ist
+  const sbox = specBox.current
+  const specInfo = (() => {
+    if (!hover || hover.area !== 'spectro' || !sbox || p.spectrogram === 'off') return null
+    const w = sbox.clientWidth
+    const h = sbox.clientHeight
+    const f = spectroFreq(p.spectrogram, hover.x, hover.y, w, h)
+    const row = spectroRow(p.spectrogram, hover.x, hover.y, w)
+    const line = row >= 0 ? history.current[row] : undefined
+    if (!line) return null
+    return { f, note: noteOf(f), db: levelAt(line, subPosition(f)), ago: (row * ROW_MS) / 1000 }
   })()
 
   const unit = p.diffRef ? 'dB' : p.offset != null ? 'dB' : 'dBFS'
@@ -608,12 +689,58 @@ export function Rta(): JSX.Element {
           </div>
         )}
       </div>
-      {p.spectrogram && (
-        <canvas
-          ref={spec}
-          className="block h-24 w-full rounded-md border border-border sm:h-28"
-          aria-label="Spektrogramm"
-        />
+      {p.spectrogram !== 'off' && (
+        <div
+          ref={specBox}
+          className="relative touch-none select-none overflow-hidden rounded-md bg-background/40"
+          onPointerMove={pointerIn('spectro')}
+          onPointerDown={pointerIn('spectro')}
+          onPointerLeave={() => setHover(null)}
+        >
+          <canvas
+            ref={spec}
+            className={cn(
+              'block w-full',
+              p.spectrogram === 'waterfall' ? 'h-40 sm:h-48' : 'h-28 sm:h-32'
+            )}
+            aria-label={p.spectrogram === 'waterfall' ? 'Wasserfall' : 'Zeitachse des Spektrums'}
+            data-testid="rta-spectro"
+          />
+          <canvas
+            ref={specAxes}
+            className="pointer-events-none absolute inset-0 h-full w-full"
+            aria-hidden
+          />
+          {/* Fadenkreuz durch den Wasserfall – dieselbe Frequenzachse wie das Spektrum */}
+          {hover && p.spectrogram === 'waterfall' && running && (
+            <div
+              className="pointer-events-none absolute inset-y-0 w-px bg-foreground/50"
+              style={{ left: Math.round(hover.x) }}
+            />
+          )}
+          {specInfo && running && (
+            <div
+              className="pointer-events-none absolute top-2 z-10 rounded-md border border-border bg-card/95 px-2 py-1 text-xs shadow-lg"
+              style={
+                hover && sbox && hover.x > sbox.clientWidth / 2
+                  ? { right: sbox.clientWidth - hover.x + 12 }
+                  : { left: (hover?.x ?? 0) + 12 }
+              }
+            >
+              <p className="font-semibold tabular-nums">
+                {freqText(specInfo.f)}{' '}
+                <span className="font-normal text-muted-foreground">
+                  {specInfo.note.name} {specInfo.note.cents >= 0 ? '+' : '−'}
+                  {Math.abs(specInfo.note.cents)} ct
+                </span>
+              </p>
+              <p className="tabular-nums text-muted-foreground">
+                {Number.isFinite(specInfo.db) ? `${dbText(specInfo.db)} ${unit}` : 'still'} ·{' '}
+                {specInfo.ago < 0.05 ? 'jetzt' : `vor ${fmt(specInfo.ago, 1)} s`}
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       <p
