@@ -11,10 +11,11 @@ import { clamp, clamp01, fmsg, type SendFn } from './oscShared'
 // Anzahl. Jedes Feld feuert seine eigene Adresse (Fallback: Widget-Adresse).
 export function BankGrid({ w, onSend }: { w: OscWidget; onSend: SendFn }): JSX.Element {
   const cols = w.cols >= 1 ? w.cols : Math.min(Math.max(1, w.items.length), 4)
+  // minmax(0, 1fr): Spalten bleiben gleich breit, auch wenn ein Feld (Poti) breiter sein möchte.
   return (
     <div
       className="grid h-full w-full gap-1"
-      style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr' }}
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gridAutoRows: '1fr' }}
     >
       {w.items.map((it, i) => (
         <BankCell key={i} w={w} item={it} index={i} onSend={onSend} />
@@ -111,7 +112,9 @@ function BankKnob({
         start.current = null
       }}
     >
-      <svg viewBox="0 0 100 100" className="min-h-0 w-auto flex-1 cursor-ns-resize">
+      {/* Volle Breite statt w-auto: sonst wird das Poti so breit wie die Kachel hoch ist und
+          ragt in die Nachbarn; viewBox hält den Kreis rund und mittig. */}
+      <svg viewBox="0 0 100 100" className="min-h-0 w-full flex-1 cursor-ns-resize">
         <circle
           cx="50"
           cy="50"

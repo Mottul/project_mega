@@ -18,7 +18,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
 | `rta.mjs` | RTA mit eingespeistem Mikrofon (Fake-Gerät liest eine WAV, Signale per lavfi): Sinus 1 kHz −20 dBFS – Pegel, Terz und Nachbarn über die Fadenkreuz-Ablesung, Feedback-Finder (H5), Kalibrieren auf 94 dB, Referenz/Differenz 0 dB, Wasserfall (Linie unter der Spitze, Ablesung) und Zeitachse per Pixel, Stopp; rosa Rauschen – Terzen 63 Hz … 4 kHz flach, kein Feedback. Freigabe über die echte Berechtigungsregel |
-| `osc.mjs` | OSC-Steuerung gegen einen lokalen UDP-Empfänger: leeres Set, Kacheln aller Arten über „+ Widget“, Learn, Schalter im Live-Modus, Befehle vom Handy (`api/command`), Feedback per UDP an den Feedback-Port, Monitor; Zustand über `api/state` der Handy-Fernsteuerung |
+| `osc.mjs` | OSC-Steuerung gegen einen lokalen UDP-Empfänger: leeres Set, Kacheln aller Arten über „+ Widget“, Learn, Bank (Hinzufügen-Knopf je Modus; hohe Potis bleiben in ihrer Kachel – App und Handy-Seite per Rechteck-Vergleich), Schalter im Live-Modus, Befehle vom Handy (`api/command`), Feedback per UDP an den Feedback-Port, Monitor; Zustand über `api/state` der Handy-Fernsteuerung |
 | `ffmpeg-update.mjs` | ffmpeg-Aktualisierung der fertigen App gegen einen lokalen Schein-Release-Server (`MOTTULBOX_FFMPEG_RELEASES_URL`): 7-Tage-Regel, Prüfsumme, Aktivierung nach Neustart (`launchApp({ userData })`), zurück zum mitgelieferten |
 | `ndi.mjs` | NDI-Ausgabe von Timer und Player mit dem echten Binding (ohne `vendor/grandiose`, z. B. in der CI, übersprungen): Bilder gehen raus, Werte begrenzt, Start/Stopp in schneller Folge ohne verwaiste Offscreen-Fenster, Fenster von außen geschlossen |
 | `youtube.mjs` | YouTube-Downloader mit echtem yt-dlp gegen einen lokalen Server (direkte Dateiadressen, kein Netz): fertiger Download, Abbrechen mitten im Laden (Verbindung und Prozess weg), höchstens zwei gleichzeitig, Beenden der App mitten im Download, Anmeldung per cookies.txt (Adresse nur mit Cookie), Cloudflare-artige Sperre (403 mit `cf-mitigated`, erst der zweite Versuch als Browser kommt durch). yt-dlp aus `MOTTULBOX_E2E_YTDLP` oder der installierten Mottulbox, sonst übersprungen (CI) |
@@ -49,6 +49,10 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 ## Was sich bewährt hat (jeweils schon in Skripten gelöst)
 
 - **Zustand über die Brücke setzen** statt klicken: `page.evaluate(() => window.api.…)`.
+- **Nach Öffnen oder Klick nie sofort zählen oder Attribute lesen:** Auf macOS in der CI sind
+  Leiste und Schublade dann oft noch nicht nachgezogen (rot bei #153: Schublade noch da, Knopf
+  „PDF exportieren“ noch nicht da). `expectCount(locator, n, was)` / `expectAttr(…)` in
+  `e2e/layout.mjs` warten bis 5 s; sonst `assert.ok(await waitFor(…))` mit Trefferzahl in der Meldung.
 - **Native Dialoge ersetzen** (`api.confirm` → `dialog.showMessageBox` im main): Stub per
   `app.evaluate`; mit `holdConfirm` bleibt er offen, bis man ihn beantwortet.
 - **Einstellungs-Broadcast erreicht das auslösende Fenster nicht.** „Ein anderes Fenster

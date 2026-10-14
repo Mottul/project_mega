@@ -69,14 +69,23 @@ function DecimalField({
   )
 }
 
-/** Editor für die Einträge einer Auswahl-/Taster-Bank-Kachel (Label + Wert bzw.
+/** Editor für die Einträge einer Auswahl- oder Bank-Kachel (Label + Wert bzw.
  *  Label + Adresse, hinzufügen/entfernen). */
 function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
   const update = useOscSurface((s) => s.updateWidget)
-  // Neues Taster-Item bekommt die Adresse mit AKTUELLEM Projekt-Titel als erstem
-  // Segment (nicht mehr hart „megatoolbox"). Titel „mottl" -> /mottl/btn/N.
+  // Neuer Bank-Eintrag bekommt die Adresse mit AKTUELLEM Projekt-Titel als erstem
+  // Segment (nicht mehr hart „megatoolbox"). Titel „mottl" -> /mottl/btn/N bzw. /mottl/knob/N.
   const projectName = useOscSurface((s) => s.currentProject().name)
   const isSelect = w.type === 'select'
+  const isKnob = !isSelect && w.bankMode === 'knob'
+  // Beschriftung folgt dem Bank-Modus, sonst stünde bei Schaltern und Potis „Taster“.
+  const [title, noun] = isSelect
+    ? ['Optionen', 'Option']
+    : isKnob
+      ? ['Potis', 'Poti']
+      : w.bankMode === 'toggle'
+        ? ['Schalter', 'Schalter']
+        : ['Taster', 'Taster']
   const items = w.items
   const setItem = (i: number, patch: Partial<OscItem>): void =>
     update(w.id, { items: items.map((it, j) => (j === i ? { ...it, ...patch } : it)) })
@@ -92,17 +101,17 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
             }
           : {
               label: String(items.length + 1),
-              address: `/${oscSlug(projectName)}/btn/${items.length + 1}`,
-              value: 1
+              address: `/${oscSlug(projectName)}/${isKnob ? 'knob' : 'btn'}/${items.length + 1}`,
+              // value ist bei Schaltern der Zustand und bei Potis die Stellung: neu = aus bzw.
+              // Anschlag unten (vorher 1 -> neuer Schalter stand schon auf „an“).
+              value: isKnob ? Math.min(w.min, w.max) : 0
             }
       ]
     })
   const remove = (i: number): void => update(w.id, { items: items.filter((_, j) => j !== i) })
   return (
     <div className="space-y-2">
-      <span className="block text-xs text-muted-foreground">
-        {isSelect ? 'Optionen' : 'Taster'}
-      </span>
+      <span className="block text-xs text-muted-foreground">{title}</span>
       {items.map((it, i) => (
         <div key={i} className="flex items-center gap-1.5">
           <Input
@@ -137,7 +146,7 @@ function ItemsEditor({ w }: { w: OscWidget }): JSX.Element {
         </div>
       ))}
       <Button variant="outline" size="sm" className="w-full" onClick={add}>
-        <Plus className="size-3.5" /> {isSelect ? 'Option' : 'Taster'} hinzufügen
+        <Plus className="size-3.5" /> {noun} hinzufügen
       </Button>
     </div>
   )
