@@ -123,7 +123,8 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   Ob ein Fenster ungemessen erschien, steht im Debug-Log (`ctx.userData`/avtoolbox-debug.log,
   Prüfung `assertNoJump` in `e2e/layout.mjs`).
 - **Die CI-Bildschirme sind klein** (Windows/macOS etwa 1024 × 768, Arbeitsfläche ~730 px):
-  Fenster werden dort auf Bildschirmhöhe gekürzt oder nach oben gerückt. Lage-, Größen- und
+  Fenster werden dort auf Bildschirmhöhe gekürzt oder nach oben gerückt; ein Klick weiter unten
+  scrollt die Seite – vor Mausbewegungen auf ein Element `scrollIntoViewIfNeeded()`. Lage-, Größen- und
   „wird niedriger“-Prüfungen mit einem niedrigen Werkzeug (Kreisrechner) machen; lokal auf
   großem Bildschirm fällt das nicht auf.
 - **Kleine Werkzeuge sind keine Route im Hauptfenster mehr:** `openRoute(page, '/tool/timecode')`
@@ -138,6 +139,9 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Das Hauptfenster erscheint erst bei `ready-to-show`**, manchmal nach dem ersten Inhalt;
   `launchApp` wartet deshalb, bis es sichtbar ist (sonst galt es beim Schließen einer Ausgabe
   noch nicht als gezeigt, und die App beendete sich – timer.mjs war jeden zweiten Lauf rot).
+- **macOS hält verdeckten Fenstern `requestAnimationFrame` an** (lokal unter Windows unsichtbar):
+  Was im Bildtakt misst oder zählt, steht dort still – der RTA maß in der CI nichts. Messen per
+  Timer; Gegenprobe lokal: Fenster minimieren und prüfen, dass Werte nachkommen (`e2e/rta.mjs`).
 - **Windows meldet minimierte Fenster als unsichtbar** (`isVisible()` = false) – nie daraus
   schließen, dass kein Fenster mehr offen ist. **macOS zeichnet minimierte Fenster nicht neu**:
   Bei minimiertem Fenster den Zustand im main prüfen (`app.evaluate`), nicht in dessen Seite.

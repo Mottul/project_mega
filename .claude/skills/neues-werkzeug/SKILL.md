@@ -63,7 +63,10 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      in `tools/rta/draw.ts`: CSS-Variablen „H S% L%“ -> `hsl(…)`, neu bei Änderungen an
      `class`/`style` von `<html>`). Farbskalen über Akzent und Schrift, nicht über
      Warnung/Gefahr – die sind wie viele Akzentfarben gelb bzw. rot (das Spektrogramm war
-     sonst einfarbig). Messen bzw. Animieren je Bild über Refs, React nur ~5× je Sekunde.
+     sonst einfarbig). Messen per Timer, Zeichnen per `requestAnimationFrame` (über Refs, React
+     nur ~5× je Sekunde): macOS hält verdeckten Fenstern die Bilder an – der RTA maß dort im
+     Bildtakt gar nichts. Ein Werkzeug, das laufend misst, bekommt in `SMALL_TOOLS`
+     `measures: true` (Fenster ohne Hintergrund-Drosselung).
 7. **Optional:** Aktivitätsanzeige auf dem Startbildschirm in `launcher/useToolActivity.ts`;
    Kundenansicht über `useKiosk()` (`launcher/kiosk.tsx`), wenn Teile ausgeblendet werden müssen.
 8. **Doku:** Abschnitt in `docs/WERKZEUGE.md` (passende Kategorie), Eintrag im README-Überblick,
