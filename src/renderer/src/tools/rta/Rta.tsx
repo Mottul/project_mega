@@ -253,9 +253,9 @@ export function Rta(): JSX.Element {
 
   /* ---- Messen im Takt, Zeichnen im Bildtakt ---- */
   // Gemessen wird per Timer, gezeichnet, wenn der Bildschirm ein Bild will (requestAnimationFrame).
-  // Verdeckte Fenster bekommen keine Bilder – macOS hält sie dann an, und mit der Messung im
-  // Bildtakt stand dort alles still (CI). Ein Pegelmesser muss aber weitermessen, sonst stimmen
-  // Leq und Max nicht; sein Fenster läuft dafür ohne Hintergrund-Drosselung (toolWindows: measures).
+  // Verdeckte oder minimierte Fenster bekommen keine Bilder; im Bildtakt stünde die Messung dann
+  // still. Ein Pegelmesser muss aber weitermessen, sonst stimmen Leq und Max nicht; sein Fenster
+  // läuft dafür ohne Hintergrund-Drosselung (toolWindows: measures, Test in e2e/rta.mjs).
   useEffect(() => {
     if (!running) return
     const sub = new Float64Array(SUB_BANDS.length)

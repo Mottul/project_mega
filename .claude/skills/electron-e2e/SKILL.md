@@ -139,9 +139,14 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Das Hauptfenster erscheint erst bei `ready-to-show`**, manchmal nach dem ersten Inhalt;
   `launchApp` wartet deshalb, bis es sichtbar ist (sonst galt es beim Schließen einer Ausgabe
   noch nicht als gezeigt, und die App beendete sich – timer.mjs war jeden zweiten Lauf rot).
-- **macOS hält verdeckten Fenstern `requestAnimationFrame` an** (lokal unter Windows unsichtbar):
-  Was im Bildtakt misst oder zählt, steht dort still – der RTA maß in der CI nichts. Messen per
-  Timer; Gegenprobe lokal: Fenster minimieren und prüfen, dass Werte nachkommen (`e2e/rta.mjs`).
+- **Verdeckte und minimierte Fenster bekommen kein `requestAnimationFrame`:** Was im Bildtakt
+  misst oder zählt, steht dann still. Messen per Timer; Prüfung: Fenster minimieren und schauen,
+  dass Werte nachkommen (`e2e/rta.mjs`).
+- **Fake-Mikrofon auf macOS (CI) liefert Stille** – auch eine vom Werkzeug unabhängige Kette
+  misst −∞ dBFS bei laufendem Kontext und sichtbarem Fenster. `e2e/rta.mjs` misst das vorab
+  (`probeSignal`) und überspringt die Signal-Schritte dort mit dieser Begründung; Stille auf
+  Windows/Linux bleibt ein Fehler. Erst so eine Vorab-Messung trennt Testumgebung von App-Fehler –
+  die erste Vermutung (angehaltener Bildtakt) war falsch.
 - **Windows meldet minimierte Fenster als unsichtbar** (`isVisible()` = false) – nie daraus
   schließen, dass kein Fenster mehr offen ist. **macOS zeichnet minimierte Fenster nicht neu**:
   Bei minimiertem Fenster den Zustand im main prüfen (`app.evaluate`), nicht in dessen Seite.
