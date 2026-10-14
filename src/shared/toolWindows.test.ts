@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { fitHeight, isSmallTool, restoreBounds, toolWindowSize, TOOL_WINDOW } from './toolWindows'
+import {
+  fitHeight,
+  isSmallTool,
+  measuresInBackground,
+  restoreBounds,
+  toolWindowSize,
+  TOOL_WINDOW
+} from './toolWindows'
 
 const screen = { x: 0, y: 0, width: 1920, height: 1040 }
 const right = { x: 1920, y: 0, width: 1920, height: 1040 }
@@ -17,6 +24,13 @@ describe('toolWindowSize', () => {
     expect(toolWindowSize('video-player')).toEqual(TOOL_WINDOW)
     expect(isSmallTool('video-player')).toBe(false)
     expect(isSmallTool('toString')).toBe(false)
+  })
+
+  it('nur Messwerkzeuge laufen im Hintergrund ungedrosselt (RTA)', () => {
+    expect(measuresInBackground('rta')).toBe(true)
+    expect(measuresInBackground('timecode')).toBe(false)
+    expect(measuresInBackground('video-player')).toBe(false)
+    expect(measuresInBackground('toString')).toBe(false)
   })
 })
 

@@ -24,7 +24,16 @@ import {
   type Resolution,
   type Weighting
 } from './bands'
-import { drawGraph, heatLut, PAD, pushSpectrogram, readTheme, xToFreq, type Theme } from './draw'
+import {
+  drawGraph,
+  heatLut,
+  PAD,
+  pushSpectrogram,
+  readTheme,
+  xToFreq,
+  type GraphData,
+  type Theme
+} from './draw'
 import {
   isOvertaken,
   listInputs,
@@ -69,6 +78,15 @@ const EMPTY: Readings = {
 /** Übersteuert ab dieser Abtastspitze (dBFS); die Warnung bleibt 2 s stehen */
 const CLIP_DB = -0.5
 const READ_EVERY_MS = 200
+/** Messtakt (ms): unabhängig vom Bildtakt, der in verdeckten Fenstern ausbleibt */
+const MEASURE_MS = 20
+
+/** Ein berechnetes Bild: Spektrum ohne Fadenkreuz, Achse fürs Spektrogramm, dessen Spalte */
+interface FrameData {
+  graph: Omit<GraphData, 'hoverX'>
+  absTop: number
+  liveDb: number[] | null
+}
 /** Pegelumfang des Spektrogramms (dB): enger als das Spektrum, sonst fehlt der Kontrast. Oben
  *  10 dB unter dem Spektrum – die 1/24-Bänder liegen rund 9 dB unter den Terzen. */
 const SPECTROGRAM_RANGE = 60
@@ -115,6 +133,7 @@ export function Rta(): JSX.Element {
   const lut = useRef<Uint8ClampedArray | null>(null)
   const scaleTop = useRef<number | null>(null)
   const shown = useRef<{ levels: number[]; curve: number[] | null }>({ levels: [], curve: null })
+  const frame = useRef<FrameData | null>(null)
   const clipUntil = useRef(0)
   // aktueller Stand für die Bildschleife (ohne sie bei jeder Änderung neu zu starten)
   const live = useRef({ p, frozen, hover })
@@ -232,18 +251,22 @@ export function Rta(): JSX.Element {
     setRead(EMPTY)
   }
 
-  /* ---- Bildschleife ---- */
+  /* ---- Messen im Takt, Zeichnen im Bildtakt ---- */
+  // Gemessen wird per Timer, gezeichnet, wenn der Bildschirm ein Bild will (requestAnimationFrame).
+  // Verdeckte Fenster bekommen keine Bilder – macOS hält sie dann an, und mit der Messung im
+  // Bildtakt stand dort alles still (CI). Ein Pegelmesser muss aber weitermessen, sonst stimmen
+  // Leq und Max nicht; sein Fenster läuft dafür ohne Hintergrund-Drosselung (toolWindows: measures).
   useEffect(() => {
     if (!running) return
     const sub = new Float64Array(SUB_BANDS.length)
     let last = performance.now()
     let lastRead = 0
     let raf = 0
-    const frame = (now: number): void => {
-      raf = requestAnimationFrame(frame)
+    const tick = (): void => {
+      const now = performance.now()
       const dt = Math.min(0.5, Math.max(0.001, (now - last) / 1000))
       last = now
-      const { p: cur, frozen: fz, hover: hv } = live.current
+      const { p: cur, frozen: fz } = live.current
       const peak = engine.current.read(sub)
       const pr = proc.current
       pr.push(sub, peak, dt)
@@ -258,7 +281,16 @@ export function Rta(): JSX.Element {
         })
         tracker.current.update(cands, now / 1000)
       }
-      if (!fz) draw(cur, hv)
+      if (!fz) {
+        frame.current = compute(cur, now)
+        if (!raf) {
+          raf = requestAnimationFrame(() => {
+            raf = 0
+            const f = frame.current
+            if (f) paint(f, live.current.p, live.current.hover)
+          })
+        }
+      }
       if (now - lastRead >= READ_EVERY_MS) {
         lastRead = now
         setRead({
@@ -273,30 +305,19 @@ export function Rta(): JSX.Element {
         })
       }
     }
-    raf = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(raf)
-    // draw nutzt nur Refs
+    const timer = setInterval(tick, MEASURE_MS)
+    return () => {
+      clearInterval(timer)
+      cancelAnimationFrame(raf)
+    }
+    // compute und paint nutzen nur Refs
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running])
 
-  /** Spektrum und Spektrogramm zeichnen */
-  function draw(cur: typeof p, hv: { x: number; y: number } | null): void {
-    const canvas = graph.current
-    const th = theme.current
-    if (!canvas || !th) return
+  /** Was gezeichnet wird – im Messtakt berechnet, auch wenn gerade kein Bild kommt (Ablesung) */
+  function compute(cur: typeof p, now: number): FrameData {
     const pr = proc.current
     const off = cur.offset ?? 0
-    const dpr = window.devicePixelRatio || 1
-    const w = canvas.clientWidth
-    const h = canvas.clientHeight
-    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-      canvas.width = Math.round(w * dpr)
-      canvas.height = Math.round(h * dpr)
-    }
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-
     const bands = pr.bandLayout
     const liveLevels = pr.bandLevels().map((v) => v + off)
     const liveCurve = cur.view === 'bars' ? null : pr.curve().map((v) => v + off)
@@ -333,11 +354,8 @@ export function Rta(): JSX.Element {
       range = 30
     }
     shown.current = { levels, curve }
-    drawGraph(
-      ctx,
-      w,
-      h,
-      {
+    return {
+      graph: {
         bands,
         levels,
         holds: ref ? [] : pr.peakHolds().map((v) => v + off),
@@ -350,19 +368,35 @@ export function Rta(): JSX.Element {
               .map((r) => ({ color: r.color, levels: refLevels(r.curve) })),
         diff: Boolean(ref),
         feedback: cur.feedback
-          ? tracker.current
-              .active(performance.now() / 1000)
-              .map((t) => ({ f: t.f, db: t.db + off }))
+          ? tracker.current.active(now / 1000).map((t) => ({ f: t.f, db: t.db + off }))
           : [],
         top,
-        range,
-        hoverX: hv?.x ?? null
+        range
       },
-      th
-    )
+      absTop,
+      liveDb: cur.spectrogram ? Array.from(pr.live, (v) => msToDb(v) + off) : null
+    }
+  }
+
+  /** Spektrum und Spektrogramm zeichnen */
+  function paint(f: FrameData, cur: typeof p, hv: { x: number; y: number } | null): void {
+    const canvas = graph.current
+    const th = theme.current
+    if (!canvas || !th) return
+    const dpr = window.devicePixelRatio || 1
+    const w = canvas.clientWidth
+    const h = canvas.clientHeight
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr)
+      canvas.height = Math.round(h * dpr)
+    }
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    drawGraph(ctx, w, h, { ...f.graph, hoverX: hv?.x ?? null }, th)
 
     const sc = spec.current
-    if (cur.spectrogram && sc && lut.current) {
+    if (cur.spectrogram && f.liveDb && sc && lut.current) {
       const sw = Math.round(sc.clientWidth * dpr)
       const sh = Math.round(sc.clientHeight * dpr)
       if (sc.width !== sw || sc.height !== sh) {
@@ -371,13 +405,12 @@ export function Rta(): JSX.Element {
       }
       const sctx = sc.getContext('2d')
       if (sctx) {
-        const liveDb = Array.from(pr.live, (v) => msToDb(v) + off)
         pushSpectrogram(
           sctx,
           sw,
           sh,
-          liveDb,
-          absTop - 10,
+          f.liveDb,
+          f.absTop - 10,
           SPECTROGRAM_RANGE,
           lut.current,
           Math.max(1, Math.round(dpr))

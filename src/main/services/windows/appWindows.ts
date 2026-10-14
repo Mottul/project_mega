@@ -61,6 +61,8 @@ export function createWindow(
     bounds?: WindowBounds | null
     useContentSize?: boolean
     deferShow?: boolean
+    /** false: im Hintergrund nicht drosseln (misst laufend, z. B. der RTA) */
+    backgroundThrottling?: boolean
   } = {}
 ): BrowserWindow {
   const size = opts.size ?? TOOL_WINDOW
@@ -80,7 +82,10 @@ export function createWindow(
     icon: appIconPath(),
     // erlaubt der In-App-Vorschau des Players, ohne Nutzergeste (auto-advance,
     // entstummt) weiterzuspielen
-    webPreferences: secureWebPreferences({ autoplayPolicy: 'no-user-gesture-required' })
+    webPreferences: secureWebPreferences({
+      autoplayPolicy: 'no-user-gesture-required',
+      ...(opts.backgroundThrottling === false ? { backgroundThrottling: false } : {})
+    })
   })
 
   if (!opts.deferShow) win.once('ready-to-show', () => win.show())

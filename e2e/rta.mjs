@@ -71,6 +71,9 @@ async function readout(w, label) {
  * rechts 8).
  */
 async function bandAt(w, f) {
+  // kleine Bildschirme (CI 1024 × 768): das Fenster ist gekürzt, ein Klick weiter unten
+  // scrollt das Spektrum aus dem Bild – erst zurückholen
+  await w.getByTestId('rta-graph').scrollIntoViewIfNeeded()
   const box = await w.getByTestId('rta-graph').boundingBox()
   const t = Math.log(f / 20) / Math.log(1000)
   const x = box.x + 36 + t * (box.width - 36 - 8)
@@ -90,7 +93,7 @@ const steps = (file, list) => async () => {
   }
   const { ctx, w } = await openRta(file())
   try {
-    await runSteps(`RTA – ${list.title}`, list.steps(w))
+    await runSteps(`RTA – ${list.title}`, list.steps(w, ctx))
   } finally {
     await ctx.close()
   }
@@ -100,7 +103,7 @@ let failed = false
 try {
   await steps(() => wav('sinus.wav', 'aevalsrc=0.1*sin(2*PI*1000*t):s=48000:d=60'), {
     title: 'Sinus 1 kHz, −20 dBFS',
-    steps: (w) => [
+    steps: (w, ctx) => [
       [
         'Messen startet das Mikrofon (ohne Sprachfilter)',
         async () => {
@@ -219,6 +222,34 @@ try {
           await w.getByLabel('Kanal', { exact: true }).selectOption('mix')
           await w.getByRole('button', { name: 'Messen' }).click()
           await w.getByRole('button', { name: 'Stopp' }).waitFor()
+        }
+      ],
+      [
+        'Fenster minimiert: ungedrosselt, die Messung läuft weiter',
+        async () => {
+          const rta = (method) =>
+            ctx.app.evaluate(({ BrowserWindow }, m) => {
+              const x = BrowserWindow.getAllWindows().find(
+                (y) => !y.isDestroyed() && y.webContents.getURL().includes('tool/rta')
+              )
+              return m === 'throttling' ? x.webContents.getBackgroundThrottling() : x[m]()
+            }, method)
+          assert.equal(await rta('throttling'), false)
+          await rta('minimize')
+          // Zurücksetzen leert die Anzeige; nur eine weiterlaufende Messung füllt sie wieder
+          await w.evaluate(() =>
+            [...document.querySelectorAll('button')]
+              .find((b) => b.textContent?.includes('Zurücksetzen'))
+              ?.click()
+          )
+          assert.ok(
+            await waitFor(async () => {
+              const r = await readout(w, 'LZF')
+              return r && Math.abs(r.value + 20) <= 0.5
+            }, 10_000),
+            'keine Messwerte im minimierten Fenster'
+          )
+          await rta('restore')
         }
       ],
       [
