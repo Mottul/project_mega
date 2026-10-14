@@ -55,6 +55,41 @@ async function openRta(file) {
   return { ctx, w }
 }
 
+/**
+ * Kommt das eingespeiste Signal überhaupt an? Eigene kleine Kette in der Seite (ohne den RTA):
+ * Mikrofon -> Analysator, größter Abtastwert über 1 s. Trennt „Testumgebung liefert Stille“ von
+ * „RTA misst falsch“.
+ */
+async function probeSignal(w) {
+  return w.evaluate(async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    })
+    const ac = new AudioContext()
+    await ac.resume().catch(() => {})
+    const a = ac.createAnalyser()
+    a.fftSize = 2048
+    ac.createMediaStreamSource(stream).connect(a)
+    const buf = new Float32Array(2048)
+    let peak = 0
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 50))
+      a.getFloatTimeDomainData(buf)
+      for (const v of buf) peak = Math.max(peak, Math.abs(v))
+    }
+    const info = {
+      peak,
+      state: ac.state,
+      rate: ac.sampleRate,
+      label: stream.getAudioTracks()[0]?.label ?? '',
+      visibility: document.visibilityState
+    }
+    stream.getTracks().forEach((t) => t.stop())
+    await ac.close()
+    return info
+  })
+}
+
 /** Wert einer Pegelkachel (Beschriftung z. B. „LZF“; gefunden über ihr ⓘ) */
 async function readout(w, label) {
   const tile = w
@@ -93,6 +128,22 @@ const steps = (file, list) => async () => {
   }
   const { ctx, w } = await openRta(file())
   try {
+    const probe = await probeSignal(w)
+    const db = probe.peak > 0 ? (20 * Math.log10(probe.peak)).toFixed(1) : '−∞'
+    const line = `Eingespeistes Signal: Spitze ${db} dBFS (${probe.label}, ${probe.rate} Hz, ${probe.state}, ${probe.visibility})`
+    if (probe.peak < 0.001) {
+      // Chromiums Fake-Mikrofon liest die Datei im Audio-Dienst; liefert die Umgebung trotzdem
+      // Stille, misst der RTA nichts – auf macOS in der CI eine Grenze der Testumgebung, sonst
+      // ein Fehler
+      if (process.platform === 'darwin') {
+        console.log(
+          `RTA – ${list.title}\n  – übersprungen: ${line} – Fake-Mikrofon liefert hier Stille`
+        )
+        return
+      }
+      throw new Error(`${line} – Stille statt Testsignal`)
+    }
+    console.log(`  ${line}`)
     await runSteps(`RTA – ${list.title}`, list.steps(w, ctx))
   } finally {
     await ctx.close()
@@ -122,7 +173,9 @@ try {
               const r = await readout(w, 'LZF')
               return r && Math.abs(r.value + 20) <= 0.5
             }, 10_000),
-            `LZF: ${JSON.stringify(await readout(w, 'LZF'))}`
+            `LZF: ${JSON.stringify(await readout(w, 'LZF'))} · ${await w
+              .getByTestId('rta-status')
+              .innerText()} · ${await w.evaluate(() => document.visibilityState)}`
           )
           assert.equal((await readout(w, 'LZF')).unit, 'dBFS')
           const peak = await readout(w, 'Aussteuerung')
