@@ -10,6 +10,7 @@ import { dmxAddressTool } from '@renderer/tools/dmx-address'
 import { powerLoadTool } from '@renderer/tools/power-load'
 import { projectorLumenTool } from '@renderer/tools/projector-lumen'
 import { riggingTool } from '@renderer/tools/rigging'
+import { rtaTool } from '@renderer/tools/rta'
 import { throwRatioTool } from '@renderer/tools/throw-ratio'
 import { timecodeTool } from '@renderer/tools/timecode'
 import type { ToolModule } from '@renderer/tools/types'
@@ -23,6 +24,7 @@ export const PWA_TOOLS: ToolModule[] = [
   dmxAddressTool,
   powerLoadTool,
   audioDelayTool,
+  rtaTool,
   riggingTool,
   timecodeTool
 ]

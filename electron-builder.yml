@@ -86,6 +86,9 @@ mac:
   target:
     - dmg
   category: public.app-category.video
+  # macOS fragt beim ersten Mikrofon-Zugriff (RTA) mit diesem Text; ohne ihn verweigert es still
+  extendInfo:
+    NSMicrophoneUsageDescription: Der RTA (Echtzeit-Analysator) misst über das Mikrofon.
   artifactName: ${productName}-${version}.${ext}
 
 linux:

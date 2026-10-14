@@ -37,6 +37,9 @@ Zusätzlich gilt der allgemeine `/code-review`.
   beim Testton: Ein React-Effekt rief `update()`, während `start()` noch auf das Gerät
   wartete – zwei Stimmen spielten gleichzeitig (doppelter Pegel). Während des Starts nur den
   Stand merken, `start()` baut danach mit dem neuesten (`tone/engine.ts`, `e2e/testton.mjs`).
+  Und beim RTA: Wer das Werkzeug verlässt oder den Eingang wechselt, während die Freigabe noch
+  läuft, ließ das Mikrofon offen – Zähler in `rta/engine.ts`, Gegenprobe in `e2e/rta.mjs`
+  (offene Spuren über ein umgelenktes `getUserMedia` zählen).
 - **zustand-Store und lokaler `useState` nach `await` nicht im selben Atemzug setzen, wenn ein
   Effekt beide liest.** Der Store rendert sofort (useSyncExternalStore), der lokale Zustand erst
   im nächsten Durchlauf – ein Wächter-Effekt sieht den Mischstand und dreht die Änderung zurück
@@ -78,6 +81,14 @@ einen Test **mit** und **ohne** Schrägstrich.
   synchron.
 - **macOS beendet die App mit dem letzten Fenster nicht** – Tests, die auf das Ende warten,
   dort anders prüfen (Fensterzahl).
+
+## Tests
+
+- **Ein Test darf die Regeln der App nicht umgehen.** Der RTA-Test startete Chromium mit
+  `--use-fake-ui-for-media-stream` – das übergeht den Berechtigungs-Handler der App, der Test
+  war grün, in der echten App hätte „Messen“ mit „Zugriff verweigert“ geendet (Oktober 2026).
+  Prüfen, was ein Testschalter außer dem Gewünschten noch abschaltet; danach eine Gegenprobe
+  gegen den alten Stand: Der Test muss dort scheitern.
 
 ## Vor dem Abschluss
 

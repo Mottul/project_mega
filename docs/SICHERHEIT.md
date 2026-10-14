@@ -117,9 +117,12 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   auch für künftige): keine neuen Fenster (`window.open` gesperrt), keine Navigation weg von der
   App-Seite – so bekommt nie eine fremde Seite die App-API –, keine Webviews. Externe Links gehen
   an den Standardbrowser, und zwar nur http(s). Browser-Berechtigungen nur für die App-Seite und
-  nur Vollbild, Schreiben in die Zwischenablage und die Wahl des Audio-Ausgabegeräts; Kamera,
-  Mikrofon, Standort, Benachrichtigungen usw. nie. Regeln rein und getestet in
-  `windowPolicy.ts`, in der echten App per E2E `security`.
+  nur Vollbild, Schreiben in die Zwischenablage und die Wahl des Audio-Ausgabegeräts. Das
+  Mikrofon nur der RTA: nur auf seiner Route (`#/tool/rta`), nur Ton – jede andere Seite und
+  jedes andere Fenster bekommt es nie, auch nicht als Abfrage (sonst sähe sie die Namen aller
+  Mikrofone). Kamera, Standort, Benachrichtigungen usw. nie. Regeln rein und getestet in
+  `windowPolicy.ts`, in der echten App per E2E `security` und `rta` (dieser ohne
+  `--use-fake-ui-for-media-stream`, das die Regel umginge).
 - **Shell-Aufrufe:** „Ordner öffnen“ (`shell.openPath` startet Dateien mit ihrem Programm) nur
   für vorhandene lokale Ordner; „Im Ordner zeigen“ nur mit absolutem Pfad (Netzwerkpfade erlaubt,
   es startet nichts).

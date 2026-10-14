@@ -38,5 +38,11 @@ Dort zuerst nachlesen. Neue Verfahren so prüfen, bevor sie in den Code wandern:
    schreiben und das Verfahren als Test in `convertPlan`/`videoGenPlan` oder `e2e/` verankern –
    Laborskripte im Arbeitsordner gehen sonst verloren.
 
+**Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
+Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in
+Terzen von 63 Hz bis 4 kHz flach (±0,3 dB), darüber fällt es (−1 dB bei 8 kHz, −2,3 dB bei
+12,5 kHz). Nachgemessen je Terz mit zwei `bandpass=width_type=q:w=4.32` hintereinander und
+`astats` (RMS); `astats` nennt 20·log10(RMS) – Sinus nach AES17 also +3,01 dB.
+
 Aufräumen: große Zwischendateien (Intra-Material etwa 320 MB je Minute 1080p) nach dem Lauf
 löschen, Messungen im Scratchpad ablegen, nicht im Repository.

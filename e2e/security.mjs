@@ -130,6 +130,21 @@ try {
       }
     ],
     [
+      'Mikrofon nur im RTA-Fenster (nur Ton), Kamera auch dort nicht',
+      async () => {
+        const ev = app.waitForEvent('window')
+        await page.evaluate(() => window.api.openToolWindow('rta'))
+        const w = await ev
+        await w.waitForLoadState()
+        const states = await w.evaluate(async () => ({
+          microphone: (await navigator.permissions.query({ name: 'microphone' })).state,
+          camera: (await navigator.permissions.query({ name: 'camera' })).state
+        }))
+        assert.deepEqual(states, { microphone: 'granted', camera: 'denied' })
+        await w.close()
+      }
+    ],
+    [
       'Audio-Ausgabegeräte haben ihre Namen (Jingle-Player), Mikrofone bleiben anonym und zu',
       async () => {
         const r = await page.evaluate(async () => {

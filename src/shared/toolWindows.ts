@@ -53,6 +53,7 @@ export const SMALL_TOOLS: Readonly<Record<string, { width: number }>> = {
   'dmx-address': { width: ONE_COLUMN },
   'throw-ratio': { width: ONE_COLUMN },
   'audio-delay': { width: ONE_COLUMN },
+  rta: { width: TWO_COLUMNS },
   'projector-lumen': { width: ONE_COLUMN },
   timecode: { width: ONE_COLUMN },
   'power-load': { width: TWO_COLUMNS },

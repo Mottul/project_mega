@@ -42,6 +42,8 @@ Einstellungen, Bibliotheken und yt-dlp liegen unter `%APPDATA%\Mottulbox`.
      Quarantäne-Merkmal des Downloads:
      `xattr -dr com.apple.quarantine /Applications/Mottulbox.app`
 3. Ab dem zweiten Start genügt ein Doppelklick.
+4. Beim ersten **Messen** im RTA fragt macOS, ob die Mottulbox das Mikrofon nutzen darf – mit
+   „OK“ bestätigen (später: *Systemeinstellungen → Datenschutz und Sicherheit → Mikrofon*).
 
 Einstellungen, Bibliotheken und yt-dlp liegen unter
 `~/Library/Application Support/Mottulbox`.
