@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict'
 import dgram from 'node:dgram'
-import { launchApp, openRoute, portFree, runSteps, waitFor } from './harness.mjs'
+import { launchApp, openBrowserWindow, openRoute, portFree, runSteps, waitFor } from './harness.mjs'
 
 const REMOTE_PORT = 18093
 // Beschriftungen im Einfüge-Menü und die Arten dahinter (WIDGET_ORDER)
@@ -74,6 +74,27 @@ function oscPacket(address, value) {
 }
 
 const close = (a, b) => Math.abs(a - b) < 1e-4
+
+/** Potis einer Bank (Rechtecke aus der Seite) liegen in ihrer Kachel und überlappen sich nicht.
+ *  Früher wurde ein Poti so breit, wie die Kachel hoch war: in der App ragte es in die
+ *  Nachbarn, am Handy schob es die hinteren aus der Kachel. */
+function assertKnobsFit({ tile, knobs }, where, count) {
+  assert.equal(knobs.length, count, `${where}: ${count} Potis`)
+  knobs.forEach((k, i) =>
+    assert.ok(
+      k.left >= tile.left - 0.5 && k.right <= tile.right + 0.5,
+      `${where}: Poti ${i + 1} ragt aus der Kachel (${JSON.stringify({ tile, k })})`
+    )
+  )
+  for (let i = 0; i < knobs.length; i++) {
+    for (let j = i + 1; j < knobs.length; j++) {
+      const [a, b] = [knobs[i], knobs[j]]
+      const w = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+      const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+      assert.ok(w <= 0.5 || h <= 0.5, `${where}: Potis ${i + 1} und ${j + 1} überlappen`)
+    }
+  }
+}
 
 /* ---- Aufbau: Ziel-Empfänger, freier Feedback-Port, App ---- */
 
@@ -150,6 +171,59 @@ try {
         await page.getByRole('button', { name: 'lernt…' }).waitFor()
         await feedback('/gelernt/adresse', 1)
         await waitFor(async () => (await widget('meter')).address === '/gelernt/adresse')
+      }
+    ],
+    [
+      'Bank: Hinzufügen-Knopf folgt dem Modus, hohe Potis bleiben in ihrer Spalte (App und Handy)',
+      async () => {
+        const drawer = page.getByTestId('settings-drawer')
+        await page.locator('span[title="Bank"]').click()
+        await drawer.getByRole('button', { name: 'Taster hinzufügen' }).waitFor()
+        await drawer.getByRole('button', { name: 'Schalter', exact: true }).click()
+        await drawer.getByRole('button', { name: 'Schalter hinzufügen' }).click()
+        await drawer.getByRole('button', { name: 'Poti', exact: true }).click()
+        await drawer.getByRole('button', { name: 'Poti hinzufügen' }).click()
+        const height = drawer.getByLabel('Höhe (Zeilen)')
+        await height.fill('16')
+        await height.press('Enter')
+        await waitFor(async () => {
+          const b = await widget('bank')
+          return b.bankMode === 'knob' && b.items.length === 5 && b.ch === 16
+        })
+        const { items } = await widget('bank')
+        // Neuer Schalter steht auf „aus“ (früher 1 = schon an), neues Poti hat eine Poti-Adresse
+        assert.equal(items[3].value, 0, 'neuer Schalter aus')
+        assert.match(items[3].address, /\/btn\/4$/)
+        assert.match(items[4].address, /\/knob\/5$/)
+
+        const inApp = await page.evaluate(() => {
+          const box = (el) => {
+            const r = el.getBoundingClientRect()
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
+          }
+          const tile = document.querySelector('span[title="Bank"]').closest('.group')
+          const knobs = [...tile.querySelectorAll('svg[viewBox="0 0 100 100"]')]
+          return { tile: box(tile), knobs: knobs.map(box) }
+        })
+        assertKnobsFit(inApp, 'App', 5)
+
+        const phone = await openBrowserWindow(ctx.app, `http://127.0.0.1:${REMOTE_PORT}/`)
+        try {
+          await waitFor(() =>
+            phone.evaluate(() => document.querySelectorAll('.bknob svg').length === 5)
+          )
+          const onPhone = await phone.evaluate(() => {
+            const box = (el) => {
+              const r = el.getBoundingClientRect()
+              return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
+            }
+            const knobs = [...document.querySelectorAll('.bknob svg')]
+            return { tile: box(knobs[0].closest('.tile')), knobs: knobs.map(box) }
+          })
+          assertKnobsFit(onPhone, 'Handy', 5)
+        } finally {
+          await phone.close()
+        }
       }
     ],
     [

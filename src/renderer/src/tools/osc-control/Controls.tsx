@@ -149,11 +149,7 @@ export function Knob({ w, onSend }: { w: OscWidget; onSend: SendFn }): JSX.Eleme
         start.current = null
       }}
     >
-      <svg
-        ref={dialRef}
-        viewBox="0 0 100 100"
-        className="h-full max-h-full w-auto cursor-ns-resize"
-      >
+      <svg ref={dialRef} viewBox="0 0 100 100" className="size-full cursor-ns-resize">
         <circle
           cx="50"
           cy="50"

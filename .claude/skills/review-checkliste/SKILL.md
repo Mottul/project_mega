@@ -54,6 +54,14 @@ Siehe `/fernsteuerung-seite`: relative Pfade (Schrägstrich-Variante umleiten), 
 Watchdog gegen halboffene Verbindungen, Zeitzone des Rechners, ES5. Jede neue Route bekommt
 einen Test **mit** und **ohne** Schrägstrich.
 
+## Raster und SVG (Oktober 2026)
+
+- **SVG mit `viewBox` nie `height:100%; width:auto` in eine Rasterzelle.** Die Breite folgt dann
+  der Höhe: In der Bank der OSC-Steuerung ragten hohe Potis in die Nachbarn (App), am Handy
+  verbreiterten sie ihre Spalte und schoben die hinteren aus der Kachel. Beide Maße auf 100 %
+  setzen (`viewBox` hält das Bild rund und mittig) und Spalten als `minmax(0, 1fr)` statt `1fr`.
+  Prüfen mit hoher, schmaler Kachel (`e2e/osc.mjs`, Rechtecke vergleichen).
+
 ## Einstellungen und gemerkte Stände
 
 - Ändert eine Option, was ein bestehender Schalter bedeutet (Beispiel: „Kennung“ blendete früher

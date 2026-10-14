@@ -60,8 +60,8 @@ header b{font-size:16px}
 .bank{flex:1;display:grid;grid-auto-rows:1fr;gap:5px;min-height:0}
 .bankbtn{display:flex;align-items:center;justify-content:center;border:1px solid;border-radius:6px;background:transparent;font-size:15px;font-weight:700;overflow:hidden;padding:0 4px;touch-action:none}
 .knob{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;touch-action:none}
-.bknob{display:flex;align-items:center;justify-content:center;min-height:0;height:100%;touch-action:none}
-.knob svg,.bknob svg{height:100%;max-height:100%;width:auto;display:block}
+.bknob{display:flex;align-items:center;justify-content:center;min-height:0;min-width:0;height:100%;touch-action:none}
+.knob svg,.bknob svg{height:100%;width:100%;display:block}
 </style>
 </head>
 <body>
@@ -226,7 +226,8 @@ function makeSelect(w,body){
 }
 function makeBank(w,body){
   var wrap=document.createElement('div');wrap.className='bank';var items=w.items||[];
-  var cols=(w.cols>=1)?w.cols:Math.min(Math.max(1,items.length),4);wrap.style.gridTemplateColumns='repeat('+cols+',1fr)';
+  // minmax(0,1fr): sonst verbreitert ein hohes Poti seine Spalte und hintere Felder fallen aus der Kachel.
+  var cols=(w.cols>=1)?w.cols:Math.min(Math.max(1,items.length),4);wrap.style.gridTemplateColumns='repeat('+cols+',minmax(0,1fr))';
   var mode=w.bankMode||'momentary';
   var lo=Math.min(w.min,w.max),hi=Math.max(w.min,w.max),span=(hi-lo)||1;
   var ups=[];
