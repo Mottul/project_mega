@@ -11,7 +11,7 @@
 // es sichert die Uebertragung, nicht das Release selbst.
 
 import { app, net } from 'electron'
-import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import {
   chmodSync,
   existsSync,
@@ -30,6 +30,7 @@ import type {
   YtProbeResult,
   YtToolStatus
 } from '@shared/types'
+import { binaryVersion } from '../binaryVersion'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 import { JobList } from '../jobs/jobList'
 import { getSettings } from '../store'
@@ -98,40 +99,21 @@ export function parseChecksums(text: string): Map<string, string> {
   return map
 }
 
-// Version je Binary merken: `--version` startet einen Prozess, und der Status
-// wird bei jedem Fortschritt neu gebildet. Der Zeitstempel invalidiert den
-// Eintrag nach einer Aktualisierung.
-let versionCache: { bin: string; stamp: number; version: string | null } | null = null
-
-function versionOf(bin: string): string | null {
-  let stamp = 0
-  try {
-    stamp = statSync(bin).mtimeMs
-  } catch {
-    // Bare-Name auf dem PATH -> kein Zeitstempel, Cache greift ueber den Namen
+/** Bevorzugt die selbst verwaltete Binary, sonst PATH. */
+async function locateBinary(): Promise<{ bin: string; location: 'managed' | 'path' } | null> {
+  const managed = managedBinary()
+  if (existsSync(managed) && (await versionOf(managed))) {
+    return { bin: managed, location: 'managed' }
   }
-  if (versionCache && versionCache.bin === bin && versionCache.stamp === stamp) {
-    return versionCache.version
-  }
-  let version: string | null = null
-  try {
-    // Bare-Name auf dem System-PATH unter Windows nur via Shell aufloesbar.
-    const shell = process.platform === 'win32' && !/[\\/]/.test(bin)
-    const res = spawnSync(bin, ['--version'], { windowsHide: true, timeout: 8000, shell })
-    if (res.status === 0) version = res.stdout.toString().trim() || null
-  } catch {
-    // nicht vorhanden / nicht ausfuehrbar
-  }
-  versionCache = { bin, stamp, version }
-  return version
+  if (await versionOf('yt-dlp')) return { bin: 'yt-dlp', location: 'path' }
+  return null
 }
 
-/** Bevorzugt die selbst verwaltete Binary, sonst PATH. */
-function locateBinary(): { bin: string; location: 'managed' | 'path' } | null {
-  const managed = managedBinary()
-  if (existsSync(managed) && versionOf(managed)) return { bin: managed, location: 'managed' }
-  if (versionOf('yt-dlp')) return { bin: 'yt-dlp', location: 'path' }
-  return null
+// asynchron und zwischengespeichert (binaryVersion.ts); ein bloßer Name auf dem PATH ist unter
+// Windows nur über die Shell auflösbar
+function versionOf(bin: string): Promise<string | null> {
+  const shell = process.platform === 'win32' && !/[\\/]/.test(bin)
+  return binaryVersion(bin, ['--version'], { timeoutMs: 8000, shell })
 }
 
 function ffmpegAvailable(): boolean {
@@ -257,9 +239,11 @@ export function setStatusSink(sink: (status: YtToolStatus) => void): void {
   statusSink = sink
 }
 
-export function getStatus(): YtToolStatus {
-  const found = locateBinary()
-  const version = found ? versionOf(found.bin) : null
+export async function getStatus(): Promise<YtToolStatus> {
+  const found = await locateBinary()
+  const version = found ? await versionOf(found.bin) : null
+  // Zustand erst NACH dem Warten lesen: Die erste Versionsabfrage dauert, inzwischen kann die
+  // Prüfung fertig sein
   return {
     available: found != null,
     version,
@@ -273,8 +257,14 @@ export function getStatus(): YtToolStatus {
   }
 }
 
+// Meldungen in Auftragsreihenfolge: Ein Status, der auf eine ältere (langsamere) Versionsabfrage
+// wartet, darf einen neueren nicht überschreiben
+let published = 0
 function publish(): void {
-  statusSink(getStatus())
+  const seq = ++published
+  void getStatus().then((s) => {
+    if (seq === published) statusSink(s)
+  })
 }
 
 /**
@@ -290,8 +280,8 @@ export async function ensureUpToDate(): Promise<YtToolStatus> {
   try {
     const tag = await fetchLatestTag()
     state.latest = tag
-    const found = locateBinary()
-    if (found?.location !== 'path' && (!found || versionOf(found.bin) !== tag)) {
+    const found = await locateBinary()
+    if (found?.location !== 'path' && (!found || (await versionOf(found.bin)) !== tag)) {
       // Waehrend eines laufenden Downloads laesst sich die Binary unter Windows
       // nicht ersetzen -- dann beim naechsten Start bzw. per Knopf erneut.
       if (ytManager.running()) throw new Error('Download läuft — Aktualisierung später möglich')
@@ -397,7 +387,9 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
   }
 
   protected async run(job: YtJob, req: YtEnqueueRequest, signal: AbortSignal): Promise<void> {
-    const found = locateBinary()
+    const found = await locateBinary()
+    // während der (ersten, langsamen) Versionsabfrage abgebrochen -> bleibt abgebrochen
+    if (this.isCanceled(job)) return
     if (!found) {
       this.update(job, { status: 'error', error: 'yt-dlp nicht gefunden – zuerst herunterladen.' })
       return
@@ -516,7 +508,7 @@ const PROBE_MAX_BYTES = 64 * 1024 * 1024
  */
 export async function probeUrl(rawUrl: string): Promise<YtProbeResult> {
   const url = normalizeUrl(rawUrl)
-  const found = locateBinary()
+  const found = await locateBinary()
   if (!found) throw new Error('yt-dlp nicht gefunden – zuerst herunterladen.')
   const first = auth(false)
   let res = await probeOnce(found.bin, url, first.args)

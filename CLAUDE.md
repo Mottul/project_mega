@@ -30,6 +30,8 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 (React SPA mit HashRouter). Aliase: `@shared`, `@renderer`. Dienste im main je Bereich in
 `src/main/services/<bereich>/` (`windows`, `remote`, `ndi`, `player`, `timer`, `convert` …); lose
 Dateien dort nur fürs ganze Programm (`store`, `db`, `log`, `broadcast`, `fileDialogs`, `shutdown`).
+Im main nie synchron auf einen Prozess warten (`spawnSync`/`execSync`, ESLint sperrt es): Das hält
+Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersion.ts`.
 
 - **IPC-Vertrag:** `src/shared/ipc-contracts.ts` definiert `Channels` +
   `ToolboxApi` als einzige Quelle; `src/shared/types.ts` alle Domain-Typen.

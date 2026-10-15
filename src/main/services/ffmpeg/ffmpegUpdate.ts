@@ -16,7 +16,7 @@
 // dann sind Downloads von deren Ursprung erlaubt, und die Aktualisierung läuft auch ungepackt.
 
 import { app, net } from 'electron'
-import { execFile, spawnSync } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import {
   chmodSync,
@@ -28,12 +28,12 @@ import {
   readFileSync,
   renameSync,
   rmSync,
-  statSync,
   writeFileSync
 } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { FfmpegToolStatus } from '@shared/types'
+import { binaryVersion } from '../binaryVersion'
 import { parseEncoderNames, parseFilterNames } from '../convert/capabilities'
 import { logLine } from '../log'
 import { getSettings } from '../store'
@@ -109,38 +109,22 @@ export function setFfmpegStatusSink(s: (status: FfmpegToolStatus) => void): void
   sink = s
 }
 
-const versionCache = new Map<string, { stamp: number; version: string | null }>()
-
-/** Erste Zeile von `-version` (zwischengespeichert je Pfad und Änderungszeit). */
-function versionOf(bin: string): string | null {
-  let stamp = 0
-  try {
-    stamp = statSync(bin).mtimeMs
-  } catch {
-    // Name auf dem PATH
-  }
-  const hit = versionCache.get(bin)
-  if (hit && hit.stamp === stamp) return hit.version
-  let version: string | null = null
-  try {
-    const r = spawnSync(bin, ['-version'], { windowsHide: true, timeout: 10_000 })
-    if (r.status === 0) version = r.stdout.toString().split('\n')[0].trim() || null
-  } catch {
-    // nicht ausführbar
-  }
-  versionCache.set(bin, { stamp, version })
-  return version
+/** Erste Zeile von `-version` (asynchron, zwischengespeichert – binaryVersion.ts). */
+function versionOf(bin: string): Promise<string | null> {
+  return binaryVersion(bin, ['-version'], { timeoutMs: 10_000 })
 }
 
-export function ffmpegToolStatus(): FfmpegToolStatus {
+export async function ffmpegToolStatus(): Promise<FfmpegToolStatus> {
   const bin = ffmpegBinPath('ffmpeg')
+  // Zustand erst nach der Versionsabfrage lesen: Die erste dauert, inzwischen ändert er sich
+  const version = await versionOf(bin)
   const managed = managedFfmpegDir() !== null && bin.startsWith(root())
   const ready = readJson<BuildRef>(file('bereit.json'))
   const reason = unsupportedReason()
   return {
     active: {
       source: managed ? 'aktualisiert' : /[\\/]/.test(bin) ? 'mitgeliefert' : 'system',
-      version: versionOf(bin),
+      version,
       build: managed ? (state.active?.build ?? null) : null
     },
     ready: ready && isBuildName(ready.build) ? ready : null,
@@ -154,8 +138,14 @@ export function ffmpegToolStatus(): FfmpegToolStatus {
   }
 }
 
+// Meldungen in Auftragsreihenfolge: Ein Status, der auf eine ältere (langsamere) Versionsabfrage
+// wartet, darf einen neueren (etwa den Fortschritt) nicht überschreiben
+let published = 0
 function publish(): void {
-  sink(ffmpegToolStatus())
+  const seq = ++published
+  void ffmpegToolStatus().then((s) => {
+    if (seq === published) sink(s)
+  })
 }
 
 /* ------------------------------- Netzzugriff ------------------------------- */
@@ -370,12 +360,13 @@ async function install(c: BuildCandidate): Promise<void> {
 }
 
 /** Nummer des laufenden bzw. schon bereitliegenden Builds – der Maßstab für „neuer“. */
-function currentNumber(): number | null {
+async function currentNumber(): Promise<number | null> {
+  const inUse = await versionOf(ffmpegBinPath('ffmpeg'))
   const ready = readJson<BuildRef>(file('bereit.json'))
   const numbers = [
     buildNumber(ready?.build),
     buildNumber(state.active?.build),
-    buildNumber(versionOf(ffmpegBinPath('ffmpeg'))),
+    buildNumber(inUse),
     // abgelehnte Builds (und alles davor) nie wieder laden
     buildNumber(readJson<BuildRef>(file('abgelehnt.json'))?.build)
   ].filter((n): n is number => n !== null)
@@ -391,7 +382,7 @@ let running: Promise<FfmpegToolStatus> | null = null
 export function checkFfmpegUpdate(): Promise<FfmpegToolStatus> {
   if (running) return running
   const p = platform()
-  if (!p || unsupportedReason()) return Promise.resolve(ffmpegToolStatus())
+  if (!p || unsupportedReason()) return ffmpegToolStatus()
   running = runCheck(p).finally(() => {
     running = null
   })
@@ -408,7 +399,7 @@ async function runCheck(p: UpdatePlatform): Promise<FfmpegToolStatus> {
     const releases = JSON.parse(await fetchText(testUrl() ?? RELEASES_URL, true)) as ReleaseInfo[]
     if (!Array.isArray(releases)) throw new Error('Unerwartete Antwort der Release-Liste')
     const c = pickCandidate(releases, p, Date.now(), MIN_AGE_DAYS, allowedPrefix())
-    const current = currentNumber()
+    const current = await currentNumber()
     if (!c) state.lastResult = 'Kein passender Build gefunden'
     else if (current !== null && c.number <= current) {
       state.lastResult = 'Aktuell – kein neuerer Build, der mindestens 7 Tage alt ist'
@@ -430,7 +421,7 @@ async function runCheck(p: UpdatePlatform): Promise<FfmpegToolStatus> {
 }
 
 /** Ab dem nächsten Start wieder das mitgelieferte ffmpeg; der laufende Build gilt als abgelehnt. */
-export function useBundledFfmpeg(): FfmpegToolStatus {
+export function useBundledFfmpeg(): Promise<FfmpegToolStatus> {
   const rejected = state.active ?? readJson<BuildRef>(file('bereit.json'))
   if (rejected && isBuildName(rejected.build)) {
     writeFileSync(file('abgelehnt.json'), JSON.stringify(rejected) + '\n')
