@@ -313,7 +313,8 @@ Projektdateien kommen von Kollegen oder per Mail – fremde Eingaben:
 
 ## Das Werkzeug
 
-- **Name:** „Mini-Manual“, id `mini-manual`, Kategorie wie die Packliste. Klar unterschieden von
+- **Name:** „Mini-Manual“, id `mini-manual`, Kategorie `rigging` („Strom, Rigging & Aufbau“)
+  neben der Packliste – die Übergabe gehört zum Aufbau. Klar unterschieden von
   der bestehenden „Manuals-Bibliothek“ (id `manuals`, `userData/manuals`, Protokoll `manual:`,
   Kanäle `manuals:*`): eigene Namen für Ordner, Kanäle und Protokoll, Suchbegriffe „anleitung,
   kunde, übergabe, bedienung, fehlersuche“.
@@ -813,7 +814,7 @@ Jede Phase ist für sich nutzbar.
 
 | Phase | Inhalt | Ergebnis |
 |---|---|---|
-| **0 Projektordner und Projektdatei** | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration v2 (noch ohne Verlauf); Messung der 2-MB-Grenze im PDF-Weg | LED-Wall-Planungen als Datei am festen Ort |
+| **0 Projektordner und Projektdatei** | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Automatik; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration); Messung der 2-MB-Grenze im PDF-Weg | LED-Wall-Planungen als Datei am festen Ort |
 | **1 Mini-Manual, erste Fassung** | Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
 | **2 Kabelverlauf** | Startecke, Richtung, Handkorrektur, Port/Kreis/Phase, Prozessor und Port-Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
