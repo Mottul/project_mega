@@ -65,3 +65,20 @@ export async function writeFileAtomicAsync(file: string, data: Uint8Array): Prom
     }
   }
 }
+
+/**
+ * Neue Datei anlegen – nie eine vorhandene ersetzen: Gibt es sie inzwischen doch (Kollege auf dem
+ * NAS), scheitert das mit EEXIST. Bricht das Schreiben ab, wird die halbe Datei wieder entfernt.
+ */
+export async function writeNewFileAsync(file: string, data: Uint8Array): Promise<void> {
+  const fh = await open(file, 'wx')
+  try {
+    await fh.writeFile(data)
+    await fh.sync()
+  } catch (err) {
+    await fh.close().catch(() => {})
+    await rm(file, { force: true }).catch(() => {})
+    throw err
+  }
+  await fh.close()
+}

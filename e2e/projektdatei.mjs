@@ -1,9 +1,10 @@
 // Projektdatei (.mottul) und Projektordner am LED-Wall-Konfigurator: Standardordner, Speichern
 // unter, „ungespeichert“-Punkt, Strg+S, Konflikt mit einer anderswo geänderten Datei, Neu mit
-// Rückfrage, Öffnen. Dialoge werden im main ersetzt (feste Pfade, feste Antworten).
+// Rückfrage, Öffnen, Strg+O aus einem gepufferten Feld, „Leere anlegen“ mit scheiterndem
+// Schreiben. Dialoge werden im main ersetzt (feste Pfade, feste Antworten).
 
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { launchApp, openRoute, runSteps, waitFor } from './harness.mjs'
 
@@ -23,6 +24,12 @@ async function menu(item) {
   await page.getByRole('menuitem', { name: item }).click()
 }
 
+/** Abschnitt der Schublade aufklappen (bleibt offen, wenn er es schon ist) */
+async function expand(title) {
+  const head = drawer().getByRole('button', { name: new RegExp(`^${title}`) })
+  if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
+}
+
 /** Alle Rückfragen (showMessageBox) mitschreiben und der Reihe nach beantworten */
 async function answer(responses) {
   await app.evaluate(({ dialog }, seq) => {
@@ -38,6 +45,64 @@ async function answer(responses) {
 const asked = () => app.evaluate(() => globalThis.__asked ?? [])
 
 const openSection = (path) => page.evaluate((p) => window.api.projects.open('ledWall', p), path)
+
+function crc32(buf) {
+  let crc = 0xffffffff
+  for (const b of buf) {
+    crc ^= b
+    for (let k = 0; k < 8; k++) crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1
+  }
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+/** Projektdatei eines Kollegen mit nur einer Anleitung (ohne LED-Wall) – ZIP ohne Kompression */
+function writeForeignProject(path) {
+  const name = Buffer.from('projekt.json')
+  const data = Buffer.from(
+    JSON.stringify({
+      app: 'mottulbox',
+      type: 'projektdatei',
+      version: 1,
+      geaendert: '2026-10-16T10:00:00.000Z',
+      abschnitte: {
+        anleitung: {
+          version: 1,
+          rev: 3,
+          sha256: 'a'.repeat(64),
+          geaendert: '2026-10-16T10:00:00.000Z',
+          fotos: [],
+          data: { titel: 'So bedienst du deine LED-Wall' }
+        }
+      }
+    })
+  )
+  const crc = crc32(data)
+  const local = Buffer.alloc(30)
+  local.writeUInt32LE(0x04034b50, 0)
+  local.writeUInt16LE(20, 4)
+  local.writeUInt16LE(0x0800, 6)
+  local.writeUInt32LE(crc, 14)
+  local.writeUInt32LE(data.length, 18)
+  local.writeUInt32LE(data.length, 22)
+  local.writeUInt16LE(name.length, 26)
+  const central = Buffer.alloc(46)
+  central.writeUInt32LE(0x02014b50, 0)
+  central.writeUInt16LE(20, 4)
+  central.writeUInt16LE(20, 6)
+  central.writeUInt16LE(0x0800, 8)
+  central.writeUInt32LE(crc, 16)
+  central.writeUInt32LE(data.length, 20)
+  central.writeUInt32LE(data.length, 24)
+  central.writeUInt16LE(name.length, 28)
+  const cdOffset = local.length + name.length + data.length
+  const end = Buffer.alloc(22)
+  end.writeUInt32LE(0x06054b50, 0)
+  end.writeUInt16LE(1, 8)
+  end.writeUInt16LE(1, 10)
+  end.writeUInt32LE(central.length + name.length, 12)
+  end.writeUInt32LE(cdOffset, 16)
+  writeFileSync(path, Buffer.concat([local, name, data, central, name, end]))
+}
 
 try {
   await runSteps('Projektdatei', [
@@ -187,6 +252,74 @@ try {
         assert.equal((await asked()).length, 0, 'leere Vorgabe-Planung braucht keine Rückfrage')
         const recent = await page.evaluate(() => window.api.getSettings())
         assert.equal(recent.projects.recent[0], file)
+      }
+    ],
+    [
+      'Strg+O aus einem gepufferten Feld: Entwurf zählt als ungespeichert',
+      async () => {
+        await expand('Modul')
+        await drawer()
+          .getByRole('radio', { name: /^uS2\+/ })
+          .click()
+        await expand('Curving')
+        await drawer().getByRole('button', { name: 'Squircle', exact: true }).click()
+        await answer([])
+        await page.keyboard.press('Control+s')
+        assert.ok(
+          await waitFor(
+            async () => (await chip().getByLabel('ungespeichert').count()) === 0,
+            10_000
+          )
+        )
+        // Entwurf im Feld, ohne es zu verlassen – dann Strg+O
+        const corner = drawer().getByRole('textbox', { name: 'Module je Ecke' })
+        await corner.fill('5')
+        await answer([2]) // Abbrechen
+        await page.keyboard.press('Control+o')
+        assert.ok(await waitFor(async () => (await asked()).length === 1, 10_000))
+        assert.match((await asked())[0], /Änderungen an „Messe Dornbirn“ speichern\?/)
+        await chip().getByLabel('ungespeichert').waitFor({ timeout: 5_000 })
+        await answer([])
+        await page.keyboard.press('Control+s')
+        assert.ok(
+          await waitFor(async () => (await openSection(file)).section.data.sqCorner === 5, 10_000)
+        )
+      }
+    ],
+    [
+      '„Leere anlegen“: scheitert das Schreiben, bleiben Planung und Bindung',
+      async () => {
+        const foreign = join(dir, 'Kollege.mottul')
+        writeForeignProject(foreign)
+        await app.evaluate(({ dialog }, target) => {
+          dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [target] })
+        }, foreign)
+        await answer([1]) // „Leere anlegen“
+        // Während der Rückfrage verschwindet die Datei (an ihrer Stelle ein Ordner): Schreiben scheitert
+        await app.evaluate(({ dialog }, target) => {
+          const fs = process.getBuiltinModule('node:fs')
+          const recordAndAnswer = dialog.showMessageBox
+          dialog.showMessageBox = async (...args) => {
+            const o = args[args.length - 1]
+            if (/enthält noch keine/.test(o.message)) {
+              fs.rmSync(target)
+              fs.mkdirSync(target)
+            }
+            return recordAndAnswer(...args)
+          }
+        }, foreign)
+        await menu(/^Öffnen/)
+        assert.ok(await waitFor(async () => (await asked()).length === 2, 10_000))
+        const [q, problem] = await asked()
+        assert.match(q, /„Kollege“ enthält noch keine LED-Wall-Planung/)
+        assert.match(problem, /keine Mottulbox-Projektdatei/)
+        assert.ok(statSync(foreign).isDirectory())
+        await chip().getByText('Messe Dornbirn').waitFor({ timeout: 5_000 })
+        assert.equal(await chip().getByLabel('ungespeichert').count(), 0)
+        assert.equal(
+          await drawer().getByRole('textbox', { name: 'Projektname' }).inputValue(),
+          'Messe Dornbirn'
+        )
       }
     ],
     [

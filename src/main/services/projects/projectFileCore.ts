@@ -88,22 +88,37 @@ export function unpackProject(buf: Buffer): UnpackResult {
   return { ok: true, container: { file: parsed.file, fotos, extra } }
 }
 
-/** Container als ZIP. Fotos, die kein Abschnitt mehr nennt, fallen weg. */
-export function packProject(c: ProjectContainer, now = new Date()): Buffer {
+export type PackResult = { ok: true; buf: Buffer } | { ok: false; reason: 'zu-gross' | 'ungueltig' }
+
+/**
+ * Container als ZIP. Fotos, die kein Abschnitt mehr nennt, fallen weg. Geschrieben wird nur, was
+ * sich mit denselben Grenzen und Prüfungen wieder öffnen lässt – sonst wäre die Datei nach dem
+ * Speichern verloren (z. B. eine riesige Wand nach einem Tippfehler in den Maßen).
+ */
+export function packProject(c: ProjectContainer, now = new Date()): PackResult {
+  const L = PROJECT_LIMITS
+  // kompakt: eingerückt wüchsen große Raster um ein Vielfaches über die Lesegrenze
+  const json = JSON.stringify(c.file)
+  const jsonBuf = Buffer.from(json, 'utf8')
+  if (jsonBuf.length > L.jsonBytes) return { ok: false, reason: 'zu-gross' }
+  if (!parseProjectJson(json).ok) return { ok: false, reason: 'ungueltig' }
   const used = new Set(Object.values(c.file.abschnitte).flatMap((s) => s.fotos))
-  const entries: ZipEntryIn[] = [
-    {
-      name: PROJECT_JSON_NAME,
-      data: Buffer.from(JSON.stringify(c.file, null, 2), 'utf8'),
-      compress: true
-    }
-  ]
+  const entries: ZipEntryIn[] = [{ name: PROJECT_JSON_NAME, data: jsonBuf, compress: true }]
   for (const [hash, f] of c.fotos) {
     if (used.has(hash))
       entries.push({ name: `fotos/${hash}.${f.ext}`, data: f.data, compress: false })
   }
   for (const [name, data] of c.extra) entries.push({ name, data, compress: true })
-  return writeZip(entries, now)
+  const total = entries.reduce((n, e) => n + e.data.length, 0)
+  if (
+    entries.length > L.entries ||
+    entries.some((e) => e !== entries[0] && e.data.length > L.entryBytes) ||
+    total > L.totalBytes
+  ) {
+    return { ok: false, reason: 'zu-gross' }
+  }
+  const buf = writeZip(entries, now)
+  return buf.length > L.fileBytes ? { ok: false, reason: 'zu-gross' } : { ok: true, buf }
 }
 
 /** Dateiname einer Sicherung: „<Name>-JJJJMMTT-hhmmss.mottul“ */
@@ -130,7 +145,9 @@ export function backupsToDelete(files: string[], name: string, keep: number): st
 export function sectionInfos(file: ProjectFileJson): ProjectSectionInfo[] {
   return Object.entries(file.abschnitte).map(([key, s]) => ({
     key,
-    label: PROJECT_SECTION_LABELS[key] ?? key,
+    // hasOwn: Schlüssel wie „constructor“ aus einer fremden Datei lieferten sonst eine Funktion,
+    // und die Antwort ließe sich nicht über IPC schicken
+    label: Object.hasOwn(PROJECT_SECTION_LABELS, key) ? PROJECT_SECTION_LABELS[key] : key,
     version: s.version,
     rev: s.rev,
     known: isProjectSectionKey(key)

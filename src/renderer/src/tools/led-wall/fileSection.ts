@@ -39,6 +39,7 @@ export const LED_WALL_FILE: ProjectFileOptions<State> = {
     return true
   },
   reset: () => useLedWall.getState().replaceConfig(withFittedGrids(DEFAULT_LED_WALL_CONFIG)),
+  blank: () => ledWallSection(withFittedGrids(DEFAULT_LED_WALL_CONFIG)),
   isEmpty: (s) => isDefaultPlanning(s),
   suggestedName: (s) => s.projectName.trim() || s.customerName.trim() || 'LED-Wall',
   describe: describePlanning

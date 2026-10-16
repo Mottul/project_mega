@@ -7,6 +7,9 @@
 //   speichern; jeder Auftrag liest, ändert und schreibt nacheinander (sonst ginge ein Abschnitt
 //   verloren).
 // - Vor jedem Überschreiben eine Sicherung unter userData/Sicherungen (die letzten 10 je Name).
+// - „Fehlt“ heißt nur „nicht gefunden“. Ein anderer Lesefehler (Netzlaufwerk hakt) darf nie dazu
+//   führen, dass eine vorhandene Datei als neu gilt und ohne Sicherung ersetzt wird; neue Dateien
+//   werden deshalb auch nur exklusiv angelegt.
 
 import { app } from 'electron'
 import { copyFile, mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
@@ -24,7 +27,7 @@ import type {
   ProjectSaveResult,
   ProjectSaveTarget
 } from '@shared/types'
-import { writeFileAtomicAsync } from '../fsAtomic'
+import { writeFileAtomicAsync, writeNewFileAsync } from '../fsAtomic'
 import { logLine } from '../log'
 import { getSettings, setSettings } from '../store'
 import {
@@ -97,14 +100,19 @@ function withLock<T>(p: string, fn: () => Promise<T>): Promise<T> {
 type LoadResult =
   { ok: true; container: ProjectContainer } | { ok: false; reason: ProjectFileProblem }
 
+const errCode = (err: unknown): string | undefined => (err as NodeJS.ErrnoException)?.code
+
 async function load(p: string): Promise<LoadResult> {
   let size: number
   try {
     const st = await stat(p)
     if (!st.isFile()) return { ok: false, reason: 'kein-projekt' }
     size = st.size
-  } catch {
-    return { ok: false, reason: 'fehlt' }
+  } catch (err) {
+    const code = errCode(err)
+    if (code === 'ENOENT' || code === 'ENOTDIR') return { ok: false, reason: 'fehlt' }
+    logLine('[projekte] Prüfen fehlgeschlagen:', p, String(err))
+    return { ok: false, reason: 'fehler' }
   }
   if (size > PROJECT_LIMITS.fileBytes) return { ok: false, reason: 'zu-gross' }
   try {
@@ -205,51 +213,74 @@ export async function saveSection(req: ProjectSaveRequest): Promise<ProjectSaveR
     return { ok: false, reason: 'ungueltig' }
   }
   return withLock(req.path, async () => {
-    const now = new Date()
-    const r = await load(req.path)
-    let container: ProjectContainer
-    let exists = true
-    if (r.ok) container = r.container
-    else if (via === 'zuletzt') return { ok: false, reason: r.reason }
-    else if (r.reason === 'fehlt') {
-      // Datei verschwunden, obwohl sie gebunden war -> nicht still neu anlegen
-      if (req.baseSha !== null && !req.force) return { ok: false, reason: 'fehlt' }
-      container = emptyContainer(now)
-      exists = false
-    } else return { ok: false, reason: r.reason }
-    const put = putSection(
-      container.file,
-      req.section,
-      req.version,
-      data,
-      req.baseSha,
-      req.force,
-      now
-    )
-    if (!put.ok) {
-      return put.reason === 'konflikt'
-        ? { ok: false, reason: 'konflikt', rev: put.rev, sha256: put.sha256 }
-        : { ok: false, reason: 'neuer' }
-    }
-    if (put.changed || !exists) {
-      try {
-        if (exists) await backup(req.path, now)
-        else await mkdir(dirname(req.path), { recursive: true })
-        await writeFileAtomicAsync(req.path, packProject({ ...container, file: put.file }, now))
-      } catch (err) {
-        logLine('[projekte] Schreiben fehlgeschlagen:', req.path, String(err))
-        return { ok: false, reason: 'fehler' }
-      }
-      logLine('[projekte] gespeichert', req.path, req.section, `Stand ${put.section.rev}`)
-    }
-    approvePath(req.path)
-    addRecent(req.path)
-    return {
-      ok: true,
-      path: req.path,
-      name: projectDisplayName(req.path),
-      rev: put.section.rev,
-      sha256: put.section.sha256
-    }
+    // Legt jemand anderes die Datei zwischen Lesen und Anlegen an, wird sie neu gelesen und wie
+    // eine vorhandene behandelt (Sicherung, Konfliktprüfung) – einmal genügt.
+    const first = await writeOnce(req, via, data)
+    if (first !== 'erneut') return first
+    const second = await writeOnce(req, via, data)
+    return second === 'erneut' ? { ok: false, reason: 'fehler' } : second
   })
+}
+
+async function writeOnce(
+  req: ProjectSaveRequest,
+  via: 'dialog' | 'zuletzt',
+  data: unknown
+): Promise<ProjectSaveResult | 'erneut'> {
+  const now = new Date()
+  const r = await load(req.path)
+  let container: ProjectContainer
+  let exists = true
+  if (r.ok) container = r.container
+  else if (via === 'zuletzt') return { ok: false, reason: r.reason }
+  else if (r.reason === 'fehlt') {
+    // Datei verschwunden, obwohl sie gebunden war -> nicht still neu anlegen
+    if (req.baseSha !== null && !req.force) return { ok: false, reason: 'fehlt' }
+    container = emptyContainer(now)
+    exists = false
+  } else return { ok: false, reason: r.reason }
+  const put = putSection(
+    container.file,
+    req.section,
+    req.version,
+    data,
+    req.baseSha,
+    req.force,
+    now
+  )
+  if (!put.ok) {
+    return put.reason === 'konflikt'
+      ? { ok: false, reason: 'konflikt', rev: put.rev, sha256: put.sha256 }
+      : { ok: false, reason: 'neuer' }
+  }
+  if (put.changed || !exists) {
+    const packed = packProject({ ...container, file: put.file }, now)
+    if (!packed.ok) {
+      logLine('[projekte] nicht gespeichert:', req.path, packed.reason)
+      return { ok: false, reason: packed.reason }
+    }
+    try {
+      if (exists) {
+        await backup(req.path, now)
+        await writeFileAtomicAsync(req.path, packed.buf)
+      } else {
+        await mkdir(dirname(req.path), { recursive: true })
+        await writeNewFileAsync(req.path, packed.buf)
+      }
+    } catch (err) {
+      if (!exists && errCode(err) === 'EEXIST') return 'erneut'
+      logLine('[projekte] Schreiben fehlgeschlagen:', req.path, String(err))
+      return { ok: false, reason: 'fehler' }
+    }
+    logLine('[projekte] gespeichert', req.path, req.section, `Stand ${put.section.rev}`)
+  }
+  approvePath(req.path)
+  addRecent(req.path)
+  return {
+    ok: true,
+    path: req.path,
+    name: projectDisplayName(req.path),
+    rev: put.section.rev,
+    sha256: put.section.sha256
+  }
 }

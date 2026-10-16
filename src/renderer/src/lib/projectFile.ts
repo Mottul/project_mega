@@ -7,9 +7,12 @@
 //   Kein Setter muss dafür etwas tun, und eine zurückgenommene Änderung gilt wieder als sauber.
 // - Die Bindung liegt im persistierten Store des Werkzeugs: alle Fenster zeigen dieselbe Datei,
 //   auch nach einem Neustart – aber NEBEN den Daten, damit Vorlagen sie nicht mitnehmen.
+// - Rückfragen sperren nur das eigene Fenster. Jede Aktion hält daher zu Beginn Daten und Bindung
+//   fest, schreibt genau diese und bricht ab, wenn ein anderes Fenster währenddessen etwas geändert
+//   hat – sonst landete eine fremde Planung in der Datei, der man gerade zugestimmt hat.
 
 import { useEffect, useRef, useState } from 'react'
-import { digest, type ProjectSectionKey } from '@shared/projectFile'
+import { digest, projectDisplayName, type ProjectSectionKey } from '@shared/projectFile'
 import type { ProjectFileProblem, ProjectSaveResult, ProjectSectionInfo } from '@shared/types'
 import { api } from './api'
 import type { ProjectBinding } from './projectBinding'
@@ -22,7 +25,7 @@ export const PROBLEM_TEXT: Record<ProjectFileProblem, string> = {
   neuer: 'Die Datei stammt aus einer neueren Mottulbox. Bitte Mottulbox aktualisieren.',
   kaputt: 'Die Datei ist beschädigt und lässt sich nicht lesen.',
   fehlt: 'Die Datei ist nicht (mehr) erreichbar – vielleicht ist das Netzlaufwerk getrennt.',
-  'zu-gross': 'Die Datei ist zu groß.',
+  'zu-gross': 'Die Datei ist zu groß – oder würde es mit diesen Daten (sehr große Wand?).',
   'nicht-freigegeben': 'In diese Datei kann nur über „Speichern unter“ geschrieben werden.',
   ungueltig: 'Die Daten ließen sich nicht speichern.',
   fehler: 'Lesen oder Schreiben ist fehlgeschlagen (Einzelheiten im Debug-Log).'
@@ -48,6 +51,8 @@ export interface ProjectFileOptions<S> {
   apply: (data: unknown, version: number) => boolean
   /** „Neu“: zurück auf die Vorgaben */
   reset: () => void
+  /** Daten nach reset() – für „Leere anlegen“, ohne den Arbeitsstand vorher anzufassen */
+  blank: () => unknown
   /** Gibt es etwas, das beim Ersetzen verloren ginge (ohne Datei)? */
   isEmpty: (s: S) => boolean
   suggestedName: (s: S) => string
@@ -72,6 +77,13 @@ async function commitPendingInput(): Promise<void> {
   const el = document.activeElement
   if (el instanceof HTMLElement && el !== document.body) el.blur()
   await new Promise((r) => setTimeout(r, 0))
+}
+
+/** Stand zu Beginn einer Aktion: was geschrieben wird und woran es gebunden war. */
+interface Snapshot {
+  data: unknown
+  digest: string
+  path: string | null
 }
 
 function listSections(sections: ProjectSectionInfo[]): string {
@@ -126,11 +138,36 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
     })
   }
 
-  async function writeTo(path: string, baseSha: string | null, force: boolean): Promise<boolean> {
+  function snapshot(): Snapshot {
     const s = o.current.store.getState()
-    const boundBefore = o.current.binding(s)?.path ?? null
     const data = o.current.data(s)
-    const savedDigest = digest(data) // vor dem await: spätere Änderungen bleiben „ungespeichert“
+    return { data, digest: digest(data), path: o.current.binding(s)?.path ?? null }
+  }
+
+  /** Nach einer Rückfrage: Hat ein anderes Fenster inzwischen geändert oder neu gebunden? */
+  async function changedMeanwhile(snap: Snapshot): Promise<boolean> {
+    const s = o.current.store.getState()
+    const path = o.current.binding(s)?.path ?? null
+    if (path === snap.path && digest(o.current.data(s)) === snap.digest) return false
+    await notify(
+      `Die ${o.current.label} wurde inzwischen in einem anderen Fenster geändert oder dort eine andere Datei geöffnet.`,
+      'Es wurde nichts gespeichert oder ersetzt – bitte noch einmal versuchen.'
+    )
+    return true
+  }
+
+  /**
+   * Abschnitt schreiben. `data` ist der festgehaltene Stand (Vorgabe: der aus `snap`);
+   * `afterWrite` läuft nur nach Erfolg, vor dem Binden („Leere anlegen“: erst jetzt zurücksetzen).
+   */
+  async function writeTo(
+    path: string,
+    baseSha: string | null,
+    force: boolean,
+    snap: Snapshot,
+    data: unknown = snap.data,
+    afterWrite?: () => void
+  ): Promise<boolean> {
     const res = await api.projects.save({
       path,
       section: o.current.section,
@@ -140,13 +177,14 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
       force
     })
     if (res.ok) {
-      bindAfterSave(res, savedDigest, boundBefore)
+      afterWrite?.()
+      bindAfterSave(res, digest(data), snap.path)
       return true
     }
     if (res.reason === 'konflikt') {
-      const b = o.current.binding(o.current.store.getState())
+      // Ziel nennen, nicht die Bindung: „Speichern unter“ und „hinzufügen“ schreiben woandershin
       const choice = await api.choose({
-        message: `Die ${o.current.label} in „${b?.name ?? path}“ wurde inzwischen anderswo geändert (Stand ${res.rev}).`,
+        message: `Die ${o.current.label} in „${projectDisplayName(path)}“ wurde inzwischen anderswo geändert (Stand ${res.rev}).`,
         detail:
           'Überschreiben ersetzt die Fassung in der Datei durch diese hier – vorher legt Mottulbox eine Sicherung der Datei an. Mit „Speichern unter …“ bleiben beide erhalten.',
         buttons: ['Überschreiben', 'Speichern unter …', 'Abbrechen'],
@@ -154,7 +192,10 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
         defaultId: 1,
         danger: true
       })
-      if (choice === 0) return writeTo(path, res.sha256 || null, true)
+      if (choice === 0) {
+        if (await changedMeanwhile(snap)) return false
+        return writeTo(path, res.sha256 || null, true, snap, data, afterWrite)
+      }
       if (choice === 1) return doSaveAs()
       return false
     }
@@ -175,13 +216,14 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
     await commitPendingInput()
     const b = o.current.binding(o.current.store.getState())
     if (!b) return doSaveAs()
-    return writeTo(b.path, b.baseSha, false)
+    return writeTo(b.path, b.baseSha, false, snapshot())
   }
 
   async function doSaveAs(): Promise<boolean> {
     await commitPendingInput()
     const s = o.current.store.getState()
     const b = o.current.binding(s)
+    const snap = snapshot()
     const t = await api.projects.chooseTarget(
       o.current.section,
       b?.name ?? o.current.suggestedName(s),
@@ -212,7 +254,8 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
       })
       if (!ok) return false
     }
-    return writeTo(t.path, baseSha, force)
+    if (await changedMeanwhile(snap)) return false
+    return writeTo(t.path, baseSha, force, snap)
   }
 
   /** Vor dem Ersetzen des Arbeitsstands: ungespeicherte Änderungen sichern oder verwerfen? */
@@ -234,7 +277,11 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
   }
 
   async function doOpen(path?: string): Promise<void> {
+    // Strg+O aus einem gepufferten Feld: Entwurf erst übernehmen (zählt dann als ungespeichert),
+    // sonst landete er nach dem Öffnen in der neuen Planung
+    await commitPendingInput()
     if (!(await guardUnsaved())) return
+    const snap = snapshot()
     const r = await api.projects.open(o.current.section, path)
     if (!r) return
     if (!r.ok) {
@@ -242,12 +289,11 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
       return
     }
     if (!r.section) {
-      const s = o.current.store.getState()
       const choice = await api.choose({
         message: `„${r.name}“ enthält noch keine ${o.current.label}.`,
         detail: [
           r.sections.length ? `In der Datei: ${listSections(r.sections)}.` : '',
-          `Aktuell im Werkzeug: ${o.current.describe(o.current.data(s))}.`
+          `Aktuell im Werkzeug: ${o.current.describe(snap.data)}.`
         ]
           .filter(Boolean)
           .join('\n'),
@@ -255,14 +301,17 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
         cancelId: 2
       })
       if (choice !== 0 && choice !== 1) return
-      if (choice === 1) o.current.reset()
-      await writeTo(r.path, null, false)
+      if (await changedMeanwhile(snap)) return
+      if (choice === 0) await writeTo(r.path, null, false, snap)
+      // erst nach erfolgreichem Schreiben leeren – sonst hinge eine leere Planung an der alten Datei
+      else await writeTo(r.path, null, false, snap, o.current.blank(), () => o.current.reset())
       return
     }
     if (r.section.version > o.current.version) {
       await notify(PROBLEM_TEXT.neuer, r.path)
       return
     }
+    if (await changedMeanwhile(snap)) return
     if (!o.current.apply(r.section.data, r.section.version)) {
       await notify(PROBLEM_TEXT.kaputt, r.path)
       return
@@ -277,6 +326,7 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
   }
 
   async function doNew(): Promise<void> {
+    await commitPendingInput()
     if (!(await guardUnsaved())) return
     o.current.reset()
     o.current.setBinding(null)

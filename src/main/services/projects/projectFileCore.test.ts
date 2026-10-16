@@ -18,6 +18,12 @@ const NOW = new Date('2026-10-16T10:00:00Z')
 const LATER = new Date('2026-10-17T08:00:00Z')
 const wall = { projectName: 'Messe', widthM: '4' }
 
+function pack(c: ProjectContainer): Buffer {
+  const r = packProject(c, NOW)
+  if (!r.ok) throw new Error(r.reason)
+  return r.buf
+}
+
 function withSection(c: ProjectContainer, key: string, data: unknown): ProjectContainer {
   const r = putSection(c.file, key, 2, data, null, false, NOW)
   if (!r.ok) throw new Error(r.reason)
@@ -107,7 +113,7 @@ describe('Projektdatei – packen und lesen', () => {
     c.fotos.set(hash, { ext: 'jpg', data: Buffer.from([1, 2, 3]) })
     c.fotos.set('c'.repeat(64), { ext: 'png', data: Buffer.from([9]) }) // nicht mehr benutzt
     c.extra.set('zukunft/info.txt', Buffer.from('aus einer neueren Version'))
-    const r = unpackProject(packProject(c, NOW))
+    const r = unpackProject(pack(c))
     expect(r.ok).toBe(true)
     if (!r.ok) return
     expect(r.container.file.abschnitte).toEqual(c.file.abschnitte)
@@ -136,9 +142,48 @@ describe('Projektdatei – packen und lesen', () => {
       }
     ])
     expect(unpackProject(newer)).toEqual({ ok: false, reason: 'neuer' })
-    const zip = packProject(emptyContainer(NOW))
+    const zip = pack(emptyContainer(NOW))
     zip[zip.length - 30] ^= 0xff // Verzeichnis beschädigen
     expect(unpackProject(zip).ok).toBe(false)
+  })
+})
+
+describe('Projektdatei – nur schreiben, was sich wieder öffnen lässt', () => {
+  it('projekt.json kompakt: ein großes Raster wächst nicht über die Lesegrenze', () => {
+    const grid = Array.from({ length: 150 }, () => Array.from({ length: 200 }, () => -1))
+    const c = withSection(emptyContainer(NOW), 'ledWall', { sig: grid, pwr: grid })
+    const r = unpackProject(pack(c))
+    expect(r.ok && r.container.file.abschnitte.ledWall.data).toEqual({ sig: grid, pwr: grid })
+  })
+
+  it('über der Lesegrenze: zu groß statt einer Datei, die nie wieder aufgeht', () => {
+    // 3 Mio. Zeichen, als UTF-8 aber 9 MB (> 8 MB für projekt.json)
+    const c = withSection(emptyContainer(NOW), 'ledWall', { notiz: '€'.repeat(3_000_000) })
+    expect(packProject(c, NOW)).toEqual({ ok: false, reason: 'zu-gross' })
+  })
+
+  it('was das Lesen ablehnen würde, wird nicht geschrieben (rev über der sicheren Grenze)', () => {
+    const c = withSection(emptyContainer(NOW), 'ledWall', wall)
+    c.file.abschnitte.ledWall.rev = Number.MAX_SAFE_INTEGER
+    const put = putSection(
+      c.file,
+      'ledWall',
+      2,
+      { ...wall, widthM: '9' },
+      sectionSha(wall),
+      false,
+      NOW
+    )
+    if (!put.ok) throw new Error(put.reason)
+    expect(packProject({ ...c, file: put.file }, NOW)).toEqual({ ok: false, reason: 'ungueltig' })
+  })
+
+  it('Abschnitt „constructor“ aus einer fremden Datei: Name bleibt Text', () => {
+    const c = withSection(emptyContainer(NOW), 'constructor', { x: 1 })
+    const r = unpackProject(pack(c))
+    expect(r.ok && sectionInfos(r.container.file)).toEqual([
+      { key: 'constructor', label: 'constructor', version: 2, rev: 1, known: false }
+    ])
   })
 })
 
