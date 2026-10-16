@@ -1,6 +1,6 @@
 # Plan: Mini-Manual („So bedienst du deine LED-Wall“)
 
-**Status:** Entwurf, Abschnitt Fremdformate folgt; noch nicht umgesetzt (16. Oktober 2026). Abgestimmt in der Rücksprache vom
+**Status:** Plan, noch nicht umgesetzt (16. Oktober 2026). Abgestimmt in der Rücksprache vom
 selben Tag, siehe [Festlegungen](#festlegungen). Vor der Umsetzung die
 [offenen Fragen](#offene-fragen) klären; nach der Umsetzung in [WERKZEUGE.md](WERKZEUGE.md)
 überführen und diesen Plan löschen.
@@ -18,9 +18,9 @@ Dazu gehören drei Grundlagen, die auch anderen Werkzeugen nützen:
 - **Kabelverlauf** im LED-Wall-Konfigurator – die Reihenfolge der Module je Kette, mit Pfeilen,
   Port bzw. Stromkreis und Warnungen.
 
-Vorlagen für die Richtung (keine Vorlage für Inhalt oder Aussehen): die MadMapper-/Stream-Deck-
-Anleitung vom Mai 2026 – Zugangsdaten, Start-Routine nach Stromausfall, Stream-Deck-Seiten mit
-15 Tasten, Kontakt.
+Vorlage für die Richtung (nicht für Inhalt oder Aussehen): die MadMapper-/Stream-Deck-Anleitung
+vom Mai 2026 – Zugangsdaten, Start-Routine nach Stromausfall, Stream-Deck-Seiten mit je 15
+Tasten, Kontakt.
 
 - [Festlegungen](#festlegungen)
 - [Überblick](#überblick)
@@ -28,7 +28,8 @@ Anleitung vom Mai 2026 – Zugangsdaten, Start-Routine nach Stromausfall, Stream
 - [Das Werkzeug](#das-werkzeug) – [Kapitel](#kapitel), [Kenntnisstufen](#kenntnisstufen),
   [Bausteine](#bausteine-und-platzhalter), [Fehlersuche](#fehlersuche),
   [Bedienfelder](#bedienfelder), [Oberfläche](#oberfläche), [Ausgaben](#ausgaben)
-- [Datenquellen und Importe](#datenquellen-und-importe)
+- [Datenquellen und Importe](#datenquellen-und-importe) – [aus Mottulbox](#aus-mottulbox),
+  [Fremdformate](#fremdformate)
 - [Kabelverlauf im LED-Wall-Konfigurator](#kabelverlauf-im-led-wall-konfigurator)
 - [Umsetzung im Code](#umsetzung-im-code)
 - [Phasen](#phasen)
@@ -44,11 +45,11 @@ Aus der Rücksprache vom 16. Oktober 2026:
 2. **Inhalt:** zunächst nur LED-Wände. Der Aufbau ist allgemein (Systemtyp, Bausteine mit
    Stichworten), damit Beamer, Ton oder Medienserver später ohne Umbau dazukommen.
 3. **Autoren:** zunächst Matthias, künftig auch Kollegen. Deshalb liegen eigene Bausteine von
-   Anfang an als einzelne Dateien vor (später in einem geteilten Ordner, siehe Phase 5).
+   Anfang an als einzelne Dateien vor (später in einem geteilten Ordner, Phase 5).
 4. **Export:** PDF und HTML. **Kein DOCX.**
 5. **Projektdatei:** **eine Datei** (kein Ordner), Fotos stecken darin.
-6. **Gesamtprojekt:** ja – aber als *Datei mit Abschnitten*, ohne app-weites „aktives Projekt“.
-   Das beantwortet die Bedenken (schnell nur planen, nie im falschen Projekt arbeiten), siehe
+6. **Gesamtprojekt:** ja – als *Datei mit Abschnitten*, ohne app-weites „aktives Projekt“. Das
+   beantwortet die Bedenken (schnell nur planen, nie im falschen Projekt arbeiten), siehe
    [Grundsatz](#grundsatz).
 7. **Standard-Speicherort:** ja, unbedingt (Phase 0).
 8. **Anrede und Sprache:** nur „du“, Deutsch.
@@ -56,9 +57,11 @@ Aus der Rücksprache vom 16. Oktober 2026:
 10. **Fremdmodule** (nicht im Bestand) im Konfigurator: vorerst nicht.
 11. **Fehlersuche:** Bearbeitung als Liste. Ein grafischer Baum-Editor ist als spätere zweite
     Ansicht derselben Daten beschrieben, aber nicht eingeplant.
-12. **Kabelpläne:** in Anleitung und PDF **umschaltbar** zwischen Ansicht von vorne und von hinten.
-13. **IM** (Integrated Module) = austauschbares LED-Paneel im Modul: 4 je Modul bei 496-2,0 und
-    rX3ioBF, 2 je Modul bei uS2+.
+12. **Kabelpläne:** in Konfigurator, Anleitung und PDF **umschaltbar** zwischen Ansicht von vorne
+    und von hinten.
+13. **IM** (Integrated Module) = austauschbares LED-Paneel im Modul, beim Hersteller (LEDitgo)
+    auch „Pixelkarte“; dahinter sitzt die Backbox mit Netzteil und Empfangskarte. 4 IMs je Modul
+    bei 496-2,0 und rX3ioBF, 2 je Modul bei uS2+.
 14. **Werkzeug in Mottulbox**, keine eigene App und keine PWA (Begründung unten).
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
@@ -87,20 +90,20 @@ flowchart LR
     PL[Packliste – später]
   end
   subgraph Datei["Projektdatei (.mottul)"]
-    K[Kopf: Projekt, Kunde, Ort, Zeitraum]
     A1[Abschnitt LED-Wall]
     A2[Abschnitt Anleitung]
     A3[Abschnitt Packliste – später]
-    F[Fotos]
+    F[Fotos je Abschnitt]
   end
   LW <-->|liest/schreibt nur seinen Abschnitt| A1
   MM <-->|liest/schreibt nur seinen Abschnitt| A2
-  MM -.->|liest Kopie, Stand prüfen| A1
+  MM -.->|Kopie mit Herkunft: Stand + Prüfsumme| A1
   PL -.-> A3
   MM --> PDF1[Handbuch PDF]
   MM --> PDF2[Kurzkarte PDF]
   MM --> HTML[HTML-Datei, offline]
-  Q[Video-Player, OSC-Steuerung,\nStream Deck, Companion,\nMadMapper, OBS, NovaLCT] -.->|Übernahme als Kopie| MM
+  Q["Video-Player, OSC-Steuerung, Jingle-Player,
+  Stream Deck, Companion, OBS, MadMapper"] -.->|Übernahme als Kopie| MM
 ```
 
 Der Weg vom Projekt zur Anleitung:
@@ -112,8 +115,8 @@ Der Weg vom Projekt zur Anleitung:
 3. Kapitel anhaken, Geräte, Zugangsdaten und Bedienfeld eintragen oder einlesen, Fehlerfälle aus
    der Bibliothek wählen, Fotos dazu.
 4. Stufe wählen, Prüfung vor dem Export ansehen, Handbuch/Kurzkarte/HTML erzeugen.
-5. Ändert sich die Wand später, meldet das Mini-Manual beim nächsten Öffnen „Planung geändert“
-   und zeigt den Unterschied.
+5. Ändert sich die Wand später, meldet das Mini-Manual „Planung geändert (Stand 7 → 9)“, zeigt
+   den Unterschied und übernimmt ihn erst auf Klick.
 
 ## Projektdatei und Projektordner
 
@@ -127,95 +130,186 @@ Verweise erzeugen. Daraus folgen fünf Regeln:
    Arbeitsstand und ist höchstens an *eine* Datei gebunden. Wer nur schnell eine Wand plant,
    bemerkt von Projektdateien nichts.
 2. **Eine Datei, mehrere Abschnitte.** Ein Werkzeug liest und schreibt nur seinen eigenen
-   Abschnitt; die anderen bleiben beim Speichern unangetastet. Eine LED-Wall-Datei ist einfach
-   eine Projektdatei mit nur einem Abschnitt – ein „Gesamtprojekt“ ist kein eigenes Konzept,
-   sondern dieselbe Datei mit mehr Abschnitten.
-3. **Verweise nur innerhalb derselben Datei.** Die Anleitung liest LED-Wall-Daten nur aus ihrer
-   eigenen Datei, nie aus dem Arbeitsstand des Konfigurators oder einer anderen Datei. Sie hält
-   eine **Kopie** der Werte, die sie zeigt, plus den Stand (Revision) des Abschnitts, aus dem sie
-   stammen. So ändert sich keine Kunden-Anleitung still.
-4. **Immer sichtbar, woran man arbeitet.** Dateiname und Kunde stehen in der Leiste jedes
-   gebundenen Werkzeugs; ein Punkt zeigt „ungespeichert“. Ohne Bindung steht dort „ohne Datei“.
+   Abschnitt; Mottulbox entfernt nie den Abschnitt eines anderen Werkzeugs. Eine LED-Wall-Datei
+   ist einfach eine Projektdatei mit nur einem Abschnitt – ein „Gesamtprojekt“ ist kein eigenes
+   Konzept, sondern dieselbe Datei mit mehr Abschnitten.
+3. **Verweise nur innerhalb derselben Datei, und nur als Kopie mit Herkunft.** Die Anleitung
+   liest LED-Wall-Daten nur aus ihrer eigenen Datei, hält davon eine **Kopie** und merkt sich
+   Stand und Prüfsumme der Quelle. So ändert sich keine Kunden-Anleitung still, PDF und HTML
+   bleiben reproduzierbar, und „Speichern unter“ der Anleitung allein hinterlässt keinen hängenden
+   Verweis. (Das setzt fort, was heute schon gilt: Packliste, Testbild und Video-Generator
+   übernehmen LED-Wall-Daten per Klick als Kopie.)
+4. **Immer sichtbar, woran man arbeitet.** Dateiname in der Leiste jedes gebundenen Werkzeugs und
+   im Fenstertitel (`● Messe Dornbirn 2026 – LED-Wall · Mottulbox`); der Punkt heißt
+   „ungespeichert“. Ohne Bindung steht dort „ohne Datei“.
 5. **Speichern ist ausdrücklich.** Der Arbeitsstand sichert sich wie heute laufend im Werkzeug
-   (Schutz vor Absturz), in die Datei geschrieben wird nur mit Speichern (Strg+S). Kein stilles
-   Schreiben in eine Datei.
+   (Schutz vor Absturz), in die Datei geschrieben wird nur mit Speichern (Strg+S).
 
-Übernahme über Grenzen hinweg ist immer eine sichtbare Aktion mit Rückfrage, z. B. „Aktuelle
-LED-Wall-Planung in diese Datei übernehmen“: Zeigt Projektname und Kunde beider Seiten und warnt,
-wenn sie nicht zusammenpassen.
+Merksatz für Kollegen und Lehrlinge: *Jedes Werkzeug speichert wie Word in eine Datei. In eine
+Datei passen mehrere Werkzeuge. Speichern ändert nur den eigenen Teil.*
+
+Verworfen wurden zwei Alternativen: ein app-weites aktives Projekt (genau das befürchtete
+Risiko – jedes Werkzeug schreibt ins gerade aktive Projekt; außerdem müssten alle neun
+persistierten Stores umgebaut werden) und eine reine „Mappe“ als Export/Import-Schnappschuss
+(die Datei wäre nie der gültige Stand, Werkzeug und Datei liefen still auseinander).
 
 ### Aufbau der Datei
 
-- **Endung `.mottul`**, ein ZIP-Container:
-  - **projekt.json** – Kopf `{ app: 'mottulbox', type: 'projekt', version: 1, id, name, kunde,
-    ort, zeitraum, geaendert }` und `abschnitte: { ledWall?, anleitung?, packliste? … }`. Jeder
-    Abschnitt hat eigene `version` (Schema), `rev` (zählt bei jedem Speichern hoch) und `data`.
-  - **fotos/** – Bilder unter ihrem Hash (z. B. `fotos/3fa9c2….jpg`), beim Einfügen auf
-    längste Seite 2000 px verkleinert. Abschnitte verweisen nur per Hash.
-- **ZIP selbst geschrieben** im main-Prozess (Node `zlib` für Deflate und CRC32): JSON
-  komprimiert, JPG/PNG gespeichert, kein ZIP64. Lesen mit harten Grenzen (Methode nur 0/8,
-  Größen je Eintrag und gesamt, keine Namen mit `..` oder absolutem Pfad, CRC prüfen). Geschätzt
-  150–250 Zeilen plus Tests. Begründung: Das Repo hält Laufzeit-Abhängigkeiten bewusst klein
-  (zwei Pakete), ZIP in diesem engen Umfang ist überschaubar; fflate wäre die Alternative, falls
-  später beliebige fremde ZIPs gelesen werden müssen (Stream-Deck-Profile sind ZIPs, siehe
-  [Fremdformate](#fremdformate) – dafür reicht derselbe Leser).
-- **Unbekannte Abschnitte** (aus einer neueren App) bleiben beim Speichern erhalten. Ein
-  Abschnitt mit höherer `version` als bekannt wird nur gelesen angezeigt („neuere Mottulbox
-  nötig“), nicht überschrieben.
+```
+Messe Dornbirn 2026.mottul   (ZIP)
+├─ projekt.json
+└─ fotos/<sha256>.jpg
+```
+
+```json
+{
+  "app": "mottulbox", "type": "projektdatei", "version": 1,
+  "geaendert": "2026-10-16T18:20:00Z",
+  "abschnitte": {
+    "ledWall":   { "version": 2, "rev": 7, "sha256": "…", "geaendert": "…", "fotos": [], "data": {} },
+    "anleitung": { "version": 1, "rev": 3, "sha256": "…", "geaendert": "…", "fotos": ["3fa9c2…"],
+                   "data": { "quellen": { "ledWall": { "rev": 7, "sha256": "…", "uebernommen": "…" } },
+                             "kopie": { "ledWall": {} } } }
+  }
+}
+```
+
+- **Endung `.mottul`** (von `APP_SLUG`), ein ZIP-Container. Nicht `.json`: Das öffnet einen
+  Editor, und die Packliste nutzt `.json` schon.
+- **Kopf zunächst ohne Projekt, Kunde, Ort und Zeitraum.** Die stehen heute schon in der
+  LED-Wall-Planung (`projectName`, `customerName`) und in der Packliste; ein zweiter Ort wäre
+  genau die Quelle für Widersprüche. Die Anleitung pflegt ihr Deckblatt selbst und bietet „aus
+  LED-Wall übernehmen“ an. Ein gemeinsamer Kopf kommt erst mit dem Show-Profil (Container-Version
+  2).
+- **Je Abschnitt:** Schema-`version`, `sha256` (im main über das kanonische JSON von `data` nach
+  `sanitize`), `rev` (zählt nur hoch, wenn sich `sha256` ändert – Speichern ohne Änderung meldet
+  also kein falsches „Planung geändert“), `fotos` (Liste der benutzten Hashes, **neben** `data`,
+  damit der main Fotos auch unbekannter Abschnitte behalten kann).
+- **Fotos** beim Einfügen auf längste Seite 2000 px verkleinert, unter ihrem Hash abgelegt.
+  Nicht mehr benutzte Fotos fallen beim Speichern weg. Keine Pfade in der Datei.
+- **ZIP selbst geschrieben** im main (Node `zlib`: `deflateRawSync`/`inflateRawSync`, `crc32`):
+  JSON komprimiert, JPG/PNG gespeichert, kein ZIP64. Lesen mit harten Grenzen (nur Methode 0/8,
+  Größe je Eintrag und gesamt, Zahl der Einträge, keine Namen mit `..` oder absolutem Pfad, CRC
+  prüfen, nichts auf die Platte entpacken). Geschätzt 150–250 Zeilen plus Tests. Begründung: Das
+  Repo hält Laufzeit-Abhängigkeiten bewusst klein (zwei Pakete), ZIP in diesem engen Umfang ist
+  überschaubar, und derselbe Leser dient dem Stream-Deck-Import. Ausweichweg, falls doch nötig:
+  fflate (MIT, ohne Abhängigkeiten) als devDependency – wird ins main-Bundle eingebaut.
+  `zlib.crc32` gibt es ab Node 22.2; die Node-Version in Electron 44 vor dem Bau prüfen.
 - **Jeder Abschnitt** hat eine reine Prüf- und Migrationsfunktion (`sanitize…`), dieselbe für
   Datei, gespeicherten Arbeitsstand und Vorlagen. Vorbild: `sanitizeVgenProject` in
   `src/shared/videoGenProject.ts`, tolerantes Einlesen wie `packing-list/io.ts`.
+- **Was nicht in den Abschnitt gehört:** reine Bedienzustände (aktive Kette `sigChain`/`pwrChain`,
+  `pdfLandscape`) – sonst macht schon das Umschalten die Datei „ungespeichert“.
 
 ### Bedienung
 
-In der Leiste jedes Werkzeugs mit Dateien (Phase 0: LED-Wall; Phase 1: Mini-Manual; später
-Packliste) ein gemeinsamer Baustein:
+Ein gemeinsamer Baustein in der Leiste (`ToolBar`, nicht in der Schublade): Dateichip plus Menü
+**Datei** mit Neu, Öffnen …, Zuletzt geöffnet, Speichern (Strg+S), Speichern unter …, Im Ordner
+zeigen.
 
-- **Dateichip:** Dateiname, Kunde, Punkt bei „ungespeichert“; Klick zeigt Pfad und „Im Ordner
-  zeigen“.
-- **Neu** (fragt bei ungespeicherten Änderungen), **Öffnen …**, **Speichern** (Strg+S),
-  **Speichern unter …**, **Zuletzt geöffnet** (die letzten 10, in den Einstellungen).
-- **Öffnen einer Datei ohne eigenen Abschnitt:** „Diese Datei enthält noch keine LED-Wall-Planung.
-  Hier eine anlegen?“
-- **Speichern** schreibt nur den eigenen Abschnitt neu (`rev + 1`), atomar (eindeutige
-  tmp-Datei, rename; Windows-Notweg wie `writeFileAtomic` in `src/main/services/store.ts`) und
-  mit einer Warteschlange je Pfad im main.
-- **Hat sich die Datei seit dem Öffnen geändert** (mtime/Größe, z. B. Kollege auf dem NAS) und
-  ist dabei der *eigene* Abschnitt neuer geworden: Rückfrage „Überschreiben / Speichern unter /
-  Abbrechen“. Fremde Abschnitte werden ohnehin neu eingelesen und behalten.
-- **„ungespeichert“** über `rev`/`savedRev` im Werkzeug-Store, nicht als Boolean: Den Stand vor
-  dem `await` merken, danach nur setzen, wenn Pfad und Stand noch passen (Review-Checkliste
-  „Zustand nach await“).
-- Die Bindung (Pfad, Name, Revisionen) liegt im **persistierten Werkzeug-Store**. Alle Fenster
-  eines Werkzeugs zeigen damit dieselbe Datei, auch nach einem Neustart.
+```mermaid
+stateDiagram-v2
+  [*] --> OhneDatei
+  OhneDatei --> Gespeichert: Speichern unter / Öffnen
+  Gespeichert --> Ungespeichert: Änderung
+  Ungespeichert --> Gespeichert: Speichern
+  Ungespeichert --> Gespeichert: Änderung zurückgenommen
+  Gespeichert --> OhneDatei: Neu / Vorlage laden
+  Ungespeichert --> OhneDatei: Neu / Vorlage laden (Rückfrage)
+  Gespeichert --> NurLesen: Abschnitt aus neuerer Mottulbox
+```
+
+- **Neu:** Ist der Stand ungespeichert (oder ohne Datei und nicht leer): Rückfrage „Speichern
+  unter … / Verwerfen / Abbrechen“. Danach „ohne Datei“.
+- **Öffnen:** Dialog im Projektordner, Filter `.mottul`, gleiche Rückfrage. Hat die Datei einen
+  eigenen Abschnitt: über `sanitize` laden und binden. Hat sie keinen: „Diese Datei enthält noch
+  keine LED-Wall-Planung – [Aktuelle Planung hinzufügen] [Leere anlegen] [Abbrechen]“; beim
+  Hinzufügen Projekt und Kunde beider Seiten zeigen. So plant man erst schnell und ordnet die
+  Planung später einer Projektdatei zu.
+- **Speichern** (ohne Datei = Speichern unter): Der Renderer schickt Pfad, Abschnitt, Daten und
+  `baseSha` (Prüfsumme beim Öffnen/letzten Speichern). Der main reiht je Pfad ein, liest die
+  Datei, vergleicht den `sha256` des eigenen Abschnitts auf der Platte mit `baseSha`:
+  - **gleich:** nur den eigenen Abschnitt ersetzen, fremde Abschnitte und Fotos unverändert,
+    atomar schreiben, neues `rev`/`sha256` zurück.
+  - **verschieden** (Kollege hat auf dem NAS gespeichert): „Die Planung in der Datei wurde
+    inzwischen anderswo geändert (Stand 8). Überschreiben / Speichern unter / Abbrechen“.
+  Prüfsumme statt Änderungszeit, weil sie eigene und fremde Abschnitte unterscheidet und auf
+  Netzlaufwerken verlässlich ist.
+- **Speichern unter** auf eine vorhandene `.mottul`: „enthält schon: Anleitung (Stand 3) –
+  Planung hinzufügen?“ bzw. „… enthält schon eine LED-Wall-Planung (Kunde X, Stand 5) –
+  ersetzen?“. Fremde Abschnitte werden nie entfernt; andere Dateien werden abgewiesen.
+- **Schließen:** keine Rückfrage – der Arbeitsstand bleibt wie heute im Store, nach dem Neustart
+  zeigt der Chip weiter „● Messe….mottul“. (Eine Rückfrage käme bei mehreren Fenstern desselben
+  Werkzeugs mehrfach.) Später möglich: Erinnerung beim Beenden der App mit allen ungespeicherten,
+  gebundenen Werkzeugen.
+- **Datei nicht erreichbar** (NAS weg): Chip zeigt „fehlt“, Speichern führt zu Speichern unter.
+- **Sicherungen:** Vor jedem Speichern legt der main die bisherige Datei unter
+  `userData/Sicherungen/` ab (die letzten 10 je Datei) – billiges Netz gegen versehentliches
+  Überschreiben, ohne den Projektordner zu füllen.
+- **Vorlagen** bleiben persönliche Bausteine im Store, ohne Bindung (ebenso die Jobs der
+  Packliste). „Vorlage laden“ wirkt wie „Neu aus Vorlage“: Die Bindung wird gelöst (mit derselben
+  Rückfrage), damit eine Vorlage nie still in einer Projektdatei landet. Die Bindung steht deshalb
+  **neben** `LedWallConfig`, nicht darin – sonst nähme `snapshot()` sie in jede Vorlage mit. Zum
+  Teilen mit Kollegen dient eine `.mottul` mit nur einem LED-Wall-Abschnitt.
+
+**Mehrere Fenster:** Die Bindung `{ path, name, baseSha, rev, savedDigest, readOnly }` liegt im
+persistierten Werkzeug-Store; `syncAcrossWindows` verteilt sie an alle Fenster des Werkzeugs.
+„Ungespeichert“ heißt: Prüfsumme der aktuellen Abschnittsdaten ≠ `savedDigest` (schnelle
+Prüfsumme über das kanonische JSON im Renderer). Kein Setter muss dafür angefasst werden, und eine
+zurückgenommene Änderung gilt wieder als sauber. Beim Speichern Daten und Prüfsumme *vor* dem
+`await` festhalten und danach nur übernehmen, wenn der Pfad noch passt (Review-Checkliste
+„Zustand nach await“). `sanitize` passt beim Öffnen die Raster an die Modulzahl an – sonst macht
+`ensureGridSize` die Datei gleich nach dem Öffnen „ungespeichert“.
+
+**Fremde und neuere Inhalte beim Öffnen:**
+
+| Fall | Verhalten |
+|---|---|
+| `app`/`type` passt nicht | „Keine Projektdatei“, nicht öffnen |
+| Container-`version` höher als bekannt | „Neuere Mottulbox nötig“, nicht öffnen, nie schreiben |
+| unbekannter Abschnitt | bleibt beim Speichern samt Fotos erhalten; erscheint als „unbekannt – neuere Mottulbox“ |
+| eigener Abschnitt mit höherer `version` | nur lesen, Speichern in diese Datei gesperrt |
+| eigener Abschnitt mit älterer `version` | `sanitize`/Migration beim Lesen; geschrieben erst beim Speichern dieses Abschnitts |
 
 ### Projektordner
 
 - Neue Einstellung `projects: { dir: string, recent: string[] }`, Vorgabe `dir: ''` = Standard
   (Muster „leer bis zur ersten Wahl“ wie `youtube.outputDir`). Der main löst `''` zu
-  `Dokumente/Mottulbox-Projekte` auf und legt den Ordner erst beim ersten Speichern an.
+  `Dokumente/Mottulbox-Projekte` auf und legt den Ordner erst beim ersten Speichern an; der
+  aufgelöste Pfad wird nicht zurückgeschrieben. Kein Migrationsschritt nötig (`mergeSettings`
+  ergänzt neue Felder).
 - **App-Menü** (`components/app/AppMenu.tsx`), Gruppe „Projekte“: Ordner anzeigen, „Ändern …“,
-  „Standard“, „Im Ordner zeigen“ (über `showItemInFolder`, das auch Netzwerkpfade kann).
-- **Datei-Dialoge:** neue Art `'projekte'` in `DialogDirKind` mit eigenem gemerkten Ordner;
-  Reihenfolge: zuletzt benutzter Projektordner → Standard-Projektordner → Vorschlag. PDF- und
-  HTML-Exporte schlagen den Ordner der Projektdatei vor.
+  „Standard“, „Im Ordner zeigen“ (über `showItemInFolder`, das auch Netzwerkpfade kann –
+  `openPath` lehnt UNC-Pfade ab).
+- **Datei-Dialoge:** neue Art `'projekte'` in `DialogDirKind` und ein optionaler `kind` für
+  `showOpenDialog`/`showSaveDialog` in `src/main/services/fileDialogs.ts` (heute aus den
+  Dialog-Eigenschaften abgeleitet). Reihenfolge: zuletzt benutzter Projektordner →
+  Standard-Projektordner → Vorschlag. Die anderen Arten bleiben unverändert (`e2e/smoke.mjs`
+  prüft das). PDF- und HTML-Exporte schlagen den Ordner der Projektdatei vor.
 - Neue IPC (Skill `ipc-kanal`) `projects.dirInfo()` → `{ path, isDefault, exists }`, weil der
   Renderer den Dokumente-Ordner nicht kennt. Der main prüft den gespeicherten Pfad bei jeder
-  Nutzung (settings:set prüft nicht).
+  Nutzung (`settings:set` übernimmt Patches ungeprüft).
+- **Doppelklick** auf eine `.mottul` (Dateizuordnung) erst in Phase 5: electron-builder kann sie
+  unter Windows/NSIS nur mit `perMachine: true`, das Repo installiert pro Benutzer.
 
 ### Sicherheit
 
 Projektdateien kommen von Kollegen oder per Mail – fremde Eingaben:
 
 - ZIP-Grenzen wie oben, JSON-Größe begrenzt, jedes Feld über `sanitize…` (Allowlist, Längen,
-  Zahlenbereiche wie die Oberfläche).
-- Schreiben nur in Pfade aus einem Dialog oder aus „Zuletzt geöffnet“ mit Endung `.mottul` und
+  Zahlenbereiche wie in der Oberfläche).
+- Schreiben nur in Pfade aus einem Dialog oder aus „Zuletzt geöffnet“, mit Endung `.mottul` und
   gültigem Kopf (Vorbild: Pfadprüfung des Video-Generators in [SICHERHEIT.md](SICHERHEIT.md)).
+  `writeFileAtomic` aus `src/main/services/store.ts` herauslösen, mit eindeutigem tmp-Namen
+  (heute fest `.tmp`) und Warteschlange je Pfad (unter Windows Groß-/Kleinschreibung
+  normalisieren).
 - Fotos bleiben im main (Arbeitsordner je Datei unter `userData`), der Renderer zeigt sie über ein
   eigenes Protokoll (Eintrag in `img-src` der App-CSP und in SICHERHEIT, Skill `ipc-kanal`).
-  Über IPC laufen nur Hashes, keine MB-Strings.
+  Über IPC laufen nur Hashes, keine MB-Strings. **Nie Fotos in einen persistierten Store:**
+  `debouncedStorage` verschluckt „Speicher voll“ still.
 - **Zugangsdaten** stehen im Klartext in der Datei. Felder sind als „geheim“ markiert; beim
-  Export wählt man drucken, schwärzen oder „wird separat übergeben“. Hinweis in SICHERHEIT.md.
+  Export wählt man drucken, schwärzen oder „wird separat übergeben“. Die Stufe Bedienung enthält
+  standardmäßig keine Passwörter. Hinweis in SICHERHEIT.md.
 
 ## Das Werkzeug
 
@@ -232,7 +326,7 @@ Mindeststufe (ab der es erscheint); Inhalte darin ebenso.
 
 | Kapitel | Inhalt | Quelle | ab Stufe |
 |---|---|---|---|
-| Deckblatt | Titel, Projekt, Kunde, Ort, Zeitraum, Foto der Wand, Stand, Stufe | Kopf der Datei | Bedienung |
+| Deckblatt | Titel, Projekt, Kunde, Ort, Zeitraum, Foto der Wand, Stand, Stufe | eigene Felder, „aus LED-Wall übernehmen“ | Bedienung |
 | Auf einen Blick | Einschalten, Inhalte wählen, Ausschalten, Notfall – zugleich die Kurzkarte | aus den anderen Kapiteln zusammengestellt | Bedienung |
 | Systemübersicht | Signalweg als Grafik: Zuspieler → Prozessor → Wand, Bedienfeld, Strom | Geräteliste, LED-Wall | Bedienung |
 | Geräte und Standorte | was wo steht, mit Fotos (Rack, Prozessor, Verteiler, Laptop) | Geräteliste | Bedienung |
@@ -241,7 +335,7 @@ Mindeststufe (ab der es erscheint); Inhalte darin ebenso.
 | Software | Bedienung von MadMapper, Resolume, OBS, Mottulbox-Player …, Cue-/Szenenlisten | Bausteine, Importe | Bedienung |
 | Bedienfeld | Tastenbelegung Stream Deck, Companion, OSC-Steuerung, Jingle-Player | Importe, Tastenfeld-Editor | Bedienung |
 | Inhalte tauschen | Auflösung, Seitenverhältnis, Codec, Ablageort, Benennung neuer Videos | LED-Wall, Video-Konverter-Vorgaben | Betreuung |
-| LED-Wall | Kennzahlen, Vorderansicht, Gewicht, Strom, IMs je Modul | Abschnitt LED-Wall | Betreuung |
+| LED-Wall | Kennzahlen, Vorderansicht, Gewicht, Strom, IMs je Modul, Status-LEDs | Abschnitt LED-Wall | Betreuung |
 | Verkabelung | Signal- und Strompläne mit Kabelverlauf, Ports, Stromkreise; vorne/hinten | Abschnitt LED-Wall | Betreuung |
 | Fehlersuche | Symptom-Übersicht („Was siehst du?“), dann Fehlerfälle Schritt für Schritt | Bibliothek, eigene | Bedienung |
 | Pflege und Verbote | Reinigung, Helligkeit, Wetter (outdoor), „bitte nicht …“ | Bausteine | Bedienung |
@@ -251,7 +345,7 @@ Mindeststufe (ab der es erscheint); Inhalte darin ebenso.
 
 **Allgemein gebaut:** Ein Systemtyp (zunächst nur `led-wall`) bestimmt, welche Kapitel und
 Bausteine vorgeschlagen werden. LED-spezifische Kapitel (LED-Wall, Verkabelung) erscheinen nur,
-wenn ein Abschnitt LED-Wall in der Datei steht.
+wenn eine LED-Wall-Kopie vorliegt.
 
 **Geräteliste:** Jedes Gerät hat Rolle (Zuspieler, Prozessor, Bedienfeld, Netzwerk, Strom,
 Sonstiges), Name, Modell, Standort, IP, Foto, optional Zugangsdaten und einen Kurznamen für
@@ -262,14 +356,16 @@ Spalten je Rolle – kein Layout-Paket nötig.
 
 | Stufe | für | darf | sieht zusätzlich |
 |---|---|---|---|
-| **Bedienung** | Kunde, Moderation, Aushilfe | Ein/Aus, Inhalte wählen, Sichtprüfung | – |
+| **Bedienung** | Kunde, Moderation, Aushilfe | Ein/Aus, Inhalte wählen, Sichtprüfung, Fehler eingrenzen | – |
 | **Betreuung** | Haustechnik, Stagehand | neu starten, Sicherung einschalten, Kabel stecken/tauschen | Zugangsdaten, Pläne, Ersatzteile |
-| **Technik** | Techniker, Lehrlinge | Prozessor, NovaLCT, IM/Modul tauschen, Netzwerk | IPs, Ports, Dokumentstand |
+| **Technik** | Techniker, Lehrlinge | Prozessor, NovaLCT/Tessera, IM/Backbox tauschen, Netzwerk | IPs, Ports, Dokumentstand |
 
 - Jedes Kapitel, jeder Inhaltsblock und jeder Fehlersuch-Schritt trägt eine Mindeststufe.
 - Die Ausgabe filtert: Was über der gewählten Stufe liegt, fehlt. In der Fehlersuche wird ein
   Sprung zu einem höheren Schritt zu **„Ab hier bitte anrufen“** mit dem Kontakt – die
-  Eskalationsgrenze ergibt sich von selbst.
+  Eskalationsgrenze ergibt sich von selbst. Die meisten Fehler kann die Stufe Bedienung
+  *eingrenzen* (erstes dunkles Modul, Farbe der Status-LED), auch wenn sie sie nicht behebt – das
+  macht den Anruf kurz.
 - **Keine Textvarianten je Stufe** – das verdreifachte die Schreibarbeit. Die Stufe steuert nur,
   *was* erscheint.
 - **Lernausgabe** für Lehrlinge: alle Stufen, jeder Schritt mit Stufen-Kennzeichen. Dazu „ganze
@@ -283,23 +379,23 @@ Bausteine sind wiederverwendbare Inhalte: Ein-/Ausschalt-Routinen, Software-Bedi
 Fehlerfälle, Pflegehinweise. Hier liegt der Gewinn – die zweite Anleitung dauert Minuten.
 
 - **Mitgeliefert** (im Code, nur lesen, mit Version): Startkatalog für LED-Wand, MadMapper,
-  Resolume, OBS, Mottulbox-Player, Stream Deck, Companion, NovaStar, Windows-Autostart und
-  -Autologin, Fehlerfälle (siehe [Startkatalog](#startkatalog-fehlerfälle)).
+  Resolume, OBS, Mottulbox-Player, Stream Deck, Companion, NovaStar, Brompton, Windows-Autostart
+  und -Autologin, Fehlerfälle (siehe [Startkatalog](#startkatalog-fehlerfälle)).
 - **Eigene** (Phase 1): eine JSON-Datei je Baustein unter `userData` (main), „Als eigene Kopie
   bearbeiten“ für mitgelieferte. **Phase 5:** Einstellung „Bausteinordner“ für einen geteilten
   Ordner (NAS, Nextcloud, OneDrive) – eine Datei je Baustein vermeidet Sync-Konflikte; jede trägt
   `geaendertVon`, `geaendertAm`, `version`.
 - **Im Projekt** steckt eine Kopie jedes benutzten Bausteins: Die Datei ist in sich vollständig.
   Ist die Bibliothek neuer, bietet das Werkzeug „aktualisieren“ mit Unterschied an.
-- **Stichworte** je Baustein: Systemtyp, Software, Gerät – daraus der Vorschlag im Werkzeug
-  („Projekt nutzt MadMapper und Stream Deck → diese 6 Bausteine passen“).
+- **Stichworte** je Baustein: Systemtyp, Software, Gerät, Prozessor – daraus der Vorschlag im
+  Werkzeug („Projekt nutzt MadMapper und Stream Deck → diese 6 Bausteine passen“).
 - **Text:** Absätze, nummerierte Schritte, Aufzählung, **fett**, Hinweisbox, Foto. Geschrieben als
   kleines Markdown-Subset in einem mehrzeiligen Feld; beim Rendern wird erst alles escaped, dann
   werden nur diese Auszeichnungen umgesetzt. Kein WYSIWYG-Editor, keine Rich-Text-Bibliothek.
   (Ein mehrzeiliges Feld gibt es im Renderer noch nicht: neues `TextArea` in `components/ui`,
-  `useDraft` dafür auf Textareas erweitern.)
+  `useDraft` dafür auf Textareas erweitern – es erwartet heute ein Input-Element.)
 - **Platzhalter** in geschweiften Klammern, z. B. `{pc.name}`, `{prozessor.ip}`,
-  `{wand.aufloesung}`, `{kontakt.mobil}`, `{projekt.ort}`. Quellen: Kopf, Geräteliste
+  `{wand.aufloesung}`, `{kontakt.mobil}`, `{projekt.ort}`. Quellen: Deckblatt, Geräteliste
   (Kurznamen), LED-Wall-Kopie, Firmenprofil. Leere Platzhalter erscheinen in der Vorschau
   gestrichelt rot und in der Prüfung vor dem Export.
 
@@ -331,10 +427,10 @@ Schleifen (Warnung – „nochmal prüfen“ kann gewollt sein) und Fälle ohne 
 Ergebnisse als farbige Pillen (grün gelöst, rot anrufen), Ja/Nein als Pfeile. Verbinden durch
 Ziehen vom Ja- bzw. Nein-Griff eines Kastens auf einen anderen, Texte in einem Inspektor rechts,
 Zoomen und Verschieben, die Anordnung rechnet das Werkzeug (Ebenen von oben nach unten). Gut zum
-Überblicken, mühsam zum Schreiben, braucht eine Layout-Rechnung oder ein Paket und viel Platz.
-Weil er **dasselbe Datenmodell** nutzt, lässt er sich später als zweite Ansicht dazubauen.
+Überblicken, mühsam zum Schreiben, braucht eine Layout-Rechnung und viel Platz. Weil er
+**dasselbe Datenmodell** nutzt, lässt er sich später als zweite Ansicht dazubauen.
 
-Beispiel (Startkatalog, „Ein Teil der Wand ist dunkel“) – so sähe der Baum aus:
+Beispiel aus dem Startkatalog, „Ein Teil der Wand ist dunkel“ – so sähe der Baum aus:
 
 ```mermaid
 flowchart TD
@@ -349,10 +445,10 @@ flowchart TD
   S5 -->|Ja| S6["6 · Datenkabel vor dem ersten betroffenen Modul getauscht – läuft? (Betreuung)"]
   S5 -->|Nein| S8["8 · Nur ein Viertel/halbes Modul betroffen? (Bedienung)"]
   S6 -->|Ja| G6(["Gelöst"])
-  S6 -->|Nein| S7["7 · Empfangskarte/Modul getauscht – läuft? (Technik)"]
+  S6 -->|Nein| S7["7 · Backbox/Empfangskarte getauscht – läuft? (Technik)"]
   S7 -->|Ja| G7(["Gelöst"])
   S7 -->|Nein| C7(["Anrufen"])
-  S8 -->|Ja| S9["9 · IM getauscht – läuft? (Technik)"]
+  S8 -->|Ja| S9["9 · IM neu eingesetzt bzw. getauscht – läuft? (Technik)"]
   S8 -->|Nein| C8(["Anrufen"])
   S9 -->|Ja| G9(["Gelöst"])
   S9 -->|Nein| C9(["Anrufen"])
@@ -370,29 +466,76 @@ HTML-Datei dieselbe Liste plus eine Schritt-für-Schritt-Ansicht mit großen Ja/
 Von Matthias genannt (16.10.2026), weitere folgen:
 
 1. **Kabel in einer Signalreihe defekt** – ab einem Modul in Kettenrichtung dunkel, Rauschen oder
-   eingefroren. Datenkabel vor dem ersten betroffenen Modul tauschen (Kabelverlauf zeigt welches).
+   eingefroren; alles danach fällt mit aus (ohne Redundanz). Datenkabel zwischen letztem gutem
+   und erstem gestörtem Modul tauschen – der Kabelverlauf zeigt welches. Hilft das nicht:
+   Backbox/Empfangskarte des ersten gestörten Moduls (Technik).
 2. **Sicherung der Stromzuleitung** – Block einer Stromkette ohne Strom. Sicherung/FI im Verteiler
-   (Beschriftung je Stromkette aus dem Kabelverlauf), fliegt sie wieder: anrufen.
+   (Beschriftung je Stromkette aus dem Kabelverlauf), einmal wieder einschalten; fliegt sie
+   erneut: nicht wiederholen, anrufen.
 3. **Defektes IM** – ein Viertel (496-2,0, rX3ioBF) bzw. eine Hälfte (uS2+) eines Moduls dunkel,
-   flackert oder zeigt falsche Farben. IM tauschen (Stufe Technik; Ersatz-IMs in der Packliste).
-4. **Laptop aus, weil nachts kein Strom** – morgens bleibt die Wand schwarz. Vorbeugung bei der
-   Einrichtung (BIOS „nach Stromausfall einschalten“, Autologin, Autostart der Software,
-   Energiesparen aus) und als Fehlerfall „Rechner einschalten, warten, Software startet selbst“.
+   flackert, Linien oder falsche Farben. Erst neu einsetzen (nur stromlos), dann tauschen –
+   an denselben Platz. Stufe Technik als Vorgabe (siehe offene Fragen).
+4. **Laptop aus, weil nachts kein Strom** – morgens bleibt die Wand schwarz. Fehlerfall:
+   „Rechner einschalten, warten, Software startet selbst“. Vorbeugung als Einrichtungs-Baustein
+   für Techniker: Desktop/NUC im BIOS „After Power Failure / AC Recovery = Power On“, Laptop
+   „Power On with AC Attach“ (nicht jedes Modell), Mac „Nach Stromausfall automatisch starten“
+   (FileVault verhindert die Anmeldung); Windows-Autologon und Autostart der Software;
+   Energiesparen aus.
 
-<!-- FEHLERKATALOG-ERGAENZUNG -->
+Ergänzt aus der Recherche (Hersteller-Hilfen von Daktronics/NovaStar, Brompton, LEDitgo; vor der
+Übernahme in die Bibliothek mit der Praxis abgleichen):
+
+5. **Ganze Wand schwarz, keine Modul-LED** – kein Strom: Verteiler, Sicherung, FI (wie 2).
+6. **Sicherung fliegt beim Einschalten** – Einschaltstrom vieler Netzteile, LS-Schalter mit
+   B-Charakteristik, zu viele Module je Kreis. Gestaffelt einschalten; Kreise aufteilen bzw.
+   C-Charakteristik (Technik, Elektrofachkraft).
+7. **Ganze Wand schwarz, Module haben Strom** (Brompton-LED grün) – Prozessor aus, Datenkabel
+   Prozessor → erstes Modul, Blackout/Freeze aktiv. Prozessor-Display ansehen, Testbild am
+   Prozessor auslösen.
+8. **Testbild geht, Inhalt nicht** („kein Signal“) – Zuspieler aus oder im Ruhezustand, falscher
+   Eingang, HDMI-Kabel, Auflösung passt nicht zur EDID des Eingangs.
+9. **Ein Modul andere Farbe/Helligkeit** (oft nach einem Tausch) – Kalibrierdaten fehlen oder
+   passen nicht. Technik: Kalibrierung neu senden; Konfiguration nur aus der Datei senden.
+10. **Bild verschoben, vertauscht, „kariert“** – Datenkabel am falschen Port oder vertauscht,
+    Bildschirm-Konfiguration verloren, Ausgabe am Zuspieler verschoben. Kabel nach Kabelplan
+    (Port-Nummern) prüfen, Preset/Konfiguration neu laden.
+11. **Helligkeit falsch** – Preset, Zeitplan oder Sensor-Dimmung am Prozessor.
+12. **Software nicht im Vollbild oder auf falschem Bildschirm** – Bildschirmreihenfolge
+    geändert, Spiegeln statt Erweitern, Autostart vor der Anzeige-Erkennung.
+13. **Ein Modul dauerhaft rot (Brompton) oder ohne Verbindung** – Empfangskarte bootet nicht:
+    stromlos, neu stecken, sonst Backbox tauschen.
+
+Dazu ein Baustein **Status-LEDs**, der in Kapitel LED-Wall und als Hinweis in den Schritten
+erscheint: Brompton (uS2+) rot > 1 min nach dem Einschalten = Startfehler, grün = läuft, aber
+keine Verbindung zum Prozessor, blau = verbunden, gelb blinkend = Beacon, gelb = Testbild;
+NovaStar-Empfangskarte: rot dauerhaft = Strom, grün blinkend = Daten.
 
 ### Bedienfelder
 
-Ein gemeinsames Modell für alles, was Tasten oder Kacheln hat: Gerät (Stream Deck Mini, MK.2,
-XL, Neo, +, Companion, OSC-Steuerung, Jingle-Player, frei), Raster (Spalten × Zeilen) und Seiten
-mit Tasten `{ position, titel, farbe, funktion, stufe, bild? }`. Darstellung wie in der
-Vorlage: dunkle Tasten, Nummer und Titel, Seitenkopf mit Name; Navigationstasten (Seite vor/zurück)
-erkennt der Import und beschriftet sie.
+Ein gemeinsames Modell für alles, was Tasten oder Kacheln hat: Gerät, Raster (Spalten × Zeilen),
+Seiten mit Tasten `{ position, titel, textfarbe, hintergrund, bild?, funktion, notiz, stufe }`.
+Darstellung wie in der Vorlage: dunkle Tasten, Nummer und Titel, Seitenkopf mit Name.
+Navigationstasten (Seite vor/zurück, Ordner) erkennt der Import und beschriftet sie selbst.
 
-- **Tastenfeld-Editor:** Raster wählen, Taste anklicken, Titel/Farbe/Funktion eintragen;
-  Seiten anlegen und umbenennen.
-- **Importe** füllen dasselbe Modell (siehe [Datenquellen](#datenquellen-und-importe)). Nach dem
-  Import bleibt alles von Hand änderbar, denn Titel fehlen oft (nur ein Icon auf der Taste).
+| Gerät | Raster | Besonderes |
+|---|---|---|
+| Stream Deck Mini | 3 × 2 | – |
+| Stream Deck / MK.2 | 5 × 3 | wie die Vorlage |
+| Stream Deck XL | 8 × 4 | – |
+| Stream Deck + | 4 × 2 | 4 Drehregler, Touchleiste |
+| Stream Deck Neo | 4 × 2 | Infoleiste, 2 Touchpunkte für den Seitenwechsel |
+| Stream Deck + XL | 9 × 4 | 6 Drehregler, Touchleiste |
+| Stream Deck Studio | 16 × 2 | 2 Drehregler |
+| Companion | Vorgabe 8 × 4, erweiterbar | Seiten mit Namen |
+| OSC-Steuerung (Mottulbox) | 4–48 Spalten, Kacheln mit Spanne | Fader, Knöpfe, Bänke … |
+| Jingle-Player (Mottulbox) | Bänke mit Tasten | Tastaturkürzel 1–9, q–p |
+| frei | beliebig | – |
+
+- **Tastenfeld-Editor:** Raster wählen, Taste anklicken, Titel/Farbe/Funktion/Notiz eintragen;
+  Seiten anlegen, umbenennen, sortieren.
+- **Importe** füllen dasselbe Modell (siehe [Fremdformate](#fremdformate)). Nach dem Import bleibt
+  alles von Hand änderbar, denn Titel fehlen oft (nur ein Bild auf der Taste). Das Gerät wird aus
+  dem Raster der Datei vorgeschlagen und vom Nutzer bestätigt.
 
 ### Oberfläche
 
@@ -401,13 +544,13 @@ Aufbau wie jedes Werkzeug (CLAUDE.md „Werkzeug-Layout“): `ToolShell` mit Auf
 
 ```
 ┌ Mottulbox ▾  Start / Mini-Manual   [Einstellungen]                        [Eigenes Fenster] ┐
-├ ANLEITUNG  ● Messe Dornbirn 2026.mottul · Beispiel GmbH   Stufe [Bedienung|Betreuung|Technik]  │
-│                                              [Kurzkarte] [HTML] [Handbuch (PDF)]  [Datei ▾]   │
+├ ANLEITUNG  ● Messe Dornbirn 2026.mottul [Datei ▾]   Stufe [Bedienung|Betreuung|Technik]      │
+│                                                    [Kurzkarte] [HTML] [Handbuch (PDF)]      │
 ├──────────────────────┬─────────────────────────────────────────┬────────────────────────────┤
 │ Schublade            │ Kapitel: Ein- und Ausschalten           │ Vorschau · Seite 3 von 8   │
-│ ▸ Projekt            │  Einschalten                            │ ┌──────────────┐           │
+│ ▸ Deckblatt          │  Einschalten                            │ ┌──────────────┐           │
 │   Messe Dornbirn …   │  ⋮⋮ 1  Verteiler: {verteiler.schalter} ▮▯▯ 📷 │ │ 03           │           │
-│ ▾ Kapitel  10 von 15 │  ⋮⋮ 2  Prozessor {prozessor.name} ein  ▮▯▯    │ │ Ein- und     │           │
+│ ▾ Kapitel  10 von 16 │  ⋮⋮ 2  Prozessor {prozessor.name} ein  ▮▯▯    │ │ Ein- und     │           │
 │   ☑ Auf einen Blick  │  ⋮⋮ 3  Laptop {pc.name} ein            ▮▯▯    │ │ Ausschalten  │           │
 │   ☑ Systemübersicht  │  ⋮⋮ 4  MadMapper startet im Vollbild   ▮▮▯    │ │ 1. …         │           │
 │   ☑ Ein/Aus      6   │  [+ Schritt] [Baustein einfügen …] [Foto …]   │ │              │           │
@@ -417,55 +560,65 @@ Aufbau wie jedes Werkzeug (CLAUDE.md „Werkzeug-Layout“): `ToolShell` mit Auf
 └──────────────────────┴─────────────────────────────────────────┴────────────────────────────┘
 ```
 
-- **Schublade:** Projekt (Kopf), Kapitel (an/aus, Reihenfolge, Zahl der Einträge), Geräte,
-  Kontakte, Bausteine (Bibliothek durchsuchen, Vorschläge), Prüfung vor dem Export. Keine
-  Aktionen in die Schublade (CLAUDE.md).
+- **Schublade:** Deckblatt, Kapitel (an/aus, Reihenfolge, Zahl der Einträge), Geräte, Kontakte,
+  Bausteine (Bibliothek durchsuchen, Vorschläge), Prüfung vor dem Export. Keine Aktionen in die
+  Schublade (CLAUDE.md).
 - **Arbeitsfläche:** Formular des gewählten Kapitels; Listen mit Ziehen und Pfeil-Knöpfen
   sortieren (Vorbilder: `video-player/Playlist.tsx`, `launcher/FavoritesBoard.tsx`).
 - **Vorschau:** dieselbe HTML-Seite wie im PDF, verkleinert, blätterbar. Sie läuft in einem
   Shadow-DOM-Container (eigene Styles, keine Skripte, kein iframe); die Seite ist ein String aus
   escapten Inhalten wie bei `led-wall/topdown.ts`. Ist das Fenster schmal, klappt die Vorschau
   unter das Formular oder hinter einen Reiter.
+- **LED-Wall-Hinweise:** „Planung geändert (Stand 7 → 9) – Unterschiede ansehen / übernehmen“;
+  „Quelle nicht in dieser Datei – Kopie bleibt gültig“; ist der Konfigurator an dieselbe Datei
+  gebunden und ungespeichert: „Im Konfigurator gibt es ungespeicherte Änderungen – erst dort
+  speichern“. Ohne LED-Wall-Abschnitt: „Aus dem aktuellen Konfigurator übernehmen“ (Kopie, vergleicht
+  Projekt und Kunde). Zusätzlich zur Kopie speichert die Anleitung die daraus gerechneten
+  Kennzahlen – ändert sich später der Modulkatalog (`led-wall/data.ts`), fällt der Unterschied auf.
 - **Textfelder** gepuffert (`useDraft`, `TextField`), Speichern im Store wie CLAUDE.md
-  „Zustand“ (`debouncedStorage`, `version`, `syncAcrossWindows`); **Fotos nie im Store** –
-  `debouncedStorage` schluckt „Speicher voll“ still.
+  „Zustand“ (`debouncedStorage`, `version`, `syncAcrossWindows`).
 
 ### Ausgaben
 
 Ein reiner Seitenbauer erzeugt HTML-Strings aus dem Modell, für alle drei Ausgaben und die
 Vorschau. Ein gemeinsamer, getesteter Escape-Helfer in `src/shared` ersetzt die zwei
-unterschiedlichen `esc()` in `led-wall/print.ts` und `packing-list/print.ts`.
+unterschiedlichen `esc()` in `led-wall/print.ts` und `packing-list/print.ts` (eines maskiert
+Anführungszeichen, das andere nicht).
 
 - **Handbuch (PDF):** A4 hoch, Kapitel beginnen auf neuer Seite (`break-before`), Schritte und
   Tastenfelder nicht zerteilt (`break-inside: avoid`, im Probedruck prüfen), Fußzeile mit
   Projekt, Stand, Stufe und Seitenzahl (`displayHeaderFooter` mit `footerTemplate`), Logo im Kopf
-  der ersten Seite. Ausgabe je Stufe.
-- **Kurzkarte (PDF):** genau eine Seite (A4, Vorschlag A5 wählbar). printToPDF kann nicht
-  „einpassen“: nach dem Druck die Seiten mit pdfjs zählen (läuft im main schon für die
-  Handbücher) und mit kleinerer `scale` neu drucken bzw. in der Prüfung warnen.
+  der ersten Seite. Ausgabe je Stufe. `<details>` für das PDF immer offen.
+- **Kurzkarte (PDF):** genau eine Seite (A4, A5 wählbar). printToPDF kann nicht „einpassen“:
+  nach dem Druck die Seiten mit pdfjs zählen (läuft im main schon für die Handbücher) und mit
+  kleinerer `scale` neu drucken bzw. in der Prüfung warnen.
 - **HTML (offline):** eine einzige Datei, CSS und Bilder eingebettet, **funktioniert ohne
   JavaScript** (`<details>`/`<summary>` und Anker für die Sprünge), weil Datei-Vorschauen am Handy
-  oft kein Skript ausführen. Mit JavaScript zusätzlich die Schritt-für-Schritt-Ansicht. Eigene
-  Meta-CSP (`default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src` mit Hash),
-  eingebettete Daten mit `<` als `<`. Fotos auf 1600 px. Muss auf echten Handys getestet
-  werden (iPhone-Dateien-App, Android, WhatsApp).
+  (iPhone-Dateien-App, Messenger) oft kein Skript ausführen oder nur Text zeigen. Mit JavaScript
+  zusätzlich die Schritt-für-Schritt-Ansicht. Eigene Meta-CSP (`default-src 'none'; img-src
+  data:; style-src 'unsafe-inline'; script-src` mit Hash), eingebettete Daten mit `<` als
+  `<`, Links nur `https:`/`tel:`/`mailto:`. Fotos auf 1600 px. Muss auf echten Handys
+  getestet werden (iPhone, Android, WhatsApp-Anhang).
 - **Prüfung vor dem Export** (Schublade, Zahl in der Leiste): leere Platzhalter, Pflichtfelder
   (Kontakt), Passwörter sichtbar?, LED-Wall-Kopie veraltet, Kurzkarte länger als eine Seite,
   Fehlerfall-Prüfung, fehlende Fotos.
 - **QR-Codes:** Anruf (`tel:`), WhatsApp (`https://wa.me/…`), Fernsteuerung der Mottulbox im selben
-  Netz (`http://<IP>:8090/…`, nur bei fester IP sinnvoll – Hinweis im Werkzeug) und ein Link zur
-  HTML-Fassung, *falls* sie irgendwo abgelegt ist (eine Datei auf dem Laptop kann ein QR-Code
-  nicht öffnen). Der vorhandene Encoder (`components/qr.ts`) kann nur Version 1–4 mit
+  Netz (`http://<IP>:8090/…` – die IP stimmt nur bei fester Adresse; Hinweis im Werkzeug) und ein
+  Link zur HTML-Fassung, *falls* sie irgendwo abgelegt ist (eine Datei auf dem Laptop kann ein
+  QR-Code nicht öffnen). Der vorhandene Encoder (`components/qr.ts`) kann nur Version 1–4 mit
   Fehlerkorrektur L (höchstens 78 Bytes) und hat keinen Test: auf größere Versionen und Stufe M
-  erweitern (laminierte Ausdrucke) und testen.
+  erweitern (laminierte, verschmutzte Ausdrucke) und gegen bekannte Vektoren testen.
 
-**PDF-Weg im main – zuerst messen:** `util.exportPdf` lädt das HTML heute als `data:`-URL. Chromium
-begrenzt URLs über IPC auf etwa 2 MB – mit Fotos droht ein stiller Fehlschlag (für Electron 44
-nicht bestätigt). Plan: erst messen (1, 3, 10 MB), dann auf eine temporäre Datei mit `loadFile`
-oder ein eigenes Protokoll umstellen. Der Renderer schickt HTML mit Foto-Hashes, der main setzt
-die Bilder ein. Das versteckte Fenster bekommt eine eigene CSP bzw. Partition, die nur `data:`
-und die eigene Datei lädt (heute hat es keine). `exportPdf` bekommt ein Optionsobjekt
-(`pageSize`, `landscape`, `footer`), die bisherigen Aufrufer bleiben verträglich.
+**PDF-Weg im main – zuerst messen:** `util.exportPdf` lädt das HTML heute als `data:`-URL in ein
+verstecktes Fenster (`javascript: false`, Sandbox). Chromium begrenzt URLs über IPC auf etwa 2 MB –
+mit Fotos droht ein stiller Fehlschlag (für Electron 44 nicht bestätigt). Plan: erst messen (1, 3,
+10 MB HTML), dann auf eine temporäre Datei mit `loadFile` oder ein eigenes Protokoll umstellen.
+Der Renderer schickt HTML mit Foto-Hashes, der main setzt die Bilder ein. Das versteckte Fenster
+bekommt eine eigene CSP bzw. Partition, die nur `data:` und die eigene Datei lädt (heute hat es
+keine – externe Bilder würden geladen). `exportPdf` bekommt ein Optionsobjekt (`pageSize`,
+`landscape`, `footer`), die bisherigen Aufrufer bleiben verträglich. Schriften: Heute nutzen die
+PDFs Systemschriften und sehen je Betriebssystem anders aus; eine eingebettete Schrift
+(`@font-face` als data:-URI) im Probedruck prüfen.
 
 ## Datenquellen und Importe
 
@@ -478,7 +631,7 @@ Kachel-UUIDs und Bildschirm-IDs sind nur auf diesem Rechner gültig.
 |---|---|---|---|
 | LED-Wall | Kennzahlen, Vorderansicht, Pläne mit Verlauf, IMs | Abschnitt der Datei; `computeWall`, `topDownMarkup`, neue reine Bauer | mittel |
 | Video-Player | gespeicherte Playlists mit Clips (Titel, Dauer, Vorschaubild), Übergang, Idle-Bild, Ausgabe-Bildschirm (Name), Fernsteuer-Port | `settings.player.savedPlaylists`, `api.player.libraryList()`, `api.screen.list()` | gering |
-| OSC-Steuerung | Kachel-Raster eines Sets (gx/gy/cw/ch, Beschriftung, Farbe, Typ, Bank-/Auswahl-Einträge), NovaStar-Kacheln | Store `useOscSurface` per dynamischem Import | mittel (Kachel-Renderer) |
+| OSC-Steuerung | Kachel-Raster eines Sets (Position, Spanne, Beschriftung, Farbe, Typ, Bank-/Auswahl-Einträge), NovaStar-Kacheln | Store `useOscSurface` per dynamischem Import | mittel (Kachel-Renderer) |
 | Jingle-Player | Bänke mit Tasten und Tastaturkürzeln | Store | gering |
 | Fernsteuerungen | Adressen und Ports, QR | `api.remoteApp.status()` | gering |
 | Packliste | Ersatzteile vor Ort | Store, später Abschnitt | gering |
@@ -490,7 +643,8 @@ Hinweise:
 
 - Der Video-Player merkt sich `loop`, `shuffle` und die laufende Playlist **nicht** über einen
   Neustart, und es gibt keinen Playlist-Autostart. Für die Anleitung heißt das: „Nach dem
-  Einschalten Playlist antippen“ (Baustein) – oder Autostart als eigene Player-Funktion (Roadmap).
+  Einschalten Playlist antippen“ (Baustein) – oder ein Playlist-Autostart als eigene
+  Player-Funktion (Roadmap).
 - **NovaStar** speichert nichts (Modell, Presets, IP nur im React-Zustand) – Handeingabe, optional
   „aus aktueller Verbindung übernehmen“.
 - **Netzwerk-Scanner:** Geräteliste ist flüchtig, die API hat keinen Getter. Für eine IP-Tabelle
@@ -501,36 +655,76 @@ Hinweise:
 
 ### Fremdformate
 
-<!-- FREMDFORMATE -->
-_Wird nach der laufenden Recherche ergänzt (Stream Deck, Companion, MadMapper, OBS, NovaLCT)._
+Für keines dieser Formate gibt es eine offizielle Spezifikation. Belege sind Open-Source-Werkzeuge,
+die sie lesen oder schreiben (Stand Oktober 2026). Alle Dateien sind fremde Eingaben: Größen- und
+ZIP-Grenzen, nichts entpacken, nichts ausführen, unbekannte Teile roh anzeigen statt verwerfen,
+Ergebnis immer als bearbeitbare Kopie.
+
+| Quelle | Format | Was sicher übernehmbar ist | Lücken | Phase |
+|---|---|---|---|---|
+| **Stream-Deck-Profil** (`.streamDeckProfile`, Export aus der Elgato-Software) | ZIP mit JSON-Manifesten; drei Generationen (Manifest-Version 1.0/2.0/3.0), ab 7.x mit eigenem Kopf | Raster (aus den Koordinaten `"Spalte,Zeile"`), Seiten und Reihenfolge, Navigation (`page.next/previous`, Ordner `openchild`/`backtoparent`), eigene Titel, Schriftfarbe, eigene Tastenbilder, Aktionsname; Klartext für Hotkey, Website, OBS-Szene | Titel oft leer (in einer Stichprobe 6 von 30 Tasten); keine Hintergrundfarbe; Plugin-Standardsymbole und Live-Inhalte fehlen; Tasten des Companion-Plugins tragen nur Seite/Zeile/Spalte | 3 |
+| **Companion** (`.companionconfig`) | gzip-JSON (Standard), auch reines JSON oder YAML | Seiten mit Namen, Tasten nach Zeile/Spalte, Text, Text- und Hintergrundfarbe, Bilder, Navigation, Notizen je Taste (ab 5.x), Verbindungsname + Aktion als Funktion | Texte mit `$(variable)` (kennzeichnen); Modell wechselt mit Hauptversionen (vor 3.2 nach „Banks“ statt Zeile/Spalte, ab 5.0 Ebenen) – an `type` je Taste erkennen, nicht an `version`; Voll-Export kann Zugangsdaten der Verbindungen enthalten: nur Seiten lesen, `instances` bis auf Name verwerfen; YAML zunächst nicht | 3 |
+| **OBS** – Szenensammlung (JSON, Export im Menü Szenensammlung) | JSON | Szenen mit Namen in Bedien-Reihenfolge (`scene_order`), Tastenkürzel zum Szenenwechsel | programmweite Kürzel (Stream starten …) stehen im Profil, nicht in der Sammlung | 3 (einfach) |
+| OBS live (obs-websocket v5, Port 4455) | WebSocket mit Passwort | wie oben plus aktuelle Szene | Server ab Werk aus, Passwort nötig, OBS muss laufen; Reihenfolge dort umgekehrt | später |
+| **MadMapper-Datei** (`.mad`, in Version 6 im Ordner `.madproject`) | **unbekannt** (nirgends dokumentiert, kein Parser gefunden) | – | erst planen, wenn eine echte Datei geprüft ist | offen |
+| **MadMapper live** (OSCQuery: HTTP-JSON des Parameterbaums) | JSON über HTTP, ohne Abhängigkeit; OSC-Codec und mDNS gibt es schon | Bänke, Spalten, Zeilen mit OSC-Adressen, Medien-Namen | **Ob Namen von Cues/Szenen/Timelines im Baum stehen, ist unbelegt**; Port laut Doku 8000 oder 8010 (widersprüchlich); Version 6 ersetzt Cues durch Timelines; MadMapper muss laufen | 4, nach einem Test |
+| Resolume – Komposition (`.avc`) | XML, undokumentiert | Decks, Ebenen, Spalten, Clip-Namen | Struktur je Version prüfen | Ausblick |
+| **NovaLCT** – Bildschirm-Konfiguration `.scr` | binär, nachgebaut (Reverse Engineering) | je Port Startecke und Richtung (8 Muster) bzw. je Cabinet die Reihenfolge | inoffiziell, Versionen | 4, nur bei Bedarf |
+| NovaLCT – Systemkonfiguration `.scfg` | XML (mit base64-Teil) | grobe Lage der Bereiche | – | 4, nur bei Bedarf |
+| NovaLCT – Empfangskarte `.rcfgx` | ZIP mit XML, teils passwortgeschützt | nur Aufbau *im* Cabinet, keine Lage in der Wand | – | nicht geplant |
+| Brompton Tessera | Projektformat undokumentiert, CSV-Export „Device Layout“ | Koordinaten | – | nicht geplant |
+
+Einordnung für den Bestand: Laut Hersteller-Seiten sind alle drei Module von LEDitgo; der uS2+
+läuft mit **Brompton** (Empfangskarte R2+), für den 496-2,0 gibt es **NovaStar**-Pakete, beim
+rX3ioBF ist das Steuersystem offen. Ein NovaLCT-Import deckt den Bestand also nur teilweise ab –
+der eigene Kabelverlauf (Phase 2) ist die robustere Quelle für Pläne. Wertvoll ist aber das
+NovaStar-Modell: genau **8 Verdrahtungsmuster** (Startecke × waagrecht/senkrecht) plus freie
+Reihenfolge je Cabinet – so baut der Kabelverlauf seine Automatik und Handkorrektur, mit
+derselben Benennung.
+
+Für Tests braucht es echte, anonymisierte Dateien (siehe offene Fragen); sie kommen als Fixtures
+ins Repo.
 
 ## Kabelverlauf im LED-Wall-Konfigurator
 
 Heute speichert der Konfigurator in `sig`/`pwr` (`led-wall/store.ts`) nur, **welche Kette** ein
-Modul hat – keine Reihenfolge, keinen Port, keinen Stromkreis.
+Modul hat – keine Reihenfolge, keinen Port, keinen Stromkreis, keine Blickrichtung.
 
 ### Bedienung
 
-- Je Kette **Startmodul** (Ecke) und **Richtung** (spalten- oder zeilenweise Schlange). Daraus
-  rechnet der Konfigurator die Reihenfolge. **Automatik** ohne Eingabe: Ground-Stack startet
-  unten, fliegend oben, jeweils links; spaltenweise, wenn die Kette höher als breit ist (Praxis
-  bestätigen, siehe offene Fragen).
+- Je Kette **Startecke** und **Richtung** (waagrecht/senkrecht) als Schlange – die 8 Muster wie
+  in NovaLCT. Daraus rechnet der Konfigurator die Reihenfolge. **Automatik** ohne Eingabe:
+  Ground-Stack startet unten, fliegend oben, jeweils links; senkrecht, wenn die Kette höher als
+  breit ist (Praxis bestätigen, siehe offene Fragen).
 - **Handkorrektur:** „Reihenfolge klicken“ – Module der Kette nacheinander anklicken. Beim Lesen
   wird abgeglichen: Module, die nicht mehr in der Kette sind, fallen weg, neue hängt die Automatik
   hinten an. So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.
 - **Port** je Signalkette (Vorgabe „Port n“), **Stromkreis** und **Phase** je Stromkette
   (z. B. „F3 · L2“), Netz `230 V / 16 A` einstellbar (heute 230 V fest in `led-wall/compute.ts`).
 - **Ansicht vorne/hinten** umschaltbar in den Reitern Signal und Strom und im PDF. Die Ansicht von
-  hinten ist gespiegelt und groß beschriftet („Ansicht von hinten“, Ecke „Publikum“ markiert);
+  hinten ist gespiegelt und groß beschriftet („Ansicht von hinten“, Seite „Publikum“ markiert);
   Spalten- und Kettennummern bleiben am Modul.
 - **Pfeile** in Kettenfarbe am Bildschirm und im PDF, Start mit Port-/Kreis-Beschriftung,
   Sprünge zwischen nicht benachbarten Modulen gestrichelt („lange Brücke“). Bei kleinen Zellen
-  nur Pfeile an Richtungswechseln.
+  nur Pfeile an Richtungswechseln. Gelbe Kettenfarbe im Ausdruck auf Lesbarkeit prüfen.
 - **Warnungen** (als `Alert`/`STATUS`, keine Sperre):
-  - Pixel je Signalkette über der Port-Kapazität (Vorgabe 650.000 px – NovaStar 1G bei 8 bit;
-    Brompton rund 525.000 px; mit Prozessor-Presets aus der Roadmap genauer).
-  - Strom je Stromkette über der Absicherung (16 A bei 230 V ≙ 20 Module zu 180 W bei
-    `powerMax`), optional „höchstens n Module je Stromschleife“ laut Hersteller.
+  - **Pixel je Signalkette über der Port-Kapazität.** Je Gigabit-Port bei 8 bit/60 Hz: NovaStar
+    neuere Geräte 659.722 px (Formel aus dem Datenblatt: Pixel × Bit je Pixel × Bildrate <
+    0,95 Gbit/s), ältere (MCTRL660, VX1000) pauschal 650.000 px; Brompton Tessera 525.000 px.
+    10 bit, 12 bit und höhere Bildraten senken die Grenze (z. B. Brompton 10 bit: 420.000,
+    NovaStar 10 bit: 494.791 bzw. 329.861). Vorgabe: Prozessor-Familie + Farbtiefe + Bildrate
+    wählen, Wert daraus rechnen (Roadmap-Punkt „Prozessor-Presets“).
+
+    | Modul | Pixel | Module je Port: NovaStar 659.722 | Brompton 525.000 / 420.000 (10 bit) |
+    |---|---|---|---|
+    | 496-2,0 | 57.600 | 11 | 9 / 7 |
+    | uS2+ | 36.864 | 17 | 14 / 11 |
+    | rX3ioBF | 16.384 | 40 | 32 / 25 |
+
+    Beispiel: 40 × 496-2,0 (2.304.000 px) brauchen mindestens 4 Ports.
+  - **Strom je Stromkette über der Absicherung** (16 A bei 230 V ≙ 20 Module zu 180 W bei
+    `powerMax`), optional „höchstens n Module je Stromschleife“ laut Hersteller. Hinweis auf den
+    Einschaltstrom (B-Charakteristik, gestaffelt einschalten).
   - Phasen-Schieflage über L1/L2/L3.
   - Lücken in einer Kette.
 
@@ -547,27 +741,31 @@ interface SigChainMeta extends ChainRoute { port?: string }
 interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2' | 'L3' }
 // zusätzlich in LedWallConfig:
 //   sigMeta: Record<string, SigChainMeta>, pwrMeta: Record<string, PwrChainMeta>
-//   mains: { voltage: number; breakerA: number }, portPx: number | null
-//   planView: 'front' | 'rear'
+//   mains: { voltage: number; breakerA: number }
+//   processor: { family: 'novastar' | 'novastar-alt' | 'brompton' | 'frei'; bitDepth: 8 | 10 | 12; hz: number; portPx?: number }
+// Bedienzustand, NICHT im Datei-Abschnitt: planView ('front' | 'rear'), sigChain/pwrChain, pdfLandscape
 ```
 
 - **Stammdaten** in `led-wall/data.ts`: `imPerModule` (496-2,0: 4, rX3ioBF: 4, uS2+: 2) und deren
-  Anordnung, optional `maxModulesPerPowerLoop`.
+  Anordnung, optional `maxModulesPerPowerLoop` und das übliche Steuersystem je Modul (uS2+:
+  Brompton).
 - **Migration 1 → 2** als reine, getestete Funktion (Muster `rta/store.ts` mit
   `rta/store.test.ts`): leere Metadaten = Automatik, Verhalten unverändert – **auch in jeder
-  gespeicherten Vorlage** (`presets[].data`). Ein gemeinsames `sanitizeLedWallConfig` für
-  `migrate`, Vorlage laden und Datei; `snapshot()` um die neuen Felder erweitern, `loadPreset`
-  mit Vorgaben auffüllen (heute bleiben fehlende Felder der aktuellen Planung stehen).
+  gespeicherten Vorlage** (`presets[].data`; zustand ergänzt nur oberste Felder). Ein gemeinsames
+  `sanitizeLedWallConfig` für `migrate`, Vorlage laden und Datei; `snapshot()` um die neuen Felder
+  erweitern, `loadPreset` mit Vorgaben auffüllen (heute bleiben fehlende Felder der aktuellen
+  Planung stehen).
 - **Reine Funktionen** in einem neuen Modul `led-wall/cabling` (mit Tests): Kettenzählung (ersetzt
   vier Kopien: `CableGrid.tsx`, `LedWall.tsx`, `print.ts`, `packing-list/derive.ts`),
-  Automatik-Route, Abgleich der Handkorrektur, Sprünge, Lasten je Kette, Phasenbilanz, Geometrie
-  und SVG-Markup des Verlaufs.
+  Automatik-Route, Abgleich der Handkorrektur, Sprünge, Lasten je Kette, Port-Kapazität aus
+  Prozessor/Farbtiefe/Bildrate, Phasenbilanz, Geometrie und SVG-Markup des Verlaufs.
 - **Eine Zeichenquelle** für Bildschirm und PDF wie `topdown.ts`: SVG-String. Am Bildschirm ein
   absolut gelegtes SVG mit `pointer-events: none` über dem Knopf-Raster von `CableGrid.tsx`,
   im PDF an `gridSvg` angehängt. Marker-IDs je Plan eindeutig (Signal und Strom stehen im selben
   PDF).
 - **`print.ts` aufteilen** in einen reinen HTML-Bauer und einen dünnen Export – das Mini-Manual
-  nutzt die Bausteine mit.
+  nutzt die Bausteine mit. `deriveFromLedWall` (Packliste) bekommt die Konfiguration als
+  Parameter statt den Store zu lesen.
 - Wer den Store von außen liest, wendet `resizeGrid` auf die aktuelle Größe an (`ensureGridSize`
   läuft nur bei offenem Werkzeug).
 
@@ -578,28 +776,32 @@ Neue Dateien sind hier ohne Backticks genannt (`npm run check:refs` prüft nur V
 **shared**
 
 - html-Helfer (escape, Attribut, sichere Links) mit Tests – ersetzt die zwei `esc()`.
-- Projektdatei-Typen (Kopf, Abschnitt), Grenzen, `sanitize` des Kopfs.
+- Projektdatei: Typen (Kopf, Abschnitt), Grenzen, kanonisches JSON, `sanitize` des Kopfs.
 - Typen für `projects`-Einstellung und Firmenprofil in `src/shared/types.ts`.
 
 **main**
 
-- `services/project/`: ZIP lesen/schreiben (reine Funktionen auf Buffern, getestet), Abschnitt
-  speichern mit Warteschlange je Pfad und atomarem Schreiben (Helfer aus `store.ts` herauslösen),
-  Foto-Arbeitsordner je Datei, „zuletzt geöffnet“.
-- ipc/project.handlers.ts (Skill `ipc-kanal`, Registrierung in `registry.ts`): öffnen (mit Pfad), speichern, speichern unter,
-  Foto einfügen/holen, Projektordner-Info; Protokoll für Fotos.
-- `services/fileDialogs.ts`: Dialog-Art `'projekte'`.
+- services/projects/: ZIP lesen/schreiben (reine Funktionen auf Buffern, getestet), Abschnitt
+  speichern mit `baseSha`-Prüfung, Warteschlange je Pfad und atomarem Schreiben, sha256,
+  Foto-Arbeitsordner, Sicherungen, „zuletzt geöffnet“.
+- ipc/projects.handlers.ts (Skill `ipc-kanal`, Registrierung in `registry.ts`): öffnen (mit
+  Pfad), Abschnitt speichern, speichern unter, Foto einfügen/holen, Projektordner-Info; Protokoll
+  für Fotos.
+- `services/fileDialogs.ts`: optionaler `kind`, Art `'projekte'`; `writeFileAtomic` aus
+  `services/store.ts` herauslösen.
 - PDF: Optionsobjekt, temporäre Datei statt `data:`-URL, CSP/Partition, Seitenzählung für die
   Kurzkarte.
 
 **renderer**
 
-- `lib/` – Datei-Bindung als Hook (Bindung, ungespeichert, Abläufe Neu/Öffnen/Speichern mit
-  Generationszähler) und ein Leisten-Baustein (Dateichip + Knöpfe) für alle Werkzeuge mit Dateien.
+- `lib/` – Hook für die Datei-Bindung (`useProjectFile(store, abschnitt, sanitize)`: Bindung,
+  Prüfsumme, Abläufe Neu/Öffnen/Speichern mit Generationszähler) und ein Leisten-Baustein
+  (Dateichip + Menü Datei) für alle Werkzeuge mit Dateien; Dateiname in den Fenstertitel
+  (`launcher/ToolHost.tsx` setzt `document.title`).
 - `components/ui` – `TextArea` mit Puffer.
-- `tools/led-wall/` – `cabling`, `sanitize`/Migration, Datei-Abschnitt, Pfeile, Ansicht
-  vorne/hinten, `print.ts` geteilt.
-- `tools/mini-manual/` – `index.ts` (ToolModule), Store, Modell und `sanitize`, Kapitel-Katalog,
+- `tools/led-wall/` – `cabling`, `sanitize`/Migration v2, Datei-Bindung, Pfeile, Ansicht
+  vorne/hinten, Prozessor/Port-Kapazität, `print.ts` geteilt.
+- tools/mini-manual/ – `index.ts` (ToolModule), Store, Modell und `sanitize`, Kapitel-Katalog,
   Bibliothek (mitgelieferte Bausteine), Platzhalter, Fehlerfall-Prüfung und Stufenfilter,
   Seitenbauer (Handbuch, Kurzkarte, HTML), Importe (je Format ein reines Modul mit Fixtures),
   Oberfläche (Kapitel-Formulare, Schritt-Liste, Tastenfeld-Editor, Vorschau).
@@ -611,32 +813,34 @@ Jede Phase ist für sich nutzbar.
 
 | Phase | Inhalt | Ergebnis |
 |---|---|---|
-| **0 Projektordner und Projektdatei** | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, atomar speichern; Leisten-Baustein; LED-Wall mit Öffnen/Speichern/Speichern unter, `sanitizeLedWallConfig` + Migration v2 (noch ohne Verlauf); PDF-Messung 2 MB | LED-Wall-Planungen als Datei am festen Ort |
+| **0 Projektordner und Projektdatei** | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration v2 (noch ohne Verlauf); Messung der 2-MB-Grenze im PDF-Weg | LED-Wall-Planungen als Datei am festen Ort |
 | **1 Mini-Manual, erste Fassung** | Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2 Kabelverlauf** | Start, Richtung, Handkorrektur, Port/Kreis/Phase, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
-| **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor, Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player, Stream-Deck-Profil, Companion | Bedienfeld-Seiten ohne Abtippen, Fehlersuche am Handy |
-| **4 Fremdformate** | MadMapper, OBS, NovaLCT – soweit die Formate es hergeben (siehe oben) | Cue- und Szenenlisten automatisch |
-| **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Projekt öffnen“ am Startbildschirm (zeigt Abschnitte, öffnet sie im Werkzeug), Dateizuordnung `.mottul` (Doppelklick) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
+| **2 Kabelverlauf** | Startecke, Richtung, Handkorrektur, Port/Kreis/Phase, Prozessor und Port-Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
+| **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
+| **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
+| **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
 
 ## Skills, Doku, Tests
 
 **Neue Projekt-Skills** (`.claude/skills/`):
 
 - **projektdatei** – einem Werkzeug einen Abschnitt in der Projektdatei geben: Typ, `version`,
-  `sanitize`/Migration (eine Funktion für Datei, Store und Vorlagen), Leisten-Baustein einbinden,
-  ungespeichert über `rev`, Tests, Doku-Tabelle.
+  `sanitize`/Migration (eine Funktion für Datei, Store und Vorlagen), Bindung neben der
+  Konfiguration (nicht in Vorlagen), Bedienzustand heraushalten, Leisten-Baustein einbinden,
+  „ungespeichert“ über die Prüfsumme, Tests, Doku-Tabelle.
 - **anleitung-inhalte** – Bausteine und Fehlerfälle für das Mini-Manual schreiben: „du“, kurze
-  Sätze, eine Handlung je Schritt, Stufe je Schritt, Platzhalter-Namen, jeder Fall endet in
-  „Gelöst“ oder „Anrufen“, Prüfung mit dem Test der Bibliothek.
-- **fremdformat-import** – Importer für fremde Dateien: Fixtures im Repo (anonymisiert), Größen-
-  und ZIP-Grenzen, tolerant parsen, nichts ausführen, Versionen erkennen, Test je Format.
+  Sätze, eine Handlung je Schritt, Stufe je Schritt, erst eingrenzen dann beheben, Platzhalter-
+  Namen, jeder Fall endet in „Gelöst“ oder „Anrufen“, Prüfung mit dem Test der Bibliothek.
+- **fremdformat-import** – Importer für fremde Dateien: anonymisierte Fixtures im Repo, Größen-
+  und ZIP-Grenzen, tolerant parsen, nichts ausführen, Versionen am Inhalt erkennen, Zugangsdaten
+  verwerfen, unbekannte Teile roh zeigen, Test je Format.
 
 **Bestehende Skills anpassen:**
 
 - `neues-werkzeug` – Projektdatei-Abschnitt und Leisten-Baustein, Firmenprofil für PDFs.
 - `ipc-kanal` – Projektdatei-Kanäle als Vorbild für Datei-IPC mit Pfaden.
 - `review-checkliste` – fremde Dateien (ZIP-Grenzen, Pfade, Feldprüfung), Datei-Bindung nach
-  `await`, Fotos nie in den Store.
+  `await`, Fotos nie in den Store, Bindung nicht in Vorlagen.
 - `electron-e2e` – Projektdatei speichern/öffnen, PDF- und HTML-Export (Dialog stubben wie in
   `e2e/smoke.mjs`, Seitenzahl prüfen).
 - `abhaengigkeiten` – nur falls doch ein Paket dazukommt (ZIP, QR).
@@ -651,10 +855,11 @@ erledigt).
 
 **Tests:**
 
-- Unit: ZIP (runder Weg, kaputte Dateien, Grenzen), `sanitize` je Abschnitt, Migration v1 → v2
-  inkl. Vorlagen, `cabling` (Routen, Abgleich, Lasten), Platzhalter, Stufenfilter und
-  Fehlerfall-Prüfung, Seitenbauer (Escaping, Inhalte je Stufe), QR-Encoder gegen bekannte
-  Vektoren, Importe mit Fixtures.
+- Unit: ZIP (runder Weg, kaputte Dateien, Grenzen, `..`-Namen), Abschnitt speichern (fremde
+  Abschnitte und Fotos bleiben, Konflikt über `baseSha`, `rev` nur bei Änderung), `sanitize` je
+  Abschnitt, Migration v1 → v2 inkl. Vorlagen, `cabling` (8 Muster, Abgleich, Lasten,
+  Port-Kapazität), Platzhalter, Stufenfilter und Fehlerfall-Prüfung, Seitenbauer (Escaping,
+  Inhalte je Stufe), QR-Encoder gegen bekannte Vektoren, Importe mit Fixtures.
 - Bibliothek: jeder mitgelieferte Fehlerfall besteht die Prüfung (keine toten Enden).
 - E2E: LED-Wall speichern und wieder öffnen; Mini-Manual mit Foto speichern, öffnen, PDF
   (Seitenzahl) und HTML exportieren; Kurzkarte genau eine Seite.
@@ -663,30 +868,37 @@ erledigt).
 ## Offene Fragen
 
 1. **Verkabelungspraxis:** Startet ihr bei Ground-Stack unten links und fliegend oben links,
-   spaltenweise? (Vorgabe der Automatik.)
+   senkrecht? (Vorgabe der Automatik.)
 2. **IM-Anordnung:** 2 × 2 bei 496-2,0 und rX3ioBF – und bei uS2+ übereinander oder
    nebeneinander?
-3. **Wer darf IMs tauschen** – Betreuung oder nur Technik? (Vorgabe im Startkatalog: Technik.)
-4. **Weitere Fehlerfälle** aus der Praxis (nach dem Startkatalog oben).
-5. **Beispieldateien** für die Importe: ein exportiertes Stream-Deck-Profil, ein
-   Companion-Export, eine OBS-Szenensammlung, eine MadMapper-Datei, NovaLCT-Konfigurationen
-   (anonymisiert, kommen als Test-Fixtures ins Repo).
-6. **Dateiendung** `.mottul` passt?
-7. **Neue Projektdateien** immer im Standard-Projektordner beginnen (evtl. Unterordner je Kunde)
+3. **Wer darf IMs tauschen** – Betreuung (werkzeuglos mit Ersatz-IM) oder nur Technik? Müssen
+   IMs an ihren Platz zurück (Kalibrierung)?
+4. **Weitere Fehlerfälle** aus der Praxis; Abgleich der ergänzten Fälle 5–13.
+5. **Prozessoren im Bestand:** Welche NovaStar-Modelle, welcher Brompton-Prozessor, was steuert
+   den rX3ioBF? Übliche Farbtiefe und Bildrate? (Port-Kapazität, Prozessor-Presets.)
+6. **Beispieldateien** für die Importe: exportiertes Stream-Deck-Profil (am besten je Gerät),
+   Companion-Export, OBS-Szenensammlung, MadMapper-Projekt (Version 5 oder 6?), NovaLCT-Dateien –
+   anonymisiert, kommen als Test-Fixtures ins Repo. Für MadMapper zusätzlich ein Abzug des
+   OSCQuery-Baums (`http://<ip>:8010/?`) eines laufenden Projekts.
+7. **Dateiendung** `.mottul` passt?
+8. **Neue Projektdateien** immer im Standard-Projektordner beginnen (evtl. Unterordner je Kunde)
    oder im zuletzt benutzten?
-8. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
+9. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
    kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden?
-9. **Firmenprofil:** Logo und Farbe von Megasound als Vorgabe?
-10. **Kurzkarte** A4 oder A5?
-11. **Prozessoren im Bestand** (NovaStar-Modelle, Brompton?) für die Port-Kapazität – passt zum
-    Roadmap-Punkt „Prozessor-Presets“.
+10. **Firmenprofil:** Logo und Farbe von Megasound als Vorgabe?
+11. **Kurzkarte** A4 oder A5?
+12. Nebenbefund: Das OSC-Werkzeug sendet ab Werk an Port 8000; MadMapper nennt in seiner Doku
+    teils 8000, teils 8010 – an einer echten Installation prüfen (eigener Roadmap-Punkt, gehört
+    nicht zu diesem Plan).
 
 ## Nicht geplant
 
 - DOCX-Export, englische Ausgabe, „Sie“-Form.
 - Rich-Text-/WYSIWYG-Editor.
 - Editor in der Rechner-PWA oder als eigene App.
+- App-weites „aktives Projekt“ und Export-„Mappen“ (siehe [Grundsatz](#grundsatz)).
 - Eingebaute Cloud-Synchronisation (ein geteilter Ordner reicht).
 - Verschlüsselung von Zugangsdaten in der Datei.
 - Fremdmodule im LED-Wall-Konfigurator (vorerst).
 - Grafischer Baum-Editor für die Fehlersuche (beschrieben, nicht eingeplant).
+- Import von NovaLCT-Empfangskarten-Dateien und Brompton-Projekten.
