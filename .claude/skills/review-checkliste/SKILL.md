@@ -156,8 +156,26 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
 - **macOS beendet die App mit dem letzten Fenster nicht** – Tests, die auf das Ende warten,
   dort anders prüfen (Fensterzahl).
 
+## Bilder, PDF und fremdes HTML (Phase 1 Mini-Manual, 16. Oktober 2026)
+
+- **Nicht übernehmen, was ein Werkzeug „sicher“ tut – messen.** Electrons `nativeImage`
+  ignoriert die EXIF-Ausrichtung: Ein hochkant gehaltenes Handyfoto käme quer an. Die App liest
+  die Ausrichtung selbst und dreht (`services/fotos/fotoImage.ts`); Test mit einem JPEG, dem
+  eine EXIF-Ausrichtung 6 eingesetzt wurde (`e2e/fotos.mjs`, Farben oben/unten prüfen).
+- **Neu kodieren entfernt Metadaten** (GPS des Aufbauorts) – gewollt bei allem, was an Kunden geht.
+- **Inhalte aus fremden Dateien nur unter ihrem geprüften Hash ablegen**, sonst ersetzt eine
+  präparierte Datei ein Foto einer anderen Planung (`extractFotos` in `projectFiles.ts`).
+- **Fremdes HTML in einem Fenster lädt alles, was es nennt** – auch `file://server/…` (UNC,
+  Windows meldet sich an) und protokollrelative Adressen (`//host/x` wird bei einer Datei-Seite
+  zu UNC). Eigene Partition mit Anfragefilter, Gegenprobe mit lokalem Spion-Server.
+- **URLs über 2 MB** (`data:`) lehnt Chromium ab – große Inhalte über eine temporäre Datei laden.
+
 ## Tests
 
+- **Ein Messskript ist keine Gegenprobe.** Das erste Skript zum PDF-Weg zeigte einen Absturz der
+  ganzen App bei einer `data:`-URL über 2 MB – er kam aber vom Skript (es druckte nach dem
+  Ladefehler weiter). Die echte App warf nur `ERR_INVALID_URL`. Aussagen über das Verhalten der
+  App erst nach der Gegenprobe in der App (E2E gegen den alten Stand) in Doku und Commits schreiben.
 - **Ein Test darf die Regeln der App nicht umgehen.** Der RTA-Test startete Chromium mit
   `--use-fake-ui-for-media-stream` – das übergeht den Berechtigungs-Handler der App, der Test
   war grün, in der echten App hätte „Messen“ mit „Zugriff verweigert“ geendet (Oktober 2026).

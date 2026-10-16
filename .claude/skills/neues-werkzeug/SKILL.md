@@ -61,6 +61,12 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      im E2E `security` (hier erlaubt, anderswo weiter gesperrt). Doku: `docs/SICHERHEIT.md`,
      macOS-Hinweistext in `electron-builder.yml` (`extendInfo`). Im Browser (PWA) fragt das
      Gerät selbst, nur über HTTPS.
+   - **PDF-Ausgabe:** HTML-String bauen (alles escapen) und `api.util.exportPdf(html, name,
+     { pageSize: 'A4' | 'A5', landscape })` – gedruckt wird im main über eine temporäre Datei in
+     einer gesperrten Partition (`services/pdf/htmlToPdf.ts`): keine externen Schriften, Bilder
+     oder Stylesheets, sie werden nicht geladen. Bilder als `data:` einbetten oder als Foto der
+     Projektdatei (`fotoUrl(hash)` aus `shared/fotos.ts`, der main setzt es ein). Fotos einfügen
+     über `api.fotos.pick()`, nie als Bytes in einen Store (Skill `projektdatei`).
    - **Zeichnen auf Canvas:** Farben aus den Design-Tokens lesen, nie fest (Muster `readTheme`
      in `tools/rta/draw.ts`: CSS-Variablen „H S% L%“ -> `hsl(…)`, neu bei Änderungen an
      `class`/`style` von `<html>`). Farbskalen über Akzent und Schrift, nicht über

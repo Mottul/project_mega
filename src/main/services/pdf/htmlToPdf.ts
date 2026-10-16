@@ -1,9 +1,9 @@
 // HTML -> PDF in einem versteckten Fenster (window.open ist app-weit verboten).
 //
 // Das HTML geht über eine temporäre Datei, nicht als data:-URL: Chromium nimmt URLs nur bis 2 MB,
-// und eine längere data:-URL ließ die ganze App abstürzen (gemessen mit Electron 44 – mit Fotos
-// schon ab rund 1,5 MB HTML, weil encodeURIComponent base64 um gut ein Drittel verlängert). Über
-// die Datei liefen 60 MB HTML in 3 s.
+// eine längere data:-URL brach mit ERR_INVALID_URL ab (gemessen mit Electron 44 – mit Fotos schon
+// ab rund 1,5 MB HTML, weil encodeURIComponent base64 um gut ein Drittel verlängert). Über die
+// Datei liefen 60 MB HTML in 3 s.
 //
 // Das Fenster hat eine eigene, flüchtige Partition, die nur Dateien aus seinem Temp-Ordner lädt
 // (data:-Bilder laufen ohne Anfrage). Ein Bild von einem Server oder einer UNC-Freigabe

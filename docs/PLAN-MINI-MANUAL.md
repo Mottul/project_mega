@@ -704,10 +704,12 @@ Anführungszeichen, das andere nicht).
   Fehlerkorrektur L (höchstens 78 Bytes) und hat keinen Test: auf größere Versionen und Stufe M
   erweitern (laminierte, verschmutzte Ausdrucke) und gegen bekannte Vektoren testen.
 
-**PDF-Weg im main – gemessen und umgestellt (16.10.2026):** Mit Electron 44 scheiterte eine
-`data:`-URL über 2 MB nicht still, sondern **ließ die ganze App abstürzen** – mit Fotos schon ab
-rund 1,5 MB HTML, weil `encodeURIComponent` base64 um gut ein Drittel verlängert. Über eine
-temporäre Datei mit `loadFile` liefen 60 MB HTML in 3 s. Der Druck steckt jetzt in
+**PDF-Weg im main – gemessen und umgestellt (16.10.2026):** Mit Electron 44 brach eine
+`data:`-URL über 2 MB mit `ERR_INVALID_URL` ab – kein PDF, mit Fotos schon ab rund 1,5 MB HTML,
+weil `encodeURIComponent` base64 um gut ein Drittel verlängert. (Ein Messskript, das danach
+trotzdem druckte, brachte Electron sogar zum Absturz; die App selbst warf nur den Fehler – per
+Gegenprobe mit `e2e/pdf.mjs` geprüft.) Über eine temporäre Datei mit `loadFile` liefen 60 MB HTML
+in 3 s. Der Druck steckt jetzt in
 `src/main/services/pdf/htmlToPdf.ts`: Temp-Ordner je Export, eigene flüchtige Partition, deren
 Anfragefilter nur Dateien aus diesem Ordner durchlässt (`data:`-Bilder brauchen keine Anfrage),
 Optionsobjekt `{ pageSize: 'A4' | 'A5', landscape }`; geprüft in `e2e/pdf.mjs`. Fotos stehen

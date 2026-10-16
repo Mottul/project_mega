@@ -42,6 +42,9 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
 - **Renderer-Zugriff nur über `api`** (`@renderer/lib/api`), nie direkt ipcRenderer.
 - **Datei-Dialoge** im main nur über `services/fileDialogs.ts` (merkt den Ordner je Art; Electron
   startet sie seit Version 43 sonst immer in „Downloads“).
+- **PDF und Fotos:** PDF nur über `api.util.exportPdf` (`services/pdf/htmlToPdf.ts`: temporäre
+  Datei, gesperrte Partition – Externes lädt nicht); Fotos der Projektdateien nur als Hash
+  (`shared/fotos.ts`, Protokoll `foto:`, Ablage und Einfügen in `services/fotos/`).
 - **Werkzeug-Layout** (für alle gleich): `ToolShell` mit `bar` (`ToolBar`: Ausgabe, rot solange
   live – oder `kind="job"` für den Auftrag) und `aside` (Schublade links aus `PanelSection`s mit
   `summary`; Felder per `Field`/`Checkbox` mit `hint` = ⓘ). Aktionen nie in die Schublade;

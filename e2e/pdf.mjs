@@ -1,6 +1,8 @@
 // PDF-Export über die Brücke (services/pdf/htmlToPdf.ts): großes HTML mit Fotos – über der
-// 2-MB-Grenze, an der die frühere data:-URL die ganze App abstürzen ließ –, Seitenformat A4, A5
+// 2-MB-Grenze, an der die frühere data:-URL mit ERR_INVALID_URL abbrach –, Seitenformat A4, A5
 // und quer, fremde Adressen (Server, Dateien außerhalb des Temp-Ordners) werden nie angefragt.
+// Gegenprobe gegen den alten Weg (16.10.2026): Schritte 1 und 3 scheitern dort (der alte Weg
+// fragte Stylesheet, Bilder und iframe beim Server an).
 
 import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -47,7 +49,7 @@ const doc = (body) =>
 try {
   await runSteps('PDF-Export', [
     [
-      'großes HTML mit Fotos (über 2 MB) – App bleibt stehen, alle Seiten da',
+      'großes HTML mit Fotos (über 2 MB) – PDF mit allen Seiten',
       async () => {
         // Rauschen lässt sich kaum komprimieren: ein Foto mit gut 200 KB
         const b64 = await app.evaluate(({ nativeImage }) => {
