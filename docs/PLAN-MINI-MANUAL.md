@@ -10,9 +10,10 @@ Rücksprachen am selben Tag, siehe [Festlegungen](#festlegungen); vor den späte
 Plan löschen.
 
 **Nächster Schritt: Phase 1.** Die Fragen dafür sind am 16.10.2026 geklärt (Festlegungen 22–23,
-Fehlerfälle 5–18 abgeglichen). Phase 1 beginnt mit der Messung der 2-MB-Grenze im PDF-Weg und den Fotos in der Projektdatei (siehe
-[Phasen](#phasen)). Die Skizzen zu diesem Plan (Arbeitsplatz,
-Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren) liegen als Artifact bei Matthias.
+Fehlerfälle 5–18 abgeglichen). Erledigt: Messung der 2-MB-Grenze und neuer PDF-Weg (siehe
+[Ausgaben](#ausgaben)). Als Nächstes die Fotos in der Projektdatei (siehe [Phasen](#phasen)).
+Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
+liegen als Artifact bei Matthias.
 
 Ein neues Werkzeug erzeugt Kurz-Anleitungen für die Leute vor Ort: wie man die LED-Wall
 einschaltet und bedient, was wo steht und wie verkabelt ist – und im Fehlerfall Schritt für
@@ -693,16 +694,17 @@ Anführungszeichen, das andere nicht).
   Fehlerkorrektur L (höchstens 78 Bytes) und hat keinen Test: auf größere Versionen und Stufe M
   erweitern (laminierte, verschmutzte Ausdrucke) und gegen bekannte Vektoren testen.
 
-**PDF-Weg im main – zuerst messen:** `util.exportPdf` lädt das HTML heute als `data:`-URL in ein
-verstecktes Fenster (`javascript: false`, Sandbox). Chromium begrenzt URLs über IPC auf etwa 2 MB –
-mit Fotos droht ein stiller Fehlschlag (für Electron 44 nicht bestätigt). Plan: erst messen (1, 3,
-10 MB HTML), dann auf eine temporäre Datei mit `loadFile` oder ein eigenes Protokoll umstellen.
-Der Renderer schickt HTML mit Foto-Hashes, der main setzt die Bilder ein. Das versteckte Fenster
-bekommt eine eigene CSP bzw. Partition, die nur `data:` und die eigene Datei lädt (heute hat es
-keine – externe Bilder würden geladen). `exportPdf` bekommt ein Optionsobjekt (`pageSize`,
-`landscape`, `footer`), die bisherigen Aufrufer bleiben verträglich. Schriften: Heute nutzen die
-PDFs Systemschriften und sehen je Betriebssystem anders aus; eine eingebettete Schrift
-(`@font-face` als data:-URI) im Probedruck prüfen.
+**PDF-Weg im main – gemessen und umgestellt (16.10.2026):** Mit Electron 44 scheiterte eine
+`data:`-URL über 2 MB nicht still, sondern **ließ die ganze App abstürzen** – mit Fotos schon ab
+rund 1,5 MB HTML, weil `encodeURIComponent` base64 um gut ein Drittel verlängert. Über eine
+temporäre Datei mit `loadFile` liefen 60 MB HTML in 3 s. Der Druck steckt jetzt in
+`src/main/services/pdf/htmlToPdf.ts`: Temp-Ordner je Export, eigene flüchtige Partition, deren
+Anfragefilter nur Dateien aus diesem Ordner durchlässt (`data:`-Bilder brauchen keine Anfrage),
+Optionsobjekt `{ pageSize: 'A4' | 'A5', landscape }`; geprüft in `e2e/pdf.mjs`. Noch offen:
+Fotos über ihre Hashes (der main legt sie in den Temp-Ordner, das HTML verweist relativ),
+`footer` fürs Handbuch und die Seitenzählung der Kurzkarte. Schriften: Heute nutzen die PDFs
+Systemschriften und sehen je Betriebssystem anders aus; eine eingebettete Schrift (`@font-face`
+als data:-URI) im Probedruck prüfen.
 
 ## Datenquellen und Importe
 

@@ -159,5 +159,7 @@ th{background:#f7f7f7;font-weight:600;width:44%}
   html += `<div style="margin-top:14px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">${APP_NAME} · LED-Wall-Konfigurator · ${dt}</div></body></html>`
 
   const safe = d.projectName.replace(/[^\wäöüÄÖÜß -]+/g, '').trim()
-  return api.util.exportPdf(html, `LEDWall${safe ? '-' + safe : ''}.pdf`, d.landscape)
+  return api.util.exportPdf(html, `LEDWall${safe ? '-' + safe : ''}.pdf`, {
+    landscape: d.landscape
+  })
 }

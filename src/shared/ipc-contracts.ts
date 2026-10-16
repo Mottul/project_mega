@@ -13,6 +13,7 @@ import type {
   ProjectSaveTarget,
   ProjectsDirInfo,
   NotifyOptions,
+  PdfPageOptions,
   ConvertJob,
   DisplayInfo,
   FitMode,
@@ -488,9 +489,9 @@ export interface ToolboxApi {
   }
 
   util: {
-    /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF).
+    /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF, services/pdf).
      *  Liefert den gewählten Pfad oder null (abgebrochen). */
-    exportPdf(html: string, suggestedName: string, landscape?: boolean): Promise<string | null>
+    exportPdf(html: string, suggestedName: string, page?: PdfPageOptions): Promise<string | null>
     /** Text (z.B. JSON) über einen Speichern-Dialog in eine Datei schreiben.
      *  Liefert den gewählten Pfad oder null (abgebrochen). Ohne filters: JSON. */
     saveText(

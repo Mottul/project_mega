@@ -1120,6 +1120,12 @@ export interface NotifyOptions {
   kind?: 'info' | 'warning' | 'error' // Symbol/Ton des Dialogs (Default „info")
 }
 
+/** Seite für den PDF-Export (util.exportPdf). */
+export interface PdfPageOptions {
+  pageSize?: 'A4' | 'A5' // Vorgabe A4; A5 für die Kurzkarte des Mini-Manuals
+  landscape?: boolean
+}
+
 /* ------------------------------- Jingles -------------------------------- */
 // Jingle-Player: kurze Audios (Auftrittsmusik/Stinger) auf belegbaren Pads.
 // Dateien werden nach userData/jingles kopiert und über jingle:// geladen; die
