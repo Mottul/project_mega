@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 13. Oktober 2026
+**Stand:** 16. Oktober 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -52,6 +52,9 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 - **Testbildgenerator:** AV-Sync auch als Video mit Ton exportieren (für Medienserver und Player
   ohne Mottulbox).
 - **Jingle-Player:** Ducking, MIDI-Pads.
+- **RTA:** Farbe von Pegelanzeige und Spektrum (Balken, Kurve, Wasserfall) wählbar – Akzentfarbe
+  wie heute oder Weiß (im hellen Design entsprechend Schwarz), z. B. für ein neutrales Bild am
+  Messplatz oder auf dem Handy.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
 - **LED-Wall-Konfigurator:** Prozessor-Presets (NovaStar, Brompton).
