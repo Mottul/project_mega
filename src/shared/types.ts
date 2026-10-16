@@ -1099,6 +1099,19 @@ export interface ConfirmOptions {
   danger?: boolean // true => Bestätigen als Warn-/Löschaktion markieren
 }
 
+/** Rückfrage mit mehreren Antworten (z. B. „Überschreiben / Speichern unter / Abbrechen“). */
+export interface ChooseOptions {
+  message: string
+  detail?: string
+  /** 2–4 Knöpfe, von links/oben nach rechts/unten */
+  buttons: string[]
+  /** Index des Knopfs für Esc/Fenster schließen */
+  cancelId: number
+  /** vorausgewählter Knopf (Enter); ohne Angabe der erste */
+  defaultId?: number
+  danger?: boolean
+}
+
 /** Reine Hinweis-Meldung (ein OK-Knopf). Ersetzt window.alert() aus demselben
  *  Grund wie ConfirmOptions window.confirm() ersetzt (Tastatur-Bug). */
 export interface NotifyOptions {
@@ -1632,7 +1645,92 @@ export interface FavoriteGroup {
 export type LauncherTileSize = 'small' | 'medium' | 'large'
 
 /** Art eines Datei-Dialogs – je Art merkt sich die App den zuletzt benutzten Ordner. */
-export type DialogDirKind = 'dateien' | 'ordner' | 'speichern'
+export type DialogDirKind = 'dateien' | 'ordner' | 'speichern' | 'projekte'
+
+/** Projektdateien (.mottul, siehe shared/projectFile.ts) */
+export interface ProjectsSettings {
+  /** Standard-Speicherort; leer = Dokumente/Mottulbox-Projekte (löst main auf) */
+  dir: string
+  /** zuletzt geöffnete bzw. gespeicherte Projektdateien, neueste zuerst */
+  recent: string[]
+}
+
+export const DEFAULT_PROJECTS_SETTINGS: ProjectsSettings = { dir: '', recent: [] }
+
+/** Warum eine Projektdatei nicht geöffnet oder gespeichert werden kann */
+export type ProjectFileProblem =
+  | 'kein-projekt' // keine Mottulbox-Projektdatei
+  | 'neuer' // aus einer neueren Mottulbox – nur lesen
+  | 'kaputt' // beschädigt
+  | 'fehlt' // nicht (mehr) vorhanden, z. B. Netzlaufwerk weg
+  | 'zu-gross'
+  | 'nicht-freigegeben' // Pfad kam nicht aus einem Dialog oder „Zuletzt geöffnet“
+  | 'ungueltig' // Anfrage passt nicht (Abschnitt, Version, Daten)
+  | 'fehler' // Lesen/Schreiben gescheitert
+
+export interface ProjectSectionInfo {
+  key: string
+  /** Anzeigename („LED-Wall-Planung“) */
+  label: string
+  version: number
+  rev: number
+  /** schreibt diese Mottulbox den Abschnitt selbst? */
+  known: boolean
+}
+
+export interface ProjectSectionPayload {
+  version: number
+  rev: number
+  sha256: string
+  data: unknown
+}
+
+export type ProjectOpenResult =
+  | {
+      ok: true
+      path: string
+      name: string
+      /** alle Abschnitte der Datei (auch fremde) */
+      sections: ProjectSectionInfo[]
+      /** der angefragte Abschnitt, falls vorhanden */
+      section: ProjectSectionPayload | null
+    }
+  | { ok: false; reason: ProjectFileProblem; path: string }
+
+/** Ziel eines „Speichern unter“: gibt es dort schon eine Datei, und was steht darin? */
+export type ProjectSaveTarget =
+  | {
+      ok: true
+      path: string
+      name: string
+      exists: boolean
+      sections: ProjectSectionInfo[]
+      section: ProjectSectionPayload | null
+    }
+  | { ok: false; reason: ProjectFileProblem; path: string }
+
+export interface ProjectSaveRequest {
+  path: string
+  section: string
+  /** Schema-Version des Abschnitts */
+  version: number
+  data: unknown
+  /** sha256 des Abschnitts beim Öffnen/letzten Speichern; null = soll noch nicht existieren */
+  baseSha: string | null
+  /** Konflikt bewusst überschreiben */
+  force: boolean
+}
+
+export type ProjectSaveResult =
+  | { ok: true; path: string; name: string; rev: number; sha256: string }
+  | { ok: false; reason: 'konflikt'; rev: number; sha256: string }
+  | { ok: false; reason: ProjectFileProblem }
+
+export interface ProjectsDirInfo {
+  path: string
+  isDefault: boolean
+  exists: boolean
+}
 
 export interface AppSettings {
   lastHapOutputDir: string | null
@@ -1681,6 +1779,8 @@ export interface AppSettings {
   /** Fernsteuerungen von Jingle-Player, OSC-Steuerung und Stage-Timer (der
    *  Video-Player merkt sich seine unter player.remoteEnabled/remotePort). */
   remoteControls: Record<Exclude<RemoteControlId, 'player'>, RemoteControlSetting>
+  /** Projektdateien: Standard-Speicherort und zuletzt benutzte Dateien */
+  projects: ProjectsSettings
 }
 
 /** Teiländerung: Objekte feldweise optional, Listen immer ganz (siehe settingsMerge.ts). */
@@ -1717,11 +1817,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   uiDensity: 'normal',
   ytdlpAutoUpdate: true,
   ffmpegAutoUpdate: true,
-  dialogDirs: { dateien: null, ordner: null, speichern: null },
+  dialogDirs: { dateien: null, ordner: null, speichern: null, projekte: null },
   toolWindowBounds: {},
   youtube: DEFAULT_YOUTUBE_SETTINGS,
   timer: DEFAULT_TIMER_SETTINGS,
   converter: DEFAULT_CONVERTER_SETTINGS,
   videoGen: DEFAULT_VIDEOGEN_SETTINGS,
-  remoteControls: DEFAULT_REMOTE_CONTROLS
+  remoteControls: DEFAULT_REMOTE_CONTROLS,
+  projects: DEFAULT_PROJECTS_SETTINGS
 }

@@ -7,7 +7,12 @@ import {
   type OpenDialogOptions
 } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
-import type { ConfirmOptions, NotifyOptions, SelectPathsOptions } from '@shared/types'
+import type {
+  ChooseOptions,
+  ConfirmOptions,
+  NotifyOptions,
+  SelectPathsOptions
+} from '@shared/types'
 import { stat } from 'node:fs/promises'
 import { showOpenDialog } from '../services/fileDialogs'
 import { logLine } from '../services/log'
@@ -49,6 +54,34 @@ export function registerDialogHandlers(): void {
     // Nach dem Dialog den Renderer wieder fokussieren -> Tastatur bleibt aktiv.
     if (win && !win.isDestroyed()) win.webContents.focus()
     return res.response === 0
+  })
+
+  // Rückfrage mit 2–4 Antworten. Knöpfe und Indizes werden geprüft (Eingabe aus dem Renderer).
+  ipcMain.handle(Channels.dialogChoose, async (event, options: ChooseOptions) => {
+    const buttons = Array.isArray(options?.buttons)
+      ? options.buttons.filter((b): b is string => typeof b === 'string').map((b) => b.slice(0, 60))
+      : []
+    if (buttons.length < 2 || buttons.length > 4 || typeof options.message !== 'string') return -1
+    const idx = (v: unknown, fb: number): number =>
+      Number.isInteger(v) && (v as number) >= 0 && (v as number) < buttons.length
+        ? (v as number)
+        : fb
+    const cancelId = idx(options.cancelId, buttons.length - 1)
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const boxOptions: MessageBoxOptions = {
+      type: options.danger ? 'warning' : 'question',
+      buttons,
+      defaultId: idx(options.defaultId, 0),
+      cancelId,
+      noLink: true,
+      message: options.message.slice(0, 500),
+      detail: typeof options.detail === 'string' ? options.detail.slice(0, 2000) : undefined
+    }
+    const res = win
+      ? await dialog.showMessageBox(win, boxOptions)
+      : await dialog.showMessageBox(boxOptions)
+    if (win && !win.isDestroyed()) win.webContents.focus()
+    return res.response
   })
 
   // Hinweis-Meldung (ein OK-Knopf). Gleicher Grund wie oben: kein window.alert().

@@ -6,6 +6,7 @@ import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import { AppMenu } from '@renderer/components/app/AppMenu'
 import { ToolChromeContext } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { useTitleDetail } from '@renderer/lib/windowTitle'
 import { windowTitle } from '@shared/brand'
 import { isSmallTool, OWN_WINDOW_PARAM } from '@shared/toolWindows'
 import { findTool } from '@renderer/tools/registry'
@@ -32,11 +33,13 @@ export function ToolHost(): JSX.Element {
   const [page, setPage] = useState<HTMLElement | null>(null)
   useFitToolWindow(compact, header, page)
 
-  // Fenstertitel = Werkzeugname · App (auch in eigenen Fenstern). Beim Verlassen
-  // zurück auf den App-Namen (Launcher setzt ihn selbst wieder).
+  // Fenstertitel = Werkzeugname · App (auch in eigenen Fenstern), davor ggf. ein Zusatz des
+  // Werkzeugs (gebundene Projektdatei). Beim Verlassen zurück auf den App-Namen (Launcher setzt
+  // ihn selbst wieder).
+  const titleDetail = useTitleDetail((t) => t.detail)
   useEffect(() => {
-    document.title = windowTitle(tool?.name)
-  }, [tool])
+    document.title = windowTitle(titleDetail && tool ? `${titleDetail} – ${tool.name}` : tool?.name)
+  }, [tool, titleDetail])
 
   // Kleines Werkzeug im Hauptfenster angesteuert (Kachel, Verlauf, alter Link): eigenes Fenster
   // öffnen bzw. nach vorn holen, das Hauptfenster bleibt am Startbildschirm.

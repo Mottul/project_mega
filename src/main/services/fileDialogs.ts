@@ -17,6 +17,7 @@ import { statSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { DialogDirKind } from '@shared/types'
 import { dialogStartPath } from './dialogStartPath'
+import { projectsDirInfo } from './projects/projectsDir'
 import { getSettings, setSettings } from './store'
 
 function isDir(path: string): boolean {
@@ -27,8 +28,18 @@ function isDir(path: string): boolean {
   }
 }
 
+/** Gemerkter Ordner; Projektdateien starten ohne gemerkten Ordner im Projektordner. */
+function rememberedDir(kind: DialogDirKind): unknown {
+  const dir = getSettings().dialogDirs[kind]
+  if (kind === 'projekte' && (typeof dir !== 'string' || !isDir(dir))) {
+    const info = projectsDirInfo()
+    return info.exists ? info.path : dir
+  }
+  return dir
+}
+
 function withStartPath<T extends { defaultPath?: string }>(kind: DialogDirKind, opts: T): T {
-  const defaultPath = dialogStartPath(getSettings().dialogDirs[kind], opts.defaultPath, isDir)
+  const defaultPath = dialogStartPath(rememberedDir(kind), opts.defaultPath, isDir)
   return defaultPath ? { ...opts, defaultPath } : opts
 }
 
@@ -40,12 +51,15 @@ function remember(kind: DialogDirKind, dir: string): void {
 }
 
 /** Öffnen-Dialog (mit `parent` modal zum Fenster). Gemerkt wird bei einer Ordner-Wahl der
- *  Ordner selbst, sonst der Ordner der ersten Datei. */
+ *  Ordner selbst, sonst der Ordner der ersten Datei. `kind` nur für eigene Arten (Projektdateien),
+ *  sonst ergibt sie sich aus den Eigenschaften. */
 export async function showOpenDialog(
   parent: BrowserWindow | null,
-  opts: OpenDialogOptions
+  opts: OpenDialogOptions,
+  kindOverride?: DialogDirKind
 ): Promise<OpenDialogReturnValue> {
-  const kind: DialogDirKind = opts.properties?.includes('openDirectory') ? 'ordner' : 'dateien'
+  const kind: DialogDirKind =
+    kindOverride ?? (opts.properties?.includes('openDirectory') ? 'ordner' : 'dateien')
   const o = withStartPath(kind, opts)
   const res = parent ? await dialog.showOpenDialog(parent, o) : await dialog.showOpenDialog(o)
   const first = res.canceled ? undefined : res.filePaths[0]
@@ -56,10 +70,11 @@ export async function showOpenDialog(
 /** Speichern-Dialog; ein bloßer Dateiname als `defaultPath` landet im gemerkten Ordner. */
 export async function showSaveDialog(
   parent: BrowserWindow | null,
-  opts: SaveDialogOptions
+  opts: SaveDialogOptions,
+  kind: DialogDirKind = 'speichern'
 ): Promise<SaveDialogReturnValue> {
-  const o = withStartPath('speichern', opts)
+  const o = withStartPath(kind, opts)
   const res = parent ? await dialog.showSaveDialog(parent, o) : await dialog.showSaveDialog(o)
-  if (!res.canceled && res.filePath) remember('speichern', dirname(res.filePath))
+  if (!res.canceled && res.filePath) remember(kind, dirname(res.filePath))
   return res
 }

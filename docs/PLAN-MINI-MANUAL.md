@@ -755,7 +755,13 @@ feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Frei
 - Je Kette **Startecke** und **Richtung** (waagrecht/senkrecht) frei wählbar – die 8 Muster wie
   in NovaLCT, bezogen auf den Bereich der Kette. Daraus rechnet der Konfigurator die Reihenfolge
   als Schlange. Vorschlag für neue Ketten: die Ecke des Bereichs, die dem Einspeisepunkt am
-  nächsten liegt (kürzeste Zuleitung) – mehr nicht, die Wahl bleibt beim Planer.
+  nächsten liegt („an der Einspeisung“, kürzeste Zuleitung) – mehr nicht, die Wahl bleibt beim
+  Planer.
+- **Beispiel aus der Praxis** (Matthias, 16.10.2026): Einspeisung unten in der Mitte, die Wand in
+  vier Viertel geteilt (je 2 Reihen × 4 Spalten bei 8 × 4 Modulen). Jede Kette beginnt am Modul
+  direkt neben der Mittelachse, läuft waagrecht nach außen und in der Reihe darüber zurück zur
+  Mitte. Das ergibt sich aus „Start an der Einspeisung“ + „waagrecht“ ohne Handkorrektur; die
+  Skizzen zum Plan zeigen genau diesen Fall.
 - **Handkorrektur:** „Reihenfolge klicken“ – Module der Kette nacheinander anklicken. Beim Lesen
   wird abgeglichen: Module, die nicht mehr in der Kette sind, fallen weg, neue hängt die Automatik
   hinten an. So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.

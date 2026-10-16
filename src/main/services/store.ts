@@ -1,18 +1,9 @@
 import { app } from 'electron'
-import {
-  closeSync,
-  existsSync,
-  fsyncSync,
-  openSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-  writeSync
-} from 'node:fs'
+import { existsSync, readFileSync, renameSync } from 'node:fs'
 import { join } from 'node:path'
 import { mergeSettings } from '@shared/settingsMerge'
 import { DEFAULT_SETTINGS, type AppSettings, type SettingsPatch } from '@shared/types'
+import { writeFileAtomic } from './fsAtomic'
 import { logLine } from './log'
 
 // Schlanker Settings-Store: eine JSON-Datei in userData. Bewusst ohne externe
@@ -63,29 +54,6 @@ export function getSettings(): AppSettings {
     cache = { ...DEFAULT_SETTINGS }
   }
   return cache
-}
-
-/**
- * Atomar schreiben: erst vollstaendig (und auf den Datentraeger) in eine Nachbardatei,
- * dann umbenennen. Bricht der Strom mitten im Schreiben weg, bleibt die alte Datei heil.
- */
-function writeFileAtomic(file: string, text: string): void {
-  const tmp = `${file}.tmp`
-  const fd = openSync(tmp, 'w')
-  try {
-    writeSync(fd, text, null, 'utf-8')
-    fsyncSync(fd)
-  } finally {
-    closeSync(fd)
-  }
-  try {
-    renameSync(tmp, file)
-  } catch (err) {
-    // Windows: Virenscanner/Indexer halten die Datei kurz -> dann eben direkt schreiben
-    logLine('[settings] Umbenennen fehlgeschlagen, schreibe direkt:', String(err))
-    writeFileSync(file, text, 'utf-8')
-    rmSync(tmp, { force: true })
-  }
 }
 
 /**

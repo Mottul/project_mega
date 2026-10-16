@@ -3,35 +3,19 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { digest } from '@shared/projectFile'
 import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
-import { DEFAULT_MODULE_KEY } from './data'
-import { resizeGrid, type BuilderSegment } from './math'
+import { sanitizeBinding, type ProjectBinding } from '@renderer/lib/projectBinding'
+import {
+  DEFAULT_LED_WALL_CONFIG,
+  ledWallSection,
+  pickConfig,
+  sanitizeLedWallConfig,
+  type LedWallConfig
+} from './config'
+import { resizeGrid } from './math'
 
-export type BuildMode = 'stacked' | 'flying'
-export type CurveMode = 'circle' | 'segment' | 'builder' | 'squircle'
-
-/** Reine Konfigurationsfelder (das, was eine gespeicherte Vorlage ausmacht). */
-export interface LedWallConfig {
-  moduleKey: string
-  widthM: string // Eingaben als Text (Komma-tolerant), geparst wird beim Rechnen
-  heightM: string
-  projectName: string
-  customerName: string
-  buildMode: BuildMode
-  sig: number[][] // -1 = frei, sonst Ketten-Index
-  pwr: number[][]
-  sigChain: number
-  pwrChain: number
-  curveMode: CurveMode
-  // Curving teilt sich die Wandbreite (widthM = Sehne/Squircle-Breite); nur die
-  // kurvenspezifische Tiefe und der gewählte Vollkreis sind eigene Felder.
-  segSag: string
-  builderSegs: BuilderSegment[]
-  sqD: string
-  sqCorner: number
-  selectedCircle: number // Index in CIRCLE_TABLE
-  pdfLandscape: boolean // PDF-Doku im Querformat (Default: ja – Pläne sind breit)
-}
+export type { BuildMode, CurveMode, LedWallConfig } from './config'
 
 /** Benannte, gespeicherte Konfiguration. */
 export interface LedWallPreset {
@@ -43,6 +27,9 @@ export interface LedWallPreset {
 
 interface LedWallState extends LedWallConfig {
   presets: LedWallPreset[]
+  /** Projektdatei, an die die Planung gebunden ist (null = ohne Datei). Steht NEBEN der
+   *  Konfiguration, damit Vorlagen sie nicht mitnehmen (lib/projectFile). */
+  file: ProjectBinding | null
 
   set: (patch: Partial<LedWallState>) => void
   /** Grids an neue Modulzahl anpassen (Zuordnungen im Überlapp bleiben erhalten). */
@@ -52,58 +39,47 @@ interface LedWallState extends LedWallConfig {
   resetGrid: (grid: 'sig' | 'pwr') => void
   /** Aktuelle Konfiguration als Vorlage sichern (gleicher Name -> überschreiben). */
   savePreset: (name: string) => void
+  /** Vorlage laden – wie „Neu aus Vorlage“: löst die Bindung an eine Projektdatei. */
   loadPreset: (id: string) => void
   deletePreset: (id: string) => void
+  setFile: (file: ProjectBinding | null) => void
+  /** Planung ersetzen (Projektdatei, „Neu“); Bedienzustand (PDF-Format) bleibt. */
+  replaceConfig: (config: LedWallConfig) => void
 }
 
-/** Tiefe Kopie nur der Konfigurationsfelder (ohne Vorlagen/Methoden). */
-function snapshot(s: LedWallState): LedWallConfig {
-  return structuredClone({
-    moduleKey: s.moduleKey,
-    widthM: s.widthM,
-    heightM: s.heightM,
-    projectName: s.projectName,
-    customerName: s.customerName,
-    buildMode: s.buildMode,
-    sig: s.sig,
-    pwr: s.pwr,
-    sigChain: s.sigChain,
-    pwrChain: s.pwrChain,
-    curveMode: s.curveMode,
-    segSag: s.segSag,
-    builderSegs: s.builderSegs,
-    sqD: s.sqD,
-    sqCorner: s.sqCorner,
-    selectedCircle: s.selectedCircle,
-    pdfLandscape: s.pdfLandscape
-  })
+/** Hat die gebundene Planung Änderungen, die noch nicht in der Datei stehen? */
+export function ledWallDirty(s: LedWallConfig & { file: ProjectBinding | null }): boolean {
+  return !!s.file && digest(ledWallSection(s)) !== s.file.savedDigest
+}
+
+/**
+ * Gespeicherten Stand auf die aktuelle Version bringen. Version 2 ergänzt die Felder für den
+ * Kabelverlauf – in der Planung UND in jeder Vorlage (zustand ergänzt nur oberste Felder).
+ * Rein, getestet in store.test.ts.
+ */
+export function migrateLedWall(persisted: unknown, version: number): unknown {
+  if (version >= 2 || !persisted || typeof persisted !== 'object') return persisted
+  const p = persisted as Record<string, unknown>
+  const presets = Array.isArray(p.presets)
+    ? p.presets
+        .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
+        .filter((x) => typeof x.id === 'string' && typeof x.name === 'string')
+        .map((x) => ({
+          id: x.id as string,
+          name: (x.name as string).slice(0, 200),
+          savedAt: typeof x.savedAt === 'number' ? x.savedAt : 0,
+          data: sanitizeLedWallConfig(x.data)
+        }))
+    : []
+  return { ...sanitizeLedWallConfig(p), presets, file: sanitizeBinding(p.file) }
 }
 
 export const useLedWall = create<LedWallState>()(
   persist(
     (set, get) => ({
-      moduleKey: DEFAULT_MODULE_KEY,
-      widthM: '4',
-      heightM: '2,5',
-      projectName: '',
-      customerName: '',
-      buildMode: 'stacked',
-      sig: [],
-      pwr: [],
-      sigChain: 0,
-      pwrChain: 0,
-      curveMode: 'circle',
-      segSag: '0,5',
-      builderSegs: [
-        { type: 'straight', count: 3 },
-        { type: 'curved', count: 6, angle: 45, dir: 'convex' },
-        { type: 'straight', count: 3 }
-      ],
-      sqD: '2',
-      sqCorner: 3,
-      selectedCircle: 0,
-      pdfLandscape: true,
+      ...structuredClone(DEFAULT_LED_WALL_CONFIG),
       presets: [],
+      file: null,
 
       set: (patch) => set(patch),
 
@@ -143,7 +119,7 @@ export const useLedWall = create<LedWallState>()(
       savePreset: (name) => {
         const trimmed = name.trim()
         if (!trimmed) return
-        const data = snapshot(get())
+        const data = pickConfig(get())
         set((state) => {
           const idx = state.presets.findIndex((p) => p.name === trimmed)
           const entry: LedWallPreset = {
@@ -163,18 +139,24 @@ export const useLedWall = create<LedWallState>()(
 
       loadPreset: (id) => {
         const preset = get().presets.find((p) => p.id === id)
-        if (preset) set(structuredClone(preset.data))
+        // alle Felder setzen (fehlende aus der Vorgabe) – sonst blieben Felder der vorigen
+        // Planung stehen, z. B. eine fremde Kabelreihenfolge
+        if (preset) set({ ...sanitizeLedWallConfig(preset.data), file: null })
       },
 
-      deletePreset: (id) => set((state) => ({ presets: state.presets.filter((p) => p.id !== id) }))
+      deletePreset: (id) => set((state) => ({ presets: state.presets.filter((p) => p.id !== id) })),
+
+      setFile: (file) => set({ file }),
+
+      replaceConfig: (config) =>
+        set({ ...structuredClone(config), pdfLandscape: get().pdfLandscape })
     }),
     {
       name: 'led-wall-konfigurator',
       storage: debouncedStorage(),
-      // Basisversion: v0 (unversioniert) und v1 haben dieselbe Form -> durchreichen.
-      // Ab jetzt existiert ein Migrationspunkt für künftige Schemaänderungen.
-      version: 1,
-      migrate: (persisted) => persisted as LedWallState
+      // v0/v1: Planung ohne Kabelverlauf; v2 (Oktober 2026): Kabelverlauf-Felder, Datei-Bindung
+      version: 2,
+      migrate: (persisted, version) => migrateLedWall(persisted, version) as LedWallState
     }
   )
 )

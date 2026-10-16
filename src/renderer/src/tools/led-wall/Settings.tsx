@@ -15,7 +15,13 @@ import type { WallMetrics } from './compute'
 import { CURVE_MODE_LABELS } from './curve'
 import { CIRCLE_TABLE, MODULES } from './data'
 import type { BuilderSegment } from './math'
-import { useLedWall, type BuildMode, type CurveMode, type LedWallPreset } from './store'
+import {
+  ledWallDirty,
+  useLedWall,
+  type BuildMode,
+  type CurveMode,
+  type LedWallPreset
+} from './store'
 import { NumCommit, UnitInput } from './ui'
 
 export const BUILD_LABELS: Record<BuildMode, string> = {
@@ -63,6 +69,22 @@ function PresetsPanel(): JSX.Element {
     if (ok) deletePreset(p.id)
   }
 
+  // Vorlage laden = „Neu aus Vorlage“: löst die Bindung an die Projektdatei (die Datei bleibt)
+  async function load(p: LedWallPreset): Promise<void> {
+    const st = useLedWall.getState()
+    if (st.file) {
+      const dirty = ledWallDirty(st)
+      const ok = await api.confirm({
+        message: `Vorlage „${p.name}“ laden?`,
+        detail: `Die Planung ist an „${st.file.name}“ gebunden${dirty ? ' und hat ungespeicherte Änderungen' : ''}. Die Vorlage ersetzt sie und löst die Bindung – die Datei selbst bleibt unverändert.`,
+        confirmLabel: 'Laden',
+        danger: dirty
+      })
+      if (!ok) return
+    }
+    loadPreset(p.id)
+  }
+
   return (
     <PanelSection
       id="presets"
@@ -80,7 +102,7 @@ function PresetsPanel(): JSX.Element {
             >
               <button
                 type="button"
-                onClick={() => loadPreset(p.id)}
+                onClick={() => void load(p)}
                 title="Vorlage laden – ersetzt die aktuelle Planung"
                 className="min-w-0 flex-1 px-2.5 py-1.5 text-left hover:text-primary"
               >

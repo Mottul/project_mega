@@ -1,5 +1,5 @@
-// App-Menü „Mottulbox ▾“: alles, was die GANZE App betrifft – Design, Akzentfarbe, Dichte und
-// die mitgelieferten Programme (ffmpeg, yt-dlp). Steht links in der Kopfleiste jedes Werkzeugs
+// App-Menü „Mottulbox ▾“: alles, was die GANZE App betrifft – Design, Akzentfarbe, Dichte, der
+// Projektordner (mehrere Werkzeuge speichern dort) und die mitgelieferten Programme (ffmpeg, yt-dlp). Steht links in der Kopfleiste jedes Werkzeugs
 // und rechts auf dem Startbildschirm. Werkzeug-Einstellungen gehören nie hierher, sondern in
 // die Schublade des Werkzeugs – so kann man beides nicht verwechseln.
 import { useEffect, useRef, useState } from 'react'
@@ -11,6 +11,7 @@ import { ACCENTS, accentSwatch } from '@renderer/lib/accent'
 import { cn } from '@renderer/lib/utils'
 import type { ThemeMode, UiDensity } from '@shared/types'
 import { FfmpegSettings } from './FfmpegSettings'
+import { ProjectsSettings } from './ProjectsSettings'
 import { YtdlpSettings } from './YtdlpSettings'
 import { useAppearance } from './useAppearance'
 
@@ -68,7 +69,7 @@ export function AppMenu({
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
-        title="Einstellungen der ganzen App: Design, Akzentfarbe, ffmpeg, yt-dlp"
+        title="Einstellungen der ganzen App: Design, Akzentfarbe, Projektordner, ffmpeg, yt-dlp"
         className="gap-2 px-2.5"
       >
         {variant === 'brand' ? (
@@ -136,6 +137,13 @@ export function AppMenu({
               onChange={look.setDensity}
               options={DENSITIES}
             />
+          </section>
+
+          <div className="h-px bg-border" />
+
+          <section className="space-y-2">
+            <Heading>Projektordner</Heading>
+            <ProjectsSettings />
           </section>
 
           <div className="h-px bg-border" />
