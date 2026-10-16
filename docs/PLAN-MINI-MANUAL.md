@@ -10,8 +10,7 @@ Rücksprachen am selben Tag, siehe [Festlegungen](#festlegungen); vor den späte
 Plan löschen.
 
 **Nächster Schritt: Phase 1.** Die Fragen dafür sind am 16.10.2026 geklärt (Festlegungen 22–23,
-Fehlerfälle 5–18 abgeglichen); offen ist nur noch, wofür die Firmenfarbe dient (Frage 3). Phase 1
-beginnt mit der Messung der 2-MB-Grenze im PDF-Weg und den Fotos in der Projektdatei (siehe
+Fehlerfälle 5–18 abgeglichen). Phase 1 beginnt mit der Messung der 2-MB-Grenze im PDF-Weg und den Fotos in der Projektdatei (siehe
 [Phasen](#phasen)). Die Skizzen zu diesem Plan (Arbeitsplatz,
 Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren) liegen als Artifact bei Matthias.
 
@@ -101,7 +100,8 @@ Aus der Rücksprache vom 16. Oktober 2026:
 23. **Firmenprofil:** Logo (SVG, sonst PNG), Firmenfarbe (Hex) und Kontakte liegen bei Matthias
     vor. Sie kommen **nicht ins Repo** – es ist öffentlich auf GitHub –, sondern werden einmal im
     Firmenprofil geladen bzw. eingetragen. Ab Werk hat das Profil kein Logo und die gelbe
-    Papierfarbe der bestehenden PDFs.
+    Papierfarbe der bestehenden PDFs. Die **Firmenfarbe ist nur Akzent** (Trennlinien, eventuell
+    Überschriften), nie Papierfarbe.
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
 
@@ -441,7 +441,8 @@ Fehlerfälle, Pflegehinweise. Hier liegt der Gewinn – die zweite Anleitung dau
   gestrichelt rot und in der Prüfung vor dem Export.
 
 **Firmenprofil** (Einstellung, Phase 1): Firmenname, Logo (Datei unter `userData`, SVG oder PNG –
-nie im Repo, Festlegung 23), Papierfarbe (Vorgabe das Gelb der bestehenden PDFs), Kontakte (Name, Funktion, Mobil, Büro, Mail,
+nie im Repo, Festlegung 23), Akzentfarbe für Trennlinien und Überschriften, Papierfarbe (Vorgabe
+das Gelb der bestehenden PDFs), Kontakte (Name, Funktion, Mobil, Büro, Mail,
 Erreichbarkeit, WhatsApp ja/nein), Text zur Fernwartung. Je Projekt wählt man Ansprechpartner
 daraus. LED-Wall-Doku und Packliste nutzen dasselbe Profil (Kopf, Fußzeile).
 
@@ -551,8 +552,9 @@ und 14:
 8. **Testbild geht, Inhalt nicht** („kein Signal“) – Zuspieler aus oder im Ruhezustand, falscher
    Eingang, HDMI-Kabel, Auflösung passt nicht zur EDID des Eingangs.
 9. **Ein Modul andere Farbe/Helligkeit** (oft nach einem Tausch) – Kalibrierdaten fehlen oder
-   passen nicht. Erst die Helligkeit einmal ändern – das erledigt es meist. Sonst ist ein Module
-   Flash nötig (Technik); Konfiguration nur aus der Datei senden.
+   passen nicht, oder auf den Modulen liegen unterschiedliche rcfgx- bzw. npm-Dateien. Erst die
+   Helligkeit einmal ändern – das erledigt es meist. Sonst ist ein Module Flash nötig (Technik);
+   Konfiguration nur aus der Datei senden.
 10. **Bild verschoben, vertauscht, „kariert“** – Datenkabel am falschen Port oder vertauscht,
     Bildschirm-Konfiguration verloren, Ausgabe am Zuspieler verschoben. Kabel nach Kabelplan
     (Port-Nummern) prüfen, Preset/Konfiguration neu laden.
@@ -799,6 +801,10 @@ feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Frei
 - **Handkorrektur:** „Reihenfolge klicken“ – Module der Kette nacheinander anklicken. Beim Lesen
   wird abgeglichen: Module, die nicht mehr in der Kette sind, fallen weg, neue hängt die Automatik
   hinten an. So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.
+- **Kette zeichnen** (Wunsch Matthias, 16.10.2026): mit gedrückter Maustaste über die Module
+  ziehen – sie kommen in die gewählte Kette und werden in dieser Reihenfolge verbunden
+  (Zuordnung und Handkorrektur in einem Zug). Klick für Klick geht weiterhin. Wer gar keine
+  Automatik will, zeichnet jede Kette komplett selbst; Startecke und Richtung bleiben dann leer.
 - **Backup-Leitung** je Signalkette (an/aus; Vorgabe für neue Ketten aus dem Schalter
   „Redundanz“ der Wand, ab Werk aus): vom letzten Modul der Kette zurück zu einem Backup-Port des
   Prozessors. Fällt ein Kabel in der Kette aus, versorgt sie die Module dahinter von hinten. Im
@@ -948,7 +954,7 @@ Jede Phase ist für sich nutzbar.
 |---|---|---|
 | **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
 | **1 Mini-Manual, erste Fassung** | Zuerst: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Arbeitsordner im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2 Kabelverlauf** | Einspeisepunkt (nicht gezeichnet) und Zuleitungslängen, Schnellwahl der Aufteilung, Startecke, Richtung, Handkorrektur, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
+| **2 Kabelverlauf** | Einspeisepunkt (nicht gezeichnet) und Zuleitungslängen, Schnellwahl der Aufteilung, Startecke, Richtung, Handkorrektur und Kette zeichnen, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
 | **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
@@ -1016,8 +1022,8 @@ Phase 0 und den Start von Phase 1 ist nichts mehr offen. Später zu klären:
    NovaLCT-Dateien, Datenblätter von NovaPro UHD Jr, VX4S und Tessera S8 (Ports, Kapazität,
    übliche Farbtiefe und Bildrate). Anonymisiert, kommen als Test-Fixtures ins Repo.
 2. **Weitere Fehlerfälle** aus der Praxis (laufend; der Abgleich der Fälle 5–18 ist erledigt).
-3. **Firmenfarbe:** nur für Überschriften und Linien, oder ersetzt sie das gelbe Papier? (Phase 1,
-   beim Firmenprofil; Logo, Farbwert und Kontakte bringt Matthias dann mit – Festlegung 23)
+3. ~~Firmenfarbe~~ – geklärt: nur Akzent, nicht Papier (Festlegung 23). Logo, Farbwert und
+   Kontakte bringt Matthias zum Firmenprofil mit.
 4. ~~Kurzkarte A4 oder A5~~ – geklärt: A5 (Festlegung 22).
 5. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
    kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden? (Phase 3)
