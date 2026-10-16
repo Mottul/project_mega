@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { PROJECT_JSON_NAME } from '@shared/projectFile'
 import {
+  backupName,
+  backupsToDelete,
   emptyContainer,
   packProject,
   putSection,
@@ -137,5 +139,29 @@ describe('Projektdatei – packen und lesen', () => {
     const zip = packProject(emptyContainer(NOW))
     zip[zip.length - 30] ^= 0xff // Verzeichnis beschädigen
     expect(unpackProject(zip).ok).toBe(false)
+  })
+})
+
+describe('Projektdatei – Sicherungen', () => {
+  it('Name mit Zeitstempel', () => {
+    expect(backupName('Messe', new Date(2026, 9, 16, 8, 5, 9))).toBe('Messe-20261016-080509.mottul')
+  })
+
+  it('löscht nur ältere Sicherungen genau dieses Namens', () => {
+    const files = [
+      ...Array.from({ length: 12 }, (_, i) => backupName('Messe', new Date(2026, 9, i + 1, 10))),
+      ...Array.from({ length: 12 }, (_, i) =>
+        backupName('Messe-2026', new Date(2026, 9, i + 1, 10))
+      ),
+      'Messe.mottul',
+      'notiz.txt'
+    ]
+    const del = backupsToDelete(files, 'Messe', 10)
+    expect(del).toEqual([
+      backupName('Messe', new Date(2026, 9, 2, 10)),
+      backupName('Messe', new Date(2026, 9, 1, 10))
+    ])
+    expect(backupsToDelete(files, 'Messe-2026', 10)).toHaveLength(2)
+    expect(backupsToDelete(files, 'Messe', 20)).toEqual([])
   })
 })

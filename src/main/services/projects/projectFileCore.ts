@@ -106,6 +106,27 @@ export function packProject(c: ProjectContainer, now = new Date()): Buffer {
   return writeZip(entries, now)
 }
 
+/** Dateiname einer Sicherung: „<Name>-JJJJMMTT-hhmmss.mottul“ */
+export function backupName(name: string, d: Date): string {
+  const z = (n: number): string => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`
+  return `${name}-${stamp}.mottul`
+}
+
+/**
+ * Sicherungen genau dieses Namens, die über die letzten `keep` hinausgehen. Exakter Vergleich:
+ * „Messe“ darf nicht die Sicherungen von „Messe-2026“ mitzählen (und löschen).
+ */
+export function backupsToDelete(files: string[], name: string, keep: number): string[] {
+  return files
+    .filter(
+      (f) => f.startsWith(`${name}-`) && /^\d{8}-\d{6}\.mottul$/.test(f.slice(name.length + 1))
+    )
+    .sort()
+    .reverse()
+    .slice(keep)
+}
+
 export function sectionInfos(file: ProjectFileJson): ProjectSectionInfo[] {
   return Object.entries(file.abschnitte).map(([key, s]) => ({
     key,

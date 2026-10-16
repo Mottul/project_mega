@@ -28,6 +28,8 @@ import { writeFileAtomicAsync } from '../fsAtomic'
 import { logLine } from '../log'
 import { getSettings, setSettings } from '../store'
 import {
+  backupName,
+  backupsToDelete,
   emptyContainer,
   packProject,
   putSection,
@@ -157,23 +159,16 @@ export async function inspectTarget(p: string, section: string): Promise<Project
   }
 }
 
-function stamp(d: Date): string {
-  const z = (n: number): string => String(n).padStart(2, '0')
-  return `${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`
-}
-
 /** Bisherige Datei sichern; Fehler hier verhindern das Speichern nicht (nur Log). */
 async function backup(p: string, now: Date): Promise<void> {
   try {
     const dir = join(app.getPath('userData'), 'Sicherungen')
     await mkdir(dir, { recursive: true })
     const name = projectDisplayName(p)
-    await copyFile(p, join(dir, `${name}-${stamp(now)}.mottul`))
-    const mine = (await readdir(dir))
-      .filter((f) => f.startsWith(`${name}-`) && /-\d{8}-\d{6}\.mottul$/.test(f))
-      .sort()
-      .reverse()
-    for (const old of mine.slice(BACKUPS_PER_NAME)) await rm(join(dir, old), { force: true })
+    await copyFile(p, join(dir, backupName(name, now)))
+    for (const old of backupsToDelete(await readdir(dir), name, BACKUPS_PER_NAME)) {
+      await rm(join(dir, old), { force: true })
+    }
   } catch (err) {
     logLine('[projekte] Sicherung fehlgeschlagen:', p, String(err))
   }
