@@ -9,9 +9,10 @@ Rücksprachen am selben Tag, siehe [Festlegungen](#festlegungen); vor den späte
 [offenen Fragen](#offene-fragen) klären. Nach der Umsetzung in WERKZEUGE überführen und diesen
 Plan löschen.
 
-**Nächster Schritt: Phase 1.** Vorher die offenen Fragen 2–4 beantworten (Fehlerfälle,
-Firmenprofil, Kurzkarte). Phase 1 beginnt mit der Messung der 2-MB-Grenze im PDF-Weg und den
-Fotos in der Projektdatei (siehe [Phasen](#phasen)). Die Skizzen zu diesem Plan (Arbeitsplatz,
+**Nächster Schritt: Phase 1.** Die Fragen dafür sind am 16.10.2026 geklärt (Festlegungen 22–23,
+Fehlerfälle 5–18 abgeglichen); offen ist nur noch, wofür die Firmenfarbe dient (Frage 3). Phase 1
+beginnt mit der Messung der 2-MB-Grenze im PDF-Weg und den Fotos in der Projektdatei (siehe
+[Phasen](#phasen)). Die Skizzen zu diesem Plan (Arbeitsplatz,
 Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren) liegen als Artifact bei Matthias.
 
 Ein neues Werkzeug erzeugt Kurz-Anleitungen für die Leute vor Ort: wie man die LED-Wall
@@ -81,7 +82,8 @@ Aus der Rücksprache vom 16. Oktober 2026:
     Optional je Signalkette eine **Backup-Leitung** vom letzten Modul zum Prozessor, die im
     Fehlerfall greift – Redundanz ist nicht immer vorhanden, daher ab Werk aus.
 16. **Prozessoren im Bestand:** NovaStar NovaPro UHD Jr (496-2,0, rX3ioBF), NovaStar VX4S,
-    Brompton Tessera S8 (uS2+).
+    Brompton Tessera S8 (uS2+). Bei längeren Wegen läuft das Signal über Glasfaser zu einer
+    Breakout-Box (NovaStar CVT10) an der Wand.
 17. **Dateiendung** `.mottul` – bestätigt.
 18. **MadMapper 6** ist im Einsatz; sein OSC-Eingang ist ab Werk Port 8010. Die OSC-Steuerung
     sendet deshalb ab Werk an 8010 (umgesetzt am 16.10.2026; gespeicherte Einstellungen behalten
@@ -95,6 +97,11 @@ Aus der Rücksprache vom 16. Oktober 2026:
     Backup-Leitung zeigt nur ein „B“ am letzten Modul. Einspeisepunkte: **links, rechts, oben,
     unten, mittig** (Mitte der Kante bzw. der Wand). Aufteilungen sehen bei Signal und Strom
     **gleich** aus; Streifen laufen waagrecht (eine oder mehrere Reihen je Kette).
+22. **Kurzkarte:** A5, genau eine Seite (Rücksprache 16.10.2026; kein A4 zur Wahl).
+23. **Firmenprofil:** Logo (SVG, sonst PNG), Firmenfarbe (Hex) und Kontakte liegen bei Matthias
+    vor. Sie kommen **nicht ins Repo** – es ist öffentlich auf GitHub –, sondern werden einmal im
+    Firmenprofil geladen bzw. eingetragen. Ab Werk hat das Profil kein Logo und die gelbe
+    Papierfarbe der bestehenden PDFs.
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
 
@@ -433,8 +440,8 @@ Fehlerfälle, Pflegehinweise. Hier liegt der Gewinn – die zweite Anleitung dau
   (Kurznamen), LED-Wall-Kopie, Firmenprofil. Leere Platzhalter erscheinen in der Vorschau
   gestrichelt rot und in der Prüfung vor dem Export.
 
-**Firmenprofil** (Einstellung, Phase 1): Firmenname, Logo (Datei unter `userData`), Papierfarbe
-(Vorgabe das Gelb der bestehenden PDFs), Kontakte (Name, Funktion, Mobil, Büro, Mail,
+**Firmenprofil** (Einstellung, Phase 1): Firmenname, Logo (Datei unter `userData`, SVG oder PNG –
+nie im Repo, Festlegung 23), Papierfarbe (Vorgabe das Gelb der bestehenden PDFs), Kontakte (Name, Funktion, Mobil, Büro, Mail,
 Erreichbarkeit, WhatsApp ja/nein), Text zur Fernwartung. Je Projekt wählt man Ansprechpartner
 daraus. LED-Wall-Doku und Packliste nutzen dasselbe Profil (Kopf, Fußzeile).
 
@@ -512,8 +519,9 @@ Von Matthias genannt (16.10.2026), weitere folgen:
    eingefroren; alles danach fällt mit aus. Datenkabel zwischen letztem gutem und erstem
    gestörtem Modul tauschen – der Kabelverlauf zeigt welches. Hilft das nicht:
    Backbox/Empfangskarte des ersten gestörten Moduls (Technik). **Mit Backup-Leitung** bleibt die
-   Kette bei einem einzelnen Bruch hell, weil sie von hinten versorgt wird – dann meldet nur der
-   Prozessor die Umschaltung (Fall 14); dunkel wird es erst, wenn auch die Backup-Leitung fehlt.
+   Kette bei einem einzelnen Bruch hell, weil sie von hinten versorgt wird – dann zeigen nur der
+   Prozessor und beim 496-2,0 die Anzeige der Module die Umschaltung (Fall 14); dunkel wird es
+   erst, wenn auch die Backup-Leitung fehlt.
 2. **Sicherung der Stromzuleitung** – Block einer Stromkette ohne Strom. Sicherung/FI im Verteiler
    (Beschriftung je Stromkette aus dem Kabelverlauf), einmal wieder einschalten; fliegt sie
    erneut: nicht wiederholen, anrufen.
@@ -528,8 +536,9 @@ Von Matthias genannt (16.10.2026), weitere folgen:
    (FileVault verhindert die Anmeldung); Windows-Autologon und Autostart der Software;
    Energiesparen aus.
 
-Ergänzt aus der Recherche (Hersteller-Hilfen von Daktronics/NovaStar, Brompton, LEDitgo; vor der
-Übernahme in die Bibliothek mit der Praxis abgleichen):
+Ergänzt aus der Recherche (Hersteller-Hilfen von Daktronics/NovaStar, Brompton, LEDitgo) und
+zusammen mit 14–18 am 16.10.2026 mit der Praxis abgeglichen – Ergänzungen von Matthias bei 7, 9
+und 14:
 
 5. **Ganze Wand schwarz, keine Modul-LED** – kein Strom: Verteiler, Sicherung, FI (wie 2).
 6. **Sicherung fliegt beim Einschalten** – Einschaltstrom vieler Netzteile, LS-Schalter mit
@@ -537,11 +546,13 @@ Ergänzt aus der Recherche (Hersteller-Hilfen von Daktronics/NovaStar, Brompton,
    C-Charakteristik (Technik, Elektrofachkraft).
 7. **Ganze Wand schwarz, Module haben Strom** (Brompton-LED grün) – Prozessor aus, Datenkabel
    Prozessor → erstes Modul, Blackout/Freeze aktiv. Prozessor-Display ansehen, Testbild am
-   Prozessor auslösen.
+   Prozessor auslösen. **Mit Glasfaser-Strecke:** Breakout-Box (CVT10) ohne Strom oder defekt,
+   oder Glasfaserkabel defekt.
 8. **Testbild geht, Inhalt nicht** („kein Signal“) – Zuspieler aus oder im Ruhezustand, falscher
    Eingang, HDMI-Kabel, Auflösung passt nicht zur EDID des Eingangs.
 9. **Ein Modul andere Farbe/Helligkeit** (oft nach einem Tausch) – Kalibrierdaten fehlen oder
-   passen nicht. Technik: Kalibrierung neu senden; Konfiguration nur aus der Datei senden.
+   passen nicht. Erst die Helligkeit einmal ändern – das erledigt es meist. Sonst ist ein Module
+   Flash nötig (Technik); Konfiguration nur aus der Datei senden.
 10. **Bild verschoben, vertauscht, „kariert“** – Datenkabel am falschen Port oder vertauscht,
     Bildschirm-Konfiguration verloren, Ausgabe am Zuspieler verschoben. Kabel nach Kabelplan
     (Port-Nummern) prüfen, Preset/Konfiguration neu laden.
@@ -556,6 +567,10 @@ Weitere naheliegende Fälle (zweite Rücksprache):
 14. **Prozessor meldet Backup/Redundanz aktiv** – Bild in Ordnung, aber eine Kette läuft über die
     Backup-Leitung: ein Datenkabel oder eine Empfangskarte darin ist unterbrochen. Nicht sofort
     gefährlich, aber vor der nächsten Show suchen (Kabelverlauf zeigt die Kette). Betreuung/Technik.
+    **Beim 496-2,0** zeigt die Anzeige am Modul, welche Leitung es versorgt: blau = Main, leicht
+    violett = Backup. Die Unterbrechung liegt dann zwischen dem letzten blauen und dem ersten
+    violetten Modul der Kette – das kann auch die Stufe Bedienung eingrenzen (abgeleitet, im
+    Betrieb bestätigen).
 15. **Controller/Prozessor ohne Strom** – Display und LEDs aus: Netzkabel, Steckdosenleiste,
     Schalter, Sicherung des Racks.
 16. **Stream Deck/Bedienfeld reagiert nicht** – USB-Kabel, Software nicht gestartet, falsches
@@ -574,7 +589,8 @@ führt unabhängig von dieser Gliederung zum passenden Fall.
 Dazu ein Baustein **Status-LEDs**, der in Kapitel LED-Wall und als Hinweis in den Schritten
 erscheint: Brompton (uS2+) rot > 1 min nach dem Einschalten = Startfehler, grün = läuft, aber
 keine Verbindung zum Prozessor, blau = verbunden, gelb blinkend = Beacon, gelb = Testbild;
-NovaStar-Empfangskarte: rot dauerhaft = Strom, grün blinkend = Daten.
+NovaStar-Empfangskarte: rot dauerhaft = Strom, grün blinkend = Daten; Anzeige am 496-2,0: blau =
+Main-Leitung, leicht violett = Backup-Leitung.
 
 ### Bedienfelder
 
@@ -655,7 +671,7 @@ Anführungszeichen, das andere nicht).
   Tastenfelder nicht zerteilt (`break-inside: avoid`, im Probedruck prüfen), Fußzeile mit
   Projekt, Stand, Stufe und Seitenzahl (`displayHeaderFooter` mit `footerTemplate`), Logo im Kopf
   der ersten Seite. Ausgabe je Stufe. `<details>` für das PDF immer offen.
-- **Kurzkarte (PDF):** genau eine Seite (A4, A5 wählbar). printToPDF kann nicht „einpassen“:
+- **Kurzkarte (PDF):** genau eine Seite A5 (Festlegung 22). printToPDF kann nicht „einpassen“:
   nach dem Druck die Seiten mit pdfjs zählen (läuft im main schon für die Handbücher) und mit
   kleinerer `scale` neu drucken bzw. in der Prüfung warnen.
 - **HTML (offline):** eine einzige Datei, CSS und Bilder eingebettet, **funktioniert ohne
@@ -989,18 +1005,20 @@ erledigt).
 
 ## Offene Fragen
 
-Geklärt am 16. Oktober 2026 (Festlegungen 13–21): Verkabelungspraxis, Einspeisepunkt,
+Geklärt am 16. Oktober 2026 (Festlegungen 13–23): Verkabelungspraxis, Einspeisepunkt,
 Redundanz, IM-Anordnung und -Tausch, Prozessoren im Bestand, Dateiendung, MadMapper-Version und
-OSC-Port, Projektordner. Für Phase 0 ist nichts mehr offen. Später zu klären:
+OSC-Port, Projektordner, Kurzkarte, Firmenprofil; dazu der Abgleich der Fehlerfälle 5–18. Für
+Phase 0 und den Start von Phase 1 ist nichts mehr offen. Später zu klären:
 
 1. **Beispieldateien und Datenblätter** (Matthias sammelt; vor Phase 2 bzw. 3): exportiertes
    Stream-Deck-Profil (am besten je Gerät), Companion-Export, OBS-Szenensammlung, ein
    MadMapper-6-Projekt und ein Abzug seines OSCQuery-Baums (`http://<ip>:8010/?`),
    NovaLCT-Dateien, Datenblätter von NovaPro UHD Jr, VX4S und Tessera S8 (Ports, Kapazität,
    übliche Farbtiefe und Bildrate). Anonymisiert, kommen als Test-Fixtures ins Repo.
-2. **Weitere Fehlerfälle** aus der Praxis; Abgleich der Fälle 5–18 (vor Phase 1).
-3. **Firmenprofil:** Logo und Farbe von Megasound als Vorgabe? (Phase 1)
-4. **Kurzkarte** A4 oder A5? (Phase 1)
+2. **Weitere Fehlerfälle** aus der Praxis (laufend; der Abgleich der Fälle 5–18 ist erledigt).
+3. **Firmenfarbe:** nur für Überschriften und Linien, oder ersetzt sie das gelbe Papier? (Phase 1,
+   beim Firmenprofil; Logo, Farbwert und Kontakte bringt Matthias dann mit – Festlegung 23)
+4. ~~Kurzkarte A4 oder A5~~ – geklärt: A5 (Festlegung 22).
 5. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
    kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden? (Phase 3)
 6. **Kabelverlauf – Annahmen bestätigen** (vor Phase 2, aus Festlegung 21): „unten“ = Mitte der
