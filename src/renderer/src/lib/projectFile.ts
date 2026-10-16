@@ -196,7 +196,8 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
         if (await changedMeanwhile(snap)) return false
         return writeTo(path, res.sha256 || null, true, snap, data, afterWrite)
       }
-      if (choice === 1) return doSaveAs()
+      // festgehaltenen Stand mitgeben – bei „Leere anlegen“ also die leere Planung samt Zurücksetzen
+      if (choice === 1) return doSaveAs({ snap, data, afterWrite })
       return false
     }
     if (res.reason === 'fehlt' || res.reason === 'nicht-freigegeben') {
@@ -206,7 +207,7 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
         buttons: ['Speichern unter …', 'Abbrechen'],
         cancelId: 1
       })
-      return choice === 0 ? doSaveAs() : false
+      return choice === 0 ? doSaveAs({ snap, data, afterWrite }) : false
     }
     await notify(PROBLEM_TEXT[res.reason], path)
     return false
@@ -219,11 +220,16 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
     return writeTo(b.path, b.baseSha, false, snapshot())
   }
 
-  async function doSaveAs(): Promise<boolean> {
+  /** `carry`: Stand einer laufenden Aktion (Ausweg aus einem Konflikt), statt ihn neu zu nehmen. */
+  async function doSaveAs(carry?: {
+    snap: Snapshot
+    data: unknown
+    afterWrite?: () => void
+  }): Promise<boolean> {
     await commitPendingInput()
     const s = o.current.store.getState()
     const b = o.current.binding(s)
-    const snap = snapshot()
+    const snap = carry?.snap ?? snapshot()
     const t = await api.projects.chooseTarget(
       o.current.section,
       b?.name ?? o.current.suggestedName(s),
@@ -255,7 +261,7 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
       if (!ok) return false
     }
     if (await changedMeanwhile(snap)) return false
-    return writeTo(t.path, baseSha, force, snap)
+    return writeTo(t.path, baseSha, force, snap, carry ? carry.data : snap.data, carry?.afterWrite)
   }
 
   /** Vor dem Ersetzen des Arbeitsstands: ungespeicherte Änderungen sichern oder verwerfen? */
@@ -264,16 +270,20 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
     const b = o.current.binding(s)
     const unsaved = b ? digest(o.current.data(s)) !== b.savedDigest : !o.current.isEmpty(s)
     if (!unsaved) return true
+    const snap = snapshot()
     const choice = await api.choose({
       message: b
         ? `Änderungen an „${b.name}“ speichern?`
         : `Die aktuelle ${o.current.label} ist in keiner Datei gespeichert.`,
-      detail: b ? undefined : o.current.describe(o.current.data(s)),
+      detail: b ? undefined : o.current.describe(snap.data),
       buttons: [b ? 'Speichern' : 'Speichern unter …', 'Verwerfen', 'Abbrechen'],
       cancelId: 2
     })
+    if (choice !== 0 && choice !== 1) return false
+    // auch hier: „Verwerfen“ darf nicht wegwerfen, was ein anderes Fenster inzwischen geöffnet hat
+    if (await changedMeanwhile(snap)) return false
     if (choice === 0) return b ? doSave() : doSaveAs()
-    return choice === 1
+    return true
   }
 
   async function doOpen(path?: string): Promise<void> {
@@ -313,7 +323,10 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
     }
     if (await changedMeanwhile(snap)) return
     if (!o.current.apply(r.section.data, r.section.version)) {
-      await notify(PROBLEM_TEXT.kaputt, r.path)
+      await notify(
+        `Die ${o.current.label} in der Datei lässt sich nicht übernehmen (beschädigt oder unmöglich groß).`,
+        r.path
+      )
       return
     }
     o.current.setBinding({
@@ -352,7 +365,7 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
     newFile: () => exclusive(doNew, undefined),
     open: (path) => exclusive(() => doOpen(path), undefined),
     save: () => exclusive(doSave, false),
-    saveAs: () => exclusive(doSaveAs, false)
+    saveAs: () => exclusive(() => doSaveAs(), false)
   }
 
   // Strg+S, Strg+Umschalt+S, Strg+O (Cmd am Mac)

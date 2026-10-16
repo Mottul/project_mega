@@ -3,7 +3,7 @@
 // settings.json und die Projektdateien.
 
 import { closeSync, fsyncSync, openSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { open, rename, rm, writeFile } from 'node:fs/promises'
+import { link, open, rename, rm, writeFile } from 'node:fs/promises'
 import { logLine } from './log'
 
 let seq = 0
@@ -60,8 +60,8 @@ async function renameWithRetry(tmp: string, file: string): Promise<void> {
   await rename(tmp, file)
 }
 
-/** Wie writeFileAtomic, ohne den main-Prozess zu blockieren (große Projektdateien). */
-export async function writeFileAtomicAsync(file: string, data: Uint8Array): Promise<void> {
+/** Inhalt vollständig in eine neue Nachbardatei schreiben (oder sie bei einem Fehler entfernen). */
+async function writeTmp(file: string, data: Uint8Array): Promise<string> {
   const tmp = tmpName(file)
   const fh = await open(tmp, 'w')
   try {
@@ -75,6 +75,12 @@ export async function writeFileAtomicAsync(file: string, data: Uint8Array): Prom
     await rm(tmp, { force: true }).catch(() => {})
     throw err
   }
+  return tmp
+}
+
+/** Wie writeFileAtomic, ohne den main-Prozess zu blockieren (große Projektdateien). */
+export async function writeFileAtomicAsync(file: string, data: Uint8Array): Promise<void> {
+  const tmp = await writeTmp(file, data)
   try {
     await renameWithRetry(tmp, file)
   } catch (err) {
@@ -87,19 +93,32 @@ export async function writeFileAtomicAsync(file: string, data: Uint8Array): Prom
   }
 }
 
+/** Fehler von link(), wenn das Dateisystem keine Hardlinks kann (FAT/exFAT-Stick, manche SMB-Freigaben). */
+const NO_HARDLINK = new Set(['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'ENOSYS', 'EXDEV', 'EINVAL'])
+
 /**
  * Neue Datei anlegen – nie eine vorhandene ersetzen: Gibt es sie inzwischen doch (Kollege auf dem
- * NAS), scheitert das mit EEXIST. Bricht das Schreiben ab, wird die halbe Datei wieder entfernt.
+ * NAS), scheitert das mit EEXIST. Geschrieben wird erst vollständig in die Nachbardatei; unter dem
+ * Zielnamen erscheint sie erst fertig (link ist atomar). Bricht das Schreiben ab, bleibt am
+ * Zielpfad nichts Halbes liegen, das ihn bis zum Löschen von Hand sperrte.
  */
 export async function writeNewFileAsync(file: string, data: Uint8Array): Promise<void> {
-  const fh = await open(file, 'wx')
+  const tmp = await writeTmp(file, data)
   try {
-    await fh.writeFile(data)
-    await fh.sync()
-  } catch (err) {
-    await fh.close().catch(() => {})
-    await rm(file, { force: true }).catch(() => {})
-    throw err
+    try {
+      await link(tmp, file)
+    } catch (err) {
+      if (!NO_HARDLINK.has((err as NodeJS.ErrnoException).code ?? '')) throw err
+      // ohne Hardlinks: Namen exklusiv reservieren (leer), dann die fertige Datei darüberlegen
+      await (await open(file, 'wx')).close()
+      try {
+        await renameWithRetry(tmp, file)
+      } catch (renameErr) {
+        await rm(file, { force: true }).catch(() => {}) // nur die eigene, leere Reservierung
+        throw renameErr
+      }
+    }
+  } finally {
+    await rm(tmp, { force: true }).catch(() => {})
   }
-  await fh.close()
 }

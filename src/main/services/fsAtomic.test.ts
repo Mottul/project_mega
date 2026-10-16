@@ -1,5 +1,13 @@
-import { fsyncSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { rename, writeFile } from 'node:fs/promises'
+import {
+  existsSync,
+  fsyncSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
+import { link, open, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -11,10 +19,17 @@ vi.mock('node:fs', async (importOriginal) => {
 })
 vi.mock('node:fs/promises', async (importOriginal) => {
   const m = await importOriginal<typeof import('node:fs/promises')>()
-  return { ...m, rename: vi.fn(m.rename), writeFile: vi.fn(m.writeFile) }
+  return {
+    ...m,
+    link: vi.fn(m.link),
+    open: vi.fn(m.open),
+    rename: vi.fn(m.rename),
+    rm: vi.fn(m.rm),
+    writeFile: vi.fn(m.writeFile)
+  }
 })
 
-const { writeFileAtomic, writeFileAtomicAsync } = await import('./fsAtomic')
+const { writeFileAtomic, writeFileAtomicAsync, writeNewFileAsync } = await import('./fsAtomic')
 
 const fail = (code: string): Error => Object.assign(new Error(`${code}: simuliert`), { code })
 let dir = ''
@@ -57,5 +72,46 @@ describe('atomar schreiben', () => {
     vi.mocked(rename).mockReset()
     expect(readFileSync(file, 'utf8')).toBe('neu')
     expect(readdirSync(dir)).toEqual(['Messe.mottul'])
+  })
+})
+
+describe('neue Datei exklusiv anlegen', () => {
+  it('legt an; gibt es die Datei schon, EEXIST und sie bleibt unverändert', async () => {
+    const file = join(dir, 'Neu.mottul')
+    await writeNewFileAsync(file, Buffer.from('eins'))
+    expect(readFileSync(file, 'utf8')).toBe('eins')
+    await expect(writeNewFileAsync(file, Buffer.from('zwei'))).rejects.toMatchObject({
+      code: 'EEXIST'
+    })
+    expect(readFileSync(file, 'utf8')).toBe('eins')
+    expect(readdirSync(dir)).toEqual(['Neu.mottul'])
+  })
+
+  it('bricht das Schreiben ab (Netzlaufwerk weg), liegt am Zielpfad nichts Halbes', async () => {
+    const file = join(dir, 'Abbruch.mottul')
+    const real = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+    // die Datei entsteht, das Schreiben bricht ab – und auch das Aufräumen scheitert
+    vi.mocked(open).mockImplementationOnce(async (path, flags) => {
+      const fh = await real.open(path, flags)
+      return {
+        writeFile: async () => {
+          await fh.close()
+          throw fail('EIO')
+        },
+        sync: async () => {},
+        close: async () => {}
+      } as unknown as Awaited<ReturnType<typeof open>>
+    })
+    vi.mocked(rm).mockRejectedValueOnce(fail('EIO'))
+    await expect(writeNewFileAsync(file, Buffer.from('x'))).rejects.toThrow('EIO')
+    expect(existsSync(file)).toBe(false)
+  })
+
+  it('ohne Hardlinks (FAT, manche Freigaben): reservieren und darüberlegen', async () => {
+    const file = join(dir, 'Stick.mottul')
+    vi.mocked(link).mockRejectedValueOnce(fail('EPERM'))
+    await writeNewFileAsync(file, Buffer.from('fertig'))
+    expect(readFileSync(file, 'utf8')).toBe('fertig')
+    expect(readdirSync(dir)).toEqual(['Stick.mottul'])
   })
 })

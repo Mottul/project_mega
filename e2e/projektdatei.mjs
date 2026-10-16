@@ -55,25 +55,28 @@ function crc32(buf) {
   return (crc ^ 0xffffffff) >>> 0
 }
 
-/** Projektdatei eines Kollegen mit nur einer Anleitung (ohne LED-Wall) – ZIP ohne Kompression */
-function writeForeignProject(path) {
+const section = (data) => ({
+  version: 1,
+  rev: 3,
+  sha256: 'a'.repeat(64),
+  geaendert: '2026-10-16T10:00:00.000Z',
+  fotos: [],
+  data
+})
+
+/** Projektdatei eines Kollegen mit einer Anleitung (ohne LED-Wall, außer `ledWall` ist gesetzt) –
+ *  als ZIP ohne Kompression */
+function foreignProject(ledWall) {
   const name = Buffer.from('projekt.json')
+  const abschnitte = { anleitung: section({ titel: 'So bedienst du deine LED-Wall' }) }
+  if (ledWall) abschnitte.ledWall = section(ledWall)
   const data = Buffer.from(
     JSON.stringify({
       app: 'mottulbox',
       type: 'projektdatei',
       version: 1,
       geaendert: '2026-10-16T10:00:00.000Z',
-      abschnitte: {
-        anleitung: {
-          version: 1,
-          rev: 3,
-          sha256: 'a'.repeat(64),
-          geaendert: '2026-10-16T10:00:00.000Z',
-          fotos: [],
-          data: { titel: 'So bedienst du deine LED-Wall' }
-        }
-      }
+      abschnitte
     })
   )
   const crc = crc32(data)
@@ -101,8 +104,10 @@ function writeForeignProject(path) {
   end.writeUInt16LE(1, 10)
   end.writeUInt32LE(central.length + name.length, 12)
   end.writeUInt32LE(cdOffset, 16)
-  writeFileSync(path, Buffer.concat([local, name, data, central, name, end]))
+  return Buffer.concat([local, name, data, central, name, end])
 }
+
+const writeForeignProject = (path, ledWall) => writeFileSync(path, foreignProject(ledWall))
 
 try {
   await runSteps('Projektdatei', [
@@ -320,6 +325,83 @@ try {
           await drawer().getByRole('textbox', { name: 'Projektname' }).inputValue(),
           'Messe Dornbirn'
         )
+      }
+    ],
+    [
+      '„Leere anlegen“, Konflikt, „Speichern unter …“: die neue Datei bekommt die leere Planung',
+      async () => {
+        const foreign = join(dir, 'Kollege2.mottul')
+        const target = join(dir, 'Leer.mottul')
+        writeForeignProject(foreign)
+        await app.evaluate(
+          ({ dialog }, { open, save }) => {
+            dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [open] })
+            dialog.showSaveDialog = async () => ({ canceled: false, filePath: save })
+          },
+          { open: foreign, save: target }
+        )
+        await answer([1, 1]) // „Leere anlegen“, dann im Konflikt „Speichern unter …“
+        // Während der Rückfrage legt ein Kollege eine LED-Wall-Planung in die Datei
+        const withWall = [...foreignProject({ projectName: 'Kollege' })]
+        await app.evaluate(
+          ({ dialog }, { path, bytes }) => {
+            const fs = process.getBuiltinModule('node:fs')
+            const recordAndAnswer = dialog.showMessageBox
+            dialog.showMessageBox = async (...args) => {
+              const o = args[args.length - 1]
+              if (/enthält noch keine/.test(o.message)) fs.writeFileSync(path, Buffer.from(bytes))
+              return recordAndAnswer(...args)
+            }
+          },
+          { path: foreign, bytes: withWall }
+        )
+        await menu(/^Öffnen/)
+        await chip().getByText('Leer').waitFor({ timeout: 10_000 })
+        const [, conflict] = await asked()
+        assert.match(conflict, /in „Kollege2“ wurde inzwischen anderswo geändert/)
+        assert.equal((await openSection(target)).section.data.projectName, '')
+        assert.equal((await openSection(foreign)).section.data.projectName, 'Kollege')
+        assert.equal(await drawer().getByRole('textbox', { name: 'Projektname' }).inputValue(), '')
+        assert.equal(await chip().getByLabel('ungespeichert').count(), 0)
+      }
+    ],
+    [
+      'Neu: „Verwerfen“ wirft nicht weg, was ein anderes Fenster inzwischen geändert hat',
+      async () => {
+        await drawer()
+          .getByLabel(/^Breite/)
+          .fill('9')
+        await chip().getByLabel('ungespeichert').waitFor({ timeout: 5_000 })
+        await page.waitForTimeout(800) // gemerkter Stand ist geschrieben (debouncedStorage)
+        await answer([1]) // „Verwerfen“
+        // Während der Rückfrage ändert ein zweites Fenster die Planung (Abgleich über localStorage)
+        await app.evaluate(({ dialog, BrowserWindow }) => {
+          const recordAndAnswer = dialog.showMessageBox
+          dialog.showMessageBox = async (...args) => {
+            const o = args[args.length - 1]
+            if (/speichern\?$/.test(o.message)) {
+              await BrowserWindow.getAllWindows()[0].webContents.executeJavaScript(`(() => {
+                const key = 'led-wall-konfigurator'
+                const v = JSON.parse(localStorage.getItem(key))
+                v.state.projectName = 'Anderes Fenster'
+                const newValue = JSON.stringify(v)
+                localStorage.setItem(key, newValue)
+                window.dispatchEvent(new StorageEvent('storage', { key, newValue, storageArea: localStorage }))
+              })()`)
+              await new Promise((r) => setTimeout(r, 300))
+            }
+            return recordAndAnswer(...args)
+          }
+        })
+        await menu('Neu')
+        assert.ok(await waitFor(async () => (await asked()).length === 2, 10_000))
+        const [, warning] = await asked()
+        assert.match(warning, /in einem anderen Fenster geändert/)
+        assert.equal(
+          await drawer().getByRole('textbox', { name: 'Projektname' }).inputValue(),
+          'Anderes Fenster'
+        )
+        await chip().getByText('Leer').waitFor({ timeout: 5_000 })
       }
     ],
     [

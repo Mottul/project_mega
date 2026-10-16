@@ -11,6 +11,7 @@ vi.stubGlobal('window', { addEventListener: () => {}, removeEventListener: () =>
 const { migrateLedWall, ledWallDirty, useLedWall } = await import('./store')
 const { DEFAULT_LED_WALL_CONFIG, ledWallSection } = await import('./config')
 const { digest } = await import('@shared/projectFile')
+const { LED_WALL_FILE } = await import('./fileSection')
 
 const v1Planung = {
   moduleKey: '496-2,0',
@@ -149,5 +150,35 @@ describe('gemerkter Stand des LED-Wall-Konfigurators', () => {
         .pwr.flat()
         .every((v) => v === 0)
     ).toBe(true)
+  })
+
+  it('Tippfehler in Breite und Höhe blähen das Gedächtnis nicht auf', () => {
+    const grid = Array.from({ length: 5 }, () => Array(8).fill(0))
+    useLedWall.getState().replaceConfig({ ...DEFAULT_LED_WALL_CONFIG })
+    useLedWall.getState().set({ sig: grid, pwr: grid.map((r) => [...r]) })
+    const started = performance.now()
+    // 4000 statt 4 m Breite, korrigiert; dann 2500 statt 2,5 m Höhe, korrigiert
+    for (const [rows, cols] of [
+      [5, 8065],
+      [5, 8],
+      [5040, 8],
+      [5, 8],
+      [5, 9]
+    ]) {
+      useLedWall.getState().ensureGridSize(rows, cols)
+    }
+    expect(performance.now() - started).toBeLessThan(1000)
+    expect(useLedWall.getState().sig).toEqual(grid.map((r) => [...r, -1]))
+  })
+
+  it('fremde Datei mit unmöglich großer Wand wird nicht übernommen', () => {
+    useLedWall.getState().replaceConfig({ ...DEFAULT_LED_WALL_CONFIG, projectName: 'bleibt' })
+    expect(LED_WALL_FILE.apply({ widthM: '500000' }, 2)).toBe(false)
+    const builder = Array.from({ length: 30 }, () => ({ type: 'straight', count: 40 }))
+    expect(
+      LED_WALL_FILE.apply({ moduleKey: 'uS2+', curveMode: 'builder', builderSegs: builder }, 2)
+    ).toBe(true) // 1200 Module zusammen: Builder fällt auf die Vorgabe zurück
+    expect(useLedWall.getState().builderSegs).toEqual(DEFAULT_LED_WALL_CONFIG.builderSegs)
+    expect(LED_WALL_FILE.apply({ widthM: '40' }, 2)).toBe(true)
   })
 })

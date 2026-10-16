@@ -16,7 +16,7 @@ import {
 import { dirname, isAbsolute } from 'node:path'
 import type { DialogDirKind } from '@shared/types'
 import { dialogStartPath } from './dialogStartPath'
-import { projectsDirInfo } from './projects/projectsDir'
+import { ensureProjectsDir } from './projects/projectsDir'
 import { isDirReachable } from './reachableDir'
 import { getSettings, setSettings } from './store'
 
@@ -25,13 +25,14 @@ async function reachable(dir: unknown): Promise<boolean> {
   return typeof dir === 'string' && isAbsolute(dir) && (await isDirReachable(dir))
 }
 
-/** Gemerkter Ordner; Projektdateien starten ohne gemerkten Ordner im Projektordner. */
+/**
+ * Gemerkter Ordner. Projektdateien ohne erreichbaren gemerkten Ordner starten im Projektordner –
+ * ist auch der nicht erreichbar (Netzlaufwerk weg), im Standardordner, wie es die Einstellungen
+ * ankündigen (sonst öffnete Electron „Downloads“).
+ */
 async function rememberedDir(kind: DialogDirKind): Promise<unknown> {
   const dir = getSettings().dialogDirs[kind]
-  if (kind === 'projekte' && !(await reachable(dir))) {
-    const info = await projectsDirInfo()
-    return info.exists ? info.path : dir
-  }
+  if (kind === 'projekte' && !(await reachable(dir))) return ensureProjectsDir().catch(() => dir)
   return dir
 }
 

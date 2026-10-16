@@ -127,10 +127,10 @@ const FEEDS: Feed[] = ['left', 'right', 'top', 'bottom', 'center']
 const CORNERS: Corner[] = ['tl', 'tr', 'bl', 'br']
 const PROCESSORS: ProcessorModel[] = ['novapro-uhd-jr', 'vx4s', 'tessera-s8', 'frei']
 /**
- * Größtes Raster je Seite (Spalten bzw. Reihen) – auch Obergrenze für Builder-Module. Breite und
- * Höhe sind in der Oberfläche frei, die App erzeugt also selbst große Raster (100 m Wand = 202
- * Spalten); diese Grenze schützt nur die Prüfung. Die Gesamtgröße deckelt die Abschnittsgrenze der
- * Projektdatei (PROJECT_LIMITS.sectionDataBytes).
+ * Größtes Raster je Seite (Spalten bzw. Reihen) – auch Obergrenze für alle Builder-Module
+ * zusammen. Breite und Höhe sind in der Oberfläche frei, die App erzeugt also selbst große Raster
+ * (100 m Wand = 202 Spalten). Eine Datei, deren Maße eine größere Wand ergeben, öffnet das Werkzeug
+ * nicht (fileSection.ts) – sonst legte eine kleine fremde Datei Millionen Module an.
  */
 export const GRID_SIDE_MAX = 1000
 const LIMITS = { gridSide: GRID_SIDE_MAX, chains: 999, orderLen: 40_000, meta: 400, label: 40 }
@@ -181,7 +181,7 @@ function builderSegs(v: unknown): BuilderSegment[] | undefined {
       out.push({ type: 'curved', count, angle: Math.min(raw, count * 45), dir })
     } else return undefined
   }
-  return out
+  return out.reduce((n, s) => n + s.count, 0) <= LIMITS.gridSide ? out : undefined
 }
 
 function route(v: Obj): ChainRoute {

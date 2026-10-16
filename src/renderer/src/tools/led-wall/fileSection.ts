@@ -7,6 +7,7 @@ import { computeWall } from './compute'
 import {
   DEFAULT_LED_WALL_CONFIG,
   describePlanning,
+  GRID_SIDE_MAX,
   isDefaultPlanning,
   LED_WALL_SECTION_VERSION,
   ledWallSection,
@@ -35,7 +36,12 @@ export const LED_WALL_FILE: ProjectFileOptions<State> = {
   apply: (data) => {
     if (!data || typeof data !== 'object') return false
     // Version 1 und 2 haben dieselbe Grundform; fehlende Felder ergänzt sanitize
-    useLedWall.getState().replaceConfig(withFittedGrids(sanitizeLedWallConfig(data)))
+    const c = sanitizeLedWallConfig(data)
+    // Maße aus einer fremden Datei, die eine riesige Wand ergeben (500000 m), nicht anlegen –
+    // der Renderer hinge an Millionen Modulen
+    const d = computeWall(c)
+    if (!(d.rows <= GRID_SIDE_MAX && d.cols <= GRID_SIDE_MAX)) return false
+    useLedWall.getState().replaceConfig(withFittedGrids(c))
     return true
   },
   reset: () => useLedWall.getState().replaceConfig(withFittedGrids(DEFAULT_LED_WALL_CONFIG)),
