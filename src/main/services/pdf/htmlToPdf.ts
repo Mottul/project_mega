@@ -9,11 +9,16 @@
 // (data:-Bilder laufen ohne Anfrage). Ein Bild von einem Server oder einer UNC-Freigabe
 // (file://server/…, unter Windows mit Anmeldeversuch) aus einer fremden Projektdatei wird so nie
 // angefragt. Ohne JavaScript und ohne Preload: Ein Name aus der Planung kann nie als Skript laufen.
+//
+// Fotos schickt der Renderer nur als Adresse foto://bild/<hash> (wie in der Vorschau); hier
+// kommen sie als Kopie in den Temp-Ordner, und die Adresse wird relativ.
 
 import { app, BrowserWindow, session } from 'electron'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { fotoHashesIn, replaceFotoUrls } from '@shared/fotos'
 import type { PdfPageOptions } from '@shared/types'
+import { findFoto } from '../fotos/fotoStore'
 import { logLine } from '../log'
 import { fileUrlInDir } from './fileUrlInDir'
 
@@ -29,6 +34,25 @@ function installRequestFilter(): void {
     if (!ok) logLine('[pdf] Anfrage gesperrt:', details.url.slice(0, 200))
     callback({ cancel: !ok })
   })
+}
+
+/** Benutzte Fotos nach `dir/fotos` kopieren; liefert das HTML mit relativen Adressen. */
+async function withFotos(html: string, dir: string): Promise<string> {
+  const hashes = fotoHashesIn(html)
+  if (!hashes.length) return html
+  await mkdir(join(dir, 'fotos'))
+  const rel = new Map<string, string>()
+  for (const hash of hashes) {
+    const found = await findFoto(hash)
+    if (!found) {
+      logLine('[pdf] Foto fehlt:', hash) // bleibt als foto://-Adresse stehen und wird gesperrt
+      continue
+    }
+    const name = `${hash}.${found.ext}`
+    await copyFile(found.path, join(dir, 'fotos', name))
+    rel.set(hash, `fotos/${name}`)
+  }
+  return replaceFotoUrls(html, (hash) => rel.get(hash) ?? null)
 }
 
 export async function htmlToPdf(html: string, page: PdfPageOptions = {}): Promise<Buffer> {
@@ -47,7 +71,7 @@ export async function htmlToPdf(html: string, page: PdfPageOptions = {}): Promis
   })
   try {
     const file = join(dir, 'seite.html')
-    await writeFile(file, html, 'utf8')
+    await writeFile(file, await withFotos(html, dir), 'utf8')
     await win.loadFile(file)
     return await win.webContents.printToPDF({
       printBackground: true,

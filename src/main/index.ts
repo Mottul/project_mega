@@ -2,7 +2,9 @@ import { app, BrowserWindow, protocol } from 'electron'
 import { existsSync, renameSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { PREVIOUS_APP_NAMES } from '@shared/brand'
+import { FOTO_PROTOCOL } from '@shared/fotos'
 import { JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
+import { registerFotoProtocol } from './ipc/fotos.handlers'
 import {
   registerIpcHandlers,
   registerJingleProtocol,
@@ -67,7 +69,9 @@ protocol.registerSchemesAsPrivileged([
   {
     scheme: JINGLE_PROTOCOL,
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
-  }
+  },
+  // Fotos der Projektdateien (foto://bild/<hash>), nur für <img>
+  { scheme: FOTO_PROTOCOL, privileges: { standard: true, secure: true } }
 ])
 
 // Einmalige userData-Übernahme nach der Umbenennung: heißt der App-Ordner neu
@@ -117,6 +121,7 @@ app.whenReady().then(() => {
   registerManualProtocol()
   registerMediaProtocol()
   registerJingleProtocol()
+  registerFotoProtocol()
   registerIpcHandlers()
   createMainWindow()
   checkOnStartup() // yt-dlp im Hintergrund prüfen, sobald das Fenster steht

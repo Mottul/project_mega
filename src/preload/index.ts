@@ -170,6 +170,10 @@ const api: ToolboxApi = {
     save: (request) => ipcRenderer.invoke(Channels.projectsSave, request)
   },
 
+  fotos: {
+    pick: () => ipcRenderer.invoke(Channels.fotosPick)
+  },
+
   jingles: {
     import: (paths) => ipcRenderer.invoke(Channels.jingleImport, paths),
     cleanup: (keep) => ipcRenderer.invoke(Channels.jingleCleanup, keep),

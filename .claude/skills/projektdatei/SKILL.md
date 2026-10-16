@@ -65,7 +65,13 @@ der LED-Wall-Konfigurator (`tools/led-wall/config.ts`, `store.ts`, `fileSection.
   fest (`snapshot`), schreibt genau diese und bricht nach einer Rückfrage ab, wenn ein anderes
   Fenster inzwischen etwas geändert hat (`changedMeanwhile`). Zurücksetzen erst nach Erfolg.
 - **Fotos nie in einen persistierten Store** (`debouncedStorage` verschluckt „Speicher voll“) –
-  sie liegen im main, über IPC laufen nur Hashes (Phase 1 des Plans).
+  sie liegen im main unter ihrem sha256 (`services/fotos/fotoStore.ts`, `userData/Projektfotos`),
+  im Werkzeug steht nur der Hash. Einfügen: `api.fotos.pick()` (verkleinert auf 2000 px, nach
+  EXIF aufgerichtet, ohne Metadaten); anzeigen: `<img src={fotoUrl(hash)}>` (`shared/fotos.ts`,
+  auch in HTML für das PDF – main setzt die Bilder dort ein). Dem Hook die benutzten Hashes
+  geben (`fotos: (data) => [...]`): Speichern holt sie aus dem Foto-Speicher in die Datei
+  (`'foto-fehlt'`, wenn eines nirgends liegt), Öffnen legt sie wieder dort ab – nur, wenn der
+  Inhalt zum Hash passt.
 - Gepufferte Felder (`useDraft`) übernehmen beim Verlassen – der Hook nimmt vor Speichern,
   Öffnen und Neu den Fokus weg (Tastenkürzel tun das nicht von selbst); eigene Wege genauso.
 - Rückfragen mit mehr als Ja/Nein über `api.choose` (Knöpfe, `cancelId`).

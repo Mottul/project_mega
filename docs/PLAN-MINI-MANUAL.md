@@ -10,8 +10,9 @@ Rücksprachen am selben Tag, siehe [Festlegungen](#festlegungen); vor den späte
 Plan löschen.
 
 **Nächster Schritt: Phase 1.** Die Fragen dafür sind am 16.10.2026 geklärt (Festlegungen 22–23,
-Fehlerfälle 5–18 abgeglichen). Erledigt: Messung der 2-MB-Grenze und neuer PDF-Weg (siehe
-[Ausgaben](#ausgaben)). Als Nächstes die Fotos in der Projektdatei (siehe [Phasen](#phasen)).
+Fehlerfälle 5–18 abgeglichen). Erledigt (16.10.2026): Messung der 2-MB-Grenze und neuer PDF-Weg
+(siehe [Ausgaben](#ausgaben)), Fotos in der Projektdatei (siehe [Sicherheit](#sicherheit)). Als
+Nächstes das Werkzeug selbst (siehe [Phasen](#phasen)).
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.
 
@@ -344,10 +345,19 @@ Projektdateien kommen von Kollegen oder per Mail – fremde Eingaben:
   `writeFileAtomic` aus `src/main/services/store.ts` herauslösen, mit eindeutigem tmp-Namen
   (heute fest `.tmp`) und Warteschlange je Pfad (unter Windows Groß-/Kleinschreibung
   normalisieren).
-- Fotos bleiben im main (Arbeitsordner je Datei unter `userData`), der Renderer zeigt sie über ein
-  eigenes Protokoll (Eintrag in `img-src` der App-CSP und in SICHERHEIT, Skill `ipc-kanal`).
-  Über IPC laufen nur Hashes, keine MB-Strings. **Nie Fotos in einen persistierten Store:**
-  `debouncedStorage` verschluckt „Speicher voll“ still.
+- Fotos bleiben im main, der Renderer zeigt sie über ein eigenes Protokoll (Eintrag in `img-src`
+  der App-CSP und in SICHERHEIT, Skill `ipc-kanal`). Über IPC laufen nur Hashes, keine
+  MB-Strings. **Nie Fotos in einen persistierten Store:** `debouncedStorage` verschluckt
+  „Speicher voll“ still. **Umgesetzt (16.10.2026)** mit einer Abweichung: statt eines
+  Arbeitsordners je Datei ein gemeinsamer Foto-Speicher `userData/Projektfotos/<sha256>.<jpg|png>`
+  (`src/main/services/fotos/fotoStore.ts`) – gleiche Fotos liegen einmal da, und ein Werkzeug ohne
+  gebundene Datei behält seine Fotos über einen Neustart. Einfügen über `api.fotos.pick()`
+  (Electrons nativeImage ignoriert die EXIF-Ausrichtung – gemessen –, deshalb dreht die App
+  selbst; beim Neukodieren fallen GPS & Co. weg), Anzeige über `foto://bild/<hash>`, Speichern
+  holt die Fotos aus dem Speicher in die Datei, Öffnen legt sie zurück (nur bei passendem Hash);
+  geprüft in `e2e/fotos.mjs`. **Offen:** Aufräumen des Foto-Speichers (heute wächst er nur) –
+  z. B. Fotos löschen, die seit 180 Tagen weder eingefügt noch geöffnet wurden und in keinem
+  Arbeitsstand stehen.
 - **Zugangsdaten** stehen im Klartext in der Datei. Felder sind als „geheim“ markiert; beim
   Export wählt man drucken, schwärzen oder „wird separat übergeben“. Die Stufe Bedienung enthält
   standardmäßig keine Passwörter. Hinweis in SICHERHEIT.md.
@@ -700,9 +710,9 @@ rund 1,5 MB HTML, weil `encodeURIComponent` base64 um gut ein Drittel verlänger
 temporäre Datei mit `loadFile` liefen 60 MB HTML in 3 s. Der Druck steckt jetzt in
 `src/main/services/pdf/htmlToPdf.ts`: Temp-Ordner je Export, eigene flüchtige Partition, deren
 Anfragefilter nur Dateien aus diesem Ordner durchlässt (`data:`-Bilder brauchen keine Anfrage),
-Optionsobjekt `{ pageSize: 'A4' | 'A5', landscape }`; geprüft in `e2e/pdf.mjs`. Noch offen:
-Fotos über ihre Hashes (der main legt sie in den Temp-Ordner, das HTML verweist relativ),
-`footer` fürs Handbuch und die Seitenzählung der Kurzkarte. Schriften: Heute nutzen die PDFs
+Optionsobjekt `{ pageSize: 'A4' | 'A5', landscape }`; geprüft in `e2e/pdf.mjs`. Fotos stehen
+im HTML als `foto://bild/<hash>`; der main kopiert sie in den Temp-Ordner und macht die Adressen
+relativ. Noch offen: `footer` fürs Handbuch und die Seitenzählung der Kurzkarte. Schriften: Heute nutzen die PDFs
 Systemschriften und sehen je Betriebssystem anders aus; eine eingebettete Schrift (`@font-face`
 als data:-URI) im Probedruck prüfen.
 
@@ -924,7 +934,7 @@ Neue Dateien sind hier ohne Backticks genannt (`npm run check:refs` prüft nur V
 
 - services/projects/: ZIP lesen/schreiben (reine Funktionen auf Buffern, getestet), Abschnitt
   speichern mit `baseSha`-Prüfung, Warteschlange je Pfad und atomarem Schreiben, sha256,
-  Foto-Arbeitsordner, Sicherungen, „zuletzt geöffnet“.
+  Sicherungen, „zuletzt geöffnet“; services/fotos/ (umgesetzt): Foto-Speicher, Einfügen.
 - ipc/projects.handlers.ts (Skill `ipc-kanal`, Registrierung in `registry.ts`): öffnen (mit
   Pfad), Abschnitt speichern, speichern unter, Foto einfügen/holen, Projektordner-Info; Protokoll
   für Fotos.
@@ -955,7 +965,7 @@ Jede Phase ist für sich nutzbar.
 | Phase | Inhalt | Ergebnis |
 |---|---|---|
 | **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
-| **1 Mini-Manual, erste Fassung** | Zuerst: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Arbeitsordner im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
+| **1 Mini-Manual, erste Fassung** | Zuerst ✅: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Foto-Speicher im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
 | **2 Kabelverlauf** | Einspeisepunkt (nicht gezeichnet) und Zuleitungslängen, Schnellwahl der Aufteilung, Startecke, Richtung, Handkorrektur und Kette zeichnen, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |

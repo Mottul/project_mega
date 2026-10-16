@@ -164,7 +164,10 @@ export type PutResult =
   | { ok: true; file: ProjectFileJson; section: ProjectSection; changed: boolean }
   | { ok: false; reason: 'konflikt' | 'neuer'; rev: number; sha256: string }
 
-/** Abschnitt einsetzen (liefert eine neue Datei-Beschreibung, die alte bleibt unverändert). */
+/**
+ * Abschnitt einsetzen (liefert eine neue Datei-Beschreibung, die alte bleibt unverändert).
+ * `fotos` fehlt bei Werkzeugen ohne Fotos – dann bleiben die bisherigen stehen.
+ */
 export function putSection(
   file: ProjectFileJson,
   key: string,
@@ -172,7 +175,8 @@ export function putSection(
   data: unknown,
   baseSha: string | null,
   force: boolean,
-  now: Date
+  now: Date,
+  fotos?: string[]
 ): PutResult {
   const current = file.abschnitte[key]
   if (current && current.version > version) {
@@ -192,7 +196,7 @@ export function putSection(
     rev: (current?.rev ?? 0) + 1,
     sha256: sha,
     geaendert: now.toISOString(),
-    fotos: current?.fotos ?? [],
+    fotos: fotos ?? current?.fotos ?? [],
     data
   }
   return {

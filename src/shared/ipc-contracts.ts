@@ -13,6 +13,7 @@ import type {
   ProjectSaveTarget,
   ProjectsDirInfo,
   NotifyOptions,
+  FotoImport,
   PdfPageOptions,
   ConvertJob,
   DisplayInfo,
@@ -213,6 +214,8 @@ export const Channels = {
   projectsOpen: 'projects:open',
   projectsChooseTarget: 'projects:chooseTarget',
   projectsSave: 'projects:save',
+  // Fotos der Projektdateien (Hashes, Anzeige über foto://)
+  fotosPick: 'fotos:pick',
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
@@ -522,6 +525,12 @@ export interface ToolboxApi {
     ): Promise<ProjectSaveTarget | null>
     /** Nur den eigenen Abschnitt schreiben (Konflikt über baseSha, siehe ProjectSaveRequest). */
     save(request: ProjectSaveRequest): Promise<ProjectSaveResult>
+  }
+
+  /** Fotos für Projektdateien: liegen im main, der Renderer kennt nur Hashes (shared/fotos). */
+  fotos: {
+    /** Bilder über den Dialog einfügen (JPG/PNG, mehrere); null = abgebrochen. */
+    pick(): Promise<FotoImport[] | null>
   }
 
   jingles: {

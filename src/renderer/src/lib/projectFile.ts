@@ -28,6 +28,8 @@ export const PROBLEM_TEXT: Record<ProjectFileProblem, string> = {
   'zu-gross': 'Die Datei ist zu groß – oder würde es mit diesen Daten (sehr große Wand?).',
   'nicht-freigegeben': 'In diese Datei kann nur über „Speichern unter“ geschrieben werden.',
   ungueltig: 'Die Daten ließen sich nicht speichern.',
+  'foto-fehlt':
+    'Ein benutztes Foto ist nicht mehr da (weder in der Datei noch im Foto-Speicher). Bitte das Foto neu einfügen.',
   fehler: 'Lesen oder Schreiben ist fehlgeschlagen (Einzelheiten im Debug-Log).'
 }
 
@@ -58,6 +60,8 @@ export interface ProjectFileOptions<S> {
   suggestedName: (s: S) => string
   /** kurz für Rückfragen, z. B. „Messe Dornbirn · Beispiel GmbH“ */
   describe: (data: unknown) => string
+  /** benutzte Fotos (Hashes) in den Daten – nur Werkzeuge mit Fotos */
+  fotos?: (data: unknown) => string[]
 }
 
 export interface ProjectFileControls {
@@ -174,7 +178,8 @@ export function useProjectFile<S>(opts: ProjectFileOptions<S>): ProjectFileContr
       version: o.current.version,
       data,
       baseSha,
-      force
+      force,
+      fotos: o.current.fotos?.(data)
     })
     if (res.ok) {
       afterWrite?.()

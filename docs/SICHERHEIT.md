@@ -129,8 +129,10 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
 - **Shell-Aufrufe:** „Ordner öffnen“ (`shell.openPath` startet Dateien mit ihrem Programm) nur
   für vorhandene lokale Ordner; „Im Ordner zeigen“ nur mit absolutem Pfad (Netzwerkpfade erlaubt,
   es startet nichts).
-- **Eigene Protokolle** für Handbücher, Player-Medien und Jingles (`manual:`, `media:`, `jingle:`)
-  liefern nur Dateien aus den App-Ablagen – der Renderer braucht keinen `file://`-Zugriff.
+- **Eigene Protokolle** für Handbücher, Player-Medien, Jingles und Fotos der Projektdateien
+  (`manual:`, `media:`, `jingle:`, `foto:`) liefern nur Dateien aus den App-Ablagen – der
+  Renderer braucht keinen `file://`-Zugriff. `foto://bild/<hash>` nimmt nur 64 Hex-Zeichen und
+  liest nur aus `userData/Projektfotos`.
   `media://vgen/…` liefert nur Vorschaubilder (`vgen-cache/thumbs`, nur `.jpg`) und gerechnete
   Vorschauen (`vgen-cache/previews`, nur `p_<hex>.mp4`) des Video-Generators, jeweils mit sicheren
   Namen. Quelldateien für dessen Live-Vorschau (Videos, GIFs, Musik) gibt es nur über
@@ -152,7 +154,10 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   Dateien nur exklusiv (nie über eine, die inzwischen jemand angelegt hat), und nur, was sich mit
   denselben Grenzen wieder öffnen lässt. Ein Lesefehler (Netzlaufwerk hakt) gilt nie als „Datei
   fehlt“. Schlüssel aus der Datei werden nur als eigene Eigenschaften nachgeschlagen
-  (`Object.hasOwn`), nie über den Prototyp.
+  (`Object.hasOwn`), nie über den Prototyp. **Fotos** aus einer Datei übernimmt die App beim
+  Öffnen nur, wenn ihr Inhalt zu ihrem sha256 passt – eine präparierte Datei kann so kein Foto
+  einer anderen Planung ersetzen. Eingefügte Fotos werden neu kodiert; dabei fallen EXIF-Daten
+  wie GPS-Koordinaten des Aufbauorts weg, bevor die Datei an Kunden geht.
 - **Kein `eval` im Renderer:** Die Content-Security-Policy verbietet `unsafe-eval`; pdfjs 6 kommt
   ohne eval aus – präparierte PDFs können darüber keinen Code ausführen. (`'unsafe-inline'` für
   Skripte braucht noch der Vite-Dev-Server, siehe Roadmap.)

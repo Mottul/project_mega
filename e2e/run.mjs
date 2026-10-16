@@ -15,6 +15,7 @@ const all = [
   'video-generator',
   'projektdatei',
   'pdf',
+  'fotos',
   'shutdown',
   'ndi',
   'youtube',

@@ -1,4 +1,13 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -33,7 +42,7 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   }
 })
 
-const { approvePath, saveSection } = await import('./projectFiles')
+const { approvePath, openProject, saveSection } = await import('./projectFiles')
 const { emptyContainer, packProject, putSection, unpackProject } = await import('./projectFileCore')
 
 let dir = ''
@@ -165,5 +174,82 @@ describe('Projektdatei speichern – Dateisystem', () => {
     expect(rest).toEqual([])
     const saved = unpackProject(readFileSync(join(sim.userData, 'Sicherungen', backup)))
     expect(saved.ok && saved.container.file.abschnitte.ledWall.data).toEqual({ widthM: '1' })
+  })
+})
+
+describe('Projektdatei – Fotos', () => {
+  const bytes = (n: number): Buffer => Buffer.from(Array.from({ length: 64 }, (_, i) => i * n))
+  const hashOf = (b: Buffer): string => createHash('sha256').update(b).digest('hex')
+  const fotoDir = (): string => join(sim.userData, 'Projektfotos')
+  /** Foto in den Foto-Speicher legen, wie es das Einfügen täte */
+  function stored(n: number): string {
+    const b = bytes(n)
+    mkdirSync(fotoDir(), { recursive: true })
+    writeFileSync(join(fotoDir(), `${hashOf(b)}.jpg`), b)
+    return hashOf(b)
+  }
+  const fotosIn = (path: string): string[] => {
+    const r = unpackProject(readFileSync(path))
+    if (!r.ok) throw new Error(r.reason)
+    return [...r.container.fotos.keys()].sort()
+  }
+
+  it('Speichern holt benutzte Fotos aus dem Foto-Speicher; nicht mehr benutzte fallen weg', async () => {
+    const path = join(dir, 'Fotos.mottul')
+    approvePath(path)
+    const [a, b] = [stored(1), stored(2)]
+    const r1 = await saveSection({ ...request(path), data: { f: [a, b] }, fotos: [a, b, a] })
+    if (!r1.ok) throw new Error(r1.reason)
+    expect(fotosIn(path)).toEqual([a, b].sort())
+    // Foto a ist inzwischen aus dem Speicher verschwunden – steht aber schon in der Datei
+    rmSync(join(fotoDir(), `${a}.jpg`))
+    const r2 = await saveSection({
+      ...request(path),
+      data: { f: [a] },
+      fotos: [a],
+      baseSha: r1.sha256
+    })
+    expect(r2.ok).toBe(true)
+    expect(fotosIn(path)).toEqual([a])
+  })
+
+  it('fehlt ein Foto überall, wird nichts geschrieben', async () => {
+    const path = join(dir, 'Fehlt.mottul')
+    writeForeignFile(path)
+    const before = readFileSync(path)
+    approvePath(path)
+    const r = await saveSection({ ...request(path), fotos: ['f'.repeat(64)] })
+    expect(r).toEqual({ ok: false, reason: 'foto-fehlt' })
+    expect(readFileSync(path).equals(before)).toBe(true)
+  })
+
+  it('ungültige Foto-Liste wird abgewiesen', async () => {
+    const path = join(dir, 'Ungueltig.mottul')
+    approvePath(path)
+    const r = await saveSection({ ...request(path), fotos: ['../../etc/passwd'] })
+    expect(r).toEqual({ ok: false, reason: 'ungueltig' })
+    expect(existsSync(path)).toBe(false)
+  })
+
+  it('Öffnen legt die Fotos des Abschnitts ab – nur, wenn der Inhalt zum Hash passt', async () => {
+    const good = bytes(3)
+    const bad = bytes(4)
+    const badHash = hashOf(bytes(5)) // Inhalt passt nicht zum Namen
+    const c = emptyContainer(new Date())
+    const put = putSection(c.file, 'ledWall', 2, { x: 1 }, null, false, new Date(), [
+      hashOf(good),
+      badHash
+    ])
+    if (!put.ok) throw new Error(put.reason)
+    c.fotos.set(hashOf(good), { ext: 'jpg', data: good })
+    c.fotos.set(badHash, { ext: 'png', data: bad })
+    const packed = packProject({ ...c, file: put.file })
+    if (!packed.ok) throw new Error(packed.reason)
+    const path = join(dir, 'Kollege.mottul')
+    writeFileSync(path, packed.buf)
+
+    const r = await openProject(path, 'ledWall')
+    expect(r.ok).toBe(true)
+    expect(readdirSync(fotoDir())).toEqual([`${hashOf(good)}.jpg`])
   })
 })

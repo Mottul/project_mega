@@ -637,6 +637,10 @@ die anderen bleiben beim Speichern unverändert.
   „Öffnen“ im zuletzt benutzten Projektordner.
 - Dateien aus einer neueren Mottulbox öffnet die App nicht; Teile, die sie nicht kennt, bleiben
   beim Speichern erhalten.
+- **Fotos** (für die geplante Anleitung) stecken in der Datei selbst. Beim Einfügen (JPG, PNG)
+  verkleinert die App sie auf höchstens 2000 Pixel, dreht hochkant aufgenommene Handyfotos
+  richtig und entfernt Metadaten wie den Aufnahmeort. Bis zum Speichern liegen sie im
+  Benutzerordner unter `Projektfotos/`.
 
 ## Wo die Daten liegen
 
@@ -656,6 +660,7 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 | `ffmpeg/`               | in der App aktualisierte ffmpeg-Builds (Windows, Linux)                  |
 | `Local Storage/`        | Werkzeug-Zustände (OSC-Projekte, LED-Wall-Planungen, Packlisten …)       |
 | `Sicherungen/`          | frühere Stände von Projektdateien (die letzten 10 je Datei)              |
+| `Projektfotos/`         | Fotos der Projektdateien, benannt nach ihrem Inhalt (sha256)             |
 | `avtoolbox-debug.log`   | Debug-Log – erste Anlaufstelle bei Problemen im gepackten Build          |
 
 Projektdateien (`.mottul`) liegen dort, wo man sie speichert – ab Werk im Projektordner
