@@ -30,8 +30,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 - **OSC-Steuerung**
   - **MadMapper-Vorlagen** (Surfaces, Medien, Cues) – bisher gibt es nur Beispiel-Kacheln.
-    MadMapper 6 empfängt OSC ab Werk auf Port 8010, die OSC-Steuerung sendet ab Werk an 8000 – die
-    Vorlage setzt den Port mit.
   - **„Restzeit aus OSC-Position“:** Anzeige-Modus, der aus der eingehenden MadMapper-Position
     (0–1) und einer eingetragenen Clip-Dauer die Restzeit als mm:ss errechnet – MadMapper liefert
     nur die Position. (Die Restzeit des eigenen Video-Players kann die Anzeige schon.)

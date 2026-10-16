@@ -65,15 +65,22 @@ Aus der Rücksprache vom 16. Oktober 2026:
 14. **IM-Tausch:** bei 496-2,0 und rX3ioBF werkzeuglos von vorne oder hinten – nach Rücksprache
     darf das jeder (Stufe Bedienung mit Rücksprache). Beim uS2+ hat jedes IM 8 Schrauben – nur
     Technik.
-15. **Verkabelung** hängt von Größe und Format der Wand und vom Kabelweg ab, manchmal geht sie von
-    der Mitte weg. Deshalb keine feste Automatik, sondern Vorgabe „Zuleitung kommt von …“, Startecke
-    und Richtung je Kette und Handkorrektur. Dazu je Signalkette eine **Backup-Leitung** vom
-    letzten Modul zum Prozessor, die im Fehlerfall greift.
+15. **Verkabelung** hängt von Größe und Format der Wand und vom Kabelweg ab. Deshalb keine feste
+    Automatik: Ein **Einspeisepunkt** legt fest, wo die Zuleitungen vom Prozessor an der Wand
+    ankommen (z. B. alle in der Mitte); von dort läuft je Kette eine Zuleitung zu ihrem
+    Startmodul. Startecke und Richtung wählt man je Kette frei, dazu die Handkorrektur. Optional je
+    Signalkette eine **Backup-Leitung** vom letzten Modul zum Prozessor, die im Fehlerfall greift
+    – Redundanz ist nicht immer vorhanden, daher ab Werk aus.
 16. **Prozessoren im Bestand:** NovaStar NovaPro UHD Jr (496-2,0, rX3ioBF), NovaStar VX4S,
     Brompton Tessera S8 (uS2+).
 17. **Dateiendung** `.mottul` – bestätigt.
-18. **MadMapper 6** ist im Einsatz; sein OSC-Eingang ist ab Werk Port 8010.
-19. **Werkzeug in Mottulbox**, keine eigene App und keine PWA (Begründung unten).
+18. **MadMapper 6** ist im Einsatz; sein OSC-Eingang ist ab Werk Port 8010. Die OSC-Steuerung
+    sendet deshalb ab Werk an 8010 (umgesetzt am 16.10.2026; gespeicherte Einstellungen behalten
+    ihren Port).
+19. **Projektordner:** Vorgabe `Dokumente/Mottulbox-Projekte`, im App-Menü änderbar. Neue Dateien
+    („Speichern unter“ ohne Datei) beginnen immer dort, „Öffnen“ im zuletzt benutzten
+    Projektordner.
+20. **Werkzeug in Mottulbox**, keine eigene App und keine PWA (Begründung unten).
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
 
@@ -294,8 +301,9 @@ zurückgenommene Änderung gilt wieder als sauber. Beim Speichern Daten und Prü
   `openPath` lehnt UNC-Pfade ab).
 - **Datei-Dialoge:** neue Art `'projekte'` in `DialogDirKind` und ein optionaler `kind` für
   `showOpenDialog`/`showSaveDialog` in `src/main/services/fileDialogs.ts` (heute aus den
-  Dialog-Eigenschaften abgeleitet). Reihenfolge: zuletzt benutzter Projektordner →
-  Standard-Projektordner → Vorschlag. Die anderen Arten bleiben unverändert (`e2e/smoke.mjs`
+  Dialog-Eigenschaften abgeleitet). „Speichern unter“ einer Planung ohne Datei beginnt immer im
+  Standard-Projektordner (Name aus dem Projektnamen), „Öffnen“ und „Speichern unter“ einer schon
+  gebundenen Datei im zuletzt benutzten Projektordner, ersatzweise im Standard-Projektordner. Die anderen Arten bleiben unverändert (`e2e/smoke.mjs`
   prüft das). PDF- und HTML-Exporte schlagen den Ordner der Projektdatei vor.
 - Neue IPC (Skill `ipc-kanal`) `projects.dirInfo()` → `{ path, isDefault, exists }`, weil der
   Renderer den Dokumente-Ordner nicht kennt. Der main prüft den gespeicherten Pfad bei jeder
@@ -736,22 +744,24 @@ Modul hat – keine Reihenfolge, keinen Port, keinen Stromkreis, keine Blickrich
 
 ### Bedienung
 
-Die Verkabelung hängt von Größe und Format der Wand und vom Kabelweg ab, manchmal geht sie von
-der Mitte weg. Deshalb gibt es keine feste Automatik, sondern eine schnelle Vorgabe und volle
-Freiheit je Kette:
+Die Verkabelung hängt von Größe und Format der Wand und vom Kabelweg ab. Deshalb gibt es keine
+feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Freiheit je Kette:
 
-- **„Zuleitung kommt von …“** für die ganze Wand: links, rechts, unten, oben, Mitte unten, Mitte
-  oben. Daraus schlägt der Konfigurator für jede Kette die Startecke vor – die Ecke *ihres
-  Bereichs*, die der Zuleitung am nächsten liegt. „Mitte“ ergibt Ketten, die von der Mitte nach
-  außen laufen.
-- Je Kette **Startecke** und **Richtung** (waagrecht/senkrecht) überschreibbar – die 8 Muster wie
-  in NovaLCT, immer bezogen auf den Bereich der Kette, nicht auf die ganze Wand. Daraus rechnet
-  der Konfigurator die Reihenfolge als Schlange.
+- **Einspeisepunkt** („Zuleitungen kommen an bei …“): unten links, unten Mitte, unten rechts,
+  oben links, oben Mitte, oben rechts, links Mitte, rechts Mitte. Dort kommen die Kabel vom
+  Prozessor an der Wand an (häufig alle in der Mitte). Von dort zeichnet der Plan je Kette die
+  **Zuleitung** bis zu ihrem Startmodul – mit ungefährer Länge entlang der Modulkanten (später
+  für die Packliste).
+- Je Kette **Startecke** und **Richtung** (waagrecht/senkrecht) frei wählbar – die 8 Muster wie
+  in NovaLCT, bezogen auf den Bereich der Kette. Daraus rechnet der Konfigurator die Reihenfolge
+  als Schlange. Vorschlag für neue Ketten: die Ecke des Bereichs, die dem Einspeisepunkt am
+  nächsten liegt (kürzeste Zuleitung) – mehr nicht, die Wahl bleibt beim Planer.
 - **Handkorrektur:** „Reihenfolge klicken“ – Module der Kette nacheinander anklicken. Beim Lesen
   wird abgeglichen: Module, die nicht mehr in der Kette sind, fallen weg, neue hängt die Automatik
   hinten an. So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.
-- **Backup-Leitung** je Signalkette (an/aus; Vorgabe für neue Ketten aus „Redundanz“ der Wand):
-  vom letzten Modul der Kette zurück zu einem Backup-Port des Prozessors. Fällt ein Kabel in der
+- **Backup-Leitung** je Signalkette (an/aus; Vorgabe für neue Ketten aus dem Schalter
+  „Redundanz“ der Wand, ab Werk aus): vom letzten Modul der Kette zurück zum Einspeisepunkt und
+  zu einem Backup-Port des Prozessors. Fällt ein Kabel in der
   Kette aus, versorgt sie die Module dahinter von hinten. Gezeichnet gestrichelt mit
   Port-Beschriftung; zählt bei den belegten Ports mit; im Fehlerkatalog ändert sie die Symptome
   (Fälle 1 und 14). Die Packliste zählt die Backup-Kabel mit.
@@ -803,9 +813,11 @@ Freiheit je Kette:
 
 ```ts
 type Corner = 'tl' | 'tr' | 'bl' | 'br' // Ecke im Bereich der Kette
-type Feed = 'left' | 'right' | 'bottom' | 'top' | 'center-bottom' | 'center-top'
+// Einspeisepunkt: wo die Zuleitungen vom Prozessor an der Wand ankommen
+type Feed = 'bottom-left' | 'bottom-center' | 'bottom-right' | 'top-left' | 'top-center'
+  | 'top-right' | 'left-center' | 'right-center'
 interface ChainRoute {
-  start?: Corner // fehlt = Vorschlag aus feed
+  start?: Corner // fehlt = Vorschlag: Ecke mit der kürzesten Zuleitung
   axis?: 'row' | 'col' // fehlt = Vorschlag (senkrecht, wenn der Bereich höher als breit ist)
   order?: [row: number, col: number][] // Handkorrektur
 }
@@ -813,7 +825,7 @@ interface SigChainMeta extends ChainRoute { port?: string; backup?: { port?: str
 interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2' | 'L3' }
 // zusätzlich in LedWallConfig:
 //   sigMeta: Record<string, SigChainMeta>, pwrMeta: Record<string, PwrChainMeta>
-//   feed: Feed, redundancy: boolean (Vorgabe für neue Signalketten)
+//   feed: Feed, redundancy: boolean (Vorgabe für neue Signalketten, ab Werk false)
 //   mains: { voltage: number; breakerA: number }
 //   processor: { model: 'novapro-uhd-jr' | 'vx4s' | 'tessera-s8' | 'frei'; bitDepth: 8 | 10 | 12;
 //                hz: number; ports?: number; portPx?: number; totalPx?: number } // ?-Felder nur bei 'frei'
@@ -834,7 +846,7 @@ interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2
   Planung stehen).
 - **Reine Funktionen** in einem neuen Modul `led-wall/cabling` (mit Tests): Kettenzählung (ersetzt
   vier Kopien: `CableGrid.tsx`, `LedWall.tsx`, `print.ts`, `packing-list/derive.ts`),
-  Startecken-Vorschlag aus der Zuleitung, Schlangen-Route, Abgleich der Handkorrektur, Sprünge,
+  Startecken-Vorschlag aus dem Einspeisepunkt, Zuleitungen mit Länge, Schlangen-Route, Abgleich der Handkorrektur, Sprünge,
   Backup-Leitungen und Port-Belegung, Lasten je Kette, Port- und Gesamtkapazität aus
   Prozessor/Farbtiefe/Bildrate, Phasenbilanz, Geometrie und SVG-Markup des Verlaufs.
 - **Eine Zeichenquelle** für Bildschirm und PDF wie `topdown.ts`: SVG-String. Am Bildschirm ein
@@ -893,7 +905,7 @@ Jede Phase ist für sich nutzbar.
 |---|---|---|
 | **0 Projektordner und Projektdatei** | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Automatik; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration); Messung der 2-MB-Grenze im PDF-Weg | LED-Wall-Planungen als Datei am festen Ort |
 | **1 Mini-Manual, erste Fassung** | Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2 Kabelverlauf** | Zuleitung, Startecke, Richtung, Handkorrektur, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
+| **2 Kabelverlauf** | Einspeisepunkt und Zuleitungen, Startecke, Richtung, Handkorrektur, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
 | **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
@@ -935,7 +947,7 @@ erledigt).
 
 - Unit: ZIP (runder Weg, kaputte Dateien, Grenzen, `..`-Namen), Abschnitt speichern (fremde
   Abschnitte und Fotos bleiben, Konflikt über `baseSha`, `rev` nur bei Änderung), `sanitize` je
-  Abschnitt, Migration v1 → v2 inkl. Vorlagen, `cabling` (8 Muster, Zuleitung „Mitte“, Abgleich,
+  Abschnitt, Migration v1 → v2 inkl. Vorlagen, `cabling` (8 Muster, Einspeisepunkt und Zuleitungslänge, Abgleich,
   Backup und Port-Belegung, Lasten, Kapazität), Platzhalter, Stufenfilter und Fehlerfall-Prüfung, Seitenbauer (Escaping,
   Inhalte je Stufe), QR-Encoder gegen bekannte Vektoren, Importe mit Fixtures.
 - Bibliothek: jeder mitgelieferte Fehlerfall besteht die Prüfung (keine toten Enden).
@@ -945,24 +957,20 @@ erledigt).
 
 ## Offene Fragen
 
-Geklärt am 16. Oktober 2026 (siehe Festlegungen 13–18): Verkabelungspraxis, IM-Anordnung und
--Tausch, Prozessoren im Bestand, Dateiendung, MadMapper-Version und OSC-Port.
+Geklärt am 16. Oktober 2026 (Festlegungen 13–19): Verkabelungspraxis, Einspeisepunkt,
+Redundanz, IM-Anordnung und -Tausch, Prozessoren im Bestand, Dateiendung, MadMapper-Version und
+OSC-Port, Projektordner. Für Phase 0 ist nichts mehr offen. Später zu klären:
 
-1. **Beispieldateien** für die Importe (Matthias sammelt): exportiertes Stream-Deck-Profil (am
-   besten je Gerät), Companion-Export, OBS-Szenensammlung, ein MadMapper-6-Projekt, NovaLCT-Dateien
-   – anonymisiert, kommen als Test-Fixtures ins Repo. Für MadMapper zusätzlich ein Abzug des
-   OSCQuery-Baums eines laufenden Projekts (`http://<ip>:8010/?`).
-2. **Weitere Fehlerfälle** aus der Praxis; Abgleich der Fälle 5–18 mit eurer Erfahrung.
-3. **Neue Projektdateien** immer im Standard-Projektordner beginnen (evtl. Unterordner je Kunde)
-   oder im zuletzt benutzten?
-4. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
-   kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden?
-5. **Firmenprofil:** Logo und Farbe von Megasound als Vorgabe?
-6. **Kurzkarte** A4 oder A5?
-7. **Redundanz als Vorgabe:** Haben alle Signalketten eine Backup-Leitung, oder nur bestimmte
-   Wände/Kunden?
-8. **Prozessor-Datenblätter:** Ports und Gesamtkapazität von NovaPro UHD Jr, VX4S und Tessera S8
-   gegen die Richtwerte oben prüfen; übliche Farbtiefe und Bildrate bei euch?
+1. **Beispieldateien und Datenblätter** (Matthias sammelt; vor Phase 2 bzw. 3): exportiertes
+   Stream-Deck-Profil (am besten je Gerät), Companion-Export, OBS-Szenensammlung, ein
+   MadMapper-6-Projekt und ein Abzug seines OSCQuery-Baums (`http://<ip>:8010/?`),
+   NovaLCT-Dateien, Datenblätter von NovaPro UHD Jr, VX4S und Tessera S8 (Ports, Kapazität,
+   übliche Farbtiefe und Bildrate). Anonymisiert, kommen als Test-Fixtures ins Repo.
+2. **Weitere Fehlerfälle** aus der Praxis; Abgleich der Fälle 5–18 (vor Phase 1).
+3. **Firmenprofil:** Logo und Farbe von Megasound als Vorgabe? (Phase 1)
+4. **Kurzkarte** A4 oder A5? (Phase 1)
+5. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
+   kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden? (Phase 3)
 
 ## Nicht geplant
 

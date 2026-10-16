@@ -1331,14 +1331,16 @@ export interface OscMessage {
 
 export interface OscSettings {
   host: string // Ziel-Host (MadMapper), z.B. '127.0.0.1'
-  outPort: number // OSC-Ausgang (MadMapper-Standard 8000)
+  outPort: number // OSC-Ausgang (MadMapper 6 empfängt ab Werk auf 8010)
   inPort: number // OSC-Feedback-Eingang (MadMapper-Standard 9000)
   feedbackEnabled: boolean // auf inPort lauschen?
 }
 
 export const DEFAULT_OSC_SETTINGS: OscSettings = {
   host: '127.0.0.1',
-  outPort: 8000,
+  // 8010 wie MadMapper 6 ab Werk – so wird die OSC-Steuerung meist eingesetzt. Gilt nur für neue
+  // Installationen: gespeicherte Einstellungen behalten ihren Port.
+  outPort: 8010,
   inPort: 9000,
   feedbackEnabled: false
 }

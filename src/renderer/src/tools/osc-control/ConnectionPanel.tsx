@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Send } from 'lucide-react'
-import type { OscSettings, OscStatus } from '@shared/types'
+import { DEFAULT_OSC_SETTINGS, type OscSettings, type OscStatus } from '@shared/types'
 import { APP_SLUG } from '@shared/brand'
 import { Button } from '@renderer/components/ui/button'
 import { Input } from '@renderer/components/ui/input'
@@ -26,8 +26,8 @@ export function ConnectionPanel({
   onSend: SendFn
 }): JSX.Element {
   const [host, setHost] = useState('')
-  const [outPort, setOutPort] = useState(8000)
-  const [inPort, setInPort] = useState(9000)
+  const [outPort, setOutPort] = useState(DEFAULT_OSC_SETTINGS.outPort)
+  const [inPort, setInPort] = useState(DEFAULT_OSC_SETTINGS.inPort)
   const [feedback, setFeedback] = useState(false)
   const [busy, setBusy] = useState(false)
 

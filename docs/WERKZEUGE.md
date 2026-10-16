@@ -249,7 +249,7 @@ Frei belegbares Steuerpult, das OSC an MadMapper & Co. sendet.
   Schublade.
 - **Bedienung:** Fader, XY-Pad und Farbregler ziehen relativ (kein Sprung zum Klickpunkt).
 - **Senden** per UDP aus dem Hauptprozess mit eigenem OSC-Codec; Host und Ports einstellbar
-  (MadMapper-Standard: senden 8000, empfangen 9000).
+  (Vorgabe wie MadMapper 6: senden an 8010, empfangen auf 9000).
 - **Feedback** (optional): eingehende Werte stellen passende Kacheln nach; dazu ein OSC-Monitor im
   eigenen Fenster und ein Learn-Modus (die nächste eingehende Adresse geht ins gewählte Widget).
 - **Handy-Fernsteuerung** mit derselben Oberfläche; Sets lassen sich auch dort umschalten.
