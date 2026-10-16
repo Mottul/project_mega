@@ -13,7 +13,6 @@ import {
   sanitizeLedWallConfig,
   type LedWallConfig
 } from './config'
-import { resizeGrid } from './math'
 
 export type { BuildMode, CurveMode, LedWallConfig } from './config'
 
@@ -80,20 +79,26 @@ export function migrateLedWall(persisted: unknown, version: number): unknown {
  * wieder – und eine gebundene Datei gilt dann wieder als gespeichert. Gespeichert wird weiter nur
  * das passende Raster. Gilt nur für die aktuelle Planung (andere Planung oder Stand aus einem
  * anderen Fenster -> vergessen).
+ *
+ * Nur belegte Zellen („Zeile,Spalte“ -> Kette): Eine Hülle aller je erreichten Größen wüchse nach
+ * zwei korrigierten Tippfehlern (4000 statt 4 m Breite, 2500 statt 2,5 m Höhe) auf Millionen
+ * Zellen, und jeder Tastendruck hinge.
  */
-let shadow: { sig: number[][]; pwr: number[][] } | null = null
+let shadow: { sig: Map<string, number>; pwr: Map<string, number> } | null = null
 
-/** `small` über `big` legen: in seinem Bereich gilt `small` (auch -1), außerhalb `big`. */
-function overlay(big: number[][] | undefined, small: number[][]): number[][] {
-  if (!big) return small
-  const sRows = small.length
-  const sCols = small[0]?.length ?? 0
-  const rows = Math.max(big.length, sRows)
-  const cols = Math.max(big[0]?.length ?? 0, sCols)
+/** Aktuelles Raster ins Gedächtnis: in seinem Bereich gilt es (auch „frei“), außerhalb bleibt das Gemerkte. */
+function remember(memo: Map<string, number>, grid: number[][]): void {
+  grid.forEach((row, r) =>
+    row.forEach((v, c) => {
+      if (v === -1) memo.delete(`${r},${c}`)
+      else memo.set(`${r},${c}`, v)
+    })
+  )
+}
+
+function recall(memo: Map<string, number>, rows: number, cols: number): number[][] {
   return Array.from({ length: rows }, (_, r) =>
-    Array.from({ length: cols }, (_, c) =>
-      r < sRows && c < sCols ? small[r][c] : (big[r]?.[c] ?? -1)
-    )
+    Array.from({ length: cols }, (_, c) => memo.get(`${r},${c}`) ?? -1)
   )
 }
 
@@ -109,8 +114,10 @@ export const useLedWall = create<LedWallState>()(
       ensureGridSize: (rows, cols) => {
         const { sig, pwr } = get()
         if (sig.length === rows && (sig[0]?.length ?? 0) === cols) return
-        shadow = { sig: overlay(shadow?.sig, sig), pwr: overlay(shadow?.pwr, pwr) }
-        set({ sig: resizeGrid(shadow.sig, rows, cols), pwr: resizeGrid(shadow.pwr, rows, cols) })
+        shadow ??= { sig: new Map(), pwr: new Map() }
+        remember(shadow.sig, sig)
+        remember(shadow.pwr, pwr)
+        set({ sig: recall(shadow.sig, rows, cols), pwr: recall(shadow.pwr, rows, cols) })
       },
 
       setCell: (grid, row, col) => {
@@ -134,7 +141,7 @@ export const useLedWall = create<LedWallState>()(
 
       resetGrid: (grid) => {
         const s = get()
-        if (shadow) shadow = { ...shadow, [grid]: [] }
+        shadow?.[grid].clear()
         set({
           [grid]: s[grid].map((r) => r.map(() => -1)),
           [grid === 'sig' ? 'sigChain' : 'pwrChain']: 0

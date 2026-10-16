@@ -3,9 +3,16 @@
 **Status:** Phase 0 umgesetzt (16. Oktober 2026): Projektordner, Projektdatei `.mottul` und das
 Datei-Menü des LED-Wall-Konfigurators – beschrieben in
 [WERKZEUGE.md](WERKZEUGE.md#projektdateien-und-projektordner), Anleitung für weitere Werkzeuge im
-Skill `projektdatei`. Offen sind die Phasen 1–5. Abgestimmt in Rücksprachen am selben Tag, siehe
-[Festlegungen](#festlegungen); vor den späteren Phasen die [offenen Fragen](#offene-fragen)
-klären. Nach der Umsetzung in WERKZEUGE überführen und diesen Plan löschen.
+Skill `projektdatei`. Danach zweimal geprüft; alle bestätigten Befunde sind behoben und als
+Regeln im Skill `review-checkliste` festgehalten. Offen sind die Phasen 1–5. Abgestimmt in
+Rücksprachen am selben Tag, siehe [Festlegungen](#festlegungen); vor den späteren Phasen die
+[offenen Fragen](#offene-fragen) klären. Nach der Umsetzung in WERKZEUGE überführen und diesen
+Plan löschen.
+
+**Nächster Schritt: Phase 1.** Vorher die offenen Fragen 2–4 beantworten (Fehlerfälle,
+Firmenprofil, Kurzkarte). Phase 1 beginnt mit der Messung der 2-MB-Grenze im PDF-Weg und den
+Fotos in der Projektdatei (siehe [Phasen](#phasen)). Die Skizzen zu diesem Plan (Arbeitsplatz,
+Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren) liegen als Artifact bei Matthias.
 
 Ein neues Werkzeug erzeugt Kurz-Anleitungen für die Leute vor Ort: wie man die LED-Wall
 einschaltet und bedient, was wo steht und wie verkabelt ist – und im Fehlerfall Schritt für
@@ -996,6 +1003,10 @@ OSC-Port, Projektordner. Für Phase 0 ist nichts mehr offen. Später zu klären:
 4. **Kurzkarte** A4 oder A5? (Phase 1)
 5. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
    kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden? (Phase 3)
+6. **Kabelverlauf – Annahmen bestätigen** (vor Phase 2, aus Festlegung 21): „unten“ = Mitte der
+   Unterkante (ergibt das Praxisbeispiel mit vier Vierteln), „mittig“ = Mitte der Wand (Kabel
+   kommen hinten an; alle vier Ketten beginnen an den Modulen um die Mitte), Aufteilung „zwei“ =
+   obere und untere Hälfte bei Signal und Strom (vorher bei Signal links/rechts).
 
 ## Nicht geplant
 

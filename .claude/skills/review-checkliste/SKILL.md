@@ -98,10 +98,13 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
 - **Rückfragen sperren nur das eigene Fenster.** Wer nach einem Dialog Daten und Bindung frisch
   aus dem Store liest, schreibt womöglich, was ein anderes Fenster inzwischen geöffnet hat, und
   kapert dessen Bindung. Stand zu Beginn der Aktion festhalten, genau den schreiben und nach
-  jeder Rückfrage prüfen, ob sich etwas geändert hat (`changedMeanwhile`).
+  JEDER Rückfrage prüfen, ob sich etwas geändert hat (`changedMeanwhile`) – auch nach „Änderungen
+  speichern?“, sonst wirft „Verwerfen“ die Arbeit des anderen Fensters weg. E2E: Abgleich per
+  `localStorage` + `StorageEvent` während der Rückfrage auslösen (`e2e/projektdatei.mjs`).
 - **Zerstörende Schritte erst nach Erfolg.** „Leere anlegen“ setzte die Planung vor dem
   Schreiben zurück – scheiterte das Schreiben, hing eine leere Planung an der alten Datei, und
-  Strg+S hätte sie überschrieben.
+  Strg+S hätte sie überschrieben. Weicht so eine Aktion auf „Speichern unter …“ aus, den
+  festgehaltenen Stand mitgeben (`doSaveAs(carry)`), sonst speichert sie den alten.
 - **Tastenkürzel nehmen den Fokus nicht weg.** Strg+O aus einem gepufferten Feld: Der Entwurf
   zählte nicht als ungespeichert und landete nach dem Öffnen in der neuen Planung. Vor JEDER
   Aktion, die den Arbeitsstand liest oder ersetzt, offene Eingaben übernehmen.
@@ -121,8 +124,17 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   verwerfen, und einen Test „was die App erzeugt, übersteht die Prüfung“.
 - **Abgeleitete Größen nicht zerstörend anpassen.** `ensureGridSize` schnitt die Raster beim
   Umschalten von Modul oder Curving ab; zurückgeschaltet war die Verkabelung weg. Abgeschnittenes
-  für die Sitzung merken (`led-wall/store.ts`, `shadow`).
+  für die Sitzung merken (`led-wall/store.ts`, `shadow`) – aber **nur Belegtes**: Die erste
+  Fassung merkte die Hülle aller je erreichten Größen, nach zwei korrigierten Tippfehlern
+  (4000 statt 4 m, 2500 statt 2,5 m) 40 Mio. Zellen, 16 s je Tastendruck.
+- **Grenzen in Summe prüfen, nicht nur je Teil.** 1000 Builder-Abschnitte zu je 1000 Modulen
+  bestanden jede Einzelprüfung – eine 33-KB-Datei hätte eine Wand mit 1 Mio. Spalten angelegt.
+  Vor dem Übernehmen die errechnete Größe prüfen (`fileSection.ts`).
 - **Sicherungen** je Datei (Name + Pfad-Hash) und nie überschreiben (`COPYFILE_EXCL`).
+- **Exklusiv anlegen heißt nicht: unter dem Zielnamen schreiben.** `open(…, 'wx')` und dann
+  schreiben hinterließ bei einem Abbruch eine halbe Datei, die den Pfad sperrte. Erst fertig in
+  die Nachbardatei, dann `link()` (atomar, EEXIST) bzw. ohne Hardlinks reservieren + umbenennen
+  (`writeNewFileAsync`).
 
 ## Fenster (Oktober 2026)
 

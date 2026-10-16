@@ -141,6 +141,13 @@ describe('LED-Wall-Planung prüfen', () => {
     expect(c.pwr).toEqual(sig)
   })
 
+  it('Builder: mehr Module als die Rastergrenze zusammen -> Vorgabe', () => {
+    const many = Array.from({ length: 1000 }, () => ({ type: 'straight', count: 1000 }))
+    expect(sanitizeLedWallConfig({ builderSegs: many }).builderSegs).toEqual(
+      DEFAULT_LED_WALL_CONFIG.builderSegs
+    )
+  })
+
   it.each(['constructor', 'toString', '__proto__', 'hasOwnProperty'])(
     'Prototyp-Schlüssel „%s“ als Modul wird zur Vorgabe',
     (key) => {
