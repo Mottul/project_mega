@@ -30,6 +30,8 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 - **OSC-Steuerung**
   - **MadMapper-Vorlagen** (Surfaces, Medien, Cues) – bisher gibt es nur Beispiel-Kacheln.
+    MadMapper 6 empfängt OSC ab Werk auf Port 8010, die OSC-Steuerung sendet ab Werk an 8000 – die
+    Vorlage setzt den Port mit.
   - **„Restzeit aus OSC-Position“:** Anzeige-Modus, der aus der eingehenden MadMapper-Position
     (0–1) und einer eingetragenen Clip-Dauer die Restzeit als mm:ss errechnet – MadMapper liefert
     nur die Position. (Die Restzeit des eigenen Video-Players kann die Anzeige schon.)
@@ -57,7 +59,8 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   Messplatz oder auf dem Handy.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
-- **LED-Wall-Konfigurator:** Prozessor-Presets (NovaStar, Brompton).
+- **LED-Wall-Konfigurator:** Prozessor-Presets (NovaPro UHD Jr, VX4S, Tessera S8) mit Kabelverlauf
+  und Backup-Leitungen – geplant in [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md#kabelverlauf-im-led-wall-konfigurator).
 
 ### Neue Werkzeuge
 

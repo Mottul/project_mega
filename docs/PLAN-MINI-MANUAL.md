@@ -1,6 +1,6 @@
 # Plan: Mini-Manual („So bedienst du deine LED-Wall“)
 
-**Status:** Plan, noch nicht umgesetzt (16. Oktober 2026). Abgestimmt in der Rücksprache vom
+**Status:** Plan, noch nicht umgesetzt (16. Oktober 2026). Abgestimmt in zwei Rücksprachen am
 selben Tag, siehe [Festlegungen](#festlegungen). Vor der Umsetzung die
 [offenen Fragen](#offene-fragen) klären; nach der Umsetzung in [WERKZEUGE.md](WERKZEUGE.md)
 überführen und diesen Plan löschen.
@@ -61,8 +61,19 @@ Aus der Rücksprache vom 16. Oktober 2026:
     und von hinten.
 13. **IM** (Integrated Module) = austauschbares LED-Paneel im Modul, beim Hersteller (LEDitgo)
     auch „Pixelkarte“; dahinter sitzt die Backbox mit Netzteil und Empfangskarte. 4 IMs je Modul
-    bei 496-2,0 und rX3ioBF, 2 je Modul bei uS2+.
-14. **Werkzeug in Mottulbox**, keine eigene App und keine PWA (Begründung unten).
+    (2 × 2) bei 496-2,0 und rX3ioBF, 2 je Modul (übereinander) bei uS2+.
+14. **IM-Tausch:** bei 496-2,0 und rX3ioBF werkzeuglos von vorne oder hinten – nach Rücksprache
+    darf das jeder (Stufe Bedienung mit Rücksprache). Beim uS2+ hat jedes IM 8 Schrauben – nur
+    Technik.
+15. **Verkabelung** hängt von Größe und Format der Wand und vom Kabelweg ab, manchmal geht sie von
+    der Mitte weg. Deshalb keine feste Automatik, sondern Vorgabe „Zuleitung kommt von …“, Startecke
+    und Richtung je Kette und Handkorrektur. Dazu je Signalkette eine **Backup-Leitung** vom
+    letzten Modul zum Prozessor, die im Fehlerfall greift.
+16. **Prozessoren im Bestand:** NovaStar NovaPro UHD Jr (496-2,0, rX3ioBF), NovaStar VX4S,
+    Brompton Tessera S8 (uS2+).
+17. **Dateiendung** `.mottul` – bestätigt.
+18. **MadMapper 6** ist im Einsatz; sein OSC-Eingang ist ab Werk Port 8010.
+19. **Werkzeug in Mottulbox**, keine eigene App und keine PWA (Begründung unten).
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
 
@@ -357,9 +368,9 @@ Spalten je Rolle – kein Layout-Paket nötig.
 
 | Stufe | für | darf | sieht zusätzlich |
 |---|---|---|---|
-| **Bedienung** | Kunde, Moderation, Aushilfe | Ein/Aus, Inhalte wählen, Sichtprüfung, Fehler eingrenzen | – |
+| **Bedienung** | Kunde, Moderation, Aushilfe | Ein/Aus, Inhalte wählen, Sichtprüfung, Fehler eingrenzen; nach Rücksprache IM tauschen (496-2,0, rX3ioBF) | – |
 | **Betreuung** | Haustechnik, Stagehand | neu starten, Sicherung einschalten, Kabel stecken/tauschen | Zugangsdaten, Pläne, Ersatzteile |
-| **Technik** | Techniker, Lehrlinge | Prozessor, NovaLCT/Tessera, IM/Backbox tauschen, Netzwerk | IPs, Ports, Dokumentstand |
+| **Technik** | Techniker, Lehrlinge | Prozessor, NovaLCT/Tessera, IM beim uS2+, Backbox tauschen, Netzwerk | IPs, Ports, Dokumentstand |
 
 - Jedes Kapitel, jeder Inhaltsblock und jeder Fehlersuch-Schritt trägt eine Mindeststufe.
 - Die Ausgabe filtert: Was über der gewählten Stufe liegt, fehlt. In der Fehlersuche wird ein
@@ -419,6 +430,14 @@ je ein Ziel für **Ja** und **Nein**:
 
 Ein Schritt ohne Frage („Datenkabel tauschen“) hat nur „Weiter“.
 
+Zwei Eigenschaften je Schritt kommen aus der Praxis:
+
+- **Rücksprache:** „vorher kurz anrufen“ – erscheint als Hinweis mit dem Kontakt, z. B. beim
+  IM-Tausch am 496-2,0. Der Schritt bleibt damit auch für die Stufe Bedienung sichtbar.
+- **Stufe aus den Stammdaten:** Derselbe Schritt „IM tauschen“ gilt je nach Modul ab Bedienung
+  (496-2,0, rX3ioBF, werkzeuglos) oder erst ab Technik (uS2+, 8 Schrauben); auch der Hinweistext
+  kommt aus den Stammdaten des Moduls in der LED-Wall-Kopie.
+
 **Editor als Liste (Plan):** eine Zeile je Schritt – Ziehgriff, Nummer, Stufe, Frage, Ja-Ziel,
 Nein-Ziel (Auswahl). Nummern ergeben sich aus der Reihenfolge, Ziele zeigen auf die Schritt-ID,
 damit Umsortieren nichts kaputt macht. Die Prüfung meldet unerreichbare Schritte, fehlende Ziele,
@@ -449,14 +468,15 @@ flowchart TD
   S6 -->|Nein| S7["7 · Backbox/Empfangskarte getauscht – läuft? (Technik)"]
   S7 -->|Ja| G7(["Gelöst"])
   S7 -->|Nein| C7(["Anrufen"])
-  S8 -->|Ja| S9["9 · IM neu eingesetzt bzw. getauscht – läuft? (Technik)"]
+  S8 -->|Ja| S9["9 · IM neu eingesetzt bzw. getauscht – läuft? (Stufe je Modul)"]
   S8 -->|Nein| C8(["Anrufen"])
   S9 -->|Ja| G9(["Gelöst"])
   S9 -->|Nein| C9(["Anrufen"])
 ```
 
-Auf Stufe **Bedienung** bleiben davon die Schritte 1, 2, 5 und 8; jeder Sprung nach 3, 6 oder 9
-wird zu „Ab hier bitte anrufen“. Auf **Betreuung** kommen 3 und 6 dazu.
+Auf Stufe **Bedienung** bleiben davon die Schritte 1, 2, 5 und 8; jeder Sprung nach 3 oder 6
+wird zu „Ab hier bitte anrufen“. Schritt 9 bleibt beim 496-2,0 und rX3ioBF mit Rücksprache
+dabei, beim uS2+ wird er zu „Anrufen“. Auf **Betreuung** kommen 3 und 6 dazu.
 
 **Ausgabe:** Im PDF eine Symptom-Übersicht am Kapitelanfang („Was siehst du?“ → Fall und Seite),
 dann je Fall die nummerierten Schritte mit „Ja: weiter bei 3 · Nein: weiter bei 5“. In der
@@ -467,15 +487,18 @@ HTML-Datei dieselbe Liste plus eine Schritt-für-Schritt-Ansicht mit großen Ja/
 Von Matthias genannt (16.10.2026), weitere folgen:
 
 1. **Kabel in einer Signalreihe defekt** – ab einem Modul in Kettenrichtung dunkel, Rauschen oder
-   eingefroren; alles danach fällt mit aus (ohne Redundanz). Datenkabel zwischen letztem gutem
-   und erstem gestörtem Modul tauschen – der Kabelverlauf zeigt welches. Hilft das nicht:
-   Backbox/Empfangskarte des ersten gestörten Moduls (Technik).
+   eingefroren; alles danach fällt mit aus. Datenkabel zwischen letztem gutem und erstem
+   gestörtem Modul tauschen – der Kabelverlauf zeigt welches. Hilft das nicht:
+   Backbox/Empfangskarte des ersten gestörten Moduls (Technik). **Mit Backup-Leitung** bleibt die
+   Kette bei einem einzelnen Bruch hell, weil sie von hinten versorgt wird – dann meldet nur der
+   Prozessor die Umschaltung (Fall 14); dunkel wird es erst, wenn auch die Backup-Leitung fehlt.
 2. **Sicherung der Stromzuleitung** – Block einer Stromkette ohne Strom. Sicherung/FI im Verteiler
    (Beschriftung je Stromkette aus dem Kabelverlauf), einmal wieder einschalten; fliegt sie
    erneut: nicht wiederholen, anrufen.
-3. **Defektes IM** – ein Viertel (496-2,0, rX3ioBF) bzw. eine Hälfte (uS2+) eines Moduls dunkel,
-   flackert, Linien oder falsche Farben. Erst neu einsetzen (nur stromlos), dann tauschen –
-   an denselben Platz. Stufe Technik als Vorgabe (siehe offene Fragen).
+3. **Defektes IM** – ein Viertel (496-2,0, rX3ioBF) bzw. die obere oder untere Hälfte (uS2+)
+   eines Moduls dunkel, flackert, Linien oder falsche Farben. Erst neu einsetzen (nur stromlos),
+   dann tauschen. 496-2,0 und rX3ioBF: werkzeuglos von vorne oder hinten, nach Rücksprache von
+   jedem; uS2+: 8 Schrauben je IM, nur Technik.
 4. **Laptop aus, weil nachts kein Strom** – morgens bleibt die Wand schwarz. Fehlerfall:
    „Rechner einschalten, warten, Software startet selbst“. Vorbeugung als Einrichtungs-Baustein
    für Techniker: Desktop/NUC im BIOS „After Power Failure / AC Recovery = Power On“, Laptop
@@ -505,6 +528,26 @@ Ergänzt aus der Recherche (Hersteller-Hilfen von Daktronics/NovaStar, Brompton,
     geändert, Spiegeln statt Erweitern, Autostart vor der Anzeige-Erkennung.
 13. **Ein Modul dauerhaft rot (Brompton) oder ohne Verbindung** – Empfangskarte bootet nicht:
     stromlos, neu stecken, sonst Backbox tauschen.
+
+Weitere naheliegende Fälle (zweite Rücksprache):
+
+14. **Prozessor meldet Backup/Redundanz aktiv** – Bild in Ordnung, aber eine Kette läuft über die
+    Backup-Leitung: ein Datenkabel oder eine Empfangskarte darin ist unterbrochen. Nicht sofort
+    gefährlich, aber vor der nächsten Show suchen (Kabelverlauf zeigt die Kette). Betreuung/Technik.
+15. **Controller/Prozessor ohne Strom** – Display und LEDs aus: Netzkabel, Steckdosenleiste,
+    Schalter, Sicherung des Racks.
+16. **Stream Deck/Bedienfeld reagiert nicht** – USB-Kabel, Software nicht gestartet, falsches
+    Profil, Steuer-PC schläft.
+17. **Steuer-PC erreicht den Prozessor nicht** (NovaLCT, Tessera, OSC) – Netzwerkkabel, Switch,
+    falscher IP-Bereich, WLAN statt LAN.
+18. **Bild ruckelt oder reißt** – Bildrate von Zuspieler und Prozessor passen nicht, Video zu
+    schwer für den Rechner (Codec, Auflösung).
+
+Das ist nur der Anfang – im Betrieb gibt es viel mehr Ursachen. Die Bibliothek ist deshalb nach
+**Bereichen** gegliedert (Strom, Signal und Daten, Prozessor/Controller, Zuspieler und Software,
+Bedienfeld, Module und IMs, Netzwerk) und wächst mit: Fälle lassen sich jederzeit ergänzen, ab
+Phase 5 auch von Kollegen im geteilten Bausteinordner. Die Symptom-Übersicht („Was siehst du?“)
+führt unabhängig von dieser Gliederung zum passenden Fall.
 
 Dazu ein Baustein **Status-LEDs**, der in Kapitel LED-Wall und als Hinweis in den Schritten
 erscheint: Brompton (uS2+) rot > 1 min nach dem Einschalten = Startfehler, grün = läuft, aber
@@ -668,7 +711,7 @@ Ergebnis immer als bearbeitbare Kopie.
 | **OBS** – Szenensammlung (JSON, Export im Menü Szenensammlung) | JSON | Szenen mit Namen in Bedien-Reihenfolge (`scene_order`), Tastenkürzel zum Szenenwechsel | programmweite Kürzel (Stream starten …) stehen im Profil, nicht in der Sammlung | 3 (einfach) |
 | OBS live (obs-websocket v5, Port 4455) | WebSocket mit Passwort | wie oben plus aktuelle Szene | Server ab Werk aus, Passwort nötig, OBS muss laufen; Reihenfolge dort umgekehrt | später |
 | **MadMapper-Datei** (`.mad`, in Version 6 im Ordner `.madproject`) | **unbekannt** (nirgends dokumentiert, kein Parser gefunden) | – | erst planen, wenn eine echte Datei geprüft ist | offen |
-| **MadMapper live** (OSCQuery: HTTP-JSON des Parameterbaums) | JSON über HTTP, ohne Abhängigkeit; OSC-Codec und mDNS gibt es schon | Bänke, Spalten, Zeilen mit OSC-Adressen, Medien-Namen | **Ob Namen von Cues/Szenen/Timelines im Baum stehen, ist unbelegt**; Port laut Doku 8000 oder 8010 (widersprüchlich); Version 6 ersetzt Cues durch Timelines; MadMapper muss laufen | 4, nach einem Test |
+| **MadMapper live** (OSCQuery: HTTP-JSON des Parameterbaums) | JSON über HTTP, ohne Abhängigkeit; OSC-Codec und mDNS gibt es schon | Bänke, Spalten, Zeilen mit OSC-Adressen, Medien-Namen | **Ob Namen von Timelines/Szenen im Baum stehen, ist unbelegt**; OSC-Eingang von MadMapper 6 ab Werk 8010 (im Einsatz bestätigt), ob OSCQuery denselben Port nutzt, im Test klären; Version 6 ersetzt Cues durch Timelines; MadMapper muss laufen | 4, nach einem Test |
 | Resolume – Komposition (`.avc`) | XML, undokumentiert | Decks, Ebenen, Spalten, Clip-Namen | Struktur je Version prüfen | Ausblick |
 | **NovaLCT** – Bildschirm-Konfiguration `.scr` | binär, nachgebaut (Reverse Engineering) | je Port Startecke und Richtung (8 Muster) bzw. je Cabinet die Reihenfolge | inoffiziell, Versionen | 4, nur bei Bedarf |
 | NovaLCT – Systemkonfiguration `.scfg` | XML (mit base64-Teil) | grobe Lage der Bereiche | – | 4, nur bei Bedarf |
@@ -693,15 +736,39 @@ Modul hat – keine Reihenfolge, keinen Port, keinen Stromkreis, keine Blickrich
 
 ### Bedienung
 
-- Je Kette **Startecke** und **Richtung** (waagrecht/senkrecht) als Schlange – die 8 Muster wie
-  in NovaLCT. Daraus rechnet der Konfigurator die Reihenfolge. **Automatik** ohne Eingabe:
-  Ground-Stack startet unten, fliegend oben, jeweils links; senkrecht, wenn die Kette höher als
-  breit ist (Praxis bestätigen, siehe offene Fragen).
+Die Verkabelung hängt von Größe und Format der Wand und vom Kabelweg ab, manchmal geht sie von
+der Mitte weg. Deshalb gibt es keine feste Automatik, sondern eine schnelle Vorgabe und volle
+Freiheit je Kette:
+
+- **„Zuleitung kommt von …“** für die ganze Wand: links, rechts, unten, oben, Mitte unten, Mitte
+  oben. Daraus schlägt der Konfigurator für jede Kette die Startecke vor – die Ecke *ihres
+  Bereichs*, die der Zuleitung am nächsten liegt. „Mitte“ ergibt Ketten, die von der Mitte nach
+  außen laufen.
+- Je Kette **Startecke** und **Richtung** (waagrecht/senkrecht) überschreibbar – die 8 Muster wie
+  in NovaLCT, immer bezogen auf den Bereich der Kette, nicht auf die ganze Wand. Daraus rechnet
+  der Konfigurator die Reihenfolge als Schlange.
 - **Handkorrektur:** „Reihenfolge klicken“ – Module der Kette nacheinander anklicken. Beim Lesen
   wird abgeglichen: Module, die nicht mehr in der Kette sind, fallen weg, neue hängt die Automatik
   hinten an. So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.
-- **Port** je Signalkette (Vorgabe „Port n“), **Stromkreis** und **Phase** je Stromkette
-  (z. B. „F3 · L2“), Netz `230 V / 16 A` einstellbar (heute 230 V fest in `led-wall/compute.ts`).
+- **Backup-Leitung** je Signalkette (an/aus; Vorgabe für neue Ketten aus „Redundanz“ der Wand):
+  vom letzten Modul der Kette zurück zu einem Backup-Port des Prozessors. Fällt ein Kabel in der
+  Kette aus, versorgt sie die Module dahinter von hinten. Gezeichnet gestrichelt mit
+  Port-Beschriftung; zählt bei den belegten Ports mit; im Fehlerkatalog ändert sie die Symptome
+  (Fälle 1 und 14). Die Packliste zählt die Backup-Kabel mit.
+- **Port** je Signalkette und Backup (Vorgabe „Port n“ bzw. die nächsten freien Ports),
+  **Stromkreis** und **Phase** je Stromkette (z. B. „F3 · L2“), Netz `230 V / 16 A` einstellbar
+  (heute 230 V fest in `led-wall/compute.ts`).
+- **Prozessor** aus den Vorgaben wählen (je Modul vorbelegt), dazu Farbtiefe und Bildrate:
+
+  | Prozessor | im Bestand für | Gigabit-Ports | je Port (8 bit, 60 Hz) | gesamt |
+  |---|---|---|---|---|
+  | NovaStar NovaPro UHD Jr | 496-2,0, rX3ioBF | 16 (dazu Glasfaser) | 650.000 px | rund 10,4 Mio. px |
+  | NovaStar VX4S | 496-2,0, rX3ioBF (kleinere Wände) | 4 | 650.000 px | 2,3 Mio. px |
+  | Brompton Tessera S8 | uS2+ | 8 | 525.000 px | laut Datenblatt |
+  | frei | – | eintragen | eintragen | eintragen |
+
+  Port-Zahlen und Gesamtwerte sind Richtwerte und werden beim Einbau mit den Datenblättern
+  abgeglichen. Das erledigt zugleich den Roadmap-Punkt „Prozessor-Presets“.
 - **Ansicht vorne/hinten** umschaltbar in den Reitern Signal und Strom und im PDF. Die Ansicht von
   hinten ist gespiegelt und groß beschriftet („Ansicht von hinten“, Seite „Publikum“ markiert);
   Spalten- und Kettennummern bleiben am Modul.
@@ -726,30 +793,39 @@ Modul hat – keine Reihenfolge, keinen Port, keinen Stromkreis, keine Blickrich
   - **Strom je Stromkette über der Absicherung** (16 A bei 230 V ≙ 20 Module zu 180 W bei
     `powerMax`), optional „höchstens n Module je Stromschleife“ laut Hersteller. Hinweis auf den
     Einschaltstrom (B-Charakteristik, gestaffelt einschalten).
+  - **Ports:** Haupt- und Backup-Leitungen zusammen mehr, als der Prozessor hat (z. B. VX4S: 2
+    Ketten mit Backup belegen alle 4 Ports).
+  - **Gesamtkapazität:** Wand größer als der Prozessor insgesamt schafft.
   - Phasen-Schieflage über L1/L2/L3.
   - Lücken in einer Kette.
 
 ### Daten (Version 2)
 
 ```ts
-type Corner = 'tl' | 'tr' | 'bl' | 'br'
+type Corner = 'tl' | 'tr' | 'bl' | 'br' // Ecke im Bereich der Kette
+type Feed = 'left' | 'right' | 'bottom' | 'top' | 'center-bottom' | 'center-top'
 interface ChainRoute {
-  start?: Corner // fehlt = Automatik
-  axis?: 'row' | 'col' // fehlt = Automatik
+  start?: Corner // fehlt = Vorschlag aus feed
+  axis?: 'row' | 'col' // fehlt = Vorschlag (senkrecht, wenn der Bereich höher als breit ist)
   order?: [row: number, col: number][] // Handkorrektur
 }
-interface SigChainMeta extends ChainRoute { port?: string }
+interface SigChainMeta extends ChainRoute { port?: string; backup?: { port?: string } | null }
 interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2' | 'L3' }
 // zusätzlich in LedWallConfig:
 //   sigMeta: Record<string, SigChainMeta>, pwrMeta: Record<string, PwrChainMeta>
+//   feed: Feed, redundancy: boolean (Vorgabe für neue Signalketten)
 //   mains: { voltage: number; breakerA: number }
-//   processor: { family: 'novastar' | 'novastar-alt' | 'brompton' | 'frei'; bitDepth: 8 | 10 | 12; hz: number; portPx?: number }
+//   processor: { model: 'novapro-uhd-jr' | 'vx4s' | 'tessera-s8' | 'frei'; bitDepth: 8 | 10 | 12;
+//                hz: number; ports?: number; portPx?: number; totalPx?: number } // ?-Felder nur bei 'frei'
 // Bedienzustand, NICHT im Datei-Abschnitt: planView ('front' | 'rear'), sigChain/pwrChain, pdfLandscape
 ```
 
-- **Stammdaten** in `led-wall/data.ts`: `imPerModule` (496-2,0: 4, rX3ioBF: 4, uS2+: 2) und deren
-  Anordnung, optional `maxModulesPerPowerLoop` und das übliche Steuersystem je Modul (uS2+:
-  Brompton).
+- **Stammdaten** in `led-wall/data.ts`: IMs je Modul und Anordnung (496-2,0 und rX3ioBF: 4 als
+  2 × 2; uS2+: 2 übereinander), IM-Tausch (Stufe und Hinweis: „werkzeuglos, von vorne oder
+  hinten, nach Rücksprache“ bzw. „8 Schrauben je IM, nur Technik“), Prozessor-Vorbelegung
+  (496-2,0 und rX3ioBF: NovaPro UHD Jr; uS2+: Tessera S8), optional `maxModulesPerPowerLoop`.
+  Dazu eine kleine Prozessor-Tabelle (Ports, Kapazität je Port und gesamt, Formel für Farbtiefe
+  und Bildrate).
 - **Migration 1 → 2** als reine, getestete Funktion (Muster `rta/store.ts` mit
   `rta/store.test.ts`): leere Metadaten = Automatik, Verhalten unverändert – **auch in jeder
   gespeicherten Vorlage** (`presets[].data`; zustand ergänzt nur oberste Felder). Ein gemeinsames
@@ -758,7 +834,8 @@ interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2
   Planung stehen).
 - **Reine Funktionen** in einem neuen Modul `led-wall/cabling` (mit Tests): Kettenzählung (ersetzt
   vier Kopien: `CableGrid.tsx`, `LedWall.tsx`, `print.ts`, `packing-list/derive.ts`),
-  Automatik-Route, Abgleich der Handkorrektur, Sprünge, Lasten je Kette, Port-Kapazität aus
+  Startecken-Vorschlag aus der Zuleitung, Schlangen-Route, Abgleich der Handkorrektur, Sprünge,
+  Backup-Leitungen und Port-Belegung, Lasten je Kette, Port- und Gesamtkapazität aus
   Prozessor/Farbtiefe/Bildrate, Phasenbilanz, Geometrie und SVG-Markup des Verlaufs.
 - **Eine Zeichenquelle** für Bildschirm und PDF wie `topdown.ts`: SVG-String. Am Bildschirm ein
   absolut gelegtes SVG mit `pointer-events: none` über dem Knopf-Raster von `CableGrid.tsx`,
@@ -816,7 +893,7 @@ Jede Phase ist für sich nutzbar.
 |---|---|---|
 | **0 Projektordner und Projektdatei** | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Automatik; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration); Messung der 2-MB-Grenze im PDF-Weg | LED-Wall-Planungen als Datei am festen Ort |
 | **1 Mini-Manual, erste Fassung** | Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2 Kabelverlauf** | Startecke, Richtung, Handkorrektur, Port/Kreis/Phase, Prozessor und Port-Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
+| **2 Kabelverlauf** | Zuleitung, Startecke, Richtung, Handkorrektur, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
 | **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
@@ -858,8 +935,8 @@ erledigt).
 
 - Unit: ZIP (runder Weg, kaputte Dateien, Grenzen, `..`-Namen), Abschnitt speichern (fremde
   Abschnitte und Fotos bleiben, Konflikt über `baseSha`, `rev` nur bei Änderung), `sanitize` je
-  Abschnitt, Migration v1 → v2 inkl. Vorlagen, `cabling` (8 Muster, Abgleich, Lasten,
-  Port-Kapazität), Platzhalter, Stufenfilter und Fehlerfall-Prüfung, Seitenbauer (Escaping,
+  Abschnitt, Migration v1 → v2 inkl. Vorlagen, `cabling` (8 Muster, Zuleitung „Mitte“, Abgleich,
+  Backup und Port-Belegung, Lasten, Kapazität), Platzhalter, Stufenfilter und Fehlerfall-Prüfung, Seitenbauer (Escaping,
   Inhalte je Stufe), QR-Encoder gegen bekannte Vektoren, Importe mit Fixtures.
 - Bibliothek: jeder mitgelieferte Fehlerfall besteht die Prüfung (keine toten Enden).
 - E2E: LED-Wall speichern und wieder öffnen; Mini-Manual mit Foto speichern, öffnen, PDF
@@ -868,29 +945,24 @@ erledigt).
 
 ## Offene Fragen
 
-1. **Verkabelungspraxis:** Startet ihr bei Ground-Stack unten links und fliegend oben links,
-   senkrecht? (Vorgabe der Automatik.)
-2. **IM-Anordnung:** 2 × 2 bei 496-2,0 und rX3ioBF – und bei uS2+ übereinander oder
-   nebeneinander?
-3. **Wer darf IMs tauschen** – Betreuung (werkzeuglos mit Ersatz-IM) oder nur Technik? Müssen
-   IMs an ihren Platz zurück (Kalibrierung)?
-4. **Weitere Fehlerfälle** aus der Praxis; Abgleich der ergänzten Fälle 5–13.
-5. **Prozessoren im Bestand:** Welche NovaStar-Modelle, welcher Brompton-Prozessor, was steuert
-   den rX3ioBF? Übliche Farbtiefe und Bildrate? (Port-Kapazität, Prozessor-Presets.)
-6. **Beispieldateien** für die Importe: exportiertes Stream-Deck-Profil (am besten je Gerät),
-   Companion-Export, OBS-Szenensammlung, MadMapper-Projekt (Version 5 oder 6?), NovaLCT-Dateien –
-   anonymisiert, kommen als Test-Fixtures ins Repo. Für MadMapper zusätzlich ein Abzug des
-   OSCQuery-Baums (`http://<ip>:8010/?`) eines laufenden Projekts.
-7. **Dateiendung** `.mottul` passt?
-8. **Neue Projektdateien** immer im Standard-Projektordner beginnen (evtl. Unterordner je Kunde)
+Geklärt am 16. Oktober 2026 (siehe Festlegungen 13–18): Verkabelungspraxis, IM-Anordnung und
+-Tausch, Prozessoren im Bestand, Dateiendung, MadMapper-Version und OSC-Port.
+
+1. **Beispieldateien** für die Importe (Matthias sammelt): exportiertes Stream-Deck-Profil (am
+   besten je Gerät), Companion-Export, OBS-Szenensammlung, ein MadMapper-6-Projekt, NovaLCT-Dateien
+   – anonymisiert, kommen als Test-Fixtures ins Repo. Für MadMapper zusätzlich ein Abzug des
+   OSCQuery-Baums eines laufenden Projekts (`http://<ip>:8010/?`).
+2. **Weitere Fehlerfälle** aus der Praxis; Abgleich der Fälle 5–18 mit eurer Erfahrung.
+3. **Neue Projektdateien** immer im Standard-Projektordner beginnen (evtl. Unterordner je Kunde)
    oder im zuletzt benutzten?
-9. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
+4. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
    kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden?
-10. **Firmenprofil:** Logo und Farbe von Megasound als Vorgabe?
-11. **Kurzkarte** A4 oder A5?
-12. Nebenbefund: Das OSC-Werkzeug sendet ab Werk an Port 8000; MadMapper nennt in seiner Doku
-    teils 8000, teils 8010 – an einer echten Installation prüfen (eigener Roadmap-Punkt, gehört
-    nicht zu diesem Plan).
+5. **Firmenprofil:** Logo und Farbe von Megasound als Vorgabe?
+6. **Kurzkarte** A4 oder A5?
+7. **Redundanz als Vorgabe:** Haben alle Signalketten eine Backup-Leitung, oder nur bestimmte
+   Wände/Kunden?
+8. **Prozessor-Datenblätter:** Ports und Gesamtkapazität von NovaPro UHD Jr, VX4S und Tessera S8
+   gegen die Richtwerte oben prüfen; übliche Farbtiefe und Bildrate bei euch?
 
 ## Nicht geplant
 
