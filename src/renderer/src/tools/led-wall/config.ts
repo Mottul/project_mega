@@ -126,7 +126,14 @@ export const CONFIG_KEYS = Object.keys(DEFAULT_LED_WALL_CONFIG) as (keyof LedWal
 const FEEDS: Feed[] = ['left', 'right', 'top', 'bottom', 'center']
 const CORNERS: Corner[] = ['tl', 'tr', 'bl', 'br']
 const PROCESSORS: ProcessorModel[] = ['novapro-uhd-jr', 'vx4s', 'tessera-s8', 'frei']
-const LIMITS = { gridSide: 200, chains: 999, orderLen: 40_000, meta: 400, label: 40 }
+/**
+ * Größtes Raster je Seite (Spalten bzw. Reihen) – auch Obergrenze für Builder-Module. Breite und
+ * Höhe sind in der Oberfläche frei, die App erzeugt also selbst große Raster (100 m Wand = 202
+ * Spalten); diese Grenze schützt nur die Prüfung. Die Gesamtgröße deckelt die Abschnittsgrenze der
+ * Projektdatei (PROJECT_LIMITS.sectionDataBytes).
+ */
+export const GRID_SIDE_MAX = 1000
+const LIMITS = { gridSide: GRID_SIDE_MAX, chains: 999, orderLen: 40_000, meta: 400, label: 40 }
 
 type Obj = Record<string, unknown>
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -156,18 +163,22 @@ function grid(v: unknown): number[][] | undefined {
 }
 
 function builderSegs(v: unknown): BuilderSegment[] | undefined {
-  if (!Array.isArray(v) || v.length === 0 || v.length > 50) return undefined
+  // Grenzen wie das, was die App selbst erzeugt („Im Builder weiterbearbeiten“ aus einem großen
+  // Kreissegment hat mehr als 50 Module) – sonst fiele beim Öffnen die ganze Form weg
+  if (!Array.isArray(v) || v.length === 0 || v.length > LIMITS.gridSide) return undefined
   const out: BuilderSegment[] = []
   for (const s of v) {
     if (!isObj(s)) return undefined
-    const count = int(s.count, 1, 50)
+    const count = int(s.count, 1, LIMITS.gridSide)
     if (count === undefined) return undefined
     if (s.type === 'straight') out.push({ type: 'straight', count })
     else if (s.type === 'curved') {
-      const angle = num(s.angle, 2.5, count * 45)
+      // über Anzahl × 45° kappen statt verwerfen: so rechnet die App ohnehin (distributeAngles),
+      // und ein später verkleinerter Bogen behält seinen alten Winkel
+      const raw = num(s.angle, 2.5, LIMITS.gridSide * 45)
       const dir = oneOf(s.dir, ['convex', 'concave'] as const)
-      if (angle === undefined || !dir) return undefined
-      out.push({ type: 'curved', count, angle, dir })
+      if (raw === undefined || !dir) return undefined
+      out.push({ type: 'curved', count, angle: Math.min(raw, count * 45), dir })
     } else return undefined
   }
   return out
@@ -254,8 +265,11 @@ export function sanitizeLedWallConfig(
   const mainsIn = isObj(v.mains) ? v.mains : {}
   const selectedCircle = int(v.selectedCircle, 0, CIRCLE_TABLE.length - 1)
   return {
+    // hasOwn: „constructor“ o. Ä. aus einer fremden Datei wäre sonst ein „Modul“ (alles NaN)
     moduleKey:
-      typeof v.moduleKey === 'string' && v.moduleKey in MODULES ? v.moduleKey : base.moduleKey,
+      typeof v.moduleKey === 'string' && Object.hasOwn(MODULES, v.moduleKey)
+        ? v.moduleKey
+        : base.moduleKey,
     widthM: text(v.widthM, 20) ?? base.widthM,
     heightM: text(v.heightM, 20) ?? base.heightM,
     projectName: text(v.projectName, 200) ?? base.projectName,

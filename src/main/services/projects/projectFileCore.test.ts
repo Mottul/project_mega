@@ -76,15 +76,27 @@ describe('Projektdatei – Abschnitt einsetzen', () => {
 
   it('Konflikt, wenn der Abschnitt inzwischen anderswo geändert wurde', () => {
     const c = withSection(emptyContainer(NOW), 'ledWall', wall)
-    const r = putSection(c.file, 'ledWall', 2, wall, 'f'.repeat(64), false, LATER)
+    const mine = { ...wall, widthM: '5' }
+    const r = putSection(c.file, 'ledWall', 2, mine, 'f'.repeat(64), false, LATER)
     expect(r).toMatchObject({ ok: false, reason: 'konflikt', rev: 1 })
     // Hinzufügen erwartet, dass es den Abschnitt noch nicht gibt
-    expect(putSection(c.file, 'ledWall', 2, wall, null, false, LATER)).toMatchObject({
+    expect(putSection(c.file, 'ledWall', 2, mine, null, false, LATER)).toMatchObject({
       ok: false,
       reason: 'konflikt'
     })
     // bewusst überschreiben
     expect(putSection(c.file, 'ledWall', 2, { a: 1 }, null, true, LATER).ok).toBe(true)
+  })
+
+  it('kein Konflikt, wenn genau diese Fassung schon in der Datei steht (baseSha veraltet)', () => {
+    const c = withSection(emptyContainer(NOW), 'ledWall', wall)
+    const old = c.file.abschnitte.ledWall.sha256
+    const mine = { ...wall, widthM: '5' }
+    // gespeichert, aber die Antwort kam nie im Fenster an -> Bindung steht noch auf `old`
+    const first = putSection(c.file, 'ledWall', 2, mine, old, false, LATER)
+    if (!first.ok) throw new Error(first.reason)
+    const again = putSection(first.file, 'ledWall', 2, mine, old, false, LATER)
+    expect(again).toMatchObject({ ok: true, changed: false, section: { rev: 2 } })
   })
 
   it('Abschnitt einer neueren Mottulbox wird nie überschrieben – auch nicht erzwungen', () => {

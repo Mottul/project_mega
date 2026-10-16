@@ -74,6 +74,29 @@ export function migrateLedWall(persisted: unknown, version: number): unknown {
   return { ...sanitizeLedWallConfig(p), presets, file: sanitizeBinding(p.file) }
 }
 
+/**
+ * Beim Verkleinern abgeschnittene Zuordnungen, für diese Sitzung gemerkt: Wer kurz Modul, Curving
+ * oder Maße umschaltet (oder das Höhenfeld leert), bekommt beim Zurückschalten seine Verkabelung
+ * wieder – und eine gebundene Datei gilt dann wieder als gespeichert. Gespeichert wird weiter nur
+ * das passende Raster. Gilt nur für die aktuelle Planung (andere Planung oder Stand aus einem
+ * anderen Fenster -> vergessen).
+ */
+let shadow: { sig: number[][]; pwr: number[][] } | null = null
+
+/** `small` über `big` legen: in seinem Bereich gilt `small` (auch -1), außerhalb `big`. */
+function overlay(big: number[][] | undefined, small: number[][]): number[][] {
+  if (!big) return small
+  const sRows = small.length
+  const sCols = small[0]?.length ?? 0
+  const rows = Math.max(big.length, sRows)
+  const cols = Math.max(big[0]?.length ?? 0, sCols)
+  return Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, (_, c) =>
+      r < sRows && c < sCols ? small[r][c] : (big[r]?.[c] ?? -1)
+    )
+  )
+}
+
 export const useLedWall = create<LedWallState>()(
   persist(
     (set, get) => ({
@@ -86,7 +109,8 @@ export const useLedWall = create<LedWallState>()(
       ensureGridSize: (rows, cols) => {
         const { sig, pwr } = get()
         if (sig.length === rows && (sig[0]?.length ?? 0) === cols) return
-        set({ sig: resizeGrid(sig, rows, cols), pwr: resizeGrid(pwr, rows, cols) })
+        shadow = { sig: overlay(shadow?.sig, sig), pwr: overlay(shadow?.pwr, pwr) }
+        set({ sig: resizeGrid(shadow.sig, rows, cols), pwr: resizeGrid(shadow.pwr, rows, cols) })
       },
 
       setCell: (grid, row, col) => {
@@ -110,6 +134,7 @@ export const useLedWall = create<LedWallState>()(
 
       resetGrid: (grid) => {
         const s = get()
+        if (shadow) shadow = { ...shadow, [grid]: [] }
         set({
           [grid]: s[grid].map((r) => r.map(() => -1)),
           [grid === 'sig' ? 'sigChain' : 'pwrChain']: 0
@@ -141,15 +166,19 @@ export const useLedWall = create<LedWallState>()(
         const preset = get().presets.find((p) => p.id === id)
         // alle Felder setzen (fehlende aus der Vorgabe) – sonst blieben Felder der vorigen
         // Planung stehen, z. B. eine fremde Kabelreihenfolge
-        if (preset) set({ ...sanitizeLedWallConfig(preset.data), file: null })
+        if (!preset) return
+        shadow = null
+        set({ ...sanitizeLedWallConfig(preset.data), file: null })
       },
 
       deletePreset: (id) => set((state) => ({ presets: state.presets.filter((p) => p.id !== id) })),
 
       setFile: (file) => set({ file }),
 
-      replaceConfig: (config) =>
+      replaceConfig: (config) => {
+        shadow = null
         set({ ...structuredClone(config), pdfLandscape: get().pdfLandscape })
+      }
     }),
     {
       name: 'led-wall-konfigurator',
@@ -164,3 +193,6 @@ export const useLedWall = create<LedWallState>()(
 // Ein Werkzeug in mehreren Fenstern: Änderungen der anderen übernehmen, statt sie
 // beim nächsten Speichern mit altem Stand zu überschreiben (siehe persistStorage.ts).
 syncAcrossWindows(useLedWall)
+useLedWall.persist.onFinishHydration(() => {
+  shadow = null
+})

@@ -107,6 +107,22 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   Aktion, die den Arbeitsstand liest oder ersetzt, offene Eingaben übernehmen.
 - **Rückfragen nennen das wirkliche Ziel** (Dateiname des Pfads, in den geschrieben wird), nicht
   die gebundene Datei.
+- **`writeSync` schreibt bei fast voller Platte still nur einen Teil** und wirft nicht – die
+  settings.json war danach abgeschnitten, beim nächsten Start alles zurückgesetzt. Ganze Inhalte
+  mit `writeFileSync(fd, …)`/`fh.writeFile` schreiben; jeder Fehlerweg räumt seine Nachbardatei
+  weg (eindeutige Namen werden sonst nie wiederverwendet). Unter Windows `rename` bei
+  EPERM/EACCES/EBUSY kurz wiederholen, bevor ein nicht-atomarer Notweg greift.
+- **Nie synchron auf Nutzerordner zugreifen** (`statSync`, `existsSync`): Ein getrenntes
+  Netzlaufwerk hält den main bis zum SMB-Timeout an. `isDirReachable()` mit Zeitlimit.
+- **Was die App selbst erzeugt, muss ihre eigene Prüfung bestehen.** `sanitize` verwarf Builder
+  mit mehr als 50 Modulen (die „Im Builder weiterbearbeiten“ erzeugt), Raster über 200 Spalten
+  (100-m-Wand) und Bögen, deren Winkel nach dem Verkleinern über Anzahl × 45° lag – beim Öffnen
+  war die Form samt Verkabelung still weg. Grenzen an die Oberfläche koppeln, kappen statt
+  verwerfen, und einen Test „was die App erzeugt, übersteht die Prüfung“.
+- **Abgeleitete Größen nicht zerstörend anpassen.** `ensureGridSize` schnitt die Raster beim
+  Umschalten von Modul oder Curving ab; zurückgeschaltet war die Verkabelung weg. Abgeschnittenes
+  für die Sitzung merken (`led-wall/store.ts`, `shadow`).
+- **Sicherungen** je Datei (Name + Pfad-Hash) und nie überschreiben (`COPYFILE_EXCL`).
 
 ## Fenster (Oktober 2026)
 

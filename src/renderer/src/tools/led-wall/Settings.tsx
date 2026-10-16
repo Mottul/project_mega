@@ -12,6 +12,7 @@ import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { fmt } from '../_calc/ui'
 import type { WallMetrics } from './compute'
+import { GRID_SIDE_MAX } from './config'
 import { CURVE_MODE_LABELS } from './curve'
 import { CIRCLE_TABLE, MODULES } from './data'
 import type { BuilderSegment } from './math'
@@ -439,9 +440,17 @@ function BuilderInputs(): JSX.Element {
                 aria-label={`Module in Abschnitt ${i + 1}`}
                 value={seg.count}
                 min={1}
-                max={50}
+                max={GRID_SIDE_MAX}
                 integer
-                onCommit={(v) => update(i, { count: v })}
+                // weniger Module: Winkel mitkappen (höchstens 45° je Modul)
+                onCommit={(v) =>
+                  update(
+                    i,
+                    seg.type === 'curved'
+                      ? { count: v, angle: Math.min(seg.angle, v * 45) }
+                      : { count: v }
+                  )
+                }
                 className="h-8 w-14 px-2 text-sm"
               />
               <span className="text-xs text-muted-foreground">Mod.</span>

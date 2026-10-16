@@ -3,32 +3,24 @@
 // Dokumente-Ordner folgt. Angelegt wird der Ordner erst, wenn er gebraucht wird.
 
 import { app } from 'electron'
-import { statSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { APP_NAME } from '@shared/brand'
 import type { ProjectsDirInfo } from '@shared/types'
 import { isSafeAbsolutePath } from '@shared/videoGenProject'
+import { isDirReachable } from '../reachableDir'
 import { getSettings } from '../store'
-
-function isDir(path: string): boolean {
-  try {
-    return statSync(path).isDirectory()
-  } catch {
-    return false
-  }
-}
 
 export function defaultProjectsDir(): string {
   return join(app.getPath('documents'), `${APP_NAME}-Projekte`)
 }
 
 /** Eingestellter (geprüfter) oder Standard-Ordner – settings:set prüft Pfade nicht. */
-export function projectsDirInfo(): ProjectsDirInfo {
+export async function projectsDirInfo(): Promise<ProjectsDirInfo> {
   const dir = getSettings().projects.dir
   const custom = isSafeAbsolutePath(dir)
   const path = custom ? dir : defaultProjectsDir()
-  return { path, isDefault: !custom, exists: isDir(path) }
+  return { path, isDefault: !custom, exists: await isDirReachable(path) }
 }
 
 /**
@@ -36,7 +28,7 @@ export function projectsDirInfo(): ProjectsDirInfo {
  * Ein eigener Ordner wird nie angelegt – fehlt er, ist meist das Netzlaufwerk weg.
  */
 export async function ensureProjectsDir(): Promise<string> {
-  const info = projectsDirInfo()
+  const info = await projectsDirInfo()
   if (info.exists) return info.path
   const fallback = defaultProjectsDir()
   await mkdir(fallback, { recursive: true })

@@ -3,7 +3,8 @@
 // - Speichern ersetzt nur den eigenen Abschnitt; fremde Abschnitte, ihre Fotos und unbekannte
 //   Einträge bleiben unverändert.
 // - Konflikt: Hat sich der eigene Abschnitt seit dem Öffnen geändert (anderer sha256 als baseSha,
-//   z. B. Kollege auf dem NAS), wird nicht still überschrieben.
+//   z. B. Kollege auf dem NAS), wird nicht still überschrieben – außer es steht schon genau das
+//   drin, was gespeichert werden soll.
 // - rev zählt nur hoch, wenn sich der Inhalt ändert – Speichern ohne Änderung meldet also kein
 //   falsches „Planung geändert“ in anderen Werkzeugen.
 // - Ein Abschnitt aus einer neueren Mottulbox (höhere Schema-Version) wird nie überschrieben.
@@ -177,12 +178,14 @@ export function putSection(
   if (current && current.version > version) {
     return { ok: false, reason: 'neuer', rev: current.rev, sha256: current.sha256 }
   }
-  if (!force && (current?.sha256 ?? null) !== baseSha) {
-    return { ok: false, reason: 'konflikt', rev: current?.rev ?? 0, sha256: current?.sha256 ?? '' }
-  }
   const sha = sectionSha(data)
+  // Steht genau diese Fassung schon in der Datei, gibt es nichts zu überschreiben – auch bei
+  // veralteter baseSha (Antwort aufs letzte Speichern nicht angekommen, zweites Fenster)
   if (current && current.sha256 === sha && current.version === version) {
     return { ok: true, file, section: current, changed: false }
+  }
+  if (!force && (current?.sha256 ?? null) !== baseSha) {
+    return { ok: false, reason: 'konflikt', rev: current?.rev ?? 0, sha256: current?.sha256 ?? '' }
   }
   const section: ProjectSection = {
     version,

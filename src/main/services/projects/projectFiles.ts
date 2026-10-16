@@ -6,12 +6,14 @@
 // - Je Datei eine Warteschlange: LED-Wall und Anleitung können gleichzeitig in dieselbe Datei
 //   speichern; jeder Auftrag liest, ändert und schreibt nacheinander (sonst ginge ein Abschnitt
 //   verloren).
-// - Vor jedem Überschreiben eine Sicherung unter userData/Sicherungen (die letzten 10 je Name).
+// - Vor jedem Überschreiben eine Sicherung unter userData/Sicherungen (die letzten 10 je Datei).
 // - „Fehlt“ heißt nur „nicht gefunden“. Ein anderer Lesefehler (Netzlaufwerk hakt) darf nie dazu
 //   führen, dass eine vorhandene Datei als neu gilt und ohne Sicherung ersetzt wird; neue Dateien
 //   werden deshalb auch nur exklusiv angelegt.
 
 import { app } from 'electron'
+import { createHash } from 'node:crypto'
+import { constants } from 'node:fs'
 import { copyFile, mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import {
@@ -43,7 +45,7 @@ import {
 } from './projectFileCore'
 
 const RECENT_MAX = 10
-const BACKUPS_PER_NAME = 10
+const BACKUPS_PER_FILE = 10
 const SHA = /^[0-9a-f]{64}$/
 
 /** Vergleichsschlüssel eines Pfads (Windows: Groß-/Kleinschreibung egal). */
@@ -167,14 +169,29 @@ export async function inspectTarget(p: string, section: string): Promise<Project
   }
 }
 
+/**
+ * Name der Sicherungen einer Datei: Anzeigename plus kurzer Hash des Pfads. Sonst teilten sich
+ * „Kunde-A/Messe.mottul“ und „Kunde-B/Messe.mottul“ die 10 Plätze, und das Speichern der einen
+ * löschte die Sicherungen der anderen.
+ */
+function backupKey(p: string): string {
+  const hash = createHash('sha256').update(pathKey(p)).digest('hex').slice(0, 8)
+  return `${projectDisplayName(p)}-${hash}`
+}
+
 /** Bisherige Datei sichern; Fehler hier verhindern das Speichern nicht (nur Log). */
 async function backup(p: string, now: Date): Promise<void> {
   try {
     const dir = join(app.getPath('userData'), 'Sicherungen')
     await mkdir(dir, { recursive: true })
-    const name = projectDisplayName(p)
-    await copyFile(p, join(dir, backupName(name, now)))
-    for (const old of backupsToDelete(await readdir(dir), name, BACKUPS_PER_NAME)) {
+    const name = backupKey(p)
+    try {
+      // nie überschreiben: Zweimal Speichern in derselben Sekunde behält den älteren Stand
+      await copyFile(p, join(dir, backupName(name, now)), constants.COPYFILE_EXCL)
+    } catch (err) {
+      if (errCode(err) !== 'EEXIST') throw err
+    }
+    for (const old of backupsToDelete(await readdir(dir), name, BACKUPS_PER_FILE)) {
       await rm(join(dir, old), { force: true })
     }
   } catch (err) {

@@ -630,7 +630,8 @@ die anderen bleiben beim Speichern unverändert.
   Falsche zu speichern. Eine **Vorlage** zu laden löst die Verbindung zur Datei (die Datei bleibt
   unverändert).
 - **Sicherungen:** Vor jedem Überschreiben legt die App die bisherige Datei im Benutzerordner unter
-  `Sicherungen/` ab (die letzten 10 je Dateiname).
+  `Sicherungen/` ab (die letzten 10 je Datei; gleichnamige Dateien in anderen Ordnern haben
+  eigene Sicherungen).
 - **Projektordner:** im App-Menü; ab Werk `Dokumente/Mottulbox-Projekte` (wird beim ersten
   Speichern angelegt), änderbar, auch auf ein Netzlaufwerk. Eine neue Datei beginnt immer dort,
   „Öffnen“ im zuletzt benutzten Projektordner.
@@ -654,7 +655,7 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 | `bin/`                  | yt-dlp                                                                   |
 | `ffmpeg/`               | in der App aktualisierte ffmpeg-Builds (Windows, Linux)                  |
 | `Local Storage/`        | Werkzeug-Zustände (OSC-Projekte, LED-Wall-Planungen, Packlisten …)       |
-| `Sicherungen/`          | frühere Stände von Projektdateien (die letzten 10 je Name)               |
+| `Sicherungen/`          | frühere Stände von Projektdateien (die letzten 10 je Datei)              |
 | `avtoolbox-debug.log`   | Debug-Log – erste Anlaufstelle bei Problemen im gepackten Build          |
 
 Projektdateien (`.mottul`) liegen dort, wo man sie speichert – ab Werk im Projektordner

@@ -13,33 +13,35 @@ import {
   type SaveDialogOptions,
   type SaveDialogReturnValue
 } from 'electron'
-import { statSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { dirname, isAbsolute } from 'node:path'
 import type { DialogDirKind } from '@shared/types'
 import { dialogStartPath } from './dialogStartPath'
 import { projectsDirInfo } from './projects/projectsDir'
+import { isDirReachable } from './reachableDir'
 import { getSettings, setSettings } from './store'
 
-function isDir(path: string): boolean {
-  try {
-    return statSync(path).isDirectory()
-  } catch {
-    return false
-  }
+/** Absoluter, erreichbarer Ordner? (asynchron – ein getrenntes Netzlaufwerk hält sonst den main an) */
+async function reachable(dir: unknown): Promise<boolean> {
+  return typeof dir === 'string' && isAbsolute(dir) && (await isDirReachable(dir))
 }
 
 /** Gemerkter Ordner; Projektdateien starten ohne gemerkten Ordner im Projektordner. */
-function rememberedDir(kind: DialogDirKind): unknown {
+async function rememberedDir(kind: DialogDirKind): Promise<unknown> {
   const dir = getSettings().dialogDirs[kind]
-  if (kind === 'projekte' && (typeof dir !== 'string' || !isDir(dir))) {
-    const info = projectsDirInfo()
+  if (kind === 'projekte' && !(await reachable(dir))) {
+    const info = await projectsDirInfo()
     return info.exists ? info.path : dir
   }
   return dir
 }
 
-function withStartPath<T extends { defaultPath?: string }>(kind: DialogDirKind, opts: T): T {
-  const defaultPath = dialogStartPath(rememberedDir(kind), opts.defaultPath, isDir)
+async function withStartPath<T extends { defaultPath?: string }>(
+  kind: DialogDirKind,
+  opts: T
+): Promise<T> {
+  const dir = await rememberedDir(kind)
+  const ok = await reachable(dir)
+  const defaultPath = dialogStartPath(dir, opts.defaultPath, () => ok)
   return defaultPath ? { ...opts, defaultPath } : opts
 }
 
@@ -60,7 +62,7 @@ export async function showOpenDialog(
 ): Promise<OpenDialogReturnValue> {
   const kind: DialogDirKind =
     kindOverride ?? (opts.properties?.includes('openDirectory') ? 'ordner' : 'dateien')
-  const o = withStartPath(kind, opts)
+  const o = await withStartPath(kind, opts)
   const res = parent ? await dialog.showOpenDialog(parent, o) : await dialog.showOpenDialog(o)
   const first = res.canceled ? undefined : res.filePaths[0]
   if (first) remember(kind, kind === 'ordner' ? first : dirname(first))
@@ -73,7 +75,7 @@ export async function showSaveDialog(
   opts: SaveDialogOptions,
   kind: DialogDirKind = 'speichern'
 ): Promise<SaveDialogReturnValue> {
-  const o = withStartPath(kind, opts)
+  const o = await withStartPath(kind, opts)
   const res = parent ? await dialog.showSaveDialog(parent, o) : await dialog.showSaveDialog(o)
   if (!res.canceled && res.filePath) remember(kind, dirname(res.filePath))
   return res

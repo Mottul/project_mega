@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { digest } from '@shared/projectFile'
+import { computeWall } from './compute'
 import {
   DEFAULT_LED_WALL_CONFIG,
   describePlanning,
@@ -76,7 +77,7 @@ describe('LED-Wall-Planung prüfen', () => {
       sig: [[0, 'x']],
       sqCorner: 99,
       selectedCircle: -1,
-      builderSegs: [{ type: 'curved', count: 2, angle: 200, dir: 'convex' }],
+      builderSegs: [{ type: 'curved', count: 2, angle: 30, dir: 'schief' }],
       feed: 'bottom-center', // Wert aus einem frühen Entwurf
       mains: { voltage: 'viel', breakerA: 16 },
       processor: { model: 'gibts-nicht', bitDepth: 9, hz: 50 }
@@ -110,6 +111,44 @@ describe('LED-Wall-Planung prüfen', () => {
     })
     expect(c.sigMeta).toEqual({ '0': {} })
   })
+
+  it('Bogen mit Winkel über Anzahl × 45° wird gekappt, die Liste bleibt', () => {
+    // entsteht in der Oberfläche: Bogen mit 200°, danach weniger Module
+    const segs = [
+      { type: 'straight', count: 10 },
+      { type: 'curved', count: 2, angle: 200, dir: 'convex' },
+      { type: 'straight', count: 4 }
+    ]
+    expect(sanitizeLedWallConfig({ builderSegs: segs }).builderSegs).toEqual([
+      { type: 'straight', count: 10 },
+      { type: 'curved', count: 2, angle: 90, dir: 'convex' },
+      { type: 'straight', count: 4 }
+    ])
+  })
+
+  it('große Wände, wie die App sie selbst erzeugt, überstehen die Prüfung', () => {
+    // „Im Builder weiterbearbeiten“ aus einem 26-m-Kreissegment: 52 Module in einem Bogen
+    const arc = [{ type: 'curved', count: 52, angle: 17.5, dir: 'convex' }]
+    expect(sanitizeLedWallConfig({ builderSegs: arc }).builderSegs).toEqual(arc)
+    // 100 m breite Wand aus 496-2,0: 202 Spalten, verkabelt
+    const cols = computeWall({ ...DEFAULT_LED_WALL_CONFIG, widthM: '100' }).cols
+    expect(cols).toBeGreaterThan(200)
+    const sig = Array.from({ length: 6 }, (_, r) =>
+      Array.from({ length: cols }, (_, c) => (r + c) % 3)
+    )
+    const c = sanitizeLedWallConfig(JSON.parse(JSON.stringify({ widthM: '100', sig, pwr: sig })))
+    expect(c.sig).toEqual(sig)
+    expect(c.pwr).toEqual(sig)
+  })
+
+  it.each(['constructor', 'toString', '__proto__', 'hasOwnProperty'])(
+    'Prototyp-Schlüssel „%s“ als Modul wird zur Vorgabe',
+    (key) => {
+      // JSON.parse: „__proto__“ kommt wie aus einer Datei als eigener Schlüssel an
+      const c = sanitizeLedWallConfig(JSON.parse(JSON.stringify({ moduleKey: key })))
+      expect(c.moduleKey).toBe(DEFAULT_LED_WALL_CONFIG.moduleKey)
+    }
+  )
 
   it('nichts Brauchbares -> Vorgabe', () => {
     expect(sanitizeLedWallConfig(null)).toEqual(DEFAULT_LED_WALL_CONFIG)

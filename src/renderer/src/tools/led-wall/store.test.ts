@@ -93,4 +93,61 @@ describe('gemerkter Stand des LED-Wall-Konfigurators', () => {
     st.set({ widthM: '4' })
     expect(ledWallDirty(useLedWall.getState())).toBe(false)
   })
+
+  it('Raster verkleinern und wieder vergrößern stellt die Verkabelung wieder her', () => {
+    useLedWall.getState().replaceConfig({ ...DEFAULT_LED_WALL_CONFIG })
+    const full = Array.from({ length: 5 }, () =>
+      Array.from({ length: 12 }, (_, c) => (c < 6 ? 0 : 1))
+    )
+    useLedWall.getState().set({ sig: full, pwr: full.map((r) => [...r]) })
+    const st = useLedWall.getState()
+    st.setFile({
+      path: '/p/x.mottul',
+      name: 'x',
+      baseSha: 'a'.repeat(64),
+      rev: 1,
+      savedDigest: digest(ledWallSection(st))
+    })
+    useLedWall.getState().ensureGridSize(5, 8) // flaches Modul oder Vollkreis mit 8
+    useLedWall.getState().ensureGridSize(1, 12) // Höhenfeld kurz leer
+    useLedWall.getState().setCell('sig', 0, 0) // Änderung im sichtbaren Bereich bleibt
+    useLedWall.getState().setCell('sig', 0, 0) // … und wird zurückgenommen
+    useLedWall.getState().ensureGridSize(5, 12)
+    expect(useLedWall.getState().sig).toEqual(full)
+    expect(useLedWall.getState().pwr).toEqual(full)
+    expect(ledWallDirty(useLedWall.getState())).toBe(false)
+  })
+
+  it('gemerkte Zuordnungen gelten nur für die eigene Planung', () => {
+    const wide = Array.from({ length: 5 }, () => Array(12).fill(0))
+    useLedWall.getState().replaceConfig({ ...DEFAULT_LED_WALL_CONFIG })
+    useLedWall.getState().set({ sig: wide, pwr: wide.map((r) => [...r]) })
+    useLedWall.getState().ensureGridSize(5, 8)
+    const empty = Array.from({ length: 5 }, () => Array(8).fill(-1))
+    useLedWall.getState().replaceConfig({ ...DEFAULT_LED_WALL_CONFIG, sig: empty, pwr: empty })
+    useLedWall.getState().ensureGridSize(5, 12)
+    expect(
+      useLedWall
+        .getState()
+        .sig.flat()
+        .every((v) => v === -1)
+    ).toBe(true)
+    // „Raster leeren“ vergisst ebenfalls
+    useLedWall.getState().set({ sig: wide, pwr: wide.map((r) => [...r]) })
+    useLedWall.getState().ensureGridSize(5, 8)
+    useLedWall.getState().resetGrid('sig')
+    useLedWall.getState().ensureGridSize(5, 12)
+    expect(
+      useLedWall
+        .getState()
+        .sig.flat()
+        .every((v) => v === -1)
+    ).toBe(true)
+    expect(
+      useLedWall
+        .getState()
+        .pwr.flat()
+        .every((v) => v === 0)
+    ).toBe(true)
+  })
 })

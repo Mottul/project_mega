@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -76,7 +76,10 @@ beforeEach(() => {
   sim.userData = join(dir, 'userData')
   sim.statError = null
 })
-afterEach(() => rmSync(dir, { recursive: true, force: true }))
+afterEach(() => {
+  vi.useRealTimers()
+  rmSync(dir, { recursive: true, force: true })
+})
 
 describe('Projektdatei speichern – Dateisystem', () => {
   it('ein Lesefehler ist kein „fehlt“: die vorhandene Datei bleibt, wie sie ist', async () => {
@@ -115,5 +118,52 @@ describe('Projektdatei speichern – Dateisystem', () => {
     const r = await saveSection({ ...request(path), data: { notiz: '€'.repeat(3_000_000) } })
     expect(r).toEqual({ ok: false, reason: 'zu-gross' })
     expect(readFileSync(path).equals(before)).toBe(true)
+  })
+
+  it('Sicherungen gehören zur Datei: gleichnamige Dateien in anderen Ordnern löschen sie nicht', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    let t = new Date(2026, 9, 16, 10, 0, 0).getTime()
+    const tick = (): void => {
+      t += 1000
+      vi.setSystemTime(t)
+    }
+    const paths = ['Kunde-A', 'Kunde-B'].map((k) => {
+      mkdirSync(join(dir, k))
+      const p = join(dir, k, 'Messe.mottul')
+      approvePath(p)
+      return p
+    })
+    const sha = new Map<string, string>()
+    const save = async (p: string, widthM: string): Promise<void> => {
+      tick()
+      const r = await saveSection({ ...request(p), data: { widthM }, baseSha: sha.get(p) ?? null })
+      if (!r.ok) throw new Error(r.reason)
+      sha.set(p, r.sha256)
+    }
+    await save(paths[0], '1')
+    await save(paths[0], '2') // eine Sicherung von A
+    await save(paths[1], '1')
+    for (let i = 2; i <= 13; i++) await save(paths[1], String(i)) // B: 12 Sicherungen -> 10
+    const backups = readdirSync(join(sim.userData, 'Sicherungen'))
+    const prefixes = new Set(backups.map((f) => f.slice(0, -'-20261016-100000.mottul'.length)))
+    expect(prefixes.size).toBe(2)
+    expect(backups).toHaveLength(11)
+  })
+
+  it('zweimal Speichern in derselben Sekunde behält die ältere Sicherung', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 16, 10, 0, 0))
+    const path = join(dir, 'Schnell.mottul')
+    approvePath(path)
+    const r1 = await saveSection({ ...request(path), data: { widthM: '1' } })
+    if (!r1.ok) throw new Error(r1.reason)
+    const r2 = await saveSection({ ...request(path), data: { widthM: '2' }, baseSha: r1.sha256 })
+    if (!r2.ok) throw new Error(r2.reason)
+    const r3 = await saveSection({ ...request(path), data: { widthM: '3' }, baseSha: r2.sha256 })
+    expect(r3.ok).toBe(true)
+    const [backup, ...rest] = readdirSync(join(sim.userData, 'Sicherungen'))
+    expect(rest).toEqual([])
+    const saved = unpackProject(readFileSync(join(sim.userData, 'Sicherungen', backup)))
+    expect(saved.ok && saved.container.file.abschnitte.ledWall.data).toEqual({ widthM: '1' })
   })
 })
