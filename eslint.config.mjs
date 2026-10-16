@@ -41,5 +41,22 @@ export default tseslint.config(
       ]
     }
   },
+  {
+    // Im main-Prozess nie synchron auf einen Prozess warten: Solange er läuft, nehmen die Fenster
+    // keine Klicks an und jede IPC-Anfrage hängt (yt-dlp --version: 1,5–2 s kurz nach dem Start).
+    // Tests und Labor-Skripte dürfen.
+    files: ['src/main/**/*.ts'],
+    ignores: ['**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        ...['node:child_process', 'child_process'].map((name) => ({
+          name,
+          importNames: ['spawnSync', 'execSync', 'execFileSync'],
+          message: 'Blockiert den main-Prozess – asynchron starten (Version: binaryVersion()).'
+        }))
+      ]
+    }
+  },
   prettier
 )
