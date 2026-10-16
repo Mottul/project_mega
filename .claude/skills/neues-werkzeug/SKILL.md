@@ -44,7 +44,7 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Zeilen – nie ein rohes `<select>` mit eigenen Klassen), Farben nur über Tailwind-Tokens
      (`primary`, `border` …; Rot ist „live“).
      Texte deutsch.
-5. **Speichern – drei Orte, nie ein eigener localStorage-Parser:**
+5. **Speichern – vier Orte, nie ein eigener localStorage-Parser:**
    - Einstellungen, die main braucht (Pfade, Geräte): `settings.json` über `useSettings(sel)` und
      `updateSettings(patch)`; neues Feld in `AppSettings` und `DEFAULT_SETTINGS` (`shared/types.ts`),
      immer nur geänderte Felder patchen.
@@ -52,6 +52,8 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `version`, `migrate`, `partialize` und `syncAcrossWindows(store)` (Muster
      `tools/media-info/store.ts`). Keine Vorschaubilder oder abgeleiteten Daten speichern.
    - Bedien-Kleinigkeiten: `usePersistentState(key, vorgabe, codec)`.
+   - Dateien des Nutzers (Planung zum Weitergeben/Ablegen): Abschnitt in der Projektdatei
+     `.mottul` mit Datei-Menü in der Leiste → Skill `projektdatei`.
 6. **Braucht das Werkzeug main?** → Skill `ipc-kanal`.
    - **Browser-Berechtigung** (Mikrofon, …): Die App verweigert sie allen Seiten
      (`main/services/windows/windowPolicy.ts`). Freigabe nur je Route und so eng wie möglich –

@@ -13,6 +13,7 @@ const all = [
   'osc',
   'rta',
   'video-generator',
+  'projektdatei',
   'shutdown',
   'ndi',
   'youtube',

@@ -1,9 +1,11 @@
 # Plan: Mini-Manual („So bedienst du deine LED-Wall“)
 
-**Status:** Plan, noch nicht umgesetzt (16. Oktober 2026). Abgestimmt in zwei Rücksprachen am
-selben Tag, siehe [Festlegungen](#festlegungen). Vor der Umsetzung die
-[offenen Fragen](#offene-fragen) klären; nach der Umsetzung in [WERKZEUGE.md](WERKZEUGE.md)
-überführen und diesen Plan löschen.
+**Status:** Phase 0 umgesetzt (16. Oktober 2026): Projektordner, Projektdatei `.mottul` und das
+Datei-Menü des LED-Wall-Konfigurators – beschrieben in
+[WERKZEUGE.md](WERKZEUGE.md#projektdateien-und-projektordner), Anleitung für weitere Werkzeuge im
+Skill `projektdatei`. Offen sind die Phasen 1–5. Abgestimmt in Rücksprachen am selben Tag, siehe
+[Festlegungen](#festlegungen); vor den späteren Phasen die [offenen Fragen](#offene-fragen)
+klären. Nach der Umsetzung in WERKZEUGE überführen und diesen Plan löschen.
 
 Ein neues Werkzeug erzeugt Kurz-Anleitungen für die Leute vor Ort: wie man die LED-Wall
 einschaltet und bedient, was wo steht und wie verkabelt ist – und im Fehlerfall Schritt für
@@ -909,8 +911,8 @@ Jede Phase ist für sich nutzbar.
 
 | Phase | Inhalt | Ergebnis |
 |---|---|---|
-| **0 Projektordner und Projektdatei** | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Automatik; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration); Messung der 2-MB-Grenze im PDF-Weg | LED-Wall-Planungen als Datei am festen Ort |
-| **1 Mini-Manual, erste Fassung** | Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
+| **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
+| **1 Mini-Manual, erste Fassung** | Zuerst: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Arbeitsordner im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
 | **2 Kabelverlauf** | Einspeisepunkt und Zuleitungen, Startecke, Richtung, Handkorrektur, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |

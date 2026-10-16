@@ -149,9 +149,10 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
 - **Darstellung in jedem Fenster:** `useAppearanceSync` an der App-Wurzel wendet Design,
   Akzent und Dichte aus `settings.json` an und folgt Änderungen aus anderen Fenstern – auch in
   Fenstern ohne App-Menü (kleine Werkzeuge). Die Vollbild-Ausgaben bleiben außen vor.
-- **Speichern – eine Regel, drei Orte** (siehe [Was wohin gehört](#was-wohin-gehört)):
+- **Speichern – eine Regel, vier Orte** (siehe [Was wohin gehört](#was-wohin-gehört)):
   Einstellungen in `settings.json`, Arbeitsdaten im Werkzeug-Store, Bedien-Kleinigkeiten über
-  `usePersistentState`. Nie direkt `localStorage` mit eigenem Parser.
+  `usePersistentState`, Dateien des Nutzers als Projektdatei (`.mottul`, Skill `projektdatei`).
+  Nie direkt `localStorage` mit eigenem Parser.
 - **Eingabefelder mit Puffer:** `useDraft()` (`@renderer/lib/useDraft`) übernimmt den externen
   Wert nur, solange das Feld nicht fokussiert ist.
 - **Fernsteuerungen:** abhängigkeitsfreie HTTP-Server je Werkzeug (`services/remote/remoteHttp.ts`),
@@ -187,6 +188,7 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
 | **Einstellungen** – alles, was der Hauptprozess führt oder braucht und was ein Neustart nie verlieren darf: Pfade und Zielordner, Ausgabe und Geräte (Monitor, NDI, Ports, Fernsteuerungen), Player- und Timer-Ablauf | `settings.json` (`services/store.ts`) | im Renderer `useSettings(auswahl)` + `updateSettings(teiländerung)` aus `@renderer/lib/settings`; im main `getSettings`/`setSettings` |
 | **Arbeitsdaten eines Werkzeugs**, die nur im Renderer leben: OSC-Projekte, Jingle-Bänke, LED-Wand-Planungen, Packlisten … | zustand-Store je Werkzeug | `persist` mit `debouncedStorage()`, `version` + `migrate`, `syncAcrossWindows(store)` |
 | **Bedien-Kleinigkeiten** pro Rechner, deren Verlust nicht weh tut: aufgeklappte Panels, Vorschau an/aus, FPS-Anzeige | localStorage | `usePersistentState(key, vorgabe, codec)` aus `@renderer/lib/usePersistentState` |
+| **Dateien des Nutzers** – eine Planung zum Weitergeben oder Ablegen (heute LED-Wall) | Projektdatei `.mottul` (ZIP, ein Abschnitt je Werkzeug), ab Werk im Projektordner | `useProjectFile(optionen)` aus `@renderer/lib/projectFile` + `ProjectFileMenu` in der Leiste; im main `services/projects/`. Arbeitsstand bleibt im Store, die Bindung liegt daneben (Skill `projektdatei`) |
 
 Dazu gilt:
 

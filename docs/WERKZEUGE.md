@@ -23,7 +23,7 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
 Jedes Werkzeug ist gleich aufgebaut:
 
 - **Kopfleiste:** links das Menü **„Mottulbox ▾“** mit allem, was die ganze App betrifft (Design,
-  Akzentfarbe, Anzeige, ffmpeg, yt-dlp), dann „Start“, das Werkzeug und sein Knopf
+  Akzentfarbe, Anzeige, Projektordner, ffmpeg, yt-dlp), dann „Start“, das Werkzeug und sein Knopf
   **„Einstellungen“**; rechts nur Aktionen des Werkzeugs: „Eigenes Fenster“, „Kundenansicht“.
 - **Ausgabe-Leiste** direkt darunter, in jedem Werkzeug am selben Platz: Monitor, Vollbild, NDI,
   Handy und rechts, was gerade läuft. Solange etwas live ist, ist sie **rot umrandet** und trägt
@@ -289,8 +289,9 @@ DMX-Startadresse in Dip-Schalter umrechnen und zurück (binär, 9 Schalter, 1–
 
 ### LED-Wall-Konfigurator
 
-Aufgebaut wie die anderen Werkzeuge: Die **Leiste „Projekt“** exportiert die PDF-Doku (Hoch oder
-Quer) und übergibt das Material an die [Packliste](#packliste); rechts stehen Projekt und Kunde.
+Aufgebaut wie die anderen Werkzeuge: Die **Leiste „Projekt“** hat das Menü **„Datei“** für
+[Projektdateien](#projektdateien-und-projektordner), exportiert die PDF-Doku (Hoch oder Quer) und
+übergibt das Material an die [Packliste](#packliste); rechts stehen Projekt und Kunde.
 Die **Schublade** hält alles, was die Wand festlegt, die **Arbeitsfläche** zeigt, was daraus folgt –
 auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 
@@ -607,6 +608,32 @@ In der Kundenansicht sind die Sprünge in andere Werkzeuge ausgeblendet.
 
 Weitere Übergaben sind geplant: [ROADMAP.md](ROADMAP.md#verzahnung).
 
+## Projektdateien und Projektordner
+
+Eine **Projektdatei** (`.mottul`) hält die Planung eines Werkzeugs als Datei – zum Weitergeben an
+Kollegen, zum Ablegen beim Kunden. Eine Datei kann mehrere Teile haben (heute die LED-Wall-Planung,
+geplant Anleitung und Packliste); **jedes Werkzeug liest und schreibt nur seinen eigenen Teil**,
+die anderen bleiben beim Speichern unverändert.
+
+- **Ohne Datei** arbeitet ein Werkzeug wie immer – die schnelle Planung „nur für mich“ braucht
+  keine Datei, der Stand bleibt trotzdem über einen Neustart erhalten.
+- **Menü „Datei“** in der Leiste: Neu, Öffnen … (Strg+O), Speichern (Strg+S), Speichern unter …
+  (Strg+Umschalt+S), Im Ordner zeigen und die zuletzt geöffneten Dateien. Daneben steht, woran man
+  arbeitet: der Dateiname (mit Punkt, solange etwas ungespeichert ist) oder „ohne Datei“; derselbe
+  Name steht im Fenstertitel. Gespeichert wird nur ausdrücklich, nie still.
+- **Rückfragen:** „Neu“ und „Öffnen“ fragen, wenn ungespeicherte Änderungen verloren gingen. Hat
+  jemand anderes die Datei inzwischen gespeichert (Netzlaufwerk), überschreibt Speichern sie nicht
+  still: „Überschreiben / Speichern unter … / Abbrechen“. Enthält eine Datei beim Öffnen noch
+  keine Planung dieses Werkzeugs, lässt sich die aktuelle hinzufügen. Eine **Vorlage** zu laden
+  löst die Verbindung zur Datei (die Datei bleibt unverändert).
+- **Sicherungen:** Vor jedem Überschreiben legt die App die bisherige Datei im Benutzerordner unter
+  `Sicherungen/` ab (die letzten 10 je Dateiname).
+- **Projektordner:** im App-Menü; ab Werk `Dokumente/Mottulbox-Projekte` (wird beim ersten
+  Speichern angelegt), änderbar, auch auf ein Netzlaufwerk. Eine neue Datei beginnt immer dort,
+  „Öffnen“ im zuletzt benutzten Projektordner.
+- Dateien aus einer neueren Mottulbox öffnet die App nicht; Teile, die sie nicht kennt, bleiben
+  beim Speichern erhalten.
+
 ## Wo die Daten liegen
 
 Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
@@ -624,4 +651,8 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 | `bin/`                  | yt-dlp                                                                   |
 | `ffmpeg/`               | in der App aktualisierte ffmpeg-Builds (Windows, Linux)                  |
 | `Local Storage/`        | Werkzeug-Zustände (OSC-Projekte, LED-Wall-Planungen, Packlisten …)       |
+| `Sicherungen/`          | frühere Stände von Projektdateien (die letzten 10 je Name)               |
 | `avtoolbox-debug.log`   | Debug-Log – erste Anlaufstelle bei Problemen im gepackten Build          |
+
+Projektdateien (`.mottul`) liegen dort, wo man sie speichert – ab Werk im Projektordner
+`Dokumente/Mottulbox-Projekte`.

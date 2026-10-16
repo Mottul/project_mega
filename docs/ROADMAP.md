@@ -86,7 +86,9 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 - **Netzwerk-Scanner → Manuals:** den erkannten Hersteller als Handbuch-Suche öffnen.
 - **Packliste aus mehr Quellen:** Rigging (Anschlagmittel je Bridle) und Stromlast (Kabel und
   Verteiler je Kreis).
-- **Show-Profil:** Wandauflösung, Geräte-IPs, NovaStar-/OSC-Ziele und Packliste
+- **Show-Profil:** Grundlage ist die Projektdatei `.mottul` (ein Abschnitt je Werkzeug, heute
+  LED-Wall; Weg dorthin: Phase 5 in [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md#phasen)).
+  Wandauflösung, Geräte-IPs, NovaStar-/OSC-Ziele und Packliste
   werkzeugübergreifend speichern und als „Event“ laden.
 
 ### Ideen

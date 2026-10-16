@@ -70,6 +70,17 @@ einen Test **mit** und **ohne** Schrägstrich.
 - Neue Felder: `DEFAULT_SETTINGS`, nur geänderte Felder patchen, Stores mit `version`/`migrate`.
 - Textfelder für Einstellungen puffern (`useDraft`/`TextField`).
 
+## Projektdateien und fremde Dateien (Oktober 2026)
+
+- Fremde Dateien nur in den Speicher lesen, mit Grenzen (Größe, Anzahl, Namen ohne `..`), und
+  Feld für Feld prüfen – Muster `src/main/services/projects/zip.ts` und `sanitize…` je Werkzeug.
+  Ein kaputter Teil macht die Datei ungültig, statt beim Speichern still wegzufallen.
+- Schreiben nur in freigegebene Pfade (Dialog, geöffnete Datei) – nie in einen Pfad, den der
+  Renderer einfach schickt (`projectFiles.ts`, Freigabe).
+- Datei-Bindung nach `await`: Prüfsumme vor dem Speichern nehmen, danach nur binden, wenn nicht
+  inzwischen anders gebunden wurde (`lib/projectFile.ts`).
+- Bindung und Bedienzustand nicht in Vorlagen bzw. nicht in den Datei-Abschnitt.
+
 ## Fenster (Oktober 2026)
 
 - **Electron meldet `'closed'` asynchron.** Wer ein Fenster schließt und sofort ein neues in

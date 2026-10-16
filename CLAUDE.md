@@ -28,8 +28,9 @@ Ein einzelner Test: `npx vitest run src/renderer/src/tools/led-wall/math.test.ts
 Drei Build-Targets (electron-vite, CJS für main/preload): `src/main` (Node,
 Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 (React SPA mit HashRouter). Aliase: `@shared`, `@renderer`. Dienste im main je Bereich in
-`src/main/services/<bereich>/` (`windows`, `remote`, `ndi`, `player`, `timer`, `convert` …); lose
-Dateien dort nur fürs ganze Programm (`store`, `db`, `log`, `broadcast`, `fileDialogs`, `shutdown`).
+`src/main/services/<bereich>/` (`windows`, `remote`, `ndi`, `player`, `timer`, `convert`, `projects` …); lose
+Dateien dort nur fürs ganze Programm (`store`, `db`, `log`, `broadcast`, `fileDialogs`, `fsAtomic`,
+`shutdown`, `binaryVersion`).
 Im main nie synchron auf einen Prozess warten (`spawnSync`/`execSync`, ESLint sperrt es): Das hält
 Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersion.ts`.
 
@@ -105,11 +106,13 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   für Schrift, Rahmen und Tönung, `destructive` nur für volle Flächen (Knöpfe, „Live“); Hinweise
   im Inhalt als `Alert` (`components/ui/alert`); Symbol und Farbe je Statusstufe aus `STATUS`
   (`components/ui/status`).
-- **Speichern – drei Orte, nie eigener localStorage-Parser** (Tabelle in docs/ENTWICKLUNG.md):
+- **Speichern – vier Orte, nie eigener localStorage-Parser** (Tabelle in docs/ENTWICKLUNG.md):
   Einstellungen (Pfade, Geräte/Ausgaben, Player/Timer, alles, was main braucht) in
   settings.json – Renderer: `useSettings(sel)` + `updateSettings(patch)` aus
   `@renderer/lib/settings`; Arbeitsdaten eines Werkzeugs im zustand-Store (s. o.);
-  Bedien-Kleinigkeiten per `usePersistentState(key, vorgabe, codec)`. localStorage sonst nur als
+  Bedien-Kleinigkeiten per `usePersistentState(key, vorgabe, codec)`; Dateien des Nutzers als
+  Projektdatei `.mottul` (ein Abschnitt je Werkzeug, `useProjectFile` + `ProjectFileMenu`, Skill
+  `projektdatei`). localStorage sonst nur als
   Boot-Spiegel (Theme/Akzent/Dichte). `setSettings`/`updateSettings` nur mit geänderten Feldern
   (feldweise gemergt, Listen ersetzt) – nie `{ ...getSettings().player, … }`; Textfelder für
   Einstellungen puffern (`TextField`/`NumberField`); Umzüge per `migrateLocalStorage`.
@@ -122,6 +125,6 @@ Ausgearbeitete Pläne für größere Vorhaben: `docs/PLAN-*.md` (z. B. Video-Gen
 Umsetzung lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überführen und löschen.
 Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
 `abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,
-`review-checkliste`, `abhaengigkeiten`, `aufraeumen`).
+`review-checkliste`, `abhaengigkeiten`, `aufraeumen`, `projektdatei`).
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.
