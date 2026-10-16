@@ -40,7 +40,7 @@ describe('LED-Wall-Planung prüfen', () => {
     expect(c).toMatchObject(v1)
     expect(c.sigMeta).toEqual({})
     expect(c.pwrMeta).toEqual({})
-    expect(c.feed).toBe('bottom-center')
+    expect(c.feed).toBe('bottom')
     expect(c.redundancy).toBe(false)
     expect(c.mains).toEqual({ voltage: 230, breakerA: 16 })
     expect(c.processor).toEqual({ model: null, bitDepth: 8, hz: 60 })
@@ -60,7 +60,7 @@ describe('LED-Wall-Planung prüfen', () => {
         }
       },
       pwrMeta: { '0': { circuit: 'F3', phase: 'L2' } },
-      feed: 'top-center',
+      feed: 'center',
       redundancy: true,
       mains: { voltage: 230, breakerA: 32 },
       processor: { model: 'frei', bitDepth: 10, hz: 50, ports: 4, portPx: 500000 }
@@ -77,7 +77,7 @@ describe('LED-Wall-Planung prüfen', () => {
       sqCorner: 99,
       selectedCircle: -1,
       builderSegs: [{ type: 'curved', count: 2, angle: 200, dir: 'convex' }],
-      feed: 'mitte',
+      feed: 'bottom-center', // Wert aus einem frühen Entwurf
       mains: { voltage: 'viel', breakerA: 16 },
       processor: { model: 'gibts-nicht', bitDepth: 9, hz: 50 }
     })

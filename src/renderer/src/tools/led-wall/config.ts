@@ -15,16 +15,12 @@ export type CurveMode = 'circle' | 'segment' | 'builder' | 'squircle'
 
 /** Ecke im Bereich einer Kette (Start der Schlange) */
 export type Corner = 'tl' | 'tr' | 'bl' | 'br'
-/** Einspeisepunkt: wo die Zuleitungen vom Prozessor an der Wand ankommen */
-export type Feed =
-  | 'bottom-left'
-  | 'bottom-center'
-  | 'bottom-right'
-  | 'top-left'
-  | 'top-center'
-  | 'top-right'
-  | 'left-center'
-  | 'right-center'
+/**
+ * Einspeisepunkt: wo die Zuleitungen vom Prozessor an der Wand ankommen – Mitte der Kante bzw.
+ * der Wand. Er wird nicht gezeichnet (Plan bleibt übersichtlich), sondern bestimmt nur die
+ * vorgeschlagene Startecke je Kette und die ungefähre Zuleitungslänge.
+ */
+export type Feed = 'left' | 'right' | 'top' | 'bottom' | 'center'
 
 export interface ChainRoute {
   /** fehlt = Vorschlag: Ecke mit der kürzesten Zuleitung */
@@ -119,7 +115,7 @@ export const DEFAULT_LED_WALL_CONFIG: LedWallConfig = {
   pdfLandscape: true,
   sigMeta: {},
   pwrMeta: {},
-  feed: 'bottom-center',
+  feed: 'bottom',
   redundancy: false,
   mains: { voltage: 230, breakerA: 16 },
   processor: { model: null, bitDepth: 8, hz: 60 }
@@ -127,16 +123,7 @@ export const DEFAULT_LED_WALL_CONFIG: LedWallConfig = {
 
 export const CONFIG_KEYS = Object.keys(DEFAULT_LED_WALL_CONFIG) as (keyof LedWallConfig)[]
 
-const FEEDS: Feed[] = [
-  'bottom-left',
-  'bottom-center',
-  'bottom-right',
-  'top-left',
-  'top-center',
-  'top-right',
-  'left-center',
-  'right-center'
-]
+const FEEDS: Feed[] = ['left', 'right', 'top', 'bottom', 'center']
 const CORNERS: Corner[] = ['tl', 'tr', 'bl', 'br']
 const PROCESSORS: ProcessorModel[] = ['novapro-uhd-jr', 'vx4s', 'tessera-s8', 'frei']
 const LIMITS = { gridSide: 200, chains: 999, orderLen: 40_000, meta: 400, label: 40 }

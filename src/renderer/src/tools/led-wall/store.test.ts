@@ -46,7 +46,7 @@ describe('gemerkter Stand des LED-Wall-Konfigurators', () => {
     ) as Record<string, unknown> & { presets: { data: Record<string, unknown> }[] }
     expect(out).toMatchObject({ ...v1Planung, sigMeta: {}, redundancy: false, file: null })
     expect(out.presets).toHaveLength(1)
-    expect(out.presets[0].data).toMatchObject({ widthM: '6', sigMeta: {}, feed: 'bottom-center' })
+    expect(out.presets[0].data).toMatchObject({ widthM: '6', sigMeta: {}, feed: 'bottom' })
   })
 
   it('Version 2 bleibt, wie sie ist', () => {

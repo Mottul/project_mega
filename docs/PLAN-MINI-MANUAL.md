@@ -69,10 +69,10 @@ Aus der Rücksprache vom 16. Oktober 2026:
     Technik.
 15. **Verkabelung** hängt von Größe und Format der Wand und vom Kabelweg ab. Deshalb keine feste
     Automatik: Ein **Einspeisepunkt** legt fest, wo die Zuleitungen vom Prozessor an der Wand
-    ankommen (z. B. alle in der Mitte); von dort läuft je Kette eine Zuleitung zu ihrem
-    Startmodul. Startecke und Richtung wählt man je Kette frei, dazu die Handkorrektur. Optional je
-    Signalkette eine **Backup-Leitung** vom letzten Modul zum Prozessor, die im Fehlerfall greift
-    – Redundanz ist nicht immer vorhanden, daher ab Werk aus.
+    ankommen; daraus kommen der Vorschlag für die Startecke jeder Kette und die ungefähre Länge
+    ihrer Zuleitung. Startecke und Richtung wählt man je Kette frei, dazu die Handkorrektur.
+    Optional je Signalkette eine **Backup-Leitung** vom letzten Modul zum Prozessor, die im
+    Fehlerfall greift – Redundanz ist nicht immer vorhanden, daher ab Werk aus.
 16. **Prozessoren im Bestand:** NovaStar NovaPro UHD Jr (496-2,0, rX3ioBF), NovaStar VX4S,
     Brompton Tessera S8 (uS2+).
 17. **Dateiendung** `.mottul` – bestätigt.
@@ -83,6 +83,11 @@ Aus der Rücksprache vom 16. Oktober 2026:
     („Speichern unter“ ohne Datei) beginnen immer dort, „Öffnen“ im zuletzt benutzten
     Projektordner.
 20. **Werkzeug in Mottulbox**, keine eigene App und keine PWA (Begründung unten).
+21. **Kabelpläne schlank halten** (Rückmeldung zur Skizze, 16.10.2026): Einspeisepunkt und
+    Zuleitungen werden **nicht gezeichnet** – das machte den Plan unübersichtlich. Die
+    Backup-Leitung zeigt nur ein „B“ am letzten Modul. Einspeisepunkte: **links, rechts, oben,
+    unten, mittig** (Mitte der Kante bzw. der Wand). Aufteilungen sehen bei Signal und Strom
+    **gleich** aus; Streifen laufen waagrecht (eine oder mehrere Reihen je Kette).
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
 
@@ -749,30 +754,35 @@ Modul hat – keine Reihenfolge, keinen Port, keinen Stromkreis, keine Blickrich
 Die Verkabelung hängt von Größe und Format der Wand und vom Kabelweg ab. Deshalb gibt es keine
 feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Freiheit je Kette:
 
-- **Einspeisepunkt** („Zuleitungen kommen an bei …“): unten links, unten Mitte, unten rechts,
-  oben links, oben Mitte, oben rechts, links Mitte, rechts Mitte. Dort kommen die Kabel vom
-  Prozessor an der Wand an (häufig alle in der Mitte). Von dort zeichnet der Plan je Kette die
-  **Zuleitung** bis zu ihrem Startmodul – mit ungefährer Länge entlang der Modulkanten (später
-  für die Packliste).
+- **Einspeisepunkt** („Zuleitungen kommen an bei …“): **links, rechts, oben, unten, mittig** –
+  jeweils die Mitte der Kante, bei „mittig“ die Mitte der Wand (Kabel kommen hinten in der Mitte
+  an). Er wird **nicht gezeichnet**, damit der Plan lesbar bleibt (Festlegung 21). Er bestimmt
+  nur den Vorschlag für die Startecke und die ungefähre **Zuleitungslänge** je Kette (entlang
+  der Modulkanten plus Zugabe), die neben dem Plan steht und später in die Packliste geht.
+- **Aufteilung** wie heute per Klick auf Module, Reihen und Spalten; dazu eine Schnellwahl
+  (Viertel, Streifen, Hälften, eine Kette), die bei Signal und Strom **gleich** aussieht.
+  Streifen laufen waagrecht: je Kette eine oder mehrere ganze Reihen.
 - Je Kette **Startecke** und **Richtung** (waagrecht/senkrecht) frei wählbar – die 8 Muster wie
   in NovaLCT, bezogen auf den Bereich der Kette. Daraus rechnet der Konfigurator die Reihenfolge
   als Schlange. Vorschlag für neue Ketten: die Ecke des Bereichs, die dem Einspeisepunkt am
   nächsten liegt („an der Einspeisung“, kürzeste Zuleitung) – mehr nicht, die Wahl bleibt beim
   Planer.
-- **Beispiel aus der Praxis** (Matthias, 16.10.2026): Einspeisung unten in der Mitte, die Wand in
-  vier Viertel geteilt (je 2 Reihen × 4 Spalten bei 8 × 4 Modulen). Jede Kette beginnt am Modul
+- **Beispiel aus der Praxis** (Matthias, 16.10.2026): Einspeisung **unten**, die Wand in vier
+  Viertel geteilt (je 2 Reihen × 4 Spalten bei 8 × 4 Modulen). Jede Kette beginnt am Modul
   direkt neben der Mittelachse, läuft waagrecht nach außen und in der Reihe darüber zurück zur
   Mitte. Das ergibt sich aus „Start an der Einspeisung“ + „waagrecht“ ohne Handkorrektur; die
-  Skizzen zum Plan zeigen genau diesen Fall.
+  Skizzen zum Plan zeigen genau diesen Fall. Mit „mittig“ beginnen alle vier Ketten an den vier
+  Modulen um die Wandmitte.
 - **Handkorrektur:** „Reihenfolge klicken“ – Module der Kette nacheinander anklicken. Beim Lesen
   wird abgeglichen: Module, die nicht mehr in der Kette sind, fallen weg, neue hängt die Automatik
   hinten an. So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.
 - **Backup-Leitung** je Signalkette (an/aus; Vorgabe für neue Ketten aus dem Schalter
-  „Redundanz“ der Wand, ab Werk aus): vom letzten Modul der Kette zurück zum Einspeisepunkt und
-  zu einem Backup-Port des Prozessors. Fällt ein Kabel in der
-  Kette aus, versorgt sie die Module dahinter von hinten. Gezeichnet gestrichelt mit
-  Port-Beschriftung; zählt bei den belegten Ports mit; im Fehlerkatalog ändert sie die Symptome
-  (Fälle 1 und 14). Die Packliste zählt die Backup-Kabel mit.
+  „Redundanz“ der Wand, ab Werk aus): vom letzten Modul der Kette zurück zu einem Backup-Port des
+  Prozessors. Fällt ein Kabel in der Kette aus, versorgt sie die Module dahinter von hinten. Im
+  Plan nur ein gestricheltes „B“ am letzten Modul (die Leitung selbst wird wie die Zuleitung
+  nicht gezeichnet), der Port steht in der Liste neben dem Plan; zählt bei den belegten Ports
+  mit; im Fehlerkatalog ändert sie die Symptome (Fälle 1 und 14). Die Packliste zählt die
+  Backup-Kabel mit.
 - **Port** je Signalkette und Backup (Vorgabe „Port n“ bzw. die nächsten freien Ports),
   **Stromkreis** und **Phase** je Stromkette (z. B. „F3 · L2“), Netz `230 V / 16 A` einstellbar
   (heute 230 V fest in `led-wall/compute.ts`).
@@ -790,7 +800,8 @@ feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Frei
 - **Ansicht vorne/hinten** umschaltbar in den Reitern Signal und Strom und im PDF. Die Ansicht von
   hinten ist gespiegelt und groß beschriftet („Ansicht von hinten“, Seite „Publikum“ markiert);
   Spalten- und Kettennummern bleiben am Modul.
-- **Pfeile** in Kettenfarbe am Bildschirm und im PDF, Start mit Port-/Kreis-Beschriftung,
+- **Pfeile** in Kettenfarbe am Bildschirm und im PDF, Start mit Ketten-Marke (S1, P1) und
+  Port/Kreis in der Liste daneben,
   Sprünge zwischen nicht benachbarten Modulen gestrichelt („lange Brücke“). Bei kleinen Zellen
   nur Pfeile an Richtungswechseln. Gelbe Kettenfarbe im Ausdruck auf Lesbarkeit prüfen.
 - **Warnungen** (als `Alert`/`STATUS`, keine Sperre):
@@ -821,9 +832,9 @@ feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Frei
 
 ```ts
 type Corner = 'tl' | 'tr' | 'bl' | 'br' // Ecke im Bereich der Kette
-// Einspeisepunkt: wo die Zuleitungen vom Prozessor an der Wand ankommen
-type Feed = 'bottom-left' | 'bottom-center' | 'bottom-right' | 'top-left' | 'top-center'
-  | 'top-right' | 'left-center' | 'right-center'
+// Einspeisepunkt (Mitte der Kante bzw. der Wand) – nicht gezeichnet, nur für Startecke und
+// Zuleitungslänge; ab Werk 'bottom'
+type Feed = 'left' | 'right' | 'top' | 'bottom' | 'center'
 interface ChainRoute {
   start?: Corner // fehlt = Vorschlag: Ecke mit der kürzesten Zuleitung
   axis?: 'row' | 'col' // fehlt = Vorschlag (senkrecht, wenn der Bereich höher als breit ist)
@@ -854,7 +865,8 @@ interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2
   Planung stehen).
 - **Reine Funktionen** in einem neuen Modul `led-wall/cabling` (mit Tests): Kettenzählung (ersetzt
   vier Kopien: `CableGrid.tsx`, `LedWall.tsx`, `print.ts`, `packing-list/derive.ts`),
-  Startecken-Vorschlag aus dem Einspeisepunkt, Zuleitungen mit Länge, Schlangen-Route, Abgleich der Handkorrektur, Sprünge,
+  Schnellwahl der Aufteilung (gleich für Signal und Strom), Startecken-Vorschlag aus dem
+  Einspeisepunkt, Zuleitungslänge, Schlangen-Route, Abgleich der Handkorrektur, Sprünge,
   Backup-Leitungen und Port-Belegung, Lasten je Kette, Port- und Gesamtkapazität aus
   Prozessor/Farbtiefe/Bildrate, Phasenbilanz, Geometrie und SVG-Markup des Verlaufs.
 - **Eine Zeichenquelle** für Bildschirm und PDF wie `topdown.ts`: SVG-String. Am Bildschirm ein
@@ -913,7 +925,7 @@ Jede Phase ist für sich nutzbar.
 |---|---|---|
 | **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
 | **1 Mini-Manual, erste Fassung** | Zuerst: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Arbeitsordner im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2 Kabelverlauf** | Einspeisepunkt und Zuleitungen, Startecke, Richtung, Handkorrektur, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
+| **2 Kabelverlauf** | Einspeisepunkt (nicht gezeichnet) und Zuleitungslängen, Schnellwahl der Aufteilung, Startecke, Richtung, Handkorrektur, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
 | **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
@@ -932,6 +944,11 @@ Jede Phase ist für sich nutzbar.
 - **fremdformat-import** – Importer für fremde Dateien: anonymisierte Fixtures im Repo, Größen-
   und ZIP-Grenzen, tolerant parsen, nichts ausführen, Versionen am Inhalt erkennen, Zugangsdaten
   verwerfen, unbekannte Teile roh zeigen, Test je Format.
+- **kabelverlauf** (Phase 2, mit dem Code) – am Kabelverlauf des LED-Wall-Konfigurators arbeiten:
+  reine Funktionen in `led-wall/cabling` mit Tests je Muster, eine SVG-Quelle für Bildschirm und
+  PDF, Ansicht von hinten gespiegelt, Einspeisepunkt und Zuleitungen nicht zeichnen, Aufteilung
+  für Signal und Strom gleich, Handkorrektur abgleichen statt mitpflegen, Grenzen aus den
+  Prozessor-Vorgaben, Prüfung im Ausdruck (gelbe Kette).
 
 **Bestehende Skills anpassen:**
 
@@ -955,7 +972,7 @@ erledigt).
 
 - Unit: ZIP (runder Weg, kaputte Dateien, Grenzen, `..`-Namen), Abschnitt speichern (fremde
   Abschnitte und Fotos bleiben, Konflikt über `baseSha`, `rev` nur bei Änderung), `sanitize` je
-  Abschnitt, Migration v1 → v2 inkl. Vorlagen, `cabling` (8 Muster, Einspeisepunkt und Zuleitungslänge, Abgleich,
+  Abschnitt, Migration v1 → v2 inkl. Vorlagen, `cabling` (8 Muster, fünf Einspeisepunkte und Zuleitungslänge, Schnellwahl gleich für Signal und Strom, Abgleich,
   Backup und Port-Belegung, Lasten, Kapazität), Platzhalter, Stufenfilter und Fehlerfall-Prüfung, Seitenbauer (Escaping,
   Inhalte je Stufe), QR-Encoder gegen bekannte Vektoren, Importe mit Fixtures.
 - Bibliothek: jeder mitgelieferte Fehlerfall besteht die Prüfung (keine toten Enden).
@@ -965,7 +982,7 @@ erledigt).
 
 ## Offene Fragen
 
-Geklärt am 16. Oktober 2026 (Festlegungen 13–19): Verkabelungspraxis, Einspeisepunkt,
+Geklärt am 16. Oktober 2026 (Festlegungen 13–21): Verkabelungspraxis, Einspeisepunkt,
 Redundanz, IM-Anordnung und -Tausch, Prozessoren im Bestand, Dateiendung, MadMapper-Version und
 OSC-Port, Projektordner. Für Phase 0 ist nichts mehr offen. Später zu klären:
 
