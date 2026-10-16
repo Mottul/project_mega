@@ -57,7 +57,8 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   Messplatz oder auf dem Handy.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
-- **LED-Wall-Konfigurator:** Prozessor-Presets (NovaStar, Brompton).
+- **LED-Wall-Konfigurator:** Prozessor-Presets (NovaPro UHD Jr, VX4S, Tessera S8) mit Kabelverlauf
+  und Backup-Leitungen – geplant in [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md#kabelverlauf-im-led-wall-konfigurator).
 
 ### Neue Werkzeuge
 
@@ -85,7 +86,9 @@ Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [W
 - **Netzwerk-Scanner → Manuals:** den erkannten Hersteller als Handbuch-Suche öffnen.
 - **Packliste aus mehr Quellen:** Rigging (Anschlagmittel je Bridle) und Stromlast (Kabel und
   Verteiler je Kreis).
-- **Show-Profil:** Wandauflösung, Geräte-IPs, NovaStar-/OSC-Ziele und Packliste
+- **Show-Profil:** Grundlage ist die Projektdatei `.mottul` (ein Abschnitt je Werkzeug, heute
+  LED-Wall; Weg dorthin: Phase 5 in [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md#phasen)).
+  Wandauflösung, Geräte-IPs, NovaStar-/OSC-Ziele und Packliste
   werkzeugübergreifend speichern und als „Event“ laden.
 
 ### Ideen

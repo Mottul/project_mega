@@ -11,6 +11,7 @@ function subscribe(channel: string, cb: (...args: unknown[]) => void): () => voi
 const api: ToolboxApi = {
   selectPaths: (options) => ipcRenderer.invoke(Channels.dialogSelect, options),
   confirm: (options) => ipcRenderer.invoke(Channels.dialogConfirm, options),
+  choose: (options) => ipcRenderer.invoke(Channels.dialogChoose, options),
   notify: (options) => ipcRenderer.invoke(Channels.dialogNotify, options),
   openPath: (target) => ipcRenderer.invoke(Channels.shellOpenPath, target),
   showItemInFolder: (target) => ipcRenderer.invoke(Channels.shellShowItem, target),
@@ -159,6 +160,14 @@ const api: ToolboxApi = {
     openText: () => ipcRenderer.invoke(Channels.utilOpenText),
     // Einweg (send): darf im Renderer nie werfen/hängen.
     log: (message) => ipcRenderer.send(Channels.utilLog, message)
+  },
+
+  projects: {
+    dirInfo: () => ipcRenderer.invoke(Channels.projectsDirInfo),
+    open: (section, path) => ipcRenderer.invoke(Channels.projectsOpen, section, path),
+    chooseTarget: (section, suggestedName, fresh) =>
+      ipcRenderer.invoke(Channels.projectsChooseTarget, section, suggestedName, fresh),
+    save: (request) => ipcRenderer.invoke(Channels.projectsSave, request)
   },
 
   jingles: {

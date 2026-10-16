@@ -6,6 +6,12 @@ import type {
   SettingsPatch,
   ColorLoopRequest,
   ConfirmOptions,
+  ChooseOptions,
+  ProjectOpenResult,
+  ProjectSaveRequest,
+  ProjectSaveResult,
+  ProjectSaveTarget,
+  ProjectsDirInfo,
   NotifyOptions,
   ConvertJob,
   DisplayInfo,
@@ -78,6 +84,7 @@ export const Channels = {
   // Dialog & Shell
   dialogSelect: 'dialog:select',
   dialogConfirm: 'dialog:confirm',
+  dialogChoose: 'dialog:choose', // Rückfrage mit 2–4 Antworten
   dialogNotify: 'dialog:notify',
   shellOpenPath: 'shell:openPath',
   shellShowItem: 'shell:showItemInFolder',
@@ -200,6 +207,11 @@ export const Channels = {
   utilSaveText: 'util:saveText', // Text/JSON in Datei speichern (Save-Dialog)
   utilOpenText: 'util:openText', // Textdatei einlesen (Open-Dialog)
   utilLog: 'util:log', // Renderer -> main-Debug-Log (Feld-Diagnose)
+  // Projektdateien (.mottul) – ein Abschnitt je Werkzeug
+  projectsDirInfo: 'projects:dirInfo',
+  projectsOpen: 'projects:open',
+  projectsChooseTarget: 'projects:chooseTarget',
+  projectsSave: 'projects:save',
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
@@ -272,6 +284,8 @@ export interface ToolboxApi {
   /** Native Ja/Nein-Rückfrage (main-Prozess). Ersetzt window.confirm(), das
    *  danach die Tastatureingabe in Textfeldern lahmlegt. true = bestätigt. */
   confirm(options: ConfirmOptions): Promise<boolean>
+  /** Native Rückfrage mit 2–4 Antworten; liefert den Index des Knopfs (Esc = cancelId). */
+  choose(options: ChooseOptions): Promise<number>
   /** Native Hinweis-Meldung (main-Prozess). Ersetzt window.alert() (gleicher
    *  Tastatur-Bug). */
   notify(options: NotifyOptions): Promise<void>
@@ -489,6 +503,24 @@ export interface ToolboxApi {
     /** Eine Zeile ins Debug-Log des main-Prozesses schreiben (Feld-Diagnose von
      *  Renderer-Fehlern, wenn keine DevTools offen sind). */
     log(message: string): void
+  }
+
+  /** Projektdateien: Jedes Werkzeug liest und schreibt nur seinen Abschnitt (shared/projectFile). */
+  projects: {
+    /** Standard-Speicherort (aufgelöst; der Renderer kennt den Dokumente-Ordner nicht). */
+    dirInfo(): Promise<ProjectsDirInfo>
+    /** Öffnen: ohne `path` über den Dialog (null = abgebrochen), mit `path` aus „Zuletzt
+     *  geöffnet“. Liefert alle Abschnitte und den angefragten. */
+    open(section: string, path?: string): Promise<ProjectOpenResult | null>
+    /** „Speichern unter“: Dialog (fresh = im Standard-Projektordner beginnen) und Blick in die
+     *  gewählte Datei; geschrieben wird erst mit save(). null = abgebrochen. */
+    chooseTarget(
+      section: string,
+      suggestedName: string,
+      fresh: boolean
+    ): Promise<ProjectSaveTarget | null>
+    /** Nur den eigenen Abschnitt schreiben (Konflikt über baseSha, siehe ProjectSaveRequest). */
+    save(request: ProjectSaveRequest): Promise<ProjectSaveResult>
   }
 
   jingles: {

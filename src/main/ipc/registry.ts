@@ -23,6 +23,7 @@ import { registerNovastarHandlers } from './novastar.handlers'
 import { registerOscHandlers } from './osc.handlers'
 import { registerPatternHandlers } from './pattern.handlers'
 import { registerPlayerHandlers } from './player.handlers'
+import { registerProjectsHandlers } from './projects.handlers'
 import { registerTimerHandlers } from './timer.handlers'
 import { registerUtilHandlers } from './util.handlers'
 import { registerVideoGenHandlers } from './videoGen.handlers'
@@ -238,6 +239,7 @@ export function registerIpcHandlers(): void {
   registerManualsHandlers()
   registerPatternHandlers()
   registerPlayerHandlers()
+  registerProjectsHandlers()
   registerTimerHandlers()
   registerUtilHandlers()
   registerJingleHandlers()

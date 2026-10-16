@@ -136,6 +136,20 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   gibt; ein erfundenes Zeichen liefert nichts. Projekte des Video-Generators prüft der main-Prozess Feld für
   Feld, bevor sie an ffmpeg gehen: erlaubte Werte, Grenzen, nur absolute Pfade ohne Protokolle
   (ffmpeg öffnet sonst auch `concat:`, `http:` …), die Zieldatei darf keine Quelle sein.
+- **Projektdateien** (`.mottul`) kommen von Kollegen oder per Mail und gelten als fremde Eingabe.
+  Gelesen wird nur in den Speicher, nie auf die Platte entpackt: eigener ZIP-Leser mit harten
+  Grenzen (Methode nur Speichern/Deflate, keine Verschlüsselung, Namen ohne `..`/absolute Pfade,
+  Größe je Eintrag und gesamt, Zahl der Einträge, CRC-Prüfung – gegen ZIP-Bomben und Zip-Slip),
+  der Inhalt Feld für Feld geprüft (`sanitize…` je Werkzeug). Ein kaputter Teil macht die ganze
+  Datei ungültig, statt beim Speichern still verloren zu gehen. **Geschrieben** wird nur in
+  `.mottul`-Pfade aus einem Dialog oder einer in dieser Sitzung geöffneten Datei; aus „Zuletzt
+  geöffnet“ (nach einem Neustart) nur, wenn dort schon eine gültige Projektdatei liegt – der
+  Renderer kann so keinen beliebigen Pfad beschreiben. Atomar (Nachbardatei, dann umbenennen), mit
+  Warteschlange je Datei und einer Sicherung des vorigen Stands unter `userData/Sicherungen`; neue
+  Dateien nur exklusiv (nie über eine, die inzwischen jemand angelegt hat), und nur, was sich mit
+  denselben Grenzen wieder öffnen lässt. Ein Lesefehler (Netzlaufwerk hakt) gilt nie als „Datei
+  fehlt“. Schlüssel aus der Datei werden nur als eigene Eigenschaften nachgeschlagen
+  (`Object.hasOwn`), nie über den Prototyp.
 - **Kein `eval` im Renderer:** Die Content-Security-Policy verbietet `unsafe-eval`; pdfjs 6 kommt
   ohne eval aus – präparierte PDFs können darüber keinen Code ausführen. (`'unsafe-inline'` für
   Skripte braucht noch der Vite-Dev-Server, siehe Roadmap.)

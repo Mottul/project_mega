@@ -41,7 +41,7 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 **📽️ Bild & Projektion**
 
 - **LED-Wall-Konfigurator** – Auflösung, Gewicht, Strom, Ballast, Verkabelungspläne,
-  Curving-Planung, PDF-Doku.
+  Curving-Planung, PDF-Doku; Planungen als Projektdatei (`.mottul`) speichern und öffnen.
 - **Projektionsverhältnis**, **Kameraobjektiv**, **Beamer-Lumen** – Objektiv-, Bildausschnitt-
   und Lumen-Rechner.
 

@@ -1,5 +1,6 @@
 // LED-Wall-Konfigurator im Werkzeug-Muster (ToolShell):
-//   Leiste „Projekt“  PDF-Doku (Hoch/Quer) und Übergabe an die Packliste, rechts der Projektname
+//   Leiste „Projekt“  Datei-Menü (Projektdatei .mottul), PDF-Doku (Hoch/Quer) und Übergabe an die
+//                     Packliste, rechts der Projektname
 //   Schublade         Vorlagen, Projekt, Modul, Wand (Größe, Aufbau), Curving-Form (Settings.tsx)
 //   Arbeitsfläche     Kennzahlen; große Zeichenfläche mit Ansicht, Draufsicht (uS2+), Signal-
 //                     und Stromplan; daneben Strom, Aufbau und Moduldaten
@@ -15,6 +16,7 @@ import {
   Spline,
   type LucideIcon
 } from 'lucide-react'
+import { ProjectFileMenu } from '@renderer/components/ProjectFileMenu'
 import { BarDivider, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
@@ -22,6 +24,7 @@ import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { api } from '@renderer/lib/api'
 import { flushStore } from '@renderer/lib/persistStorage'
+import { useProjectFile } from '@renderer/lib/projectFile'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import { usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
 import { cn } from '@renderer/lib/utils'
@@ -34,6 +37,7 @@ import { CurvingView } from './Curving'
 import { CURVE_MODE_LABELS } from './curve'
 import { PWR_COLORS, SIG_COLORS } from './data'
 import { FrontView, fitText } from './FrontView'
+import { LED_WALL_FILE } from './fileSection'
 import { exportLedWallPdf } from './print'
 import { BUILD_LABELS, LedWallSettings } from './Settings'
 import { useLedWall } from './store'
@@ -59,6 +63,7 @@ const m2 = (n: number): string =>
 
 export function LedWall(): JSX.Element {
   const s = useLedWall()
+  const file = useProjectFile(LED_WALL_FILE)
 
   const d = useMemo(
     () =>
@@ -150,6 +155,8 @@ export function LedWall(): JSX.Element {
             )
           }
         >
+          <ProjectFileMenu file={file} />
+          <BarDivider />
           <Button size="sm" onClick={doExport}>
             <FileDown className="size-4" /> PDF exportieren
           </Button>
