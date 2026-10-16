@@ -42,8 +42,9 @@ der LED-Wall-Konfigurator (`tools/led-wall/config.ts`, `store.ts`, `fileSection.
    `@renderer/lib/projectBinding` importieren – `lib/projectFile` zieht `api` mit (Node-Tests).
 4. **Optionen** (`fileSection.ts`, Typ `ProjectFileOptions`): `data`, `binding`/`setBinding`,
    `apply` (prüfen, abgeleitete Größen gleich passend machen – sonst ist die Datei direkt nach
-   dem Öffnen „ungespeichert“; `false` = unbrauchbar), `reset`, `isEmpty`, `suggestedName`,
-   `describe`.
+   dem Öffnen „ungespeichert“; `false` = unbrauchbar), `reset`, `blank` (Daten nach `reset`,
+   für „Leere anlegen“ – geschrieben wird, bevor der Arbeitsstand geleert wird), `isEmpty`,
+   `suggestedName`, `describe`.
 5. **Oberfläche:** `const file = useProjectFile(OPTIONEN)` im Werkzeug, `<ProjectFileMenu
    file={file} />` als erstes in die Leiste (`ToolBar`) – nie in die Schublade. „Vorlage laden“
    = „Neu aus Vorlage“: Rückfrage, wenn gebunden, dann `file: null`.
@@ -54,12 +55,19 @@ der LED-Wall-Konfigurator (`tools/led-wall/config.ts`, `store.ts`, `fileSection.
   Neustart aus „Zuletzt geöffnet“ nur auf eine vorhandene gültige Datei); Konflikt über den
   sha256 des eigenen Abschnitts (`baseSha`), nie still überschreiben; Abschnitt aus neuerer
   Version nie überschreiben; `rev` nur bei geändertem Inhalt.
+- **Dateisystem:** „fehlt“ nur bei `ENOENT`/`ENOTDIR` – jeder andere Lesefehler bricht ab, statt
+  die Datei als neu zu behandeln. Neue Dateien exklusiv anlegen (`writeNewFileAsync`), vorhandene
+  atomar ersetzen (`writeFileAtomicAsync`) mit Sicherung davor. `packProject` schreibt nur, was
+  dieselben Grenzen und Prüfungen wie beim Lesen besteht (`'zu-gross'`/`'ungueltig'`).
 - **„Ungespeichert“** = `digest(daten) !== binding.savedDigest`. Prüfsumme **vor** dem `await`
   nehmen; nach dem Speichern nur binden, wenn nicht inzwischen anders gebunden wurde.
+- **Rückfragen sperren nur das eigene Fenster:** Jede Aktion hält zu Beginn Daten und Bindung
+  fest (`snapshot`), schreibt genau diese und bricht nach einer Rückfrage ab, wenn ein anderes
+  Fenster inzwischen etwas geändert hat (`changedMeanwhile`). Zurücksetzen erst nach Erfolg.
 - **Fotos nie in einen persistierten Store** (`debouncedStorage` verschluckt „Speicher voll“) –
   sie liegen im main, über IPC laufen nur Hashes (Phase 1 des Plans).
-- Gepufferte Felder (`useDraft`) übernehmen beim Verlassen – der Hook nimmt vor dem Speichern
-  den Fokus weg; eigene Speicher-Wege genauso.
+- Gepufferte Felder (`useDraft`) übernehmen beim Verlassen – der Hook nimmt vor Speichern,
+  Öffnen und Neu den Fokus weg (Tastenkürzel tun das nicht von selbst); eigene Wege genauso.
 - Rückfragen mit mehr als Ja/Nein über `api.choose` (Knöpfe, `cancelId`).
 
 ## Tests
@@ -67,9 +75,13 @@ der LED-Wall-Konfigurator (`tools/led-wall/config.ts`, `store.ts`, `fileSection.
 - Rein: `sanitize` (runder Weg, alter Stand, Ungültiges -> Vorgabe), Abschnitt ohne
   Bedienzustand, `migrate` inkl. Vorlagen, „ungespeichert“ (Muster `led-wall/config.test.ts`,
   `led-wall/store.test.ts`; Format/ZIP: `src/main/services/projects/*.test.ts`).
+- Dateisystem: `projectFiles.test.ts` – echter tmp-Ordner, `stat` einmalig gestört (Netzlaufwerk
+  hakt, Datei taucht zwischen Lesen und Anlegen auf).
 - E2E nach `e2e/projektdatei.mjs`: Dialoge im main ersetzen (`showSaveDialog`, `showOpenDialog`,
   `showMessageBox` mit Antwortfolge und Mitschrift), Datei über `api.projects.open` prüfen,
-  „Kollege“ per `api.projects.save(… force: true)` simulieren.
+  „Kollege“ per `api.projects.save(… force: true)` simulieren, fremde Datei ohne eigenen
+  Abschnitt als kleines ZIP schreiben (`writeForeignProject`), Schreibfehler während einer
+  Rückfrage erzeugen (Datei durch einen Ordner ersetzen).
 
 ## Doku
 

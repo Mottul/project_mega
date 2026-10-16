@@ -145,7 +145,11 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   `.mottul`-Pfade aus einem Dialog oder einer in dieser Sitzung geöffneten Datei; aus „Zuletzt
   geöffnet“ (nach einem Neustart) nur, wenn dort schon eine gültige Projektdatei liegt – der
   Renderer kann so keinen beliebigen Pfad beschreiben. Atomar (Nachbardatei, dann umbenennen), mit
-  Warteschlange je Datei und einer Sicherung des vorigen Stands unter `userData/Sicherungen`.
+  Warteschlange je Datei und einer Sicherung des vorigen Stands unter `userData/Sicherungen`; neue
+  Dateien nur exklusiv (nie über eine, die inzwischen jemand angelegt hat), und nur, was sich mit
+  denselben Grenzen wieder öffnen lässt. Ein Lesefehler (Netzlaufwerk hakt) gilt nie als „Datei
+  fehlt“. Schlüssel aus der Datei werden nur als eigene Eigenschaften nachgeschlagen
+  (`Object.hasOwn`), nie über den Prototyp.
 - **Kein `eval` im Renderer:** Die Content-Security-Policy verbietet `unsafe-eval`; pdfjs 6 kommt
   ohne eval aus – präparierte PDFs können darüber keinen Code ausführen. (`'unsafe-inline'` für
   Skripte braucht noch der Vite-Dev-Server, siehe Roadmap.)

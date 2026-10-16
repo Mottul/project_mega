@@ -1,6 +1,6 @@
 ---
 name: review-checkliste
-description: Projektspezifische Prüfliste für Änderungen an Mottulbox, abgeleitet aus bestätigten Review-Befunden (Parallelität, Fernsteuer-Seiten, veraltete Zustände nach await, Einstellungs-Migration). Verwenden zusätzlich zu /code-review, bevor eine Änderung als fertig gilt.
+description: Projektspezifische Prüfliste für Änderungen an Mottulbox, abgeleitet aus bestätigten Review-Befunden (Parallelität, Fernsteuer-Seiten, veraltete Zustände nach await, Einstellungs-Migration, Projektdateien und Dateisystem, Rückfragen über mehrere Fenster). Verwenden zusätzlich zu /code-review, bevor eine Änderung als fertig gilt.
 ---
 
 # Review-Checkliste Mottulbox
@@ -80,6 +80,33 @@ einen Test **mit** und **ohne** Schrägstrich.
 - Datei-Bindung nach `await`: Prüfsumme vor dem Speichern nehmen, danach nur binden, wenn nicht
   inzwischen anders gebunden wurde (`lib/projectFile.ts`).
 - Bindung und Bedienzustand nicht in Vorlagen bzw. nicht in den Datei-Abschnitt.
+
+Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt belegt):
+
+- **Fehlercodes unterscheiden.** `load()` machte aus JEDEM `stat`-Fehler „fehlt“ – ein kurzer
+  Aussetzer des Netzlaufwerks ließ eine vorhandene Datei als neu gelten, und sie wurde ohne
+  Sicherung durch eine mit nur dem eigenen Abschnitt ersetzt. Nur `ENOENT`/`ENOTDIR` heißt
+  „fehlt“; alles andere bricht ab. Neue Dateien **exklusiv** anlegen (`'wx'`,
+  `fsAtomic.writeNewFileAsync`) – legt sie jemand dazwischen an, neu lesen statt ersetzen.
+- **Nur schreiben, was sich wieder lesen lässt.** Gespeichert wurde nach einer Grenze in
+  Zeichen über kompaktes JSON, geschrieben eingerückt, gelesen mit einer Grenze in Bytes – eine
+  riesige Wand (Tippfehler in den Maßen) ließ sich speichern, aber nie wieder öffnen. Vor dem
+  Schreiben dieselben Grenzen und Prüfungen wie beim Lesen anwenden (`packProject`).
+- **Schlüssel aus fremden Dateien nie mit `obj[key] ?? …` oder `key in obj` nachschlagen.**
+  „constructor“ lieferte eine Funktion – die IPC-Antwort ließ sich nicht klonen, die Datei nicht
+  öffnen. `Object.hasOwn` (oder `Map`).
+- **Rückfragen sperren nur das eigene Fenster.** Wer nach einem Dialog Daten und Bindung frisch
+  aus dem Store liest, schreibt womöglich, was ein anderes Fenster inzwischen geöffnet hat, und
+  kapert dessen Bindung. Stand zu Beginn der Aktion festhalten, genau den schreiben und nach
+  jeder Rückfrage prüfen, ob sich etwas geändert hat (`changedMeanwhile`).
+- **Zerstörende Schritte erst nach Erfolg.** „Leere anlegen“ setzte die Planung vor dem
+  Schreiben zurück – scheiterte das Schreiben, hing eine leere Planung an der alten Datei, und
+  Strg+S hätte sie überschrieben.
+- **Tastenkürzel nehmen den Fokus nicht weg.** Strg+O aus einem gepufferten Feld: Der Entwurf
+  zählte nicht als ungespeichert und landete nach dem Öffnen in der neuen Planung. Vor JEDER
+  Aktion, die den Arbeitsstand liest oder ersetzt, offene Eingaben übernehmen.
+- **Rückfragen nennen das wirkliche Ziel** (Dateiname des Pfads, in den geschrieben wird), nicht
+  die gebundene Datei.
 
 ## Fenster (Oktober 2026)
 

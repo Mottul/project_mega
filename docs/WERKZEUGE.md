@@ -624,8 +624,11 @@ die anderen bleiben beim Speichern unverändert.
 - **Rückfragen:** „Neu“ und „Öffnen“ fragen, wenn ungespeicherte Änderungen verloren gingen. Hat
   jemand anderes die Datei inzwischen gespeichert (Netzlaufwerk), überschreibt Speichern sie nicht
   still: „Überschreiben / Speichern unter … / Abbrechen“. Enthält eine Datei beim Öffnen noch
-  keine Planung dieses Werkzeugs, lässt sich die aktuelle hinzufügen. Eine **Vorlage** zu laden
-  löst die Verbindung zur Datei (die Datei bleibt unverändert).
+  keine Planung dieses Werkzeugs, lässt sich die aktuelle hinzufügen oder eine leere anlegen
+  (die aktuelle bleibt, bis das Speichern geklappt hat). Ist die Planung im zweiten Fenster offen
+  und ändert sich dort etwas, während eine Rückfrage wartet, bricht die Aktion ab, statt das
+  Falsche zu speichern. Eine **Vorlage** zu laden löst die Verbindung zur Datei (die Datei bleibt
+  unverändert).
 - **Sicherungen:** Vor jedem Überschreiben legt die App die bisherige Datei im Benutzerordner unter
   `Sicherungen/` ab (die letzten 10 je Dateiname).
 - **Projektordner:** im App-Menü; ab Werk `Dokumente/Mottulbox-Projekte` (wird beim ersten
