@@ -12,12 +12,14 @@ import { qrMatrix } from '@renderer/components/qr'
 import { faelleFuerStufe, type AusgabeFall, type AusgabeZiel } from './fehlersuche'
 import { modulKeys } from './ledWallKopie'
 import { inline, markup, type MarkupOptionen } from './markup'
+import { signalwege, type Signalweg } from './signalwege'
 import {
   ROLLEN,
   kapitelDef,
   stufeLabel,
   type Anleitung,
   type Block,
+  type Geraet,
   type GeraetRolle,
   type KapitelEintrag,
   type KapitelId,
@@ -187,45 +189,97 @@ function kontaktKarte(k: FirmenKontakt, qr: boolean): string {
 
 const ROLLE_LABEL = (r: GeraetRolle): string => ROLLEN.find((x) => x.value === r)?.label ?? r
 
-/** Signalweg als SVG mit festen Spalten je Rolle – ohne Layout-Paket */
-function systemSvg(a: Anleitung): string {
-  const col = (rollen: GeraetRolle[]): string[] =>
-    a.geraete.filter((g) => rollen.includes(g.rolle)).map((g) => g.name || ROLLE_LABEL(g.rolle))
-  const spalten: { titel: string; namen: string[] }[] = [
-    { titel: 'Bedienfeld', namen: col(['bedienfeld']) },
-    { titel: 'Zuspieler', namen: col(['zuspieler']) },
-    { titel: 'Prozessor', namen: col(['prozessor']) },
+/**
+ * Systemübersicht als SVG mit festen Spalten je Rolle – ohne Layout-Paket. Sind Signalwege
+ * bekannt (signalwege.ts), verbinden Pfeile genau die Geräte, die zusammengehören (ein Zuspieler
+ * für zwei Wände steht einmal da, mit zwei Pfeilen; der Name des Ausgangs steht am Pfeil);
+ * sonst zeigt ein Pfeil zwischen den Spalten nur die Richtung.
+ */
+function systemSvg(a: Anleitung, wege: Signalweg[]): string {
+  type Knoten = { id: string; name: string }
+  const col = (rolle: GeraetRolle): Knoten[] =>
+    a.geraete
+      .filter((g) => g.rolle === rolle)
+      .map((g) => ({ id: g.id, name: g.name || ROLLE_LABEL(g.rolle) }))
+  const waende = a.ledWall?.waende ?? []
+  const spalten: { titel: string; knoten: Knoten[]; immer?: boolean }[] = [
+    { titel: 'Bedienfeld', knoten: col('bedienfeld') },
+    { titel: 'Zuspieler', knoten: col('zuspieler') },
+    { titel: 'Verteiler', knoten: col('verteiler') },
+    { titel: 'Prozessor', knoten: col('prozessor'), immer: true },
     {
-      titel: a.ledWall && a.ledWall.waende.length > 1 ? 'LED-Wände' : 'LED-Wand',
-      namen: a.ledWall
-        ? a.ledWall.waende.map(({ name, kennzahlen: k }, _, alle) =>
-            alle.length > 1 ? `${name} (${k.modul})` : `${k.modul} · ${k.spalten} × ${k.reihen}`
-          )
-        : ['LED-Wand']
+      titel: waende.length > 1 ? 'LED-Wände' : 'LED-Wand',
+      knoten: waende.length
+        ? waende.map(({ id, name, kennzahlen: k }) => ({
+            id: `wand:${id}`,
+            name:
+              waende.length > 1 ? `${name} (${k.modul})` : `${k.modul} · ${k.spalten} × ${k.reihen}`
+          }))
+        : [{ id: 'wand:-', name: 'LED-Wand' }],
+      immer: true
     }
-  ].filter((s, i) => s.namen.length || i >= 2)
-  const unten = col(['netzwerk', 'strom', 'sonstiges'])
+  ].filter((s) => s.knoten.length || s.immer)
+  // Kanten aus den Signalwegen (ohne Doppelte); Beschriftung: Name des Ausgangs
+  const kanten = new Map<string, { von: string; nach: string; text: string }>()
+  const kante = (von: string, nach: string, text = ''): void => {
+    const k = `${von}>${nach}`
+    const alt = kanten.get(k)
+    if (!alt) kanten.set(k, { von, nach, text })
+    else if (text && !alt.text.split(', ').includes(text))
+      alt.text = `${alt.text}, ${text}`.replace(/^, /, '')
+  }
+  for (const w of wege) {
+    if (!w.prozessor) continue
+    kante(w.prozessor.id, `wand:${w.wand.id}`)
+    if (!w.zuspieler) continue
+    const name = w.ausgang?.name.trim() ?? ''
+    if (w.verteiler) {
+      kante(w.zuspieler.id, w.verteiler.id, name)
+      kante(w.verteiler.id, w.prozessor.id)
+    } else kante(w.zuspieler.id, w.prozessor.id, name)
+  }
+  const unten = col('netzwerk')
+    .concat(col('strom'), col('sonstiges'))
+    .map((k) => k.name)
   const W = 680
-  const bw = 140
-  const gap = (W - spalten.length * bw) / Math.max(1, spalten.length - 1)
-  const rows = Math.max(1, ...spalten.map((s) => s.namen.length))
+  const n = spalten.length
+  const bw = Math.min(140, (W - (n - 1) * 28) / n)
+  const gap = (W - n * bw) / Math.max(1, n - 1)
+  const rows = Math.max(1, ...spalten.map((s) => s.knoten.length))
   const bh = 34
   const top = 24
   const H = top + rows * (bh + 10) + (unten.length ? 70 : 10)
+  const lage = new Map<string, { x: number; y: number }>()
   let svg = ''
   spalten.forEach((s, i) => {
     const x = i * (bw + gap)
     svg += `<text x="${x + bw / 2}" y="14" text-anchor="middle" font-size="11" fill="#676c76">${esc(s.titel)}</text>`
-    s.namen.forEach((n, j) => {
+    s.knoten.forEach((k, j) => {
       const y = top + j * (bh + 10)
+      lage.set(k.id, { x, y })
       svg += `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="5" fill="#fff" stroke="#999"/>`
-      svg += `<text x="${x + bw / 2}" y="${y + bh / 2 + 4}" text-anchor="middle" font-size="11">${esc(n.slice(0, 24))}</text>`
+      svg += `<text x="${x + bw / 2}" y="${y + bh / 2 + 4}" text-anchor="middle" font-size="11">${esc(k.name.slice(0, Math.floor(bw / 6)))}</text>`
     })
-    if (i < spalten.length - 1) {
+    if (!kanten.size && i < spalten.length - 1) {
       const y = top + bh / 2
       svg += `<line x1="${x + bw + 4}" y1="${y}" x2="${x + bw + gap - 8}" y2="${y}" stroke="#555" stroke-width="1.5" marker-end="url(#pfeil)"/>`
     }
   })
+  for (const k of kanten.values()) {
+    const a1 = lage.get(k.von)
+    const b1 = lage.get(k.nach)
+    if (!a1 || !b1) continue
+    const x1 = a1.x + bw + 2
+    const y1 = a1.y + bh / 2
+    const x2 = b1.x - 6
+    const y2 = b1.y + bh / 2
+    const xm = (x1 + x2) / 2
+    svg += `<path d="M${x1} ${y1} C${xm} ${y1} ${xm} ${y2} ${x2} ${y2}" fill="none" stroke="#555" stroke-width="1.4" marker-end="url(#pfeil)"/>`
+    // am Ziel-Ende: Zwei Ausgänge eines Zuspielers starten am selben Punkt, ihre Ziele liegen
+    // aber verschieden hoch (gleiches Ziel = eine Kante mit beiden Namen)
+    if (k.text)
+      svg += `<text x="${x2 - 3}" y="${y2 - 5}" text-anchor="end" font-size="9" fill="#676c76">${esc(k.text.slice(0, 18))}</text>`
+  }
   if (unten.length) {
     const y = H - 46
     svg += `<text x="0" y="${y - 6}" font-size="11" fill="#676c76">Netzwerk, Strom, Sonstiges</text>`
@@ -234,6 +288,33 @@ function systemSvg(a: Anleitung): string {
     })
   }
   return `<svg class="system" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, sans-serif"><defs><marker id="pfeil" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#555"/></marker></defs>${svg}</svg>`
+}
+
+/**
+ * Signalwege als Text unter der Übersicht – bei mehreren Wänden oder sobald Ausgänge,
+ * Verteiler oder Ausschnitte eingetragen sind (sonst sagt die Zeichnung schon alles).
+ */
+function wegListe(a: Anleitung, wege: Signalweg[]): string {
+  const mitGeraet = wege.filter((w) => w.prozessor)
+  const lohnt =
+    (a.ledWall?.waende.length ?? 0) > 1 ||
+    mitGeraet.some((w) => w.ausgang?.name.trim() || w.verteiler || w.ausschnitt)
+  if (!mitGeraet.length || !lohnt) return ''
+  const n = (g: Geraet): string => esc(g.name.trim() || ROLLE_LABEL(g.rolle))
+  const zeilen = wege.map((w) => {
+    if (!w.prozessor)
+      return `<li><b>${esc(w.wand.name)}</b>: <span class="muted">noch kein Prozessor</span></li>`
+    const teile = [
+      w.zuspieler &&
+        `${n(w.zuspieler)}${w.ausgang?.name.trim() ? ` (${esc(w.ausgang.name.trim())})` : ''}`,
+      w.verteiler && n(w.verteiler),
+      n(w.prozessor)
+    ].filter(Boolean)
+    const s = w.ausschnitt
+    const aus = s && s.b && s.h ? ` · Ausschnitt ab ${s.x}, ${s.y} · ${s.b} × ${s.h} px` : ''
+    return `<li><b>${esc(w.wand.name)}</b>: ${teile.join(' → ')}${aus}</li>`
+  })
+  return `<h3>Signalwege</h3><ul class="wege">${zeilen.join('')}</ul>`
 }
 
 function zielText(z: AusgabeZiel, o: MarkupOptionen): string {
@@ -305,10 +386,12 @@ function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): strin
           : ''
       }${kontakt ? `<h3>Kontakt</h3>${kontaktKarte(kontakt, true)}` : ''}`
     }
-    case 'system':
-      return a.geraete.length || a.ledWall
-        ? systemSvg(a)
-        : '<p class="muted">Noch keine Geräte eingetragen.</p>'
+    case 'system': {
+      if (!a.geraete.length && !a.ledWall)
+        return '<p class="muted">Noch keine Geräte eingetragen.</p>'
+      const wege = signalwege(a)
+      return systemSvg(a, wege) + wegListe(a, wege)
+    }
     case 'geraete': {
       if (!a.geraete.length) return '<p class="muted">Noch keine Geräte eingetragen.</p>'
       const ip = g >= 3

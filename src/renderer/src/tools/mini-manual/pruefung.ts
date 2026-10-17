@@ -5,6 +5,7 @@ import { pruefeFall } from './fehlersuche'
 import { kapitelDef, type Anleitung, type KapitelId } from './model'
 import { platzhalterIn, platzhalterWerte } from './platzhalter'
 import { sichtbareKapitel, type SeitenKontext } from './seiten'
+import { pruefeSignalwege } from './signalwege'
 
 export interface PruefPunkt {
   schwere: 'fehler' | 'warnung' | 'info'
@@ -92,6 +93,11 @@ export function pruefung(a: Anleitung, c: SeitenKontext, extra: PruefExtra): Pru
         kapitel: 'ledWall'
       })
   }
+
+  // Signalwege: bei mehreren Wänden bzw. Prozessoren muss in der Geräteliste stehen, was wohin geht
+  if (zeigt('system') || zeigt('geraete'))
+    for (const p of pruefeSignalwege(a))
+      out.push({ schwere: p.schwere, text: `Signalweg: ${p.text}`, kapitel: 'geraete' })
 
   if (zeigt('fehlersuche')) {
     const g = c.lern ? 3 : c.stufe

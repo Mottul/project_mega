@@ -221,10 +221,11 @@ export interface KapitelEintrag {
 }
 
 export type GeraetRolle =
-  'zuspieler' | 'prozessor' | 'bedienfeld' | 'netzwerk' | 'strom' | 'sonstiges'
+  'zuspieler' | 'verteiler' | 'prozessor' | 'bedienfeld' | 'netzwerk' | 'strom' | 'sonstiges'
 
 export const ROLLEN: { value: GeraetRolle; label: string }[] = [
   { value: 'zuspieler', label: 'Zuspieler' },
+  { value: 'verteiler', label: 'Verteiler' },
   { value: 'prozessor', label: 'Prozessor' },
   { value: 'bedienfeld', label: 'Bedienfeld' },
   { value: 'netzwerk', label: 'Netzwerk' },
@@ -243,6 +244,59 @@ export interface Geraet {
   ip: string
   foto: string | null
   notiz: string
+  /** nur Prozessor: Kennungen der Wände (aus der LED-Wall-Kopie), die er bespielt */
+  waende: string[]
+  /** nur Zuspieler: je Ausgang, wohin das Signal geht */
+  ausgaenge: Ausgang[]
+}
+
+/** Was eine Wand aus einem Gesamtbild zeigt – Pixel im Bild des Ausgangs */
+export interface Ausschnitt {
+  wand: string
+  x: number
+  y: number
+  b: number
+  h: number
+}
+
+/**
+ * Ein Ausgang eines Zuspielers (Festlegung 32 im Plan): je Wand ein eigener Ausgang, ein Ausgang
+ * über einen Verteiler (HDMI-Splitter, beide Wände zeigen dasselbe) oder ein Gesamtbild, aus dem
+ * jeder Prozessor seinen Ausschnitt nimmt.
+ */
+export interface Ausgang {
+  id: string
+  /** „HDMI 1“, „DP“ */
+  name: string
+  /** Bild des Ausgangs in Pixeln; 0 = nicht angegeben */
+  breite: number
+  hoehe: number
+  /** Gerät dazwischen (Rolle „Verteiler“); null = direkt */
+  ueber: string | null
+  /** Prozessoren, die das Signal bekommen (Kennungen der Geräte) */
+  an: string[]
+  /** Gesamtbild für mehrere Wände: was jede Wand davon zeigt */
+  ausschnitte: Ausschnitt[]
+}
+
+export function leeresGeraet(rolle: GeraetRolle = 'zuspieler'): Geraet {
+  return {
+    id: uid(),
+    rolle,
+    kurzname: '',
+    name: '',
+    modell: '',
+    standort: '',
+    ip: '',
+    foto: null,
+    notiz: '',
+    waende: [],
+    ausgaenge: []
+  }
+}
+
+export function leererAusgang(name = ''): Ausgang {
+  return { id: uid(), name, breite: 0, hoehe: 0, ueber: null, an: [], ausschnitte: [] }
 }
 
 export interface Zugang {

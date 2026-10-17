@@ -322,6 +322,56 @@ try {
       }
     ],
     [
+      'Signalweg: Prozessor bespielt beide Wände, Laptop mit Ausgang und Ausschnitt',
+      async () => {
+        await kapitel('geraete')
+        const erstes = page.getByTestId('geraet').first()
+        await erstes.getByRole('combobox', { name: 'Rolle' }).selectOption('prozessor')
+        const bespielt = erstes.getByRole('group', { name: 'Bespielt' })
+        await bespielt.getByRole('checkbox', { name: 'Wand 1' }).check()
+        await bespielt.getByRole('checkbox', { name: 'Bar' }).check()
+        await page.getByRole('button', { name: 'Gerät', exact: true }).click()
+        const laptop = page.getByTestId('geraet').nth(1)
+        await laptop.getByLabel('Name', { exact: true }).fill('Laptop')
+        await page.keyboard.press('Tab')
+        await laptop.getByRole('button', { name: 'Ausgang', exact: true }).click()
+        const ausgang = laptop.getByTestId('ausgang')
+        assert.equal(await ausgang.getByLabel('Ausgang', { exact: true }).inputValue(), 'HDMI 1')
+        await ausgang.getByText(/Geht an „NovaPro UHD Jr“/).waitFor({ timeout: 5000 })
+        await ausgang.getByLabel('Bild Breite (px)').fill('3840')
+        await ausgang.getByLabel('Bild Höhe (px)').fill('1200')
+        for (const [feld, wert] of [
+          ['x', '0'],
+          ['y', '0'],
+          ['Breite', '1920'],
+          ['Höhe', '1200']
+        ]) {
+          await ausgang.getByLabel(`Ausschnitt Wand 1 ${feld}`).fill(wert)
+          await page.keyboard.press('Tab')
+        }
+        await kapitel('system')
+        assert.ok(
+          await waitFor(async () => {
+            const t = await vorschau()
+            return (
+              t.includes('Signalwege') &&
+              t.includes('Laptop (HDMI 1) → NovaPro UHD Jr · Ausschnitt ab 0, 0 · 1920 × 1200 px')
+            )
+          }, 5000),
+          await vorschau()
+        )
+        // gespeichert in der Datei (Abschnitt Version 3)
+        await page.keyboard.press('Control+s')
+        const s = await waitFor(async () => {
+          const r = await peek('anleitung')
+          return r?.section?.data.geraete?.[1]?.ausgaenge?.[0]?.breite === 3840 ? r : null
+        }, 10_000)
+        assert.ok(s, 'Ausgang nicht in der Datei')
+        assert.equal(s.section.version, 3)
+        assert.deepEqual(s.section.data.geraete[0].waende, ['wand-1', 'bar'])
+      }
+    ],
+    [
       'keine Fehler in der Konsole',
       async () => {
         assert.deepEqual(ctx.errors, [])

@@ -39,10 +39,17 @@ Abweichungen: **Vorlage laden** ersetzt nur die gewählte Wand und lässt die Da
 gewählte Wand (mit Namen), nicht alle; der **geteilte Prozessor** kommt mit der Prozessor-Wahl in
 Phase 2b.
 
-**Nächster Schritt: Phase 2a, zweiter Teil** – Querverweise im Mini-Manual („bespielt“ am
-Prozessor, Signalweg der Zuspieler mit Verteiler und Ausschnitt, Systemübersicht je Wand); danach
-2b der [Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator), nur von Hand gezeichnet
-(Festlegungen 24–34). Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
+**Phase 2a, zweiter Teil umgesetzt (17.10.2026):** Querverweise im Mini-Manual – „bespielt“ am
+Prozessor, Ausgänge der Zuspieler mit Bildgröße, Verteiler (neue Rolle) und Ziel-Prozessoren,
+Ausschnitt je Wand bei einem Gesamtbild; Systemübersicht mit Pfeilen aus den Signalwegen und
+Liste je Wand; Prüfung (Wand ohne Prozessor, Prozessor ohne Wand, Zuspieler ohne Ziel, Ausschnitt
+über dem Bild bzw. skaliert). Anleitung Version 3. Abweichung: Eindeutige Fälle (eine Wand bzw.
+ein Prozessor) gelten ohne Angabe als verbunden – so bleibt die einfache Anleitung ohne Eingabe;
+„vorbelegt aus dem Konfigurator“ kommt erst mit der Prozessor-Wahl in 2b.
+
+**Nächster Schritt: Phase 2b** – der [Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator), nur
+von Hand gezeichnet (Festlegungen 24–34), mit Prozessor-Wahl, geteiltem Prozessor und
+Glasfaser-Strecke. Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.
 
@@ -1025,9 +1032,10 @@ gleich dort mitkommen.
 Wunsch aus der Praxis (Festlegung 29): Ein Laptop bespielt zwei kleine LED-Wände – beide gehören
 in dieselbe Projektdatei, und die Anleitung muss sagen, was wohin geht.
 
-Umgesetzt (17.10.2026): Datei, Konfigurator, Packliste und die Kopie im Mini-Manual (siehe Status
-oben; im Code `led-wall/config.ts` `wallsOf`, `led-wall/store.ts` `plannedWalls`). Offen: die
-Querverweise im Mini-Manual und der geteilte Prozessor (mit der Prozessor-Wahl in 2b).
+Umgesetzt (17.10.2026): Datei, Konfigurator, Packliste, die Kopie im Mini-Manual und die
+Querverweise (siehe Status oben; im Code `led-wall/config.ts` `wallsOf`, `led-wall/store.ts`
+`plannedWalls`, `mini-manual/signalwege.ts`). Offen: der geteilte Prozessor (mit der
+Prozessor-Wahl in 2b).
 
 - **Datei:** Der Abschnitt `ledWall` hält eine Liste von Wänden, jede mit `id` und Namen
   („Hauptbühne“, „Seitenwand links“). Version 3; die Migration 2 → 3 packt die eine Wand in die
@@ -1104,8 +1112,8 @@ Jede Phase ist für sich nutzbar.
 |---|---|---|
 | **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
 | **1 Mini-Manual, erste Fassung** ✅ | Zuerst ✅: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Foto-Speicher im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2a Mehrere Wände** | Version 3 (Liste der Wände, Migration inkl. Vorlagen), Wand-Wahl im Konfigurator, geteilter Prozessor gleichen Typs, Packliste je Wand plus Summe, Mini-Manual: Kopie je Wand, „bespielt“ und Signalweg der Zuspieler (Ausgang, Verteiler, Ausschnitt), Systemübersicht, Platzhalter `{wand2.…}` | Projekte mit mehreren Wänden in einer Datei, Anleitung sagt, was wohin geht |
-| **2b Kabelverlauf** | von Hand: Startpunkt und Richtung, Kette zeichnen, Backup-Leitungen („B“, Ports; NovaStar-Port bzw. Tessera-Paar), Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität (Prozessor- und Kartengrenze), Glasfaser-Strecke mit CVT10, Pfeile in Ansicht und PDF, vorne/hinten, Signal und Strom nebeneinander, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
+| **2a Mehrere Wände** ✅ | Version 3 (Liste der Wände, Migration inkl. Vorlagen), Wand-Wahl im Konfigurator, Packliste je Wand plus Summe, Mini-Manual: Kopie je Wand, „bespielt“ und Signalweg der Zuspieler (Ausgang, Verteiler, Ausschnitt), Systemübersicht, Platzhalter `{wand2.…}` | Projekte mit mehreren Wänden in einer Datei, Anleitung sagt, was wohin geht – umgesetzt 17.10.2026 |
+| **2b Kabelverlauf** | geteilter Prozessor gleichen Typs; von Hand: Startpunkt und Richtung, Kette zeichnen, Backup-Leitungen („B“, Ports; NovaStar-Port bzw. Tessera-Paar), Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität (Prozessor- und Kartengrenze), Glasfaser-Strecke mit CVT10, Pfeile in Ansicht und PDF, vorne/hinten, Signal und Strom nebeneinander, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
 | **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
