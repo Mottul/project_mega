@@ -98,7 +98,7 @@ try {
       }
     ],
     [
-      'Projekt und Gerät: Platzhalter {prozessor.name} erscheint in der Vorschau',
+      'Projekt und Gerät: Platzhalter {prozessor.name} erscheint fett in der Vorschau',
       async () => {
         await drawer().getByLabel('Projekt', { exact: true }).fill('Messe Test')
         await page.keyboard.press('Tab')
@@ -114,6 +114,19 @@ try {
             5000
           ),
           await vorschau()
+        )
+        // eingesetzte Werte sind hervorgehoben
+        const ph = await page
+          .getByTestId('mini-manual-vorschau')
+          .evaluate((el) =>
+            [...(el.shadowRoot?.querySelectorAll('.ph') ?? [])].map((x) => [
+              x.textContent,
+              getComputedStyle(x).fontWeight
+            ])
+          )
+        assert.ok(
+          ph.some(([t, w]) => t === 'NovaPro UHD Jr' && +w >= 600),
+          JSON.stringify(ph)
         )
       }
     ],
@@ -175,9 +188,11 @@ try {
     [
       'Projektdatei mit Foto auf dem Deckblatt',
       async () => {
+        // Hochformat: Querformat blieb in der schmalen Vorschau unter der Höhengrenze und zeigte
+        // den Fehler (gestreckt auf volle Breite) nicht
         const b64 = await app.evaluate(({ nativeImage }) => {
-          const w = 320
-          const h = 200
+          const w = 200
+          const h = 320
           const buf = Buffer.alloc(w * h * 4, 255)
           for (let i = 0; i < buf.length; i += 4) buf[i] = (i / 4) % 255
           return nativeImage
@@ -202,6 +217,18 @@ try {
           ),
           'Foto nicht in der Vorschau'
         )
+        // Seitenverhältnis bleibt (das Deckblatt ist eine Flex-Spalte – früher gestreckt)
+        const r = await waitFor(
+          () =>
+            page.getByTestId('mini-manual-vorschau').evaluate((el) => {
+              const img = el.shadowRoot?.querySelector('img.foto')
+              return img?.complete && img.naturalWidth
+                ? [img.clientWidth / img.clientHeight, img.naturalWidth / img.naturalHeight]
+                : null
+            }),
+          5000
+        )
+        assert.ok(r && Math.abs(r[0] - r[1]) < 0.03, `Verhältnis ${r}`)
         await saveTo(datei)
         await bar()
           .getByRole('button', { name: /^Datei/ })

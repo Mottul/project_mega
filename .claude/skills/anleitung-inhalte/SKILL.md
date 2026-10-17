@@ -54,7 +54,9 @@ still. Datenmodell: `model.ts`; Ausgabe je Stufe: `fehlersuche.ts`; Seiten: `sei
 `{projekt.name|kunde|ort|zeitraum}`, `{wand.groesse|aufloesung|modul|module|…}`,
 `{<kurzname>.name|modell|standort|ip}` (Geräte), `{kontakt.name|mobil|…}`, `{firma.name|fernwartung}`
 – Liste in `platzhalter.ts`. Sparsam einsetzen: Jeder leere Platzhalter erscheint in der Prüfung
-vor dem Export (gewollt bei `{pc.name}`, `{prozessor.name}`).
+vor dem Export (gewollt bei `{pc.name}`, `{prozessor.name}`). Eingesetzte Werte erscheinen von
+selbst fett (Klasse `ph`); `**…**` drumherum nur, wenn mehr als der Wert hervorgehoben sein soll
+(`**{wand.aufloesung} Pixel**`).
 
 ## Bausteine
 

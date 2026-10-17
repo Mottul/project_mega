@@ -54,6 +54,8 @@ export function sichtbareKapitel(a: Anleitung, c: SeitenKontext): KapitelEintrag
 
 // ---------------------------------------------------------------- Bausteine der Seite
 
+// Bilder direkt im Deckblatt (Flex-Spalte) brauchen align-self: Sonst streckt der Browser sie
+// auf die volle Breite und begrenzt nur die Höhe – das Foto war verzerrt.
 function css(c: SeitenKontext): string {
   const ak = akzent(c.firma)
   return `
@@ -102,12 +104,14 @@ function css(c: SeitenKontext): string {
 .mm .kontakte{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .mm .kontakt{border:1px solid #e2e2e2;border-radius:5px;padding:8px 10px;display:flex;gap:10px;justify-content:space-between;break-inside:avoid}
 .mm .system{width:100%;height:auto;margin:6px 0 10px}
+.mm .ph{font-weight:700}
 .mm .deckblatt{display:flex;flex-direction:column;gap:14px;min-height:240mm}
-.mm .deckblatt .logo{max-height:60px;max-width:220px;object-fit:contain}
+.mm .deckblatt>img{flex:none;align-self:flex-start;width:auto;height:auto;max-width:100%;margin:0}
+.mm .deckblatt .logo{max-height:26mm;max-width:90mm}
 .mm .deckblatt h1{font-size:34px;margin-top:40px}
 .mm .deckblatt .linie{border-bottom:3px solid ${ak};padding-bottom:8px}
 .mm .deckblatt .meta{margin-top:auto;color:#676c76;border-top:1px solid #e2e2e2;padding-top:8px}
-.mm .deckblatt img.foto{max-height:340px}
+.mm .deckblatt img.foto{max-height:120mm}
 `
 }
 

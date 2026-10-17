@@ -3,7 +3,7 @@
 // der Store (store.ts) und die Projektdatei-Anbindung nutzen dieselben Funktionen.
 //
 // Version 2 (Oktober 2026) bringt die Felder für den Kabelverlauf mit (Einspeisepunkt, Reihenfolge
-// je Kette, Ports, Stromkreise, Backup-Leitungen, Prozessor). Leer heißt „Vorschlag“ – das
+// je Kette, Ports, Stromkreise, Backup-Leitungen, Prozessor). Leer heißt „nicht festgelegt“ – das
 // Verhalten bleibt gleich, bis die Bedienung dafür kommt (docs/PLAN-MINI-MANUAL.md, Phase 2).
 
 import { digest } from '@shared/projectFile'
@@ -17,15 +17,15 @@ export type CurveMode = 'circle' | 'segment' | 'builder' | 'squircle'
 export type Corner = 'tl' | 'tr' | 'bl' | 'br'
 /**
  * Einspeisepunkt: wo die Zuleitungen vom Prozessor an der Wand ankommen – Mitte der Kante bzw.
- * der Wand. Er wird nicht gezeichnet (Plan bleibt übersichtlich), sondern bestimmt nur die
- * vorgeschlagene Startecke je Kette und die ungefähre Zuleitungslänge.
+ * der Wand. Seit der Rücksprache vom 17.10.2026 ungenutzt (Verlauf nur von Hand, Festlegung 24
+ * im Plan); bleibt im Datensatz, damit gespeicherte Dateien gültig bleiben.
  */
 export type Feed = 'left' | 'right' | 'top' | 'bottom' | 'center'
 
 export interface ChainRoute {
-  /** fehlt = Vorschlag: Ecke mit der kürzesten Zuleitung */
+  /** fehlt = kein Verlauf festgelegt (keine Pfeile) */
   start?: Corner
-  /** fehlt = Vorschlag (senkrecht, wenn der Bereich höher als breit ist) */
+  /** fehlt = waagrecht */
   axis?: 'row' | 'col'
   /** Handkorrektur: Reihenfolge der Module [Zeile, Spalte] */
   order?: [number, number][]

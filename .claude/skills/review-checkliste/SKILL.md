@@ -175,6 +175,11 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   (Skill `electron-e2e`, „PDF ansehen“); Test `seiten.test.ts` prüft die Reihenfolge.
 - **Stilwerte aus Einstellungen oder Dateien nie ungeprüft ins CSS** (Akzentfarbe als Hex prüfen,
   sonst Vorgabe) – `red;}body{display:none` wäre sonst ein Stylesheet.
+- **Bilder als Flex-Kind brauchen `align-self`** (oder einen Block drumherum): In einer
+  Flex-Spalte streckt der Browser ein `<img>` auf die volle Breite und begrenzt nur die Höhe –
+  das Deckblatt-Foto war verzerrt (17.10.2026), obwohl `max-width`/`max-height` gesetzt waren.
+  Im Test **Hochformat** nehmen: Ein Querformat blieb in der schmalen Vorschau unter der
+  Höhengrenze, der Test war auch ohne Korrektur grün (Gegenprobe!).
 
 ## Tests
 
