@@ -1,0 +1,190 @@
+// Baut die druckfertige Projektdoku (helles, selbständiges HTML) – rein, ohne api, getestet
+// (printHtml.test.ts). Den PDF-Export über den main-Prozess macht print.ts.
+
+import { APP_NAME } from '@shared/brand'
+import { esc } from '@shared/html'
+import { chainCounts, chainRoutes, routeSvg } from './cabling'
+import type { ChainRoute } from './config'
+import { PWR_COLORS, SIG_COLORS, type LedModule } from './data'
+import type { Fit169 } from './math'
+
+export interface PrintData {
+  mod: LedModule
+  projectName: string
+  customerName: string
+  /** nur bei mehreren Wänden: Name der gedruckten Wand */
+  wallName?: string
+  buildMode: 'stacked' | 'flying'
+  cols: number
+  rows: number
+  total: number
+  actualW: string
+  actualH: string
+  resX: number
+  resY: number
+  ratioW: number
+  ratioH: number
+  fit169: Fit169 | null
+  weightKg: string
+  powerTypW: number
+  powerMaxW: number
+  ampsTyp: string
+  ampsMax: string
+  baseUnits: number
+  ballastPerBase: number
+  totalBallast: number
+  sig: number[][]
+  pwr: number[][]
+  /** Verlauf je Kette (Startecke/Richtung oder gezeichnet) – Pfeile im Plan */
+  sigMeta: Record<string, ChainRoute>
+  pwrMeta: Record<string, ChainRoute>
+  /** Pläne von hinten gesehen (gespiegelt, groß beschriftet) */
+  rear: boolean
+  landscape: boolean
+  curve: {
+    modeLabel: string
+    mods: number
+    angles: number[]
+    footprintW: number
+    footprintD: number
+    svg: string // fertiges SVG-Markup der Draufsicht
+  } | null
+}
+
+/**
+ * Plan als SVG: Module mit Kettennummer, darüber die Pfeile des Verlaufs (cabling.ts, dieselbe
+ * Quelle wie am Bildschirm). Von hinten gespiegelt; die Spaltennummern stehen dann oben, damit
+ * man am Modul abzählen kann.
+ */
+function gridSvg(
+  assign: number[][],
+  meta: Record<string, ChainRoute>,
+  colors: string[],
+  prefix: string,
+  cols: number,
+  rows: number,
+  px: number,
+  mirror: boolean
+): string {
+  const gap = 2
+  const pad = 4
+  const head = mirror ? 12 : 0
+  const sw = cols * (px + gap) - gap + pad * 2
+  const sh = rows * (px + gap) - gap + pad * 2 + head
+  const x0 = pad
+  const y0 = pad + head
+  let s = `<svg viewBox="0 0 ${sw} ${sh}" width="${sw}" height="${sh}" xmlns="http://www.w3.org/2000/svg">`
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const v = assign[r]?.[c] ?? -1
+      const x = x0 + (mirror ? cols - 1 - c : c) * (px + gap)
+      const y = y0 + r * (px + gap)
+      const col = v >= 0 ? colors[v % colors.length] : '#ddd'
+      s += `<rect x="${x}" y="${y}" width="${px}" height="${px}" rx="2" fill="${v >= 0 ? col + '30' : '#f5f5f5'}" stroke="${col}" stroke-width="1"/>`
+      if (v >= 0)
+        s += `<text x="${x + px / 2}" y="${y + px / 2 + 1}" text-anchor="middle" dominant-baseline="central" fill="${col}" font-size="${Math.max(7, Math.floor(px / 2.8))}" font-weight="700" font-family="system-ui">${prefix}${v + 1}</text>`
+      if (mirror && r === 0)
+        s += `<text x="${x + px / 2}" y="${pad + 8}" text-anchor="middle" fill="#888" font-size="8" font-family="system-ui">${c + 1}</text>`
+    }
+  }
+  s += routeSvg(chainRoutes(assign, meta), {
+    cell: px,
+    gap,
+    x0,
+    y0,
+    cols,
+    colors,
+    id: `pdf-${prefix}`,
+    mirror
+  })
+  return s + '</svg>'
+}
+
+function legend(assign: number[][], colors: string[], prefix: string): string {
+  return [...chainCounts(assign)]
+    .sort((a, b) => a[0] - b[0])
+    .map(
+      ([ci, count]) =>
+        `<span style="display:inline-flex;align-items:center;gap:3px;margin-right:7px;font-size:10px"><span class="cdot" style="background:${colors[ci % colors.length]}"></span><b>${prefix}${ci + 1}</b> ${count} Mod.</span>`
+    )
+    .join('')
+}
+
+export function ledWallPrintHtml(d: PrintData): { html: string; fileName: string } {
+  const dt = new Date().toLocaleDateString('de-AT')
+  const pn = esc(d.projectName)
+  const cn = esc(d.customerName)
+  const wn = esc(d.wallName ?? '')
+
+  let html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>LEDWall${pn ? ' – ' + pn : ''}</title><style>
+*{margin:0;padding:0;box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+body{font-family:'Segoe UI',system-ui,sans-serif;color:#1a1a1e;padding:18px 22px;font-size:12px}
+h1{font-size:20px;margin-bottom:2px}
+h2{font-size:13px;margin:12px 0 5px;border-bottom:2px solid #eab308;padding-bottom:3px;display:inline-block}
+.meta{color:#666;margin-bottom:12px;font-size:11px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.g1{display:grid;grid-template-columns:1fr;gap:14px}
+table{border-collapse:collapse;width:100%;margin-bottom:6px}
+td,th{border:1px solid #ddd;padding:3px 7px;font-size:11px;text-align:left}
+th{background:#f7f7f7;font-weight:600;width:44%}
+.bar{background:#fdf6dd;padding:5px 9px;border-radius:4px;border-left:3px solid #eab308;font-size:11px;margin:5px 0}
+.cdot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.ap{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;margin:1px}
+.rear{margin:12px 0 0;padding:5px 9px;border:2px solid #b45309;border-radius:4px;color:#b45309;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:center}
+</style></head><body>`
+
+  html += `<h1>LEDWall Konfiguration${wn ? ` – ${wn}` : ''}</h1><div class="meta">${pn ? `Projekt: <b>${pn}</b> · ` : ''}${cn ? `Kunde: <b>${cn}</b> · ` : ''}Datum: ${dt} · Modul: <b>${esc(d.mod.name)}</b> · Aufbau: <b>${d.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend (Traverse)'}</b></div>`
+
+  html += `<div class="g2"><div><h2>Wandkonfiguration</h2><table>
+<tr><th>Modul</th><td>${esc(d.mod.name)} (PP ${d.mod.pitch} mm, ${d.mod.ip})</td></tr>
+<tr><th>Wandgröße</th><td>${d.actualW} × ${d.actualH} m</td></tr>
+<tr><th>Module</th><td>${d.cols} × ${d.rows} = ${d.total} Stk.</td></tr>
+<tr><th>Auflösung</th><td>${d.resX} × ${d.resY} px (${d.ratioW}:${d.ratioH})</td></tr></table>`
+  if (d.fit169) {
+    if (d.fit169.match) html += `<div class="bar">16:9-Content passt exakt.</div>`
+    else
+      html += `<div class="bar">16:9: ${d.fit169.barPx} px Rand ${d.fit169.side === 'lr' ? 'links/rechts' : 'oben/unten'} (Nutzfläche ${d.fit169.cw}×${d.fit169.ch} px)</div>`
+  }
+  html += `</div><div><h2>Technische Daten</h2><table>
+<tr><th>Gewicht</th><td>${d.weightKg} kg</td></tr>
+<tr><th>Leistung (typ.)</th><td>${d.powerTypW} W (${d.ampsTyp} A)</td></tr>
+<tr><th>Leistung (max.)</th><td>${d.powerMaxW} W (${d.ampsMax} A)</td></tr>
+<tr><th>Helligkeit</th><td>${d.mod.brightnessMax ? `${d.mod.brightness} (max ${d.mod.brightnessMax})` : d.mod.brightness} nit</td></tr>
+<tr><th>Kontrast</th><td>&gt; ${d.mod.contrast}</td></tr>
+<tr><th>Tiefe</th><td>${d.mod.dimD} mm</td></tr></table>`
+  if (d.buildMode === 'stacked')
+    html += `<div class="bar"><b>Ground-Stack:</b> ${d.baseUnits} Standfüße × ${d.ballastPerBase} kg = <b>${d.totalBallast} kg Ballast</b></div>`
+  else html += `<div class="bar"><b>Fliegend:</b> Gesamtgewicht ${d.weightKg} kg an Traverse</div>`
+  html += `</div></div>`
+
+  // Curving: Draufsicht + Winkel je Modul (eine Reihe)
+  if (d.curve && d.curve.angles.length > 0) {
+    const c = d.curve
+    const pills = c.angles
+      .map((a) => {
+        const abs = Math.abs(a)
+        const col = abs === 0 ? '#14b8a6' : a > 0 ? '#b8860b' : '#7c3aed'
+        const bg = abs === 0 ? '#e7f8f5' : a > 0 ? '#fdf6dd' : '#f1ecfd'
+        return `<span class="ap" style="color:${col};background:${bg}">${abs}°${a < 0 ? ' &#8634;' : ''}</span>`
+      })
+      .join('')
+    html += `<h2>Curving – ${esc(c.modeLabel)}</h2><div style="margin-bottom:6px;font-size:11px">${c.mods} Module/Reihe · belegte Fläche ${c.footprintW.toFixed(2)} × ${c.footprintD.toFixed(2)} m</div>`
+    html += `<div style="max-width:${d.landscape ? 640 : 480}px;margin-bottom:6px">${c.svg}</div>`
+    html += `<div style="font-size:10px;color:#555;margin-bottom:3px">Winkelverteilung je Modul:</div><div>${pills}</div>`
+  }
+
+  // Querformat bietet ~1030 px nutzbare Breite (A4 ~700) -> Pläne länger
+  // nebeneinander und mit größeren Zellen drucken.
+  const sideBySideMax = d.landscape ? 24 : 16
+  const printPx = d.cols > sideBySideMax ? 20 : d.cols > sideBySideMax * 0.75 ? 24 : 28
+  const gridClass = d.cols > sideBySideMax ? 'g1' : 'g2'
+  if (d.rear) html += `<div class="rear">Ansicht von hinten – Publikum auf der anderen Seite</div>`
+  html += `<div class="${gridClass}"><div><h2>Signalverkabelung</h2><div style="margin-bottom:4px">${legend(d.sig, SIG_COLORS, 'S')}</div>${gridSvg(d.sig, d.sigMeta, SIG_COLORS, 'S', d.cols, d.rows, printPx, d.rear)}</div>`
+  html += `<div><h2>Stromverkabelung</h2><div style="margin-bottom:4px">${legend(d.pwr, PWR_COLORS, 'P')}</div>${gridSvg(d.pwr, d.pwrMeta, PWR_COLORS, 'P', d.cols, d.rows, printPx, d.rear)}</div></div>`
+  html += `<div style="margin-top:14px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">${APP_NAME} · LED-Wall-Konfigurator · ${dt}</div></body></html>`
+
+  const safe = [d.projectName, d.wallName ?? '']
+    .map((x) => x.replace(/[^\wäöüÄÖÜß -]+/g, '').trim())
+    .filter(Boolean)
+    .join('-')
+  return { html, fileName: `LEDWall${safe ? '-' + safe : ''}.pdf` }
+}

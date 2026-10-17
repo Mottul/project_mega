@@ -1,0 +1,171 @@
+// Kabelverlauf im LED-Wall-Konfigurator (Phase 2b, von Hand): Kette ohne Verlauf (Hinweis, keine
+// Pfeile), Startecke + Richtung (Schlange), Ansicht von hinten (gespiegelt, Startecke anders
+// beschriftet), Kette mit der Maus zeichnen und verlängern, Signal + Strom nebeneinander, PDF.
+// Gelesen wird der gespeicherte Stand im localStorage und das Pfeil-SVG über dem Raster.
+
+import assert from 'node:assert/strict'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { launchApp, openRoute, runSteps, waitFor } from './harness.mjs'
+
+const ctx = await launchApp()
+const { app, page } = ctx
+const tab = (name) => page.getByRole('tab', { name, exact: true })
+const hints = () => page.getByTestId('verlauf-hinweise')
+const overlay = (id = 'sig') =>
+  page
+    .getByTestId(`${id}-verlauf`)
+    .first()
+    .evaluate((el) => el.innerHTML)
+    .catch(() => '')
+const stored = () =>
+  page.evaluate(() => JSON.parse(localStorage.getItem('led-wall-konfigurator') ?? '{}').state ?? {})
+const cell = (r, c) => page.locator(`[data-cell="${r},${c}"]`).first()
+
+/** mit gedrückter Maustaste über die Zellen ziehen */
+async function drag(cells) {
+  const centre = async ([r, c]) => {
+    const b = await cell(r, c).boundingBox()
+    return [b.x + b.width / 2, b.y + b.height / 2]
+  }
+  await cell(...cells[0]).scrollIntoViewIfNeeded()
+  const [x0, y0] = await centre(cells[0])
+  await page.mouse.move(x0, y0)
+  await page.mouse.down()
+  for (const c of cells.slice(1)) {
+    const [x, y] = await centre(c)
+    await page.mouse.move(x, y, { steps: 4 })
+  }
+  await page.mouse.up()
+}
+
+try {
+  await runSteps('Kabelverlauf', [
+    [
+      'Kette ohne Verlauf: Hinweis, keine Pfeile',
+      async () => {
+        await page.setViewportSize({ width: 1500, height: 950 })
+        await openRoute(page, '/tool/led-wall')
+        await tab('Signal').click()
+        // unterste Reihe (Wand 8 × 5) an S1
+        await page.getByTitle('Zeile 5 – ganze Zeile zuweisen').click()
+        await hints().getByText('S1 ohne Verlauf').waitFor({ timeout: 5000 })
+        assert.equal(await page.getByTestId('sig-verlauf').count(), 0)
+      }
+    ],
+    [
+      'Startecke unten links, waagrecht: Pfeile durch alle 8 Module',
+      async () => {
+        await page.getByRole('combobox', { name: 'Startecke' }).selectOption('bl')
+        assert.ok(
+          await waitFor(async () => ((await overlay()).match(/<line /g) ?? []).length === 7, 5000),
+          await overlay()
+        )
+        assert.equal(await hints().count(), 0)
+        const s = await waitFor(async () => {
+          const v = await stored()
+          return v.sigMeta?.['0']?.start === 'bl' ? v : null
+        }, 5000)
+        assert.deepEqual(s.sigMeta['0'], { start: 'bl', axis: 'row' })
+      }
+    ],
+    [
+      'Ansicht von hinten: gespiegelt, Startecke heißt dann „unten rechts“',
+      async () => {
+        const vorne = /<circle cx="([\d.]+)"/.exec(await overlay())?.[1]
+        await page
+          .getByRole('group', { name: 'Blickrichtung der Pläne' })
+          .getByRole('button', { name: 'Hinten' })
+          .click()
+        await page
+          .getByText('Ansicht von hinten – Publikum auf der anderen Seite')
+          .first()
+          .waitFor()
+        const hinten = await waitFor(async () => {
+          const x = /<circle cx="([\d.]+)"/.exec(await overlay())?.[1]
+          return x && x !== vorne ? x : null
+        }, 5000)
+        assert.ok(hinten, `Start blieb bei ${vorne}`)
+        const label = await page
+          .getByRole('combobox', { name: 'Startecke' })
+          .evaluate((el) => el.selectedOptions[0]?.textContent)
+        assert.equal(label, 'Start unten rechts')
+        await page
+          .getByRole('group', { name: 'Blickrichtung der Pläne' })
+          .getByRole('button', { name: 'Vorne' })
+          .click()
+      }
+    ],
+    [
+      'Kette zeichnen: neue Kette S2 über drei Module, dann am Ende weiterziehen',
+      async () => {
+        await page.getByRole('button', { name: 'Neue Signal-Kette' }).click()
+        await page.getByRole('button', { name: 'Zeichnen' }).click()
+        await drag([
+          [0, 0],
+          [0, 1],
+          [0, 2]
+        ])
+        const eins = await waitFor(async () => {
+          const v = await stored()
+          return v.sigMeta?.['1']?.order?.length === 3 ? v : null
+        }, 5000)
+        assert.deepEqual(eins.sigMeta['1'].order, [
+          [0, 0],
+          [0, 1],
+          [0, 2]
+        ])
+        await drag([
+          [0, 2],
+          [1, 2]
+        ])
+        const zwei = await waitFor(async () => {
+          const v = await stored()
+          return v.sigMeta?.['1']?.order?.length === 4 ? v : null
+        }, 5000)
+        assert.deepEqual(zwei.sigMeta['1'].order.at(-1), [1, 2])
+        assert.deepEqual(zwei.sig[1].slice(0, 3), [-1, -1, 1])
+        // Klicken im Zeichenmodus nimmt kein Modul heraus
+        assert.equal(
+          await page.getByRole('button', { name: 'Signal-Kette 2: 4 Module', exact: true }).count(),
+          1
+        )
+        await page.getByRole('button', { name: 'Zeichnen' }).click()
+      }
+    ],
+    [
+      'Signal + Strom nebeneinander, jede mit eigener Verlauf-Leiste',
+      async () => {
+        await tab('Signal + Strom').click()
+        // im Signal-Plan ist noch S2 gewählt (vorheriger Schritt)
+        await page.getByRole('group', { name: 'Verlauf S2' }).waitFor({ timeout: 5000 })
+        await page.getByRole('group', { name: 'Verlauf P1' }).waitFor({ timeout: 5000 })
+        const [a, b] = await Promise.all([
+          page.getByRole('region', { name: 'Signal' }).boundingBox(),
+          page.getByRole('region', { name: 'Strom' }).boundingBox()
+        ])
+        assert.ok(b.x > a.x + a.width - 1, `nicht nebeneinander: ${JSON.stringify({ a, b })}`)
+      }
+    ],
+    [
+      'PDF-Doku mit den Plänen',
+      async () => {
+        const f = join(ctx.userData, 'kabel.pdf')
+        await app.evaluate(({ dialog }, p) => {
+          dialog.showSaveDialog = async () => ({ canceled: false, filePath: p })
+        }, f)
+        await page.getByRole('button', { name: /PDF exportieren/ }).click()
+        assert.ok(await waitFor(() => existsSync(f), 20_000), 'PDF nicht geschrieben')
+        assert.ok(readFileSync(f).subarray(0, 5).toString() === '%PDF-')
+      }
+    ],
+    [
+      'keine Fehler in der Konsole',
+      async () => {
+        assert.deepEqual(ctx.errors, [])
+      }
+    ]
+  ])
+} finally {
+  await ctx.close()
+}

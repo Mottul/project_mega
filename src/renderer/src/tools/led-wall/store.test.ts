@@ -199,6 +199,67 @@ describe('gemerkter Stand des LED-Wall-Konfigurators', () => {
   })
 })
 
+describe('Kabelverlauf von Hand', () => {
+  const leer = (): number[][] => Array.from({ length: 2 }, () => Array(4).fill(-1))
+
+  it('Startecke setzen, dann zeichnen: Zeichnen ersetzt die Startecke, Port u. a. bleiben', () => {
+    const st = useLedWall.getState()
+    st.replaceConfig({ ...DEFAULT_LED_WALL_CONFIG, sig: leer(), pwr: leer() })
+    useLedWall.getState().set({ sigMeta: { '0': { port: 'A1' } } })
+    useLedWall.getState().setRoute('sig', 0, { start: 'bl', axis: 'col' })
+    expect(useLedWall.getState().sigMeta['0']).toEqual({ port: 'A1', start: 'bl', axis: 'col' })
+    useLedWall.getState().drawChain('sig', 0, [[1, 0]], false)
+    useLedWall.getState().drawChain('sig', 0, [[1, 1]], true)
+    useLedWall.getState().drawChain('sig', 0, [[0, 1]], true)
+    const s = useLedWall.getState()
+    expect(s.sigMeta['0']).toEqual({
+      port: 'A1',
+      order: [
+        [1, 0],
+        [1, 1],
+        [0, 1]
+      ]
+    })
+    expect(s.sig).toEqual([
+      [-1, 0, -1, -1],
+      [0, 0, -1, -1]
+    ])
+  })
+
+  it('neuer Strich ersetzt die Kette (ihre übrigen Module werden frei), nimmt fremde Module mit', () => {
+    const st = useLedWall.getState()
+    st.replaceConfig({
+      ...DEFAULT_LED_WALL_CONFIG,
+      sig: [
+        [0, 0, 1, 1],
+        [0, 0, 1, 1]
+      ],
+      pwr: leer()
+    })
+    useLedWall.getState().drawChain('sig', 0, [[0, 2]], false)
+    expect(useLedWall.getState().sig).toEqual([
+      [-1, -1, 0, 1],
+      [-1, -1, 1, 1]
+    ])
+    // Zellen außerhalb des Rasters zählen nicht
+    useLedWall.getState().drawChain('sig', 0, [[9, 9]], true)
+    expect(useLedWall.getState().sigMeta['0'].order).toEqual([[0, 2]])
+  })
+
+  it('Verlauf löschen und Zurücksetzen leeren den Verlauf; das ist eine Änderung der Datei', () => {
+    const st = useLedWall.getState()
+    st.replaceConfig({ ...DEFAULT_LED_WALL_CONFIG, sig: leer(), pwr: leer() })
+    useLedWall.getState().setFile(binding(digest(ledWallFile(useLedWall.getState()))))
+    useLedWall.getState().setRoute('sig', 0, { start: 'tl', axis: 'row' })
+    expect(ledWallDirty(useLedWall.getState())).toBe(true)
+    useLedWall.getState().setRoute('sig', 0, null)
+    expect(useLedWall.getState().sigMeta['0']).toEqual({})
+    useLedWall.getState().setRoute('sig', 1, { start: 'tl', axis: 'row' })
+    useLedWall.getState().resetGrid('sig')
+    expect(useLedWall.getState().sigMeta).toEqual({})
+  })
+})
+
 describe('mehrere Wände', () => {
   it('Wand wechseln: jede behält Maße und Verkabelung, Projekt gilt für alle', () => {
     const st = useLedWall.getState()

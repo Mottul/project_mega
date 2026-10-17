@@ -21,11 +21,14 @@ import {
   WALL_NAME_MAX,
   wallLabel,
   WALLS_MAX,
+  type ChainRoute,
+  type Corner,
   type LedWallConfig,
   type LedWallFileData,
   type PlannedWall,
   type PlanningData
 } from './config'
+import { chainCells, chainRoute } from './cabling'
 
 export type { BuildMode, CurveMode, LedWallConfig } from './config'
 
@@ -65,7 +68,25 @@ interface LedWallState extends LedWallConfig {
   ensureGridSize: (rows: number, cols: number) => void
   setCell: (grid: 'sig' | 'pwr', row: number, col: number) => void
   fillLine: (grid: 'sig' | 'pwr', kind: 'row' | 'col', index: number) => void
+  /** Raster und Verlauf leeren */
   resetGrid: (grid: 'sig' | 'pwr') => void
+  /** Startecke/Richtung einer Kette setzen (löscht eine gezeichnete Reihenfolge); null = kein Verlauf */
+  setRoute: (
+    grid: 'sig' | 'pwr',
+    chain: number,
+    route: { start: Corner; axis: 'row' | 'col' } | null
+  ) => void
+  /**
+   * Kette zeichnen: die Module kommen in diese Reihenfolge und in die Kette (aus anderen heraus).
+   * `extend`: an die bisherige Reihenfolge anhängen (Strich beginnt am letzten Modul), sonst
+   * ersetzt der Strich die Kette – ihre übrigen Module werden frei.
+   */
+  drawChain: (
+    grid: 'sig' | 'pwr',
+    chain: number,
+    cells: [number, number][],
+    extend: boolean
+  ) => void
   /** Aktuelle Konfiguration (der gewählten Wand) als Vorlage sichern (gleicher Name -> überschreiben). */
   savePreset: (name: string) => void
   /** Vorlage in die gewählte Wand laden; Projekt und Kunde bleiben (leer: aus der Vorlage), die
@@ -112,6 +133,13 @@ export function ledWallDirty(s: WallsState & { file: ProjectBinding | null }): b
 }
 
 const newWallId = (): string => `wand-${crypto.randomUUID().slice(0, 8)}`
+
+/** Kopie ohne die genannten Felder */
+function omit<T extends object>(o: T, keys: (keyof T)[]): T {
+  const out = { ...o }
+  for (const k of keys) delete out[k]
+  return out
+}
 
 /** Nächster freier Standardname („Wand 3“) */
 function nextWallName(walls: WallSlot[]): string {
@@ -323,8 +351,42 @@ export const useLedWall = create<LedWallState>()(
         shadow?.[grid].clear()
         set({
           [grid]: s[grid].map((r) => r.map(() => -1)),
-          [grid === 'sig' ? 'sigChain' : 'pwrChain']: 0
+          [grid === 'sig' ? 'sigChain' : 'pwrChain']: 0,
+          [grid === 'sig' ? 'sigMeta' : 'pwrMeta']: {}
         } as Partial<LedWallState>)
+      },
+
+      setRoute: (grid, chain, route) => {
+        const metaKey = grid === 'sig' ? 'sigMeta' : 'pwrMeta'
+        const meta = { ...get()[metaKey] } as Record<string, ChainRoute>
+        const k = String(chain)
+        // Port, Stromkreis … (spätere Felder) bleiben; nur der Verlauf wird ersetzt
+        const rest = omit(Object.hasOwn(meta, k) ? meta[k] : {}, ['start', 'axis', 'order'])
+        meta[k] = route ? { ...rest, start: route.start, axis: route.axis } : rest
+        set({ [metaKey]: meta } as Partial<LedWallState>)
+      },
+
+      drawChain: (grid, chain, cells, extend) => {
+        const s = get()
+        const metaKey = grid === 'sig' ? 'sigMeta' : 'pwrMeta'
+        const next = s[grid].map((r) => [...r])
+        const valid = cells.filter(
+          ([r, c]) => r >= 0 && c >= 0 && r < next.length && c < (next[r]?.length ?? 0)
+        )
+        if (!valid.length) return
+        const k = String(chain)
+        const meta = { ...s[metaKey] } as Record<string, ChainRoute>
+        const old = Object.hasOwn(meta, k) ? meta[k] : {}
+        const before = extend ? chainRoute(chainCells(s[grid]).get(chain) ?? [], old).order : []
+        if (!extend) for (const row of next) row.forEach((v, c) => v === chain && (row[c] = -1))
+        for (const [r, c] of valid) next[r][c] = chain
+        const seen = new Set<string>()
+        const order = [...before, ...valid].filter(([r, c]) => {
+          const id = `${r},${c}`
+          return !seen.has(id) && (seen.add(id), true)
+        })
+        meta[k] = { ...omit(old, ['start', 'axis']), order }
+        set({ [grid]: next, [metaKey]: meta } as Partial<LedWallState>)
       },
 
       savePreset: (name) => {
