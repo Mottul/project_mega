@@ -52,6 +52,8 @@ export interface ProcessorConfig {
   ports?: number
   portPx?: number
   totalPx?: number
+  /** Kennung einer anderen Wand derselben Planung, deren Prozessor diese Wand mitnutzt */
+  shareWith?: string
 }
 
 /** Reine Konfigurationsfelder (das, was eine gespeicherte Vorlage ausmacht). */
@@ -90,8 +92,12 @@ export interface LedWallConfig {
 const UI_ONLY = ['sigChain', 'pwrChain', 'pdfLandscape'] as const
 export type LedWallSection = Omit<LedWallConfig, (typeof UI_ONLY)[number]>
 
-/** Schema-Version des Abschnitts in der Projektdatei */
-export const LED_WALL_SECTION_VERSION = 3
+/**
+ * Schema-Version des Abschnitts in der Projektdatei – 4 (Oktober 2026): geteilter Prozessor
+ * (`processor.shareWith`). Eine ältere Mottulbox öffnet den Abschnitt nicht, statt das Feld beim
+ * Speichern zu verlieren.
+ */
+export const LED_WALL_SECTION_VERSION = 4
 
 /** Eine Wand der Planung mit ihrer Konfiguration (Projekt und Kunde gelten für alle). */
 export interface PlannedWall {
@@ -275,6 +281,7 @@ function processor(v: unknown, d: ProcessorConfig): ProcessorConfig {
   if (ports !== undefined) p.ports = ports
   if (portPx !== undefined) p.portPx = portPx
   if (totalPx !== undefined) p.totalPx = totalPx
+  if (typeof v.shareWith === 'string' && WALL_ID_RE.test(v.shareWith)) p.shareWith = v.shareWith
   return p
 }
 

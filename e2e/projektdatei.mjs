@@ -171,7 +171,7 @@ try {
         const r = await openSection(file)
         assert.equal(r.ok, true)
         assert.equal(r.section.rev, 2)
-        assert.equal(r.section.version, 3)
+        assert.equal(r.section.version, 4)
         assert.equal(wall0(r).widthM, '6')
         assert.equal(r.section.data.projectName, 'Messe Dornbirn')
         assert.equal('sigChain' in wall0(r), false, 'Bedienzustand gehört nicht in die Datei')
@@ -191,7 +191,7 @@ try {
             window.api.projects.save({
               path: p,
               section: 'ledWall',
-              version: 3,
+              version: 4,
               data: { ...data, customerName: 'Kollege' },
               baseSha: null,
               force: true
@@ -441,7 +441,7 @@ try {
         await menu(/^Speichern unter/)
         assert.ok(await waitFor(() => existsSync(zwei), 10_000), 'Datei wurde nicht geschrieben')
         const r = await openSection(zwei)
-        assert.equal(r.section.version, 3)
+        assert.equal(r.section.version, 4)
         assert.equal(r.section.data.projectName, 'Zwei Wände')
         assert.deepEqual(
           r.section.data.walls.map((w) => [w.name, w.data.widthM]),

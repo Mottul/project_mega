@@ -91,6 +91,32 @@ describe('deriveFromLedWall – mehrere Wände', () => {
   })
 })
 
+describe('deriveFromLedWall – Prozessor und Backup', () => {
+  it('Prozessor einmal je Gruppe (geteilt bei der Wand mit dem Prozessor), Backup-Leitungen je Wand', () => {
+    const base = sanitizeLedWallConfig({})
+    const items = deriveFromLedWall([
+      {
+        id: 'a',
+        name: 'Links',
+        config: { ...base, sig: [[0, 0, 1, 1]], sigMeta: { '1': { backup: {} } } }
+      },
+      {
+        id: 'b',
+        name: 'Rechts',
+        config: { ...base, sig: [[0]], processor: { ...base.processor, shareWith: 'a' } }
+      },
+      { id: 'c', name: 'Bar', config: { ...base, moduleKey: 'uS2+' } }
+    ])
+    const procs = items.filter((i) => i.name.startsWith('Prozessor'))
+    expect(procs.map((p) => [p.category, p.name, p.note])).toEqual([
+      ['LED-Wall · Links', 'Prozessor NovaPro UHD Jr', 'für Links und Rechts'],
+      ['LED-Wall · Bar', 'Prozessor Tessera S8', '']
+    ])
+    const b = items.filter((i) => i.name.startsWith('Datenleitung Backup'))
+    expect(b.map((x) => [x.category, x.qty])).toEqual([['LED-Wall · Links', 1]])
+  })
+})
+
 describe('deriveFromLedWall – Property', () => {
   it('Modul-Menge ist immer ≥ 1 (cols/rows mind. 1, auch bei leerer Eingabe)', () => {
     for (const dim of ['0', '0,1', '10']) {

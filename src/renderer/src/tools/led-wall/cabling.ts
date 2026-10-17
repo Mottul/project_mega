@@ -142,6 +142,8 @@ export interface RouteSvgOptions {
   id: string
   /** Ansicht von hinten: Spalten gespiegelt */
   mirror: boolean
+  /** Ketten mit Backup-Leitung: „B“ am letzten Modul (die Leitung selbst wird nicht gezeichnet) */
+  backups?: Set<number>
 }
 
 /**
@@ -187,6 +189,14 @@ export function routeSvg(routes: Map<number, { order: Cell[] }>, o: RouteSvgOpti
       const jump = !adjacent(a, b)
       const tip = !small || turns || jump ? ` marker-end="url(#${mid})"` : ''
       body += `<line x1="${n(ax)}" y1="${n(ay)}" x2="${n(ex)}" y2="${n(ey)}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"${jump ? ' stroke-dasharray="4 3"' : ''}${tip}/>`
+    }
+    if (o.backups?.has(chain)) {
+      // gestricheltes „B“ unten rechts im letzten Modul (Festlegung 21/27)
+      const last = order[order.length - 1]
+      const br = Math.max(4, o.cell * 0.17)
+      const bx = cx(last) + off
+      const by = cy(last) + off
+      body += `<g data-backup="${chain}"><circle cx="${n(bx)}" cy="${n(by)}" r="${n(br)}" fill="#fff" stroke="${col}" stroke-width="1.2" stroke-dasharray="2 1.5"/><text x="${n(bx)}" y="${n(by)}" text-anchor="middle" dominant-baseline="central" font-size="${n(br * 1.3)}" font-weight="700" font-family="system-ui" fill="${col}">B</text></g>`
     }
   }
   return defs ? `<defs>${defs}</defs>${body}` : ''

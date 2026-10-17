@@ -111,6 +111,10 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
   `led-wall/store.test.ts`; Format/ZIP: `src/main/services/projects/*.test.ts`).
 - Dateisystem: `projectFiles.test.ts` – echter tmp-Ordner, `stat` einmalig gestört (Netzlaufwerk
   hakt, Datei taucht zwischen Lesen und Anlegen auf).
+- **Versionssprung des Abschnitts:** Tests, die als „Kollege“ per `api.projects.save` schreiben,
+  auf die neue Version ziehen – main lehnt eine ältere Version über einer neueren ab (gewollt;
+  so war `projektdatei.mjs` nach LED-Wall Version 4 dreimal rot). Erwartete `section.version`
+  ebenso.
 - E2E nach `e2e/projektdatei.mjs`: Dialoge im main ersetzen (`showSaveDialog`, `showOpenDialog`,
   `showMessageBox` mit Antwortfolge und Mitschrift), Datei über `api.projects.open` prüfen,
   „Kollege“ per `api.projects.save(… force: true)` simulieren, fremde Datei ohne eigenen

@@ -4,7 +4,8 @@
 import { APP_NAME } from '@shared/brand'
 import { esc } from '@shared/html'
 import { chainCounts, chainRoutes, routeSvg } from './cabling'
-import type { ChainRoute } from './config'
+import type { ChainRoute, SigChainMeta } from './config'
+import type { GroupLoad } from './processors'
 import { PWR_COLORS, SIG_COLORS, type LedModule } from './data'
 import type { Fit169 } from './math'
 
@@ -14,6 +15,8 @@ export interface PrintData {
   customerName: string
   /** nur bei mehreren Wänden: Name der gedruckten Wand */
   wallName?: string
+  /** Kennung der gedruckten Wand (für „B“ und die Tabelle bei geteiltem Prozessor) */
+  wallId?: string
   buildMode: 'stacked' | 'flying'
   cols: number
   rows: number
@@ -36,10 +39,12 @@ export interface PrintData {
   sig: number[][]
   pwr: number[][]
   /** Verlauf je Kette (Startecke/Richtung oder gezeichnet) – Pfeile im Plan */
-  sigMeta: Record<string, ChainRoute>
+  sigMeta: Record<string, SigChainMeta>
   pwrMeta: Record<string, ChainRoute>
   /** Pläne von hinten gesehen (gespiegelt, groß beschriftet) */
   rear: boolean
+  /** Prozessor, Ports und Lasten der Signalketten (processors.ts) – fehlt = ohne Tabelle */
+  signal?: GroupLoad
   landscape: boolean
   curve: {
     modeLabel: string
@@ -64,7 +69,8 @@ function gridSvg(
   cols: number,
   rows: number,
   px: number,
-  mirror: boolean
+  mirror: boolean,
+  backups?: Set<number>
 ): string {
   const gap = 2
   const pad = 4
@@ -95,9 +101,32 @@ function gridSvg(
     cols,
     colors,
     id: `pdf-${prefix}`,
-    mirror
+    mirror,
+    backups
   })
   return s + '</svg>'
+}
+
+const num = (n: number): string => n.toLocaleString('de-DE')
+
+/** Prozessor, Ports und Last je Signalkette – mit den Warnungen (keine Sperre) */
+function signalTable(g: GroupLoad, wallId: string | undefined): string {
+  const p = g.processor
+  const several = g.walls.length > 1
+  const rows = g.walls
+    .flatMap((w) =>
+      w.chains.map(
+        (c) =>
+          `<tr${c.over ? ' style="color:#b91c1c;font-weight:700"' : ''}><td>${several ? `${esc(w.wallName)} ` : ''}S${c.chain + 1}${w.wallId === wallId || !several ? '' : ' (andere Wand)'}</td><td>${c.modules}</td><td>${num(c.px)}</td><td>${c.port}${c.backupPort !== null ? ` · Backup ${c.backupPort}` : ''}</td></tr>`
+      )
+    )
+    .join('')
+  const head = `${esc(p.name)}${several ? ' (geteilt)' : ''} · ${p.bitDepth} bit · ${p.hz} Hz · Ports ${g.portsUsed}${p.ports ? ` von ${p.ports}` : ''}${p.portPx ? ` · je Port höchstens ${num(p.portPx)} px${p.limitBy === 'karte' ? ` (Karte ${esc(p.card ?? '')})` : ''}` : ''}`
+  const warn = g.warnings
+    .filter((w) => w.level !== 'info')
+    .map((w) => `<div class="bar" style="border-left-color:#b91c1c">${esc(w.text)}</div>`)
+    .join('')
+  return `<h2>Signal: Prozessor und Ports</h2><div style="font-size:11px;margin-bottom:4px">${head}</div>${rows ? `<table><tr><th style="width:auto">Kette</th><th style="width:auto">Module</th><th style="width:auto">Pixel</th><th style="width:auto">Port</th></tr>${rows}</table>` : ''}${warn}`
 }
 
 function legend(assign: number[][], colors: string[], prefix: string): string {
@@ -178,8 +207,14 @@ th{background:#f7f7f7;font-weight:600;width:44%}
   const printPx = d.cols > sideBySideMax ? 20 : d.cols > sideBySideMax * 0.75 ? 24 : 28
   const gridClass = d.cols > sideBySideMax ? 'g1' : 'g2'
   if (d.rear) html += `<div class="rear">Ansicht von hinten – Publikum auf der anderen Seite</div>`
-  html += `<div class="${gridClass}"><div><h2>Signalverkabelung</h2><div style="margin-bottom:4px">${legend(d.sig, SIG_COLORS, 'S')}</div>${gridSvg(d.sig, d.sigMeta, SIG_COLORS, 'S', d.cols, d.rows, printPx, d.rear)}</div>`
+  const own = d.signal?.walls.find((w) => w.wallId === d.wallId) ?? d.signal?.walls[0]
+  const backups = new Set(
+    (own?.chains ?? []).filter((c) => c.backupPort !== null).map((c) => c.chain)
+  )
+  html += `<div class="${gridClass}"><div><h2>Signalverkabelung</h2><div style="margin-bottom:4px">${legend(d.sig, SIG_COLORS, 'S')}</div>${gridSvg(d.sig, d.sigMeta, SIG_COLORS, 'S', d.cols, d.rows, printPx, d.rear, backups)}</div>`
   html += `<div><h2>Stromverkabelung</h2><div style="margin-bottom:4px">${legend(d.pwr, PWR_COLORS, 'P')}</div>${gridSvg(d.pwr, d.pwrMeta, PWR_COLORS, 'P', d.cols, d.rows, printPx, d.rear)}</div></div>`
+  if (d.signal && d.signal.walls.some((w) => w.chains.length))
+    html += signalTable(d.signal, d.wallId)
   html += `<div style="margin-top:14px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">${APP_NAME} · LED-Wall-Konfigurator · ${dt}</div></body></html>`
 
   const safe = [d.projectName, d.wallName ?? '']

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { computeWall } from './compute'
 import { sanitizeLedWallConfig } from './config'
 import { ledWallPrintHtml, type PrintData } from './printHtml'
+import { analyzeProcessors } from './processors'
 
 function daten(p: Partial<PrintData> = {}): PrintData {
   const d = computeWall(sanitizeLedWallConfig({ widthM: '2', heightM: '1' })) // 4 × 2 Module
@@ -35,6 +36,19 @@ describe('PDF-Doku der LED-Wall', () => {
     expect(html).not.toContain('pdf-P-') // Strom ohne Verlauf
     expect(html).toContain('Messe &lt;A&gt;')
     expect(fileName).toBe('LEDWall-Messe A.pdf')
+  })
+
+  it('Signal: Prozessor, Ports, „B“ bei Backup und Warnung über der Grenze', () => {
+    const d = daten({ sigMeta: { '0': { start: 'bl', axis: 'row', backup: {} } } })
+    const c = sanitizeLedWallConfig({ widthM: '2', heightM: '1', sig: d.sig, sigMeta: d.sigMeta })
+    const [g] = analyzeProcessors([{ id: 'a', name: 'Wand 1', config: c }])
+    const { html } = ledWallPrintHtml({ ...d, wallId: 'a', signal: g })
+    expect(html).toContain('<h2>Signal: Prozessor und Ports</h2>')
+    expect(html).toContain('NovaPro UHD Jr · 8 bit · 60 Hz · Ports 3 von 16')
+    expect(html).toContain('<td>1 · Backup 2</td>')
+    expect(html).toContain('<g data-backup="0">')
+    // ohne Analyse keine Tabelle (z. B. ohne Ketten)
+    expect(ledWallPrintHtml(daten()).html).not.toContain('Prozessor und Ports')
   })
 
   it('Ansicht von hinten: Hinweis und gespiegelte Pläne mit Spaltennummern', () => {

@@ -19,6 +19,8 @@ Einspeisepunkt, keine Automatik.
 | Raster mit Verlauf-Leiste, Zeichnen, Pfeil-Overlay, Spiegelung | `led-wall/CableGrid.tsx` |
 | Reiter Signal / Strom / Signal + Strom, Umschalter Vorne/Hinten | `led-wall/LedWall.tsx` (`Drawing`) |
 | PDF-Doku (rein, getestet) und dünner Export | `led-wall/printHtml.ts` + `printHtml.test.ts`, `led-wall/print.ts` |
+| Prozessoren (Handbuch-Werte), Karte je Modul, Vorbelegung, Gruppen, Port-Vergabe, Lasten, Warnungen | `led-wall/processors.ts` + `processors.test.ts` |
+| Schublade „Prozessor“, Karte „Signal“ | `led-wall/Settings.tsx` (`ProcessorPanel`), `led-wall/LedWall.tsx` (`SignalCard`) |
 | E2E | `e2e/kabelverlauf.mjs` |
 
 ## Regeln
@@ -50,8 +52,20 @@ Einspeisepunkt, keine Automatik.
 - **Ketten zählen nur über `chainCells`/`chainCounts`/`chainStats`** – früher gab es vier Kopien
   (Raster, Kopfzeile, PDF-Legende, Packliste).
 - Fremde Schlüssel in `sigMeta` mit `Object.hasOwn` lesen (`constructor` aus einer Datei).
-- **Prozessor-Grenzen** (kommt in Phase 2b, Teil 2): Werte nur aus den Handbüchern, Quelle
-  nennen; Grenze je Port = kleinerer Wert aus Prozessor und Empfangskarte (Tabelle im Plan).
+- **Prozessor-Grenzen** (`led-wall/processors.ts`): Werte nur aus den Handbüchern, Quelle je
+  Prozessor im Code; Grenze je Port = kleinerer Wert aus Prozessor und Empfangskarte (`CARDS`
+  je Modul; ohne bekannte Karte nur der Prozessor). Neue Prozessoren in `PROCESSORS` samt
+  `bitDepths`, `backup` ('port' NovaStar, 'pairs' Tessera) und Test gegen die Tabelle des
+  Handbuchs.
+- **Ports nie speichern, wenn sie nur fortlaufend sind:** Leer = fortlaufend (feste Ports zuerst,
+  dann die übrigen in Kettenreihenfolge; Tessera mit Backup nimmt ein freies Paar ungerade →
+  gerade). So verschiebt eine neue Kette keine fest vergebenen Ports.
+- **Backup:** ohne eigene Angabe gilt die Vorgabe der Wand (`redundancy`, `hasBackup`); `null` =
+  ausdrücklich keins. Tessera: Last der Paare zählt doppelt, höchstens 50 Module je Kette.
+- **Geteilter Prozessor** (`processor.shareWith`, nur gleiches Modul anbieten): `processorGroups`
+  folgt Ketten von Verweisen, Kreise und fehlende Wände zählen als eigener Prozessor; die Wand mit
+  dem Prozessor zuerst. Alles, was alle Wände braucht (Karte, PDF, Packliste), rechnet über
+  `analyzeProcessors(plannedWalls(s))`.
 
 ## Tests
 

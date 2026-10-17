@@ -148,6 +148,84 @@ try {
       }
     ],
     [
+      'Prozessor: Vorgabe UHD Jr, Backup je Kette mit „B“ am letzten Modul',
+      async () => {
+        await tab('Signal').click()
+        const card = page.getByRole('heading', { name: 'Signal', exact: true }).locator('../..')
+        await card.getByText('NovaPro UHD Jr', { exact: true }).waitFor({ timeout: 5000 })
+        await page.getByRole('button', { name: /^Signal-Kette 1:/ }).click()
+        await page
+          .getByRole('group', { name: 'Verlauf S1' })
+          .getByRole('checkbox', { name: 'Backup' })
+          .check()
+        assert.ok(
+          await waitFor(async () => (await overlay()).includes('data-backup="0"'), 5000),
+          'kein „B“ am letzten Modul'
+        )
+        const s = await waitFor(async () => {
+          const v = await stored()
+          return v.sigMeta?.['0']?.backup ? v : null
+        }, 5000)
+        assert.deepEqual(s.sigMeta['0'].backup, {})
+      }
+    ],
+    [
+      'Über der Grenze je Port: Warnung; VX4S statt UHD Jr hat nur 4 Ports',
+      async () => {
+        // S1 bekommt Reihe 4 dazu: 16 Module × 57.600 px über 650.000
+        await page.getByTitle('Zeile 4 – ganze Zeile zuweisen').click()
+        const warn = page.getByTestId('signal-warnungen')
+        await warn
+          .getByText('S1: 16 Module = 921.600 px – über der Grenze je Port (650.000 px).')
+          .waitFor({ timeout: 5000 })
+        const head = page.getByTestId('settings-drawer').getByRole('button', { name: /^Prozessor/ })
+        if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
+        await page.getByRole('combobox', { name: 'Prozessor', exact: true }).selectOption('vx4s')
+        await page
+          .getByRole('heading', { name: 'Signal', exact: true })
+          .locator('../..')
+          .getByText('von 4')
+          .waitFor({ timeout: 5000 })
+        // zurück, Reihe 4 wieder frei
+        await page.getByRole('combobox', { name: 'Prozessor', exact: true }).selectOption('')
+        await page.getByTitle('Zeile 4 – ganze Zeile zuweisen').click()
+        assert.ok(await waitFor(async () => (await warn.count()) === 0, 5000), 'Warnung bleibt')
+      }
+    ],
+    [
+      'Zweite Wand teilt den Prozessor: Ports fortlaufend, Karte nennt „geteilt“',
+      async () => {
+        const bar = page.getByTestId('tool-bar')
+        await bar.getByRole('button', { name: /^Wand 1/ }).click()
+        await page.getByRole('menuitem', { name: 'Neue Wand' }).click()
+        await page.getByTitle('Zeile 1 – ganze Zeile zuweisen').click()
+        await page
+          .getByRole('combobox', { name: 'Prozessor teilen mit' })
+          .selectOption({ label: 'wie Wand 1' })
+        const card = page.getByRole('heading', { name: 'Signal', exact: true }).locator('../..')
+        await card.getByText('NovaPro UHD Jr (geteilt)').waitFor({ timeout: 5000 })
+        // Wand 1: S1 1 + Backup 2, S2 3; Wand 2: S1 bekommt Port 4
+        const zeilen = await waitFor(async () => {
+          const r = await card
+            .getByRole('table', { name: 'Signalketten' })
+            .evaluate((t) =>
+              [...t.querySelectorAll('tbody tr')].map((tr) =>
+                [...tr.querySelectorAll('td')].map((td) => td.textContent.trim())
+              )
+            )
+          return r.length === 3 ? r : null
+        }, 5000)
+        assert.deepEqual(
+          zeilen?.map(([kette, mod, , port]) => [kette, mod, port]),
+          [
+            ['Wand 1 S1', '8', '1 · B 2'],
+            ['Wand 1 S2', '4', '3'],
+            ['Wand 2 S1', '8', '4']
+          ]
+        )
+      }
+    ],
+    [
       'PDF-Doku mit den Plänen',
       async () => {
         const f = join(ctx.userData, 'kabel.pdf')

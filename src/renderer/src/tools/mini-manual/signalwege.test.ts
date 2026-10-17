@@ -6,7 +6,7 @@ import { leererAusgang, leeresGeraet, type Anleitung, type Geraet } from './mode
 import { pruefung } from './pruefung'
 import { sanitizeAnleitung } from './sanitize'
 import { vorschau, type SeitenKontext } from './seiten'
-import { erreichteWaende, pruefeSignalwege, signalwege } from './signalwege'
+import { erreichteWaende, prozessorVorschlaege, pruefeSignalwege, signalwege } from './signalwege'
 import { neueAnleitung } from './vorlage'
 
 const ctx: SeitenKontext = {
@@ -157,6 +157,34 @@ describe('Signalwege', () => {
     expect(vorschau(a, ctx, 'system').html).toContain(
       '<b>Bar</b>: <span class="muted">noch kein Prozessor'
     )
+  })
+
+  it('Prozessoren aus der LED-Wall-Planung: je Prozessor einer, geteilte einmal, vorhandene nicht', () => {
+    const a = neueAnleitung()
+    a.geraete = []
+    a.ledWall = kopieAus(
+      ledWallFileData('', '', [
+        { id: 'a', name: 'Links', config: c },
+        {
+          id: 'b',
+          name: 'Rechts',
+          config: { ...c, processor: { ...c.processor, shareWith: 'a' } }
+        },
+        { id: 'bar', name: 'Bar', config: { ...c, moduleKey: 'uS2+' } }
+      ]),
+      null
+    )
+    const v = prozessorVorschlaege(a)
+    expect(v.map((g) => [g.rolle, g.name, g.waende])).toEqual([
+      ['prozessor', 'NovaPro UHD Jr', ['a', 'b']],
+      ['prozessor', 'Tessera S8', ['bar']]
+    ])
+    a.geraete = [geraet('prozessor', 'p', 'Unser Tessera', { waende: ['bar'] })]
+    expect(prozessorVorschlaege(a).map((g) => g.name)).toEqual(['NovaPro UHD Jr'])
+    // eine Wand, ein Prozessor ohne Angabe: bespielt sie schon
+    const e = anleitung(1)
+    e.geraete = [geraet('prozessor', 'p', 'NovaPro')]
+    expect(prozessorVorschlaege(e)).toEqual([])
   })
 
   it('Prüfung beim Laden: Verweise nur auf vorhandene Geräte passender Rolle', () => {

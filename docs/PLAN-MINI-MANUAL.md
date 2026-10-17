@@ -54,10 +54,13 @@ ein Prozessor) gelten ohne Angabe als verbunden – so bleibt die einfache Anlei
    im PDF (zwischen den Modulen, Start als Punkt, lange Brücke gestrichelt), Vorne/Hinten,
    Signal + Strom nebeneinander, Hinweise „ohne Verlauf“; `led-wall/cabling.ts`, PDF-Bauer
    `printHtml.ts` rein und getestet, Skill `kabelverlauf`.
-2. **Prozessor und Kapazität** – Prozessor-Wahl je Wand (Vorbelegung je Modul, geteilt bei
-   gleichem Typ), Farbtiefe/Bildrate, Grenze je Port aus Prozessor und Karte, Port je Kette,
-   Backup-Leitung („B“, NovaStar-Port bzw. Tessera-Paar), Warnungen; „bespielt“ im Mini-Manual
-   vorbelegt.
+2. **Prozessor und Kapazität** – umgesetzt (17.10.2026): Prozessor-Wahl je Wand (Vorbelegung je
+   Modul, „teilen mit“ bei gleichem Modul, Ports fortlaufend), Farbtiefe/Bildrate, Grenze je Port
+   aus Prozessor und Karte (`led-wall/processors.ts`), Port und Backup je Kette (NovaStar freier
+   Port, Tessera Portpaar), „B“ im Plan, Karte „Signal“ mit Warnungen, Tabelle im PDF, Prozessor
+   und Backup-Leitungen in der Packliste, Prozessoren im Mini-Manual aus der Kopie anlegen.
+   Abschnitt `ledWall` Version 4 (`processor.shareWith`). Abweichung: „bespielt“ nicht still
+   vorbelegt, sondern per Klick („Prozessoren aus der LED-Wall-Planung übernehmen“).
 3. **Strom** – Kreis und Phase je Stromkette, Netz und Absicherung, Last je Kette,
    Phasenbilanz; IMs in den Stammdaten (`IM_TAUSCH` zieht um).
 4. **Glasfaser und Anleitung** – Glasfaser-Strecke mit CVT10 und Packliste; Kapitel
