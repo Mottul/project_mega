@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { sanitizeLedWallConfig } from '../led-wall/config'
 import { useLedWall } from '../led-wall/store'
 import { deriveFromLedWall } from './derive'
 
@@ -69,6 +70,24 @@ describe('deriveFromLedWall – Rigging (flying)', () => {
     const items = deriveFromLedWall()
     expect(byName(items, 'Rigging-Punkt / Motor')?.qty).toBe(2)
     expect(byName(items, 'Ground-Stack-Fuß (LSU)')).toBeUndefined()
+  })
+})
+
+describe('deriveFromLedWall – mehrere Wände', () => {
+  it('je Wand eine Kategorie, gleiche Module mit Summe', () => {
+    const base = sanitizeLedWallConfig({})
+    const items = deriveFromLedWall([
+      { id: 'a', name: 'Links', config: { ...base, widthM: '2', heightM: '1' } },
+      { id: 'b', name: 'Rechts', config: { ...base, widthM: '4', heightM: '2,5' } },
+      { id: 'c', name: 'Bar', config: { ...base, moduleKey: 'uS2+', widthM: '1', heightM: '1' } }
+    ])
+    const cats = [...new Set(items.map((i) => i.category))]
+    expect(cats).toEqual(['LED-Wall · Links', 'LED-Wall · Rechts', 'LED-Wall · Bar'])
+    const mods = items.filter((i) => i.name === 'LED-Modul 496-2,0')
+    expect(mods.map((m) => m.qty)).toEqual([8, 40]) // 4 × 2 und 8 × 5
+    expect(mods.every((m) => m.note.endsWith('alle Wände zusammen: 48 Stk.'))).toBe(true)
+    // ein Modul nur in einer Wand: keine Summe
+    expect(byName(items, 'LED-Modul uS2+')?.note).not.toContain('zusammen')
   })
 })
 

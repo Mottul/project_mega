@@ -1,9 +1,11 @@
-// Leitet Packlisten-Positionen aus der aktuellen LED-Wall-Konfiguration ab
-// (liest den persistierten Konfigurator-Store). Kabelmengen aus den im Plan
-// gezeichneten Ketten: je Kette 1 Einspeisung + (Module−1) Brücken.
+// Leitet Packlisten-Positionen aus der LED-Wall-Planung ab (ohne Angabe: alle Wände aus dem
+// Konfigurator-Store). Kabelmengen aus den im Plan gezeichneten Ketten: je Kette 1 Einspeisung +
+// (Module−1) Brücken. Mehrere Wände: je Wand eine Kategorie („LED-Wall · Hauptbühne“) – jede
+// wird für sich aufgebaut; gleiche Module nennen die Summe über alle Wände.
 
 import { computeWall } from '../led-wall/compute'
-import { useLedWall } from '../led-wall/store'
+import type { LedWallConfig, PlannedWall } from '../led-wall/config'
+import { plannedWalls, useLedWall } from '../led-wall/store'
 import type { PackItem } from './store'
 
 type DerivedItem = Omit<PackItem, 'id' | 'checked'>
@@ -37,10 +39,31 @@ function chainStats(grid: number[][]): { chains: number; jumpers: number } {
   return { chains: counts.size, jumpers }
 }
 
-export function deriveFromLedWall(): DerivedItem[] {
-  const s = useLedWall.getState()
+export function deriveFromLedWall(
+  walls: PlannedWall[] = plannedWalls(useLedWall.getState())
+): DerivedItem[] {
+  if (walls.length === 1) return deriveWall(walls[0].config, 'LED-Wall')
+  const perWall = walls.map((w) => deriveWall(w.config, `LED-Wall · ${w.name}`))
+  // gleiche Module über alle Wände zusammenzählen (Kisten werden gemeinsam gepackt)
+  const sums = new Map<string, number>()
+  const count = new Map<string, number>()
+  for (const items of perWall) {
+    const m = items[0]
+    sums.set(m.name, (sums.get(m.name) ?? 0) + m.qty)
+    count.set(m.name, (count.get(m.name) ?? 0) + 1)
+  }
+  return perWall.flatMap((items) =>
+    items.map((it, i) =>
+      i === 0 && (count.get(it.name) ?? 0) > 1
+        ? { ...it, note: `${it.note} · alle Wände zusammen: ${sums.get(it.name)} Stk.` }
+        : it
+    )
+  )
+}
+
+/** Positionen einer Wand; die erste ist immer das LED-Modul. */
+function deriveWall(s: LedWallConfig, cat: string): DerivedItem[] {
   const d = computeWall(s)
-  const cat = 'LED-Wall'
   const items: DerivedItem[] = []
 
   items.push({

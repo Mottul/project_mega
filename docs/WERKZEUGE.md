@@ -290,14 +290,20 @@ DMX-Startadresse in Dip-Schalter umrechnen und zurück (binär, 9 Schalter, 1–
 ### LED-Wall-Konfigurator
 
 Aufgebaut wie die anderen Werkzeuge: Die **Leiste „Projekt“** hat das Menü **„Datei“** für
-[Projektdateien](#projektdateien-und-projektordner), exportiert die PDF-Doku (Hoch oder Quer) und
-übergibt das Material an die [Packliste](#packliste); rechts stehen Projekt und Kunde.
-Die **Schublade** hält alles, was die Wand festlegt, die **Arbeitsfläche** zeigt, was daraus folgt –
-auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
+[Projektdateien](#projektdateien-und-projektordner), die **Wand-Wahl**, exportiert die PDF-Doku
+(Hoch oder Quer) und übergibt das Material an die [Packliste](#packliste); rechts stehen Projekt
+und Kunde. Die **Schublade** hält alles, was die Wand festlegt, die **Arbeitsfläche** zeigt, was
+daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 
-- **Schublade:** Vorlagen (Planungen unter dem Projektnamen speichern und laden), Projekt und
-  Kunde, Modul (Bestand: 496-2,0 / uS2+ / rX3ioBF), Wand (Breite, Höhe – gerundet auf ganze
-  Module –, Ground-Stack oder fliegend) und beim uS2+ die Curving-Form.
+- **Mehrere Wände** in einer Planung (bis 20, z. B. ein Laptop bespielt zwei kleine Wände): Das
+  Menü „Wand“ in der Leiste wählt eine Wand, legt eine neue an, dupliziert oder entfernt die
+  gewählte. Jede Wand hat eigenen Namen, Modul, Maße, Aufbau, Curving und Verkabelung; Projekt
+  und Kunde gelten für alle. PDF-Doku und Vorlagen gelten für die gewählte Wand, die Packliste
+  und die Projektdatei für alle.
+- **Schublade:** Vorlagen (eine Wand unter dem Projektnamen speichern; laden ersetzt die gewählte
+  Wand, die übrigen Wände und die Verbindung zur Datei bleiben), Projekt und Kunde, Modul
+  (Bestand: 496-2,0 / uS2+ / rX3ioBF), Wand (Name, Breite, Höhe – gerundet auf ganze Module –,
+  Ground-Stack oder fliegend) und beim uS2+ die Curving-Form.
 - **Kennzahlen:** Auflösung mit Seitenverhältnis, Module (Spalten × Reihen), Größe (mit Fläche
   bzw. abgewickeltem Bogen), Gewicht, maximale Leistung (Strom bei 230 V), Ballast bzw. Last an
   der Traverse.
@@ -543,8 +549,11 @@ sonst kommt ein Hinweis).
   meldet fehlende Ziele, nie erreichte Schritte, Schleifen und Fälle ohne „Anrufen“. 15 Fälle
   aus Praxis und Herstellerhilfen liegen bei; eine neue Anleitung enthält die wichtigsten.
 - **LED-Wall:** Kennzahlen als Kopie aus der LED-Wall-Planung **derselben Projektdatei**
-  (oder aus dem aktuellen Konfigurator). Speichert jemand die Planung neu, zeigt die Anleitung
-  „Planung geändert (Stand 7 → 9)“ mit den Unterschieden und übernimmt erst auf Klick.
+  (oder aus dem aktuellen Konfigurator) – bei mehreren Wänden jede mit Namen, im Kapitel je Wand
+  eine Tabelle, Platzhalter `{wand.…}` für die erste und `{wand2.…}` usw. für die weiteren.
+  Speichert jemand die Planung neu, zeigt die Anleitung „Planung geändert (Stand 7 → 9)“ mit den
+  Unterschieden (auch neue, entfernte und umbenannte Wände) und übernimmt erst auf Klick. Haben
+  die Wände verschiedene Module, gilt beim IM-Tausch die strengere Regel.
 - **Kontakte** kommen aus dem **Firmenprofil** (App-Menü: Name, Logo, Akzentfarbe für Linien
   und Überschriften, Kontakte, Fernwartung) – als Kopie, damit die Datei beim Kollegen
   vollständig ist.
@@ -644,7 +653,8 @@ Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
   übernehmen“ an den Video-Player (Wand-Auflösung und Einpassen wie dort eingestellt) und mit
   „In Medien-Info prüfen“ zur Kontrolle.
 - **LED-Wall-Konfigurator → Packliste:** übernimmt Module, Standfüße, Ballast und Kabel und
-  öffnet die Packliste im eigenen Fenster.
+  öffnet die Packliste im eigenen Fenster. Bei mehreren Wänden je Wand eine Kategorie
+  („LED-Wall · Bar“); gleiche Module nennen die Summe über alle Wände.
 - **Netzwerk-Scanner → NovaStar:** IP eines Geräts in die NovaStar-Steuerung bzw. die
   NovaStar-Kacheln der OSC-Steuerung übernehmen.
 - **Video-Player → OSC-Steuerung:** Die Anzeige-Kachel kann die Restzeit des laufenden Clips
@@ -674,8 +684,8 @@ die anderen bleiben beim Speichern unverändert.
   keine Planung dieses Werkzeugs, lässt sich die aktuelle hinzufügen oder eine leere anlegen
   (die aktuelle bleibt, bis das Speichern geklappt hat). Ist die Planung im zweiten Fenster offen
   und ändert sich dort etwas, während eine Rückfrage wartet, bricht die Aktion ab, statt das
-  Falsche zu speichern. Eine **Vorlage** zu laden löst die Verbindung zur Datei (die Datei bleibt
-  unverändert).
+  Falsche zu speichern. Eine **Vorlage** im LED-Wall-Konfigurator ersetzt nur die gewählte Wand;
+  die Verbindung zur Datei bleibt, die Datei gilt danach als ungespeichert.
 - **Sicherungen:** Vor jedem Überschreiben legt die App die bisherige Datei im Benutzerordner unter
   `Sicherungen/` ab (die letzten 10 je Datei; gleichnamige Dateien in anderen Ordnern haben
   eigene Sicherungen).

@@ -10,6 +10,7 @@ import { esc, safeHref } from '@shared/html'
 import { DEFAULT_AKZENT, type FirmenKontakt, type FirmenProfil } from '@shared/types'
 import { qrMatrix } from '@renderer/components/qr'
 import { faelleFuerStufe, type AusgabeFall, type AusgabeZiel } from './fehlersuche'
+import { modulKeys } from './ledWallKopie'
 import { inline, markup, type MarkupOptionen } from './markup'
 import {
   ROLLEN,
@@ -20,7 +21,8 @@ import {
   type GeraetRolle,
   type KapitelEintrag,
   type KapitelId,
-  type Stufe
+  type Stufe,
+  type WandKennzahlen
 } from './model'
 import { platzhalterWerte } from './platzhalter'
 
@@ -194,11 +196,11 @@ function systemSvg(a: Anleitung): string {
     { titel: 'Zuspieler', namen: col(['zuspieler']) },
     { titel: 'Prozessor', namen: col(['prozessor']) },
     {
-      titel: 'LED-Wand',
+      titel: a.ledWall && a.ledWall.waende.length > 1 ? 'LED-Wände' : 'LED-Wand',
       namen: a.ledWall
-        ? [
-            `${a.ledWall.kennzahlen.modul} · ${a.ledWall.kennzahlen.spalten} × ${a.ledWall.kennzahlen.reihen}`
-          ]
+        ? a.ledWall.waende.map(({ name, kennzahlen: k }, _, alle) =>
+            alle.length > 1 ? `${name} (${k.modul})` : `${k.modul} · ${k.spalten} × ${k.reihen}`
+          )
         : ['LED-Wand']
     }
   ].filter((s, i) => s.namen.length || i >= 2)
@@ -288,14 +290,14 @@ function passwort(a: Anleitung, pw: string): string {
 function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): string {
   const g = grenze(c)
   const o = mo(a, c)
-  const modulKey = a.ledWall?.kennzahlen.modulKey ?? null
+  const module = modulKeys(a.ledWall)
   switch (k.id) {
     case 'aufEinenBlick': {
       const einAus = a.kapitel.find((x) => x.id === 'einAus')
       const listen = (einAus?.an ? einAus.bloecke : []).filter(
         (b) => b.typ === 'schritte' && b.stufe <= 1
       )
-      const faelle = faelleFuerStufe(a.fehlerfaelle, c.stufe, modulKey).slice(0, 5)
+      const faelle = faelleFuerStufe(a.fehlerfaelle, c.stufe, module).slice(0, 5)
       const kontakt = a.kontakte[0]
       return `${bloecke(listen, a, { ...c, lern: false, stufe: 1 })}${
         faelle.length
@@ -331,18 +333,21 @@ function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): strin
       return `<table><thead><tr><th>Wofür</th><th>Benutzer</th><th>Passwort</th><th>Hinweis</th></tr></thead><tbody>${rows}</tbody></table>${fw ? `<h3>Fernwartung</h3>${markup(fw, o)}` : ''}`
     }
     case 'ledWall': {
-      const w = a.ledWall?.kennzahlen
-      const tab = w
-        ? `<table><tbody>
+      const waende = a.ledWall?.waende ?? []
+      const tabelle = (w: WandKennzahlen): string => `<table><tbody>
 <tr><th>Modul</th><td>${esc(w.modul)}</td><th>Module</th><td>${w.spalten} × ${w.reihen} = ${w.module}</td></tr>
 <tr><th>Größe</th><td>${esc(w.breiteM.replace('.', ','))} × ${esc(w.hoeheM.replace('.', ','))} m</td><th>Auflösung</th><td>${w.aufloesungX} × ${w.aufloesungY} px</td></tr>
 <tr><th>Gewicht</th><td>${esc(w.gewichtKg.replace('.', ','))} kg</td><th>Leistung</th><td>max. ${w.leistungMaxW} W (${esc(w.stromMaxA.replace('.', ','))} A)</td></tr>
 </tbody></table>`
-        : '<p class="muted">Noch keine LED-Wall-Planung übernommen.</p>'
+      const tab = !waende.length
+        ? '<p class="muted">Noch keine LED-Wall-Planung übernommen.</p>'
+        : waende.length === 1
+          ? tabelle(waende[0].kennzahlen)
+          : waende.map((w) => `<h3>${esc(w.name)}</h3>${tabelle(w.kennzahlen)}`).join('')
       return tab + bloecke(k.bloecke, a, c)
     }
     case 'fehlersuche': {
-      const alle = faelleFuerStufe(a.fehlerfaelle, g, modulKey)
+      const alle = faelleFuerStufe(a.fehlerfaelle, g, module)
       if (!alle.length) return '<p class="muted">Noch keine Fehlerfälle.</p>'
       const uebersicht = `<h3>Was siehst du?</h3><ul class="symptome">${alle
         .map(
@@ -363,7 +368,7 @@ function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): strin
 <tr><th>Stand</th><td>${esc(c.datum)}</td></tr>
 <tr><th>Ausgabe</th><td>${c.lern ? 'Lernausgabe (alle Stufen)' : `Stufe ${esc(stufeLabel(c.stufe))}`}</td></tr>
 ${a.stand.bearbeitet ? `<tr><th>Bearbeitet von</th><td>${esc(a.stand.bearbeitet)}</td></tr>` : ''}
-${a.ledWall ? `<tr><th>LED-Wall</th><td>${q ? `Planung Stand ${q.rev}` : 'aus dem Konfigurator'}, übernommen ${esc(a.ledWall.uebernommen.slice(0, 10))}</td></tr>` : ''}
+${a.ledWall ? `<tr><th>LED-Wall</th><td>${q ? `Planung Stand ${q.rev}` : 'aus dem Konfigurator'}${a.ledWall.waende.length > 1 ? ` (${a.ledWall.waende.length} Wände)` : ''}, übernommen ${esc(a.ledWall.uebernommen.slice(0, 10))}</td></tr>` : ''}
 </tbody></table>${a.stand.aenderungen ? `<h3>Änderungen</h3>${markup(a.stand.aenderungen, o)}` : ''}`
     }
     default:
@@ -445,17 +450,20 @@ export function kurzkarteHtml(a: Anleitung, c: SeitenKontext): string {
           .join('')}</ol></div>`
     )
     .join('')
-  const w = a.ledWall?.kennzahlen
+  const waende = a.ledWall?.waende ?? []
+  const w = waende[0]?.kennzahlen
   const sub = [
     a.deckblatt.projekt,
     a.deckblatt.ort,
-    w &&
-      `${w.breiteM.replace('.', ',')} × ${w.hoeheM.replace('.', ',')} m, ${w.aufloesungX} × ${w.aufloesungY} px`
+    waende.length > 1
+      ? `${waende.length} LED-Wände`
+      : w &&
+        `${w.breiteM.replace('.', ',')} × ${w.hoeheM.replace('.', ',')} m, ${w.aufloesungX} × ${w.aufloesungY} px`
   ]
     .filter(Boolean)
     .map((x) => esc(x))
     .join(' · ')
-  const faelle = faelleFuerStufe(a.fehlerfaelle, c.stufe, a.ledWall?.kennzahlen.modulKey ?? null)
+  const faelle = faelleFuerStufe(a.fehlerfaelle, c.stufe, modulKeys(a.ledWall))
   const fsNr = sichtbareKapitel(a, c).findIndex((k) => k.id === 'fehlersuche') + 1
   const k = a.kontakte[0]
   const tel = k ? telNummer(k.mobil || k.buero) : ''

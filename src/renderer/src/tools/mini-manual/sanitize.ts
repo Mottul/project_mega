@@ -27,12 +27,13 @@ import {
   type Schritt,
   type Stufe,
   type WandKennzahlen,
+  type WandKopie,
   type Zugang,
   type Ziel
 } from './model'
 
-/** Schema-Version des Abschnitts „anleitung“ */
-export const ANLEITUNG_VERSION = 1
+/** Schema-Version des Abschnitts „anleitung“ – 2: LED-Wall-Kopie mit mehreren Wänden */
+export const ANLEITUNG_VERSION = 2
 
 export const GRENZEN = {
   kurz: 200,
@@ -42,7 +43,9 @@ export const GRENZEN = {
   geraete: 200,
   zugaenge: 100,
   fehlerfaelle: 300,
-  kontakte: 50
+  kontakte: 50,
+  // wie WALLS_MAX im LED-Wall-Konfigurator
+  waende: 20
 } as const
 
 type Obj = Record<string, unknown>
@@ -260,14 +263,36 @@ function kennzahlen(v: unknown): WandKennzahlen | null {
   }
 }
 
-function ledWall(v: unknown): LedWallKopie | null {
+const WAND_ID = /^[a-z0-9-]{1,40}$/
+
+function wand(v: unknown, i: number): WandKopie | null {
   if (!isObj(v)) return null
   const k = kennzahlen(v.kennzahlen)
   if (!k) return null
+  return {
+    id: typeof v.id === 'string' && WAND_ID.test(v.id) ? v.id : `wand-${i + 1}`,
+    name: str(v.name, 60).trim() || `Wand ${i + 1}`,
+    daten: isObj(v.daten) ? v.daten : {},
+    kennzahlen: k
+  }
+}
+
+/**
+ * Kopie der LED-Wall-Planung. Bis Version 1 eine Wand ohne Liste (`daten`/`kennzahlen` direkt) –
+ * sie wird zur Wand „wand-1“, wie im Konfigurator (FIRST_WALL_ID).
+ */
+function ledWall(v: unknown): LedWallKopie | null {
+  if (!isObj(v)) return null
+  const liste = Array.isArray(v.waende) ? v.waende.slice(0, GRENZEN.waende) : [v]
+  const waende: WandKopie[] = []
+  for (const [i, w] of liste.entries()) {
+    const k = wand(w, i)
+    if (k && !waende.some((x) => x.id === k.id)) waende.push(k)
+  }
+  if (!waende.length) return null
   const q = v.quelle
   return {
-    daten: isObj(v.daten) ? v.daten : {},
-    kennzahlen: k,
+    waende,
     quelle:
       isObj(q) && typeof q.sha256 === 'string' && /^[0-9a-f]{64}$/.test(q.sha256)
         ? { rev: num(q.rev, 0, Number.MAX_SAFE_INTEGER), sha256: q.sha256 }

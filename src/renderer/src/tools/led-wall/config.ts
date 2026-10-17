@@ -5,6 +5,8 @@
 // Version 2 (Oktober 2026) bringt die Felder für den Kabelverlauf mit (Einspeisepunkt, Reihenfolge
 // je Kette, Ports, Stromkreise, Backup-Leitungen, Prozessor). Leer heißt „nicht festgelegt“ – das
 // Verhalten bleibt gleich, bis die Bedienung dafür kommt (docs/PLAN-MINI-MANUAL.md, Phase 2).
+// Version 3 (Oktober 2026): mehrere Wände je Projektdatei – Projekt und Kunde einmal, dazu die
+// Liste der Wände (`wallsOf` liest jede Version).
 
 import { digest } from '@shared/projectFile'
 import { CIRCLE_TABLE, DEFAULT_MODULE_KEY, MODULES } from './data'
@@ -89,7 +91,31 @@ const UI_ONLY = ['sigChain', 'pwrChain', 'pdfLandscape'] as const
 export type LedWallSection = Omit<LedWallConfig, (typeof UI_ONLY)[number]>
 
 /** Schema-Version des Abschnitts in der Projektdatei */
-export const LED_WALL_SECTION_VERSION = 2
+export const LED_WALL_SECTION_VERSION = 3
+
+/** Eine Wand der Planung mit ihrer Konfiguration (Projekt und Kunde gelten für alle). */
+export interface PlannedWall {
+  id: string
+  name: string
+  config: LedWallConfig
+}
+
+/** Wand im Datei-Abschnitt: ohne Projekt, Kunde und Bedienzustand */
+export type WallSection = Omit<LedWallSection, 'projectName' | 'customerName'>
+
+/** Abschnitt „ledWall“ ab Version 3 */
+export interface LedWallFileData {
+  projectName: string
+  customerName: string
+  walls: { id: string; name: string; data: WallSection }[]
+}
+
+export const WALLS_MAX = 20
+/** Kennung der Wand aus einer Planung bis Version 2 – fest, damit Verweise darauf stabil bleiben */
+export const FIRST_WALL_ID = 'wand-1'
+export const WALL_NAME_MAX = 60
+export const wallLabel = (index: number): string => `Wand ${index + 1}`
+const WALL_ID_RE = /^[a-z0-9-]{1,40}$/
 
 export const DEFAULT_LED_WALL_CONFIG: LedWallConfig = {
   moduleKey: DEFAULT_MODULE_KEY,
@@ -327,9 +353,80 @@ export function isDefaultPlanning(s: LedWallConfig): boolean {
   return digest(normalizedSection(s)) === digest(normalizedSection(DEFAULT_LED_WALL_CONFIG))
 }
 
-/** Kurz für Rückfragen: „Messe · Beispiel GmbH, 4 × 2,5 m, 496-2,0“ */
+/** Eine Wand für den Datei-Abschnitt: ohne Projekt, Kunde und Bedienzustand. */
+export function wallSection(c: LedWallConfig): WallSection {
+  const sec = ledWallSection(c) as Partial<LedWallSection>
+  delete sec.projectName
+  delete sec.customerName
+  return sec as WallSection
+}
+
+/** Daten des Abschnitts „ledWall“ (Version 3) aus Projekt und Wänden. */
+export function ledWallFileData(
+  projectName: string,
+  customerName: string,
+  walls: PlannedWall[]
+): LedWallFileData {
+  return {
+    projectName,
+    customerName,
+    walls: walls.map((w) => ({ id: w.id, name: w.name, data: wallSection(w.config) }))
+  }
+}
+
+export interface PlanningData {
+  projectName: string
+  customerName: string
+  walls: PlannedWall[]
+}
+
+/**
+ * Planung aus einem Abschnitt jeder Version: bis 2 eine Wand (Kennung `FIRST_WALL_ID`), ab 3 die
+ * Liste. Die Form entscheidet, nicht die Versionsnummer – so lesen auch Kopien im Mini-Manual
+ * richtig. null = unbrauchbar (Liste kaputt, leer oder zu lang): Ein kaputter Teil macht den
+ * Abschnitt ungültig, statt beim nächsten Speichern still zu fehlen.
+ */
+export function wallsOf(raw: unknown): PlanningData | null {
+  const v: Obj = isObj(raw) ? raw : {}
+  if (!('walls' in v)) {
+    const config = sanitizeLedWallConfig(v)
+    return {
+      projectName: config.projectName,
+      customerName: config.customerName,
+      walls: [{ id: FIRST_WALL_ID, name: wallLabel(0), config }]
+    }
+  }
+  if (!Array.isArray(v.walls) || !v.walls.length || v.walls.length > WALLS_MAX) return null
+  const projectName = text(v.projectName, 200) ?? ''
+  const customerName = text(v.customerName, 200) ?? ''
+  const seen = new Set<string>()
+  const walls: PlannedWall[] = []
+  for (const [i, w] of v.walls.entries()) {
+    if (!isObj(w)) return null
+    let id = typeof w.id === 'string' && WALL_ID_RE.test(w.id) ? w.id : `wand-${i + 1}`
+    for (let n = 2; seen.has(id); n++) id = `wand-${i + 1}-${n}`
+    seen.add(id)
+    const name = text(w.name, WALL_NAME_MAX)?.trim() || wallLabel(i)
+    const data = isObj(w.data) ? w.data : {}
+    walls.push({ id, name, config: sanitizeLedWallConfig({ ...data, projectName, customerName }) })
+  }
+  return { projectName, customerName, walls }
+}
+
+/** Steht noch die Vorgabe drin – eine Wand mit Standardnamen und Vorgaben? */
+export function isDefaultFileData(walls: PlannedWall[]): boolean {
+  return walls.length === 1 && walls[0].name === wallLabel(0) && isDefaultPlanning(walls[0].config)
+}
+
+/** Kurz für Rückfragen: „Messe · Beispiel GmbH, 4 × 2,5 m, 496-2,0“ (mehrere: „2 Wände: …; …“) */
 export function describePlanning(data: unknown): string {
-  const c = sanitizeLedWallConfig(data)
-  const who = [c.projectName.trim(), c.customerName.trim()].filter(Boolean).join(' · ')
-  return `${who || 'ohne Projektnamen'}, ${c.widthM} × ${c.heightM} m, ${c.moduleKey}`
+  const p = wallsOf(data)
+  if (!p) return 'unlesbare Planung'
+  const who = [p.projectName.trim(), p.customerName.trim()].filter(Boolean).join(' · ')
+  const wall = (c: LedWallConfig): string => `${c.widthM} × ${c.heightM} m, ${c.moduleKey}`
+  const walls =
+    p.walls.length === 1
+      ? wall(p.walls[0].config)
+      : `${p.walls.length} Wände: ${p.walls.map((w) => `${w.name} ${wall(w.config)}`).join('; ')}`
+  return `${who || 'ohne Projektnamen'}, ${walls}`
 }

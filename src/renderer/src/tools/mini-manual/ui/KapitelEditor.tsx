@@ -20,7 +20,8 @@ export type Auswahl = KapitelId | 'deckblatt'
 
 function Deckblatt(): JSX.Element {
   const d = useMiniManual((s) => s.anleitung.deckblatt)
-  const kopie = useMiniManual((s) => s.anleitung.ledWall?.kennzahlen ?? null)
+  // Projekt und Kunde gelten für alle Wände – die erste genügt
+  const kopie = useMiniManual((s) => s.anleitung.ledWall?.waende[0]?.kennzahlen ?? null)
   const update = useMiniManual((s) => s.update)
   const set = (p: Partial<typeof d>): void =>
     update((a) => ({ ...a, deckblatt: { ...a.deckblatt, ...p } }))

@@ -1,6 +1,6 @@
 // LED-Wall-Konfigurator im Werkzeug-Muster (ToolShell):
-//   Leiste „Projekt“  Datei-Menü (Projektdatei .mottul), PDF-Doku (Hoch/Quer) und Übergabe an die
-//                     Packliste, rechts der Projektname
+//   Leiste „Projekt“  Datei-Menü (Projektdatei .mottul), Wand-Wahl (mehrere Wände je Planung),
+//                     PDF-Doku (Hoch/Quer) und Übergabe an die Packliste, rechts der Projektname
 //   Schublade         Vorlagen, Projekt, Modul, Wand (Größe, Aufbau), Curving-Form (Settings.tsx)
 //   Arbeitsfläche     Kennzahlen; große Zeichenfläche mit Ansicht, Draufsicht (uS2+), Signal-
 //                     und Stromplan; daneben Strom, Aufbau und Moduldaten
@@ -42,6 +42,7 @@ import { exportLedWallPdf } from './print'
 import { BUILD_LABELS, LedWallSettings } from './Settings'
 import { useLedWall } from './store'
 import { topDownMarkup } from './topdown'
+import { WallMenu } from './WallMenu'
 
 type View = 'front' | 'top' | 'sig' | 'pwr'
 
@@ -91,11 +92,12 @@ export function LedWall(): JSX.Element {
     ]
   )
 
-  // Verkabelungs-Grids an die Modulzahl anpassen (Zuordnungen bleiben erhalten).
+  // Verkabelungs-Grids an die Modulzahl anpassen (Zuordnungen bleiben erhalten) – auch nach dem
+  // Wechsel der Wand: Eine neue Wand hat noch leere Raster, vielleicht bei gleicher Modulzahl.
   useEffect(() => {
     s.ensureGridSize(d.rows, d.cols)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [d.rows, d.cols])
+  }, [d.rows, d.cols, s.wallId])
 
   function doExport(): void {
     const curve = d.curve
@@ -119,6 +121,7 @@ export function LedWall(): JSX.Element {
       ...d,
       projectName: s.projectName,
       customerName: s.customerName,
+      wallName: s.walls.length > 1 ? s.walls.find((w) => w.id === s.wallId)?.name : undefined,
       buildMode: s.buildMode,
       sig: s.sig,
       pwr: s.pwr,
@@ -156,6 +159,8 @@ export function LedWall(): JSX.Element {
           }
         >
           <ProjectFileMenu file={file} />
+          <BarDivider />
+          <WallMenu />
           <BarDivider />
           <Button size="sm" onClick={doExport}>
             <FileDown className="size-4" /> PDF exportieren

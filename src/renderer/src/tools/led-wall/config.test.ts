@@ -4,10 +4,13 @@ import { computeWall } from './compute'
 import {
   DEFAULT_LED_WALL_CONFIG,
   describePlanning,
+  FIRST_WALL_ID,
   isDefaultPlanning,
+  ledWallFileData,
   ledWallSection,
   pickConfig,
   sanitizeLedWallConfig,
+  wallsOf,
   type LedWallConfig
 } from './config'
 
@@ -193,5 +196,25 @@ describe('LED-Wall-Abschnitt der Projektdatei', () => {
   it('Beschreibung für Rückfragen', () => {
     expect(describePlanning(v1)).toBe('Messe · Beispiel GmbH, 6 × 3 m, uS2+')
     expect(describePlanning({})).toBe('ohne Projektnamen, 4 × 2,5 m, 496-2,0')
+    expect(
+      describePlanning({
+        projectName: 'Messe',
+        walls: [
+          { id: 'a', name: 'Links', data: { widthM: '2', heightM: '1', moduleKey: 'uS2+' } },
+          { id: 'b', name: '', data: {} }
+        ]
+      })
+    ).toBe('Messe, 2 Wände: Links 2 × 1 m, uS2+; Wand 2 4 × 2,5 m, 496-2,0')
+    expect(describePlanning({ walls: [] })).toBe('unlesbare Planung')
+  })
+
+  it('Planung bis Version 2 ist eine Wand mit fester Kennung', () => {
+    const p = wallsOf(v1)!
+    expect(p.walls.map((w) => [w.id, w.name])).toEqual([[FIRST_WALL_ID, 'Wand 1']])
+    expect([p.projectName, p.walls[0].config.moduleKey]).toEqual(['Messe', 'uS2+'])
+    // Projekt steht ab Version 3 einmal, nicht je Wand
+    expect(
+      Object.keys(ledWallFileData('M', '', p.walls).walls[0].data).includes('projectName')
+    ).toBe(false)
   })
 })
