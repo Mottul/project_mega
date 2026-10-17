@@ -142,6 +142,13 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   öffnet ein eigenes Fenster und springt zurück zu `/`. Für „irgendein Werkzeug öffnen“ ein großes
   nehmen (Rauchtest: `/tool/media-info`).
 - `ELECTRON_RUN_AS_NODE` aus der Umgebung entfernt der Harness (sonst startet Electron als Node).
+- **Frischer Benutzerordner ohne Downloads:** `launchApp()` legt eine `settings.json` mit
+  `ytdlpAutoUpdate: false` an. Die yt-dlp-Prüfung beim Start lud sonst yt-dlp aus dem Netz und
+  startete es; schloss ein kurzes Skript die App mittendrin, blieb `yt-dlp.exe` unter Windows
+  gesperrt und das Aufräumen (`rmSync` → EPERM) brach den ganzen Lauf ab – Windows-CI rot,
+  obwohl alle Schritte grün waren. Aufräumen versucht es jetzt mehrmals und lässt den Ordner
+  notfalls liegen. Wer den Download testen will, startet mit eigenem `userData` (wie
+  `e2e/youtube.mjs`, `e2e/ffmpeg-update.mjs`).
 - **Namen matchen als Teilstring:** `getByRole('cell', { name: 'Breite' })` trifft auch
   „Auflösung (Breite)“, `/^Kapitel/` auch „Kapitel nach oben“ – `exact: true` oder ein genaues
   Muster (`/^Kapitel \d+ von/`). Meldungen stehen oft doppelt (Hinweis im Inhalt und Prüfung in

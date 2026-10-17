@@ -178,6 +178,11 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
 
 ## Tests
 
+- **Tests laden nichts aus dem Netz – auch nicht nebenbei.** Jeder E2E-Start lud wegen der
+  yt-dlp-Prüfung beim Start yt-dlp herunter; die gesperrte `yt-dlp.exe` machte die Windows-CI
+  immer wieder rot (Aufräumen mit EPERM), obwohl kein Schritt fehlschlug. Hintergrund-Arbeit, die
+  die App beim Start anwirft (Downloads, Prüfungen), im Harness abschalten; Aufräumen darf nie
+  einen Lauf scheitern lassen (`e2e/harness.mjs`).
 - **Ein Messskript ist keine Gegenprobe.** Das erste Skript zum PDF-Weg zeigte einen Absturz der
   ganzen App bei einer `data:`-URL über 2 MB – er kam aber vom Skript (es druckte nach dem
   Ladefehler weiter). Die echte App warf nur `ERR_INVALID_URL`. Aussagen über das Verhalten der
