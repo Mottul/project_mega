@@ -526,7 +526,9 @@ Fehlerfälle, Pflegehinweise. Hier liegt der Gewinn – die zweite Anleitung dau
   Resolume, OBS, Mottulbox-Player, Stream Deck, Companion, NovaStar, Brompton, Windows-Autostart
   und -Autologin, Fehlerfälle (siehe [Startkatalog](#startkatalog-fehlerfälle)).
 - **Eigene** (Phase 1): eine JSON-Datei je Baustein unter `userData` (main), „Als eigene Kopie
-  bearbeiten“ für mitgelieferte. **Phase 5:** Einstellung „Bausteinordner“ für einen geteilten
+  bearbeiten“ für mitgelieferte. Verwalten, Export und Import einer Sammeldatei sind umgesetzt
+  (siehe WERKZEUGE); der Import nutzt dieselben Regeln, die der geteilte Ordner braucht (höhere
+  Version gewinnt, gleicher Name → „(2)“). **Phase 5:** Einstellung „Bausteinordner“ für einen geteilten
   Ordner (NAS, Nextcloud, OneDrive) – eine Datei je Baustein vermeidet Sync-Konflikte; jede trägt
   `geaendertVon`, `geaendertAm`, `version`.
 - **Im Projekt** steckt eine Kopie jedes benutzten Bausteins: Die Datei ist in sich vollständig.

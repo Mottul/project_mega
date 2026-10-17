@@ -166,7 +166,11 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   Projektdatei – wer die Datei hat, kennt sie. Im PDF ab Werk „wird separat übergeben“, die
   Stufe Bedienung zeigt sie nie. **Eigene Bausteine** liegen als JSON unter
   `userData/Bausteine`; der Dateiname ist immer die geprüfte Kennung, nie ein Name vom Renderer,
-  und den Inhalt prüft das Werkzeug vor dem Einfügen.
+  und den Inhalt prüft das Werkzeug vor dem Einfügen. Eine **Bausteine-Datei zum Import** ist
+  fremde Eingabe: nur über den Öffnen-Dialog des main (höchstens 50 Dateien, je 20 MB), Kopf
+  `mottulbox`/`bausteine` mit bekannter Version, höchstens 500 Bausteine, jeder einzeln geprüft
+  (Kennung, Art, Längen) und erst dann geschrieben; vorhandene werden nur durch eine höhere
+  Version ersetzt.
 - **Kein `eval` im Renderer:** Die Content-Security-Policy verbietet `unsafe-eval`; pdfjs 6 kommt
   ohne eval aus – präparierte PDFs können darüber keinen Code ausführen. (`'unsafe-inline'` für
   Skripte braucht noch der Vite-Dev-Server, siehe Roadmap.)

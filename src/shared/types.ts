@@ -1664,7 +1664,7 @@ export interface FavoriteGroup {
 export type LauncherTileSize = 'small' | 'medium' | 'large'
 
 /** Art eines Datei-Dialogs – je Art merkt sich die App den zuletzt benutzten Ordner. */
-export type DialogDirKind = 'dateien' | 'ordner' | 'speichern' | 'projekte' | 'fotos'
+export type DialogDirKind = 'dateien' | 'ordner' | 'speichern' | 'projekte' | 'fotos' | 'bausteine'
 
 /** Projektdateien (.mottul, siehe shared/projectFile.ts) */
 export interface ProjectsSettings {
@@ -1718,6 +1718,14 @@ export interface EigenerBaustein {
   geaendertVon: string
   version: number
 }
+
+/** Ergebnis von „Bausteine importieren“ (Zahlen je Datei zusammengezählt) */
+export type BausteinImport =
+  | { ok: true; neu: number; aktualisiert: number; uebersprungen: number; umbenannt: number }
+  | { ok: false; reason: 'keine-bausteine' | 'zu-gross' | 'fehler'; name: string }
+
+/** Ergebnis von „Bausteine exportieren“ */
+export type BausteinExport = { ok: true; path: string; anzahl: number } | { ok: false }
 
 export const DEFAULT_FIRMENPROFIL: FirmenProfil = {
   name: '',
@@ -1897,7 +1905,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   uiDensity: 'normal',
   ytdlpAutoUpdate: true,
   ffmpegAutoUpdate: true,
-  dialogDirs: { dateien: null, ordner: null, speichern: null, projekte: null, fotos: null },
+  dialogDirs: {
+    dateien: null,
+    ordner: null,
+    speichern: null,
+    projekte: null,
+    fotos: null,
+    bausteine: null
+  },
   toolWindowBounds: {},
   youtube: DEFAULT_YOUTUBE_SETTINGS,
   timer: DEFAULT_TIMER_SETTINGS,

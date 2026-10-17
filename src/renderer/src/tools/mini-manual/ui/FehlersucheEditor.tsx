@@ -9,6 +9,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { Select } from '@renderer/components/ui/select'
+import { Griff, useSortable, type Sortable } from '@renderer/components/ui/sortable'
 import { STATUS } from '@renderer/components/ui/status'
 import { LiveInput } from '@renderer/components/ui/textarea'
 import { api } from '@renderer/lib/api'
@@ -22,13 +23,15 @@ import {
   neuerFall,
   neuerSchritt,
   schrittEntfernen,
-  verschiebe
+  verschiebe,
+  zieheNach
 } from '../aktionen'
 import { FEHLERFAELLE } from '../bibliothek'
 import { pruefeFall } from '../fehlersuche'
 import { BEREICHE, uid, type Bereich, type Fehlerfall, type FSchritt, type Ziel } from '../model'
 import { fehlerfall as pruefeFehlerfall } from '../sanitize'
 import { useMiniManual } from '../store'
+import { speichereBaustein } from './bausteinSpeichern'
 import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
 
 /** Ziel als Wert der Auswahlliste */
@@ -118,7 +121,8 @@ function SchrittZeile({
   set,
   oben,
   unten,
-  weg
+  weg,
+  sort
 }: {
   s: FSchritt
   nr: number
@@ -128,14 +132,18 @@ function SchrittZeile({
   oben?: () => void
   unten?: () => void
   weg: () => void
+  sort: Sortable
 }): JSX.Element {
+  const it = sort.item(s.id)
   return (
     <div
-      className="space-y-2 rounded-lg border border-border bg-background/40 p-3"
+      {...it}
+      className={cn('space-y-2 rounded-lg border border-border bg-background/40 p-3', it.className)}
       data-testid="fall-schritt"
     >
       {/* Frage über die ganze Breite – sie ist der längste Text des Schritts */}
       <div className="flex items-center gap-2">
+        <Griff sort={sort} id={s.id} was="Schritt" />
         <span className="w-6 shrink-0 font-mono text-sm font-semibold text-primary">{nr}</span>
         <LiveInput
           value={s.text}
@@ -211,9 +219,13 @@ function FallEditor({ fall, faelle }: { fall: Fehlerfall; faelle: Fehlerfall[] }
   const set = (fn: (f: Fehlerfall) => Fehlerfall): void =>
     update((a) => ({ ...a, fehlerfaelle: ersetze(a.fehlerfaelle, fall.id, fn) }))
   const probleme = useMemo(() => pruefeFall(fall, faelle), [fall, faelle])
+  // Nummern folgen der Reihenfolge, Ziele zeigen auf Kennungen – Ziehen ändert keinen Verweis
+  const sort = useSortable((von, nach, hinter) =>
+    set((f) => ({ ...f, schritte: zieheNach(f.schritte, von, nach, hinter) }))
+  )
 
   async function alsBaustein(): Promise<void> {
-    const res = await api.bausteine.save({
+    const { baustein: res, fehler } = await speichereBaustein({
       id: uid(),
       art: 'fall',
       titel: fall.titel || 'Fehlerfall',
@@ -221,7 +233,7 @@ function FallEditor({ fall, faelle }: { fall: Fehlerfall; faelle: Fehlerfall[] }
       daten: fall
     })
     if (res) toast.success(`Fall „${res.titel}“ als eigener Baustein gespeichert`)
-    else toast.error('Fall ließ sich nicht speichern')
+    else if (fehler) toast.error('Fall ließ sich nicht speichern')
   }
 
   return (
@@ -288,6 +300,7 @@ function FallEditor({ fall, faelle }: { fall: Fehlerfall; faelle: Fehlerfall[] }
                 : undefined
             }
             weg={() => set((f) => schrittEntfernen(f, s.id))}
+            sort={sort}
           />
         ))}
       </div>
@@ -388,6 +401,9 @@ export function FehlersucheEditor(): JSX.Element {
   const [aktiv, setAktiv] = useState<string | null>(faelle[0]?.id ?? null)
   const [wahl, setWahl] = useState(false)
   const fall = faelle.find((f) => f.id === aktiv) ?? faelle[0]
+  const sort = useSortable((von, nach, hinter) =>
+    update((a) => ({ ...a, fehlerfaelle: zieheNach(a.fehlerfaelle, von, nach, hinter) }))
+  )
 
   async function entfernen(f: Fehlerfall): Promise<void> {
     const ok = await api.confirm({
@@ -405,8 +421,14 @@ export function FehlersucheEditor(): JSX.Element {
         <ul className="space-y-1" aria-label="Fehlerfälle">
           {faelle.map((f, i) => {
             const n = pruefeFall(f, faelle).filter((p) => p.schwere === 'fehler').length
+            const it = sort.item(f.id)
             return (
-              <li key={f.id} className="flex items-center gap-1">
+              <li
+                key={f.id}
+                {...it}
+                className={cn('flex items-center gap-1 rounded', it.className)}
+              >
+                <Griff sort={sort} id={f.id} was="Fall" />
                 <button
                   type="button"
                   onClick={() => setAktiv(f.id)}

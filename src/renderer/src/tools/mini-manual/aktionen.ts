@@ -49,6 +49,20 @@ export function ziehe<T extends { id: string }>(list: T[], id: string, vorId: st
   ]
 }
 
+/** Ziehen zum Sortieren: `id` vor bzw. hinter `zielId` setzen (components/ui/sortable) */
+export function zieheNach<T extends { id: string }>(
+  list: T[],
+  id: string,
+  zielId: string,
+  hinter: boolean
+): T[] {
+  if (!hinter) return ziehe(list, id, zielId)
+  const i = list.findIndex((x) => x.id === zielId)
+  if (i < 0) return list
+  const danach = list.slice(i + 1).find((x) => x.id !== id)
+  return ziehe(list, id, danach ? danach.id : null)
+}
+
 export function kapitel(
   a: Anleitung,
   id: KapitelId,

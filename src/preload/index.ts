@@ -178,7 +178,9 @@ const api: ToolboxApi = {
   bausteine: {
     list: () => ipcRenderer.invoke(Channels.bausteineList),
     save: (b) => ipcRenderer.invoke(Channels.bausteineSave, b),
-    remove: (id) => ipcRenderer.invoke(Channels.bausteineRemove, id)
+    remove: (id) => ipcRenderer.invoke(Channels.bausteineRemove, id),
+    export: (ids) => ipcRenderer.invoke(Channels.bausteineExport, ids),
+    import: () => ipcRenderer.invoke(Channels.bausteineImport)
   },
 
   jingles: {

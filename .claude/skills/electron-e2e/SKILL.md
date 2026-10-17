@@ -66,7 +66,16 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   (`e2e/testton.mjs`). Liegt der Zielwert auf dem Weg einer Rampe (Einblenden, Pegel-Deckel),
   **zweimal in Folge** treffen lassen – sonst besteht ein kaputter Wert, der nur durchläuft.
 - **Native Dialoge ersetzen** (`api.confirm` → `dialog.showMessageBox` im main): Stub per
-  `app.evaluate`; mit `holdConfirm` bleibt er offen, bis man ihn beantwortet.
+  `app.evaluate`; mit `holdConfirm` bleibt er offen, bis man ihn beantwortet. `api.choose`
+  (mehr als zwei Antworten) läuft über denselben Dialog: `stubConfirmSequence(app, [1])` wählt
+  den zweiten Knopf („Beide behalten“, `e2e/mini-manual.mjs`). Eine leere Folge antwortet mit 1
+  – vor dem nächsten Bestätigen wieder `stubConfirm(app, true)` setzen.
+- **Ziehen zum Sortieren** (`components/ui/sortable.tsx`): `griff.dragTo(zielZeile, {
+  targetPosition: { x: 60, y: 6 } })` – Playwright löst echtes HTML5-Drag-&-Drop aus; die obere
+  Hälfte der Zielzeile heißt „davor“. Der Griff (`role="img"`, Name „Gerät ziehen zum
+  Verschieben“) macht die Zeile erst beim Drücken ziehbar, also am Griff ansetzen, nicht an der
+  Zeile. Danach die Reihenfolge prüfen (Wert vorher feststellen, sonst besteht der Test ohne
+  Ziehen).
 - **Einstellungs-Broadcast erreicht das auslösende Fenster nicht.** „Ein anderes Fenster
   speichert“ also wirklich testen: `api.openToolWindow(id)` + `app.waitForEvent('window')`.
 - **Dieselbe Route noch einmal setzen lädt nichts neu**, und Ausgabe-Routen (`#/output`) lesen

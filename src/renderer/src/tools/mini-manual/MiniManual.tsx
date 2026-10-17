@@ -4,8 +4,8 @@
 //   Schublade           Projekt, Kapitel an/ab, Ausgabe, Prüfung vor dem Export
 //   Arbeitsfläche       gewähltes Kapitel | Vorschau (dieselbe Seite wie im PDF)
 
-import { useMemo } from 'react'
-import { ChevronLeft, ChevronRight, FileDown, IdCard } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, FileDown, IdCard, Library } from 'lucide-react'
 import { ProjectFileMenu } from '@renderer/components/ProjectFileMenu'
 import { BarDivider, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Badge } from '@renderer/components/ui/badge'
@@ -24,6 +24,7 @@ import { KAPITEL, kapitelDef, stufeLabel, type Stufe } from './model'
 import { pruefung } from './pruefung'
 import { fusszeile, handbuchHtml, kurzkarteHtml, vorschau, type SeitenKontext } from './seiten'
 import { useMiniManual } from './store'
+import { BausteineDialog } from './ui/BausteineDialog'
 import { KapitelEditor, type Auswahl } from './ui/KapitelEditor'
 import { Schublade } from './ui/Schublade'
 import { Vorschau } from './ui/Vorschau'
@@ -55,6 +56,7 @@ export function MiniManual(): JSX.Element {
   const a = useMiniManual((s) => s.anleitung)
   const firma = useSettings((s) => s.firmenprofil) ?? DEFAULT_FIRMENPROFIL
   const [wahl, setWahl] = usePersistentState<AusgabeWahl>('mini-manual:ausgabe', '2', ausgabeCodec)
+  const [bausteine, setBausteine] = useState(false)
   const [auswahl, setAuswahl] = usePersistentState<Auswahl>(
     'mini-manual:kapitel',
     'einAus',
@@ -157,6 +159,16 @@ export function MiniManual(): JSX.Element {
           <Button size="sm" onClick={() => void exportiere('handbuch')}>
             <FileDown className="size-4" /> Handbuch (PDF)
           </Button>
+          <BarDivider />
+          <Button
+            size="sm"
+            variant="outline"
+            title="Eigene Bausteine verwalten, exportieren und importieren"
+            onClick={() => setBausteine(true)}
+          >
+            <Library className="size-4" /> Bausteine
+          </Button>
+          {bausteine && <BausteineDialog onClose={() => setBausteine(false)} />}
         </ToolBar>
       }
       aside={<Schublade auswahl={auswahl} waehle={setAuswahl} punkte={punkte} />}
