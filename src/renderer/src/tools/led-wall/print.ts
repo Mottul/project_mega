@@ -3,6 +3,7 @@
 
 import { api } from '@renderer/lib/api'
 import { APP_NAME } from '@shared/brand'
+import { esc } from '@shared/html'
 import { PWR_COLORS, SIG_COLORS, type LedModule } from './data'
 import type { Fit169 } from './math'
 
@@ -40,14 +41,6 @@ export interface PrintData {
     footprintD: number
     svg: string // fertiges SVG-Markup der Draufsicht
   } | null
-}
-
-function esc(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }
 
 function gridSvg(

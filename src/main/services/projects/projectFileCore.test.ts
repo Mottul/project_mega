@@ -114,7 +114,8 @@ describe('Projektdatei – packen und lesen', () => {
   it('runder Weg mit fremdem Abschnitt, Foto und unbekanntem Eintrag', () => {
     const c = withSection(emptyContainer(NOW), 'ledWall', wall)
     const hash = 'b'.repeat(64)
-    c.file.abschnitte.anleitung = {
+    // „packliste“ schreibt diese Version noch nicht – ein fremder Abschnitt mit Foto
+    c.file.abschnitte.packliste = {
       version: 1,
       rev: 4,
       sha256: sectionSha({ t: 1 }),
@@ -133,10 +134,10 @@ describe('Projektdatei – packen und lesen', () => {
     expect(r.container.extra.get('zukunft/info.txt')?.toString()).toBe('aus einer neueren Version')
     expect(sectionInfos(r.container.file).map((s) => [s.key, s.label, s.known])).toEqual([
       ['ledWall', 'LED-Wall-Planung', true],
-      ['anleitung', 'Anleitung', false]
+      ['packliste', 'Packliste', false]
     ])
     expect(sectionPayload(r.container.file, 'ledWall')?.data).toEqual(wall)
-    expect(sectionPayload(r.container.file, 'packliste')).toBeNull()
+    expect(sectionPayload(r.container.file, 'anleitung')).toBeNull()
   })
 
   it('fremde und kaputte Dateien', () => {

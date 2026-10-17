@@ -1663,6 +1663,42 @@ export interface ProjectsSettings {
 
 export const DEFAULT_PROJECTS_SETTINGS: ProjectsSettings = { dir: '', recent: [] }
 
+/** Ansprechpartner aus dem Firmenprofil (im Mini-Manual als Kopie je Anleitung) */
+export interface FirmenKontakt {
+  id: string
+  name: string
+  funktion: string
+  mobil: string
+  buero: string
+  mail: string
+  /** z. B. „Mo–Fr 8–18 Uhr, im Notfall immer“ */
+  erreichbarkeit: string
+  whatsapp: boolean
+}
+
+/** Firmenprofil für Anleitungen und PDFs (App-Menü). Logo und Kontakte nie im Repo. */
+export interface FirmenProfil {
+  name: string
+  /** Logo als Foto-Hash (shared/fotos) oder null */
+  logo: string | null
+  /** Akzent für Trennlinien und Überschriften (#rrggbb) – nie die Papierfarbe */
+  akzent: string
+  kontakte: FirmenKontakt[]
+  /** Text zur Fernwartung (AnyDesk, TeamViewer …) */
+  fernwartung: string
+}
+
+/** Gelb der bestehenden PDFs (LED-Wall-Doku, Packliste) */
+export const DEFAULT_AKZENT = '#eab308'
+
+export const DEFAULT_FIRMENPROFIL: FirmenProfil = {
+  name: '',
+  logo: null,
+  akzent: DEFAULT_AKZENT,
+  kontakte: [],
+  fernwartung: ''
+}
+
 /** Warum eine Projektdatei nicht geöffnet oder gespeichert werden kann */
 export type ProjectFileProblem =
   | 'kein-projekt' // keine Mottulbox-Projektdatei
@@ -1795,6 +1831,8 @@ export interface AppSettings {
   remoteControls: Record<Exclude<RemoteControlId, 'player'>, RemoteControlSetting>
   /** Projektdateien: Standard-Speicherort und zuletzt benutzte Dateien */
   projects: ProjectsSettings
+  /** Firmenprofil für Anleitungen (Mini-Manual) und PDFs */
+  firmenprofil: FirmenProfil
 }
 
 /** Teiländerung: Objekte feldweise optional, Listen immer ganz (siehe settingsMerge.ts). */
@@ -1838,5 +1876,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   converter: DEFAULT_CONVERTER_SETTINGS,
   videoGen: DEFAULT_VIDEOGEN_SETTINGS,
   remoteControls: DEFAULT_REMOTE_CONTROLS,
-  projects: DEFAULT_PROJECTS_SETTINGS
+  projects: DEFAULT_PROJECTS_SETTINGS,
+  firmenprofil: DEFAULT_FIRMENPROFIL
 }

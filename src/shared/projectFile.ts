@@ -33,7 +33,7 @@ export const PROJECT_LIMITS = {
 } as const
 
 /** Abschnitte, die diese App schreiben kann. Andere bleiben beim Speichern unangetastet. */
-export const PROJECT_SECTION_KEYS = ['ledWall'] as const
+export const PROJECT_SECTION_KEYS = ['ledWall', 'anleitung'] as const
 export type ProjectSectionKey = (typeof PROJECT_SECTION_KEYS)[number]
 
 /** Anzeigenamen – auch für Abschnitte, die erst spätere Versionen schreiben. */
