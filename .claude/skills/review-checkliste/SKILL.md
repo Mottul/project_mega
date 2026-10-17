@@ -169,6 +169,12 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   Windows meldet sich an) und protokollrelative Adressen (`//host/x` wird bei einer Datei-Seite
   zu UNC). Eigene Partition mit Anfragefilter, Gegenprobe mit lokalem Spion-Server.
 - **URLs über 2 MB** (`data:`) lehnt Chromium ab – große Inhalte über eine temporäre Datei laden.
+- **Nummern im Text müssen zur Reihenfolge der Ausgabe passen.** Das Handbuch gab die
+  Fehlerfälle nach Bereich gruppiert aus, nummerierte sie aber nach der Liste – „6.“ stand vor
+  „2.“, und „weiter mit Fall 3“ suchte man vergeblich. Aufgefallen erst beim Ansehen des PDFs
+  (Skill `electron-e2e`, „PDF ansehen“); Test `seiten.test.ts` prüft die Reihenfolge.
+- **Stilwerte aus Einstellungen oder Dateien nie ungeprüft ins CSS** (Akzentfarbe als Hex prüfen,
+  sonst Vorgabe) – `red;}body{display:none` wäre sonst ein Stylesheet.
 
 ## Tests
 

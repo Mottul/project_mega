@@ -25,6 +25,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `projektdatei.mjs` | Projektdatei am LED-Wall-Konfigurator: Projektordner (Standard und eigener), Speichern unter im Projektordner, Punkt „ungespeichert“ und Fenstertitel, Strg+S, Bedienzustand bleibt sauber, Konflikt mit anderswo geänderter Datei (Rückfrage, Datei unverändert, dann Überschreiben), Neu mit Rückfrage, Öffnen, Schreiben nur in freigegebene Pfade |
 | `pdf.mjs` | PDF-Export über die Brücke: gut 4 MB HTML mit Fotos (die frühere `data:`-URL brach ab 2 MB mit `ERR_INVALID_URL` ab), A4 hoch/quer und A5 (MediaBox mit 2 pt Spiel), fremde Adressen werden nie angefragt (lokaler Spion-Server, Datei außerhalb im Debug-Log) |
 | `fotos.mjs` | Fotos für Projektdateien: Einfügen über den gestubbten Dialog (3000 × 1500 mit EXIF 6 → 1000 × 2000, Farben oben/unten im main gelesen, kein EXIF mehr), falsches Format, Anzeige über `foto://`, Speichern in die Datei und Zurückholen beim Öffnen, Einsetzen ins PDF |
+| `mini-manual.mjs` | Mini-Manual wie ein Nutzer: Werkzeug-Muster, Firmenprofil über den Dialog im App-Menü, Gerät mit Kurzname → Platzhalter in der Vorschau (Shadow DOM), Kontakt aus dem Profil (Prüfung meldet ihn nicht mehr), Fall aus der Bibliothek, Kurzkarte A5 genau eine Seite, Handbuch A4 ≥ 6 Seiten, Projektdatei mit Foto (Datei enthält `fotos/<hash>.jpg`, Abschnitt per `projects.peek`), LED-Wall derselben Datei übernehmen und „Planung geändert (Stand 1 → 2)“ mit Unterschieden |
 | `shutdown.mjs` | App mitten in Konverter-, Generator- und Vorschau-Läufen beenden: kein ffmpeg läuft weiter, keine halben Dateien, Beenden unter 10 s |
 | `video-generator.mjs` | Rechenlauf über die Brücke (Bilder/Samples exakt, Cache, Schleife, Abbrechen, Eingabeprüfung, Vorschau rechnen, Musik, Quelladressen), Oberfläche mit gestubbten Datei-/Speicherdialogen (Live-Vorschau, Ken-Burns-Rahmen, Bereichsregler, Musik-Panel) |
 
@@ -141,6 +142,17 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   öffnet ein eigenes Fenster und springt zurück zu `/`. Für „irgendein Werkzeug öffnen“ ein großes
   nehmen (Rauchtest: `/tool/media-info`).
 - `ELECTRON_RUN_AS_NODE` aus der Umgebung entfernt der Harness (sonst startet Electron als Node).
+- **Namen matchen als Teilstring:** `getByRole('cell', { name: 'Breite' })` trifft auch
+  „Auflösung (Breite)“, `/^Kapitel/` auch „Kapitel nach oben“ – `exact: true` oder ein genaues
+  Muster (`/^Kapitel \d+ von/`). Meldungen stehen oft doppelt (Hinweis im Inhalt und Prüfung in
+  der Schublade) – auf das gemeinte Element eingrenzen.
+- **Shadow DOM** (Vorschau des Mini-Manuals): Playwright-Locator gehen hinein, Text am
+  einfachsten über `el.shadowRoot.textContent` per `evaluate` (Beispiel `e2e/mini-manual.mjs`).
+- **Gepufferte Felder** (`LiveInput`, `TextArea`) übernehmen nach 250 ms Pause oder beim
+  Verlassen – nach `fill()` einmal `Tab`, dann prüfen.
+- **PDF ansehen statt nur zählen:** Im main ein `BrowserWindow` mit `webPreferences: { plugins:
+  true }` die PDF-Datei laden lassen, nach 2–3 s `capturePage()` – zeigt Chromiums Betrachter mit
+  der ersten Seite (so fiel die Reihenfolge der Fehlerfälle im Handbuch auf).
 
 ## Grenzen
 

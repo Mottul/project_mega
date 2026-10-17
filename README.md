@@ -59,6 +59,8 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 **⚡ Strom, Rigging & Aufbau**
 
 - **Packliste** – Material-Checkliste, aus der LED-Wall befüllbar, PDF-/JSON-Export.
+- **Mini-Manual** – Kurz-Anleitungen für die Leute vor Ort: Bedienung und Fehlersuche Schritt
+  für Schritt je Kenntnisstufe, Handbuch und Kurzkarte als PDF.
 - **Stromlast & Absicherung**, **Rigging-Last** – Stromkreise bzw. Auflager- und
   Bridle-Strangkräfte.
 

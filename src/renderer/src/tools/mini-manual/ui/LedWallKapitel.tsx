@@ -6,7 +6,9 @@ import { useState } from 'react'
 import { Download, GitCompare } from 'lucide-react'
 import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
+import { digest } from '@shared/projectFile'
 import { api } from '@renderer/lib/api'
+import { toast } from '@renderer/lib/toast'
 import { ledWallSection } from '../../led-wall/config'
 import { useLedWall } from '../../led-wall/store'
 import { kennzahlenAus, kopieAus, unterschiede } from '../ledWallKopie'
@@ -51,6 +53,14 @@ export function LedWallKapitel({ q }: { q: LedWallQuelle }): JSX.Element {
         confirmLabel: 'Trotzdem übernehmen'
       })
       if (!ok) return
+      // Rückfragen sperren nur dieses Fenster: Hat ein anderes die Planung inzwischen geändert,
+      // gilt die Zustimmung nicht für den neuen Stand (review-checkliste, „Zustand nach await“)
+      if (digest(ledWallSection(useLedWall.getState())) !== digest(data)) {
+        toast.warning(
+          'Die Planung im Konfigurator hat sich inzwischen geändert – bitte noch einmal.'
+        )
+        return
+      }
     }
     update((a) => ({ ...a, ledWall: kopieAus(data, null) }))
   }

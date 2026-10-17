@@ -27,7 +27,10 @@ interface MiniManualState {
 export function migrateMiniManual(persisted: unknown): Pick<MiniManualState, 'anleitung' | 'file'> {
   const p = persisted && typeof persisted === 'object' ? (persisted as Record<string, unknown>) : {}
   return {
-    anleitung: p.anleitung ? sanitizeAnleitung(p.anleitung) : neueAnleitung(),
+    anleitung:
+      p.anleitung && typeof p.anleitung === 'object'
+        ? sanitizeAnleitung(p.anleitung)
+        : neueAnleitung(),
     file: sanitizeBinding(p.file)
   }
 }

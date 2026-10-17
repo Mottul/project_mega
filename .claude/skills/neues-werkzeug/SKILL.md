@@ -40,7 +40,8 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `TWO_COLUMNS`) in `e2e/layout.mjs` aufnehmen – geprüft werden Höhe, 320 px ohne
      Querscrollen und Kompaktmodus.
    - Bausteine aus `components/ui`, Eingabefelder mit Puffer (`useDraft`, `TextField`,
-     `NumberField`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten
+     `NumberField`; für Inhalte, die leer sein dürfen und eine Vorschau live mitziehen sollen,
+     `TextArea`/`LiveInput` aus `components/ui/textarea`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten
      Zeilen – nie ein rohes `<select>` mit eigenen Klassen), Farben nur über Tailwind-Tokens
      (`primary`, `border` …; Rot ist „live“).
      Texte deutsch.
@@ -66,7 +67,11 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      einer gesperrten Partition (`services/pdf/htmlToPdf.ts`): keine externen Schriften, Bilder
      oder Stylesheets, sie werden nicht geladen. Bilder als `data:` einbetten oder als Foto der
      Projektdatei (`fotoUrl(hash)` aus `shared/fotos.ts`, der main setzt es ein). Fotos einfügen
-     über `api.fotos.pick()`, nie als Bytes in einen Store (Skill `projektdatei`).
+     über `api.fotos.pick()`, nie als Bytes in einen Store (Skill `projektdatei`). Eine
+     **Vorschau** derselben Seite im Werkzeug: Shadow DOM statt iframe (eigene Styles, die
+     App-CSP gilt weiter), verkleinert per `zoom` auf die Breite – Muster
+     `tools/mini-manual/ui/Vorschau.tsx`. Seitenbauer rein halten (Vorbild
+     `tools/mini-manual/seiten.ts`, getestet ohne Electron).
    - **Zeichnen auf Canvas:** Farben aus den Design-Tokens lesen, nie fest (Muster `readTheme`
      in `tools/rta/draw.ts`: CSS-Variablen „H S% L%“ -> `hsl(…)`, neu bei Änderungen an
      `class`/`style` von `<html>`). Farbskalen über Akzent und Schrift, nicht über

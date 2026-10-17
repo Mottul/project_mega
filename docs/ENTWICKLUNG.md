@@ -186,9 +186,11 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
 | Was | Wo | Wie |
 | --- | --- | --- |
 | **Einstellungen** – alles, was der Hauptprozess führt oder braucht und was ein Neustart nie verlieren darf: Pfade und Zielordner, Ausgabe und Geräte (Monitor, NDI, Ports, Fernsteuerungen), Player- und Timer-Ablauf | `settings.json` (`services/store.ts`) | im Renderer `useSettings(auswahl)` + `updateSettings(teiländerung)` aus `@renderer/lib/settings`; im main `getSettings`/`setSettings` |
-| **Arbeitsdaten eines Werkzeugs**, die nur im Renderer leben: OSC-Projekte, Jingle-Bänke, LED-Wand-Planungen, Packlisten … | zustand-Store je Werkzeug | `persist` mit `debouncedStorage()`, `version` + `migrate`, `syncAcrossWindows(store)` |
+| **Arbeitsdaten eines Werkzeugs**, die nur im Renderer leben: OSC-Projekte, Jingle-Bänke, LED-Wand-Planungen, Packlisten, Anleitungen … | zustand-Store je Werkzeug | `persist` mit `debouncedStorage()`, `version` + `migrate`, `syncAcrossWindows(store)` |
 | **Bedien-Kleinigkeiten** pro Rechner, deren Verlust nicht weh tut: aufgeklappte Panels, Vorschau an/aus, FPS-Anzeige | localStorage | `usePersistentState(key, vorgabe, codec)` aus `@renderer/lib/usePersistentState` |
-| **Dateien des Nutzers** – eine Planung zum Weitergeben oder Ablegen (heute LED-Wall) | Projektdatei `.mottul` (ZIP, ein Abschnitt je Werkzeug), ab Werk im Projektordner | `useProjectFile(optionen)` aus `@renderer/lib/projectFile` + `ProjectFileMenu` in der Leiste; im main `services/projects/`. Arbeitsstand bleibt im Store, die Bindung liegt daneben (Skill `projektdatei`) |
+| **Dateien des Nutzers** – eine Planung zum Weitergeben oder Ablegen (heute LED-Wall und Anleitung des Mini-Manuals) | Projektdatei `.mottul` (ZIP, ein Abschnitt je Werkzeug), ab Werk im Projektordner | `useProjectFile(optionen)` aus `@renderer/lib/projectFile` + `ProjectFileMenu` in der Leiste; im main `services/projects/`. Arbeitsstand bleibt im Store, die Bindung liegt daneben (Skill `projektdatei`) |
+| **Fotos** zu Projektdateien (und das Logo des Firmenprofils) | `userData/Projektfotos/<sha256>` im main | `api.fotos.pick()`, Anzeige `fotoUrl(hash)` (`shared/fotos.ts`); im Store und in der Datei nur der Hash |
+| **Eigene Bausteine** des Mini-Manuals | `userData/Bausteine/<id>.json` im main (eine Datei je Baustein) | `api.bausteine.list/save/remove`; Inhalt prüft das Werkzeug |
 
 Dazu gilt:
 
