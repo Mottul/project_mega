@@ -1124,6 +1124,19 @@ export interface NotifyOptions {
 export interface PdfPageOptions {
   pageSize?: 'A4' | 'A5' // Vorgabe A4; A5 für die Kurzkarte des Mini-Manuals
   landscape?: boolean
+  /** Fußzeile (Text) – main setzt „Seite x von y“ dazu */
+  footer?: string
+  /** auf genau eine Seite einpassen (verkleinert bis 60 %) – Kurzkarte */
+  onePage?: boolean
+}
+
+/** Ergebnis eines PDF-Exports; null = abgebrochen */
+export interface PdfExportResult {
+  path: string
+  /** Seiten des fertigen PDFs */
+  pages: number
+  /** benutzter Maßstab (1 = 100 %) */
+  scale: number
 }
 
 /* ------------------------------- Jingles -------------------------------- */
@@ -1690,6 +1703,21 @@ export interface FirmenProfil {
 
 /** Gelb der bestehenden PDFs (LED-Wall-Doku, Packliste) */
 export const DEFAULT_AKZENT = '#eab308'
+
+/** Eigener Baustein des Mini-Manuals (eine JSON-Datei je Baustein, shared/bausteine.ts) */
+export interface EigenerBaustein {
+  id: string
+  /** Blöcke für ein Kapitel oder ein Fehlerfall */
+  art: 'bloecke' | 'fall'
+  titel: string
+  /** Kapitel-Kennung bei Blöcken */
+  kapitel: string
+  /** Inhalt – prüft das Werkzeug (tools/mini-manual/sanitize.ts) */
+  daten: unknown
+  geaendertAm: string
+  geaendertVon: string
+  version: number
+}
 
 export const DEFAULT_FIRMENPROFIL: FirmenProfil = {
   name: '',

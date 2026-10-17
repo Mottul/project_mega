@@ -174,6 +174,12 @@ const api: ToolboxApi = {
     pick: () => ipcRenderer.invoke(Channels.fotosPick)
   },
 
+  bausteine: {
+    list: () => ipcRenderer.invoke(Channels.bausteineList),
+    save: (b) => ipcRenderer.invoke(Channels.bausteineSave, b),
+    remove: (id) => ipcRenderer.invoke(Channels.bausteineRemove, id)
+  },
+
   jingles: {
     import: (paths) => ipcRenderer.invoke(Channels.jingleImport, paths),
     cleanup: (keep) => ipcRenderer.invoke(Channels.jingleCleanup, keep),

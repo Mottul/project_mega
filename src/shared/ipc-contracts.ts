@@ -13,7 +13,9 @@ import type {
   ProjectSaveTarget,
   ProjectsDirInfo,
   NotifyOptions,
+  EigenerBaustein,
   FotoImport,
+  PdfExportResult,
   PdfPageOptions,
   ConvertJob,
   DisplayInfo,
@@ -216,6 +218,10 @@ export const Channels = {
   projectsSave: 'projects:save',
   // Fotos der Projektdateien (Hashes, Anzeige über foto://)
   fotosPick: 'fotos:pick',
+  // eigene Bausteine des Mini-Manuals (userData/Bausteine)
+  bausteineList: 'bausteine:list',
+  bausteineSave: 'bausteine:save',
+  bausteineRemove: 'bausteine:remove',
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
@@ -494,7 +500,11 @@ export interface ToolboxApi {
   util: {
     /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF, services/pdf).
      *  Liefert den gewählten Pfad oder null (abgebrochen). */
-    exportPdf(html: string, suggestedName: string, page?: PdfPageOptions): Promise<string | null>
+    exportPdf(
+      html: string,
+      suggestedName: string,
+      page?: PdfPageOptions
+    ): Promise<PdfExportResult | null>
     /** Text (z.B. JSON) über einen Speichern-Dialog in eine Datei schreiben.
      *  Liefert den gewählten Pfad oder null (abgebrochen). Ohne filters: JSON. */
     saveText(
@@ -531,6 +541,16 @@ export interface ToolboxApi {
   fotos: {
     /** Bilder über den Dialog einfügen (JPG/PNG, mehrere); null = abgebrochen. */
     pick(): Promise<FotoImport[] | null>
+  }
+
+  /** Eigene Bausteine des Mini-Manuals: eine Datei je Baustein, später im geteilten Ordner. */
+  bausteine: {
+    list(): Promise<EigenerBaustein[]>
+    /** anlegen oder ersetzen (gleiche id); main setzt Zeit, Bearbeiter und Version */
+    save(
+      b: Pick<EigenerBaustein, 'id' | 'art' | 'titel' | 'kapitel' | 'daten'>
+    ): Promise<EigenerBaustein | null>
+    remove(id: string): Promise<boolean>
   }
 
   jingles: {

@@ -17,6 +17,7 @@ import { app, BrowserWindow, session } from 'electron'
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fotoHashesIn, replaceFotoUrls } from '@shared/fotos'
+import { esc } from '@shared/html'
 import type { PdfPageOptions } from '@shared/types'
 import { findFoto } from '../fotos/fotoStore'
 import { logLine } from '../log'
@@ -55,7 +56,30 @@ async function withFotos(html: string, dir: string): Promise<string> {
   return replaceFotoUrls(html, (hash) => rel.get(hash) ?? null)
 }
 
-export async function htmlToPdf(html: string, page: PdfPageOptions = {}): Promise<Buffer> {
+/**
+ * Seiten eines PDFs aus Chromium zählen. Dessen Skia-Ausgabe schreibt jedes Seitenobjekt
+ * unkomprimiert mit „/Type /Page“ – für fremde PDFs taugt das nicht (dafür pdfjs).
+ */
+export function chromiumPdfPages(pdf: Uint8Array): number {
+  return (
+    Buffer.from(pdf)
+      .toString('latin1')
+      .match(/\/Type\s*\/Page(?!s)/g) ?? []
+  ).length
+}
+
+/** Maßstäbe beim Einpassen auf eine Seite: printToPDF kann nicht „einpassen“, also probieren */
+const EINE_SEITE = [1, 0.93, 0.86, 0.8, 0.74, 0.68, 0.62]
+
+/** Fußzeile: Text links, Seitenzahlen rechts (Chromium füllt pageNumber/totalPages) */
+function footerTemplate(text: string): string {
+  return `<div style="font-family:'Segoe UI',system-ui,sans-serif;font-size:8px;color:#777;width:100%;padding:0 0.4in;display:flex;justify-content:space-between"><span>${esc(text)}</span><span>Seite <span class="pageNumber"></span> von <span class="totalPages"></span></span></div>`
+}
+
+export async function htmlToPdf(
+  html: string,
+  page: PdfPageOptions = {}
+): Promise<{ pdf: Buffer; pages: number; scale: number }> {
   installRequestFilter()
   const dir = await mkdtemp(join(app.getPath('temp'), 'mottulbox-pdf-'))
   activeDirs.add(dir)
@@ -73,12 +97,34 @@ export async function htmlToPdf(html: string, page: PdfPageOptions = {}): Promis
     const file = join(dir, 'seite.html')
     await writeFile(file, await withFotos(html, dir), 'utf8')
     await win.loadFile(file)
-    return await win.webContents.printToPDF({
-      printBackground: true,
-      pageSize: page.pageSize ?? 'A4',
-      landscape: page.landscape ?? false,
-      margins: { top: 0.4, bottom: 0.4, left: 0.4, right: 0.4 }
-    })
+    const footer = page.footer?.trim()
+    const print = (scale: number): Promise<Buffer> =>
+      win.webContents.printToPDF({
+        printBackground: true,
+        pageSize: page.pageSize ?? 'A4',
+        landscape: page.landscape ?? false,
+        scale,
+        margins: { top: 0.4, bottom: footer ? 0.6 : 0.4, left: 0.4, right: 0.4 },
+        ...(footer
+          ? {
+              displayHeaderFooter: true,
+              headerTemplate: '<span></span>',
+              footerTemplate: footerTemplate(footer)
+            }
+          : {})
+      })
+    let out: { pdf: Buffer; pages: number; scale: number } = {
+      pdf: Buffer.alloc(0),
+      pages: 0,
+      scale: 1
+    }
+    for (const scale of page.onePage ? EINE_SEITE : [1]) {
+      const pdf = await print(scale)
+      out = { pdf, pages: chromiumPdfPages(pdf), scale }
+      if (out.pages <= 1) break
+    }
+    if (page.onePage && out.pages > 1) logLine('[pdf] passt nicht auf eine Seite:', out.pages)
+    return out
   } finally {
     if (!win.isDestroyed()) win.destroy()
     activeDirs.delete(dir)

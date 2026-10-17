@@ -12,7 +12,12 @@ import { htmlToPdf } from '../services/pdf/htmlToPdf'
 /** Seitenangaben vom Renderer feldweise übernehmen; Unbekanntes fällt auf A4 hoch zurück. */
 function pageOptions(raw: unknown): PdfPageOptions {
   const p = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
-  return { pageSize: p.pageSize === 'A5' ? 'A5' : 'A4', landscape: p.landscape === true }
+  return {
+    pageSize: p.pageSize === 'A5' ? 'A5' : 'A4',
+    landscape: p.landscape === true,
+    footer: typeof p.footer === 'string' ? p.footer.slice(0, 300) : undefined,
+    onePage: p.onePage === true
+  }
 }
 
 export function registerUtilHandlers(): void {
@@ -78,10 +83,10 @@ export function registerUtilHandlers(): void {
       const res = await showSaveDialog(parent, opts)
       if (res.canceled || !res.filePath) return null
 
-      const pdf = await htmlToPdf(html, pageOptions(page))
+      const { pdf, pages, scale } = await htmlToPdf(html, pageOptions(page))
       await writeFile(res.filePath, pdf)
-      logLine('[pdf] exportiert ->', res.filePath, `${pdf.byteLength} bytes`)
-      return res.filePath
+      logLine('[pdf] exportiert ->', res.filePath, `${pdf.byteLength} bytes, ${pages} Seiten`)
+      return { path: res.filePath, pages, scale }
     }
   )
 }

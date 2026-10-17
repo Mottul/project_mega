@@ -154,7 +154,7 @@ try {
           ([h, n]) => window.api.util.exportPdf(h, n),
           [html(hash), 'fotos.pdf']
         )
-        assert.equal(res, pdfFile)
+        assert.equal(res?.path, pdfFile)
         const fotoBytes = readFileSync(join(fotoDir, `${hash}.jpg`)).length
         assert.ok(
           readFileSync(pdfFile).length > fotoBytes * 0.8,

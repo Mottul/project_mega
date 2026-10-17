@@ -4,6 +4,7 @@
 import { api } from '@renderer/lib/api'
 import { APP_NAME } from '@shared/brand'
 import { esc } from '@shared/html'
+import type { PdfExportResult } from '@shared/types'
 import { PWR_COLORS, SIG_COLORS, type LedModule } from './data'
 import type { Fit169 } from './math'
 
@@ -82,7 +83,7 @@ function legend(assign: number[][], colors: string[], prefix: string): string {
     .join('')
 }
 
-export async function exportLedWallPdf(d: PrintData): Promise<string | null> {
+export async function exportLedWallPdf(d: PrintData): Promise<PdfExportResult | null> {
   const dt = new Date().toLocaleDateString('de-AT')
   const pn = esc(d.projectName)
   const cn = esc(d.customerName)
