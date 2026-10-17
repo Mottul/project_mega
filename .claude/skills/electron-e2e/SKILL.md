@@ -57,6 +57,10 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   Leiste und Schublade dann oft noch nicht nachgezogen (rot bei #153: Schublade noch da, Knopf
   „PDF exportieren“ noch nicht da). `expectCount(locator, n, was)` / `expectAttr(…)` in
   `e2e/layout.mjs` warten bis 5 s; sonst `assert.ok(await waitFor(…))` mit Trefferzahl in der Meldung.
+  Ebenso **Zustand, den ein anderer Teil nachmeldet**: Der Stand der OSC-Fernsteuerung
+  (`api/state`) kommt erst nach dem OSC-Paket vom Renderer zurück – einmal gelesen stand die
+  Auswahl in der macOS-CI noch auf 0 (17.10.2026, `e2e/osc.mjs`). Ein Ereignis abwarten heißt
+  nicht, dass alles danach Gemeldete schon da ist.
 - **Native Dialoge ersetzen** (`api.confirm` → `dialog.showMessageBox` im main): Stub per
   `app.evaluate`; mit `holdConfirm` bleibt er offen, bis man ihn beantwortet.
 - **Einstellungs-Broadcast erreicht das auslösende Fenster nicht.** „Ein anderes Fenster

@@ -30,9 +30,10 @@ Noch offen aus Phase 1 (klein, bei Bedarf): Bausteine der Bibliothek „aktualis
 Version neuer ist (die Herkunft mit Version steht schon in jeder Kopie); Vorschläge nach
 Stichworten (heute zeigt die Auswahl alle Bausteine des Kapitels); Aufräumen des Foto-Speichers.
 
-**Nächster Schritt: Phase 2** – [mehrere Wände je Datei](#mehrere-wände-je-datei) und der
-[Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator), nur von Hand gezeichnet (Festlegungen
-24–28). Vorher die [offenen Fragen 7–10](#offene-fragen) klären.
+**Nächster Schritt: Phase 2a** – [mehrere Wände je Datei](#mehrere-wände-je-datei), danach 2b
+der [Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator), nur von Hand gezeichnet (Festlegungen
+24–34). Die Fragen 7–10 sind geklärt, die Handbücher der Prozessoren und der CVT10 ausgewertet;
+offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)), die Phase 2a nicht aufhalten.
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.
 
@@ -133,7 +134,8 @@ Aus der Rücksprache vom 17. Oktober 2026 (nach dem ersten Test von Phase 1):
     füllt Modul, ganze Reihe oder Spalte), dazu je Kette den **Startpunkt** angeben – oder die
     Kette mit der Maus **zeichnen**. Ersetzt die Einspeisepunkte aus Festlegung 15 und 21; die
     offene Frage 6 entfällt.
-25. **Signal und Strom in einer Ansicht**, wenn der Platz reicht – sonst getrennt.
+25. **Signal und Strom** nebeneinander, wenn der Platz reicht, sonst umschaltbar wie heute – kein
+    gemeinsames Raster (wäre unübersichtlich; Festlegung 30).
 26. **Ansicht von vorne und von hinten** umschaltbar (bestätigt Festlegung 12).
 27. **Backup-Leitung:** Ist sie an, trägt das letzte Modul jeder Datenkette ein „B“, und die
     zusätzlichen Ports zählen in der Rechnung mit (bestätigt Festlegung 21).
@@ -141,6 +143,26 @@ Aus der Rücksprache vom 17. Oktober 2026 (nach dem ersten Test von Phase 1):
     Box und das LWL-Kabel dazu; die Fehlersuche zeigt die Glasfaser-Schritte nur dann.
 29. **Mehrere LED-Wände je Projekt** (Wunsch aus der Praxis: ein Laptop bespielt zwei kleine
     Wände). Braucht Querverweise – welcher Zuspieler und welcher Prozessor bespielen welche Wand.
+
+Aus der Rücksprache vom 17. Oktober 2026 (Abend, mit den Handbüchern von NovaPro UHD Jr V1.5.2,
+VX4/VX4S Rev 1.1.2, Tessera V3.5 Rev D, CVT10 V1.3.6 und der Kapazitäts-Tabelle der
+Empfangskarte A10s Pro):
+
+30. **Signal und Strom nicht in einem Raster** – nebeneinander oder umschaltbar wie heute.
+31. **Prozessor je Wand ist die Regel.** Zwei Wände **desselben Typs** können sich einen Prozessor
+    teilen (verschiedene Ports); Wände verschiedener Typen (z. B. 496 und uS2+) brauchen ohnehin
+    verschiedene Prozessoren.
+32. **Zuspieler:** je Wand ein eigener Ausgang (wenn vorhanden und die Leistung reicht), **ein
+    Ausgang über einen HDMI-Splitter** (beide Wände zeigen dasselbe) oder **ein Ausgang mit einem
+    Gesamtbild**, aus dem jeder Prozessor seinen Ausschnitt nimmt.
+33. **Glasfaser mit UHD Jr und CVT10:** Am 10G-Ausgang des UHD Jr (8b/10b) nutzt eine CVT10 nur
+    ihre Ports 1–8. OPT1 trägt die Ports 1–8 des Prozessors, OPT2 die Ports 9–16; OPT3/OPT4 sind
+    Kopie bzw. Hot-Backup von OPT1/OPT2. Mit vier Glasfaser-Ausgängen heißt das je Gruppe von
+    acht Ports **entweder** die Glasfaser redundant (zweite Faser in OPT2 derselben CVT10)
+    **oder** mit einer zweiten CVT10 die Kettenenden als Backup speisen (Hot-Backup, deckt auch
+    Faser und Box ab) – nicht beides.
+34. **Reihenfolge:** zuerst mehrere Wände (im Konfigurator mehrere Wände anlegen, Packliste je
+    Wand), dann der Kabelverlauf.
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
 
@@ -854,49 +876,76 @@ angegeben (Festlegung 24), mit zwei Wegen:
   Plan nur ein gestricheltes „B“ am letzten Modul (die Leitung selbst wird wie die Zuleitung
   nicht gezeichnet), der Port steht in der Liste neben dem Plan; zählt bei den belegten Ports
   mit; im Fehlerkatalog ändert sie die Symptome (Fälle 1 und 14). Die Packliste zählt die
-  Backup-Kabel mit.
+  Backup-Kabel mit. Je Prozessor unterschiedlich (Handbücher):
+  - **NovaStar:** Der Backup-Port ist ein eigener Port des Prozessors bzw. der CVT10 und zählt
+    voll mit (VX4S: 2 Ketten mit Backup belegen alle 4 Ports). Mit Glasfaser siehe Festlegung 33.
+  - **Brompton Tessera:** „Closed Loop Redundancy“ nur über Portpaare – laut Handbuch 1 → 2 und
+    3 → 4 ([Frage 12](#offene-fragen) für 5 → 6, 7 → 8 am S8). Die Last eines Paares zählt wie
+    die einer Kette, aber die Gesamtlast des Prozessors verdoppelt sich (halbe
+    Gesamtkapazität); höchstens 50 Module je Kette.
 - **Port** je Signalkette und Backup (Vorgabe „Port n“ bzw. die nächsten freien Ports),
   **Stromkreis** und **Phase** je Stromkette (z. B. „F3 · L2“), Netz `230 V / 16 A` einstellbar
   (heute 230 V fest in `led-wall/compute.ts`).
 - **Prozessor** aus den Vorgaben wählen (je Modul vorbelegt), dazu Farbtiefe und Bildrate:
 
-  | Prozessor | im Bestand für | Gigabit-Ports | je Port (8 bit, 60 Hz) | gesamt |
+  | Prozessor | im Bestand für | Gigabit-Ports | je Port (Prozessor-Grenze) | gesamt |
   |---|---|---|---|---|
-  | NovaStar NovaPro UHD Jr | 496-2,0, rX3ioBF | 16 (dazu Glasfaser) | 650.000 px | rund 10,4 Mio. px |
-  | NovaStar VX4S | 496-2,0, rX3ioBF (kleinere Wände) | 4 | 650.000 px | 2,3 Mio. px |
-  | Brompton Tessera S8 | uS2+ | 8 | 525.000 px | laut Datenblatt |
+  | NovaStar NovaPro UHD Jr | 496-2,0, rX3ioBF | 16 Neutrik; dazu 4 × 10G optisch (OPT1 = Ports 1–8, OPT2 = 9–16, OPT3/4 Kopie oder Hot-Backup) | 650.000 px (8 bit), 320.000 px (10/12 bit) | 10,4 Mio. px; höchstens 16.384 px breit, 8.192 hoch |
+  | NovaStar VX4S | 496-2,0, rX3ioBF (kleinere Wände) | 4 | 650.000 px (Richtwert) | 2,3 Mio. px (Herstellerangabe; das Handbuch nennt nur höchstens 3.840 px breit, 1.920 hoch) |
+  | Brompton Tessera S8 | uS2+ | 8 EtherCON | 525.000 / 420.000 / 350.000 px (8/10/12 bpc, 60 Hz) | 4,5 Mio. px (nominal) |
   | frei | – | eintragen | eintragen | eintragen |
 
-  Port-Zahlen und Gesamtwerte sind Richtwerte und werden beim Einbau mit den Datenblättern
-  abgeglichen. Das erledigt zugleich den Roadmap-Punkt „Prozessor-Presets“.
+  Werte aus den Handbüchern (17.10.2026). Sonderfälle nur als Hinweis: UHD Jr mit HDR oder 3D
+  halbe Kapazität, mit „Low Latency“ höchstens 512 px Breite je Port; Tessera mit „Ultra Low
+  Latency“ halbe Kapazität. Das erledigt zugleich den Roadmap-Punkt „Prozessor-Presets“.
+- **Breakout-Box NovaStar CVT10** (Handbuch V1.3.6): 2 × 10G optisch (OPT1 Haupt, OPT2 Backup),
+  10 × Gigabit-Ethernet – an 10G-Ports mit 8b/10b (UHD Jr) nur Ports 1–8, an 10,3125G (64b/66b)
+  alle 10. Variante **S** (Singlemode, OS1/OS2, LC, bis 10 km) oder **M** (Multimode, OM3/OM4,
+  LC, bis 300 m). PowerCON, 100–240 V, 18 W; halbe 19″-Breite, 1 HE, 2,1 kg.
 - **Ansicht vorne/hinten** umschaltbar in den Reitern Signal und Strom und im PDF. Die Ansicht von
   hinten ist gespiegelt und groß beschriftet („Ansicht von hinten“, Seite „Publikum“ markiert);
   Spalten- und Kettennummern bleiben am Modul.
-- **Signal und Strom in einer Ansicht**, wenn der Platz reicht (Festlegung 25) – sonst wie heute
-  getrennt. Wie genau, klärt [Frage 7](#offene-fragen).
-- **Breakout-Box** je Wand (Festlegung 28): Schalter „Glasfaser-Strecke mit Breakout-Box“, Modell
-  (Vorgabe NovaStar CVT10), Länge des LWL-Kabels von Hand. Die Packliste nimmt Box, LWL-Kabel und
-  das Stromkabel der Box dazu; die LED-Wall-Kopie im Mini-Manual trägt den Schalter mit, und die
-  Fehlersuche zeigt die Glasfaser-Schritte (Fall „Die ganze Wand ist dunkel“) nur dann.
+- **Signal und Strom nebeneinander** (Festlegung 25/30): am Bildschirm eine dritte Wahl neben den
+  Reitern Signal und Strom, wenn das Fenster breit genug ist; im PDF beide Pläne auf einer Seite,
+  wenn die Module dabei lesbar groß bleiben, sonst je eine Seite. Nie beide in einem Raster.
+- **Glasfaser-Strecke** je Wand (Festlegung 28/33): Schalter „mit Breakout-Box (CVT10)“, Variante
+  S/M, Länge der Faser von Hand, dazu die Redundanz der Strecke:
+  - **keine** – je Gruppe von 8 Ports eine Faser und eine CVT10;
+  - **Faser redundant** – zweite Faser von OPT3/OPT4 in OPT2 derselben CVT10;
+  - **Hot-Backup** – zweite Faser zu einer zweiten CVT10, deren Ports die Kettenenden speisen
+    (schließt die Backup-Leitungen der Ketten ein).
+
+  Die Ketten verteilen sich auf die Gruppen (Ports 1–8 → CVT10 A, 9–16 → CVT10 B); mehr als
+  8 Ports je Box warnt. Die Packliste nimmt Boxen, Fasern (Typ aus der Variante, Länge), je Box
+  ein PowerCON-Stromkabel und die Patchkabel Box → Wand dazu. Die LED-Wall-Kopie im Mini-Manual
+  trägt die Strecke mit, und die Fehlersuche zeigt die Glasfaser-Schritte (Fall „Die ganze Wand
+  ist dunkel“) nur dann.
 - **Pfeile** in Kettenfarbe am Bildschirm und im PDF, Start mit Ketten-Marke (S1, P1) und
   Port/Kreis in der Liste daneben,
   Sprünge zwischen nicht benachbarten Modulen gestrichelt („lange Brücke“). Bei kleinen Zellen
   nur Pfeile an Richtungswechseln. Gelbe Kettenfarbe im Ausdruck auf Lesbarkeit prüfen.
 - **Warnungen** (als `Alert`/`STATUS`, keine Sperre):
-  - **Pixel je Signalkette über der Port-Kapazität.** Je Gigabit-Port bei 8 bit/60 Hz: NovaStar
-    neuere Geräte 659.722 px (Formel aus dem Datenblatt: Pixel × Bit je Pixel × Bildrate <
-    0,95 Gbit/s), ältere (MCTRL660, VX1000) pauschal 650.000 px; Brompton Tessera 525.000 px.
-    10 bit, 12 bit und höhere Bildraten senken die Grenze (z. B. Brompton 10 bit: 420.000,
-    NovaStar 10 bit: 494.791 bzw. 329.861). Vorgabe: Prozessor-Familie + Farbtiefe + Bildrate
-    wählen, Wert daraus rechnen (Roadmap-Punkt „Prozessor-Presets“).
+  - **Pixel je Signalkette über der Port-Kapazität.** Grenze je Port = der **kleinere** Wert aus
+    Prozessor-Grenze (Tabelle oben) und Empfangskarte:
+    - **NovaStar A10s Pro** (496-2,0; Tabelle von Matthias): Pixel × B × Bildrate <
+      0,95 · 10⁹ mit B = 24 (8 bit), 32 (10 bit), 48 (12 bit) – bei 60 Hz 659.722 / 494.792 /
+      329.861 px, bei 50 Hz 791.667 / 593.750, bei 120 Hz 329.861 / 247.396. Mit dem UHD Jr
+      bleibt es also bis 60 Hz bei dessen 650.000 bzw. 320.000 px, darüber bestimmt die Karte.
+    - **Brompton Tessera** (Tabelle der 1G-Ausgänge im Handbuch, gilt für S8 und uS2+ mit R2+):
+      Pixel × Bildrate ≤
+      31,5 Mio. (8 bpc), 25,2 Mio. (10 bpc), 21 Mio. (12 bpc) – bei 60 Hz 525.000 / 420.000 /
+      350.000 px, bei 50 Hz 630.000 / 504.000 / 420.000.
 
-    | Modul | Pixel | Module je Port: NovaStar 659.722 | Brompton 525.000 / 420.000 (10 bit) |
-    |---|---|---|---|
-    | 496-2,0 | 57.600 | 11 | 9 / 7 |
-    | uS2+ | 36.864 | 17 | 14 / 11 |
-    | rX3ioBF | 16.384 | 40 | 32 / 25 |
+    Vorgabe: Prozessor wählen, Farbtiefe und Bildrate einstellen, Wert daraus rechnen
+    (Roadmap-Punkt „Prozessor-Presets“).
 
-    Beispiel: 40 × 496-2,0 (2.304.000 px) brauchen mindestens 4 Ports.
+    | Modul | Pixel | Module je Port bei 60 Hz, 8 / 10 bit |
+    |---|---|---|
+    | 496-2,0 (UHD Jr, A10s Pro) | 57.600 | 11 / 5 |
+    | uS2+ (Tessera S8) | 36.864 | 14 / 11 |
+    | rX3ioBF (UHD Jr, Karte offen – Frage 13) | 16.384 | 39 / 19 |
+
+    Beispiel: 40 × 496-2,0 (2.304.000 px) brauchen bei 8 bit mindestens 4 Ports, bei 10 bit 8.
   - **Strom je Stromkette über der Absicherung** (16 A bei 230 V ≙ 20 Module zu 180 W bei
     `powerMax`), optional „höchstens n Module je Stromschleife“ laut Hersteller. Hinweis auf den
     Einschaltstrom (B-Charakteristik, gestaffelt einschalten).
@@ -926,12 +975,14 @@ interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2
 //   mains: { voltage: number; breakerA: number }
 //   processor: { model: 'novapro-uhd-jr' | 'vx4s' | 'tessera-s8' | 'frei'; bitDepth: 8 | 10 | 12;
 //                hz: number; ports?: number; portPx?: number; totalPx?: number } // ?-Felder nur bei 'frei'
-//   breakout: { model: 'cvt10'; fiberM?: number } | null // neu (Festlegung 28), ab Werk null
-// Bedienzustand, NICHT im Datei-Abschnitt: planView ('front' | 'rear'), sigChain/pwrChain, pdfLandscape
+//   fiber: { box: 'cvt10'; variant: 'S' | 'M'; redundancy: 'none' | 'fiber' | 'hot-backup';
+//            lengthM?: number } | null // neu (Festlegung 28/33), ab Werk null
+// Bedienzustand, NICHT im Datei-Abschnitt: planView ('front' | 'rear' | 'beide'), sigChain/pwrChain, pdfLandscape
 ```
 
-`breakout` ist ein zusätzliches Feld mit Vorgabe – `sanitizeLedWallConfig` füllt es auf, eine neue
-Version braucht es dafür nicht.
+`fiber` ist ein zusätzliches Feld mit Vorgabe – `sanitizeLedWallConfig` füllt es auf, eine neue
+Version braucht es dafür nicht. Mehrere Wände bringen Version 3 (siehe unten); `fiber` kann
+gleich dort mitkommen.
 
 - **Stammdaten** in `led-wall/data.ts`: IMs je Modul und Anordnung (496-2,0 und rX3ioBF: 4 als
   2 × 2; uS2+: 2 übereinander), IM-Tausch (Stufe und Hinweis: „werkzeuglos, von vorne oder
@@ -971,17 +1022,28 @@ in dieselbe Projektdatei, und die Anleitung muss sagen, was wohin geht.
 - **Konfigurator:** Wand-Wahl in der Leiste (Hinzufügen, Duplizieren, Umbenennen, Entfernen);
   alles andere – Raster, Kabelverlauf, Prozessor, PDF – gilt für die gewählte Wand. Das PDF kann
   eine oder alle Wände enthalten.
-- **Prozessor:** je Wand gewählt. Teilen sich zwei Wände einen Prozessor (verschiedene Ports),
-  zählen Ports und Kapazität gemeinsam – siehe [Frage 8](#offene-fragen).
-- **Packliste:** Summe über alle Wände, aufgeschlüsselt je Wand.
+- **Prozessor:** je Wand gewählt (Regel, Festlegung 31). Wahl „wie Wand 1“ für eine Wand
+  **desselben Moduls**: Dann teilen sie sich den Prozessor, Ports werden fortlaufend vergeben
+  (Wand 2 beginnt hinter Wand 1), Port- und Gesamtkapazität zählen gemeinsam, und die
+  Glasfaser-Strecke gehört zum Prozessor, nicht zur Wand.
+- **Packliste:** je Wand ein Abschnitt (Module, Kabel, Rigging), gemeinsam genutzte Prozessoren
+  und Glasfaser-Strecken nur einmal; dazu die Summe.
+- **Zuspieler und Signalweg** (Festlegung 32) stehen im Mini-Manual, nicht im Konfigurator – der
+  kennt nur die Wand und ihren Prozessor.
 - **Mini-Manual:**
   - Die LED-Wall-Kopie wird eine Liste (je Wand Kennzahlen, Pläne, Quelle mit `rev`/`sha`).
   - Kapitel LED-Wand je Wand ein Abschnitt; Fehlerfälle gelten für die Module aller Wände.
   - Platzhalter: `{wand.…}` bleibt die erste Wand, dazu `{wand2.…}` usw.
-  - **Querverweise in der Geräteliste:** Zuspieler und Prozessor bekommen ein Feld „bespielt“
-    (eine oder mehrere Wände). Die Systemübersicht zeichnet daraus je Wand eine Zeile
-    Zuspieler → Prozessor → Wand; ein Zuspieler für zwei Wände steht einmal mit zwei Pfeilen da.
-  - Die Prüfung meldet Wände ohne Prozessor und Prozessoren ohne Wand.
+  - **Querverweise in der Geräteliste:** Prozessoren bekommen „bespielt“ (eine oder mehrere
+    Wände, vorbelegt aus dem Konfigurator). Zuspieler bekommen je Ausgang einen **Signalweg**:
+    Ausgang (z. B. „HDMI 1“), optional ein Gerät dazwischen (neue Rolle „Verteiler“ für
+    HDMI-Splitter), Ziel-Prozessor; bei einem Gesamtbild für mehrere Wände je Wand der
+    **Ausschnitt** (Lage und Größe in Pixeln). So lassen sich alle drei Fälle aus Festlegung 32
+    abbilden.
+  - Die Systemübersicht zeichnet je Wand eine Zeile Zuspieler → (Verteiler) → Prozessor → Wand;
+    ein Zuspieler oder Prozessor für zwei Wände steht einmal da, mit zwei Pfeilen.
+  - Die Prüfung meldet Wände ohne Prozessor, Prozessoren ohne Wand und Ausschnitte, die über
+    das Bild des Zuspielers hinausragen.
 
 ## Umsetzung im Code
 
@@ -1029,7 +1091,8 @@ Jede Phase ist für sich nutzbar.
 |---|---|---|
 | **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
 | **1 Mini-Manual, erste Fassung** ✅ | Zuerst ✅: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Foto-Speicher im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2 Mehrere Wände und Kabelverlauf** | Vorschlag: zuerst mehrere Wände je Datei (Version 3, Wand-Wahl, Packliste je Wand, Mini-Manual mit „bespielt“-Querverweisen), dann der Kabelverlauf von Hand: Startpunkt und Richtung, Kette zeichnen, Backup-Leitungen („B“, Ports), Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Breakout-Box, Pfeile in Ansicht und PDF, vorne/hinten, Signal und Strom in einer Ansicht, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann – auch bei mehreren Wänden |
+| **2a Mehrere Wände** | Version 3 (Liste der Wände, Migration inkl. Vorlagen), Wand-Wahl im Konfigurator, geteilter Prozessor gleichen Typs, Packliste je Wand plus Summe, Mini-Manual: Kopie je Wand, „bespielt“ und Signalweg der Zuspieler (Ausgang, Verteiler, Ausschnitt), Systemübersicht, Platzhalter `{wand2.…}` | Projekte mit mehreren Wänden in einer Datei, Anleitung sagt, was wohin geht |
+| **2b Kabelverlauf** | von Hand: Startpunkt und Richtung, Kette zeichnen, Backup-Leitungen („B“, Ports; NovaStar-Port bzw. Tessera-Paar), Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität (Prozessor- und Kartengrenze), Glasfaser-Strecke mit CVT10, Pfeile in Ansicht und PDF, vorne/hinten, Signal und Strom nebeneinander, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
 | **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
@@ -1051,8 +1114,9 @@ Jede Phase ist für sich nutzbar.
 - **kabelverlauf** (Phase 2, mit dem Code) – am Kabelverlauf des LED-Wall-Konfigurators arbeiten:
   reine Funktionen in `led-wall/cabling` mit Tests je Muster, eine SVG-Quelle für Bildschirm und
   PDF, Ansicht von hinten gespiegelt, Verlauf nur von Hand (ohne Startpunkt keine Pfeile),
-  Zuleitungen nicht zeichnen, gezeichnete Reihenfolge abgleichen statt mitpflegen, Grenzen aus
-  den Prozessor-Vorgaben, Prüfung im Ausdruck (gelbe Kette), mehrere Wände.
+  Zuleitungen nicht zeichnen, gezeichnete Reihenfolge abgleichen statt mitpflegen, Grenze je
+  Port = kleinerer Wert aus Prozessor und Empfangskarte (Werte nur aus Handbüchern, Quelle
+  nennen), Prüfung im Ausdruck (gelbe Kette), mehrere Wände.
 
 **Bestehende Skills anpassen:**
 
@@ -1092,11 +1156,12 @@ Redundanz, IM-Anordnung und -Tausch, Prozessoren im Bestand, Dateiendung, MadMap
 OSC-Port, Projektordner, Kurzkarte, Firmenprofil; dazu der Abgleich der Fehlerfälle 5–18. Für
 Phase 0 und den Start von Phase 1 ist nichts mehr offen. Später zu klären:
 
-1. **Beispieldateien und Datenblätter** (Matthias sammelt; vor Phase 2 bzw. 3): exportiertes
-   Stream-Deck-Profil (am besten je Gerät), Companion-Export, OBS-Szenensammlung, ein
-   MadMapper-6-Projekt und ein Abzug seines OSCQuery-Baums (`http://<ip>:8010/?`),
-   NovaLCT-Dateien, Datenblätter von NovaPro UHD Jr, VX4S und Tessera S8 (Ports, Kapazität,
-   übliche Farbtiefe und Bildrate). Anonymisiert, kommen als Test-Fixtures ins Repo.
+1. **Beispieldateien** (Matthias sammelt; vor Phase 3): exportiertes Stream-Deck-Profil (am besten
+   je Gerät), Companion-Export, OBS-Szenensammlung, ein MadMapper-6-Projekt und ein Abzug seines
+   OSCQuery-Baums (`http://<ip>:8010/?`), NovaLCT-Dateien. Anonymisiert, kommen als Test-Fixtures
+   ins Repo. ~~Datenblätter der Prozessoren~~ – erledigt (17.10.2026): Handbücher von UHD Jr,
+   VX4S, Tessera und CVT10 ausgewertet, Werte in der Prozessor-Tabelle und den Warnungen
+   unter [Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator). Die Handbücher selbst kommen **nicht** ins Repo (Urheberrecht, Repo öffentlich).
 2. **Weitere Fehlerfälle** aus der Praxis (laufend; der Abgleich der Fälle 5–18 ist erledigt).
 3. ~~Firmenfarbe~~ – geklärt: nur Akzent, nicht Papier (Festlegung 23). Logo, Farbwert und
    Kontakte bringt Matthias zum Firmenprofil mit.
@@ -1106,19 +1171,23 @@ Phase 0 und den Start von Phase 1 ist nichts mehr offen. Später zu klären:
 6. ~~Kabelverlauf – Annahmen zu den Einspeisepunkten~~ – entfällt: Verlauf vorerst nur von Hand
    (Festlegung 24, 17.10.2026).
 
-Offen seit dem 17. Oktober 2026 (vor Phase 2):
+Geklärt am 17. Oktober 2026 (Abend, Festlegungen 30–34):
 
-7. **Signal und Strom in einer Ansicht** (Festlegung 25): beide Pläne **nebeneinander** (am
-   Bildschirm und auf einer PDF-Seite, wenn sie lesbar bleiben) – oder **übereinander in einem
-   Raster**, jedes Modul mit Signal- und Stromkette („S1 · P2“) und beiden Pfeilarten?
-8. **Mehrere Wände – Querverweise:** Teilen sich zwei Wände manchmal **einen Prozessor**
-   (verschiedene Ports) oder hat jede Wand immer ihren eigenen? Und bespielt der Laptop die zwei
-   Wände über **zwei Ausgänge** oder über **einen** (ein Bild, das der Prozessor aufteilt)?
-9. **Breakout-Box (CVT10):** Wie viele Ketten versorgt eine Box, und braucht die Backup-Leitung
-   eine zweite Glasfaser? Was gehört in die Packliste außer Box, LWL-Kabel und Stromkabel (z. B.
-   kurze Patchkabel zur Wand)? Teil der Datenblätter aus Frage 1.
-10. **Reihenfolge in Phase 2:** zuerst mehrere Wände, dann der Kabelverlauf (Vorschlag – die
-    Datenstruktur ändert sich so nur einmal, und der Kabelverlauf entsteht gleich je Wand)?
+7. ~~Signal und Strom in einer Ansicht~~ – nebeneinander oder umschaltbar, kein gemeinsames Raster.
+8. ~~Mehrere Wände – Querverweise~~ – Prozessor meist je Wand, geteilt nur bei gleichem Typ;
+   Zuspieler über zwei Ausgänge, Splitter oder ein Gesamtbild mit Ausschnitten.
+9. ~~Breakout-Box (CVT10)~~ – 8 von 10 Ports am UHD Jr, Gruppen 1–8 / 9–16, Faser redundant
+   **oder** Hot-Backup mit zweiter CVT10 (Festlegung 33).
+10. ~~Reihenfolge in Phase 2~~ – zuerst mehrere Wände, dann der Kabelverlauf.
+
+Noch offen (klein, halten Phase 2a nicht auf):
+
+11. **CVT10 im Bestand:** Variante S (Singlemode) oder M (Multimode)? Welche Fasern und Stecker
+    liegen im Lager (LC-Duplex, opticalCON, Längen)? Gebraucht für die Packliste (Phase 2b).
+12. **Tessera S8 – Redundanz-Paare:** Das Handbuch nennt nur 1 → 2 und 3 → 4. Gehen am S8 auch
+    5 → 6 und 7 → 8? (Im Betrieb nachsehen; Phase 2b.)
+13. **rX3ioBF:** Welche Empfangskarte und welcher Prozessor? Die Tabelle rechnet bis dahin mit
+    der Grenze des UHD Jr (39 Module je Port bei 8 bit, 60 Hz).
 
 ## Nicht geplant
 
