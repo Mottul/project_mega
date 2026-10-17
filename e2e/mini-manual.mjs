@@ -389,11 +389,20 @@ try {
         const name = (i) =>
           page.getByTestId('geraet').nth(i).getByLabel('Name', { exact: true }).inputValue()
         assert.equal(await name(1), 'Laptop')
-        // oberes Viertel der Zielzeile = davor
-        await page
-          .getByRole('img', { name: 'Gerät ziehen zum Verschieben' })
-          .nth(1)
-          .dragTo(page.getByTestId('geraet').first(), { targetPosition: { x: 60, y: 6 } })
+        // Von Hand in Schritten statt `dragTo`: Das bewegt die Maus nur einmal – dann startet das
+        // Ziehen, aber am Ziel kommt kein dragover und unter macOS kein drop an (CI rot, #166).
+        // Erst bewegen (Ziehen startet), dann über dem oberen Rand der Zielzeile (= davor) bewegen.
+        const ziel = page.getByTestId('geraet').first()
+        const griff = page.getByRole('img', { name: 'Gerät ziehen zum Verschieben' }).nth(1)
+        await ziel.scrollIntoViewIfNeeded()
+        await griff.hover()
+        const g = await griff.boundingBox()
+        const z = await ziel.boundingBox()
+        await page.mouse.down()
+        await page.mouse.move(g.x + g.width / 2, g.y - 12, { steps: 4 })
+        await page.mouse.move(z.x + 60, z.y + 10, { steps: 6 })
+        await page.mouse.move(z.x + 62, z.y + 8, { steps: 2 })
+        await page.mouse.up()
         assert.ok(await waitFor(async () => (await name(0)) === 'Laptop', 5000), await name(0))
         assert.equal(await name(1), 'NovaPro UHD Jr')
         // ohne Griff ist die Zeile nicht ziehbar (sonst ließe sich kein Text markieren)

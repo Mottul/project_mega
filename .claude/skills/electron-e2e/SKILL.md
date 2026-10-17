@@ -70,12 +70,15 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   (mehr als zwei Antworten) läuft über denselben Dialog: `stubConfirmSequence(app, [1])` wählt
   den zweiten Knopf („Beide behalten“, `e2e/mini-manual.mjs`). Eine leere Folge antwortet mit 1
   – vor dem nächsten Bestätigen wieder `stubConfirm(app, true)` setzen.
-- **Ziehen zum Sortieren** (`components/ui/sortable.tsx`): `griff.dragTo(zielZeile, {
-  targetPosition: { x: 60, y: 6 } })` – Playwright löst echtes HTML5-Drag-&-Drop aus; die obere
-  Hälfte der Zielzeile heißt „davor“. Der Griff (`role="img"`, Name „Gerät ziehen zum
-  Verschieben“) macht die Zeile erst beim Drücken ziehbar, also am Griff ansetzen, nicht an der
-  Zeile. Danach die Reihenfolge prüfen (Wert vorher feststellen, sonst besteht der Test ohne
-  Ziehen).
+- **Ziehen zum Sortieren** (`components/ui/sortable.tsx`): **nicht `dragTo`**, sondern von Hand
+  in Schritten – `griff.hover()`, `mouse.down()`, ein Stück bewegen (Ziehen startet), dann über
+  die Zielzeile bewegen (mit `steps`, zweimal), `mouse.up()`. `dragTo` bewegt die Maus nur einmal:
+  unter Windows ging das, in der macOS-CI kam kein `dragover`/`drop` an, und die Reihenfolge blieb
+  (PR #166, 18.10.2026; Playwright-Doku: „mindestens zwei Mausbewegungen“). Die obere Hälfte der
+  Zielzeile heißt „davor“. Der Griff (`role="img"`, Name „Gerät ziehen zum Verschieben“) macht
+  die Zeile erst beim Drücken ziehbar, also am Griff ansetzen, nicht an der Zeile. Danach die
+  Reihenfolge prüfen (Wert vorher feststellen, sonst besteht der Test ohne Ziehen). Muster
+  `e2e/mini-manual.mjs`.
 - **Einstellungs-Broadcast erreicht das auslösende Fenster nicht.** „Ein anderes Fenster
   speichert“ also wirklich testen: `api.openToolWindow(id)` + `app.waitForEvent('window')`.
 - **Dieselbe Route noch einmal setzen lädt nichts neu**, und Ausgabe-Routen (`#/output`) lesen
