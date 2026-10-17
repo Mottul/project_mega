@@ -125,6 +125,13 @@ describe('Pfeile als SVG', () => {
     expect(svg).toContain('<circle cx="8" cy="8"')
     expect(routeSvg(new Map([[0, { order: [] }]]), o)).toBe('')
   })
+  it('Backup-Leitung: „B“ am letzten Modul, nur für Ketten mit Backup', () => {
+    const svg = routeSvg(routes, { ...o, backups: new Set([0]) })
+    // letzte Zelle: Mitte 104/20, Ecke unten rechts +12
+    expect(svg).toContain('<g data-backup="0"><circle cx="116" cy="32"')
+    expect(svg).toContain('>B</text>')
+    expect(routeSvg(routes, { ...o, backups: new Set([1]) })).not.toContain('data-backup')
+  })
   it('von hinten gespiegelt: der Start liegt rechts', () => {
     expect(routeSvg(routes, { ...o, mirror: true })).toContain('<circle cx="92" cy="8"')
     expect(mirrorCorner('bl')).toBe('br')

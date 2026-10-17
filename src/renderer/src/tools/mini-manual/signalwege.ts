@@ -5,7 +5,16 @@
 // nur einem Prozessor geht jeder Zuspieler ohne eigene Angabe an ihn. Alles andere muss in der
 // Geräteliste stehen – die Prüfung meldet, was fehlt.
 
-import type { Anleitung, Ausgang, Ausschnitt, Geraet, WandKopie } from './model'
+import { sanitizeLedWallConfig } from '../led-wall/config'
+import { processorGroups, resolveProcessor } from '../led-wall/processors'
+import {
+  leeresGeraet,
+  type Anleitung,
+  type Ausgang,
+  type Ausschnitt,
+  type Geraet,
+  type WandKopie
+} from './model'
 
 export interface Signalweg {
   wand: WandKopie
@@ -83,6 +92,32 @@ export function signalwege(a: Anleitung): Signalweg[] {
     }
   }
   return out
+}
+
+/**
+ * Prozessoren aus der LED-Wall-Kopie, die in der Geräteliste noch fehlen: je Prozessor der
+ * Planung (geteilte einmal) ein Gerät mit Modell und „bespielt“ schon gesetzt.
+ */
+export function prozessorVorschlaege(a: Anleitung): Geraet[] {
+  const waende = a.ledWall?.waende ?? []
+  if (!waende.length) return []
+  const geplant = waende.map((w) => ({
+    id: w.id,
+    name: w.name,
+    config: sanitizeLedWallConfig(w.daten)
+  }))
+  const vorhanden = nach(a, 'prozessor')
+  return processorGroups(geplant)
+    .filter((g) => !vorhanden.some((p) => bespielt(p, a).some((w) => g.some((x) => x.id === w.id))))
+    .map((g) => {
+      const r = resolveProcessor(g[0].config)
+      return {
+        ...leeresGeraet('prozessor'),
+        name: r.name,
+        modell: r.name,
+        waende: g.map((w) => w.id)
+      }
+    })
 }
 
 /** Wände, die ein Ausgang über seine Prozessoren erreicht (für die Eingabe der Ausschnitte) */

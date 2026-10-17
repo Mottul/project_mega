@@ -6,6 +6,7 @@
 import { chainStats } from '../led-wall/cabling'
 import { computeWall } from '../led-wall/compute'
 import type { LedWallConfig, PlannedWall } from '../led-wall/config'
+import { analyzeProcessors } from '../led-wall/processors'
 import { plannedWalls, useLedWall } from '../led-wall/store'
 import type { PackItem } from './store'
 
@@ -35,8 +36,30 @@ function ladderPieces(h: number): { ones: number; quarters: number } {
 export function deriveFromLedWall(
   walls: PlannedWall[] = plannedWalls(useLedWall.getState())
 ): DerivedItem[] {
-  if (walls.length === 1) return deriveWall(walls[0].config, 'LED-Wall')
-  const perWall = walls.map((w) => deriveWall(w.config, `LED-Wall · ${w.name}`))
+  const cat = (w: PlannedWall): string => (walls.length === 1 ? 'LED-Wall' : `LED-Wall · ${w.name}`)
+  // Prozessoren: einer je Gruppe (geteilte nur einmal, bei der Wand mit dem Prozessor);
+  // Backup-Leitungen je Wand aus der Port-Vergabe
+  const groups = analyzeProcessors(walls)
+  const backups = new Map<string, number>()
+  const procs = new Map<string, DerivedItem>()
+  for (const g of groups) {
+    for (const w of g.walls)
+      backups.set(w.wallId, w.chains.filter((c) => c.backupPort !== null).length)
+    const first = walls.find((w) => w.id === g.walls[0].wallId)!
+    procs.set(first.id, {
+      category: cat(first),
+      name: `Prozessor ${g.processor.name}`,
+      qty: 1,
+      unit: 'Stk.',
+      note: g.walls.length > 1 ? `für ${g.walls.map((w) => w.wallName).join(' und ')}` : ''
+    })
+  }
+  const perWall = walls.map((w) => {
+    const items = deriveWall(w.config, cat(w), backups.get(w.id) ?? 0)
+    const p = procs.get(w.id)
+    return p ? [...items, p] : items
+  })
+  if (walls.length === 1) return perWall[0]
   // gleiche Module über alle Wände zusammenzählen (Kisten werden gemeinsam gepackt)
   const sums = new Map<string, number>()
   const count = new Map<string, number>()
@@ -55,7 +78,7 @@ export function deriveFromLedWall(
 }
 
 /** Positionen einer Wand; die erste ist immer das LED-Modul. */
-function deriveWall(s: LedWallConfig, cat: string): DerivedItem[] {
+function deriveWall(s: LedWallConfig, cat: string, backupLines = 0): DerivedItem[] {
   const d = computeWall(s)
   const items: DerivedItem[] = []
 
@@ -134,6 +157,14 @@ function deriveWall(s: LedWallConfig, cat: string): DerivedItem[] {
         qty: sig.jumpers,
         unit: 'Stk.',
         note: ''
+      })
+    if (backupLines > 0)
+      items.push({
+        category: cat,
+        name: 'Datenleitung Backup (letztes Modul → Prozessor)',
+        qty: backupLines,
+        unit: 'Stk.',
+        note: 'Backup-Leitungen der Signalketten'
       })
   }
   if (pwr.chains > 0) {

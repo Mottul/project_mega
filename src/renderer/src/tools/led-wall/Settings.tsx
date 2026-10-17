@@ -1,13 +1,15 @@
 // Schublade des LED-Wall-Konfigurators: alles, was die Wand festlegt (Vorlagen, Projekt, Modul,
 // Größe und Aufbau, Curving-Form). Die Arbeitsfläche zeigt, was daraus folgt.
 
-import { Bookmark, Box, Briefcase, Plus, Ruler, Save, Spline, Trash2, X } from 'lucide-react'
+import { Bookmark, Box, Briefcase, Cpu, Plus, Ruler, Save, Spline, Trash2, X } from 'lucide-react'
 import { PanelSection } from '@renderer/components/ToolShell'
 import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
+import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
 import { Segmented } from '@renderer/components/ui/segmented'
+import { Select } from '@renderer/components/ui/select'
 import { LiveInput } from '@renderer/components/ui/textarea'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
@@ -19,7 +21,14 @@ import { GRID_SIDE_MAX, isDefaultPlanning, pickConfig, WALL_NAME_MAX, wallSectio
 import { CURVE_MODE_LABELS } from './curve'
 import { CIRCLE_TABLE, MODULES } from './data'
 import type { BuilderSegment } from './math'
-import { useLedWall, type BuildMode, type CurveMode, type LedWallPreset } from './store'
+import { DEFAULT_PROCESSOR, PROCESSOR_LABELS, PROCESSORS, resolveProcessor } from './processors'
+import {
+  plannedWalls,
+  useLedWall,
+  type BuildMode,
+  type CurveMode,
+  type LedWallPreset
+} from './store'
 import { NumCommit, UnitInput } from './ui'
 
 export const BUILD_LABELS: Record<BuildMode, string> = {
@@ -47,6 +56,7 @@ export function LedWallSettings({ d }: { d: WallMetrics }): JSX.Element {
       <ModulePanel />
       <WallPanel d={d} />
       {MODULES[moduleKey]?.canCurve && <CurvingPanel d={d} />}
+      <ProcessorPanel />
     </>
   )
 }
@@ -310,6 +320,159 @@ function WallPanel({ d }: { d: WallMetrics }): JSX.Element {
           onChange={(v) => set({ buildMode: v })}
         />
       </Field>
+    </PanelSection>
+  )
+}
+
+const HZ = [24, 25, 30, 48, 50, 60, 72, 100, 120, 144, 240]
+
+/**
+ * Prozessor der Wand: Vorbelegung je Modul oder eigene Wahl, Farbtiefe, Bildrate, Backup-Vorgabe
+ * für neue Ketten; bei mehreren Wänden desselben Moduls „teilen mit“ (Ports zählen gemeinsam).
+ */
+function ProcessorPanel(): JSX.Element {
+  const s = useLedWall()
+  const p = s.processor
+  const others = plannedWalls(s).filter((w) => w.id !== s.wallId)
+  const shareable = others.filter((w) => w.config.moduleKey === s.moduleKey)
+  const shared = p.shareWith ? others.find((w) => w.id === p.shareWith) : undefined
+  const resolved = resolveProcessor(shared ? shared.config : pickConfig(s))
+  const def = Object.hasOwn(DEFAULT_PROCESSOR, s.moduleKey)
+    ? PROCESSORS[DEFAULT_PROCESSOR[s.moduleKey]].name
+    : PROCESSORS['novapro-uhd-jr'].name
+  const setP = (patch: Partial<typeof p>): void => {
+    const next = { ...p, ...patch }
+    for (const k of Object.keys(next) as (keyof typeof next)[])
+      if (next[k] === undefined) delete next[k]
+    s.set({ processor: next })
+  }
+  const bits = resolved.model === 'frei' ? [8, 10, 12] : PROCESSORS[resolved.model].bitDepths
+  return (
+    <PanelSection
+      id="processor"
+      title="Prozessor"
+      icon={Cpu}
+      defaultOpen={false}
+      summary={`${shared ? `wie ${shared.name} · ` : ''}${resolved.name} · ${resolved.bitDepth} bit · ${resolved.hz} Hz`}
+    >
+      {shareable.length > 0 && (
+        <Field
+          label="Prozessor teilen mit"
+          hint="Zwei Wände mit demselben Modul an einem Prozessor (verschiedene Ports). Die Ports zählen dann fortlaufend, Port- und Gesamtkapazität gemeinsam."
+        >
+          <Select
+            aria-label="Prozessor teilen mit"
+            value={shared?.id ?? ''}
+            onChange={(e) => setP({ shareWith: e.target.value || undefined })}
+          >
+            <option value="">eigener Prozessor</option>
+            {shareable.map((w) => (
+              <option key={w.id} value={w.id}>
+                wie {w.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
+      {shared ? (
+        <p className="text-xs text-muted-foreground">
+          Nutzt den Prozessor von „{shared.name}“ ({resolved.name}) – Farbtiefe und Bildrate stellst
+          du dort ein.
+        </p>
+      ) : (
+        <>
+          <Field
+            label="Prozessor"
+            hint="Ab Werk der Prozessor des Bestands für das Modul. Grenzen aus den Handbüchern; „eigener“ für alles andere – dann Werte selbst eintragen."
+          >
+            <Select
+              aria-label="Prozessor"
+              value={p.model ?? ''}
+              onChange={(e) => setP({ model: (e.target.value || null) as typeof p.model })}
+            >
+              <option value="">
+                Vorgabe für {s.moduleKey}: {def}
+              </option>
+              {(Object.keys(PROCESSOR_LABELS) as (keyof typeof PROCESSOR_LABELS)[]).map((m) => (
+                <option key={m} value={m}>
+                  {PROCESSOR_LABELS[m]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Farbtiefe">
+              <Segmented
+                label="Farbtiefe"
+                value={String(resolved.bitDepth)}
+                options={bits.map((b) => ({ value: String(b), label: `${b} bit` }))}
+                onChange={(v) => setP({ bitDepth: Number(v) as 8 | 10 | 12 })}
+              />
+            </Field>
+            <Field label="Bildrate">
+              <Select
+                aria-label="Bildrate"
+                value={String(resolved.hz)}
+                onChange={(e) => setP({ hz: Number(e.target.value) })}
+              >
+                {(HZ.includes(resolved.hz) ? HZ : [...HZ, resolved.hz].sort((a, b) => a - b)).map(
+                  (h) => (
+                    <option key={h} value={h}>
+                      {h} Hz
+                    </option>
+                  )
+                )}
+              </Select>
+            </Field>
+          </div>
+          {resolved.model === 'frei' && (
+            <div className="grid grid-cols-3 gap-2">
+              <Field label="Ports">
+                <NumCommit
+                  aria-label="Ports"
+                  integer
+                  min={1}
+                  max={64}
+                  value={p.ports ?? 0}
+                  onCommit={(v) => setP({ ports: v || undefined })}
+                />
+              </Field>
+              <Field label="px je Port">
+                <NumCommit
+                  aria-label="Pixel je Port"
+                  integer
+                  min={0}
+                  max={100_000_000}
+                  value={p.portPx ?? 0}
+                  onCommit={(v) => setP({ portPx: v || undefined })}
+                />
+              </Field>
+              <Field label="px gesamt">
+                <NumCommit
+                  aria-label="Pixel gesamt"
+                  integer
+                  min={0}
+                  max={1_000_000_000}
+                  value={p.totalPx ?? 0}
+                  onCommit={(v) => setP({ totalPx: v || undefined })}
+                />
+              </Field>
+            </div>
+          )}
+        </>
+      )}
+      <Checkbox
+        label="Backup-Leitung für neue Ketten"
+        hint="Vorgabe für Signalketten ohne eigene Angabe: vom letzten Modul zurück an einen Backup-Port (im Plan ein „B“). Je Kette umschaltbar in der Verlauf-Leiste des Signalplans."
+        checked={s.redundancy}
+        onChange={(redundancy) => s.set({ redundancy })}
+      />
+      <p className="text-xs text-muted-foreground">
+        {resolved.portPx > 0
+          ? `Grenze je Port ${resolved.portPx.toLocaleString('de-DE')} px${resolved.limitBy === 'karte' ? ` (Empfangskarte ${resolved.card})` : ''}`
+          : 'Grenze je Port nicht angegeben'}
+        {resolved.ports > 0 && ` · ${resolved.ports} Ports`}
+      </p>
     </PanelSection>
   )
 }

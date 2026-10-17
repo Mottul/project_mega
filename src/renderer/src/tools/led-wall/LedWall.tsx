@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { ProjectFileMenu } from '@renderer/components/ProjectFileMenu'
 import { BarDivider, ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { InfoTip } from '@renderer/components/ui/info-tip'
@@ -44,7 +45,8 @@ import { gridCellSize } from './front'
 import { LED_WALL_FILE } from './fileSection'
 import { exportLedWallPdf } from './print'
 import { BUILD_LABELS, LedWallSettings } from './Settings'
-import { useLedWall } from './store'
+import { analyzeProcessors, type GroupLoad } from './processors'
+import { plannedWalls, useLedWall } from './store'
 import { topDownMarkup } from './topdown'
 import { WallMenu } from './WallMenu'
 
@@ -155,6 +157,10 @@ export function LedWall(): JSX.Element {
       projectName: s.projectName,
       customerName: s.customerName,
       wallName: s.walls.length > 1 ? s.walls.find((w) => w.id === s.wallId)?.name : undefined,
+      wallId: s.wallId,
+      signal: analyzeProcessors(plannedWalls(useLedWall.getState())).find((g) =>
+        g.walls.some((w) => w.wallId === s.wallId)
+      ),
       buildMode: s.buildMode,
       sig: s.sig,
       pwr: s.pwr,
@@ -248,6 +254,7 @@ function Workspace({ d }: { d: WallMetrics }): JSX.Element {
             wide && 'w-[19rem] shrink-0 overflow-y-auto xl:w-[22rem]'
           )}
         >
+          <SignalCard />
           <PowerCard d={d} />
           <BuildCard d={d} />
           <ModuleCard d={d} />
@@ -385,6 +392,10 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
   const mirror = side === 'rear'
 
   const info = viewInfo(view, d, s.sig, s.pwr)
+  const group = useWallGroup()
+  const loads = new Map(
+    (group?.walls.find((w) => w.wallId === s.wallId)?.chains ?? []).map((c) => [c.chain, c])
+  )
   const grid = (g: 'sig' | 'pwr'): JSX.Element => (
     <CableGrid
       label={g === 'sig' ? 'Signal' : 'Strom'}
@@ -401,6 +412,16 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
       onReset={() => s.resetGrid(g)}
       onRoute={(c, route) => s.setRoute(g, c, route)}
       onDraw={(c, cells, extend) => s.drawChain(g, c, cells, extend)}
+      ports={
+        g === 'sig' && group
+          ? {
+              count: group.processor.ports || 16,
+              loads,
+              redundancy: s.redundancy,
+              onChange: (c, patch) => s.setSigChain(c, patch)
+            }
+          : undefined
+      }
     />
   )
 
@@ -547,6 +568,98 @@ function ModuleCard({ d }: { d: WallMetrics }): JSX.Element {
           ['Stromanschluss', m.connector]
         ]}
       />
+    </SideCard>
+  )
+}
+
+/** Prozessor der gewählten Wand (bei geteiltem Prozessor die ganze Gruppe) mit Lasten */
+function useWallGroup(): GroupLoad | null {
+  const s = useLedWall()
+  const groups = useMemo(() => analyzeProcessors(plannedWalls(s)), [s])
+  return groups.find((g) => g.walls.some((w) => w.wallId === s.wallId)) ?? null
+}
+
+const px = (n: number): string => n.toLocaleString('de-DE')
+
+/**
+ * Signal: Prozessor, Grenze je Port, Ketten mit Port und Last, Warnungen (keine Sperre). Bei einem
+ * geteilten Prozessor stehen die Ketten aller Wände darin – Ports zählen gemeinsam.
+ */
+function SignalCard(): JSX.Element | null {
+  const g = useWallGroup()
+  if (!g) return null
+  const p = g.processor
+  const several = g.walls.length > 1
+  const limit =
+    p.portPx > 0
+      ? `${px(p.portPx)} px je Port (${p.bitDepth} bit, ${p.hz} Hz${p.limitBy === 'karte' ? `, Grenze der Karte ${p.card}` : ''})`
+      : 'Grenze je Port nicht angegeben'
+  const chains = g.walls.flatMap((w) => w.chains.map((c) => ({ ...c, wall: w.wallName })))
+  return (
+    <SideCard
+      title="Signal"
+      hint={`${p.name}: ${limit}. Grenze je Port = kleinerer Wert aus Prozessor und Empfangskarte (Handbücher). Backup-Leitungen belegen eigene Ports; beim Tessera laufen sie als Schleife über Portpaare und zählen doppelt.`}
+    >
+      <Specs
+        rows={[
+          ['Prozessor', several ? `${p.name} (geteilt)` : p.name],
+          [
+            'Ports belegt',
+            p.ports ? `${g.portsUsed} von ${p.ports}` : String(g.portsUsed),
+            g.portsUsed > p.ports && p.ports > 0
+          ],
+          ['Je Port', p.portPx > 0 ? `${px(p.portPx)} px` : '–'],
+          ['Gesamt', p.totalPx > 0 ? `${px(g.totalPx)} von ${px(p.totalPx)} px` : px(g.totalPx)]
+        ]}
+      />
+      {chains.length > 0 && (
+        <table className="mt-2 w-full text-xs tabular-nums" aria-label="Signalketten">
+          <thead>
+            <tr className="text-muted-foreground">
+              <th className="text-left font-normal">Kette</th>
+              <th className="text-right font-normal">Module</th>
+              <th className="text-right font-normal">Pixel</th>
+              <th className="text-right font-normal">Port</th>
+            </tr>
+          </thead>
+          <tbody>
+            {chains.map((c) => (
+              <tr
+                key={`${c.wall}-${c.chain}`}
+                className={cn(c.over && 'font-semibold text-danger')}
+              >
+                <td>
+                  {several && <span className="text-muted-foreground">{c.wall} </span>}S
+                  {c.chain + 1}
+                </td>
+                <td className="text-right">{c.modules}</td>
+                <td className="text-right">{px(c.px)}</td>
+                <td className="text-right">
+                  {c.port}
+                  {c.backupPort !== null && (
+                    <span className="text-muted-foreground"> · B {c.backupPort}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {g.warnings.length > 0 && (
+        <div className="mt-2 space-y-1.5" data-testid="signal-warnungen">
+          {g.warnings.map((w, i) =>
+            w.level === 'info' ? (
+              <p key={i} className="text-xs text-muted-foreground">
+                {w.text}
+              </p>
+            ) : (
+              <Alert key={i} tone={w.level}>
+                {w.text}
+              </Alert>
+            )
+          )}
+        </div>
+      )}
     </SideCard>
   )
 }

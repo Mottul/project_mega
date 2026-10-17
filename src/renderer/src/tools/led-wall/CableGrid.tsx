@@ -23,8 +23,9 @@ import {
   routeSvg,
   type Cell
 } from './cabling'
-import type { ChainRoute, Corner } from './config'
+import type { ChainRoute, Corner, SigChainMeta } from './config'
 import { GRID_GAP, GRID_HEADER, gridCellSize } from './front'
+import { hasBackup, type ChainLoad } from './processors'
 
 interface Props {
   /** „Signal“ bzw. „Strom“ – für Beschriftungen */
@@ -44,6 +45,15 @@ interface Props {
   onReset: () => void
   onRoute: (chain: number, route: { start: Corner; axis: 'row' | 'col' } | null) => void
   onDraw: (chain: number, cells: Cell[], extend: boolean) => void
+  /** nur Signal: Ports und Backup je Kette (processors.ts) */
+  ports?: {
+    /** Ports des Prozessors (Auswahl 1 … n) */
+    count: number
+    loads: Map<number, ChainLoad>
+    /** Vorgabe der Wand für Ketten ohne eigene Angabe */
+    redundancy: boolean
+    onChange: (chain: number, patch: Partial<SigChainMeta>) => void
+  }
 }
 
 const CORNERS: Corner[] = ['tl', 'tr', 'bl', 'br']
@@ -62,7 +72,8 @@ export function CableGrid({
   onLine,
   onReset,
   onRoute,
-  onDraw
+  onDraw,
+  ports
 }: Props): JSX.Element {
   const [areaRef, area] = useElementSize<HTMLDivElement>()
   const [drawing, setDrawing] = useState(false)
@@ -122,6 +133,9 @@ export function CableGrid({
   }
 
   const step = cell + GRID_GAP
+  const backups = new Set(
+    [...(ports?.loads ?? [])].filter(([, l]) => l.backupPort !== null).map(([c]) => c)
+  )
   const overlay = routeSvg(routes, {
     cell,
     gap: GRID_GAP,
@@ -130,8 +144,13 @@ export function CableGrid({
     cols,
     colors,
     id: `${id}-raster`,
-    mirror
+    mirror,
+    backups
   })
+  const load = ports?.loads.get(activeChain)
+  const sigOwn = own as SigChainMeta | undefined
+  const backupOn = ports ? hasBackup(sigOwn, ports.redundancy) : false
+  const portOptions = Array.from({ length: Math.max(ports?.count ?? 0, 1) }, (_, i) => i + 1)
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
@@ -139,13 +158,17 @@ export function CableGrid({
         <span className="mr-1 text-xs text-muted-foreground">Kette</span>
         {Array.from({ length: btnCount }, (_, i) => {
           const n = routes.get(i)?.cells.length ?? 0
+          const l = ports?.loads.get(i)
+          const extra = l
+            ? ` · ${l.px.toLocaleString('de-DE')} px · Port ${l.port}${l.backupPort !== null ? `, Backup ${l.backupPort}` : ''}${l.over ? ' · über der Grenze je Port' : ''}`
+            : ''
           return (
             <button
               key={i}
               type="button"
               aria-pressed={activeChain === i}
               aria-label={`${label}-Kette ${i + 1}: ${n} Module`}
-              title={`${prefix}${i + 1}: ${n} Module`}
+              title={`${prefix}${i + 1}: ${n} Module${extra}`}
               onClick={() => onChain(i)}
               className={`flex h-7 min-w-8 items-center justify-center gap-1 rounded px-1.5 text-[11px] font-bold text-black ${
                 activeChain === i ? 'ring-2 ring-foreground ring-offset-1 ring-offset-card' : ''
@@ -156,6 +179,11 @@ export function CableGrid({
               {i + 1}
               {n > 0 && (
                 <span className="rounded-sm bg-black/15 px-1 font-semibold tabular-nums">{n}</span>
+              )}
+              {l?.over && (
+                <span className="rounded-sm bg-destructive px-1 text-white" aria-hidden>
+                  !
+                </span>
               )}
             </button>
           )
@@ -242,6 +270,55 @@ export function CableGrid({
           >
             Verlauf löschen
           </button>
+        )}
+        {ports && (
+          <>
+            <Select
+              size="xs"
+              aria-label="Port"
+              value={sigOwn?.port ?? ''}
+              onChange={(e) => ports.onChange(activeChain, { port: e.target.value || undefined })}
+            >
+              <option value="">Port {load?.port ?? '–'} (fortlaufend)</option>
+              {portOptions.map((p) => (
+                <option key={p} value={String(p)}>
+                  Port {p}
+                </option>
+              ))}
+            </Select>
+            <label className="flex h-7 items-center gap-1.5 rounded border border-border px-2">
+              <input
+                type="checkbox"
+                checked={backupOn}
+                onChange={(e) =>
+                  ports.onChange(activeChain, {
+                    backup: e.target.checked ? (sigOwn?.backup ?? {}) : null
+                  })
+                }
+                className="size-3.5 accent-[hsl(var(--primary))]"
+              />
+              Backup
+            </label>
+            {backupOn && (
+              <Select
+                size="xs"
+                aria-label="Backup-Port"
+                value={sigOwn?.backup?.port ?? ''}
+                onChange={(e) =>
+                  ports.onChange(activeChain, {
+                    backup: e.target.value ? { port: e.target.value } : {}
+                  })
+                }
+              >
+                <option value="">Backup {load?.backupPort ?? '–'} (fortlaufend)</option>
+                {portOptions.map((p) => (
+                  <option key={p} value={String(p)}>
+                    Backup {p}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </>
         )}
         {hints.length > 0 && (
           <span className="text-warning" data-testid="verlauf-hinweise">

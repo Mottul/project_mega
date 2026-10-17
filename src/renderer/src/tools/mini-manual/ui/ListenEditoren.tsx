@@ -2,8 +2,8 @@
 // Kontakte sind Kopien aus dem Firmenprofil (App-Menü): Die Datei bleibt beim Kollegen
 // vollständig, und eine Kunden-Anleitung ändert sich nicht, wenn jemand das Profil bearbeitet.
 
-import { Eye, EyeOff, Plus, RefreshCw, UserPlus } from 'lucide-react'
-import { useState } from 'react'
+import { Cpu, Eye, EyeOff, Plus, RefreshCw, UserPlus } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
 import { Select } from '@renderer/components/ui/select'
@@ -12,12 +12,15 @@ import { useSettings } from '@renderer/lib/settings'
 import { entferne, ersetze, verschiebe } from '../aktionen'
 import { leeresGeraet, ROLLEN, uid, type Geraet, type GeraetRolle, type Zugang } from '../model'
 import { kurzname } from '../sanitize'
+import { prozessorVorschlaege } from '../signalwege'
 import { useMiniManual } from '../store'
 import { AusgaengeEditor, BespieltFeld } from './SignalwegEditor'
 import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
 
 export function GeraeteEditor(): JSX.Element {
   const geraete = useMiniManual((s) => s.anleitung.geraete)
+  const anleitung = useMiniManual((s) => s.anleitung)
+  const vorschlaege = useMemo(() => prozessorVorschlaege(anleitung), [anleitung])
   const update = useMiniManual((s) => s.update)
   const set = (fn: (g: Geraet[]) => Geraet[]): void =>
     update((a) => ({ ...a, geraete: fn(a.geraete) }))
@@ -88,9 +91,27 @@ export function GeraeteEditor(): JSX.Element {
           )}
         </div>
       ))}
-      <Button size="sm" variant="outline" onClick={() => set((l) => [...l, leeresGeraet()])}>
-        <Plus className="size-4" /> Gerät
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => set((l) => [...l, leeresGeraet()])}>
+          <Plus className="size-4" /> Gerät
+        </Button>
+        {vorschlaege.length > 0 && (
+          <Button
+            size="sm"
+            variant="ghost"
+            title={vorschlaege.map((g) => g.name).join(', ')}
+            onClick={() =>
+              // frisch berechnet: zwischen Anzeige und Klick kann sich die Liste geändert haben
+              update((a) => ({ ...a, geraete: [...a.geraete, ...prozessorVorschlaege(a)] }))
+            }
+          >
+            <Cpu className="size-4" />
+            {vorschlaege.length === 1
+              ? 'Prozessor aus der LED-Wall-Planung übernehmen'
+              : `${vorschlaege.length} Prozessoren aus der LED-Wall-Planung übernehmen`}
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

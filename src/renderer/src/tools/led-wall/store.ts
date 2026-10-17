@@ -26,7 +26,8 @@ import {
   type LedWallConfig,
   type LedWallFileData,
   type PlannedWall,
-  type PlanningData
+  type PlanningData,
+  type SigChainMeta
 } from './config'
 import { chainCells, chainRoute } from './cabling'
 
@@ -87,6 +88,8 @@ interface LedWallState extends LedWallConfig {
     cells: [number, number][],
     extend: boolean
   ) => void
+  /** Port bzw. Backup einer Signalkette ändern (undefined = Feld entfernen → Vorgabe) */
+  setSigChain: (chain: number, patch: Partial<SigChainMeta>) => void
   /** Aktuelle Konfiguration (der gewählten Wand) als Vorlage sichern (gleicher Name -> überschreiben). */
   savePreset: (name: string) => void
   /** Vorlage in die gewählte Wand laden; Projekt und Kunde bleiben (leer: aus der Vorlage), die
@@ -387,6 +390,18 @@ export const useLedWall = create<LedWallState>()(
         })
         meta[k] = { ...omit(old, ['start', 'axis']), order }
         set({ [grid]: next, [metaKey]: meta } as Partial<LedWallState>)
+      },
+
+      setSigChain: (chain, patch) => {
+        const meta = { ...get().sigMeta }
+        const k = String(chain)
+        const next: Record<string, unknown> = { ...(Object.hasOwn(meta, k) ? meta[k] : {}) }
+        for (const [key, v] of Object.entries(patch)) {
+          if (v === undefined) delete next[key]
+          else next[key] = v
+        }
+        meta[k] = next as SigChainMeta
+        set({ sigMeta: meta })
       },
 
       savePreset: (name) => {

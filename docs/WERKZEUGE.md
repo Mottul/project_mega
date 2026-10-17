@@ -322,10 +322,20 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
     Weg, der Punkt den Start, gestrichelt eine lange Brücke zwischen nicht benachbarten Modulen.
     Ohne Startecke und Zeichnung hat eine Kette keinen Verlauf („S2 ohne Verlauf“); kommen nach
     dem Zeichnen Module dazu, stehen sie hinten an („nachzeichnen“).
+  - **Prozessor und Ports:** Schublade „Prozessor“ – ab Werk der Prozessor des Bestands für das
+    Modul (496-2,0 und rX3ioBF: NovaPro UHD Jr, uS2+: Tessera S8), wählbar VX4S oder ein
+    eigener mit eigenen Werten; Farbtiefe und Bildrate; „Backup-Leitung für neue Ketten“. Bei
+    mehreren Wänden desselben Moduls „Prozessor teilen mit“ – dann laufen die Ports fortlaufend
+    und die Kapazität zählt gemeinsam. Je Signalkette in der Verlauf-Leiste **Port** (ab Werk
+    fortlaufend) und **Backup** mit eigenem Port (beim Tessera als Portpaar 1 → 2, 3 → 4); im
+    Plan steht dann ein „B“ am letzten Modul. Die Karte **Signal** neben dem Plan zeigt Ports,
+    Grenze je Port (kleinerer Wert aus Prozessor und Empfangskarte, Werte aus den Handbüchern),
+    Last je Kette und warnt – über der Grenze je Port, zu viele Ports, zu viele Pixel gesamt,
+    zu breit oder hoch für den Prozessor, Backup nicht am Partner-Port, doppelter Port.
   - **Signal + Strom** nebeneinander (untereinander, wenn das Fenster dafür zu schmal ist) und
     **Vorne/Hinten**: Von hinten sind die Pläne gespiegelt und groß beschriftet, Spalten- und
     Kettennummern bleiben am Modul. Die PDF-Doku druckt die Pläne mit Pfeilen in der gewählten
-    Blickrichtung.
+    Blickrichtung, dazu Prozessor, Ports und Last je Signalkette.
 - **Daneben:** Strom (typisch und maximal in W und A), Aufbau (LSU-Füße, Ballast je Fuß und
   gesamt bzw. Gewicht an der Traverse) und die Daten des Moduls. Ist die Arbeitsfläche schmal,
   stehen Zeichnung und Daten untereinander.
@@ -549,7 +559,8 @@ sonst kommt ein Hinweis).
   **Prozessor** sagt, welche Wände er bespielt; ein **Zuspieler** hat Ausgänge („HDMI 1“ mit
   Bildgröße), je Ausgang optional über einen Verteiler an einen oder mehrere Prozessoren – liefert
   ein Ausgang ein Gesamtbild für mehrere Wände, steht je Wand der Ausschnitt dabei. Eindeutige
-  Fälle brauchen keine Angabe (eine Wand, ein Prozessor). Die **Systemübersicht** zeichnet daraus
+  Fälle brauchen keine Angabe (eine Wand, ein Prozessor). Aus der LED-Wall-Kopie legt ein Klick
+  die Prozessoren der Planung an, „bespielt“ schon gesetzt. Die **Systemübersicht** zeichnet daraus
   die Pfeile (Name des Ausgangs am Pfeil) und listet die Signalwege je Wand; die Prüfung vor dem
   Export meldet Wände ohne Prozessor, Prozessoren ohne Wand, Zuspieler ohne Ziel und Ausschnitte,
   die über das Bild ragen oder skaliert werden.
@@ -673,7 +684,8 @@ Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
   „In Medien-Info prüfen“ zur Kontrolle.
 - **LED-Wall-Konfigurator → Packliste:** übernimmt Module, Standfüße, Ballast und Kabel und
   öffnet die Packliste im eigenen Fenster. Bei mehreren Wänden je Wand eine Kategorie
-  („LED-Wall · Bar“); gleiche Module nennen die Summe über alle Wände.
+  („LED-Wall · Bar“); gleiche Module nennen die Summe über alle Wände. Dazu der Prozessor
+  (geteilte einmal) und die Backup-Leitungen der Signalketten.
 - **Netzwerk-Scanner → NovaStar:** IP eines Geräts in die NovaStar-Steuerung bzw. die
   NovaStar-Kacheln der OSC-Steuerung übernehmen.
 - **Video-Player → OSC-Steuerung:** Die Anzeige-Kachel kann die Restzeit des laufenden Clips
