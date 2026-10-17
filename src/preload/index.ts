@@ -167,7 +167,8 @@ const api: ToolboxApi = {
     open: (section, path) => ipcRenderer.invoke(Channels.projectsOpen, section, path),
     chooseTarget: (section, suggestedName, fresh) =>
       ipcRenderer.invoke(Channels.projectsChooseTarget, section, suggestedName, fresh),
-    save: (request) => ipcRenderer.invoke(Channels.projectsSave, request)
+    save: (request) => ipcRenderer.invoke(Channels.projectsSave, request),
+    peek: (section, path) => ipcRenderer.invoke(Channels.projectsPeek, section, path)
   },
 
   fotos: {

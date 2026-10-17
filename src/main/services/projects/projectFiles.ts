@@ -177,6 +177,23 @@ export async function openProject(p: string, section: string): Promise<ProjectOp
   }
 }
 
+/**
+ * Nur lesen – ohne Freigabe zum Schreiben, ohne „Zuletzt geöffnet“, ohne Fotos auszupacken. Für
+ * einen fremden Abschnitt derselben Datei (die Anleitung liest die LED-Wall-Planung).
+ */
+export async function peekProject(p: string, section: string): Promise<ProjectOpenResult> {
+  if (!isProjectPath(p)) return { ok: false, reason: 'kein-projekt', path: p }
+  const r = await withLock(p, () => load(p))
+  if (!r.ok) return { ok: false, reason: r.reason, path: p }
+  return {
+    ok: true,
+    path: p,
+    name: projectDisplayName(p),
+    sections: sectionInfos(r.container.file),
+    section: sectionPayload(r.container.file, section)
+  }
+}
+
 /** Ziel eines „Speichern unter“ ansehen (nach dem Dialog): neu, oder was steht schon darin? */
 export async function inspectTarget(p: string, section: string): Promise<ProjectSaveTarget> {
   if (!isProjectPath(p)) return { ok: false, reason: 'kein-projekt', path: p }

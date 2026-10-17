@@ -216,6 +216,7 @@ export const Channels = {
   projectsOpen: 'projects:open',
   projectsChooseTarget: 'projects:chooseTarget',
   projectsSave: 'projects:save',
+  projectsPeek: 'projects:peek',
   // Fotos der Projektdateien (Hashes, Anzeige über foto://)
   fotosPick: 'fotos:pick',
   // eigene Bausteine des Mini-Manuals (userData/Bausteine)
@@ -535,6 +536,9 @@ export interface ToolboxApi {
     ): Promise<ProjectSaveTarget | null>
     /** Nur den eigenen Abschnitt schreiben (Konflikt über baseSha, siehe ProjectSaveRequest). */
     save(request: ProjectSaveRequest): Promise<ProjectSaveResult>
+    /** Nur lesen, ohne Binden und ohne „Zuletzt geöffnet“ – einen Abschnitt derselben Datei
+     *  (die Anleitung liest die LED-Wall-Planung). null = ungültige Anfrage. */
+    peek(section: string, path: string): Promise<ProjectOpenResult | null>
   }
 
   /** Fotos für Projektdateien: liegen im main, der Renderer kennt nur Hashes (shared/fotos). */

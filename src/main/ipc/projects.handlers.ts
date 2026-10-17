@@ -12,7 +12,12 @@ import {
 } from '@shared/projectFile'
 import type { ProjectSaveRequest } from '@shared/types'
 import { showOpenDialog, showSaveDialog } from '../services/fileDialogs'
-import { inspectTarget, openProject, saveSection } from '../services/projects/projectFiles'
+import {
+  inspectTarget,
+  openProject,
+  peekProject,
+  saveSection
+} from '../services/projects/projectFiles'
 import { ensureProjectsDir, projectsDirInfo } from '../services/projects/projectsDir'
 import { getSettings } from '../services/store'
 
@@ -60,4 +65,10 @@ export function registerProjectsHandlers(): void {
   )
 
   ipcMain.handle(Channels.projectsSave, (_e, request: ProjectSaveRequest) => saveSection(request))
+
+  // nur lesen (kein Binden): z. B. die LED-Wall-Planung der Datei, an die die Anleitung gebunden ist
+  ipcMain.handle(Channels.projectsPeek, (_e, section: unknown, path: unknown) => {
+    if (!isProjectSectionKey(section) || !isProjectPath(path)) return null
+    return peekProject(path, section)
+  })
 }

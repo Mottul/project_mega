@@ -12,7 +12,6 @@ import { qrMatrix } from '@renderer/components/qr'
 import { faelleFuerStufe, type AusgabeFall, type AusgabeZiel } from './fehlersuche'
 import { inline, markup, type MarkupOptionen } from './markup'
 import {
-  BEREICHE,
   ROLLEN,
   kapitelDef,
   stufeLabel,
@@ -341,19 +340,14 @@ function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): strin
     case 'fehlersuche': {
       const alle = faelleFuerStufe(a.fehlerfaelle, g, modulKey)
       if (!alle.length) return '<p class="muted">Noch keine Fehlerfälle.</p>'
-      const nachBereich = BEREICHE.map((b) => ({
-        b,
-        faelle: alle.filter((f) => f.fall.bereich === b.value)
-      })).filter((x) => x.faelle.length)
       const uebersicht = `<h3>Was siehst du?</h3><ul class="symptome">${alle
         .map(
           (f) =>
             `<li><a href="#fall-${esc(f.fall.id)}"><b>${inline(f.fall.titel, o)}</b> → Fall ${f.nr}</a></li>`
         )
         .join('')}</ul>`
-      return `${uebersicht}${nachBereich
-        .map((x) => x.faelle.map((f) => fallHtml(f, a, c)).join(''))
-        .join('')}`
+      // in der Reihenfolge der Liste – die Nummern im Text („weiter mit Fall 3“) müssen passen
+      return uebersicht + alle.map((f) => fallHtml(f, a, c)).join('')
     }
     case 'kontakt': {
       if (!a.kontakte.length) return '<p class="muted">Noch kein Kontakt gewählt.</p>'

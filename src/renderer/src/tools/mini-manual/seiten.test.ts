@@ -71,6 +71,14 @@ describe('Handbuch', () => {
     expect(handbuchHtml(a, ctx(3))).not.toContain('Ab hier bitte anrufen')
   })
 
+  it('Fälle erscheinen in der Reihenfolge der Liste (Nummern im Text passen)', () => {
+    const a = beispiel()
+    const html = handbuchHtml(a, ctx(3))
+    const pos = a.fehlerfaelle.map((f) => html.indexOf(`id="fall-${f.id}"`))
+    expect(pos.every((p) => p > 0)).toBe(true)
+    expect(pos).toEqual([...pos].sort((x, y) => x - y))
+  })
+
   it('Lernausgabe: alles, mit Stufen-Kennzeichen', () => {
     const html = handbuchHtml(beispiel(), ctx(1, { lern: true }))
     expect(html).toContain('class="stufe s3"')

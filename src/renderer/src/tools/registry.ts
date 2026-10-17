@@ -11,6 +11,7 @@ import { netscanTool } from './netscan'
 import { novastarTool } from './novastar'
 import { oscControlTool } from './osc-control'
 import { packingListTool } from './packing-list'
+import { miniManualTool } from './mini-manual'
 import { powerLoadTool } from './power-load'
 import { projectorLumenTool } from './projector-lumen'
 import { riggingTool } from './rigging'
@@ -40,6 +41,7 @@ export const tools: ToolModule[] = [
   stageTimerTool,
   ledWallTool,
   packingListTool,
+  miniManualTool,
   circleCalcTool,
   throwRatioTool,
   cameraLensTool,
