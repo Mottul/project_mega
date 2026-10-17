@@ -57,8 +57,9 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   Messplatz oder auf dem Handy.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
-- **LED-Wall-Konfigurator:** Prozessor-Presets (NovaPro UHD Jr, VX4S, Tessera S8) mit Kabelverlauf
-  und Backup-Leitungen – geplant in [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md#kabelverlauf-im-led-wall-konfigurator).
+- **LED-Wall-Konfigurator:** mehrere Wände je Projektdatei, dann Prozessor-Presets (NovaPro UHD
+  Jr, VX4S, Tessera S8) mit Kabelverlauf, Backup-Leitungen und Glasfaser-Strecke (CVT10) –
+  geplant in [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md#mehrere-wände-je-datei) (Phase 2a/2b).
 
 ### Neue Werkzeuge
 

@@ -261,9 +261,20 @@ try {
           [1, 0.5, 0, 1]
         )
         assert.ok(close(sentTo(s.address).at(-1).args[0], 1), 'Auswahl: Wert der Option B')
-        const now = await state()
-        assert.ok(close(now.widgets.find((w) => w.id === f.id).value, 0.25), 'Fader am Handy')
-        assert.equal(now.widgets.find((w) => w.id === s.id).value, 1)
+        // Den Stand fürs Handy meldet der Renderer nach dem OSC-Paket – abwarten statt einmal
+        // lesen (macOS-CI, 17.10.2026: die Auswahl stand noch auf 0)
+        const amHandy = async () => {
+          const w = (await state()).widgets
+          return {
+            fader: w.find((x) => x.id === f.id).value,
+            auswahl: w.find((x) => x.id === s.id).value
+          }
+        }
+        const ok = await waitFor(async () => {
+          const v = await amHandy()
+          return close(v.fader, 0.25) && v.auswahl === 1
+        }, 5000)
+        assert.ok(ok, `am Handy: ${JSON.stringify(await amHandy())}`)
       }
     ],
     [
