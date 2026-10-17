@@ -13,13 +13,13 @@ export interface MarkupOptionen {
   modus: 'vorschau' | 'druck'
 }
 
-/** Eine Zeile: escapen, **fett**, Platzhalter */
+/** Eine Zeile: escapen, **fett**, Platzhalter (eingesetzte Werte hervorgehoben: Klasse ph) */
 export function inline(text: string, o: MarkupOptionen): string {
   return esc(text)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(PLATZHALTER_RE, (all, q: string, f: string) => {
       const v = o.werte.get(`${q}.${f}`)
-      if (v !== undefined) return esc(v)
+      if (v !== undefined) return `<span class="ph">${esc(v)}</span>`
       return o.modus === 'vorschau'
         ? `<span class="ph-leer" title="Platzhalter ohne Wert">${all}</span>`
         : '<span class="ph-linie"></span>'

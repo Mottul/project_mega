@@ -16,9 +16,9 @@ const vorschau = { werte, modus: 'vorschau' as const }
 const druck = { werte, modus: 'druck' as const }
 
 describe('Auszeichnung', () => {
-  it('escapt zuerst, dann fett und Platzhalter', () => {
+  it('escapt zuerst, dann fett und Platzhalter (Wert hervorgehoben)', () => {
     expect(inline('<b>x</b> **fett** {pc.name}', druck)).toBe(
-      '&lt;b&gt;x&lt;/b&gt; <strong>fett</strong> Laptop &lt;Bühne&gt;'
+      '&lt;b&gt;x&lt;/b&gt; <strong>fett</strong> <span class="ph">Laptop &lt;Bühne&gt;</span>'
     )
   })
   it('leere Platzhalter: in der Vorschau sichtbar, im Druck eine Linie', () => {
