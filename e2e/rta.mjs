@@ -223,8 +223,17 @@ try {
           const at = await bandAt(w, 1000)
           assert.equal(at.band, '1k')
           assert.ok(Math.abs(at.db + 20) <= 0.5, `1k: ${at.db}`)
-          const below = await bandAt(w, 630)
-          assert.ok(below.db < -60, `630 Hz: ${below.db}`)
+          // eingeschwungen abwarten: Direkt nach dem Start klingt das breitbandige Einschwingen
+          // des Sinus noch ab – die Windows-CI las einmal −59,4 dB (Oktober 2026), eingeschwungen
+          // liegt die Nachbarterz weit unter −100 dB
+          let below = null
+          assert.ok(
+            await waitFor(async () => {
+              below = await bandAt(w, 630)
+              return below && below.db < -60
+            }, 5_000),
+            `630 Hz: ${below?.db}`
+          )
         }
       ],
       [

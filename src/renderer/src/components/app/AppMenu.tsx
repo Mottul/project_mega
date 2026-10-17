@@ -3,14 +3,16 @@
 // und rechts auf dem Startbildschirm. Werkzeug-Einstellungen gehören nie hierher, sondern in
 // die Schublade des Werkzeugs – so kann man beides nicht verwechseln.
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Monitor, Moon, Rows2, Rows4, Settings2, Sun } from 'lucide-react'
+import { Building2, ChevronDown, Monitor, Moon, Rows2, Rows4, Settings2, Sun } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { MottulboxLogo } from '@renderer/components/MottulboxLogo'
 import { ACCENTS, accentSwatch } from '@renderer/lib/accent'
+import { useSettings } from '@renderer/lib/settings'
 import { cn } from '@renderer/lib/utils'
-import type { ThemeMode, UiDensity } from '@shared/types'
+import { DEFAULT_FIRMENPROFIL, type ThemeMode, type UiDensity } from '@shared/types'
 import { FfmpegSettings } from './FfmpegSettings'
+import { FirmenprofilDialog } from './FirmenprofilDialog'
 import { ProjectsSettings } from './ProjectsSettings'
 import { YtdlpSettings } from './YtdlpSettings'
 import { useAppearance } from './useAppearance'
@@ -43,6 +45,8 @@ export function AppMenu({
 }): JSX.Element {
   const look = useAppearance()
   const [open, setOpen] = useState(false)
+  const [profilOffen, setProfilOffen] = useState(false)
+  const profil = useSettings((s) => s.firmenprofil)
   const ref = useRef<HTMLDivElement>(null)
 
   // Klick außerhalb / Escape schließt das Menü.
@@ -146,6 +150,29 @@ export function AppMenu({
             <ProjectsSettings />
           </section>
 
+          <section className="space-y-2">
+            <Heading>Firmenprofil</Heading>
+            <p className="truncate text-sm">
+              {profil?.name || <span className="text-muted-foreground">noch leer</span>}
+              {profil && profil.kontakte.length > 0 && (
+                <span className="text-muted-foreground">
+                  {' '}
+                  · {profil.kontakte.length} Kontakt(e)
+                </span>
+              )}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setOpen(false)
+                setProfilOffen(true)
+              }}
+            >
+              <Building2 className="size-4" /> Bearbeiten …
+            </Button>
+          </section>
+
           <div className="h-px bg-border" />
 
           <section className="space-y-2">
@@ -158,6 +185,12 @@ export function AppMenu({
             <YtdlpSettings />
           </section>
         </div>
+      )}
+      {profilOffen && (
+        <FirmenprofilDialog
+          profil={profil ?? DEFAULT_FIRMENPROFIL}
+          onClose={() => setProfilOffen(false)}
+        />
       )}
     </div>
   )

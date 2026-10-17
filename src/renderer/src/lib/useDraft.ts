@@ -4,16 +4,19 @@
 // OSC-Feedback, Re-Render) die laufende Eingabe und das Feld „klemmt".
 // Diese Logik war zuvor in 7 Feld-Komponenten kopiert (und in mehreren davon
 // fehlerhaft ohne Fokus-Schutz); hier liegt sie einmal zentral.
+// Für <input> und <textarea> (Typ-Parameter; Vorgabe: <input>).
 
 import { useEffect, useRef, useState, type RefObject } from 'react'
 
-export function useDraft(external: string): {
-  /** Muss als ref an das <input> gehen (Fokus-Erkennung). */
-  ref: RefObject<HTMLInputElement>
+export function useDraft<E extends HTMLElement = HTMLInputElement>(
+  external: string
+): {
+  /** Muss als ref an das Feld gehen (Fokus-Erkennung). */
+  ref: RefObject<E>
   text: string
   setText: (t: string) => void
 } {
-  const ref = useRef<HTMLInputElement>(null)
+  const ref = useRef<E>(null)
   const [text, setText] = useState(external)
   useEffect(() => {
     if (document.activeElement !== ref.current) setText(external)

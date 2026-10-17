@@ -169,9 +169,20 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   Windows meldet sich an) und protokollrelative Adressen (`//host/x` wird bei einer Datei-Seite
   zu UNC). Eigene Partition mit Anfragefilter, Gegenprobe mit lokalem Spion-Server.
 - **URLs über 2 MB** (`data:`) lehnt Chromium ab – große Inhalte über eine temporäre Datei laden.
+- **Nummern im Text müssen zur Reihenfolge der Ausgabe passen.** Das Handbuch gab die
+  Fehlerfälle nach Bereich gruppiert aus, nummerierte sie aber nach der Liste – „6.“ stand vor
+  „2.“, und „weiter mit Fall 3“ suchte man vergeblich. Aufgefallen erst beim Ansehen des PDFs
+  (Skill `electron-e2e`, „PDF ansehen“); Test `seiten.test.ts` prüft die Reihenfolge.
+- **Stilwerte aus Einstellungen oder Dateien nie ungeprüft ins CSS** (Akzentfarbe als Hex prüfen,
+  sonst Vorgabe) – `red;}body{display:none` wäre sonst ein Stylesheet.
 
 ## Tests
 
+- **Tests laden nichts aus dem Netz – auch nicht nebenbei.** Jeder E2E-Start lud wegen der
+  yt-dlp-Prüfung beim Start yt-dlp herunter; die gesperrte `yt-dlp.exe` machte die Windows-CI
+  immer wieder rot (Aufräumen mit EPERM), obwohl kein Schritt fehlschlug. Hintergrund-Arbeit, die
+  die App beim Start anwirft (Downloads, Prüfungen), im Harness abschalten; Aufräumen darf nie
+  einen Lauf scheitern lassen (`e2e/harness.mjs`).
 - **Ein Messskript ist keine Gegenprobe.** Das erste Skript zum PDF-Weg zeigte einen Absturz der
   ganzen App bei einer `data:`-URL über 2 MB – er kam aber vom Skript (es druckte nach dem
   Ladefehler weiter). Die echte App warf nur `ERR_INVALID_URL`. Aussagen über das Verhalten der

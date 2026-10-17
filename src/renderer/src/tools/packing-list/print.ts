@@ -3,16 +3,14 @@
 
 import { api } from '@renderer/lib/api'
 import { APP_NAME } from '@shared/brand'
+import { esc } from '@shared/html'
+import type { PdfExportResult } from '@shared/types'
 import type { PackItem } from './store'
-
-function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
 
 export async function exportPackingPdf(
   projectName: string,
   items: PackItem[]
-): Promise<string | null> {
+): Promise<PdfExportResult | null> {
   const dt = new Date().toLocaleDateString('de-AT')
   const cats = [...new Set(items.map((i) => i.category))]
 

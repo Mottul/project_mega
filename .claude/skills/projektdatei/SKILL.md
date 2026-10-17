@@ -8,7 +8,9 @@ description: Einem Mottulbox-Werkzeug einen Abschnitt in der Projektdatei (.mott
 Eine `.mottul`-Datei ist ein ZIP mit projekt.json (ein Abschnitt je Werkzeug) und Fotos. Jedes
 Werkzeug liest und schreibt **nur seinen Abschnitt**; es gibt kein app-weites „aktives Projekt“
 (Gründe: `docs/PLAN-MINI-MANUAL.md`, „Projektdatei und Projektordner“). Vorbild für alles unten:
-der LED-Wall-Konfigurator (`tools/led-wall/config.ts`, `store.ts`, `fileSection.ts`).
+der LED-Wall-Konfigurator (`tools/led-wall/config.ts`, `store.ts`, `fileSection.ts`); mit Fotos
+und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
+(`tools/mini-manual/fileSection.ts`, `ui/useLedWallQuelle.ts` liest per `api.projects.peek`).
 
 ## Bausteine
 

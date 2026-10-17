@@ -63,7 +63,7 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).
 - **Zustand:** zustand-Stores je Tool; persistierte Stores (OSC, Jingle, LED-Wall, Packliste,
-  Netzwerk-Scanner, Medien-Info, Video-Konverter) nutzen `debouncedStorage()` aus
+  Mini-Manual, Netzwerk-Scanner, Medien-Info, Video-Konverter) nutzen `debouncedStorage()` aus
   `@renderer/lib/persistStorage` (NIE die synchrone Default-Storage – Tipp-Lag), tragen
   eine `version` (migrierbar) und rufen `syncAcrossWindows(store)` (Fenster-Abgleich).
 - **Eingabefelder mit Puffer:** immer `useDraft()` aus `@renderer/lib/useDraft`
@@ -129,6 +129,6 @@ Ausgearbeitete Pläne für größere Vorhaben: `docs/PLAN-*.md` (z. B. Video-Gen
 Umsetzung lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überführen und löschen.
 Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
 `abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,
-`review-checkliste`, `abhaengigkeiten`, `aufraeumen`, `projektdatei`).
+`review-checkliste`, `abhaengigkeiten`, `aufraeumen`, `projektdatei`, `anleitung-inhalte`).
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.

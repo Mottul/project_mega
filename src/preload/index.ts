@@ -167,11 +167,18 @@ const api: ToolboxApi = {
     open: (section, path) => ipcRenderer.invoke(Channels.projectsOpen, section, path),
     chooseTarget: (section, suggestedName, fresh) =>
       ipcRenderer.invoke(Channels.projectsChooseTarget, section, suggestedName, fresh),
-    save: (request) => ipcRenderer.invoke(Channels.projectsSave, request)
+    save: (request) => ipcRenderer.invoke(Channels.projectsSave, request),
+    peek: (section, path) => ipcRenderer.invoke(Channels.projectsPeek, section, path)
   },
 
   fotos: {
     pick: () => ipcRenderer.invoke(Channels.fotosPick)
+  },
+
+  bausteine: {
+    list: () => ipcRenderer.invoke(Channels.bausteineList),
+    save: (b) => ipcRenderer.invoke(Channels.bausteineSave, b),
+    remove: (id) => ipcRenderer.invoke(Channels.bausteineRemove, id)
   },
 
   jingles: {

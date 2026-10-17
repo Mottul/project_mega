@@ -16,6 +16,7 @@ const all = [
   'projektdatei',
   'pdf',
   'fotos',
+  'mini-manual',
   'shutdown',
   'ndi',
   'youtube',

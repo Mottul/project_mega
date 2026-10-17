@@ -12,8 +12,8 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   Kameraobjektiv, Beamer-Lumen
 - [Medien & Bibliothek](#medien--bibliothek) – Video-Konverter, Video-Generator, Medien-Info,
   Manuals-Bibliothek, YouTube-Downloader
-- [Strom, Rigging & Aufbau](#strom-rigging--aufbau) – Packliste, Stromlast & Absicherung,
-  Rigging-Last
+- [Strom, Rigging & Aufbau](#strom-rigging--aufbau) – Packliste, Mini-Manual, Stromlast &
+  Absicherung, Rigging-Last
 - [Rechner](#rechner) – Kreisrechner, Audio-Delay & SPL, RTA (Echtzeit-Analysator), Timecode-Rechner
 - [Übergaben zwischen Werkzeugen](#übergaben-zwischen-werkzeugen)
 - [Wo die Daten liegen](#wo-die-daten-liegen)
@@ -511,6 +511,51 @@ Kabelmengen aus den gezeichneten Ketten); Export als PDF oder JSON. PDF, JSON un
 übernehmen“ stehen in der Leiste „Projekt“, Projektname und gespeicherte Jobs (laden, löschen,
 aktuelle speichern) in der Schublade – wie die Vorlagen des LED-Wall-Konfigurators.
 
+### Mini-Manual
+
+Kurz-Anleitungen für die Leute vor Ort („So bedienst du deine LED-Wall“): wie man die Wand
+einschaltet und bedient, was wo steht – und im Fehlerfall Schritt für Schritt, was man prüfen und
+selbst beheben darf, bevor man anruft. Ausgabe als **Handbuch** (PDF, A4, Fußzeile mit Seiten)
+und **Kurzkarte** (PDF, A5, genau eine Seite – passt sie nicht, wird sie bis 62 % verkleinert,
+sonst kommt ein Hinweis).
+
+- **Stufen:** In der Leiste wählst du, für wen die Ausgabe ist – **Bedienung** (Kunde,
+  Moderation), **Betreuung** (Haustechnik, Stagehand), **Technik** (Techniker, Lehrlinge) oder
+  die **Lernausgabe** (alles, jeder Teil mit Stufen-Kennzeichen). Kapitel, Blöcke, Schritte und
+  Fehlerfälle tragen eine Mindeststufe; die Stufe steuert nur, *was* erscheint. Ein Sprung in der
+  Fehlersuche zu einem Schritt über der Stufe wird zu „Ab hier bitte anrufen“.
+- **Kapitel** (Schublade: an/ab, Reihenfolge, Stufe): Auf einen Blick, Systemübersicht (Grafik
+  aus der Geräteliste), Geräte und Standorte, Zugangsdaten, Ein- und Ausschalten, Software,
+  Bedienfeld, Inhalte tauschen, LED-Wall, Fehlersuche, Pflege und Verbote, Ersatzteile,
+  Kontakt und Support (mit QR-Code zum Anrufen), Dokumentstand. Dazu das Deckblatt.
+- **Texte** mit kleiner Auszeichnung (Leerzeile = Absatz, „- “ Liste, „1. “ nummeriert, „> “
+  Hinweis, `**fett**`) und **Platzhaltern** wie `{prozessor.name}`, `{pc.ip}`,
+  `{wand.aufloesung}`, `{kontakt.mobil}` – die Kurznamen der Geräte sind die Quelle. Leere
+  Platzhalter zeigt die Vorschau rot gestrichelt, im PDF wird daraus eine Linie zum Ausfüllen.
+- **Bausteine:** mitgelieferte (Ein-/Ausschalten, Stromausfall, MadMapper, Mottulbox-Player,
+  OBS, Stream Deck, Inhalte, Pflege, Ersatzteile, Status-LEDs) und **eigene** – ein Kapitel als
+  Baustein speichern, eine Datei je Baustein im Benutzerordner unter `Bausteine/`. Eingefügt wird
+  eine Kopie; die Anleitung ändert sich nicht, wenn sich die Bibliothek ändert.
+- **Fehlersuche** als Liste: je Schritt Stufe, Frage, Ja- und Nein-Ziel (anderer Schritt,
+  Lösung, Gelöst, Anrufen, anderer Fall), Hinweis, Foto, „vorher kurz anrufen“, Stufe aus dem
+  Modul (IM-Tausch: 496-2,0/rX3ioBF werkzeuglos mit Rücksprache, uS2+ nur Technik). Die Prüfung
+  meldet fehlende Ziele, nie erreichte Schritte, Schleifen und Fälle ohne „Anrufen“. 15 Fälle
+  aus Praxis und Herstellerhilfen liegen bei; eine neue Anleitung enthält die wichtigsten.
+- **LED-Wall:** Kennzahlen als Kopie aus der LED-Wall-Planung **derselben Projektdatei**
+  (oder aus dem aktuellen Konfigurator). Speichert jemand die Planung neu, zeigt die Anleitung
+  „Planung geändert (Stand 7 → 9)“ mit den Unterschieden und übernimmt erst auf Klick.
+- **Kontakte** kommen aus dem **Firmenprofil** (App-Menü: Name, Logo, Akzentfarbe für Linien
+  und Überschriften, Kontakte, Fernwartung) – als Kopie, damit die Datei beim Kollegen
+  vollständig ist.
+- **Zugangsdaten** stehen im Klartext in der Projektdatei; im PDF ab Werk „wird separat
+  übergeben“, wahlweise geschwärzt oder gedruckt. Die Stufe Bedienung zeigt sie nie.
+- **Vor dem Export** (Schublade, Zahl in der Leiste): leere Platzhalter, fehlender Kontakt,
+  gedruckte Passwörter, fehlende oder veraltete LED-Wall-Planung, Probleme der Fehlerfälle,
+  leere Kapitel. Bei Fehlern fragt der Export nach.
+- **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel.
+- Gespeichert wird als Teil „Anleitung“ der [Projektdatei](#projektdateien-und-projektordner),
+  mit Fotos.
+
 ### Stromlast & Absicherung
 
 Leistung ↔ Strom (1∼/3∼, mit Leistungsfaktor cos φ und Scheinleistung) und wie viele gleiche
@@ -611,8 +656,9 @@ Weitere Übergaben sind geplant: [ROADMAP.md](ROADMAP.md#verzahnung).
 ## Projektdateien und Projektordner
 
 Eine **Projektdatei** (`.mottul`) hält die Planung eines Werkzeugs als Datei – zum Weitergeben an
-Kollegen, zum Ablegen beim Kunden. Eine Datei kann mehrere Teile haben (heute die LED-Wall-Planung,
-geplant Anleitung und Packliste); **jedes Werkzeug liest und schreibt nur seinen eigenen Teil**,
+Kollegen, zum Ablegen beim Kunden. Eine Datei kann mehrere Teile haben (heute die LED-Wall-Planung
+und die Anleitung des Mini-Manuals, geplant die Packliste); **jedes Werkzeug liest und schreibt
+nur seinen eigenen Teil**,
 die anderen bleiben beim Speichern unverändert.
 
 - **Ohne Datei** arbeitet ein Werkzeug wie immer – die schnelle Planung „nur für mich“ braucht
@@ -637,7 +683,7 @@ die anderen bleiben beim Speichern unverändert.
   „Öffnen“ im zuletzt benutzten Projektordner.
 - Dateien aus einer neueren Mottulbox öffnet die App nicht; Teile, die sie nicht kennt, bleiben
   beim Speichern erhalten.
-- **Fotos** (für die geplante Anleitung) stecken in der Datei selbst. Beim Einfügen (JPG, PNG)
+- **Fotos** (Mini-Manual) stecken in der Datei selbst. Beim Einfügen (JPG, PNG)
   verkleinert die App sie auf höchstens 2000 Pixel, dreht hochkant aufgenommene Handyfotos
   richtig und entfernt Metadaten wie den Aufnahmeort. Bis zum Speichern liegen sie im
   Benutzerordner unter `Projektfotos/`.
@@ -658,9 +704,10 @@ Alles liegt im Benutzerordner der App: Windows `%APPDATA%\Mottulbox`, macOS
 | `manuals/`              | importierte Handbücher                                                   |
 | `bin/`                  | yt-dlp                                                                   |
 | `ffmpeg/`               | in der App aktualisierte ffmpeg-Builds (Windows, Linux)                  |
-| `Local Storage/`        | Werkzeug-Zustände (OSC-Projekte, LED-Wall-Planungen, Packlisten …)       |
+| `Local Storage/`        | Werkzeug-Zustände (OSC-Projekte, LED-Wall-Planungen, Packlisten, Anleitungen …) |
 | `Sicherungen/`          | frühere Stände von Projektdateien (die letzten 10 je Datei)              |
-| `Projektfotos/`         | Fotos der Projektdateien, benannt nach ihrem Inhalt (sha256)             |
+| `Projektfotos/`         | Fotos der Projektdateien und das Logo des Firmenprofils, benannt nach ihrem Inhalt (sha256) |
+| `Bausteine/`            | eigene Bausteine des Mini-Manuals (eine Datei je Baustein)               |
 | `avtoolbox-debug.log`   | Debug-Log – erste Anlaufstelle bei Problemen im gepackten Build          |
 
 Projektdateien (`.mottul`) liegen dort, wo man sie speichert – ab Werk im Projektordner

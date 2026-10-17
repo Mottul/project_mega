@@ -4,15 +4,31 @@
 Datei-Menü des LED-Wall-Konfigurators – beschrieben in
 [WERKZEUGE.md](WERKZEUGE.md#projektdateien-und-projektordner), Anleitung für weitere Werkzeuge im
 Skill `projektdatei`. Danach zweimal geprüft; alle bestätigten Befunde sind behoben und als
-Regeln im Skill `review-checkliste` festgehalten. Offen sind die Phasen 1–5. Abgestimmt in
-Rücksprachen am selben Tag, siehe [Festlegungen](#festlegungen); vor den späteren Phasen die
-[offenen Fragen](#offene-fragen) klären. Nach der Umsetzung in WERKZEUGE überführen und diesen
-Plan löschen.
+Regeln im Skill `review-checkliste` festgehalten. Abgestimmt in Rücksprachen am selben Tag,
+siehe [Festlegungen](#festlegungen); vor den späteren Phasen die [offenen Fragen](#offene-fragen)
+klären. Nach der Umsetzung in WERKZEUGE überführen und diesen Plan löschen.
 
-**Nächster Schritt: Phase 1.** Die Fragen dafür sind am 16.10.2026 geklärt (Festlegungen 22–23,
-Fehlerfälle 5–18 abgeglichen). Erledigt (16.10.2026): Messung der 2-MB-Grenze und neuer PDF-Weg
-(siehe [Ausgaben](#ausgaben)), Fotos in der Projektdatei (siehe [Sicherheit](#sicherheit)). Als
-Nächstes das Werkzeug selbst (siehe [Phasen](#phasen)).
+**Phase 1 umgesetzt (16./17. Oktober 2026):** PDF-Weg über eine temporäre Datei, Fotos in der
+Projektdatei, das Werkzeug „Mini-Manual“ mit allem aus der Phasen-Tabelle – beschrieben in
+[WERKZEUGE.md](WERKZEUGE.md#mini-manual), Inhalte schreiben nach Skill `anleitung-inhalte`.
+Abweichungen vom Plan:
+
+- **Vorschau** zeigt Kapitel für Kapitel dieselbe Seite wie das PDF, aber ohne echte
+  Seitenumbrüche („Seite 3 von 8“ kennt erst Chromiums Druck).
+- **Foto-Speicher** für alle Dateien gemeinsam statt eines Arbeitsordners je Datei (siehe
+  [Sicherheit](#sicherheit)).
+- **IM-Tausch je Modul** steht bis Phase 2 als kleine Tabelle in
+  `src/renderer/src/tools/mini-manual/fehlersuche.ts` (`IM_TAUSCH`), nicht in den Stammdaten.
+- **Fehlerfälle** 1–3 bilden zusammen „Ein Teil der Wand ist dunkel“, 5, 7 und 15 stecken in
+  „Die ganze Wand ist dunkel“ (mit Glasfaser/CVT10) – 15 Fälle statt 18.
+- **Logo** als PNG/JPG im Foto-Speicher; SVG geht noch nicht (müsste vorher bereinigt werden).
+
+Noch offen aus Phase 1 (klein, bei Bedarf): Bausteine der Bibliothek „aktualisieren“, wenn ihre
+Version neuer ist (die Herkunft mit Version steht schon in jeder Kopie); Vorschläge nach
+Stichworten (heute zeigt die Auswahl alle Bausteine des Kapitels); Aufräumen des Foto-Speichers.
+
+**Nächster Schritt: Phase 2 (Kabelverlauf).** Vorher die [offene Frage 6](#offene-fragen)
+klären (Annahmen zu „unten“, „mittig“ und „zwei“).
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.
 
@@ -967,7 +983,7 @@ Jede Phase ist für sich nutzbar.
 | Phase | Inhalt | Ergebnis |
 |---|---|---|
 | **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
-| **1 Mini-Manual, erste Fassung** | Zuerst ✅: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Foto-Speicher im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
+| **1 Mini-Manual, erste Fassung** ✅ | Zuerst ✅: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Foto-Speicher im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
 | **2 Kabelverlauf** | Einspeisepunkt (nicht gezeichnet) und Zuleitungslängen, Schnellwahl der Aufteilung, Startecke, Richtung, Handkorrektur und Kette zeichnen, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |

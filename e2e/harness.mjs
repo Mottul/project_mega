@@ -6,7 +6,7 @@
 // Werkzeug-Stände des Entwicklers im Test, und die laufende eigene App bleibt unberührt.
 
 import { _electron as electron } from 'playwright-core'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import net from 'node:net'
 import { tmpdir } from 'node:os'
@@ -18,12 +18,32 @@ const require = createRequire(import.meta.url)
 export const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 /**
+ * Temp-Ordner eines Laufs löschen. Unter Windows halten gerade beendete Prozesse oder der
+ * Virenscanner Dateien kurz fest (EPERM/EBUSY) – mehrmals versuchen, und klappt es nicht, den
+ * Ordner liegen lassen: Aufräumen darf nie einen grünen Lauf rot machen.
+ */
+function aufraeumen(dir) {
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  } catch (err) {
+    console.log(`[e2e] Temp-Ordner bleibt liegen (${err.code ?? err}): ${dir}`)
+  }
+}
+
+/**
  * Startet die App. `env` ergänzt die Umgebung, `args` kommt vor dem Projektordner.
  * `userData`: vorhandenen Ordner weiterverwenden (Neustart nachstellen) – der Aufrufer räumt ihn
  * dann selbst auf. Liefert { app, page, userData, close } – `page` ist das Hauptfenster.
  */
 export async function launchApp({ env = {}, args = [], userData: given } = {}) {
-  const userData = given ?? mkdtempSync(join(tmpdir(), 'mottulbox-e2e-'))
+  let userData = given
+  if (!userData) {
+    userData = mkdtempSync(join(tmpdir(), 'mottulbox-e2e-'))
+    // Ohne die yt-dlp-Prüfung beim Start: Sie lädt yt-dlp aus dem Netz und startet es. Schloss
+    // ein kurzes Skript die App mittendrin, blieb yt-dlp.exe unter Windows gesperrt, und das
+    // Aufräumen brach den ganzen E2E-Lauf ab (CI rot, Oktober 2026). youtube.mjs macht es selbst.
+    writeFileSync(join(userData, 'settings.json'), JSON.stringify({ ytdlpAutoUpdate: false }))
+  }
   const full = { ...process.env, ...env }
   // Von einer Electron-Umgebung (z. B. der Claude-Desktop-App) geerbt, würde die Binary als
   // reines Node starten statt als App.
@@ -74,7 +94,7 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
     userData,
     async close() {
       await app.close().catch(() => {})
-      if (!given) rmSync(userData, { recursive: true, force: true })
+      if (!given) aufraeumen(userData)
     }
   }
 }

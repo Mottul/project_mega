@@ -24,7 +24,7 @@ async function exportPdf(html, name, opts) {
     ([h, n, o]) => window.api.util.exportPdf(h, n, o),
     [html, name, opts]
   )
-  assert.equal(res, file)
+  assert.equal(res?.path, file)
   return readFileSync(file)
 }
 

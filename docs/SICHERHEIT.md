@@ -157,7 +157,16 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   (`Object.hasOwn`), nie über den Prototyp. **Fotos** aus einer Datei übernimmt die App beim
   Öffnen nur, wenn ihr Inhalt zu ihrem sha256 passt – eine präparierte Datei kann so kein Foto
   einer anderen Planung ersetzen. Eingefügte Fotos werden neu kodiert; dabei fallen EXIF-Daten
-  wie GPS-Koordinaten des Aufbauorts weg, bevor die Datei an Kunden geht.
+  wie GPS-Koordinaten des Aufbauorts weg, bevor die Datei an Kunden geht. Andere Abschnitte
+  derselben Datei liest ein Werkzeug nur über `projects.peek` (nur `.mottul`, ohne Freigabe zum
+  Schreiben).
+- **Anleitungen (Mini-Manual):** Alle Texte aus der Datei werden zuerst escaped, erst dann wird
+  das kleine Auszeichnungs-Subset umgesetzt; Links nur `https:`, `tel:`, `mailto:`; die
+  Akzentfarbe kommt nur als geprüftes Hex ins CSS. **Zugangsdaten stehen im Klartext** in der
+  Projektdatei – wer die Datei hat, kennt sie. Im PDF ab Werk „wird separat übergeben“, die
+  Stufe Bedienung zeigt sie nie. **Eigene Bausteine** liegen als JSON unter
+  `userData/Bausteine`; der Dateiname ist immer die geprüfte Kennung, nie ein Name vom Renderer,
+  und den Inhalt prüft das Werkzeug vor dem Einfügen.
 - **Kein `eval` im Renderer:** Die Content-Security-Policy verbietet `unsafe-eval`; pdfjs 6 kommt
   ohne eval aus – präparierte PDFs können darüber keinen Code ausführen. (`'unsafe-inline'` für
   Skripte braucht noch der Vite-Dev-Server, siehe Roadmap.)
