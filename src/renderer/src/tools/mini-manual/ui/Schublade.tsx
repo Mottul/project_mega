@@ -10,7 +10,8 @@ import { Segmented } from '@renderer/components/ui/segmented'
 import { STATUS } from '@renderer/components/ui/status'
 import { LiveInput } from '@renderer/components/ui/textarea'
 import { cn } from '@renderer/lib/utils'
-import { eintraege, kapitel as patchKapitel, verschiebe } from '../aktionen'
+import { Griff, useSortable } from '@renderer/components/ui/sortable'
+import { eintraege, kapitel as patchKapitel, verschiebe, zieheNach } from '../aktionen'
 import { kapitelDef, type Passwoerter } from '../model'
 import type { PruefPunkt } from '../pruefung'
 import { useMiniManual } from '../store'
@@ -72,6 +73,9 @@ function KapitelPanel({
 }): JSX.Element {
   const a = useMiniManual((s) => s.anleitung)
   const update = useMiniManual((s) => s.update)
+  const sort = useSortable((von, nach, hinter) =>
+    update((x) => ({ ...x, kapitel: zieheNach(x.kapitel, von, nach, hinter) }))
+  )
   const an = a.kapitel.filter((k) => k.an).length
   return (
     <PanelSection
@@ -96,8 +100,14 @@ function KapitelPanel({
         </li>
         {a.kapitel.map((k, i) => {
           const n = eintraege(a, k.id)
+          const it = sort.item(k.id)
           return (
-            <li key={k.id} className="flex items-center gap-1.5">
+            <li
+              key={k.id}
+              {...it}
+              className={cn('flex items-center gap-1.5 rounded', it.className)}
+            >
+              <Griff sort={sort} id={k.id} was="Kapitel" />
               <input
                 type="checkbox"
                 checked={k.an}

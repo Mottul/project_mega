@@ -17,7 +17,8 @@ still. Datenmodell: `model.ts`; Ausgabe je Stufe: `fehlersuche.ts`; Seiten: `sei
   („Leuchtet die LED rot?“), nicht „Ist alles in Ordnung?“.
 - Keine Bedienwege einer Software behaupten, die nicht geprüft sind (Menüpfade wechseln mit
   Versionen) – lieber allgemein („über die Verknüpfung am Desktop starten“).
-- Fett mit `**…**`, Listen `- `, nummeriert `1. `, Hinweisbox `> ` (Subset in `markup.ts`).
+- Fett mit `**…**`, Listen `- `, nummeriert `1. `, Hinweisbox `> ` (Subset in `markup.ts`). Der Hinweis reicht bis zur nächsten Leerzeile;
+  Listen darin mit oder ohne `>` je Zeile (`> Vorsicht:` + `- Netz aus`).
 
 ## Stufen (Festlegung 9)
 
@@ -64,6 +65,14 @@ selbst fett (Klasse `ph`); `**…**` drumherum nur, wenn mehr als der Wert hervo
 - Die Kurzkarte nimmt die **Schritt-Listen** (`typ: 'schritte'`) des Kapitels „Ein- und
   Ausschalten“ – Titel kurz halten („Einschalten“, „Ausschalten“).
 - Inhalt geändert → `version` erhöhen (Anleitungen sehen später „aktualisieren“).
+- **Eigene Bausteine** (Nutzer, `userData/Bausteine`): Namen sind je Kapitel eindeutig
+  (`namensgleiche` in `shared/bausteine.ts`, ohne Groß/Klein und Leerraum). Speichern läuft immer
+  über `speichereBaustein()` (`ui/bausteinSpeichern.ts`): Bei gleichem Namen fragt es
+  Ersetzen (Kennung bleibt, Version + 1) / Beide behalten (`freierTitel` → „… (2)“) / Abbrechen –
+  nie direkt `api.bausteine.save` aus einem Editor. Weitergeben per Export-Datei
+  (`packBausteine`); der Import (`importZusammenfuehren`) nimmt Neues, ersetzt nur bei höherer
+  Version und benennt fremde Namensgleiche um. Dieselben Regeln gelten später für den geteilten
+  Ordner (Phase 5) – dort nichts Neues erfinden.
 - Neue Anleitungen enthalten `START_BAUSTEINE` und `START_FAELLE` mit festen Kennungen
   (`vorlage.ts`) – nicht mit `uid()` füllen, sonst gilt „Neu“ als ungespeichert.
 

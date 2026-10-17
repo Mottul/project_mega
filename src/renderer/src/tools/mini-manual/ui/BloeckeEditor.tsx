@@ -12,15 +12,26 @@ import { LiveInput, TextArea } from '@renderer/components/ui/textarea'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
 import type { EigenerBaustein } from '@shared/types'
-import { bausteinEinfuegen, bloecke, entferne, ersetze, neuerBlock, verschiebe } from '../aktionen'
+import { Griff, useSortable, type Sortable } from '@renderer/components/ui/sortable'
+import { cn } from '@renderer/lib/utils'
+import {
+  bausteinEinfuegen,
+  bloecke,
+  entferne,
+  ersetze,
+  neuerBlock,
+  verschiebe,
+  zieheNach
+} from '../aktionen'
 import { BAUSTEINE, bausteinById, type Baustein } from '../bibliothek'
 import { kapitelDef, uid, type Block, type KapitelId, type Schritt } from '../model'
 import { block as pruefeBlock } from '../sanitize'
 import { useMiniManual } from '../store'
+import { speichereBaustein } from './bausteinSpeichern'
 import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
 
 export const AUSZEICHNUNG_HILFE =
-  'Leerzeile = neuer Absatz · „- “ Aufzählung · „1. “ nummeriert · „> “ Hinweis · **fett** · Platzhalter wie {pc.name}, {prozessor.ip}, {wand.aufloesung}, {kontakt.mobil}, {projekt.ort}'
+  'Leerzeile = neuer Absatz · „- “ Aufzählung · „1. “ nummeriert · „> “ Hinweis (bis zur Leerzeile, Listen darin erlaubt) · **fett** · Platzhalter wie {pc.name}, {prozessor.ip}, {wand.aufloesung}, {kontakt.mobil}, {projekt.ort}'
 
 const TYP_LABEL: Record<Block['typ'], string> = {
   text: 'Text',
@@ -36,36 +47,41 @@ function SchritteListe({
   schritte: Schritt[]
   onChange: (s: Schritt[]) => void
 }): JSX.Element {
+  const sort = useSortable((von, nach, hinter) => onChange(zieheNach(schritte, von, nach, hinter)))
   return (
     <div className="space-y-1.5">
-      {schritte.map((s, i) => (
-        <div key={s.id} className="flex items-center gap-2">
-          <span className="w-5 shrink-0 text-right font-mono text-sm text-primary">{i + 1}</span>
-          <LiveInput
-            value={s.text}
-            aria-label={`Schritt ${i + 1}`}
-            placeholder="Was ist zu tun?"
-            onCommit={(text) => onChange(ersetze(schritte, s.id, (x) => ({ ...x, text })))}
-          />
-          <StufeSelect
-            value={s.stufe}
-            onChange={(stufe) => onChange(ersetze(schritte, s.id, (x) => ({ ...x, stufe })))}
-          />
-          <FotoFeld
-            klein
-            hash={s.foto}
-            onChange={(foto) => onChange(ersetze(schritte, s.id, (x) => ({ ...x, foto })))}
-          />
-          <ZeilenKnoepfe
-            was="Schritt"
-            onUp={i > 0 ? () => onChange(verschiebe(schritte, s.id, -1)) : undefined}
-            onDown={
-              i < schritte.length - 1 ? () => onChange(verschiebe(schritte, s.id, 1)) : undefined
-            }
-            onDelete={() => onChange(entferne(schritte, s.id))}
-          />
-        </div>
-      ))}
+      {schritte.map((s, i) => {
+        const it = sort.item(s.id)
+        return (
+          <div key={s.id} {...it} className={cn('flex items-center gap-2 rounded', it.className)}>
+            <Griff sort={sort} id={s.id} was="Schritt" />
+            <span className="w-5 shrink-0 text-right font-mono text-sm text-primary">{i + 1}</span>
+            <LiveInput
+              value={s.text}
+              aria-label={`Schritt ${i + 1}`}
+              placeholder="Was ist zu tun?"
+              onCommit={(text) => onChange(ersetze(schritte, s.id, (x) => ({ ...x, text })))}
+            />
+            <StufeSelect
+              value={s.stufe}
+              onChange={(stufe) => onChange(ersetze(schritte, s.id, (x) => ({ ...x, stufe })))}
+            />
+            <FotoFeld
+              klein
+              hash={s.foto}
+              onChange={(foto) => onChange(ersetze(schritte, s.id, (x) => ({ ...x, foto })))}
+            />
+            <ZeilenKnoepfe
+              was="Schritt"
+              onUp={i > 0 ? () => onChange(verschiebe(schritte, s.id, -1)) : undefined}
+              onDown={
+                i < schritte.length - 1 ? () => onChange(verschiebe(schritte, s.id, 1)) : undefined
+              }
+              onDelete={() => onChange(entferne(schritte, s.id))}
+            />
+          </div>
+        )
+      })}
       <Button
         variant="ghost"
         size="sm"
@@ -87,21 +103,26 @@ function BlockKarte({
   set,
   oben,
   unten,
-  weg
+  weg,
+  sort
 }: {
   b: Block
   set: (b: Block) => void
   oben?: () => void
   unten?: () => void
   weg: () => void
+  sort: Sortable
 }): JSX.Element {
   const herkunft = 'herkunft' in b && b.herkunft ? bausteinById(b.herkunft.baustein) : undefined
+  const it = sort.item(b.id)
   return (
     <div
-      className="space-y-2 rounded-lg border border-border bg-background/40 p-3"
+      {...it}
+      className={cn('space-y-2 rounded-lg border border-border bg-background/40 p-3', it.className)}
       data-testid="block"
     >
       <div className="flex items-center gap-2">
+        <Griff sort={sort} id={b.id} was="Block" />
         <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {TYP_LABEL[b.typ]}
         </span>
@@ -202,7 +223,7 @@ function BausteinWahl({ id, onClose }: { id: KapitelId; onClose: () => void }): 
   async function speichern(): Promise<void> {
     const t = titel.trim()
     if (!t || !aktuelle.length) return
-    const res = await api.bausteine.save({
+    const { baustein: res, fehler } = await speichereBaustein({
       id: uid(),
       art: 'bloecke',
       titel: t,
@@ -210,10 +231,10 @@ function BausteinWahl({ id, onClose }: { id: KapitelId; onClose: () => void }): 
       daten: aktuelle
     })
     if (res) {
-      toast.success(`Baustein „${t}“ gespeichert`)
-      setEigene((l) => [...l, res])
+      toast.success(`Baustein „${res.titel}“ gespeichert`)
+      setEigene((l) => [...l.filter((x) => x.id !== res.id), res])
       setTitel('')
-    } else toast.error('Baustein ließ sich nicht speichern')
+    } else if (fehler) toast.error('Baustein ließ sich nicht speichern')
   }
 
   return (
@@ -292,8 +313,11 @@ export function BloeckeEditor({ id }: { id: KapitelId }): JSX.Element {
   const k = useMiniManual((s) => s.anleitung.kapitel.find((x) => x.id === id))
   const update = useMiniManual((s) => s.update)
   const [wahl, setWahl] = useState(false)
-  if (!k) return <></>
   const setBloecke = (fn: (b: Block[]) => Block[]): void => update((a) => bloecke(a, id, fn))
+  const sort = useSortable((von, nach, hinter) =>
+    setBloecke((bs) => zieheNach(bs, von, nach, hinter))
+  )
+  if (!k) return <></>
   const add = (typ: Block['typ']): void => setBloecke((bs) => [...bs, neuerBlock(typ, k.stufe)])
 
   return (
@@ -301,6 +325,7 @@ export function BloeckeEditor({ id }: { id: KapitelId }): JSX.Element {
       {k.bloecke.map((b, i) => (
         <BlockKarte
           key={b.id}
+          sort={sort}
           b={b}
           set={(nb) => setBloecke((bs) => ersetze(bs, b.id, () => nb))}
           oben={i > 0 ? () => setBloecke((bs) => verschiebe(bs, b.id, -1)) : undefined}

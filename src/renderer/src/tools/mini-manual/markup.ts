@@ -26,7 +26,7 @@ export function inline(text: string, o: MarkupOptionen): string {
     })
 }
 
-type Art = 'p' | 'ul' | 'ol' | 'hinweis'
+type Art = 'p' | 'ul' | 'ol'
 
 function art(line: string): { art: Art | null; text: string } {
   if (!line.trim()) return { art: null, text: '' }
@@ -34,15 +34,13 @@ function art(line: string): { art: Art | null; text: string } {
   if (m) return { art: 'ul', text: m[1] }
   m = /^\s*\d{1,3}[.)]\s+(.*)$/.exec(line)
   if (m) return { art: 'ol', text: m[1] }
-  m = /^\s*>\s?(.*)$/.exec(line)
-  if (m) return { art: 'hinweis', text: m[1] }
   return { art: 'p', text: line.trim() }
 }
 
-/** Mehrzeiliger Text als HTML-Blöcke */
-export function markup(text: string, o: MarkupOptionen): string {
+/** Zeilen als Absätze und Listen; gleiche Art hintereinander wird ein Block */
+function bloecke(lines: string[], o: MarkupOptionen): string {
   const groups: { art: Art; lines: string[] }[] = []
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of lines) {
     const l = art(raw)
     if (!l.art) {
       groups.push({ art: 'p', lines: [] }) // Trenner: nächste Zeile beginnt einen neuen Block
@@ -61,11 +59,39 @@ export function markup(text: string, o: MarkupOptionen): string {
           return `<ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul>`
         case 'ol':
           return `<ol>${items.map((i) => `<li>${i}</li>`).join('')}</ol>`
-        case 'hinweis':
-          return `<div class="hinweis">${items.join('<br>')}</div>`
         default:
           return `<p>${items.join('<br>')}</p>`
       }
     })
     .join('')
+}
+
+/**
+ * Mehrzeiliger Text als HTML-Blöcke. Ein Hinweis beginnt mit „> “ und reicht bis zur nächsten
+ * Leerzeile – darin gelten Absätze und Listen wie sonst („> - Punkt“ oder „- Punkt“ direkt
+ * darunter). Früher endete er an der ersten Zeile ohne „>“, und „> - Punkt“ blieb Text.
+ */
+export function markup(text: string, o: MarkupOptionen): string {
+  const out: string[] = []
+  let normal: string[] = []
+  let hinweis: string[] | null = null
+  const fertig = (): void => {
+    if (normal.length) out.push(bloecke(normal, o))
+    if (hinweis) out.push(`<div class="hinweis">${bloecke(hinweis, o)}</div>`)
+    normal = []
+    hinweis = null
+  }
+  for (const raw of text.split(/\r?\n/)) {
+    if (!raw.trim()) {
+      fertig()
+      continue
+    }
+    const m = /^\s*>\s?(.*)$/.exec(raw)
+    if (m && !hinweis) fertig() // Text davor bleibt außerhalb des Hinweises
+    if (m) (hinweis ??= []).push(m[1])
+    else if (hinweis) hinweis.push(raw)
+    else normal.push(raw)
+  }
+  fertig()
+  return out.join('')
 }

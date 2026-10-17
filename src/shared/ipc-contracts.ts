@@ -13,6 +13,8 @@ import type {
   ProjectSaveTarget,
   ProjectsDirInfo,
   NotifyOptions,
+  BausteinExport,
+  BausteinImport,
   EigenerBaustein,
   FotoImport,
   PdfExportResult,
@@ -223,6 +225,8 @@ export const Channels = {
   bausteineList: 'bausteine:list',
   bausteineSave: 'bausteine:save',
   bausteineRemove: 'bausteine:remove',
+  bausteineExport: 'bausteine:export',
+  bausteineImport: 'bausteine:import',
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
@@ -555,6 +559,16 @@ export interface ToolboxApi {
       b: Pick<EigenerBaustein, 'id' | 'art' | 'titel' | 'kapitel' | 'daten'>
     ): Promise<EigenerBaustein | null>
     remove(id: string): Promise<boolean>
+    /**
+     * Zum Weitergeben in eine Datei (Speichern-Dialog im main). Nur Kennungen gehen hinüber –
+     * main schreibt, was in seiner Ablage steht. null = abgebrochen.
+     */
+    export(ids: string[]): Promise<BausteinExport | null>
+    /**
+     * Datei(en) eines Kollegen einlesen (Öffnen-Dialog im main): neu, neuere Version ersetzt,
+     * gleicher Name mit „(2)“ – nie still überschreiben. null = abgebrochen; je Datei ein Ergebnis.
+     */
+    import(): Promise<BausteinImport[] | null>
   }
 
   jingles: {

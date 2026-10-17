@@ -77,13 +77,20 @@ function css(c: SeitenKontext): string {
 .mm .muted{color:#676c76}
 .mm .hinweis{border-left:3px solid ${ak};background:#fdf8e6;padding:6px 10px;margin:0 0 8px;border-radius:3px}
 .mm .hinweis.warnung{border-left-color:#c62828;background:#fdecec}
+.mm .hinweis>:last-child{margin-bottom:0}
 .mm .schritte{margin:0 0 10px 0;padding-left:0;list-style:none;counter-reset:s}
 .mm .schritte li{counter-increment:s;display:grid;grid-template-columns:24px minmax(0,1fr);gap:6px;padding:4px 0;border-top:1px solid #ececec;break-inside:avoid}
 .mm .schritte li::before{content:counter(s);font-weight:700;color:${ak}}
-.mm img.foto{display:block;max-width:100%;max-height:260px;margin:6px 0;border:1px solid #e2e2e2;border-radius:3px}
-.mm img.mini{max-height:110px}
-.mm figure{margin:6px 0 10px;break-inside:avoid}
-.mm figcaption{color:#676c76;font-size:11px}
+.mm img.foto{display:block;max-width:100%;max-height:260px;margin:6px auto;border:1px solid #e2e2e2;border-radius:3px}
+.mm img.mini{max-height:110px;margin:6px 0}
+.mm figure{margin:8px auto 12px;break-inside:avoid;text-align:center}
+.mm figure img.foto{margin:0 auto}
+.mm figcaption{color:#676c76;font-size:11px;text-align:center;margin-top:4px}
+.mm .fotos{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:12px;margin:8px 0 12px}
+.mm .fotos figure{margin:0;flex:1 1 0;min-width:0}
+.mm .fotos.n2 figure{flex-basis:calc(50% - 6px);max-width:calc(50% - 6px)}
+.mm .fotos.n3 figure{flex-basis:calc(33.333% - 8px);max-width:calc(33.333% - 8px)}
+.mm .fotos img.foto{max-height:200px}
 .mm table{border-collapse:collapse;width:100%;margin:0 0 10px}
 .mm td,.mm th{border:1px solid #ddd;padding:4px 7px;text-align:left;vertical-align:top}
 .mm th{background:#f7f7f7;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
@@ -123,21 +130,37 @@ function foto(hash: string | null, cls = 'foto'): string {
   return hash ? `<img class="${cls}" src="${esc(fotoUrl(hash))}" alt="">` : ''
 }
 
+function figur(b: Extract<Block, { typ: 'foto' }>, o: MarkupOptionen): string {
+  return `<figure>${foto(b.foto)}${b.text ? `<figcaption>${inline(b.text, o)}</figcaption>` : ''}</figure>`
+}
+
 function bloecke(bs: Block[], a: Anleitung, c: SeitenKontext): string {
   const g = grenze(c)
   const o = mo(a, c)
-  return bs
-    .filter((b) => b.stufe <= g)
+  const sichtbar = bs.filter((b) => b.stufe <= g && (b.typ !== 'foto' || !!b.foto))
+  // Fotos, die direkt aufeinander folgen, stehen nebeneinander (je Reihe zwei bzw. drei),
+  // ein einzelnes zentriert; die Bildunterschrift jeweils mittig darunter
+  const teile: (Block | Extract<Block, { typ: 'foto' }>[])[] = []
+  for (const b of sichtbar) {
+    const last = teile.at(-1)
+    if (b.typ === 'foto' && Array.isArray(last)) last.push(b)
+    else teile.push(b.typ === 'foto' ? [b] : b)
+  }
+  return teile
     .map((b) => {
+      if (Array.isArray(b)) {
+        if (b.length === 1) return figur(b[0], o)
+        // 2 und 4 Fotos als zwei Spalten (2 × 2), sonst drei je Reihe
+        const spalten = b.length === 2 || b.length === 4 ? 2 : 3
+        return `<div class="fotos n${spalten}">${b.map((x) => figur(x, o)).join('')}</div>`
+      }
       switch (b.typ) {
         case 'text':
           return `${c.lern ? `<div>${badge(c, b.stufe)}</div>` : ''}${markup(b.text, o)}`
         case 'hinweis':
           return `<div class="hinweis${b.art === 'warnung' ? ' warnung' : ''}">${badge(c, b.stufe)}${markup(b.text, o)}</div>`
         case 'foto':
-          return b.foto
-            ? `<figure>${foto(b.foto)}${b.text ? `<figcaption>${inline(b.text, o)}</figcaption>` : ''}</figure>`
-            : ''
+          return figur(b, o)
         case 'schritte': {
           const items = b.schritte
             .filter((s) => s.stufe <= g)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_FIRMENPROFIL } from '@shared/types'
+import { zieheNach } from './aktionen'
 import { BAUSTEINE, FEHLERFAELLE, fallById, fallMitVerweisen } from './bibliothek'
 import { faelleFuerStufe, pruefeFall, wirksam } from './fehlersuche'
 import { inline, markup } from './markup'
@@ -28,7 +29,23 @@ describe('Auszeichnung', () => {
   it('Absätze, Listen und Hinweis', () => {
     const html = markup('Erste Zeile\nzweite\n\n- a\n- b\n1. eins\n2. zwei\n> Achtung', druck)
     expect(html).toBe(
-      '<p>Erste Zeile<br>zweite</p><ul><li>a</li><li>b</li></ul><ol><li>eins</li><li>zwei</li></ol><div class="hinweis">Achtung</div>'
+      '<p>Erste Zeile<br>zweite</p><ul><li>a</li><li>b</li></ul><ol><li>eins</li><li>zwei</li></ol><div class="hinweis"><p>Achtung</p></div>'
+    )
+  })
+  it('Hinweis mit Listen – bis zur Leerzeile, mit oder ohne „>“ je Zeile', () => {
+    const box =
+      '<div class="hinweis"><p>Vorsicht:</p><ul><li>Netz aus</li><li>warten</li></ul><ol><li>eins</li></ol></div>'
+    expect(markup('> Vorsicht:\n> - Netz aus\n> - warten\n> 1. eins', druck)).toBe(box)
+    expect(markup('> Vorsicht:\n- Netz aus\n- warten\n1. eins', druck)).toBe(box)
+    // Leerzeile beendet den Hinweis; Text davor bleibt draußen
+    expect(markup('Davor\n> Achtung\n\n- danach', druck)).toBe(
+      '<p>Davor</p><div class="hinweis"><p>Achtung</p></div><ul><li>danach</li></ul>'
+    )
+    // leere „>“-Zeile trennt Absätze im Hinweis
+    expect(markup('> a\n>\n> b', druck)).toBe('<div class="hinweis"><p>a</p><p>b</p></div>')
+    // escaped bleibt escaped
+    expect(markup('> - <b>x</b>', druck)).toBe(
+      '<div class="hinweis"><ul><li>&lt;b&gt;x&lt;/b&gt;</li></ul></div>'
     )
   })
   it('Platzhalter-Namen im Text', () => {
@@ -36,6 +53,19 @@ describe('Auszeichnung', () => {
       'pc.name',
       'wand.aufloesung'
     ])
+  })
+})
+
+describe('Ziehen zum Sortieren', () => {
+  const l = ['a', 'b', 'c', 'd'].map((id) => ({ id }))
+  const ids = (x: { id: string }[]): string => x.map((y) => y.id).join('')
+  it('vor bzw. hinter das Ziel, auch ans Ende und an den Anfang', () => {
+    expect(ids(zieheNach(l, 'a', 'c', false))).toBe('bacd')
+    expect(ids(zieheNach(l, 'a', 'c', true))).toBe('bcad')
+    expect(ids(zieheNach(l, 'a', 'd', true))).toBe('bcda')
+    expect(ids(zieheNach(l, 'd', 'a', false))).toBe('dabc')
+    expect(ids(zieheNach(l, 'b', 'a', true))).toBe('abcd') // hinter den Vorgänger = bleibt
+    expect(ids(zieheNach(l, 'b', 'x', true))).toBe('abcd') // unbekanntes Ziel
   })
 })
 

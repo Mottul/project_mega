@@ -1,12 +1,20 @@
 // Mini-Manual in der echten App: Werkzeug-Muster, Firmenprofil (App-Menü), Platzhalter aus der
 // Geräteliste in der Vorschau, Kontakt aus dem Profil, Fall aus der Bibliothek, Kurzkarte (A5,
 // genau eine Seite) und Handbuch als PDF, Projektdatei mit Foto, LED-Wall-Planung derselben
-// Datei übernehmen und „Planung geändert“. Dialoge werden im main ersetzt.
+// Datei übernehmen und „Planung geändert“, Ziehen zum Sortieren, eigene Bausteine (gleicher Name,
+// Export, Import). Dialoge werden im main ersetzt.
 
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { launchApp, openRoute, runSteps, stubConfirm, waitFor } from './harness.mjs'
+import {
+  launchApp,
+  openRoute,
+  runSteps,
+  stubConfirm,
+  stubConfirmSequence,
+  waitFor
+} from './harness.mjs'
 
 const ctx = await launchApp()
 const { app, page } = ctx
@@ -17,6 +25,9 @@ const vorschau = () =>
 const kapitel = (id) =>
   page.getByRole('combobox', { name: 'Kapitel', exact: true }).selectOption(id)
 const datei = join(ctx.userData, 'Messe Test.mottul')
+const FALL = 'Die Sicherung fliegt beim Einschalten'
+/** eigene Bausteine, wie main sie ablegt */
+const eigene = () => page.evaluate(() => window.api.bausteine.list())
 
 /** Speichern-Dialog liefert einen festen Pfad */
 const saveTo = (file) =>
@@ -369,6 +380,86 @@ try {
         assert.ok(s, 'Ausgang nicht in der Datei')
         assert.equal(s.section.version, 3)
         assert.deepEqual(s.section.data.geraete[0].waende, ['wand-1', 'bar'])
+      }
+    ],
+    [
+      'Ziehen zum Sortieren: Laptop am Griff vor den Prozessor ziehen',
+      async () => {
+        await kapitel('geraete')
+        const name = (i) =>
+          page.getByTestId('geraet').nth(i).getByLabel('Name', { exact: true }).inputValue()
+        assert.equal(await name(1), 'Laptop')
+        // Von Hand in Schritten statt `dragTo`: Das bewegt die Maus nur einmal – dann startet das
+        // Ziehen, aber am Ziel kommt kein dragover und unter macOS kein drop an (CI rot, #166).
+        // Erst bewegen (Ziehen startet), dann über dem oberen Rand der Zielzeile (= davor) bewegen.
+        const ziel = page.getByTestId('geraet').first()
+        const griff = page.getByRole('img', { name: 'Gerät ziehen zum Verschieben' }).nth(1)
+        await ziel.scrollIntoViewIfNeeded()
+        await griff.hover()
+        const g = await griff.boundingBox()
+        const z = await ziel.boundingBox()
+        await page.mouse.down()
+        await page.mouse.move(g.x + g.width / 2, g.y - 12, { steps: 4 })
+        await page.mouse.move(z.x + 60, z.y + 10, { steps: 6 })
+        await page.mouse.move(z.x + 62, z.y + 8, { steps: 2 })
+        await page.mouse.up()
+        assert.ok(await waitFor(async () => (await name(0)) === 'Laptop', 5000), await name(0))
+        assert.equal(await name(1), 'NovaPro UHD Jr')
+        // ohne Griff ist die Zeile nicht ziehbar (sonst ließe sich kein Text markieren)
+        assert.notEqual(await page.getByTestId('geraet').first().getAttribute('draggable'), 'true')
+      }
+    ],
+    [
+      'Eigener Baustein: gleicher Name fragt nach, „Beide behalten“ gibt „(2)“',
+      async () => {
+        await kapitel('fehlersuche')
+        await page
+          .getByRole('list', { name: 'Fehlerfälle' })
+          .getByRole('button', { name: new RegExp(FALL) })
+          .click()
+        const speichern = page.getByRole('button', { name: 'Als eigenen Baustein speichern' })
+        await speichern.click()
+        assert.ok(await waitFor(async () => (await eigene()).length === 1, 5000))
+        // Rückfrage: Ersetzen (0) · Beide behalten (1) · Abbrechen (2)
+        await stubConfirmSequence(app, [1])
+        await speichern.click()
+        const l = await waitFor(async () => {
+          const x = await eigene()
+          return x.length === 2 ? x : null
+        }, 5000)
+        assert.ok(l, 'zweiter Baustein fehlt')
+        assert.deepEqual(l.map((b) => b.titel).sort(), [FALL, `${FALL} (2)`])
+      }
+    ],
+    [
+      'Bausteine-Dialog: alle exportieren, einen löschen, Datei wieder importieren',
+      async () => {
+        await bar().getByRole('button', { name: 'Bausteine', exact: true }).click()
+        const dlg = page.getByRole('dialog', { name: 'Eigene Bausteine' })
+        const zeilen = dlg.getByRole('textbox', { name: /^Name von/ })
+        assert.ok(await waitFor(async () => (await zeilen.count()) === 2, 5000))
+        const f = join(ctx.userData, 'bausteine.json')
+        await saveTo(f)
+        await dlg.getByRole('button', { name: /Alle exportieren/ }).click()
+        assert.ok(await waitFor(() => existsSync(f), 5000), 'Export fehlt')
+        const j = JSON.parse(readFileSync(f, 'utf8'))
+        assert.equal(j.app, 'mottulbox')
+        assert.equal(j.typ, 'bausteine')
+        assert.equal(j.bausteine.length, 2)
+
+        await stubConfirm(app, true)
+        await dlg.getByRole('button', { name: `„${FALL} (2)“ löschen` }).click()
+        assert.ok(await waitFor(async () => (await zeilen.count()) === 1, 5000))
+
+        await app.evaluate(({ dialog }, p) => {
+          dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [p] })
+        }, f)
+        await dlg.getByRole('button', { name: /Importieren/ }).click()
+        // der gelöschte kommt zurück, der vorhandene (gleiche Version) bleibt unberührt
+        await page.getByText('1 neu, 1 schon vorhanden').waitFor({ timeout: 5000 })
+        assert.ok(await waitFor(async () => (await zeilen.count()) === 2, 5000))
+        await page.keyboard.press('Escape')
+        await dlg.waitFor({ state: 'detached' })
       }
     ],
     [

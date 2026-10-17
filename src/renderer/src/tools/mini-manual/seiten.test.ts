@@ -3,7 +3,7 @@ import { fotoHashesIn } from '@shared/fotos'
 import { DEFAULT_FIRMENPROFIL } from '@shared/types'
 import { ledWallFileData, sanitizeLedWallConfig } from '../led-wall/config'
 import { kopieAus } from './ledWallKopie'
-import { leereAnleitung, type Anleitung } from './model'
+import { leereAnleitung, type Anleitung, type Block } from './model'
 import { platzhalterWerte } from './platzhalter'
 import { pruefung } from './pruefung'
 import { handbuchHtml, kapitelNummern, kurzkarteHtml, vorschau, type SeitenKontext } from './seiten'
@@ -96,6 +96,33 @@ describe('Handbuch', () => {
       ctx(1, { firma: { ...DEFAULT_FIRMENPROFIL, logo: 'c'.repeat(64) } })
     )
     expect(fotoHashesIn(html)).toEqual(['c'.repeat(64), 'b'.repeat(64)])
+  })
+
+  it('Fotos: einzeln als Figur, aufeinanderfolgende nebeneinander (2 bzw. 3 je Reihe)', () => {
+    const a = beispiel()
+    const f = (n: number, text = ''): Block => ({
+      id: `f${n}`,
+      typ: 'foto',
+      stufe: 1,
+      foto: String(n).repeat(64),
+      text
+    })
+    const t: Block = { id: 't', typ: 'text', stufe: 1, text: 'Dazwischen' }
+    a.kapitel = a.kapitel.map((k) =>
+      k.id === 'pflege'
+        ? { ...k, an: true, stufe: 1, bloecke: [f(1, 'Rack'), t, f(2), f(3), f(4)] }
+        : k
+    )
+    const html = vorschau(a, ctx(1), 'pflege').html
+    expect(html).toContain('<figure><img class="foto"')
+    expect(html).toContain('<figcaption>Rack</figcaption>')
+    expect(html.match(/<div class="fotos n3">/g)).toHaveLength(1) // 2, 3, 4 zusammen
+    expect(html.indexOf('Dazwischen')).toBeLessThan(html.indexOf('class="fotos'))
+    // Foto-Block ohne Bild fällt weg und trennt keine Gruppe
+    a.kapitel = a.kapitel.map((k) =>
+      k.id === 'pflege' ? { ...k, bloecke: [f(1), { ...f(9), foto: null }, f(2)] } : k
+    )
+    expect(vorschau(a, ctx(1), 'pflege').html).toContain('<div class="fotos n2">')
   })
 
   it('Akzentfarbe nur als gültiges Hex – sonst die Vorgabe (CSS-Einschleusung)', () => {

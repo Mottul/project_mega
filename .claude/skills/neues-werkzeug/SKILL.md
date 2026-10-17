@@ -44,6 +44,10 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `TextArea`/`LiveInput` aus `components/ui/textarea`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten
      Zeilen – nie ein rohes `<select>` mit eigenen Klassen), Farben nur über Tailwind-Tokens
      (`primary`, `border` …; Rot ist „live“).
+     Listen mit Reihenfolge: `useSortable` + `Griff` aus `components/ui/sortable` (Ziehen nur
+     am Griff, damit Text in den Feldern markierbar bleibt), umsortiert über Kennungen
+     (`zieheNach`); die Pfeil-Knöpfe bleiben für die Tastatur. Eine Liste in einer Liste bekommt
+     ihre eigene Instanz.
      Texte deutsch.
 5. **Speichern – vier Orte, nie ein eigener localStorage-Parser:**
    - Einstellungen, die main braucht (Pfade, Geräte): `settings.json` über `useSettings(sel)` und

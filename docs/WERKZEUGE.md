@@ -550,6 +550,9 @@ sonst kommt ein Hinweis).
   die **Lernausgabe** (alles, jeder Teil mit Stufen-Kennzeichen). Kapitel, Blöcke, Schritte und
   Fehlerfälle tragen eine Mindeststufe; die Stufe steuert nur, *was* erscheint. Ein Sprung in der
   Fehlersuche zu einem Schritt über der Stufe wird zu „Ab hier bitte anrufen“.
+- **Reihenfolge** von Kapiteln, Blöcken, Schritten, Fehlerfällen, Geräten, Zugängen und
+  Kontakten: am Griff (⋮⋮) ziehen – eine Linie zeigt, wo die Zeile landet – oder mit den
+  Pfeil-Knöpfen (Tastatur).
 - **Kapitel** (Schublade: an/ab, Reihenfolge, Stufe): Auf einen Blick, Systemübersicht (Grafik
   aus der Geräteliste), Geräte und Standorte, Zugangsdaten, Ein- und Ausschalten, Software,
   Bedienfeld, Inhalte tauschen, LED-Wall, Fehlersuche, Pflege und Verbote, Ersatzteile,
@@ -565,14 +568,22 @@ sonst kommt ein Hinweis).
   Export meldet Wände ohne Prozessor, Prozessoren ohne Wand, Zuspieler ohne Ziel und Ausschnitte,
   die über das Bild ragen oder skaliert werden.
 - **Texte** mit kleiner Auszeichnung (Leerzeile = Absatz, „- “ Liste, „1. “ nummeriert, „> “
-  Hinweis, `**fett**`) und **Platzhaltern** wie `{prozessor.name}`, `{pc.ip}`,
+  Hinweis bis zur nächsten Leerzeile – Listen darin erlaubt –, `**fett**`) und **Platzhaltern** wie `{prozessor.name}`, `{pc.ip}`,
   `{wand.aufloesung}`, `{kontakt.mobil}` – die Kurznamen der Geräte sind die Quelle. Eingesetzte
   Werte stehen **fett** im Text, damit man Namen und Adressen beim Lesen sofort findet. Leere
   Platzhalter zeigt die Vorschau rot gestrichelt, im PDF wird daraus eine Linie zum Ausfüllen.
 - **Bausteine:** mitgelieferte (Ein-/Ausschalten, Stromausfall, MadMapper, Mottulbox-Player,
   OBS, Stream Deck, Inhalte, Pflege, Ersatzteile, Status-LEDs) und **eigene** – ein Kapitel als
   Baustein speichern, eine Datei je Baustein im Benutzerordner unter `Bausteine/`. Eingefügt wird
-  eine Kopie; die Anleitung ändert sich nicht, wenn sich die Bibliothek ändert.
+  eine Kopie; die Anleitung ändert sich nicht, wenn sich die Bibliothek ändert. Gibt es den Namen
+  im selben Kapitel schon, fragt das Speichern: **Ersetzen** (gleicher Baustein, Version + 1),
+  **Beide behalten** (der neue heißt „… (2)“) oder Abbrechen.
+- **Bausteine verwalten** (Leiste → Bausteine): alle eigenen nach Kapitel, mit Version, Autor
+  und Datum; umbenennen, löschen, einzeln, als Auswahl oder alle **exportieren** (eine
+  JSON-Datei zum Weitergeben per Mail oder Stick). **Importieren** nimmt eine oder mehrere solcher
+  Dateien: Neues kommt dazu, eine höhere Version ersetzt die eigene, gleiche oder ältere wird
+  übersprungen, ein anderer Baustein mit gleichem Namen heißt „… (2)“ – überschrieben wird nie
+  stillschweigend. Danach steht die Zusammenfassung da („2 neu, 1 schon vorhanden“).
 - **Fehlersuche** als Liste: je Schritt Stufe, Frage, Ja- und Nein-Ziel (anderer Schritt,
   Lösung, Gelöst, Anrufen, anderer Fall), Hinweis, Foto, „vorher kurz anrufen“, Stufe aus dem
   Modul (IM-Tausch: 496-2,0/rX3ioBF werkzeuglos mit Rücksprache, uS2+ nur Technik). Die Prüfung
@@ -592,6 +603,8 @@ sonst kommt ein Hinweis).
 - **Vor dem Export** (Schublade, Zahl in der Leiste): leere Platzhalter, fehlender Kontakt,
   gedruckte Passwörter, fehlende oder veraltete LED-Wall-Planung, Probleme der Fehlerfälle,
   leere Kapitel. Bei Fehlern fragt der Export nach.
+- **Fotos** stehen zentriert, die Bildunterschrift mittig darunter; mehrere Foto-Blöcke
+  hintereinander stehen nebeneinander (zwei bzw. vier in zwei Spalten, sonst drei).
 - **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel.
 - Gespeichert wird als Teil „Anleitung“ der [Projektdatei](#projektdateien-und-projektordner),
   mit Fotos.

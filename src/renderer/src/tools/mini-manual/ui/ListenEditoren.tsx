@@ -7,9 +7,11 @@ import { useMemo, useState } from 'react'
 import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
 import { Select } from '@renderer/components/ui/select'
+import { Griff, useSortable } from '@renderer/components/ui/sortable'
 import { LiveInput } from '@renderer/components/ui/textarea'
 import { useSettings } from '@renderer/lib/settings'
-import { entferne, ersetze, verschiebe } from '../aktionen'
+import { cn } from '@renderer/lib/utils'
+import { entferne, ersetze, verschiebe, zieheNach } from '../aktionen'
 import { leeresGeraet, ROLLEN, uid, type Geraet, type GeraetRolle, type Zugang } from '../model'
 import { kurzname } from '../sanitize'
 import { prozessorVorschlaege } from '../signalwege'
@@ -24,6 +26,7 @@ export function GeraeteEditor(): JSX.Element {
   const update = useMiniManual((s) => s.update)
   const set = (fn: (g: Geraet[]) => Geraet[]): void =>
     update((a) => ({ ...a, geraete: fn(a.geraete) }))
+  const sort = useSortable((von, nach, hinter) => set((l) => zieheNach(l, von, nach, hinter)))
   const feld = (g: Geraet, key: keyof Geraet, label: string, placeholder = ''): JSX.Element => (
     <LiveInput
       value={String(g[key] ?? '')}
@@ -39,10 +42,15 @@ export function GeraeteEditor(): JSX.Element {
       {geraete.map((g, i) => (
         <div
           key={g.id}
-          className="space-y-2 rounded-lg border border-border bg-background/40 p-3"
+          {...sort.item(g.id)}
+          className={cn(
+            'space-y-2 rounded-lg border border-border bg-background/40 p-3',
+            sort.item(g.id).className
+          )}
           data-testid="geraet"
         >
           <div className="flex items-center gap-2">
+            <Griff sort={sort} id={g.id} was="Gerät" />
             <Select
               size="xs"
               aria-label="Rolle"
@@ -124,6 +132,7 @@ export function ZugangEditor(): JSX.Element {
     update((a) => ({ ...a, zugaenge: fn(a.zugaenge) }))
   const patch = (z: Zugang, p: Partial<Zugang>): void =>
     set((l) => ersetze(l, z.id, (x) => ({ ...x, ...p })))
+  const sort = useSortable((von, nach, hinter) => set((l) => zieheNach(l, von, nach, hinter)))
   return (
     <div className="space-y-2">
       <Alert tone="warning">
@@ -133,9 +142,14 @@ export function ZugangEditor(): JSX.Element {
       {zugaenge.map((z, i) => (
         <div
           key={z.id}
-          className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background/40 p-2"
+          {...sort.item(z.id)}
+          className={cn(
+            'flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background/40 p-2',
+            sort.item(z.id).className
+          )}
           data-testid="zugang"
         >
+          <Griff sort={sort} id={z.id} was="Zugang" />
           <div className="w-40">
             <LiveInput
               value={z.wofuer}
@@ -216,6 +230,9 @@ export function KontaktEditor(): JSX.Element {
   const profil = useSettings((s) => s.firmenprofil)?.kontakte ?? []
   const frei = profil.filter((p) => !kontakte.some((k) => k.id === p.id))
   const [wahl, setWahl] = useState('')
+  const sort = useSortable((von, nach, hinter) =>
+    update((a) => ({ ...a, kontakte: zieheNach(a.kontakte, von, nach, hinter) }))
+  )
   const veraltet = kontakte.filter((k) => {
     const p = profil.find((x) => x.id === k.id)
     return p && JSON.stringify(p) !== JSON.stringify(k)
@@ -233,9 +250,14 @@ export function KontaktEditor(): JSX.Element {
         {kontakte.map((k, i) => (
           <li
             key={k.id}
-            className="flex items-center gap-2 rounded-lg border border-border bg-background/40 px-3 py-2"
+            {...sort.item(k.id)}
+            className={cn(
+              'flex items-center gap-2 rounded-lg border border-border bg-background/40 px-3 py-2',
+              sort.item(k.id).className
+            )}
             data-testid="kontakt"
           >
+            <Griff sort={sort} id={k.id} was="Kontakt" />
             <span className="min-w-0 flex-1 truncate text-sm">
               <b>{k.name || 'ohne Namen'}</b>
               {k.funktion && ` · ${k.funktion}`}
