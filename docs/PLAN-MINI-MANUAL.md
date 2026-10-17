@@ -47,9 +47,23 @@ Liste je Wand; Prüfung (Wand ohne Prozessor, Prozessor ohne Wand, Zuspieler ohn
 ein Prozessor) gelten ohne Angabe als verbunden – so bleibt die einfache Anleitung ohne Eingabe;
 „vorbelegt aus dem Konfigurator“ kommt erst mit der Prozessor-Wahl in 2b.
 
-**Nächster Schritt: Phase 2b** – der [Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator), nur
-von Hand gezeichnet (Festlegungen 24–34), mit Prozessor-Wahl, geteiltem Prozessor und
-Glasfaser-Strecke. Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
+**Phase 2b in vier Teilen**, je ein PR und für sich nutzbar:
+
+1. **Kabelverlauf von Hand** – umgesetzt (17.10.2026): Startecke und Richtung je Kette, Kette
+   zeichnen (verlängern am letzten Modul), Abgleich mit „nachzeichnen“, Pfeile am Bildschirm und
+   im PDF (zwischen den Modulen, Start als Punkt, lange Brücke gestrichelt), Vorne/Hinten,
+   Signal + Strom nebeneinander, Hinweise „ohne Verlauf“; `led-wall/cabling.ts`, PDF-Bauer
+   `printHtml.ts` rein und getestet, Skill `kabelverlauf`.
+2. **Prozessor und Kapazität** – Prozessor-Wahl je Wand (Vorbelegung je Modul, geteilt bei
+   gleichem Typ), Farbtiefe/Bildrate, Grenze je Port aus Prozessor und Karte, Port je Kette,
+   Backup-Leitung („B“, NovaStar-Port bzw. Tessera-Paar), Warnungen; „bespielt“ im Mini-Manual
+   vorbelegt.
+3. **Strom** – Kreis und Phase je Stromkette, Netz und Absicherung, Last je Kette,
+   Phasenbilanz; IMs in den Stammdaten (`IM_TAUSCH` zieht um).
+4. **Glasfaser und Anleitung** – Glasfaser-Strecke mit CVT10 und Packliste; Kapitel
+   Verkabelung im Mini-Manual (Pläne aus der Kopie, vorne/hinten).
+
+Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.
 
@@ -1132,7 +1146,7 @@ Jede Phase ist für sich nutzbar.
 - **fremdformat-import** – Importer für fremde Dateien: anonymisierte Fixtures im Repo, Größen-
   und ZIP-Grenzen, tolerant parsen, nichts ausführen, Versionen am Inhalt erkennen, Zugangsdaten
   verwerfen, unbekannte Teile roh zeigen, Test je Format.
-- **kabelverlauf** (Phase 2, mit dem Code) – am Kabelverlauf des LED-Wall-Konfigurators arbeiten:
+- **kabelverlauf** ✅ (angelegt mit Phase 2b, Teil 1) – am Kabelverlauf des LED-Wall-Konfigurators arbeiten:
   reine Funktionen in `led-wall/cabling` mit Tests je Muster, eine SVG-Quelle für Bildschirm und
   PDF, Ansicht von hinten gespiegelt, Verlauf nur von Hand (ohne Startpunkt keine Pfeile),
   Zuleitungen nicht zeichnen, gezeichnete Reihenfolge abgleichen statt mitpflegen, Grenze je

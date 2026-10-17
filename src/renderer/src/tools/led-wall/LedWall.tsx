@@ -10,6 +10,7 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import {
   Cable,
   ClipboardList,
+  Columns2,
   FileDown,
   PlugZap,
   RectangleHorizontal,
@@ -25,18 +26,21 @@ import { Segmented } from '@renderer/components/ui/segmented'
 import { api } from '@renderer/lib/api'
 import { flushStore } from '@renderer/lib/persistStorage'
 import { useProjectFile } from '@renderer/lib/projectFile'
+import { useElementSize } from '@renderer/lib/useElementSize'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
-import { usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
+import { readStored, usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
 import { cn } from '@renderer/lib/utils'
 import { deriveFromLedWall } from '../packing-list/derive'
 import { usePacking } from '../packing-list/store'
 import { fmt } from '../_calc/ui'
 import { CableGrid } from './CableGrid'
+import { chainCounts } from './cabling'
 import { computeWall, type WallMetrics } from './compute'
 import { CurvingView } from './Curving'
 import { CURVE_MODE_LABELS } from './curve'
 import { PWR_COLORS, SIG_COLORS } from './data'
 import { FrontView, fitText } from './FrontView'
+import { gridCellSize } from './front'
 import { LED_WALL_FILE } from './fileSection'
 import { exportLedWallPdf } from './print'
 import { BUILD_LABELS, LedWallSettings } from './Settings'
@@ -44,18 +48,47 @@ import { useLedWall } from './store'
 import { topDownMarkup } from './topdown'
 import { WallMenu } from './WallMenu'
 
-type View = 'front' | 'top' | 'sig' | 'pwr'
+type View = 'front' | 'top' | 'sig' | 'pwr' | 'both'
 
 const VIEWS: { id: View; label: string; icon: LucideIcon }[] = [
   { id: 'front', label: 'Ansicht', icon: RectangleHorizontal },
   { id: 'top', label: 'Draufsicht', icon: Spline },
   { id: 'sig', label: 'Signal', icon: Cable },
-  { id: 'pwr', label: 'Strom', icon: PlugZap }
+  { id: 'pwr', label: 'Strom', icon: PlugZap },
+  { id: 'both', label: 'Signal + Strom', icon: Columns2 }
 ]
 
 const viewCodec: Codec<View> = {
   parse: (raw) => (VIEWS.some((v) => v.id === raw) ? (raw as View) : null),
   format: (v) => v
+}
+
+/** Pläne von vorne oder von hinten – Bedienzustand, auch fürs PDF (nicht in der Datei) */
+type PlanSide = 'front' | 'rear'
+const sideCodec: Codec<PlanSide> = {
+  parse: (raw) => (raw === 'front' || raw === 'rear' ? raw : null),
+  format: (v) => v
+}
+const SIDE_KEY = 'led-wall:planSide'
+const usePlanSide = (): [PlanSide, (v: PlanSide) => void] =>
+  usePersistentState<PlanSide>(SIDE_KEY, 'front', sideCodec)
+
+/** Höhe der Leisten über einem Raster (Ketten, Verlauf) – für die Wahl der Anordnung */
+const GRID_BARS = 80
+
+/** Module ab dieser Größe (px) sind gut zu treffen – dann dürfen die Pläne nebeneinander */
+const GRID_CELL_COMFORT = 28
+
+/**
+ * Signal + Strom nebeneinander, wenn der Platz reicht (Festlegung 25): sobald die Module dort gut
+ * zu treffen sind oder nicht kleiner werden als untereinander – sonst untereinander (sehr breite
+ * Wände in einem schmalen Fenster).
+ */
+function bothSideBySide(w: number, h: number, cols: number, rows: number): boolean {
+  if (w === 0 || h === 0) return true
+  const side = gridCellSize((w - 16) / 2, h - GRID_BARS, cols, rows)
+  const stacked = gridCellSize(w, (h - 16) / 2 - GRID_BARS, cols, rows)
+  return side >= Math.min(stacked, GRID_CELL_COMFORT)
 }
 
 /** Maß in m mit Komma und zwei Nachkommastellen */
@@ -125,6 +158,10 @@ export function LedWall(): JSX.Element {
       buildMode: s.buildMode,
       sig: s.sig,
       pwr: s.pwr,
+      sigMeta: s.sigMeta,
+      pwrMeta: s.pwrMeta,
+      // frisch gelesen: der Umschalter sitzt in der Zeichenfläche (eigener Zustand)
+      rear: readStored<PlanSide>(SIDE_KEY, 'front', sideCodec) === 'rear',
       landscape: s.pdfLandscape,
       curve: curveForPdf
     })
@@ -321,31 +358,51 @@ function KeyFigures({ d, width }: { d: WallMetrics; width: number }): JSX.Elemen
 }
 
 /** Kopfzeile der Zeichenfläche: das Wichtigste zur gezeigten Darstellung */
-function viewInfo(view: View, d: WallMetrics, grid: number[][]): string {
+function viewInfo(view: View, d: WallMetrics, sig: number[][], pwr: number[][]): string {
   if (view === 'front') return fitText(d)
   if (view === 'top') {
     return d.curve ? `${CURVE_MODE_LABELS[d.curve.mode]} · 0–45° je Modul, 2,5°-Schritte` : ''
   }
-  const chains = new Set<number>()
-  let assigned = 0
-  for (const r of grid)
-    for (const v of r)
-      if (v >= 0) {
-        chains.add(v)
-        assigned++
-      }
-  return `${chains.size} ${chains.size === 1 ? 'Kette' : 'Ketten'} · ${assigned} von ${d.total} Modulen`
+  const count = (grid: number[][]): string => {
+    const c = chainCounts(grid)
+    const assigned = [...c.values()].reduce((a, b) => a + b, 0)
+    return `${c.size} ${c.size === 1 ? 'Kette' : 'Ketten'} · ${assigned} von ${d.total} Modulen`
+  }
+  if (view === 'both') return `Signal ${count(sig)} | Strom ${count(pwr)}`
+  return count(view === 'pwr' ? pwr : sig)
 }
 
 function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.Element {
   const s = useLedWall()
   const [stored, setView] = usePersistentState<View>('led-wall:view', 'front', viewCodec)
+  const [side, setSide] = usePlanSide()
+  const [bodyRef, body] = useElementSize<HTMLDivElement>()
   const hasCurving = d.curve != null
   // Draufsicht gibt es nur mit Curving; danach wieder die Ansicht
   const view: View = stored === 'top' && !hasCurving ? 'front' : stored
   const views = VIEWS.filter((v) => v.id !== 'top' || hasCurving)
+  const plan = view === 'sig' || view === 'pwr' || view === 'both'
+  const mirror = side === 'rear'
 
-  const info = viewInfo(view, d, view === 'pwr' ? s.pwr : s.sig)
+  const info = viewInfo(view, d, s.sig, s.pwr)
+  const grid = (g: 'sig' | 'pwr'): JSX.Element => (
+    <CableGrid
+      label={g === 'sig' ? 'Signal' : 'Strom'}
+      id={g}
+      grid={s[g]}
+      meta={g === 'sig' ? s.sigMeta : s.pwrMeta}
+      colors={g === 'sig' ? SIG_COLORS : PWR_COLORS}
+      prefix={g === 'sig' ? 'S' : 'P'}
+      activeChain={g === 'sig' ? s.sigChain : s.pwrChain}
+      mirror={mirror}
+      onChain={(c) => s.set(g === 'sig' ? { sigChain: c } : { pwrChain: c })}
+      onCell={(r, c) => s.setCell(g, r, c)}
+      onLine={(k, i) => s.fillLine(g, k, i)}
+      onReset={() => s.resetGrid(g)}
+      onRoute={(c, route) => s.setRoute(g, c, route)}
+      onDraw={(c, cells, extend) => s.drawChain(g, c, cells, extend)}
+    />
+  )
 
   return (
     <Card className={cn('flex min-h-[22rem] flex-col', className)}>
@@ -374,6 +431,18 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
             </button>
           ))}
         </div>
+        {plan && (
+          <Segmented
+            label="Blickrichtung der Pläne"
+            className="w-auto shrink-0 [&>button]:py-1"
+            value={side}
+            options={[
+              { value: 'front', label: 'Vorne' },
+              { value: 'rear', label: 'Hinten' }
+            ]}
+            onChange={setSide}
+          />
+        )}
         <p
           className="min-w-0 flex-1 truncate text-right text-xs text-muted-foreground"
           title={info}
@@ -382,37 +451,31 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
         </p>
       </div>
       <div
+        ref={bodyRef}
         role="tabpanel"
         aria-label={VIEWS.find((v) => v.id === view)?.label}
         className="min-h-0 flex-1 p-3"
       >
         {view === 'front' && <FrontView d={d} buildMode={s.buildMode} />}
         {view === 'top' && <CurvingView d={d} />}
-        {view === 'sig' && (
-          <CableGrid
-            label="Signal"
-            grid={s.sig}
-            colors={SIG_COLORS}
-            prefix="S"
-            activeChain={s.sigChain}
-            onChain={(c) => s.set({ sigChain: c })}
-            onCell={(r, c) => s.setCell('sig', r, c)}
-            onLine={(k, i) => s.fillLine('sig', k, i)}
-            onReset={() => s.resetGrid('sig')}
-          />
-        )}
-        {view === 'pwr' && (
-          <CableGrid
-            label="Strom"
-            grid={s.pwr}
-            colors={PWR_COLORS}
-            prefix="P"
-            activeChain={s.pwrChain}
-            onChain={(c) => s.set({ pwrChain: c })}
-            onCell={(r, c) => s.setCell('pwr', r, c)}
-            onLine={(k, i) => s.fillLine('pwr', k, i)}
-            onReset={() => s.resetGrid('pwr')}
-          />
+        {view === 'sig' && grid('sig')}
+        {view === 'pwr' && grid('pwr')}
+        {view === 'both' && (
+          <div
+            className={cn(
+              'grid h-full min-h-0 gap-4',
+              bothSideBySide(body.width, body.height, d.cols, d.rows)
+                ? 'grid-cols-2'
+                : 'grid-cols-1 grid-rows-2'
+            )}
+          >
+            <section aria-label="Signal" className="min-h-0 min-w-0">
+              {grid('sig')}
+            </section>
+            <section aria-label="Strom" className="min-h-0 min-w-0">
+              {grid('pwr')}
+            </section>
+          </div>
         )}
       </div>
     </Card>

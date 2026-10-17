@@ -14,6 +14,7 @@ const all = [
   'rta',
   'video-generator',
   'projektdatei',
+  'kabelverlauf',
   'pdf',
   'fotos',
   'mini-manual',

@@ -3,6 +3,7 @@
 // (Module−1) Brücken. Mehrere Wände: je Wand eine Kategorie („LED-Wall · Hauptbühne“) – jede
 // wird für sich aufgebaut; gleiche Module nennen die Summe über alle Wände.
 
+import { chainStats } from '../led-wall/cabling'
 import { computeWall } from '../led-wall/compute'
 import type { LedWallConfig, PlannedWall } from '../led-wall/config'
 import { plannedWalls, useLedWall } from '../led-wall/store'
@@ -29,14 +30,6 @@ function ladderPieces(h: number): { ones: number; quarters: number } {
     }
   }
   return best ? { ones: best.ones, quarters: best.quarters } : { ones: Math.ceil(h), quarters: 0 }
-}
-
-function chainStats(grid: number[][]): { chains: number; jumpers: number } {
-  const counts = new Map<number, number>()
-  for (const row of grid) for (const v of row) if (v >= 0) counts.set(v, (counts.get(v) ?? 0) + 1)
-  let jumpers = 0
-  for (const n of counts.values()) jumpers += Math.max(0, n - 1)
-  return { chains: counts.size, jumpers }
 }
 
 export function deriveFromLedWall(

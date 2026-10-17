@@ -316,6 +316,16 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
   - **Signal** und **Strom:** zeichenbare Pläne mit farbcodierten Ketten – Modul anklicken weist
     es der gewählten Kette zu, Spalten- und Zeilenköpfe ganze Linien; die Ketten-Knöpfe zählen
     ihre Module, die Zellen wachsen mit dem Platz.
+  - **Kabelverlauf** je Kette, nur von Hand: **Startecke** ihres Bereichs plus **waagrecht oder
+    senkrecht** (Schlange wie in NovaLCT) – oder **Zeichnen** und mit gedrückter Maustaste über
+    die Module ziehen (am letzten Modul ansetzen verlängert). Pfeile in Kettenfarbe zeigen den
+    Weg, der Punkt den Start, gestrichelt eine lange Brücke zwischen nicht benachbarten Modulen.
+    Ohne Startecke und Zeichnung hat eine Kette keinen Verlauf („S2 ohne Verlauf“); kommen nach
+    dem Zeichnen Module dazu, stehen sie hinten an („nachzeichnen“).
+  - **Signal + Strom** nebeneinander (untereinander, wenn das Fenster dafür zu schmal ist) und
+    **Vorne/Hinten**: Von hinten sind die Pläne gespiegelt und groß beschriftet, Spalten- und
+    Kettennummern bleiben am Modul. Die PDF-Doku druckt die Pläne mit Pfeilen in der gewählten
+    Blickrichtung.
 - **Daneben:** Strom (typisch und maximal in W und A), Aufbau (LSU-Füße, Ballast je Fuß und
   gesamt bzw. Gewicht an der Traverse) und die Daten des Moduls. Ist die Arbeitsfläche schmal,
   stehen Zeichnung und Daten untereinander.
