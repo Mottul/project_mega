@@ -39,7 +39,18 @@ Preload per Typ zur Vollständigkeit – `npm run typecheck` zeigt vergessene St
   `services/fsAtomic.ts`. Rückfragen mit mehr als zwei Antworten: `api.choose`.
 - **Datei-Dialoge** immer über `showOpenDialog`/`showSaveDialog` aus `services/fileDialogs.ts`,
   nie direkt `dialog.show…Dialog`: Seit Electron 43 startet ein Dialog ohne absoluten Pfad im
-  Downloads-Ordner; der Helfer merkt sich den Ordner (je Art, in settings.json).
+  Downloads-Ordner; der Helfer merkt sich den Ordner (je Art, in settings.json). Eine neue Art
+  (wie `'fotos'`) braucht einen Eintrag in `DialogDirKind` und `DEFAULT_SETTINGS.dialogDirs`.
+- **Große Daten nie über IPC hin und her** (Fotos, Medien): Sie bleiben im main, der Renderer
+  bekommt einen Schlüssel (Hash, Name) und lädt über ein eigenes Protokoll. Ein neues Protokoll
+  braucht vier Stellen: `protocol.registerSchemesAsPrivileged` vor `app.whenReady` und
+  `protocol.handle` danach (`main/index.ts`, Muster `ipc/fotos.handlers.ts`: nur ein
+  geprüfter Schlüssel, nur aus der eigenen Ablage), die CSP in `src/renderer/index.html`
+  (`img-src`/`media-src` …) und `docs/SICHERHEIT.md`.
+- **Unsichtbare Fenster mit fremdem Inhalt** (PDF-Druck): eigene, flüchtige Partition mit
+  `webRequest.onBeforeRequest`, der nur die eigenen Dateien durchlässt – sonst lädt die Seite
+  Bilder von Servern oder UNC-Freigaben (`file://server/…`, unter Windows mit Anmeldeversuch).
+  Muster `services/pdf/htmlToPdf.ts`, Test `e2e/pdf.mjs` mit lokalem Spion-Server.
 
 ## Abschluss
 

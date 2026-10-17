@@ -153,8 +153,8 @@ const api: ToolboxApi = {
   },
 
   util: {
-    exportPdf: (html, suggestedName, landscape) =>
-      ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName, landscape ?? false),
+    exportPdf: (html, suggestedName, page) =>
+      ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName, page ?? {}),
     saveText: (text, suggestedName, filters) =>
       ipcRenderer.invoke(Channels.utilSaveText, text, suggestedName, filters),
     openText: () => ipcRenderer.invoke(Channels.utilOpenText),
@@ -168,6 +168,10 @@ const api: ToolboxApi = {
     chooseTarget: (section, suggestedName, fresh) =>
       ipcRenderer.invoke(Channels.projectsChooseTarget, section, suggestedName, fresh),
     save: (request) => ipcRenderer.invoke(Channels.projectsSave, request)
+  },
+
+  fotos: {
+    pick: () => ipcRenderer.invoke(Channels.fotosPick)
   },
 
   jingles: {

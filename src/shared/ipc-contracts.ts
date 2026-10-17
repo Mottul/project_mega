@@ -13,6 +13,8 @@ import type {
   ProjectSaveTarget,
   ProjectsDirInfo,
   NotifyOptions,
+  FotoImport,
+  PdfPageOptions,
   ConvertJob,
   DisplayInfo,
   FitMode,
@@ -212,6 +214,8 @@ export const Channels = {
   projectsOpen: 'projects:open',
   projectsChooseTarget: 'projects:chooseTarget',
   projectsSave: 'projects:save',
+  // Fotos der Projektdateien (Hashes, Anzeige über foto://)
+  fotosPick: 'fotos:pick',
   // Jingle-Player
   jingleImport: 'jingle:import',
   jingleCleanup: 'jingle:cleanup',
@@ -488,9 +492,9 @@ export interface ToolboxApi {
   }
 
   util: {
-    /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF).
+    /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF, services/pdf).
      *  Liefert den gewählten Pfad oder null (abgebrochen). */
-    exportPdf(html: string, suggestedName: string, landscape?: boolean): Promise<string | null>
+    exportPdf(html: string, suggestedName: string, page?: PdfPageOptions): Promise<string | null>
     /** Text (z.B. JSON) über einen Speichern-Dialog in eine Datei schreiben.
      *  Liefert den gewählten Pfad oder null (abgebrochen). Ohne filters: JSON. */
     saveText(
@@ -521,6 +525,12 @@ export interface ToolboxApi {
     ): Promise<ProjectSaveTarget | null>
     /** Nur den eigenen Abschnitt schreiben (Konflikt über baseSha, siehe ProjectSaveRequest). */
     save(request: ProjectSaveRequest): Promise<ProjectSaveResult>
+  }
+
+  /** Fotos für Projektdateien: liegen im main, der Renderer kennt nur Hashes (shared/fotos). */
+  fotos: {
+    /** Bilder über den Dialog einfügen (JPG/PNG, mehrere); null = abgebrochen. */
+    pick(): Promise<FotoImport[] | null>
   }
 
   jingles: {

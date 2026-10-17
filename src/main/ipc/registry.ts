@@ -16,6 +16,7 @@ import { resolveVgenSource } from '../services/convert/videoGenSources'
 import { getSettings, onSettingsChange, setSettings } from '../services/store'
 import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
+import { registerFotosHandlers } from './fotos.handlers'
 import { registerJingleHandlers } from './jingle.handlers'
 import { registerManualsHandlers } from './manuals.handlers'
 import { registerNetscanHandlers } from './netscan.handlers'
@@ -240,6 +241,7 @@ export function registerIpcHandlers(): void {
   registerPatternHandlers()
   registerPlayerHandlers()
   registerProjectsHandlers()
+  registerFotosHandlers()
   registerTimerHandlers()
   registerUtilHandlers()
   registerJingleHandlers()

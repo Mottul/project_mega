@@ -1,12 +1,19 @@
-// HTML -> PDF: window.open ist app-weit verboten (Sicherheits-Default), deshalb
-// rendert ein VERSTECKTES BrowserWindow das uebergebene HTML und druckt es per
-// printToPDF in die vom Nutzer gewaehlte Datei (z.B. LED-Wall-Projektdoku).
+// Kleine Helfer ohne eigenes Werkzeug: Log, Text speichern/öffnen und HTML -> PDF in die vom
+// Nutzer gewählte Datei (z.B. LED-Wall-Projektdoku; Druck in services/pdf/htmlToPdf.ts).
 
 import { BrowserWindow, ipcMain } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { Channels } from '@shared/ipc-contracts'
+import type { PdfPageOptions } from '@shared/types'
 import { showOpenDialog, showSaveDialog } from '../services/fileDialogs'
 import { logLine } from '../services/log'
+import { htmlToPdf } from '../services/pdf/htmlToPdf'
+
+/** Seitenangaben vom Renderer feldweise übernehmen; Unbekanntes fällt auf A4 hoch zurück. */
+function pageOptions(raw: unknown): PdfPageOptions {
+  const p = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  return { pageSize: p.pageSize === 'A5' ? 'A5' : 'A4', landscape: p.landscape === true }
+}
 
 export function registerUtilHandlers(): void {
   // Renderer-seitige Fehler ins gemeinsame Debug-Log spiegeln (Einweg).
@@ -60,7 +67,8 @@ export function registerUtilHandlers(): void {
 
   ipcMain.handle(
     Channels.utilExportPdf,
-    async (e, html: string, suggestedName: string, landscape = false) => {
+    async (e, html: string, suggestedName: string, page: unknown) => {
+      if (typeof html !== 'string') throw new Error('PDF-Export: HTML fehlt')
       const parent = BrowserWindow.fromWebContents(e.sender)
       const opts = {
         title: 'Als PDF speichern',
@@ -70,31 +78,10 @@ export function registerUtilHandlers(): void {
       const res = await showSaveDialog(parent, opts)
       if (res.canceled || !res.filePath) return null
 
-      const win = new BrowserWindow({
-        show: false,
-        // nur statisches HTML drucken: ohne Preload (keine App-API) und ohne JavaScript – ein
-        // Name aus der Planung kann so nie als Skript laufen
-        webPreferences: {
-          sandbox: true,
-          contextIsolation: true,
-          nodeIntegration: false,
-          javascript: false
-        }
-      })
-      try {
-        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
-        const pdf = await win.webContents.printToPDF({
-          printBackground: true,
-          pageSize: 'A4',
-          landscape,
-          margins: { top: 0.4, bottom: 0.4, left: 0.4, right: 0.4 }
-        })
-        await writeFile(res.filePath, pdf)
-        logLine('[pdf] exportiert ->', res.filePath, `${pdf.byteLength} bytes`)
-        return res.filePath
-      } finally {
-        if (!win.isDestroyed()) win.destroy()
-      }
+      const pdf = await htmlToPdf(html, pageOptions(page))
+      await writeFile(res.filePath, pdf)
+      logLine('[pdf] exportiert ->', res.filePath, `${pdf.byteLength} bytes`)
+      return res.filePath
     }
   )
 }

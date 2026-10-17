@@ -16,6 +16,7 @@ import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
 import { copyFile, mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
+import { isFotoHash } from '@shared/fotos'
 import {
   isProjectPath,
   isProjectSectionKey,
@@ -29,6 +30,7 @@ import type {
   ProjectSaveResult,
   ProjectSaveTarget
 } from '@shared/types'
+import { findFoto, storeFoto } from '../fotos/fotoStore'
 import { writeFileAtomicAsync, writeNewFileAsync } from '../fsAtomic'
 import { logLine } from '../log'
 import { getSettings, setSettings } from '../store'
@@ -125,10 +127,44 @@ async function load(p: string): Promise<LoadResult> {
   }
 }
 
+/**
+ * Fotos des geöffneten Abschnitts in den Foto-Speicher legen – das Werkzeug zeigt sie über
+ * foto://. Ein fehlendes oder unpassendes Foto (kaputte Datei) bricht das Öffnen nicht ab; die
+ * Prüfung vor dem Export meldet es.
+ */
+async function extractFotos(c: ProjectContainer, section: string): Promise<void> {
+  const s = Object.hasOwn(c.file.abschnitte, section) ? c.file.abschnitte[section] : undefined
+  for (const hash of s?.fotos ?? []) {
+    const f = c.fotos.get(hash)
+    if (!f || !(await storeFoto(hash, f.ext, f.data))) {
+      logLine('[projekte] Foto fehlt oder passt nicht zu seinem Hash:', hash)
+    }
+  }
+}
+
+/** Fotos, die der Abschnitt jetzt nennt, aus dem Foto-Speicher in den Container holen. */
+async function addFotos(c: ProjectContainer, fotos: string[]): Promise<boolean> {
+  for (const hash of fotos) {
+    if (c.fotos.has(hash)) continue
+    const found = await findFoto(hash)
+    if (!found) {
+      logLine('[projekte] Foto fehlt beim Speichern:', hash)
+      return false
+    }
+    c.fotos.set(hash, { ext: found.ext, data: await readFile(found.path) })
+  }
+  return true
+}
+
 export async function openProject(p: string, section: string): Promise<ProjectOpenResult> {
   if (!isProjectPath(p)) return { ok: false, reason: 'kein-projekt', path: p }
   const r = await withLock(p, () => load(p))
   if (!r.ok) return { ok: false, reason: r.reason, path: p }
+  try {
+    await extractFotos(r.container, section)
+  } catch (err) {
+    logLine('[projekte] Fotos nicht übernommen:', p, String(err))
+  }
   approvePath(p)
   addRecent(p)
   logLine('[projekte] geöffnet', p)
@@ -207,6 +243,14 @@ function validRequest(req: ProjectSaveRequest): string | null {
   if (req.baseSha !== null && (typeof req.baseSha !== 'string' || !SHA.test(req.baseSha)))
     return 'baseSha'
   if (typeof req.force !== 'boolean') return 'force'
+  if (
+    req.fotos !== undefined &&
+    (!Array.isArray(req.fotos) ||
+      req.fotos.length > PROJECT_LIMITS.fotosPerSection ||
+      !req.fotos.every(isFotoHash))
+  ) {
+    return 'fotos'
+  }
   return null
 }
 
@@ -263,7 +307,8 @@ async function writeOnce(
     data,
     req.baseSha,
     req.force,
-    now
+    now,
+    req.fotos && [...new Set(req.fotos)]
   )
   if (!put.ok) {
     return put.reason === 'konflikt'
@@ -271,6 +316,7 @@ async function writeOnce(
       : { ok: false, reason: 'neuer' }
   }
   if (put.changed || !exists) {
+    if (!(await addFotos(container, put.section.fotos))) return { ok: false, reason: 'foto-fehlt' }
     const packed = packProject({ ...container, file: put.file }, now)
     if (!packed.ok) {
       logLine('[projekte] nicht gespeichert:', req.path, packed.reason)

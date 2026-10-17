@@ -14,6 +14,8 @@ const all = [
   'rta',
   'video-generator',
   'projektdatei',
+  'pdf',
+  'fotos',
   'shutdown',
   'ndi',
   'youtube',

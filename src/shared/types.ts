@@ -1120,6 +1120,12 @@ export interface NotifyOptions {
   kind?: 'info' | 'warning' | 'error' // Symbol/Ton des Dialogs (Default „info")
 }
 
+/** Seite für den PDF-Export (util.exportPdf). */
+export interface PdfPageOptions {
+  pageSize?: 'A4' | 'A5' // Vorgabe A4; A5 für die Kurzkarte des Mini-Manuals
+  landscape?: boolean
+}
+
 /* ------------------------------- Jingles -------------------------------- */
 // Jingle-Player: kurze Audios (Auftrittsmusik/Stinger) auf belegbaren Pads.
 // Dateien werden nach userData/jingles kopiert und über jingle:// geladen; die
@@ -1645,7 +1651,7 @@ export interface FavoriteGroup {
 export type LauncherTileSize = 'small' | 'medium' | 'large'
 
 /** Art eines Datei-Dialogs – je Art merkt sich die App den zuletzt benutzten Ordner. */
-export type DialogDirKind = 'dateien' | 'ordner' | 'speichern' | 'projekte'
+export type DialogDirKind = 'dateien' | 'ordner' | 'speichern' | 'projekte' | 'fotos'
 
 /** Projektdateien (.mottul, siehe shared/projectFile.ts) */
 export interface ProjectsSettings {
@@ -1666,6 +1672,7 @@ export type ProjectFileProblem =
   | 'zu-gross'
   | 'nicht-freigegeben' // Pfad kam nicht aus einem Dialog oder „Zuletzt geöffnet“
   | 'ungueltig' // Anfrage passt nicht (Abschnitt, Version, Daten)
+  | 'foto-fehlt' // ein benutztes Foto liegt weder in der Datei noch in userData/Projektfotos
   | 'fehler' // Lesen/Schreiben gescheitert
 
 export interface ProjectSectionInfo {
@@ -1719,6 +1726,8 @@ export interface ProjectSaveRequest {
   baseSha: string | null
   /** Konflikt bewusst überschreiben */
   force: boolean
+  /** benutzte Fotos (Hashes, shared/fotos.ts); fehlt = die Fotos des Abschnitts bleiben */
+  fotos?: string[]
 }
 
 export type ProjectSaveResult =
@@ -1731,6 +1740,11 @@ export interface ProjectsDirInfo {
   isDefault: boolean
   exists: boolean
 }
+
+/** Ein eingefügtes Foto (verkleinert, aufgerichtet, ohne Metadaten) – oder warum nicht */
+export type FotoImport =
+  | { ok: true; hash: string; ext: 'jpg' | 'png'; width: number; height: number; bytes: number }
+  | { ok: false; name: string; reason: 'format' | 'kaputt' | 'zu-gross' | 'fehler' }
 
 export interface AppSettings {
   lastHapOutputDir: string | null
@@ -1817,7 +1831,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   uiDensity: 'normal',
   ytdlpAutoUpdate: true,
   ffmpegAutoUpdate: true,
-  dialogDirs: { dateien: null, ordner: null, speichern: null, projekte: null },
+  dialogDirs: { dateien: null, ordner: null, speichern: null, projekte: null, fotos: null },
   toolWindowBounds: {},
   youtube: DEFAULT_YOUTUBE_SETTINGS,
   timer: DEFAULT_TIMER_SETTINGS,

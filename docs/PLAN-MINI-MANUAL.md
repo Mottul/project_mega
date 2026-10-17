@@ -9,10 +9,12 @@ Rücksprachen am selben Tag, siehe [Festlegungen](#festlegungen); vor den späte
 [offenen Fragen](#offene-fragen) klären. Nach der Umsetzung in WERKZEUGE überführen und diesen
 Plan löschen.
 
-**Nächster Schritt: Phase 1.** Vorher die offenen Fragen 2–4 beantworten (Fehlerfälle,
-Firmenprofil, Kurzkarte). Phase 1 beginnt mit der Messung der 2-MB-Grenze im PDF-Weg und den
-Fotos in der Projektdatei (siehe [Phasen](#phasen)). Die Skizzen zu diesem Plan (Arbeitsplatz,
-Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren) liegen als Artifact bei Matthias.
+**Nächster Schritt: Phase 1.** Die Fragen dafür sind am 16.10.2026 geklärt (Festlegungen 22–23,
+Fehlerfälle 5–18 abgeglichen). Erledigt (16.10.2026): Messung der 2-MB-Grenze und neuer PDF-Weg
+(siehe [Ausgaben](#ausgaben)), Fotos in der Projektdatei (siehe [Sicherheit](#sicherheit)). Als
+Nächstes das Werkzeug selbst (siehe [Phasen](#phasen)).
+Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
+liegen als Artifact bei Matthias.
 
 Ein neues Werkzeug erzeugt Kurz-Anleitungen für die Leute vor Ort: wie man die LED-Wall
 einschaltet und bedient, was wo steht und wie verkabelt ist – und im Fehlerfall Schritt für
@@ -81,7 +83,8 @@ Aus der Rücksprache vom 16. Oktober 2026:
     Optional je Signalkette eine **Backup-Leitung** vom letzten Modul zum Prozessor, die im
     Fehlerfall greift – Redundanz ist nicht immer vorhanden, daher ab Werk aus.
 16. **Prozessoren im Bestand:** NovaStar NovaPro UHD Jr (496-2,0, rX3ioBF), NovaStar VX4S,
-    Brompton Tessera S8 (uS2+).
+    Brompton Tessera S8 (uS2+). Bei längeren Wegen läuft das Signal über Glasfaser zu einer
+    Breakout-Box (NovaStar CVT10) an der Wand.
 17. **Dateiendung** `.mottul` – bestätigt.
 18. **MadMapper 6** ist im Einsatz; sein OSC-Eingang ist ab Werk Port 8010. Die OSC-Steuerung
     sendet deshalb ab Werk an 8010 (umgesetzt am 16.10.2026; gespeicherte Einstellungen behalten
@@ -95,6 +98,12 @@ Aus der Rücksprache vom 16. Oktober 2026:
     Backup-Leitung zeigt nur ein „B“ am letzten Modul. Einspeisepunkte: **links, rechts, oben,
     unten, mittig** (Mitte der Kante bzw. der Wand). Aufteilungen sehen bei Signal und Strom
     **gleich** aus; Streifen laufen waagrecht (eine oder mehrere Reihen je Kette).
+22. **Kurzkarte:** A5, genau eine Seite (Rücksprache 16.10.2026; kein A4 zur Wahl).
+23. **Firmenprofil:** Logo (SVG, sonst PNG), Firmenfarbe (Hex) und Kontakte liegen bei Matthias
+    vor. Sie kommen **nicht ins Repo** – es ist öffentlich auf GitHub –, sondern werden einmal im
+    Firmenprofil geladen bzw. eingetragen. Ab Werk hat das Profil kein Logo und die gelbe
+    Papierfarbe der bestehenden PDFs. Die **Firmenfarbe ist nur Akzent** (Trennlinien, eventuell
+    Überschriften), nie Papierfarbe.
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
 
@@ -336,10 +345,19 @@ Projektdateien kommen von Kollegen oder per Mail – fremde Eingaben:
   `writeFileAtomic` aus `src/main/services/store.ts` herauslösen, mit eindeutigem tmp-Namen
   (heute fest `.tmp`) und Warteschlange je Pfad (unter Windows Groß-/Kleinschreibung
   normalisieren).
-- Fotos bleiben im main (Arbeitsordner je Datei unter `userData`), der Renderer zeigt sie über ein
-  eigenes Protokoll (Eintrag in `img-src` der App-CSP und in SICHERHEIT, Skill `ipc-kanal`).
-  Über IPC laufen nur Hashes, keine MB-Strings. **Nie Fotos in einen persistierten Store:**
-  `debouncedStorage` verschluckt „Speicher voll“ still.
+- Fotos bleiben im main, der Renderer zeigt sie über ein eigenes Protokoll (Eintrag in `img-src`
+  der App-CSP und in SICHERHEIT, Skill `ipc-kanal`). Über IPC laufen nur Hashes, keine
+  MB-Strings. **Nie Fotos in einen persistierten Store:** `debouncedStorage` verschluckt
+  „Speicher voll“ still. **Umgesetzt (16.10.2026)** mit einer Abweichung: statt eines
+  Arbeitsordners je Datei ein gemeinsamer Foto-Speicher `userData/Projektfotos/<sha256>.<jpg|png>`
+  (`src/main/services/fotos/fotoStore.ts`) – gleiche Fotos liegen einmal da, und ein Werkzeug ohne
+  gebundene Datei behält seine Fotos über einen Neustart. Einfügen über `api.fotos.pick()`
+  (Electrons nativeImage ignoriert die EXIF-Ausrichtung – gemessen –, deshalb dreht die App
+  selbst; beim Neukodieren fallen GPS & Co. weg), Anzeige über `foto://bild/<hash>`, Speichern
+  holt die Fotos aus dem Speicher in die Datei, Öffnen legt sie zurück (nur bei passendem Hash);
+  geprüft in `e2e/fotos.mjs`. **Offen:** Aufräumen des Foto-Speichers (heute wächst er nur) –
+  z. B. Fotos löschen, die seit 180 Tagen weder eingefügt noch geöffnet wurden und in keinem
+  Arbeitsstand stehen.
 - **Zugangsdaten** stehen im Klartext in der Datei. Felder sind als „geheim“ markiert; beim
   Export wählt man drucken, schwärzen oder „wird separat übergeben“. Die Stufe Bedienung enthält
   standardmäßig keine Passwörter. Hinweis in SICHERHEIT.md.
@@ -433,8 +451,9 @@ Fehlerfälle, Pflegehinweise. Hier liegt der Gewinn – die zweite Anleitung dau
   (Kurznamen), LED-Wall-Kopie, Firmenprofil. Leere Platzhalter erscheinen in der Vorschau
   gestrichelt rot und in der Prüfung vor dem Export.
 
-**Firmenprofil** (Einstellung, Phase 1): Firmenname, Logo (Datei unter `userData`), Papierfarbe
-(Vorgabe das Gelb der bestehenden PDFs), Kontakte (Name, Funktion, Mobil, Büro, Mail,
+**Firmenprofil** (Einstellung, Phase 1): Firmenname, Logo (Datei unter `userData`, SVG oder PNG –
+nie im Repo, Festlegung 23), Akzentfarbe für Trennlinien und Überschriften, Papierfarbe (Vorgabe
+das Gelb der bestehenden PDFs), Kontakte (Name, Funktion, Mobil, Büro, Mail,
 Erreichbarkeit, WhatsApp ja/nein), Text zur Fernwartung. Je Projekt wählt man Ansprechpartner
 daraus. LED-Wall-Doku und Packliste nutzen dasselbe Profil (Kopf, Fußzeile).
 
@@ -512,8 +531,9 @@ Von Matthias genannt (16.10.2026), weitere folgen:
    eingefroren; alles danach fällt mit aus. Datenkabel zwischen letztem gutem und erstem
    gestörtem Modul tauschen – der Kabelverlauf zeigt welches. Hilft das nicht:
    Backbox/Empfangskarte des ersten gestörten Moduls (Technik). **Mit Backup-Leitung** bleibt die
-   Kette bei einem einzelnen Bruch hell, weil sie von hinten versorgt wird – dann meldet nur der
-   Prozessor die Umschaltung (Fall 14); dunkel wird es erst, wenn auch die Backup-Leitung fehlt.
+   Kette bei einem einzelnen Bruch hell, weil sie von hinten versorgt wird – dann zeigen nur der
+   Prozessor und beim 496-2,0 die Anzeige der Module die Umschaltung (Fall 14); dunkel wird es
+   erst, wenn auch die Backup-Leitung fehlt.
 2. **Sicherung der Stromzuleitung** – Block einer Stromkette ohne Strom. Sicherung/FI im Verteiler
    (Beschriftung je Stromkette aus dem Kabelverlauf), einmal wieder einschalten; fliegt sie
    erneut: nicht wiederholen, anrufen.
@@ -528,8 +548,9 @@ Von Matthias genannt (16.10.2026), weitere folgen:
    (FileVault verhindert die Anmeldung); Windows-Autologon und Autostart der Software;
    Energiesparen aus.
 
-Ergänzt aus der Recherche (Hersteller-Hilfen von Daktronics/NovaStar, Brompton, LEDitgo; vor der
-Übernahme in die Bibliothek mit der Praxis abgleichen):
+Ergänzt aus der Recherche (Hersteller-Hilfen von Daktronics/NovaStar, Brompton, LEDitgo) und
+zusammen mit 14–18 am 16.10.2026 mit der Praxis abgeglichen – Ergänzungen von Matthias bei 7, 9
+und 14:
 
 5. **Ganze Wand schwarz, keine Modul-LED** – kein Strom: Verteiler, Sicherung, FI (wie 2).
 6. **Sicherung fliegt beim Einschalten** – Einschaltstrom vieler Netzteile, LS-Schalter mit
@@ -537,11 +558,14 @@ Ergänzt aus der Recherche (Hersteller-Hilfen von Daktronics/NovaStar, Brompton,
    C-Charakteristik (Technik, Elektrofachkraft).
 7. **Ganze Wand schwarz, Module haben Strom** (Brompton-LED grün) – Prozessor aus, Datenkabel
    Prozessor → erstes Modul, Blackout/Freeze aktiv. Prozessor-Display ansehen, Testbild am
-   Prozessor auslösen.
+   Prozessor auslösen. **Mit Glasfaser-Strecke:** Breakout-Box (CVT10) ohne Strom oder defekt,
+   oder Glasfaserkabel defekt.
 8. **Testbild geht, Inhalt nicht** („kein Signal“) – Zuspieler aus oder im Ruhezustand, falscher
    Eingang, HDMI-Kabel, Auflösung passt nicht zur EDID des Eingangs.
 9. **Ein Modul andere Farbe/Helligkeit** (oft nach einem Tausch) – Kalibrierdaten fehlen oder
-   passen nicht. Technik: Kalibrierung neu senden; Konfiguration nur aus der Datei senden.
+   passen nicht, oder auf den Modulen liegen unterschiedliche rcfgx- bzw. npm-Dateien. Erst die
+   Helligkeit einmal ändern – das erledigt es meist. Sonst ist ein Module Flash nötig (Technik);
+   Konfiguration nur aus der Datei senden.
 10. **Bild verschoben, vertauscht, „kariert“** – Datenkabel am falschen Port oder vertauscht,
     Bildschirm-Konfiguration verloren, Ausgabe am Zuspieler verschoben. Kabel nach Kabelplan
     (Port-Nummern) prüfen, Preset/Konfiguration neu laden.
@@ -556,6 +580,10 @@ Weitere naheliegende Fälle (zweite Rücksprache):
 14. **Prozessor meldet Backup/Redundanz aktiv** – Bild in Ordnung, aber eine Kette läuft über die
     Backup-Leitung: ein Datenkabel oder eine Empfangskarte darin ist unterbrochen. Nicht sofort
     gefährlich, aber vor der nächsten Show suchen (Kabelverlauf zeigt die Kette). Betreuung/Technik.
+    **Beim 496-2,0** zeigt die Anzeige am Modul, welche Leitung es versorgt: blau = Main, leicht
+    violett = Backup. Die Unterbrechung liegt dann zwischen dem letzten blauen und dem ersten
+    violetten Modul der Kette – das kann auch die Stufe Bedienung eingrenzen (abgeleitet, im
+    Betrieb bestätigen).
 15. **Controller/Prozessor ohne Strom** – Display und LEDs aus: Netzkabel, Steckdosenleiste,
     Schalter, Sicherung des Racks.
 16. **Stream Deck/Bedienfeld reagiert nicht** – USB-Kabel, Software nicht gestartet, falsches
@@ -574,7 +602,8 @@ führt unabhängig von dieser Gliederung zum passenden Fall.
 Dazu ein Baustein **Status-LEDs**, der in Kapitel LED-Wall und als Hinweis in den Schritten
 erscheint: Brompton (uS2+) rot > 1 min nach dem Einschalten = Startfehler, grün = läuft, aber
 keine Verbindung zum Prozessor, blau = verbunden, gelb blinkend = Beacon, gelb = Testbild;
-NovaStar-Empfangskarte: rot dauerhaft = Strom, grün blinkend = Daten.
+NovaStar-Empfangskarte: rot dauerhaft = Strom, grün blinkend = Daten; Anzeige am 496-2,0: blau =
+Main-Leitung, leicht violett = Backup-Leitung.
 
 ### Bedienfelder
 
@@ -655,7 +684,7 @@ Anführungszeichen, das andere nicht).
   Tastenfelder nicht zerteilt (`break-inside: avoid`, im Probedruck prüfen), Fußzeile mit
   Projekt, Stand, Stufe und Seitenzahl (`displayHeaderFooter` mit `footerTemplate`), Logo im Kopf
   der ersten Seite. Ausgabe je Stufe. `<details>` für das PDF immer offen.
-- **Kurzkarte (PDF):** genau eine Seite (A4, A5 wählbar). printToPDF kann nicht „einpassen“:
+- **Kurzkarte (PDF):** genau eine Seite A5 (Festlegung 22). printToPDF kann nicht „einpassen“:
   nach dem Druck die Seiten mit pdfjs zählen (läuft im main schon für die Handbücher) und mit
   kleinerer `scale` neu drucken bzw. in der Prüfung warnen.
 - **HTML (offline):** eine einzige Datei, CSS und Bilder eingebettet, **funktioniert ohne
@@ -675,16 +704,19 @@ Anführungszeichen, das andere nicht).
   Fehlerkorrektur L (höchstens 78 Bytes) und hat keinen Test: auf größere Versionen und Stufe M
   erweitern (laminierte, verschmutzte Ausdrucke) und gegen bekannte Vektoren testen.
 
-**PDF-Weg im main – zuerst messen:** `util.exportPdf` lädt das HTML heute als `data:`-URL in ein
-verstecktes Fenster (`javascript: false`, Sandbox). Chromium begrenzt URLs über IPC auf etwa 2 MB –
-mit Fotos droht ein stiller Fehlschlag (für Electron 44 nicht bestätigt). Plan: erst messen (1, 3,
-10 MB HTML), dann auf eine temporäre Datei mit `loadFile` oder ein eigenes Protokoll umstellen.
-Der Renderer schickt HTML mit Foto-Hashes, der main setzt die Bilder ein. Das versteckte Fenster
-bekommt eine eigene CSP bzw. Partition, die nur `data:` und die eigene Datei lädt (heute hat es
-keine – externe Bilder würden geladen). `exportPdf` bekommt ein Optionsobjekt (`pageSize`,
-`landscape`, `footer`), die bisherigen Aufrufer bleiben verträglich. Schriften: Heute nutzen die
-PDFs Systemschriften und sehen je Betriebssystem anders aus; eine eingebettete Schrift
-(`@font-face` als data:-URI) im Probedruck prüfen.
+**PDF-Weg im main – gemessen und umgestellt (16.10.2026):** Mit Electron 44 brach eine
+`data:`-URL über 2 MB mit `ERR_INVALID_URL` ab – kein PDF, mit Fotos schon ab rund 1,5 MB HTML,
+weil `encodeURIComponent` base64 um gut ein Drittel verlängert. (Ein Messskript, das danach
+trotzdem druckte, brachte Electron sogar zum Absturz; die App selbst warf nur den Fehler – per
+Gegenprobe mit `e2e/pdf.mjs` geprüft.) Über eine temporäre Datei mit `loadFile` liefen 60 MB HTML
+in 3 s. Der Druck steckt jetzt in
+`src/main/services/pdf/htmlToPdf.ts`: Temp-Ordner je Export, eigene flüchtige Partition, deren
+Anfragefilter nur Dateien aus diesem Ordner durchlässt (`data:`-Bilder brauchen keine Anfrage),
+Optionsobjekt `{ pageSize: 'A4' | 'A5', landscape }`; geprüft in `e2e/pdf.mjs`. Fotos stehen
+im HTML als `foto://bild/<hash>`; der main kopiert sie in den Temp-Ordner und macht die Adressen
+relativ. Noch offen: `footer` fürs Handbuch und die Seitenzählung der Kurzkarte. Schriften: Heute nutzen die PDFs
+Systemschriften und sehen je Betriebssystem anders aus; eine eingebettete Schrift (`@font-face`
+als data:-URI) im Probedruck prüfen.
 
 ## Datenquellen und Importe
 
@@ -783,6 +815,10 @@ feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Frei
 - **Handkorrektur:** „Reihenfolge klicken“ – Module der Kette nacheinander anklicken. Beim Lesen
   wird abgeglichen: Module, die nicht mehr in der Kette sind, fallen weg, neue hängt die Automatik
   hinten an. So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.
+- **Kette zeichnen** (Wunsch Matthias, 16.10.2026): mit gedrückter Maustaste über die Module
+  ziehen – sie kommen in die gewählte Kette und werden in dieser Reihenfolge verbunden
+  (Zuordnung und Handkorrektur in einem Zug). Klick für Klick geht weiterhin. Wer gar keine
+  Automatik will, zeichnet jede Kette komplett selbst; Startecke und Richtung bleiben dann leer.
 - **Backup-Leitung** je Signalkette (an/aus; Vorgabe für neue Ketten aus dem Schalter
   „Redundanz“ der Wand, ab Werk aus): vom letzten Modul der Kette zurück zu einem Backup-Port des
   Prozessors. Fällt ein Kabel in der Kette aus, versorgt sie die Module dahinter von hinten. Im
@@ -900,7 +936,7 @@ Neue Dateien sind hier ohne Backticks genannt (`npm run check:refs` prüft nur V
 
 - services/projects/: ZIP lesen/schreiben (reine Funktionen auf Buffern, getestet), Abschnitt
   speichern mit `baseSha`-Prüfung, Warteschlange je Pfad und atomarem Schreiben, sha256,
-  Foto-Arbeitsordner, Sicherungen, „zuletzt geöffnet“.
+  Sicherungen, „zuletzt geöffnet“; services/fotos/ (umgesetzt): Foto-Speicher, Einfügen.
 - ipc/projects.handlers.ts (Skill `ipc-kanal`, Registrierung in `registry.ts`): öffnen (mit
   Pfad), Abschnitt speichern, speichern unter, Foto einfügen/holen, Projektordner-Info; Protokoll
   für Fotos.
@@ -931,8 +967,8 @@ Jede Phase ist für sich nutzbar.
 | Phase | Inhalt | Ergebnis |
 |---|---|---|
 | **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
-| **1 Mini-Manual, erste Fassung** | Zuerst: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Arbeitsordner im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2 Kabelverlauf** | Einspeisepunkt (nicht gezeichnet) und Zuleitungslängen, Schnellwahl der Aufteilung, Startecke, Richtung, Handkorrektur, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
+| **1 Mini-Manual, erste Fassung** | Zuerst ✅: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Foto-Speicher im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
+| **2 Kabelverlauf** | Einspeisepunkt (nicht gezeichnet) und Zuleitungslängen, Schnellwahl der Aufteilung, Startecke, Richtung, Handkorrektur und Kette zeichnen, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
 | **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
@@ -989,18 +1025,20 @@ erledigt).
 
 ## Offene Fragen
 
-Geklärt am 16. Oktober 2026 (Festlegungen 13–21): Verkabelungspraxis, Einspeisepunkt,
+Geklärt am 16. Oktober 2026 (Festlegungen 13–23): Verkabelungspraxis, Einspeisepunkt,
 Redundanz, IM-Anordnung und -Tausch, Prozessoren im Bestand, Dateiendung, MadMapper-Version und
-OSC-Port, Projektordner. Für Phase 0 ist nichts mehr offen. Später zu klären:
+OSC-Port, Projektordner, Kurzkarte, Firmenprofil; dazu der Abgleich der Fehlerfälle 5–18. Für
+Phase 0 und den Start von Phase 1 ist nichts mehr offen. Später zu klären:
 
 1. **Beispieldateien und Datenblätter** (Matthias sammelt; vor Phase 2 bzw. 3): exportiertes
    Stream-Deck-Profil (am besten je Gerät), Companion-Export, OBS-Szenensammlung, ein
    MadMapper-6-Projekt und ein Abzug seines OSCQuery-Baums (`http://<ip>:8010/?`),
    NovaLCT-Dateien, Datenblätter von NovaPro UHD Jr, VX4S und Tessera S8 (Ports, Kapazität,
    übliche Farbtiefe und Bildrate). Anonymisiert, kommen als Test-Fixtures ins Repo.
-2. **Weitere Fehlerfälle** aus der Praxis; Abgleich der Fälle 5–18 (vor Phase 1).
-3. **Firmenprofil:** Logo und Farbe von Megasound als Vorgabe? (Phase 1)
-4. **Kurzkarte** A4 oder A5? (Phase 1)
+2. **Weitere Fehlerfälle** aus der Praxis (laufend; der Abgleich der Fälle 5–18 ist erledigt).
+3. ~~Firmenfarbe~~ – geklärt: nur Akzent, nicht Papier (Festlegung 23). Logo, Farbwert und
+   Kontakte bringt Matthias zum Firmenprofil mit.
+4. ~~Kurzkarte A4 oder A5~~ – geklärt: A5 (Festlegung 22).
 5. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
    kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden? (Phase 3)
 6. **Kabelverlauf – Annahmen bestätigen** (vor Phase 2, aus Festlegung 21): „unten“ = Mitte der
