@@ -12,6 +12,8 @@ export interface PrintData {
   mod: LedModule
   projectName: string
   customerName: string
+  /** nur bei mehreren Wänden: Name der gedruckten Wand */
+  wallName?: string
   buildMode: 'stacked' | 'flying'
   cols: number
   rows: number
@@ -87,6 +89,7 @@ export async function exportLedWallPdf(d: PrintData): Promise<PdfExportResult | 
   const dt = new Date().toLocaleDateString('de-AT')
   const pn = esc(d.projectName)
   const cn = esc(d.customerName)
+  const wn = esc(d.wallName ?? '')
 
   let html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>LEDWall${pn ? ' – ' + pn : ''}</title><style>
 *{margin:0;padding:0;box-sizing:border-box;print-color-adjust:exact;-webkit-print-color-adjust:exact}
@@ -103,7 +106,7 @@ th{background:#f7f7f7;font-weight:600;width:44%}
 .ap{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;margin:1px}
 </style></head><body>`
 
-  html += `<h1>LEDWall Konfiguration</h1><div class="meta">${pn ? `Projekt: <b>${pn}</b> · ` : ''}${cn ? `Kunde: <b>${cn}</b> · ` : ''}Datum: ${dt} · Modul: <b>${esc(d.mod.name)}</b> · Aufbau: <b>${d.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend (Traverse)'}</b></div>`
+  html += `<h1>LEDWall Konfiguration${wn ? ` – ${wn}` : ''}</h1><div class="meta">${pn ? `Projekt: <b>${pn}</b> · ` : ''}${cn ? `Kunde: <b>${cn}</b> · ` : ''}Datum: ${dt} · Modul: <b>${esc(d.mod.name)}</b> · Aufbau: <b>${d.buildMode === 'stacked' ? 'Ground-Stack (LSU)' : 'Fliegend (Traverse)'}</b></div>`
 
   html += `<div class="g2"><div><h2>Wandkonfiguration</h2><table>
 <tr><th>Modul</th><td>${esc(d.mod.name)} (PP ${d.mod.pitch} mm, ${d.mod.ip})</td></tr>
@@ -152,7 +155,10 @@ th{background:#f7f7f7;font-weight:600;width:44%}
   html += `<div><h2>Stromverkabelung</h2><div style="margin-bottom:4px">${legend(d.pwr, PWR_COLORS, 'P')}</div>${gridSvg(d.pwr, PWR_COLORS, 'P', d.cols, d.rows, printPx)}</div></div>`
   html += `<div style="margin-top:14px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">${APP_NAME} · LED-Wall-Konfigurator · ${dt}</div></body></html>`
 
-  const safe = d.projectName.replace(/[^\wäöüÄÖÜß -]+/g, '').trim()
+  const safe = [d.projectName, d.wallName ?? '']
+    .map((x) => x.replace(/[^\wäöüÄÖÜß -]+/g, '').trim())
+    .filter(Boolean)
+    .join('-')
   return api.util.exportPdf(html, `LEDWall${safe ? '-' + safe : ''}.pdf`, {
     landscape: d.landscape
   })

@@ -7,6 +7,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { digest } from '@shared/projectFile'
 import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
 import { sanitizeBinding, type ProjectBinding } from '@renderer/lib/projectBinding'
 import type { Anleitung } from './model'
@@ -23,16 +24,20 @@ interface MiniManualState {
   setFile: (b: ProjectBinding | null) => void
 }
 
-/** Gespeicherten Stand prüfen – bei jedem Laden, auch aus einem anderen Fenster. Rein, getestet. */
+/**
+ * Gespeicherten Stand prüfen – bei jedem Laden, auch aus einem anderen Fenster. Rein, getestet.
+ * Bringt die Prüfung einen älteren Stand in neue Form (Version 2: LED-Wall-Kopie als Liste der
+ * Wände), bleibt eine gespeicherte Bindung „gespeichert“: Die Prüfsumme wird mit umgerechnet.
+ */
 export function migrateMiniManual(persisted: unknown): Pick<MiniManualState, 'anleitung' | 'file'> {
   const p = persisted && typeof persisted === 'object' ? (persisted as Record<string, unknown>) : {}
-  return {
-    anleitung:
-      p.anleitung && typeof p.anleitung === 'object'
-        ? sanitizeAnleitung(p.anleitung)
-        : neueAnleitung(),
-    file: sanitizeBinding(p.file)
-  }
+  const anleitung =
+    p.anleitung && typeof p.anleitung === 'object'
+      ? sanitizeAnleitung(p.anleitung)
+      : neueAnleitung()
+  const file = sanitizeBinding(p.file)
+  if (file && file.savedDigest === digest(p.anleitung)) file.savedDigest = digest(anleitung)
+  return { anleitung, file }
 }
 
 export const useMiniManual = create<MiniManualState>()(
@@ -47,7 +52,8 @@ export const useMiniManual = create<MiniManualState>()(
     {
       name: 'mini-manual',
       storage: debouncedStorage(),
-      version: 1,
+      // 2 (Oktober 2026): LED-Wall-Kopie mit mehreren Wänden – migrate ist die Prüfung
+      version: 2,
       partialize: (s) => ({ anleitung: s.anleitung, file: s.file }) as MiniManualState,
       migrate: (persisted) => migrateMiniManual(persisted) as MiniManualState,
       // auch ohne Versionswechsel prüfen: localStorage kann von Hand oder aus einem älteren

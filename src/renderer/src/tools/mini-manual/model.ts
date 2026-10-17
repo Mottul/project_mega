@@ -322,10 +322,19 @@ export interface WandKennzahlen {
   stromMaxA: string
 }
 
-export interface LedWallKopie {
-  /** Kopie des Abschnitts „ledWall“ (für den Vergleich und spätere Pläne) */
+/** Eine Wand der Planung, wie sie übernommen wurde */
+export interface WandKopie {
+  /** Kennung der Wand im Abschnitt „ledWall“ (für den Vergleich und spätere Querverweise) */
+  id: string
+  name: string
+  /** Kopie der Wand (für den Vergleich und spätere Pläne) */
   daten: unknown
   kennzahlen: WandKennzahlen
+}
+
+export interface LedWallKopie {
+  /** mindestens eine; Reihenfolge wie im Konfigurator */
+  waende: WandKopie[]
   /** Stand der Quelle in derselben Projektdatei; null = aus dem Konfigurator übernommen */
   quelle: { rev: number; sha256: string } | null
   uebernommen: string

@@ -9,9 +9,8 @@ import { Button } from '@renderer/components/ui/button'
 import { digest } from '@shared/projectFile'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
-import { ledWallSection } from '../../led-wall/config'
-import { useLedWall } from '../../led-wall/store'
-import { kennzahlenAus, kopieAus, unterschiede } from '../ledWallKopie'
+import { ledWallFile, useLedWall } from '../../led-wall/store'
+import { kopieAus, waendeAus, wandUnterschiede } from '../ledWallKopie'
 import { useMiniManual } from '../store'
 import { BloeckeEditor } from './BloeckeEditor'
 import type { LedWallQuelle } from './useLedWallQuelle'
@@ -32,13 +31,19 @@ export function LedWallKapitel({ q }: { q: LedWallQuelle }): JSX.Element {
   const ausDatei = (): void => {
     if (!q.stand) return
     const s = q.stand
-    update((a) => ({ ...a, ledWall: kopieAus(s.data, { rev: s.rev, sha256: s.sha256 }) }))
+    const k = kopieAus(s.data, { rev: s.rev, sha256: s.sha256 })
+    if (!k) {
+      toast.error('Die LED-Wall-Planung in der Datei ist unlesbar.')
+      return
+    }
+    update((a) => ({ ...a, ledWall: k }))
     setDiff(false)
   }
 
   async function ausKonfigurator(): Promise<void> {
     const c = useLedWall.getState()
-    const data = ledWallSection(c)
+    // alle Wände der Planung, nicht nur die gewählte
+    const data = ledWallFile(c)
     const andere =
       (deckblatt.projekt.trim() &&
         c.projectName.trim() &&
@@ -55,7 +60,7 @@ export function LedWallKapitel({ q }: { q: LedWallQuelle }): JSX.Element {
       if (!ok) return
       // Rückfragen sperren nur dieses Fenster: Hat ein anderes die Planung inzwischen geändert,
       // gilt die Zustimmung nicht für den neuen Stand (review-checkliste, „Zustand nach await“)
-      if (digest(ledWallSection(useLedWall.getState())) !== digest(data)) {
+      if (digest(ledWallFile(useLedWall.getState())) !== digest(data)) {
         toast.warning(
           'Die Planung im Konfigurator hat sich inzwischen geändert – bitte noch einmal.'
         )
@@ -66,7 +71,7 @@ export function LedWallKapitel({ q }: { q: LedWallQuelle }): JSX.Element {
   }
 
   const neu =
-    q.neuer && q.stand && kopie ? unterschiede(kopie.kennzahlen, kennzahlenAus(q.stand.data)) : []
+    q.neuer && q.stand && kopie ? wandUnterschiede(kopie.waende, waendeAus(q.stand.data) ?? []) : []
 
   return (
     <div className="space-y-3">
@@ -120,11 +125,15 @@ export function LedWallKapitel({ q }: { q: LedWallQuelle }): JSX.Element {
 
       {kopie ? (
         <div className="rounded-lg border border-border bg-background/40 p-3 text-sm">
-          <div className="font-semibold">
-            {kopie.kennzahlen.modul} · {kopie.kennzahlen.spalten} × {kopie.kennzahlen.reihen} ={' '}
-            {kopie.kennzahlen.module} Module · {kopie.kennzahlen.aufloesungX} ×{' '}
-            {kopie.kennzahlen.aufloesungY} px
-          </div>
+          <ul className="space-y-0.5" aria-label="Übernommene Wände">
+            {kopie.waende.map(({ id, name, kennzahlen: k }) => (
+              <li key={id} className="font-semibold">
+                {kopie.waende.length > 1 && <span className="text-primary">{name}: </span>}
+                {k.modul} · {k.spalten} × {k.reihen} = {k.module} Module · {k.aufloesungX} ×{' '}
+                {k.aufloesungY} px
+              </li>
+            ))}
+          </ul>
           <div className="text-muted-foreground">
             {kopie.quelle
               ? `aus der Projektdatei, Stand ${kopie.quelle.rev}`

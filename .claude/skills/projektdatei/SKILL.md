@@ -49,9 +49,35 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
    `suggestedName`, `describe`.
 5. **Oberfläche:** `const file = useProjectFile(OPTIONEN)` im Werkzeug, `<ProjectFileMenu
    file={file} />` als erstes in die Leiste (`ToolBar`) – nie in die Schublade. „Vorlage laden“
-   = „Neu aus Vorlage“: Rückfrage, wenn gebunden, dann `file: null`.
+   ersetzt den ganzen Arbeitsstand: „Neu aus Vorlage“ (Rückfrage, wenn gebunden, dann
+   `file: null`). Ersetzt sie nur einen Teil (LED-Wall: die gewählte Wand), ist sie eine
+   gewöhnliche Änderung – Bindung bleibt, Datei wird „ungespeichert“, Rückfrage nur, wenn im
+   Teil schon etwas steht, und nach der Rückfrage prüfen, ob sich der Teil geändert hat.
+
+## Mehrere Einträge in einem Abschnitt (Muster: Wände der LED-Wall, Version 3)
+
+- **Gewählter Eintrag in den flachen Feldern, die übrigen in einer Liste daneben** (`walls`,
+  `config: null` = der gewählte). So lesen alle Ansichten weiter `s.widthM` … ; wer alle
+  braucht (Datei, Packliste, Mini-Manual), nimmt **immer** `plannedWalls(s)` – nie `walls`
+  direkt und nie die flachen Felder allein. Gemeinsames (Projekt, Kunde) steht einmal oben.
+- **Form statt Versionsnummer entscheidet beim Lesen** (`wallsOf`: ohne `walls` = alter
+  Abschnitt mit einer Wand, feste Kennung `FIRST_WALL_ID`) – so lesen auch Kopien in anderen
+  Werkzeugen (`api.projects.peek`) jede Version richtig, und Verweise auf die eine alte Wand
+  bleiben stabil.
+- Kaputte Liste (leer, kein Objekt, zu lang) = Abschnitt unbrauchbar; Grenzen auch **in Summe**
+  (Zellen aller Wände); Kennungen eindeutig machen mit Zähler (`wand-3-2`), nie durch Anhängen
+  und Abschneiden – das konnte endlos kreisen.
+- Wechseln des gewählten Eintrags ist Bedienzustand (nicht „ungespeichert“), Umbenennen,
+  Hinzufügen und Entfernen sind Änderungen. Eine Ansicht, die beim Öffnen etwas passend macht
+  (`ensureGridSize`), muss auch beim Wechsel laufen – eine neue Wand hat noch leere Raster,
+  vielleicht bei gleicher Modulzahl.
 
 ## Regeln
+
+- **Formwechsel im Datenmodell** (Store-Version oder Prüfung bringt alte Stände in neue Form):
+  Eine gespeicherte Bindung bleibt „gespeichert“ – `savedDigest` umrechnen, wenn er zum alten
+  Stand passte (`migrateLedWall` v3, `migrateMiniManual`); sonst stünde nach dem Update jede Datei
+  als ungespeichert da. Eine ungespeicherte bleibt ungespeichert.
 
 - **main entscheidet:** Schreiben nur in `.mottul`-Pfade aus Dialog/geöffneter Datei (nach
   Neustart aus „Zuletzt geöffnet“ nur auf eine vorhandene gültige Datei); Konflikt über den

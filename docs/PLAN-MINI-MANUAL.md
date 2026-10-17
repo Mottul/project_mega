@@ -30,10 +30,19 @@ Noch offen aus Phase 1 (klein, bei Bedarf): Bausteine der Bibliothek „aktualis
 Version neuer ist (die Herkunft mit Version steht schon in jeder Kopie); Vorschläge nach
 Stichworten (heute zeigt die Auswahl alle Bausteine des Kapitels); Aufräumen des Foto-Speichers.
 
-**Nächster Schritt: Phase 2a** – [mehrere Wände je Datei](#mehrere-wände-je-datei), danach 2b
-der [Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator), nur von Hand gezeichnet (Festlegungen
-24–34). Die Fragen 7–10 sind geklärt, die Handbücher der Prozessoren und der CVT10 ausgewertet;
-offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)), die Phase 2a nicht aufhalten.
+**Phase 2a, erster Teil umgesetzt (17.10.2026):** mehrere Wände je Datei – Abschnitt `ledWall`
+Version 3 mit Migration (Speicher, Vorlagen, Datei), Wand-Menü im Konfigurator, Name der Wand in
+der Schublade, Packliste je Wand mit Summe gleicher Module, Mini-Manual mit Kopie je Wand
+(Anleitung Version 2), Kapitel und Platzhalter je Wand, strengere IM-Regel bei gemischten Modulen.
+Abweichungen: **Vorlage laden** ersetzt nur die gewählte Wand und lässt die Datei-Bindung stehen
+(vorher „Neu aus Vorlage“ mit gelöster Bindung); die **PDF-Doku** des Konfigurators zeigt die
+gewählte Wand (mit Namen), nicht alle; der **geteilte Prozessor** kommt mit der Prozessor-Wahl in
+Phase 2b.
+
+**Nächster Schritt: Phase 2a, zweiter Teil** – Querverweise im Mini-Manual („bespielt“ am
+Prozessor, Signalweg der Zuspieler mit Verteiler und Ausschnitt, Systemübersicht je Wand); danach
+2b der [Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator), nur von Hand gezeichnet
+(Festlegungen 24–34). Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.
 
@@ -1015,6 +1024,10 @@ gleich dort mitkommen.
 
 Wunsch aus der Praxis (Festlegung 29): Ein Laptop bespielt zwei kleine LED-Wände – beide gehören
 in dieselbe Projektdatei, und die Anleitung muss sagen, was wohin geht.
+
+Umgesetzt (17.10.2026): Datei, Konfigurator, Packliste und die Kopie im Mini-Manual (siehe Status
+oben; im Code `led-wall/config.ts` `wallsOf`, `led-wall/store.ts` `plannedWalls`). Offen: die
+Querverweise im Mini-Manual und der geteilte Prozessor (mit der Prozessor-Wahl in 2b).
 
 - **Datei:** Der Abschnitt `ledWall` hält eine Liste von Wänden, jede mit `id` und Namen
   („Hauptbühne“, „Seitenwand links“). Version 3; die Migration 2 → 3 packt die eine Wand in die

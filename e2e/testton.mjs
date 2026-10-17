@@ -119,11 +119,20 @@ try {
         needAudio()
         // gleich nach dem Start noch leise (Einblenden über 0,5 s)
         const early = await tap('peak')
-        await sleep(900)
-        const { l, r } = await tap('peak')
         const want = 10 ** (-18 / 20)
         assert.ok(early.l < want * 0.9, `zu Beginn schon ${early.l}`)
-        assert.ok(Math.abs(l - want) < 0.01 && Math.abs(r - want) < 0.01, `${l} / ${r}`)
+        // eingeschwungen abwarten statt nach fester Pause einmal lesen: Unter Last (volle Suite)
+        // blendete der Ton nach 900 ms noch ein – 0,096 statt 0,126 (17.10.2026)
+        // zweimal in Folge: ein falscher Pegel liefe beim Einblenden durch den richtigen hindurch
+        let last = { l: 0, r: 0 }
+        let hits = 0
+        const ok = await waitFor(async () => {
+          last = await tap('peak')
+          const at = Math.abs(last.l - want) < 0.01 && Math.abs(last.r - want) < 0.01
+          hits = at ? hits + 1 : 0
+          return hits >= 2
+        }, 5000)
+        assert.ok(ok, `${last.l} / ${last.r}`)
         const f = await tap('freq')
         assert.ok(Math.abs(f - 1000) < 10, `Frequenz ${f}`)
       }
@@ -148,9 +157,15 @@ try {
         const stored = () =>
           page.evaluate(() => window.api.getSettings().then((x) => x.patternTone.levelDb))
         await drag('0', false)
-        await sleep(500)
-        const { l } = await tap('peak')
-        assert.ok(Math.abs(l - 10 ** (-6 / 20)) < 0.02, `Spitze ${l}`)
+        // zweimal in Folge: Ein kaputter Deckel liefe durch −6 dBFS hindurch bis 0 dBFS
+        let l = 0
+        let hits = 0
+        const capped = await waitFor(async () => {
+          l = (await tap('peak')).l
+          hits = Math.abs(l - 10 ** (-6 / 20)) < 0.02 ? hits + 1 : 0
+          return hits >= 2
+        }, 5000)
+        assert.ok(capped, `Spitze ${l}`)
         await page.getByText('−6 dBFS', { exact: true }).waitFor()
         assert.equal(await stored(), -18, 'beim Ziehen schon gespeichert')
         await drag('-6', true)

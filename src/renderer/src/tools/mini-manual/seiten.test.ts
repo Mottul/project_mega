@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { fotoHashesIn } from '@shared/fotos'
 import { DEFAULT_FIRMENPROFIL } from '@shared/types'
+import { ledWallFileData, sanitizeLedWallConfig } from '../led-wall/config'
+import { kopieAus } from './ledWallKopie'
 import { leereAnleitung, type Anleitung } from './model'
+import { platzhalterWerte } from './platzhalter'
 import { pruefung } from './pruefung'
 import { handbuchHtml, kapitelNummern, kurzkarteHtml, vorschau, type SeitenKontext } from './seiten'
 import { neueAnleitung } from './vorlage'
@@ -127,6 +130,45 @@ describe('Kurzkarte und Vorschau', () => {
   })
 })
 
+describe('mehrere LED-Wände', () => {
+  function zweiWaende(): Anleitung {
+    const a = beispiel()
+    const c = sanitizeLedWallConfig({})
+    a.ledWall = kopieAus(
+      ledWallFileData('Messe', '', [
+        { id: 'a', name: 'Bühne <links>', config: c },
+        { id: 'b', name: 'Bar', config: { ...c, moduleKey: 'uS2+', widthM: '2', heightM: '1' } }
+      ]),
+      null
+    )
+    return a
+  }
+
+  it('Kapitel LED-Wand: je Wand eine Tabelle mit Namen; Systemübersicht nennt beide', () => {
+    const a = zweiWaende()
+    const wand = vorschau(a, ctx(3), 'ledWall').html
+    expect(wand).toContain('<h3>Bühne &lt;links&gt;</h3>')
+    expect(wand).toContain('<h3>Bar</h3>')
+    expect(wand.match(/<table>/g)).toHaveLength(2)
+    const sys = vorschau(a, ctx(1), 'system').html
+    expect(sys).toContain('LED-Wände')
+    expect(sys).toContain('Bar (uS2+)')
+  })
+
+  it('Platzhalter: {wand.…} ist die erste Wand, {wand2.…} die zweite', () => {
+    const a = zweiWaende()
+    const w = platzhalterWerte(a, DEFAULT_FIRMENPROFIL)
+    expect(w.get('wand.name')).toBe('Bühne <links>')
+    expect(w.get('wand2.name')).toBe('Bar')
+    expect(w.get('wand2.modul')).toBe('uS2+')
+    expect(w.has('wand3.name')).toBe(false)
+  })
+
+  it('Kurzkarte nennt die Zahl der Wände statt einer Größe', () => {
+    expect(kurzkarteHtml(zweiWaende(), ctx(1))).toContain('2 LED-Wände')
+  })
+})
+
 describe('Prüfung vor dem Export', () => {
   it('neue Anleitung: Kontakt fehlt, Platzhalter leer, keine Wand', () => {
     const a = neueAnleitung()
@@ -139,24 +181,30 @@ describe('Prüfung vor dem Export', () => {
     const a = beispiel()
     a.ausgabe.passwoerter = 'drucken'
     a.ledWall = {
-      daten: {},
-      kennzahlen: {
-        projekt: '',
-        kunde: '',
-        modulKey: '496-2,0',
-        modul: '496-2,0',
-        spalten: 8,
-        reihen: 4,
-        module: 32,
-        breiteM: '3.97',
-        hoeheM: '1.98',
-        aufloesungX: 1920,
-        aufloesungY: 960,
-        gewichtKg: '240',
-        leistungTypW: 2560,
-        leistungMaxW: 5760,
-        stromMaxA: '25'
-      },
+      waende: [
+        {
+          id: 'wand-1',
+          name: 'Wand 1',
+          daten: {},
+          kennzahlen: {
+            projekt: '',
+            kunde: '',
+            modulKey: '496-2,0',
+            modul: '496-2,0',
+            spalten: 8,
+            reihen: 4,
+            module: 32,
+            breiteM: '3.97',
+            hoeheM: '1.98',
+            aufloesungX: 1920,
+            aufloesungY: 960,
+            gewichtKg: '240',
+            leistungTypW: 2560,
+            leistungMaxW: 5760,
+            stromMaxA: '25'
+          }
+        }
+      ],
       quelle: { rev: 7, sha256: 'a'.repeat(64) },
       uebernommen: '2026-10-16'
     }

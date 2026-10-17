@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { digest } from '@shared/projectFile'
+import { sanitizeLedWallConfig } from '../led-wall/config'
 import { MINI_MANUAL_FILE, beschreibe } from './fileSection'
+import { kennzahlenAus } from './ledWallKopie'
 import { fotosIn } from './model'
 import { migrateMiniManual, useMiniManual } from './store'
 import { neueAnleitung } from './vorlage'
@@ -20,6 +22,27 @@ describe('Mini-Manual – gespeicherter Stand', () => {
       savedDigest: 'x'
     }
     expect(migrateMiniManual({ anleitung: neueAnleitung(), file: b }).file).toEqual(b)
+  })
+
+  it('alte LED-Wall-Kopie wird zur Liste; eine gespeicherte Bindung bleibt gespeichert', () => {
+    const k = kennzahlenAus(sanitizeLedWallConfig({}))
+    const alt = {
+      ...neueAnleitung(),
+      ledWall: { daten: {}, kennzahlen: k, quelle: null, uebernommen: '2026-10-16' }
+    }
+    const b = {
+      path: 'C:/p/a.mottul',
+      name: 'a',
+      baseSha: 'a'.repeat(64),
+      rev: 2,
+      savedDigest: digest(alt)
+    }
+    const out = migrateMiniManual({ anleitung: alt, file: b })
+    expect(out.anleitung.ledWall?.waende).toHaveLength(1)
+    expect(out.file?.savedDigest).toBe(digest(out.anleitung))
+    // war sie ungespeichert, bleibt sie es
+    const dirty = migrateMiniManual({ anleitung: alt, file: { ...b, savedDigest: 'x' } })
+    expect(dirty.file?.savedDigest).toBe('x')
   })
 
   it('die Datei enthält nur die Anleitung, keinen Bedienzustand und keine Bindung', () => {

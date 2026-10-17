@@ -8,21 +8,18 @@ import { Button } from '@renderer/components/ui/button'
 import { Field } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
 import { Segmented } from '@renderer/components/ui/segmented'
+import { LiveInput } from '@renderer/components/ui/textarea'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { fmt } from '../_calc/ui'
 import type { WallMetrics } from './compute'
-import { GRID_SIDE_MAX } from './config'
+import { digest } from '@shared/projectFile'
+import { toast } from '@renderer/lib/toast'
+import { GRID_SIDE_MAX, isDefaultPlanning, pickConfig, WALL_NAME_MAX, wallSection } from './config'
 import { CURVE_MODE_LABELS } from './curve'
 import { CIRCLE_TABLE, MODULES } from './data'
 import type { BuilderSegment } from './math'
-import {
-  ledWallDirty,
-  useLedWall,
-  type BuildMode,
-  type CurveMode,
-  type LedWallPreset
-} from './store'
+import { useLedWall, type BuildMode, type CurveMode, type LedWallPreset } from './store'
 import { NumCommit, UnitInput } from './ui'
 
 export const BUILD_LABELS: Record<BuildMode, string> = {
@@ -57,6 +54,8 @@ export function LedWallSettings({ d }: { d: WallMetrics }): JSX.Element {
 function PresetsPanel(): JSX.Element {
   const presets = useLedWall((s) => s.presets)
   const projectName = useLedWall((s) => s.projectName)
+  const wallName = useLedWall((s) => s.walls.find((w) => w.id === s.wallId)?.name ?? '')
+  const several = useLedWall((s) => s.walls.length > 1)
   const savePreset = useLedWall((s) => s.savePreset)
   const loadPreset = useLedWall((s) => s.loadPreset)
   const deletePreset = useLedWall((s) => s.deletePreset)
@@ -70,18 +69,26 @@ function PresetsPanel(): JSX.Element {
     if (ok) deletePreset(p.id)
   }
 
-  // Vorlage laden = „Neu aus Vorlage“: löst die Bindung an die Projektdatei (die Datei bleibt)
+  // Vorlage laden = die gewählte Wand ersetzen (andere Wände, Projekt und Datei-Bindung bleiben).
+  // Gefragt wird nur, wenn in der Wand schon etwas steht.
   async function load(p: LedWallPreset): Promise<void> {
     const st = useLedWall.getState()
-    if (st.file) {
-      const dirty = ledWallDirty(st)
+    const before = digest(wallSection(pickConfig(st)))
+    const wall = st.walls.find((w) => w.id === st.wallId)
+    if (!isDefaultPlanning({ ...pickConfig(st), projectName: '', customerName: '' })) {
       const ok = await api.confirm({
-        message: `Vorlage „${p.name}“ laden?`,
-        detail: `Die Planung ist an „${st.file.name}“ gebunden${dirty ? ' und hat ungespeicherte Änderungen' : ''}. Die Vorlage ersetzt sie und löst die Bindung – die Datei selbst bleibt unverändert.`,
-        confirmLabel: 'Laden',
-        danger: dirty
+        message: `Vorlage „${p.name}“ in ${st.walls.length > 1 ? `„${wall?.name}“` : 'die Wand'} laden?`,
+        detail: `Die Vorlage ersetzt Maße, Modul und Verkabelung dieser Wand${st.file ? ` – „${st.file.name}“ ist danach ungespeichert` : ''}.`,
+        confirmLabel: 'Laden'
       })
       if (!ok) return
+      // Rückfragen sperren nur dieses Fenster: Hat ein anderes die Wand inzwischen gewechselt
+      // oder geändert, gilt die Zustimmung nicht (review-checkliste, „Zustand nach await“)
+      const now = useLedWall.getState()
+      if (now.wallId !== st.wallId || digest(wallSection(pickConfig(now))) !== before) {
+        toast.warning('Die Wand hat sich inzwischen geändert – bitte noch einmal.')
+        return
+      }
     }
     loadPreset(p.id)
   }
@@ -104,7 +111,7 @@ function PresetsPanel(): JSX.Element {
               <button
                 type="button"
                 onClick={() => void load(p)}
-                title="Vorlage laden – ersetzt die aktuelle Planung"
+                title="Vorlage laden – ersetzt die gewählte Wand"
                 className="min-w-0 flex-1 px-2.5 py-1.5 text-left hover:text-primary"
               >
                 <span className="block truncate text-sm font-medium">{p.name}</span>
@@ -131,10 +138,16 @@ function PresetsPanel(): JSX.Element {
         variant="outline"
         size="sm"
         className="w-full"
-        onClick={() => savePreset(projectName.trim() || `Vorlage ${presets.length + 1}`)}
-        title="Gespeichert wird unter dem Projektnamen – gleicher Name überschreibt die Vorlage"
+        onClick={() =>
+          savePreset(
+            [projectName.trim(), several ? wallName : ''].filter(Boolean).join(' – ') ||
+              `Vorlage ${presets.length + 1}`
+          )
+        }
+        title="Gespeichert wird unter dem Projektnamen (bei mehreren Wänden mit dem Namen der Wand) – gleicher Name überschreibt die Vorlage"
       >
-        <Save className="size-4" /> Aktuelle Planung speichern
+        <Save className="size-4" />{' '}
+        {several ? 'Diese Wand speichern' : 'Aktuelle Planung speichern'}
       </Button>
     </PanelSection>
   )
@@ -224,6 +237,9 @@ function WallPanel({ d }: { d: WallMetrics }): JSX.Element {
   const heightM = useLedWall((s) => s.heightM)
   const buildMode = useLedWall((s) => s.buildMode)
   const set = useLedWall((s) => s.set)
+  const wallId = useLedWall((s) => s.wallId)
+  const wallName = useLedWall((s) => s.walls.find((w) => w.id === s.wallId)?.name ?? '')
+  const several = useLedWall((s) => s.walls.length > 1)
   const curve = d.curve
   // Breite frei nur, wo sie das Curving treibt (Segment/Squircle) bzw. bei flachen Modulen;
   // bei Vollkreis und Builder ergibt sie sich aus den Modulen
@@ -241,8 +257,19 @@ function WallPanel({ d }: { d: WallMetrics }): JSX.Element {
       id="wall"
       title="Wand"
       icon={Ruler}
-      summary={`${num(parseFloat(d.actualW), 2)} × ${num(parseFloat(d.actualH), 2)} m · ${d.cols} × ${d.rows} Module · ${BUILD_LABELS[buildMode]}`}
+      summary={`${several ? `${wallName} · ` : ''}${num(parseFloat(d.actualW), 2)} × ${num(parseFloat(d.actualH), 2)} m · ${d.cols} × ${d.rows} Module · ${BUILD_LABELS[buildMode]}`}
     >
+      <Field
+        label="Name der Wand"
+        hint="Unterscheidet die Wände einer Planung („Hauptbühne“, „Seitenwand links“) – im Wand-Menü der Leiste, im PDF, in der Packliste und im Mini-Manual."
+      >
+        <LiveInput
+          key={wallId}
+          value={wallName}
+          maxLength={WALL_NAME_MAX}
+          onCommit={(v) => useLedWall.getState().renameWall(wallId, v)}
+        />
+      </Field>
       <div className="grid grid-cols-2 gap-3">
         {widthEditable ? (
           <Field label={widthLabel} hint={widthHint}>

@@ -105,14 +105,16 @@ describe('Bibliothek', () => {
     const a = neueAnleitung()
     expect(sanitizeAnleitung(structuredClone(a))).toEqual(a)
     expect(neueAnleitung()).toEqual(a) // „Neu“ ergibt immer dieselben Daten
-    expect(ANLEITUNG_VERSION).toBe(1)
+    expect(ANLEITUNG_VERSION).toBe(2)
   })
 })
 
 describe('Fehlersuche je Stufe – Beispiel aus dem Plan', () => {
   const faelle = fallMitVerweisen('lib-teil-dunkel')
   const teil = (stufe: 1 | 2 | 3, modul: string | null) =>
-    faelleFuerStufe(faelle, stufe, modul).find((f) => f.fall.id === 'lib-teil-dunkel')!
+    faelleFuerStufe(faelle, stufe, modul ? [modul] : []).find(
+      (f) => f.fall.id === 'lib-teil-dunkel'
+    )!
 
   it('Bedienung: Schritte 1, 2, 5, 8 und – beim 496-2,0 mit Rücksprache – 9', () => {
     const f = teil(1, '496-2,0')
@@ -148,8 +150,17 @@ describe('Fehlersuche je Stufe – Beispiel aus dem Plan', () => {
 
   it('ohne bekannte Wand gilt der IM-Tausch als Technik', () => {
     const t9 = fallById('lib-teil-dunkel')!.schritte.find((s) => s.id === 't9')!
-    expect(wirksam(t9, null).stufe).toBe(3)
-    expect(wirksam(t9, 'constructor').stufe).toBe(3)
+    expect(wirksam(t9, []).stufe).toBe(3)
+    expect(wirksam(t9, ['constructor']).stufe).toBe(3)
+  })
+
+  it('mehrere Wände mit verschiedenen Modulen: die strengere Regel gilt', () => {
+    const t9 = fallById('lib-teil-dunkel')!.schritte.find((s) => s.id === 't9')!
+    const w = wirksam(t9, ['496-2,0', 'uS2+'])
+    expect([w.stufe, w.ruecksprache]).toEqual([3, true])
+    expect(w.hinweis).toContain('496-2,0: 4 IMs')
+    expect(w.hinweis).toContain('uS2+: 2 IMs')
+    expect(wirksam(t9, ['496-2,0', 'rX3ioBF']).stufe).toBe(1)
   })
 
   it('Fall über der Stufe fehlt ganz; erster Schritt zu hoch = nur anrufen', () => {
@@ -157,9 +168,9 @@ describe('Fehlersuche je Stufe – Beispiel aus dem Plan', () => {
       ...structuredClone(fallById('lib-modul-farbe')!),
       stufe: 1
     }
-    const out = faelleFuerStufe([f], 1, null)
+    const out = faelleFuerStufe([f], 1, [])
     expect(out[0].nurAnrufen).toBe(true)
-    expect(faelleFuerStufe([fallById('lib-modul-farbe')!], 1, null)).toEqual([])
+    expect(faelleFuerStufe([fallById('lib-modul-farbe')!], 1, [])).toEqual([])
   })
 })
 

@@ -1,5 +1,5 @@
-// Platzhalter in geschweiften Klammern, z. B. {pc.name}, {prozessor.ip}, {wand.aufloesung},
-// {kontakt.mobil}, {projekt.ort}. Quellen: Deckblatt, Geräteliste (Kurznamen), LED-Wall-Kopie,
+// Platzhalter in geschweiften Klammern, z. B. {pc.name}, {prozessor.ip}, {wand.aufloesung}
+// (weitere Wände {wand2.…}), {kontakt.mobil}, {projekt.ort}. Quellen: Deckblatt, Geräteliste (Kurznamen), LED-Wall-Kopie,
 // Kontakte, Firmenprofil. Leere Platzhalter zeigt die Vorschau gestrichelt rot, die Prüfung vor
 // dem Export meldet sie, im PDF wird daraus eine Linie zum Ausfüllen.
 
@@ -27,20 +27,22 @@ export function platzhalterWerte(a: Anleitung, firma: FirmenProfil): Platzhalter
   put('projekt.ort', d.ort)
   put('projekt.zeitraum', d.zeitraum)
 
-  const w = a.ledWall?.kennzahlen
-  if (w) {
-    put('wand.modul', w.modul)
-    put('wand.module', w.module)
-    put('wand.spalten', w.spalten)
-    put('wand.reihen', w.reihen)
-    put('wand.breite', `${fmtM(w.breiteM)} m`)
-    put('wand.hoehe', `${fmtM(w.hoeheM)} m`)
-    put('wand.groesse', `${fmtM(w.breiteM)} × ${fmtM(w.hoeheM)} m`)
-    put('wand.aufloesung', `${w.aufloesungX} × ${w.aufloesungY}`)
-    put('wand.gewicht', `${fmtM(w.gewichtKg)} kg`)
-    put('wand.leistung', `${w.leistungMaxW} W`)
-    put('wand.strom', `${fmtM(w.stromMaxA)} A`)
-  }
+  // erste Wand: {wand.…}, weitere: {wand2.…}, {wand3.…} – in der Reihenfolge des Konfigurators
+  ;(a.ledWall?.waende ?? []).slice(0, 20).forEach(({ name, kennzahlen: w }, i) => {
+    const pre = i === 0 ? 'wand' : `wand${i + 1}`
+    put(`${pre}.name`, name)
+    put(`${pre}.modul`, w.modul)
+    put(`${pre}.module`, w.module)
+    put(`${pre}.spalten`, w.spalten)
+    put(`${pre}.reihen`, w.reihen)
+    put(`${pre}.breite`, `${fmtM(w.breiteM)} m`)
+    put(`${pre}.hoehe`, `${fmtM(w.hoeheM)} m`)
+    put(`${pre}.groesse`, `${fmtM(w.breiteM)} × ${fmtM(w.hoeheM)} m`)
+    put(`${pre}.aufloesung`, `${w.aufloesungX} × ${w.aufloesungY}`)
+    put(`${pre}.gewicht`, `${fmtM(w.gewichtKg)} kg`)
+    put(`${pre}.leistung`, `${w.leistungMaxW} W`)
+    put(`${pre}.strom`, `${fmtM(w.stromMaxA)} A`)
+  })
 
   for (const g of a.geraete) {
     if (!g.kurzname) continue
@@ -87,6 +89,9 @@ export function platzhalterListe(a: Anleitung): string[] {
     'firma.name',
     'firma.fernwartung'
   ]
+  ;(a.ledWall?.waende ?? []).slice(1, 20).forEach((_, i) => {
+    keys.push(`wand${i + 2}.name`, `wand${i + 2}.groesse`, `wand${i + 2}.aufloesung`)
+  })
   for (const g of a.geraete) {
     if (g.kurzname) keys.push(`${g.kurzname}.name`, `${g.kurzname}.standort`, `${g.kurzname}.ip`)
   }

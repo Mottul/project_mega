@@ -30,14 +30,32 @@ export const IM_TAUSCH: Record<string, { stufe: Stufe; ruecksprache: boolean; hi
 
 const IM_UNBEKANNT = { stufe: 3 as Stufe, ruecksprache: false, hinweis: '' }
 
-/** Stufe, Rücksprache und Hinweis eines Schritts – mit Stammdaten des Moduls */
+/**
+ * IM-Tausch für die Module der Planung. Mehrere Wände mit verschiedenen Modulen: die strengere
+ * Regel (höchste Stufe, Rücksprache, wenn eines sie verlangt), Hinweise je Modul.
+ */
+function imRegel(module: string[]): { stufe: Stufe; ruecksprache: boolean; hinweis: string } {
+  const regeln = module.map((k) => (Object.hasOwn(IM_TAUSCH, k) ? IM_TAUSCH[k] : IM_UNBEKANNT))
+  if (!regeln.length) return IM_UNBEKANNT
+  if (regeln.length === 1) return regeln[0]
+  return {
+    stufe: Math.max(...regeln.map((r) => r.stufe)) as Stufe,
+    ruecksprache: regeln.some((r) => r.ruecksprache),
+    hinweis: module
+      .map((k, i) => (regeln[i].hinweis ? `${k}: ${regeln[i].hinweis}` : ''))
+      .filter(Boolean)
+      .join(' ')
+  }
+}
+
+/** Stufe, Rücksprache und Hinweis eines Schritts – mit Stammdaten der Module (alle Wände) */
 export function wirksam(
   s: FSchritt,
-  modulKey: string | null
+  module: string[]
 ): { stufe: Stufe; ruecksprache: boolean; hinweis: string } {
   if (s.stufeAus !== 'im-tausch')
     return { stufe: s.stufe, ruecksprache: s.ruecksprache, hinweis: s.hinweis }
-  const im = (modulKey && Object.hasOwn(IM_TAUSCH, modulKey) && IM_TAUSCH[modulKey]) || IM_UNBEKANNT
+  const im = imRegel(module)
   return {
     stufe: im.stufe,
     ruecksprache: s.ruecksprache || im.ruecksprache,
@@ -158,14 +176,14 @@ export interface AusgabeFall {
 export function faelleFuerStufe(
   faelle: Fehlerfall[],
   stufe: Stufe,
-  modulKey: string | null
+  module: string[]
 ): AusgabeFall[] {
   const sichtbar = faelle.filter((f) => f.stufe <= stufe && f.schritte.length)
   const fallNr = new Map(sichtbar.map((f, i) => [f.id, i + 1]))
 
   return sichtbar.map((f, fi) => {
     const index = new Map(f.schritte.map((s, i) => [s.id, i]))
-    const w = f.schritte.map((s) => wirksam(s, modulKey))
+    const w = f.schritte.map((s) => wirksam(s, module))
     const zeigt = (i: number): boolean => w[i].stufe <= stufe
 
     if (!zeigt(0)) return { fall: f, nr: fi + 1, nurAnrufen: true, schritte: [] }

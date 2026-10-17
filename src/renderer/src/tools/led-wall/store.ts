@@ -1,5 +1,10 @@
 // Zustand des LED-Wall-Konfigurators – per zustand/persist in localStorage,
 // damit eine angefangene Planung Tool-Wechsel UND App-Neustart übersteht.
+//
+// Mehrere Wände (ab Version 3): Die gewählte Wand steht in den flachen Feldern – so lesen alle
+// Ansichten weiter `s.widthM`, `s.sig` …; die übrigen liegen in `walls` (der Eintrag der gewählten
+// hat `config: null`). Projekt und Kunde gelten für alle Wände. Wer alle Wände braucht (Datei,
+// Packliste, Mini-Manual), nimmt `plannedWalls(s)`, nie `walls` direkt.
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -8,13 +13,28 @@ import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorag
 import { sanitizeBinding, type ProjectBinding } from '@renderer/lib/projectBinding'
 import {
   DEFAULT_LED_WALL_CONFIG,
+  FIRST_WALL_ID,
+  ledWallFileData,
   ledWallSection,
   pickConfig,
   sanitizeLedWallConfig,
-  type LedWallConfig
+  WALL_NAME_MAX,
+  wallLabel,
+  WALLS_MAX,
+  type LedWallConfig,
+  type LedWallFileData,
+  type PlannedWall,
+  type PlanningData
 } from './config'
 
 export type { BuildMode, CurveMode, LedWallConfig } from './config'
+
+/** Eintrag der Wand-Liste; `config: null` = die gewählte Wand (steht in den flachen Feldern). */
+export interface WallSlot {
+  id: string
+  name: string
+  config: LedWallConfig | null
+}
 
 /** Benannte, gespeicherte Konfiguration. */
 export interface LedWallPreset {
@@ -29,38 +49,81 @@ interface LedWallState extends LedWallConfig {
   /** Projektdatei, an die die Planung gebunden ist (null = ohne Datei). Steht NEBEN der
    *  Konfiguration, damit Vorlagen sie nicht mitnehmen (lib/projectFile). */
   file: ProjectBinding | null
+  /** alle Wände in Reihenfolge (mindestens eine) */
+  walls: WallSlot[]
+  /** gewählte Wand */
+  wallId: string
 
   set: (patch: Partial<LedWallState>) => void
+  selectWall: (id: string) => void
+  /** neue Wand hinter der gewählten (copy: Kopie der gewählten), wird gleich gewählt */
+  addWall: (copy?: boolean) => void
+  renameWall: (id: string, name: string) => void
+  /** Wand entfernen (die letzte bleibt); war sie gewählt, wird die Nachbarin gewählt */
+  removeWall: (id: string) => void
   /** Grids an neue Modulzahl anpassen (Zuordnungen im Überlapp bleiben erhalten). */
   ensureGridSize: (rows: number, cols: number) => void
   setCell: (grid: 'sig' | 'pwr', row: number, col: number) => void
   fillLine: (grid: 'sig' | 'pwr', kind: 'row' | 'col', index: number) => void
   resetGrid: (grid: 'sig' | 'pwr') => void
-  /** Aktuelle Konfiguration als Vorlage sichern (gleicher Name -> überschreiben). */
+  /** Aktuelle Konfiguration (der gewählten Wand) als Vorlage sichern (gleicher Name -> überschreiben). */
   savePreset: (name: string) => void
-  /** Vorlage laden – wie „Neu aus Vorlage“: löst die Bindung an eine Projektdatei. */
+  /** Vorlage in die gewählte Wand laden; Projekt und Kunde bleiben (leer: aus der Vorlage), die
+   *  Bindung an eine Projektdatei auch – die Datei ist danach „ungespeichert“. */
   loadPreset: (id: string) => void
   deletePreset: (id: string) => void
   setFile: (file: ProjectBinding | null) => void
-  /** Planung ersetzen (Projektdatei, „Neu“); Bedienzustand (PDF-Format) bleibt. */
+  /** Planung ersetzen mit genau einer Wand (Tests, „Neu“); Bedienzustand (PDF-Format) bleibt. */
   replaceConfig: (config: LedWallConfig) => void
+  /** Ganze Planung ersetzen (Projektdatei); die erste Wand wird gewählt. */
+  replacePlanning: (p: PlanningData) => void
+}
+
+type WallsState = LedWallConfig & { walls: WallSlot[]; wallId: string }
+
+/** Alle Wände in Reihenfolge – die gewählte mit ihrem aktuellen Stand, Projekt und Kunde überall gleich. */
+export function plannedWalls(s: WallsState): PlannedWall[] {
+  const current = pickConfig(s)
+  const slots = s.walls.some((w) => w.id === s.wallId)
+    ? s.walls
+    : [{ id: s.wallId, name: wallLabel(0), config: null }]
+  return slots.map((w) => ({
+    id: w.id,
+    name: w.name,
+    config:
+      w.id === s.wallId
+        ? current
+        : {
+            ...structuredClone(w.config ?? DEFAULT_LED_WALL_CONFIG),
+            projectName: s.projectName,
+            customerName: s.customerName
+          }
+  }))
+}
+
+/** Daten des Datei-Abschnitts (alle Wände). */
+export function ledWallFile(s: WallsState): LedWallFileData {
+  return ledWallFileData(s.projectName, s.customerName, plannedWalls(s))
 }
 
 /** Hat die gebundene Planung Änderungen, die noch nicht in der Datei stehen? */
-export function ledWallDirty(s: LedWallConfig & { file: ProjectBinding | null }): boolean {
-  return !!s.file && digest(ledWallSection(s)) !== s.file.savedDigest
+export function ledWallDirty(s: WallsState & { file: ProjectBinding | null }): boolean {
+  return !!s.file && digest(ledWallFile(s)) !== s.file.savedDigest
 }
 
-/**
- * Gespeicherten Stand auf die aktuelle Version bringen. Version 2 ergänzt die Felder für den
- * Kabelverlauf – in der Planung UND in jeder Vorlage (zustand ergänzt nur oberste Felder).
- * Rein, getestet in store.test.ts.
- */
-export function migrateLedWall(persisted: unknown, version: number): unknown {
-  if (version >= 2 || !persisted || typeof persisted !== 'object') return persisted
-  const p = persisted as Record<string, unknown>
-  const presets = Array.isArray(p.presets)
-    ? p.presets
+const newWallId = (): string => `wand-${crypto.randomUUID().slice(0, 8)}`
+
+/** Nächster freier Standardname („Wand 3“) */
+function nextWallName(walls: WallSlot[]): string {
+  for (let i = walls.length; ; i++) {
+    const name = wallLabel(i)
+    if (!walls.some((w) => w.name === name)) return name
+  }
+}
+
+function sanitizePresets(v: unknown): LedWallPreset[] {
+  return Array.isArray(v)
+    ? v
         .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object')
         .filter((x) => typeof x.id === 'string' && typeof x.name === 'string')
         .map((x) => ({
@@ -70,7 +133,64 @@ export function migrateLedWall(persisted: unknown, version: number): unknown {
           data: sanitizeLedWallConfig(x.data)
         }))
     : []
-  return { ...sanitizeLedWallConfig(p), presets, file: sanitizeBinding(p.file) }
+}
+
+/**
+ * Gespeicherten Stand auf die aktuelle Version bringen. Rein, getestet in store.test.ts.
+ * - Version 2 ergänzt die Felder für den Kabelverlauf – in der Planung UND in jeder Vorlage
+ *   (zustand ergänzt nur oberste Felder).
+ * - Version 3: Wand-Liste mit der bisherigen Planung als einziger Wand. War sie an eine Datei
+ *   gebunden und gespeichert, bleibt sie „gespeichert“ (Prüfsumme auf die neue Form umgerechnet).
+ */
+export function migrateLedWall(persisted: unknown, version: number): unknown {
+  if (version >= 3 || !persisted || typeof persisted !== 'object') return persisted
+  const p = persisted as Record<string, unknown>
+  const config = sanitizeLedWallConfig(p)
+  const presets = version < 2 ? sanitizePresets(p.presets) : p.presets
+  const file = sanitizeBinding(p.file)
+  if (file && file.savedDigest === digest(ledWallSection(config))) {
+    file.savedDigest = digest(
+      ledWallFileData(config.projectName, config.customerName, [
+        { id: FIRST_WALL_ID, name: wallLabel(0), config }
+      ])
+    )
+  }
+  return {
+    ...(version < 2 ? config : p),
+    presets,
+    file,
+    walls: [{ id: FIRST_WALL_ID, name: wallLabel(0), config: null }],
+    wallId: FIRST_WALL_ID
+  }
+}
+
+/** Wand-Liste aus einem fremden Stand (anderes Fenster, Speicher) prüfen: gewählte genau einmal. */
+function sanitizeSlots(v: unknown, wallId: unknown): { walls: WallSlot[]; wallId: string } {
+  const walls: WallSlot[] = []
+  for (const w of Array.isArray(v) ? v.slice(0, WALLS_MAX) : []) {
+    if (!w || typeof w !== 'object') continue
+    const o = w as Record<string, unknown>
+    if (typeof o.id !== 'string' || walls.some((x) => x.id === o.id)) continue
+    walls.push({
+      id: o.id,
+      name: typeof o.name === 'string' ? o.name.slice(0, WALL_NAME_MAX) : wallLabel(walls.length),
+      config: o.config ? sanitizeLedWallConfig(o.config) : null
+    })
+  }
+  const active = walls.find((w) => w.id === wallId) ?? walls[0]
+  if (!active)
+    return {
+      walls: [{ id: FIRST_WALL_ID, name: wallLabel(0), config: null }],
+      wallId: FIRST_WALL_ID
+    }
+  return {
+    walls: walls.map((w) =>
+      w.id === active.id
+        ? { ...w, config: null }
+        : { ...w, config: w.config ?? structuredClone(DEFAULT_LED_WALL_CONFIG) }
+    ),
+    wallId: active.id
+  }
 }
 
 /**
@@ -108,8 +228,67 @@ export const useLedWall = create<LedWallState>()(
       ...structuredClone(DEFAULT_LED_WALL_CONFIG),
       presets: [],
       file: null,
+      walls: [{ id: FIRST_WALL_ID, name: wallLabel(0), config: null }],
+      wallId: FIRST_WALL_ID,
 
       set: (patch) => set(patch),
+
+      selectWall: (id) => {
+        const s = get()
+        const target = s.walls.find((w) => w.id === id)
+        if (!target || id === s.wallId) return
+        const current = pickConfig(s)
+        shadow = null
+        set({
+          // Projekt, Kunde und PDF-Format gelten für alle Wände
+          ...structuredClone(target.config ?? DEFAULT_LED_WALL_CONFIG),
+          projectName: s.projectName,
+          customerName: s.customerName,
+          pdfLandscape: s.pdfLandscape,
+          walls: s.walls.map((w) =>
+            w.id === s.wallId ? { ...w, config: current } : w.id === id ? { ...w, config: null } : w
+          ),
+          wallId: id
+        })
+      },
+
+      addWall: (copy = false) => {
+        const s = get()
+        if (s.walls.length >= WALLS_MAX) return
+        const current = pickConfig(s)
+        const here = s.walls.find((w) => w.id === s.wallId)
+        const id = newWallId()
+        const name =
+          copy && here ? `${here.name} (Kopie)`.slice(0, WALL_NAME_MAX) : nextWallName(s.walls)
+        const at = s.walls.findIndex((w) => w.id === s.wallId) + 1
+        const walls = s.walls.map((w) => (w.id === s.wallId ? { ...w, config: current } : w))
+        walls.splice(at, 0, { id, name, config: null })
+        shadow = null
+        set({
+          ...(copy ? current : structuredClone(DEFAULT_LED_WALL_CONFIG)),
+          projectName: s.projectName,
+          customerName: s.customerName,
+          pdfLandscape: s.pdfLandscape,
+          walls,
+          wallId: id
+        })
+      },
+
+      renameWall: (id, name) => {
+        const s = get()
+        const i = s.walls.findIndex((w) => w.id === id)
+        if (i < 0) return
+        const n = name.trim().slice(0, WALL_NAME_MAX) || wallLabel(i)
+        set({ walls: s.walls.map((w) => (w.id === id ? { ...w, name: n } : w)) })
+      },
+
+      removeWall: (id) => {
+        const s = get()
+        const i = s.walls.findIndex((w) => w.id === id)
+        if (i < 0 || s.walls.length <= 1) return
+        if (id === s.wallId) get().selectWall(s.walls[i + 1]?.id ?? s.walls[i - 1].id)
+        set({ walls: get().walls.filter((w) => w.id !== id) })
+      },
 
       ensureGridSize: (rows, cols) => {
         const { sig, pwr } = get()
@@ -170,29 +349,63 @@ export const useLedWall = create<LedWallState>()(
       },
 
       loadPreset: (id) => {
-        const preset = get().presets.find((p) => p.id === id)
+        const s = get()
+        const preset = s.presets.find((p) => p.id === id)
         // alle Felder setzen (fehlende aus der Vorgabe) – sonst blieben Felder der vorigen
         // Planung stehen, z. B. eine fremde Kabelreihenfolge
         if (!preset) return
+        const c = sanitizeLedWallConfig(preset.data)
         shadow = null
-        set({ ...sanitizeLedWallConfig(preset.data), file: null })
+        set({
+          ...c,
+          projectName: s.projectName.trim() ? s.projectName : c.projectName,
+          customerName: s.customerName.trim() ? s.customerName : c.customerName
+        })
       },
 
       deletePreset: (id) => set((state) => ({ presets: state.presets.filter((p) => p.id !== id) })),
 
       setFile: (file) => set({ file }),
 
-      replaceConfig: (config) => {
+      replaceConfig: (config) =>
+        get().replacePlanning({
+          projectName: config.projectName,
+          customerName: config.customerName,
+          walls: [{ id: FIRST_WALL_ID, name: wallLabel(0), config }]
+        }),
+
+      replacePlanning: (p) => {
+        const [first, ...rest] = p.walls.length
+          ? p.walls
+          : [{ id: FIRST_WALL_ID, name: wallLabel(0), config: DEFAULT_LED_WALL_CONFIG }]
         shadow = null
-        set({ ...structuredClone(config), pdfLandscape: get().pdfLandscape })
+        set({
+          ...structuredClone(first.config),
+          projectName: p.projectName,
+          customerName: p.customerName,
+          pdfLandscape: get().pdfLandscape,
+          walls: [
+            { id: first.id, name: first.name, config: null },
+            ...rest.map((w) => ({ id: w.id, name: w.name, config: structuredClone(w.config) }))
+          ],
+          wallId: first.id
+        })
       }
     }),
     {
       name: 'led-wall-konfigurator',
       storage: debouncedStorage(),
-      // v0/v1: Planung ohne Kabelverlauf; v2 (Oktober 2026): Kabelverlauf-Felder, Datei-Bindung
-      version: 2,
-      migrate: (persisted, version) => migrateLedWall(persisted, version) as LedWallState
+      // v0/v1: Planung ohne Kabelverlauf; v2 (Oktober 2026): Kabelverlauf-Felder, Datei-Bindung;
+      // v3 (Oktober 2026): mehrere Wände
+      version: 3,
+      migrate: (persisted, version) => migrateLedWall(persisted, version) as LedWallState,
+      // Stand aus einem anderen Fenster oder dem Speicher: Wand-Liste prüfen (gewählte genau einmal)
+      merge: (persisted, current) => {
+        const p = (
+          persisted && typeof persisted === 'object' ? persisted : {}
+        ) as Partial<LedWallState>
+        return { ...current, ...p, ...sanitizeSlots(p.walls, p.wallId) }
+      }
     }
   )
 )

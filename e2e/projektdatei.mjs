@@ -45,6 +45,8 @@ async function answer(responses) {
 const asked = () => app.evaluate(() => globalThis.__asked ?? [])
 
 const openSection = (path) => page.evaluate((p) => window.api.projects.open('ledWall', p), path)
+/** erste Wand eines Abschnitts ab Version 3 */
+const wall0 = (r) => r.section.data.walls[0].data
 
 function crc32(buf) {
   let crc = 0xffffffff
@@ -169,9 +171,10 @@ try {
         const r = await openSection(file)
         assert.equal(r.ok, true)
         assert.equal(r.section.rev, 2)
-        assert.equal(r.section.data.widthM, '6')
+        assert.equal(r.section.version, 3)
+        assert.equal(wall0(r).widthM, '6')
         assert.equal(r.section.data.projectName, 'Messe Dornbirn')
-        assert.equal('sigChain' in r.section.data, false, 'Bedienzustand gehört nicht in die Datei')
+        assert.equal('sigChain' in wall0(r), false, 'Bedienzustand gehört nicht in die Datei')
         // Bedienzustand (PDF-Format) macht nichts ungespeichert
         await bar().getByRole('button', { name: 'Hoch', exact: true }).click()
         await page.waitForTimeout(300)
@@ -188,7 +191,7 @@ try {
             window.api.projects.save({
               path: p,
               section: 'ledWall',
-              version: 2,
+              version: 3,
               data: { ...data, customerName: 'Kollege' },
               baseSha: null,
               force: true
@@ -212,9 +215,7 @@ try {
         // jetzt bewusst überschreiben
         await answer([0])
         await page.keyboard.press('Control+s')
-        assert.ok(
-          await waitFor(async () => (await openSection(file)).section.data.widthM === '7', 10_000)
-        )
+        assert.ok(await waitFor(async () => wall0(await openSection(file)).widthM === '7', 10_000))
         assert.equal((await openSection(file)).section.rev, 4)
       }
     ],
@@ -231,7 +232,7 @@ try {
         const [q] = await asked()
         assert.match(q, /Änderungen an „Messe Dornbirn“ speichern\?/)
         assert.equal(await drawer().getByRole('textbox', { name: 'Projektname' }).inputValue(), '')
-        assert.equal((await openSection(file)).section.data.widthM, '7', 'Datei unverändert')
+        assert.equal(wall0(await openSection(file)).widthM, '7', 'Datei unverändert')
       }
     ],
     [
@@ -286,9 +287,7 @@ try {
         await chip().getByLabel('ungespeichert').waitFor({ timeout: 5_000 })
         await answer([])
         await page.keyboard.press('Control+s')
-        assert.ok(
-          await waitFor(async () => (await openSection(file)).section.data.sqCorner === 5, 10_000)
-        )
+        assert.ok(await waitFor(async () => wall0(await openSection(file)).sqCorner === 5, 10_000))
       }
     ],
     [
@@ -402,6 +401,75 @@ try {
           'Anderes Fenster'
         )
         await chip().getByText('Leer').waitFor({ timeout: 5_000 })
+      }
+    ],
+    [
+      'Zwei Wände: anlegen, benennen, wechseln, speichern, Packliste je Wand, wieder öffnen',
+      async () => {
+        await answer([1]) // „Verwerfen“, falls noch etwas offen ist
+        await menu('Neu')
+        await chip().getByText('ohne Datei').waitFor({ timeout: 5_000 })
+        await answer([])
+        await expand('Projekt')
+        await drawer().getByRole('textbox', { name: 'Projektname' }).fill('Zwei Wände')
+        const wallButton = (name) => bar().getByRole('button', { name: new RegExp(`^${name}`) })
+        await wallButton('Wand 1').click()
+        await page.getByRole('menuitem', { name: 'Neue Wand' }).click()
+        await wallButton('Wand 2').getByText('2/2').waitFor({ timeout: 5_000 })
+        await expand('Wand')
+        await drawer().getByRole('textbox', { name: 'Name der Wand' }).fill('Bar')
+        await page.keyboard.press('Tab')
+        await wallButton('Bar').waitFor({ timeout: 5_000 })
+        await drawer()
+          .getByLabel(/^Breite/)
+          .fill('2')
+        // zurück zu Wand 1: eigene Maße
+        await wallButton('Bar').click()
+        await page.getByRole('menuitemradio', { name: 'Wand 1' }).click()
+        await wallButton('Wand 1').waitFor({ timeout: 5_000 })
+        assert.equal(
+          await drawer()
+            .getByLabel(/^Breite/)
+            .inputValue(),
+          '4'
+        )
+        const zwei = join(dir, 'Zwei.mottul')
+        await app.evaluate(({ dialog }, target) => {
+          dialog.showSaveDialog = async () => ({ canceled: false, filePath: target })
+          dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [target] })
+        }, zwei)
+        await menu(/^Speichern unter/)
+        assert.ok(await waitFor(() => existsSync(zwei), 10_000), 'Datei wurde nicht geschrieben')
+        const r = await openSection(zwei)
+        assert.equal(r.section.version, 3)
+        assert.equal(r.section.data.projectName, 'Zwei Wände')
+        assert.deepEqual(
+          r.section.data.walls.map((w) => [w.name, w.data.widthM]),
+          [
+            ['Wand 1', '4'],
+            ['Bar', '2']
+          ]
+        )
+        // Packliste: je Wand eine Kategorie
+        await bar()
+          .getByRole('button', { name: /In die Packliste/ })
+          .click()
+        const cats = await waitFor(async () => {
+          const s = await page.evaluate(() => localStorage.getItem('packing-list'))
+          const c = s ? JSON.parse(s).state.categories : []
+          return c.includes('LED-Wall · Bar') ? c : null
+        }, 10_000)
+        assert.ok(cats?.includes('LED-Wall · Wand 1'), JSON.stringify(cats))
+        // Neu und wieder öffnen: beide Wände, Wand 1 gewählt, nichts ungespeichert
+        await menu('Neu')
+        await chip().getByText('ohne Datei').waitFor({ timeout: 5_000 })
+        await menu(/^Öffnen/)
+        await chip().getByText('Zwei').waitFor({ timeout: 5_000 })
+        await wallButton('Wand 1').getByText('1/2').waitFor({ timeout: 5_000 })
+        assert.equal(await chip().getByLabel('ungespeichert').count(), 0)
+        await wallButton('Wand 1').click()
+        assert.equal(await page.getByRole('menuitemradio').count(), 2)
+        await page.keyboard.press('Escape')
       }
     ],
     [

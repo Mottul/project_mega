@@ -34,6 +34,9 @@ function pdfInfo(buf) {
   }
 }
 
+/** Prüfsumme des LED-Wall-Abschnitts nach dem zweiten Speichern (für den dritten Stand) */
+let sha2 = null
+
 /** Abschnitt der Projektdatei lesen (ohne Binden) */
 const peek = (section) =>
   page.evaluate(([s, p]) => window.api.projects.peek(s, p), [section, datei])
@@ -255,7 +258,7 @@ try {
           .getByRole('button', { name: /Aus dieser Projektdatei übernehmen \(Stand 1\)/ })
           .click()
         await page.getByText(/aus der Projektdatei, Stand 1/).waitFor()
-        await ledWallSpeichern('6', sha1)
+        sha2 = await ledWallSpeichern('6', sha1)
         await page.evaluate(() => window.dispatchEvent(new Event('focus')))
         // steht auch in der Prüfung der Schublade – hier der Hinweis im Kapitel
         await page
@@ -268,6 +271,53 @@ try {
         assert.ok(
           await waitFor(async () => (await page.getByText(/Planung geändert/).count()) === 0, 5000),
           'Hinweis „Planung geändert“ bleibt stehen'
+        )
+      }
+    ],
+    [
+      'Zweite Wand in derselben Datei (Abschnitt Version 3): Unterschied, Kopie und Vorschau',
+      async () => {
+        const r = await page.evaluate(
+          ([path, base]) =>
+            window.api.projects.save({
+              path,
+              section: 'ledWall',
+              version: 3,
+              data: {
+                projectName: 'Messe Test',
+                customerName: '',
+                walls: [
+                  {
+                    id: 'wand-1',
+                    name: 'Wand 1',
+                    data: { moduleKey: '496-2,0', widthM: '6', heightM: '2,5' }
+                  },
+                  { id: 'bar', name: 'Bar', data: { moduleKey: 'uS2+', widthM: '2', heightM: '1' } }
+                ]
+              },
+              baseSha: base,
+              force: false
+            }),
+          [datei, sha2]
+        )
+        assert.ok(r.ok, JSON.stringify(r))
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+        await page
+          .getByText('Planung geändert (Stand 2 → 3)', { exact: true })
+          .waitFor({ timeout: 5000 })
+        await page.getByRole('button', { name: 'Unterschiede ansehen' }).click()
+        await page.getByRole('cell', { name: 'Bar (neu)', exact: true }).waitFor()
+        await page.getByRole('button', { name: 'Übernehmen', exact: true }).click()
+        const liste = page.getByRole('list', { name: 'Übernommene Wände' })
+        await liste.getByText(/^Bar: uS2\+/).waitFor({ timeout: 5000 })
+        assert.equal(await liste.getByRole('listitem').count(), 2)
+        // Vorschau des Kapitels: je Wand ein Abschnitt mit Namen
+        assert.ok(
+          await waitFor(async () => {
+            const t = await vorschau()
+            return t.includes('Wand 1') && t.includes('Bar') && t.includes('uS2+')
+          }, 5000),
+          await vorschau()
         )
       }
     ],
