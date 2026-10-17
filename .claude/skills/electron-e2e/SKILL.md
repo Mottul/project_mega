@@ -87,7 +87,10 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   sperrte. Chromium spielt die Datei in Schleife; an der Naht spritzt es kurz breitbandig (eine
   Nachbarterz las −56 statt −134 dB) – Signale lang machen (60 s). Zeichenflächen prüfen über
   `getImageData` mit dem hellsten Wert in einem kleinen Fenster (eine Sinus-Linie ist ~1 px –
-  Wasserfall/Zeitachse in `e2e/rta.mjs`); ihr `aria-label` nie wie ein Feld nennen, sonst findet
+  Wasserfall/Zeitachse in `e2e/rta.mjs`). Messwerte nie einmal sofort ablesen, sondern mit
+  `waitFor` bis eingeschwungen: Direkt nach dem Start klingt das Einschwingen breitbandig ab –
+  die Windows-CI las eine Nachbarterz mit −59,4 statt unter −60 dB (Oktober 2026; die CI-Karte
+  läuft dazu mit 44,1 statt 48 kHz). Ihr `aria-label` nie wie ein Feld nennen, sonst findet
   `getByLabel` beide. Ganze Werte zeigt die
   Oberfläche ohne „,0“ (`fmt`) – Muster mit optionaler Nachkommastelle.
 - **Frische Stores sind nicht leer:** Die OSC-Steuerung startet mit einem Beispiel-Set (fünf
