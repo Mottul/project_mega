@@ -534,6 +534,15 @@ sonst kommt ein Hinweis).
   aus der Geräteliste), Geräte und Standorte, Zugangsdaten, Ein- und Ausschalten, Software,
   Bedienfeld, Inhalte tauschen, LED-Wall, Fehlersuche, Pflege und Verbote, Ersatzteile,
   Kontakt und Support (mit QR-Code zum Anrufen), Dokumentstand. Dazu das Deckblatt.
+- **Geräteliste mit Signalwegen:** Rolle (Zuspieler, Verteiler wie ein HDMI-Splitter, Prozessor,
+  Bedienfeld, Netzwerk, Strom, Sonstiges), Name, Modell, Standort, IP, Hinweis, Foto. Ein
+  **Prozessor** sagt, welche Wände er bespielt; ein **Zuspieler** hat Ausgänge („HDMI 1“ mit
+  Bildgröße), je Ausgang optional über einen Verteiler an einen oder mehrere Prozessoren – liefert
+  ein Ausgang ein Gesamtbild für mehrere Wände, steht je Wand der Ausschnitt dabei. Eindeutige
+  Fälle brauchen keine Angabe (eine Wand, ein Prozessor). Die **Systemübersicht** zeichnet daraus
+  die Pfeile (Name des Ausgangs am Pfeil) und listet die Signalwege je Wand; die Prüfung vor dem
+  Export meldet Wände ohne Prozessor, Prozessoren ohne Wand, Zuspieler ohne Ziel und Ausschnitte,
+  die über das Bild ragen oder skaliert werden.
 - **Texte** mit kleiner Auszeichnung (Leerzeile = Absatz, „- “ Liste, „1. “ nummeriert, „> “
   Hinweis, `**fett**`) und **Platzhaltern** wie `{prozessor.name}`, `{pc.ip}`,
   `{wand.aufloesung}`, `{kontakt.mobil}` – die Kurznamen der Geräte sind die Quelle. Eingesetzte

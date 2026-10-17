@@ -10,9 +10,10 @@ import { Select } from '@renderer/components/ui/select'
 import { LiveInput } from '@renderer/components/ui/textarea'
 import { useSettings } from '@renderer/lib/settings'
 import { entferne, ersetze, verschiebe } from '../aktionen'
-import { ROLLEN, uid, type Geraet, type GeraetRolle, type Zugang } from '../model'
+import { leeresGeraet, ROLLEN, uid, type Geraet, type GeraetRolle, type Zugang } from '../model'
 import { kurzname } from '../sanitize'
 import { useMiniManual } from '../store'
+import { AusgaengeEditor, BespieltFeld } from './SignalwegEditor'
 import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
 
 export function GeraeteEditor(): JSX.Element {
@@ -77,6 +78,8 @@ export function GeraeteEditor(): JSX.Element {
             {feld(g, 'ip', 'IP', 'IP (nur Stufe Technik)')}
             {feld(g, 'notiz', 'Hinweis')}
           </div>
+          {g.rolle === 'prozessor' && <BespieltFeld g={g} />}
+          {g.rolle === 'zuspieler' && <AusgaengeEditor g={g} />}
           {g.kurzname && (
             <p className="text-xs text-muted-foreground">
               Platzhalter: {`{${g.kurzname}.name}`}, {`{${g.kurzname}.standort}`},{' '}
@@ -85,26 +88,7 @@ export function GeraeteEditor(): JSX.Element {
           )}
         </div>
       ))}
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() =>
-          set((l) => [
-            ...l,
-            {
-              id: uid(),
-              rolle: 'zuspieler',
-              kurzname: '',
-              name: '',
-              modell: '',
-              standort: '',
-              ip: '',
-              foto: null,
-              notiz: ''
-            }
-          ])
-        }
-      >
+      <Button size="sm" variant="outline" onClick={() => set((l) => [...l, leeresGeraet()])}>
         <Plus className="size-4" /> Gerät
       </Button>
     </div>

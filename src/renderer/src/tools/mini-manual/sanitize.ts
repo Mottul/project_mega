@@ -14,6 +14,8 @@ import {
   leereAnleitung,
   uid,
   type Anleitung,
+  type Ausgang,
+  type Ausschnitt,
   type Bereich,
   type Block,
   type Fehlerfall,
@@ -32,8 +34,12 @@ import {
   type Ziel
 } from './model'
 
-/** Schema-Version des Abschnitts „anleitung“ – 2: LED-Wall-Kopie mit mehreren Wänden */
-export const ANLEITUNG_VERSION = 2
+/**
+ * Schema-Version des Abschnitts „anleitung“ – 2: LED-Wall-Kopie mit mehreren Wänden; 3: Geräte
+ * mit „bespielt“ (Prozessor) und Ausgängen samt Signalweg (Zuspieler), Rolle „Verteiler“.
+ * Eine ältere Mottulbox öffnet neuere Abschnitte nicht – sonst fielen die Felder beim Speichern weg.
+ */
+export const ANLEITUNG_VERSION = 3
 
 export const GRENZEN = {
   kurz: 200,
@@ -45,7 +51,8 @@ export const GRENZEN = {
   fehlerfaelle: 300,
   kontakte: 50,
   // wie WALLS_MAX im LED-Wall-Konfigurator
-  waende: 20
+  waende: 20,
+  ausgaenge: 16
 } as const
 
 type Obj = Record<string, unknown>
@@ -151,6 +158,42 @@ function kapitel(v: unknown): KapitelEintrag[] {
   return out
 }
 
+/** Kennungen (Geräte, Wände): nur gültige, ohne Doppelte */
+function kennungen(v: unknown, max: number): string[] {
+  return [
+    ...new Set(list(v, max).filter((x): x is string => typeof x === 'string' && KENNUNG.test(x)))
+  ]
+}
+const KENNUNG = /^[\w:.-]{1,64}$/
+const PX = 100_000
+
+function ausschnitt(v: unknown): Ausschnitt | null {
+  if (!isObj(v) || typeof v.wand !== 'string' || !KENNUNG.test(v.wand)) return null
+  return {
+    wand: v.wand,
+    x: num(v.x, 0, PX),
+    y: num(v.y, 0, PX),
+    b: num(v.b, 0, PX),
+    h: num(v.h, 0, PX)
+  }
+}
+
+function ausgang(v: unknown): Ausgang | null {
+  if (!isObj(v)) return null
+  const ausschnitte: Ausschnitt[] = []
+  for (const a of list(v.ausschnitte, GRENZEN.waende).map(ausschnitt))
+    if (a && !ausschnitte.some((x) => x.wand === a.wand)) ausschnitte.push(a)
+  return {
+    id: id(v.id),
+    name: str(v.name, 60),
+    breite: num(v.breite, 0, PX),
+    hoehe: num(v.hoehe, 0, PX),
+    ueber: typeof v.ueber === 'string' && KENNUNG.test(v.ueber) ? v.ueber : null,
+    an: kennungen(v.an, GRENZEN.geraete),
+    ausschnitte
+  }
+}
+
 function geraet(v: unknown): Geraet | null {
   if (!isObj(v)) return null
   const rolle = ROLLEN.some((r) => r.value === v.rolle) ? (v.rolle as GeraetRolle) : 'sonstiges'
@@ -163,8 +206,29 @@ function geraet(v: unknown): Geraet | null {
     standort: str(v.standort),
     ip: str(v.ip, 60),
     foto: foto(v.foto),
-    notiz: str(v.notiz, 2000)
+    notiz: str(v.notiz, 2000),
+    waende: kennungen(v.waende, GRENZEN.waende),
+    ausgaenge: list(v.ausgaenge, GRENZEN.ausgaenge)
+      .map(ausgang)
+      .filter((x): x is Ausgang => !!x)
   }
+}
+
+/**
+ * Verweise zwischen Geräten nur auf vorhandene mit passender Rolle (ein gelöschter Verteiler, ein
+ * Prozessor, der jetzt „Sonstiges“ ist). Wand-Kennungen bleiben stehen – die LED-Wall-Kopie kann
+ * neu übernommen werden; was keine Wand mehr findet, übergeht die Ausgabe.
+ */
+function geraeteVerweise(geraete: Geraet[]): Geraet[] {
+  const rolle = new Map(geraete.map((g) => [g.id, g.rolle]))
+  return geraete.map((g) => ({
+    ...g,
+    ausgaenge: g.ausgaenge.map((o) => ({
+      ...o,
+      ueber: o.ueber && rolle.get(o.ueber) === 'verteiler' ? o.ueber : null,
+      an: o.an.filter((x) => rolle.get(x) === 'prozessor')
+    }))
+  }))
 }
 
 function zugang(v: unknown): Zugang | null {
@@ -317,9 +381,11 @@ export function sanitizeAnleitung(raw: unknown): Anleitung {
       foto: foto(db.foto)
     },
     kapitel: kapitel(raw.kapitel),
-    geraete: list(raw.geraete, GRENZEN.geraete)
-      .map(geraet)
-      .filter((g): g is Geraet => !!g),
+    geraete: geraeteVerweise(
+      list(raw.geraete, GRENZEN.geraete)
+        .map(geraet)
+        .filter((g): g is Geraet => !!g)
+    ),
     zugaenge: list(raw.zugaenge, GRENZEN.zugaenge)
       .map(zugang)
       .filter((z): z is Zugang => !!z),

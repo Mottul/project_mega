@@ -52,7 +52,9 @@ describe('Platzhalter-Werte', () => {
       standort: 'Rack',
       ip: '192.168.0.10',
       foto: null,
-      notiz: ''
+      notiz: '',
+      waende: [],
+      ausgaenge: []
     })
     a.kontakte.push({
       id: 'k',
@@ -105,7 +107,7 @@ describe('Bibliothek', () => {
     const a = neueAnleitung()
     expect(sanitizeAnleitung(structuredClone(a))).toEqual(a)
     expect(neueAnleitung()).toEqual(a) // „Neu“ ergibt immer dieselben Daten
-    expect(ANLEITUNG_VERSION).toBe(2)
+    expect(ANLEITUNG_VERSION).toBe(3)
   })
 })
 
