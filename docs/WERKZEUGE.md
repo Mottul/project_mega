@@ -530,7 +530,8 @@ sonst kommt ein Hinweis).
   Kontakt und Support (mit QR-Code zum Anrufen), Dokumentstand. Dazu das Deckblatt.
 - **Texte** mit kleiner Auszeichnung (Leerzeile = Absatz, „- “ Liste, „1. “ nummeriert, „> “
   Hinweis, `**fett**`) und **Platzhaltern** wie `{prozessor.name}`, `{pc.ip}`,
-  `{wand.aufloesung}`, `{kontakt.mobil}` – die Kurznamen der Geräte sind die Quelle. Leere
+  `{wand.aufloesung}`, `{kontakt.mobil}` – die Kurznamen der Geräte sind die Quelle. Eingesetzte
+  Werte stehen **fett** im Text, damit man Namen und Adressen beim Lesen sofort findet. Leere
   Platzhalter zeigt die Vorschau rot gestrichelt, im PDF wird daraus eine Linie zum Ausfüllen.
 - **Bausteine:** mitgelieferte (Ein-/Ausschalten, Stromausfall, MadMapper, Mottulbox-Player,
   OBS, Stream Deck, Inhalte, Pflege, Ersatzteile, Status-LEDs) und **eigene** – ein Kapitel als

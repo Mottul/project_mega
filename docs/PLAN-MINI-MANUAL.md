@@ -23,12 +23,16 @@ Abweichungen vom Plan:
   „Die ganze Wand ist dunkel“ (mit Glasfaser/CVT10) – 15 Fälle statt 18.
 - **Logo** als PNG/JPG im Foto-Speicher; SVG geht noch nicht (müsste vorher bereinigt werden).
 
+Rückmeldung aus dem ersten Test (17.10.2026), erledigt: Foto auf dem Deckblatt nicht mehr
+verzerrt, Logo größer, eingesetzte Platzhalter-Werte fett.
+
 Noch offen aus Phase 1 (klein, bei Bedarf): Bausteine der Bibliothek „aktualisieren“, wenn ihre
 Version neuer ist (die Herkunft mit Version steht schon in jeder Kopie); Vorschläge nach
 Stichworten (heute zeigt die Auswahl alle Bausteine des Kapitels); Aufräumen des Foto-Speichers.
 
-**Nächster Schritt: Phase 2 (Kabelverlauf).** Vorher die [offene Frage 6](#offene-fragen)
-klären (Annahmen zu „unten“, „mittig“ und „zwei“).
+**Nächster Schritt: Phase 2** – [mehrere Wände je Datei](#mehrere-wände-je-datei) und der
+[Kabelverlauf](#kabelverlauf-im-led-wall-konfigurator), nur von Hand gezeichnet (Festlegungen
+24–28). Vorher die [offenen Fragen 7–10](#offene-fragen) klären.
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.
 
@@ -57,7 +61,8 @@ Tasten, Kontakt.
   [Bedienfelder](#bedienfelder), [Oberfläche](#oberfläche), [Ausgaben](#ausgaben)
 - [Datenquellen und Importe](#datenquellen-und-importe) – [aus Mottulbox](#aus-mottulbox),
   [Fremdformate](#fremdformate)
-- [Kabelverlauf im LED-Wall-Konfigurator](#kabelverlauf-im-led-wall-konfigurator)
+- [Kabelverlauf im LED-Wall-Konfigurator](#kabelverlauf-im-led-wall-konfigurator) –
+  [mehrere Wände je Datei](#mehrere-wände-je-datei)
 - [Umsetzung im Code](#umsetzung-im-code)
 - [Phasen](#phasen)
 - [Skills, Doku, Tests](#skills-doku-tests)
@@ -93,9 +98,9 @@ Aus der Rücksprache vom 16. Oktober 2026:
     darf das jeder (Stufe Bedienung mit Rücksprache). Beim uS2+ hat jedes IM 8 Schrauben – nur
     Technik.
 15. **Verkabelung** hängt von Größe und Format der Wand und vom Kabelweg ab. Deshalb keine feste
-    Automatik: Ein **Einspeisepunkt** legt fest, wo die Zuleitungen vom Prozessor an der Wand
-    ankommen; daraus kommen der Vorschlag für die Startecke jeder Kette und die ungefähre Länge
-    ihrer Zuleitung. Startecke und Richtung wählt man je Kette frei, dazu die Handkorrektur.
+    Automatik. ~~Ein Einspeisepunkt legt fest, wo die Zuleitungen ankommen, daraus der Vorschlag
+    für die Startecke und die Länge der Zuleitung~~ – entfällt (Festlegung 24). Startecke und
+    Richtung wählt man je Kette frei, oder man zeichnet die Kette.
     Optional je Signalkette eine **Backup-Leitung** vom letzten Modul zum Prozessor, die im
     Fehlerfall greift – Redundanz ist nicht immer vorhanden, daher ab Werk aus.
 16. **Prozessoren im Bestand:** NovaStar NovaPro UHD Jr (496-2,0, rX3ioBF), NovaStar VX4S,
@@ -111,15 +116,31 @@ Aus der Rücksprache vom 16. Oktober 2026:
 20. **Werkzeug in Mottulbox**, keine eigene App und keine PWA (Begründung unten).
 21. **Kabelpläne schlank halten** (Rückmeldung zur Skizze, 16.10.2026): Einspeisepunkt und
     Zuleitungen werden **nicht gezeichnet** – das machte den Plan unübersichtlich. Die
-    Backup-Leitung zeigt nur ein „B“ am letzten Modul. Einspeisepunkte: **links, rechts, oben,
-    unten, mittig** (Mitte der Kante bzw. der Wand). Aufteilungen sehen bei Signal und Strom
-    **gleich** aus; Streifen laufen waagrecht (eine oder mehrere Reihen je Kette).
+    Backup-Leitung zeigt nur ein „B“ am letzten Modul. ~~Einspeisepunkte und Schnellwahl der
+    Aufteilung~~ entfallen (Festlegung 24).
 22. **Kurzkarte:** A5, genau eine Seite (Rücksprache 16.10.2026; kein A4 zur Wahl).
 23. **Firmenprofil:** Logo (SVG, sonst PNG), Firmenfarbe (Hex) und Kontakte liegen bei Matthias
     vor. Sie kommen **nicht ins Repo** – es ist öffentlich auf GitHub –, sondern werden einmal im
     Firmenprofil geladen bzw. eingetragen. Ab Werk hat das Profil kein Logo und die gelbe
     Papierfarbe der bestehenden PDFs. Die **Firmenfarbe ist nur Akzent** (Trennlinien, eventuell
     Überschriften), nie Papierfarbe.
+
+Aus der Rücksprache vom 17. Oktober 2026 (nach dem ersten Test von Phase 1):
+
+24. **Kabelverlauf vorerst nur von Hand.** Ein Konzept, das für jede Größe und jedes Format der
+    Wand passt, wäre in der Bedienung zu viel. Deshalb **kein Einspeisepunkt**, keine gerechnete
+    Zuleitungslänge und keine Schnellwahl der Aufteilung. Es reicht: Aufteilung wie heute (Klick
+    füllt Modul, ganze Reihe oder Spalte), dazu je Kette den **Startpunkt** angeben – oder die
+    Kette mit der Maus **zeichnen**. Ersetzt die Einspeisepunkte aus Festlegung 15 und 21; die
+    offene Frage 6 entfällt.
+25. **Signal und Strom in einer Ansicht**, wenn der Platz reicht – sonst getrennt.
+26. **Ansicht von vorne und von hinten** umschaltbar (bestätigt Festlegung 12).
+27. **Backup-Leitung:** Ist sie an, trägt das letzte Modul jeder Datenkette ein „B“, und die
+    zusätzlichen Ports zählen in der Rechnung mit (bestätigt Festlegung 21).
+28. **Breakout-Box** je Wand an/aus (Glasfaser-Strecke, NovaStar CVT10): Die Packliste nimmt die
+    Box und das LWL-Kabel dazu; die Fehlersuche zeigt die Glasfaser-Schritte nur dann.
+29. **Mehrere LED-Wände je Projekt** (Wunsch aus der Praxis: ein Laptop bespielt zwei kleine
+    Wände). Braucht Querverweise – welcher Zuspieler und welcher Prozessor bespielen welche Wand.
 
 ### Warum in Mottulbox und nicht als eigene App oder PWA
 
@@ -806,35 +827,27 @@ Modul hat – keine Reihenfolge, keinen Port, keinen Stromkreis, keine Blickrich
 
 ### Bedienung
 
-Die Verkabelung hängt von Größe und Format der Wand und vom Kabelweg ab. Deshalb gibt es keine
-feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Freiheit je Kette:
+Die Verkabelung hängt von Größe und Format der Wand und vom Kabelweg ab. Ein Konzept, das jede
+Wand von selbst richtig verkabelt, wäre in der Bedienung zu viel – der Verlauf wird **von Hand**
+angegeben (Festlegung 24), mit zwei Wegen:
 
-- **Einspeisepunkt** („Zuleitungen kommen an bei …“): **links, rechts, oben, unten, mittig** –
-  jeweils die Mitte der Kante, bei „mittig“ die Mitte der Wand (Kabel kommen hinten in der Mitte
-  an). Er wird **nicht gezeichnet**, damit der Plan lesbar bleibt (Festlegung 21). Er bestimmt
-  nur den Vorschlag für die Startecke und die ungefähre **Zuleitungslänge** je Kette (entlang
-  der Modulkanten plus Zugabe), die neben dem Plan steht und später in die Packliste geht.
-- **Aufteilung** wie heute per Klick auf Module, Reihen und Spalten; dazu eine Schnellwahl
-  (Viertel, Streifen, Hälften, eine Kette), die bei Signal und Strom **gleich** aussieht.
-  Streifen laufen waagrecht: je Kette eine oder mehrere ganze Reihen.
-- Je Kette **Startecke** und **Richtung** (waagrecht/senkrecht) frei wählbar – die 8 Muster wie
-  in NovaLCT, bezogen auf den Bereich der Kette. Daraus rechnet der Konfigurator die Reihenfolge
-  als Schlange. Vorschlag für neue Ketten: die Ecke des Bereichs, die dem Einspeisepunkt am
-  nächsten liegt („an der Einspeisung“, kürzeste Zuleitung) – mehr nicht, die Wahl bleibt beim
-  Planer.
-- **Beispiel aus der Praxis** (Matthias, 16.10.2026): Einspeisung **unten**, die Wand in vier
-  Viertel geteilt (je 2 Reihen × 4 Spalten bei 8 × 4 Modulen). Jede Kette beginnt am Modul
+- **Aufteilung** wie heute per Klick auf Modul, ganze Reihe oder ganze Spalte. Kein
+  Einspeisepunkt, keine Schnellwahl, keine gerechnete Zuleitungslänge.
+- **Startpunkt und Richtung** je Kette: eine Ecke ihres Bereichs als Start (im Raster anklicken
+  oder in der Liste wählen) und waagrecht/senkrecht – die 8 Muster wie in NovaLCT. Daraus rechnet
+  der Konfigurator die Reihenfolge als Schlange. Ohne Startpunkt zeigt die Kette **keine Pfeile**
+  (der Plan zeigt nur, was jemand festgelegt hat), und die Prüfung meldet „Kette S2 ohne
+  Verlauf“.
+- **Beispiel aus der Praxis** (Matthias, 16.10.2026): die Wand in vier Viertel geteilt (je
+  2 Reihen × 4 Spalten bei 8 × 4 Modulen), Kabel kommen unten an. Jede Kette beginnt am Modul
   direkt neben der Mittelachse, läuft waagrecht nach außen und in der Reihe darüber zurück zur
-  Mitte. Das ergibt sich aus „Start an der Einspeisung“ + „waagrecht“ ohne Handkorrektur; die
-  Skizzen zum Plan zeigen genau diesen Fall. Mit „mittig“ beginnen alle vier Ketten an den vier
-  Modulen um die Wandmitte.
-- **Handkorrektur:** „Reihenfolge klicken“ – Module der Kette nacheinander anklicken. Beim Lesen
-  wird abgeglichen: Module, die nicht mehr in der Kette sind, fallen weg, neue hängt die Automatik
-  hinten an. So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.
+  Mitte – je Kette ein Klick auf die innere untere Ecke plus „waagrecht“.
 - **Kette zeichnen** (Wunsch Matthias, 16.10.2026): mit gedrückter Maustaste über die Module
   ziehen – sie kommen in die gewählte Kette und werden in dieser Reihenfolge verbunden
-  (Zuordnung und Handkorrektur in einem Zug). Klick für Klick geht weiterhin. Wer gar keine
-  Automatik will, zeichnet jede Kette komplett selbst; Startecke und Richtung bleiben dann leer.
+  (Zuordnung und Reihenfolge in einem Zug). Startpunkt und Richtung bleiben dann leer.
+- **Abgleich:** Ändert sich die Aufteilung danach (Klick auf Modul, Reihe, Spalte), fallen
+  Module, die nicht mehr in der Kette sind, aus der gezeichneten Reihenfolge; neue hängen hinten
+  an und sind markiert („nachzeichnen“). So müssen Zellen-Klicks die Reihenfolge nicht mitpflegen.
 - **Backup-Leitung** je Signalkette (an/aus; Vorgabe für neue Ketten aus dem Schalter
   „Redundanz“ der Wand, ab Werk aus): vom letzten Modul der Kette zurück zu einem Backup-Port des
   Prozessors. Fällt ein Kabel in der Kette aus, versorgt sie die Module dahinter von hinten. Im
@@ -859,6 +872,12 @@ feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Frei
 - **Ansicht vorne/hinten** umschaltbar in den Reitern Signal und Strom und im PDF. Die Ansicht von
   hinten ist gespiegelt und groß beschriftet („Ansicht von hinten“, Seite „Publikum“ markiert);
   Spalten- und Kettennummern bleiben am Modul.
+- **Signal und Strom in einer Ansicht**, wenn der Platz reicht (Festlegung 25) – sonst wie heute
+  getrennt. Wie genau, klärt [Frage 7](#offene-fragen).
+- **Breakout-Box** je Wand (Festlegung 28): Schalter „Glasfaser-Strecke mit Breakout-Box“, Modell
+  (Vorgabe NovaStar CVT10), Länge des LWL-Kabels von Hand. Die Packliste nimmt Box, LWL-Kabel und
+  das Stromkabel der Box dazu; die LED-Wall-Kopie im Mini-Manual trägt den Schalter mit, und die
+  Fehlersuche zeigt die Glasfaser-Schritte (Fall „Die ganze Wand ist dunkel“) nur dann.
 - **Pfeile** in Kettenfarbe am Bildschirm und im PDF, Start mit Ketten-Marke (S1, P1) und
   Port/Kreis in der Liste daneben,
   Sprünge zwischen nicht benachbarten Modulen gestrichelt („lange Brücke“). Bei kleinen Zellen
@@ -891,24 +910,28 @@ feste Automatik, sondern einen Einspeisepunkt für die ganze Wand und volle Frei
 
 ```ts
 type Corner = 'tl' | 'tr' | 'bl' | 'br' // Ecke im Bereich der Kette
-// Einspeisepunkt (Mitte der Kante bzw. der Wand) – nicht gezeichnet, nur für Startecke und
-// Zuleitungslänge; ab Werk 'bottom'
+// Einspeisepunkt: seit Phase 0 im Datensatz, wird nach Festlegung 24 nicht genutzt (bleibt
+// stehen, damit Dateien gültig bleiben; eine spätere Automatik könnte ihn wieder aufnehmen)
 type Feed = 'left' | 'right' | 'top' | 'bottom' | 'center'
 interface ChainRoute {
-  start?: Corner // fehlt = Vorschlag: Ecke mit der kürzesten Zuleitung
-  axis?: 'row' | 'col' // fehlt = Vorschlag (senkrecht, wenn der Bereich höher als breit ist)
-  order?: [row: number, col: number][] // Handkorrektur
+  start?: Corner // fehlt = kein Verlauf (keine Pfeile, Hinweis in der Prüfung)
+  axis?: 'row' | 'col' // fehlt = waagrecht
+  order?: [row: number, col: number][] // gezeichnete Reihenfolge (hat Vorrang vor start/axis)
 }
 interface SigChainMeta extends ChainRoute { port?: string; backup?: { port?: string } | null }
 interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2' | 'L3' }
 // zusätzlich in LedWallConfig:
 //   sigMeta: Record<string, SigChainMeta>, pwrMeta: Record<string, PwrChainMeta>
-//   feed: Feed, redundancy: boolean (Vorgabe für neue Signalketten, ab Werk false)
+//   feed: Feed (ungenutzt), redundancy: boolean (Vorgabe für neue Signalketten, ab Werk false)
 //   mains: { voltage: number; breakerA: number }
 //   processor: { model: 'novapro-uhd-jr' | 'vx4s' | 'tessera-s8' | 'frei'; bitDepth: 8 | 10 | 12;
 //                hz: number; ports?: number; portPx?: number; totalPx?: number } // ?-Felder nur bei 'frei'
+//   breakout: { model: 'cvt10'; fiberM?: number } | null // neu (Festlegung 28), ab Werk null
 // Bedienzustand, NICHT im Datei-Abschnitt: planView ('front' | 'rear'), sigChain/pwrChain, pdfLandscape
 ```
+
+`breakout` ist ein zusätzliches Feld mit Vorgabe – `sanitizeLedWallConfig` füllt es auf, eine neue
+Version braucht es dafür nicht.
 
 - **Stammdaten** in `led-wall/data.ts`: IMs je Modul und Anordnung (496-2,0 und rX3ioBF: 4 als
   2 × 2; uS2+: 2 übereinander), IM-Tausch (Stufe und Hinweis: „werkzeuglos, von vorne oder
@@ -924,8 +947,7 @@ interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2
   Planung stehen).
 - **Reine Funktionen** in einem neuen Modul `led-wall/cabling` (mit Tests): Kettenzählung (ersetzt
   vier Kopien: `CableGrid.tsx`, `LedWall.tsx`, `print.ts`, `packing-list/derive.ts`),
-  Schnellwahl der Aufteilung (gleich für Signal und Strom), Startecken-Vorschlag aus dem
-  Einspeisepunkt, Zuleitungslänge, Schlangen-Route, Abgleich der Handkorrektur, Sprünge,
+  Schlangen-Route aus Startpunkt und Richtung, gezeichnete Reihenfolge und ihr Abgleich, Sprünge,
   Backup-Leitungen und Port-Belegung, Lasten je Kette, Port- und Gesamtkapazität aus
   Prozessor/Farbtiefe/Bildrate, Phasenbilanz, Geometrie und SVG-Markup des Verlaufs.
 - **Eine Zeichenquelle** für Bildschirm und PDF wie `topdown.ts`: SVG-String. Am Bildschirm ein
@@ -937,6 +959,29 @@ interface PwrChainMeta extends ChainRoute { circuit?: string; phase?: 'L1' | 'L2
   Parameter statt den Store zu lesen.
 - Wer den Store von außen liest, wendet `resizeGrid` auf die aktuelle Größe an (`ensureGridSize`
   läuft nur bei offenem Werkzeug).
+
+### Mehrere Wände je Datei
+
+Wunsch aus der Praxis (Festlegung 29): Ein Laptop bespielt zwei kleine LED-Wände – beide gehören
+in dieselbe Projektdatei, und die Anleitung muss sagen, was wohin geht.
+
+- **Datei:** Der Abschnitt `ledWall` hält eine Liste von Wänden, jede mit `id` und Namen
+  („Hauptbühne“, „Seitenwand links“). Version 3; die Migration 2 → 3 packt die eine Wand in die
+  Liste (reine Funktion mit Test, wie 1 → 2 auch für Vorlagen). Vorlagen bleiben je Wand.
+- **Konfigurator:** Wand-Wahl in der Leiste (Hinzufügen, Duplizieren, Umbenennen, Entfernen);
+  alles andere – Raster, Kabelverlauf, Prozessor, PDF – gilt für die gewählte Wand. Das PDF kann
+  eine oder alle Wände enthalten.
+- **Prozessor:** je Wand gewählt. Teilen sich zwei Wände einen Prozessor (verschiedene Ports),
+  zählen Ports und Kapazität gemeinsam – siehe [Frage 8](#offene-fragen).
+- **Packliste:** Summe über alle Wände, aufgeschlüsselt je Wand.
+- **Mini-Manual:**
+  - Die LED-Wall-Kopie wird eine Liste (je Wand Kennzahlen, Pläne, Quelle mit `rev`/`sha`).
+  - Kapitel LED-Wand je Wand ein Abschnitt; Fehlerfälle gelten für die Module aller Wände.
+  - Platzhalter: `{wand.…}` bleibt die erste Wand, dazu `{wand2.…}` usw.
+  - **Querverweise in der Geräteliste:** Zuspieler und Prozessor bekommen ein Feld „bespielt“
+    (eine oder mehrere Wände). Die Systemübersicht zeichnet daraus je Wand eine Zeile
+    Zuspieler → Prozessor → Wand; ein Zuspieler für zwei Wände steht einmal mit zwei Pfeilen da.
+  - Die Prüfung meldet Wände ohne Prozessor und Prozessoren ohne Wand.
 
 ## Umsetzung im Code
 
@@ -984,7 +1029,7 @@ Jede Phase ist für sich nutzbar.
 |---|---|---|
 | **0 Projektordner und Projektdatei** ✅ | Einstellung und App-Menü, Dialog-Art; ZIP-Container, Abschnitte, Prüfsummen, atomar speichern, Sicherungen; Leisten-Baustein; LED-Wall mit Datei-Menü, `sanitizeLedWallConfig` + Migration auf Version 2 mit allen neuen Feldern (leer = Vorschlag; Bedienung dafür erst in Phase 2 – so bleibt es bei einer Migration) | LED-Wall-Planungen als Datei am festen Ort – umgesetzt 16.10.2026 |
 | **1 Mini-Manual, erste Fassung** ✅ | Zuerst ✅: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Foto-Speicher im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
-| **2 Kabelverlauf** | Einspeisepunkt (nicht gezeichnet) und Zuleitungslängen, Schnellwahl der Aufteilung, Startecke, Richtung, Handkorrektur und Kette zeichnen, Backup-Leitungen, Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Pfeile in Ansicht und PDF, vorne/hinten, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
+| **2 Mehrere Wände und Kabelverlauf** | Vorschlag: zuerst mehrere Wände je Datei (Version 3, Wand-Wahl, Packliste je Wand, Mini-Manual mit „bespielt“-Querverweisen), dann der Kabelverlauf von Hand: Startpunkt und Richtung, Kette zeichnen, Backup-Leitungen („B“, Ports), Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität, Breakout-Box, Pfeile in Ansicht und PDF, vorne/hinten, Signal und Strom in einer Ansicht, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann – auch bei mehreren Wänden |
 | **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
 | **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
 | **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
@@ -1005,9 +1050,9 @@ Jede Phase ist für sich nutzbar.
   verwerfen, unbekannte Teile roh zeigen, Test je Format.
 - **kabelverlauf** (Phase 2, mit dem Code) – am Kabelverlauf des LED-Wall-Konfigurators arbeiten:
   reine Funktionen in `led-wall/cabling` mit Tests je Muster, eine SVG-Quelle für Bildschirm und
-  PDF, Ansicht von hinten gespiegelt, Einspeisepunkt und Zuleitungen nicht zeichnen, Aufteilung
-  für Signal und Strom gleich, Handkorrektur abgleichen statt mitpflegen, Grenzen aus den
-  Prozessor-Vorgaben, Prüfung im Ausdruck (gelbe Kette).
+  PDF, Ansicht von hinten gespiegelt, Verlauf nur von Hand (ohne Startpunkt keine Pfeile),
+  Zuleitungen nicht zeichnen, gezeichnete Reihenfolge abgleichen statt mitpflegen, Grenzen aus
+  den Prozessor-Vorgaben, Prüfung im Ausdruck (gelbe Kette), mehrere Wände.
 
 **Bestehende Skills anpassen:**
 
@@ -1031,8 +1076,9 @@ erledigt).
 
 - Unit: ZIP (runder Weg, kaputte Dateien, Grenzen, `..`-Namen), Abschnitt speichern (fremde
   Abschnitte und Fotos bleiben, Konflikt über `baseSha`, `rev` nur bei Änderung), `sanitize` je
-  Abschnitt, Migration v1 → v2 inkl. Vorlagen, `cabling` (8 Muster, fünf Einspeisepunkte und Zuleitungslänge, Schnellwahl gleich für Signal und Strom, Abgleich,
-  Backup und Port-Belegung, Lasten, Kapazität), Platzhalter, Stufenfilter und Fehlerfall-Prüfung, Seitenbauer (Escaping,
+  Abschnitt, Migration v1 → v2 → v3 inkl. Vorlagen, `cabling` (8 Muster, ohne Startpunkt kein
+  Verlauf, gezeichnete Reihenfolge und Abgleich, Backup und Port-Belegung, Lasten, Kapazität,
+  gemeinsamer Prozessor zweier Wände), Platzhalter, Stufenfilter und Fehlerfall-Prüfung, Seitenbauer (Escaping,
   Inhalte je Stufe), QR-Encoder gegen bekannte Vektoren, Importe mit Fixtures.
 - Bibliothek: jeder mitgelieferte Fehlerfall besteht die Prüfung (keine toten Enden).
 - E2E: LED-Wall speichern und wieder öffnen; Mini-Manual mit Foto speichern, öffnen, PDF
@@ -1057,10 +1103,22 @@ Phase 0 und den Start von Phase 1 ist nichts mehr offen. Später zu klären:
 4. ~~Kurzkarte A4 oder A5~~ – geklärt: A5 (Festlegung 22).
 5. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
    kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden? (Phase 3)
-6. **Kabelverlauf – Annahmen bestätigen** (vor Phase 2, aus Festlegung 21): „unten“ = Mitte der
-   Unterkante (ergibt das Praxisbeispiel mit vier Vierteln), „mittig“ = Mitte der Wand (Kabel
-   kommen hinten an; alle vier Ketten beginnen an den Modulen um die Mitte), Aufteilung „zwei“ =
-   obere und untere Hälfte bei Signal und Strom (vorher bei Signal links/rechts).
+6. ~~Kabelverlauf – Annahmen zu den Einspeisepunkten~~ – entfällt: Verlauf vorerst nur von Hand
+   (Festlegung 24, 17.10.2026).
+
+Offen seit dem 17. Oktober 2026 (vor Phase 2):
+
+7. **Signal und Strom in einer Ansicht** (Festlegung 25): beide Pläne **nebeneinander** (am
+   Bildschirm und auf einer PDF-Seite, wenn sie lesbar bleiben) – oder **übereinander in einem
+   Raster**, jedes Modul mit Signal- und Stromkette („S1 · P2“) und beiden Pfeilarten?
+8. **Mehrere Wände – Querverweise:** Teilen sich zwei Wände manchmal **einen Prozessor**
+   (verschiedene Ports) oder hat jede Wand immer ihren eigenen? Und bespielt der Laptop die zwei
+   Wände über **zwei Ausgänge** oder über **einen** (ein Bild, das der Prozessor aufteilt)?
+9. **Breakout-Box (CVT10):** Wie viele Ketten versorgt eine Box, und braucht die Backup-Leitung
+   eine zweite Glasfaser? Was gehört in die Packliste außer Box, LWL-Kabel und Stromkabel (z. B.
+   kurze Patchkabel zur Wand)? Teil der Datenblätter aus Frage 1.
+10. **Reihenfolge in Phase 2:** zuerst mehrere Wände, dann der Kabelverlauf (Vorschlag – die
+    Datenstruktur ändert sich so nur einmal, und der Kabelverlauf entsteht gleich je Wand)?
 
 ## Nicht geplant
 
