@@ -157,6 +157,83 @@ describe('Kurzkarte und Vorschau', () => {
   })
 })
 
+describe('Kapitel Verkabelung', () => {
+  function mitPlan(fiber: Record<string, unknown> | null = null): Anleitung {
+    const a = beispiel()
+    // 2 m × 1 m 496-2,0 = 4 × 2 Module; S1 links (Startecke), S2 rechts; P1 oben
+    const c = sanitizeLedWallConfig({
+      widthM: '2',
+      heightM: '1',
+      sig: [
+        [0, 0, 1, 1],
+        [0, 0, 1, 1]
+      ],
+      pwr: [
+        [0, 0, 0, 0],
+        [-1, -1, -1, -1]
+      ],
+      sigMeta: { '0': { start: 'bl', axis: 'row', backup: {} } },
+      pwrMeta: { '0': { circuit: 'F3', phase: 'L2' } },
+      fiber
+    })
+    a.ledWall = kopieAus(
+      ledWallFileData('Messe', '', [{ id: 'a', name: 'Bühne', config: c }]),
+      null
+    )
+    return a
+  }
+
+  it('Pläne von hinten (ab Werk), Ports und Kreise aus der Kopie', () => {
+    const html = vorschau(mitPlan(), ctx(2), 'verkabelung').html
+    expect(html).toContain('Ansicht von hinten – Publikum auf der anderen Seite')
+    // Marker je Plan und Wand eindeutig
+    expect(html).toContain('id="mm-0-S-0"')
+    expect(html).toContain('<tr><td>S1</td><td>4</td><td>1 · B 2</td></tr>')
+    expect(html).toContain('<tr><td>P1</td><td>4</td><td>F3 · L2</td><td>3,1 A</td></tr>')
+    expect(html).toContain('<b>Prozessor:</b> NovaPro UHD Jr')
+    expect(html).not.toContain('Glasfaser')
+  })
+
+  it('von vorne ohne Hinweis; Glasfaser-Strecke im Kopf', () => {
+    const a = mitPlan({ box: 'cvt10', variant: 'S', redundancy: 'fiber', lengthM: 60 })
+    a.kapitel = a.kapitel.map((k) => (k.id === 'verkabelung' ? { ...k, ansicht: 'vorne' } : k))
+    const html = vorschau(a, ctx(2), 'verkabelung').html
+    expect(html).not.toContain('Ansicht von hinten')
+    expect(html).toContain(
+      '<b>Glasfaser:</b> CVT10-S · 1 Box · 2 Fasern à 60 m · Faser redundant – Box A an OPT1 (Ports 1, 2, 3)'
+    )
+  })
+
+  it('Überlast aus der Planung steht in der Prüfung vor dem Export', () => {
+    const a = mitPlan()
+    expect(
+      pruefung(a, ctx(2), { ledWallNeuer: null }).some((p) => p.text.startsWith('Verkabelung:'))
+    ).toBe(false)
+    const voll = a.ledWall!.waende[0]
+    voll.daten = { ...(voll.daten as object), mains: { voltage: 230, breakerA: 2 } }
+    expect(pruefung(a, ctx(2), { ledWallNeuer: null })).toContainEqual({
+      schwere: 'warnung',
+      text: 'Verkabelung: P1: 4 Module = 3,1 A – über der Absicherung (2 A). Kette teilen, höchstens 2 Module je Kreis.',
+      kapitel: 'verkabelung'
+    })
+  })
+
+  it('ohne Kopie ein Hinweis; die Glasfaser-Frage der Fehlersuche richtet sich nach der Kopie', () => {
+    const ohne = beispiel()
+    ohne.ledWall = null
+    expect(vorschau(ohne, ctx(2), 'verkabelung').html).toContain(
+      'Noch keine LED-Wall-Planung übernommen'
+    )
+    const frage = 'Läuft das Signal über Glasfaser'
+    const fs = (a: Anleitung): string => vorschau(a, ctx(3), 'fehlersuche').html
+    expect(ohne.fehlerfaelle.map((f) => f.id)).toContain('lib-wand-dunkel')
+    expect(fs(ohne)).toContain(frage)
+    expect(fs(mitPlan())).not.toContain(frage)
+    expect(fs(mitPlan({ box: 'cvt10' }))).not.toContain(frage)
+    expect(fs(mitPlan({ box: 'cvt10' }))).toContain('Hat die Breakout-Box Strom')
+  })
+})
+
 describe('mehrere LED-Wände', () => {
   function zweiWaende(): Anleitung {
     const a = beispiel()

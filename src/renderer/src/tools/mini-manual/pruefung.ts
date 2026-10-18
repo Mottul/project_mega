@@ -1,7 +1,10 @@
 // Prüfung vor dem Export (Schublade, Zahl in der Leiste): Was fehlt oder heikel ist, bevor eine
 // Anleitung an den Kunden geht. Keine Sperre – nur Hinweise mit dem Kapitel, in dem es steht.
 
+import { analyzePower } from '../led-wall/power'
+import { analyzeProcessors } from '../led-wall/processors'
 import { pruefeFall } from './fehlersuche'
+import { geplanteWaende } from './ledWallKopie'
 import { kapitelDef, type Anleitung, type KapitelId } from './model'
 import { platzhalterIn, platzhalterWerte } from './platzhalter'
 import { sichtbareKapitel, type SeitenKontext } from './seiten'
@@ -79,7 +82,7 @@ export function pruefung(a: Anleitung, c: SeitenKontext, extra: PruefExtra): Pru
   )
     out.push({ schwere: 'warnung', text: 'Passwörter werden mitgedruckt.', kapitel: 'zugang' })
 
-  if (zeigt('ledWall') || zeigt('system')) {
+  if (zeigt('ledWall') || zeigt('system') || zeigt('verkabelung')) {
     if (!a.ledWall)
       out.push({
         schwere: 'warnung',
@@ -92,6 +95,23 @@ export function pruefung(a: Anleitung, c: SeitenKontext, extra: PruefExtra): Pru
         text: `Planung geändert (Stand ${extra.ledWallNeuer.von} → ${extra.ledWallNeuer.bis}) – Kopie veraltet.`,
         kapitel: 'ledWall'
       })
+  }
+
+  // Verkabelung nach Plan, der nicht trägt (Port oder Kreis überlastet …): vor dem Export sehen,
+  // nicht erst beim Aufbau – behoben wird im Konfigurator, dann neu übernehmen
+  if (zeigt('verkabelung') && a.ledWall) {
+    const walls = geplanteWaende(a.ledWall)
+    const ernst = (w: { level: string }): boolean => w.level === 'danger'
+    for (const g of analyzeProcessors(walls))
+      for (const w of g.warnings.filter(ernst))
+        out.push({ schwere: 'warnung', text: `Verkabelung: ${w.text}`, kapitel: 'verkabelung' })
+    for (const wall of walls)
+      for (const w of analyzePower(wall.config).warnings.filter(ernst))
+        out.push({
+          schwere: 'warnung',
+          text: `Verkabelung: ${walls.length > 1 ? `${wall.name}: ` : ''}${w.text}`,
+          kapitel: 'verkabelung'
+        })
   }
 
   // Signalwege: bei mehreren Wänden bzw. Prozessoren muss in der Geräteliste stehen, was wohin geht

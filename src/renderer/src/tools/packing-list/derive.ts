@@ -6,7 +6,7 @@
 import { chainStats } from '../led-wall/cabling'
 import { computeWall } from '../led-wall/compute'
 import type { LedWallConfig, PlannedWall } from '../led-wall/config'
-import { analyzeProcessors } from '../led-wall/processors'
+import { analyzeProcessors, CVT10, type FiberPlan } from '../led-wall/processors'
 import { plannedWalls, useLedWall } from '../led-wall/store'
 import type { PackItem } from './store'
 
@@ -41,24 +41,30 @@ export function deriveFromLedWall(
   // Backup-Leitungen je Wand aus der Port-Vergabe
   const groups = analyzeProcessors(walls)
   const backups = new Map<string, number>()
-  const procs = new Map<string, DerivedItem>()
+  const fibers = new Map<string, FiberPlan>()
+  const procs = new Map<string, DerivedItem[]>()
   for (const g of groups) {
-    for (const w of g.walls)
+    for (const w of g.walls) {
       backups.set(w.wallId, w.chains.filter((c) => c.backupPort !== null).length)
+      if (g.fiber) fibers.set(w.wallId, g.fiber)
+    }
     const first = walls.find((w) => w.id === g.walls[0].wallId)!
-    procs.set(first.id, {
-      category: cat(first),
-      name: `Prozessor ${g.processor.name}`,
-      qty: 1,
-      unit: 'Stk.',
-      note: g.walls.length > 1 ? `für ${g.walls.map((w) => w.wallName).join(' und ')}` : ''
-    })
+    const fuer = g.walls.length > 1 ? `für ${g.walls.map((w) => w.wallName).join(' und ')}` : ''
+    procs.set(first.id, [
+      {
+        category: cat(first),
+        name: `Prozessor ${g.processor.name}`,
+        qty: 1,
+        unit: 'Stk.',
+        note: fuer
+      },
+      ...(g.fiber ? fiberItems(g.fiber, cat(first), fuer) : [])
+    ])
   }
-  const perWall = walls.map((w) => {
-    const items = deriveWall(w.config, cat(w), backups.get(w.id) ?? 0)
-    const p = procs.get(w.id)
-    return p ? [...items, p] : items
-  })
+  const perWall = walls.map((w) => [
+    ...deriveWall(w.config, cat(w), backups.get(w.id) ?? 0, fibers.get(w.id)),
+    ...(procs.get(w.id) ?? [])
+  ])
   if (walls.length === 1) return perWall[0]
   // gleiche Module über alle Wände zusammenzählen (Kisten werden gemeinsam gepackt)
   const sums = new Map<string, number>()
@@ -77,8 +83,39 @@ export function deriveFromLedWall(
   )
 }
 
+/** Glasfaser-Strecke eines Prozessors: Boxen, Fasern, Stromkabel der Boxen (Festlegung 28) */
+function fiberItems(f: FiberPlan, cat: string, fuer: string): DerivedItem[] {
+  const len = f.lengthM ? `je ${f.lengthM} m` : 'Länge eintragen'
+  const boxNote =
+    f.redundancy === 'hot-backup'
+      ? `je Achtergruppe eine Box plus eine für Hot-Backup${fuer ? ` · ${fuer}` : ''}`
+      : `je Achtergruppe eine (Ports 1–8, 9–16)${fuer ? ` · ${fuer}` : ''}`
+  return [
+    {
+      category: cat,
+      name: `${CVT10.name}-${f.variant}`,
+      qty: f.boxes,
+      unit: 'Stk.',
+      note: boxNote
+    },
+    {
+      category: cat,
+      name: `Glasfaser ${CVT10.variants[f.variant].label}, LC`,
+      qty: f.fibers,
+      unit: 'Stk.',
+      note: f.redundancy === 'none' ? len : `${len} · mit Ersatzfaser je Box`
+    },
+    { category: cat, name: 'Netzkabel PowerCON (CVT10)', qty: f.boxes, unit: 'Stk.', note: '' }
+  ]
+}
+
 /** Positionen einer Wand; die erste ist immer das LED-Modul. */
-function deriveWall(s: LedWallConfig, cat: string, backupLines = 0): DerivedItem[] {
+function deriveWall(
+  s: LedWallConfig,
+  cat: string,
+  backupLines = 0,
+  fiber?: FiberPlan
+): DerivedItem[] {
   const d = computeWall(s)
   const items: DerivedItem[] = []
 
@@ -148,7 +185,9 @@ function deriveWall(s: LedWallConfig, cat: string, backupLines = 0): DerivedItem
       name: 'Datenleitung (Einspeisung/Kette)',
       qty: sig.chains,
       unit: 'Stk.',
-      note: 'Processor → erste Kachel je Kette'
+      note: fiber
+        ? 'CVT10 → erste Kachel je Kette (Patchkabel)'
+        : 'Processor → erste Kachel je Kette'
     })
     if (sig.jumpers > 0)
       items.push({
@@ -164,7 +203,10 @@ function deriveWall(s: LedWallConfig, cat: string, backupLines = 0): DerivedItem
         name: 'Datenleitung Backup (letztes Modul → Prozessor)',
         qty: backupLines,
         unit: 'Stk.',
-        note: 'Backup-Leitungen der Signalketten'
+        note:
+          fiber?.redundancy === 'hot-backup'
+            ? 'Backup-Leitungen der Signalketten, von der zweiten CVT10'
+            : 'Backup-Leitungen der Signalketten'
       })
   }
   if (pwr.chains > 0) {

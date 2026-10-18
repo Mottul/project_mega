@@ -24,6 +24,8 @@ Einspeisepunkt, keine Automatik.
 | Strom: Last je Kette und Kreis, Phasen-Vorschlag und -Bilanz, Warnungen | `led-wall/power.ts` + `power.test.ts` |
 | Schublade „Strom“ (Netz, Absicherung), Karte „Strom“, Kreis/Phase in der Verlauf-Leiste | `led-wall/Settings.tsx` (`PowerPanel`), `led-wall/LedWall.tsx` (`PowerCard`), `CableGrid.tsx` (`power`) |
 | IMs je Modul (Anzahl, Anordnung, wer tauschen darf) | `led-wall/data.ts` (`ims`) – Mini-Manual liest über `imTausch()` |
+| Glasfaser-Strecke (CVT10): Daten `fiber`, Gruppen, Boxen, Fasern, Hot-Backup | `config.ts` (`FiberConfig`), `processors.ts` (`CVT10`, `FiberPlan`, `fiberSummary`, `backupLabel`); Schublade `FiberFields` in `Settings.tsx`; Packliste `packing-list/derive.ts` (`fiberItems`) |
+| Pläne im Mini-Manual (Kapitel Verkabelung) | `gridSvg` aus `printHtml.ts` (eigene `markerId` je Wand), `mini-manual/seiten.ts` (`verkabelung`), Wände der Kopie über `geplanteWaende()` |
 | E2E | `e2e/kabelverlauf.mjs` |
 
 ## Regeln
@@ -78,6 +80,12 @@ Einspeisepunkt, keine Automatik.
   daran hängen, sonst die Kette. Schieflage nur, wenn die beste Verteilung (größte Einheit zuerst)
   merklich besser wäre – zwei gleiche Ketten lassen L3 zwangsläufig leer. Der Hinweis zum
   Einschaltstrom ist `info` und entfällt neben einer Überlast.
+- **Glasfaser** gehört zum Prozessor (`group[0].config.fiber`, wie Prozessorwahl) und geht nur am
+  UHD Jr (sonst Warnung, `fiber: null` in der Rechnung). Gruppen aus den belegten Ports: 1–8 → Box A
+  an OPT1, 9–16 → Box B an OPT2. **Hot-Backup:** Backup kommt vom selben Port der zweiten Box –
+  belegt keinen Prozessor-Port (`backupBox`), ab Werk hat jede Kette eins (`hasBackup(meta,
+  redundancy || hot)`), feste Backup-Ports gelten dann nicht. Anzeigen immer über `backupLabel`
+  („B 3 (2. CVT10)“) und `fiberSummary` – Karte, PDF und Mini-Manual sagen dasselbe.
 - Ein Textfeld in der Verlauf-Leiste (Kreis) bekommt `key={activeChain}`: Beim Wechsel der Kette
   baut es neu auf und speichert das Getippte noch für die alte Kette.
 
@@ -89,6 +97,8 @@ Einspeisepunkt, keine Automatik.
 - E2E `e2e/kabelverlauf.mjs`: Hinweis ohne Verlauf, Startecke → 7 Pfeile bei 8 Modulen, Hinten
   (Start wandert, Beschriftung „unten rechts“), Zeichnen per `page.mouse` und Verlängern,
   Signal + Strom nebeneinander (Rechtecke vergleichen), Prozessor und Ports, Strom (Kreis F3 auf L2,
-  zweite Kette als Vorschlag, Überlast-Warnung, Absicherung 25 A in der Schublade), PDF geschrieben.
+  zweite Kette als Vorschlag, Überlast-Warnung, Absicherung 25 A in der Schublade), Glasfaser mit
+  Hot-Backup („B 1 (2. CVT10)“, danach wieder aus), PDF geschrieben. Mini-Manual: Kapitel
+  Verkabelung und Box-Schritte der Fehlersuche in `e2e/mini-manual.mjs`.
   Gespeicherte Werte (`localStorage`) mit `waitFor` lesen – der Store schreibt verzögert.
 - Ausdruck ansehen (Skill `electron-e2e`, „PDF ansehen“): gelbe Kette (S2) im Ausdruck lesbar?

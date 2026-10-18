@@ -4,7 +4,14 @@
 // Mehrere Wände (Abschnitt ab Version 3): je Wand eine Kopie mit Kennung und Namen.
 
 import { computeWall } from '../led-wall/compute'
-import { wallSection, wallsOf, type LedWallConfig } from '../led-wall/config'
+import {
+  sanitizeLedWallConfig,
+  wallSection,
+  wallsOf,
+  type LedWallConfig,
+  type PlannedWall
+} from '../led-wall/config'
+import { analyzeProcessors } from '../led-wall/processors'
 import type { LedWallKopie, WandKennzahlen, WandKopie } from './model'
 
 export function kennzahlenAus(c: LedWallConfig): WandKennzahlen {
@@ -48,6 +55,26 @@ export function kopieAus(
 ): LedWallKopie | null {
   const waende = waendeAus(data)
   return waende ? { waende, quelle, uebernommen: jetzt.toISOString() } : null
+}
+
+/** Wände der Kopie als Planung – Pläne, Ports, Strom und Glasfaser rechnen wie im Konfigurator */
+export function geplanteWaende(k: LedWallKopie | null): PlannedWall[] {
+  return (k?.waende ?? []).map((w) => ({
+    id: w.id,
+    name: w.name,
+    config: sanitizeLedWallConfig(w.daten)
+  }))
+}
+
+/**
+ * Läuft das Signal über Glasfaser (CVT10)? Ja bzw. nein, wenn es für alle Wände der Kopie gleich
+ * ist; sonst – oder ohne Kopie – null: Dann bleibt die Frage in der Fehlersuche stehen.
+ */
+export function glasfaser(k: LedWallKopie | null): boolean | null {
+  const walls = geplanteWaende(k)
+  if (!walls.length) return null
+  const mit = analyzeProcessors(walls).flatMap((g) => g.walls.map(() => !!g.fiber))
+  return mit.every(Boolean) ? true : mit.some(Boolean) ? null : false
 }
 
 /** Alle Modul-Kennungen der Kopie (für Fehlerfälle, die vom Modul abhängen) */

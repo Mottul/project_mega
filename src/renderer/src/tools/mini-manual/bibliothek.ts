@@ -41,7 +41,7 @@ function q(
   text: string,
   ja: Ziel,
   nein: Ziel | null,
-  extra: Partial<Pick<FSchritt, 'hinweis' | 'ruecksprache' | 'stufeAus'>> = {}
+  extra: Partial<Pick<FSchritt, 'hinweis' | 'ruecksprache' | 'stufeAus' | 'antwortAus'>> = {}
 ): FSchritt {
   return {
     id,
@@ -51,6 +51,7 @@ function q(
     foto: null,
     ruecksprache: extra.ruecksprache ?? false,
     stufeAus: extra.stufeAus ?? null,
+    antwortAus: extra.antwortAus ?? null,
     ja,
     nein
   }
@@ -367,7 +368,9 @@ export const FEHLERFAELLE: Fehlerfall[] = [
         zu('w9'),
         L('Stecker fest einstecken.')
       ),
-      q('w9', 2, 'Läuft das Signal über Glasfaser (Breakout-Box CVT10)?', zu('w10'), RUF),
+      q('w9', 2, 'Läuft das Signal über Glasfaser (Breakout-Box CVT10)?', zu('w10'), RUF, {
+        antwortAus: 'glasfaser'
+      }),
       q(
         'w10',
         2,

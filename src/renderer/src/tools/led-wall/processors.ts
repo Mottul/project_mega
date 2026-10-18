@@ -6,7 +6,13 @@
 // dann fortlaufend vergeben, Port- und Gesamtkapazität zählen gemeinsam.
 
 import { chainCells } from './cabling'
-import type { LedWallConfig, PlannedWall, ProcessorModel, SigChainMeta } from './config'
+import type {
+  FiberRedundancy,
+  LedWallConfig,
+  PlannedWall,
+  ProcessorModel,
+  SigChainMeta
+} from './config'
 import { MODULES } from './data'
 
 type Bit = 8 | 10 | 12
@@ -87,6 +93,42 @@ export const CARDS: Record<string, { name: string; portPx: (bit: Bit, hz: number
     portPx: (bit, hz) => Math.round(0.95e9 / (CARD_BITS[bit] * hz))
   }
 }
+
+/**
+ * Breakout-Box NovaStar CVT10 (Handbuch V1.3.6): 2 × 10G optisch, 10 Gigabit-Ports – am
+ * 10G-Ausgang des UHD Jr (8b/10b) nur die Ports 1–8. PowerCON, 18 W, 1 HE halbe Breite.
+ */
+export const CVT10 = {
+  name: 'NovaStar CVT10',
+  ports: 8,
+  variants: {
+    S: { label: 'Singlemode (OS1/OS2)', maxM: 10_000 },
+    M: { label: 'Multimode (OM3/OM4)', maxM: 300 }
+  }
+} as const
+
+export const FIBER_REDUNDANCY_LABELS: Record<FiberRedundancy, string> = {
+  none: 'keine',
+  fiber: 'Faser redundant',
+  'hot-backup': 'Hot-Backup (zweite CVT10)'
+}
+
+/** Kurzform für Karte, PDF und Mini-Manual: „CVT10-S · 2 Boxen · 2 Fasern à 120 m · Faser redundant“ */
+export function fiberSummary(f: FiberPlan): string {
+  const n = (k: number, eins: string, viele: string): string => `${k} ${k === 1 ? eins : viele}`
+  return [
+    `CVT10-${f.variant}`,
+    n(f.boxes, 'Box', 'Boxen'),
+    `${n(f.fibers, 'Faser', 'Fasern')}${f.lengthM ? ` à ${fmt(f.lengthM)} m` : ''}`,
+    f.redundancy !== 'none' ? FIBER_REDUNDANCY_LABELS[f.redundancy] : ''
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
+/** Backup-Anschluss einer Kette für Listen: „B 3“ bzw. „B 3 (2. CVT10)“ */
+export const backupLabel = (l: Pick<ChainLoad, 'backupPort' | 'backupBox'>): string =>
+  l.backupPort === null ? '' : `B ${l.backupPort}${l.backupBox ? ' (2. CVT10)' : ''}`
 
 export interface ResolvedProcessor {
   model: ProcessorModel
@@ -186,8 +228,23 @@ export interface ChainLoad {
   px: number
   port: number | null
   backupPort: number | null
+  /** Backup kommt aus der zweiten CVT10 (Hot-Backup, gleicher Port) statt aus einem eigenen Port */
+  backupBox?: boolean
   /** über der Grenze je Port */
   over: boolean
+}
+
+/** Glasfaser-Strecke eines Prozessors: belegte Achtergruppen und was dafür gebraucht wird */
+export interface FiberPlan {
+  variant: 'S' | 'M'
+  redundancy: FiberRedundancy
+  lengthM: number | null
+  /** A = Ports 1–8 an OPT1 (Ersatz OPT3), B = Ports 9–16 an OPT2 (Ersatz OPT4) */
+  groups: { name: 'A' | 'B'; opt: 'OPT1' | 'OPT2'; spare: 'OPT3' | 'OPT4'; ports: number[] }[]
+  boxes: number
+  fibers: number
+  /** Datenleitungen Box → Wand (Haupt- und Backup-Leitungen) */
+  lines: number
 }
 
 export interface WallLoad {
@@ -207,6 +264,8 @@ export interface GroupLoad {
   portsUsed: number
   /** Last des Prozessors (Tessera mit Redundanz: doppelt) */
   totalPx: number
+  /** null = Kupfer direkt vom Prozessor */
+  fiber: FiberPlan | null
   warnings: LoadWarning[]
 }
 
@@ -233,6 +292,17 @@ export function analyzeProcessors(walls: PlannedWall[]): GroupLoad[] {
     const used = new Map<number, string>()
     const nameOf = (w: PlannedWall, chain: number): string =>
       `${several ? `${w.name} ` : ''}S${chain + 1}`
+    // Glasfaser gehört zum Prozessor (Wand, die ihn hat) und geht nur am UHD Jr
+    const fiberCfg = group[0].config.fiber
+    const fiberOn = !!fiberCfg && proc.model === 'novapro-uhd-jr'
+    if (fiberCfg && !fiberOn)
+      warnings.push({
+        level: 'warning',
+        text: `Glasfaser mit CVT10 gibt es nur am NovaPro UHD Jr – beim ${proc.name} bleibt sie unberücksichtigt.`
+      })
+    // Hot-Backup: die zweite CVT10 speist die Kettenenden vom selben Port – ab Werk jede Kette,
+    // ohne eigenen Port am Prozessor
+    const hot = fiberOn && fiberCfg.redundancy === 'hot-backup'
     // erst alle festen Ports, dann die übrigen fortlaufend
     type Slot = {
       w: PlannedWall
@@ -279,7 +349,7 @@ export function analyzeProcessors(walls: PlannedWall[]): GroupLoad[] {
         s.load.port = p
         take(p, who)
       }
-      if (hasBackup(s.meta, s.w.config.redundancy)) {
+      if (!hot && hasBackup(s.meta, s.w.config.redundancy)) {
         const b = portNr(s.meta?.backup?.port)
         if (b) {
           s.load.backupPort = b
@@ -294,7 +364,7 @@ export function analyzeProcessors(walls: PlannedWall[]): GroupLoad[] {
     }
     for (const s of slots) {
       const who = nameOf(s.w, s.chain)
-      const backup = hasBackup(s.meta, s.w.config.redundancy)
+      const backup = hasBackup(s.meta, s.w.config.redundancy || hot)
       if (s.load.port === null) {
         // Tessera: Haupt-Port ungerade, damit der Partner frei bleibt (1→2, 3→4)
         let p = free()
@@ -305,7 +375,10 @@ export function analyzeProcessors(walls: PlannedWall[]): GroupLoad[] {
         s.load.port = p
         used.set(p, who)
       }
-      if (backup && s.load.backupPort === null) {
+      if (backup && hot) {
+        s.load.backupPort = s.load.port
+        s.load.backupBox = true
+      } else if (backup && s.load.backupPort === null) {
         const b = proc.backup === 'pairs' ? s.load.port + 1 : free()
         s.load.backupPort = b
         take(b, `${who} (Backup)`)
@@ -368,6 +441,46 @@ export function analyzeProcessors(walls: PlannedWall[]): GroupLoad[] {
           text: `${several ? `${w.name}: ` : ''}${fmt(wpx)} × ${fmt(hpx)} px – ${proc.name} schafft höchstens ${fmt(proc.maxW ?? 0)} × ${fmt(proc.maxH ?? 0)} px.`
         })
     }
+    let fiber: FiberPlan | null = null
+    if (fiberOn) {
+      const belegt = [...used.keys()].sort((a, b) => a - b)
+      const groups = (
+        [
+          { name: 'A', opt: 'OPT1', spare: 'OPT3', from: 1 },
+          { name: 'B', opt: 'OPT2', spare: 'OPT4', from: 9 }
+        ] as const
+      )
+        .map(({ from, ...g }) => ({ ...g, ports: belegt.filter((p) => p >= from && p < from + 8) }))
+        .filter((g) => g.ports.length)
+      fiber = {
+        variant: fiberCfg.variant,
+        redundancy: fiberCfg.redundancy,
+        lengthM: fiberCfg.lengthM ?? null,
+        groups,
+        boxes: groups.length * (hot ? 2 : 1),
+        fibers: groups.length * (fiberCfg.redundancy === 'none' ? 1 : 2),
+        lines: slots.length + slots.filter((s) => s.load.backupPort !== null).length
+      }
+      const max = CVT10.variants[fiberCfg.variant].maxM
+      if (fiberCfg.lengthM && fiberCfg.lengthM > max)
+        warnings.push({
+          level: 'danger',
+          text:
+            fiberCfg.variant === 'M'
+              ? `Glasfaser ${fmt(fiberCfg.lengthM)} m – Multimode reicht bis 300 m; dafür die CVT10-S (Singlemode).`
+              : `Glasfaser ${fmt(fiberCfg.lengthM)} m – Singlemode reicht bis 10 km.`
+        })
+      if (hot) {
+        const ohne = slots
+          .filter((s) => s.load.backupPort === null)
+          .map((s) => nameOf(s.w, s.chain))
+        if (ohne.length)
+          warnings.push({
+            level: 'info',
+            text: `Hot-Backup: ${ohne.join(', ')} ohne Backup-Leitung – die zweite CVT10 speist nur Ketten mit Backup.`
+          })
+      }
+    }
     if (several && new Set(group.map((w) => w.config.moduleKey)).size > 1)
       warnings.push({
         level: 'warning',
@@ -382,6 +495,7 @@ export function analyzeProcessors(walls: PlannedWall[]): GroupLoad[] {
       })),
       portsUsed: ports,
       totalPx: total,
+      fiber,
       warnings
     }
   })

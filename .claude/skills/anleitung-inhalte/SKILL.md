@@ -35,12 +35,17 @@ still. Datenmodell: `model.ts`; Ausgabe je Stufe: `fehlersuche.ts`; Seiten: `sei
 - Hängt die Stufe am Modul (IM-Tausch), `stufeAus: 'im-tausch'` setzen statt einer festen Stufe;
   `imTausch()` in `fehlersuche.ts` liest Stufe, Rücksprache und Hinweis aus den Stammdaten
   (`led-wall/data.ts`, Feld `ims`) – ein neues Modul trägt sie dort ein.
+- **Fragen, die die Planung beantwortet** („Läuft das Signal über Glasfaser?“): `antwortAus:
+  'glasfaser'` – haben alle Wände der LED-Wall-Kopie Glasfaser bzw. keine, entfällt die Frage in
+  der Ausgabe und es geht mit Ja bzw. Nein weiter (`faelleFuerStufe(…, glasfaser)`,
+  `glasfaser()` in `ledWallKopie.ts`). Nicht für den ersten Schritt eines Falls. Weitere Antworten
+  (z. B. Backup-Leitung ja/nein) dort ergänzen, nicht als Textvariante.
 - **Keine Textvarianten je Stufe.** Die Stufe steuert nur, was erscheint.
 
 ## Fehlerfälle
 
 - Bauen mit den Helfern in `bibliothek.ts`: `q(id, stufe, text, ja, nein, { hinweis, ruecksprache,
-  stufeAus })`, Ziele `zu('id')`, `L('Lösungstext')`, `OK` (gelöst), `RUF` (anrufen),
+  stufeAus, antwortAus })`, Ziele `zu('id')`, `L('Lösungstext')`, `OK` (gelöst), `RUF` (anrufen),
   `FALL('lib-…')`. `nein: null` = Anweisung mit „Weiter“.
 - Jeder Weg endet in **Gelöst, Lösung oder Anrufen**; jeder Fall hat mindestens einen Ausgang
   „Anrufen“. Eine Lösung, die nicht sicher hilft, sagt, was dann zu tun ist („Fliegt sie wieder

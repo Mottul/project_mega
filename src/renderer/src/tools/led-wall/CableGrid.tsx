@@ -27,7 +27,7 @@ import {
 import type { ChainRoute, Corner, PwrChainMeta, SigChainMeta } from './config'
 import { GRID_GAP, GRID_HEADER, gridCellSize } from './front'
 import { amps, circuitLabel, PHASES, type Phase, type PowerChainLoad } from './power'
-import { hasBackup, type ChainLoad } from './processors'
+import { backupLabel, hasBackup, type ChainLoad } from './processors'
 
 interface Props {
   /** „Signal“ bzw. „Strom“ – für Beschriftungen */
@@ -54,6 +54,8 @@ interface Props {
     loads: Map<number, ChainLoad>
     /** Vorgabe der Wand für Ketten ohne eigene Angabe */
     redundancy: boolean
+    /** Hot-Backup über eine zweite CVT10: Backup kommt vom selben Port, keine Port-Wahl */
+    hotBackup?: boolean
     onChange: (chain: number, patch: Partial<SigChainMeta>) => void
   }
   /** nur Strom: Stromkreis und Phase je Kette, Last (power.ts) */
@@ -171,7 +173,7 @@ export function CableGrid({
           const l = ports?.loads.get(i)
           const pl = power?.loads.get(i)
           const extra = l
-            ? ` · ${l.px.toLocaleString('de-DE')} px · Port ${l.port}${l.backupPort !== null ? `, Backup ${l.backupPort}` : ''}${l.over ? ' · über der Grenze je Port' : ''}`
+            ? ` · ${l.px.toLocaleString('de-DE')} px · Port ${l.port}${l.backupPort !== null ? `, ${backupLabel(l)}` : ''}${l.over ? ' · über der Grenze je Port' : ''}`
             : pl
               ? ` · ${amps(pl.amps)} A · ${circuitLabel(pl)}${pl.over ? ' · über der Absicherung' : ''}`
               : ''
@@ -312,7 +314,10 @@ export function CableGrid({
               />
               Backup
             </label>
-            {backupOn && (
+            {backupOn && ports.hotBackup && (
+              <span className="text-muted-foreground">vom selben Port der 2. CVT10</span>
+            )}
+            {backupOn && !ports.hotBackup && (
               <Select
                 size="xs"
                 aria-label="Backup-Port"

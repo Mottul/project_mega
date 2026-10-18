@@ -29,11 +29,25 @@ import { fmt } from '../_calc/ui'
 import type { WallMetrics } from './compute'
 import { digest } from '@shared/projectFile'
 import { toast } from '@renderer/lib/toast'
-import { GRID_SIDE_MAX, isDefaultPlanning, pickConfig, WALL_NAME_MAX, wallSection } from './config'
+import {
+  GRID_SIDE_MAX,
+  isDefaultPlanning,
+  pickConfig,
+  WALL_NAME_MAX,
+  wallSection,
+  type FiberConfig,
+  type FiberRedundancy
+} from './config'
 import { CURVE_MODE_LABELS } from './curve'
 import { CIRCLE_TABLE, MODULES } from './data'
 import type { BuilderSegment } from './math'
-import { DEFAULT_PROCESSOR, PROCESSOR_LABELS, PROCESSORS, resolveProcessor } from './processors'
+import {
+  DEFAULT_PROCESSOR,
+  FIBER_REDUNDANCY_LABELS,
+  PROCESSOR_LABELS,
+  PROCESSORS,
+  resolveProcessor
+} from './processors'
 import {
   plannedWalls,
   useLedWall,
@@ -532,6 +546,13 @@ function ProcessorPanel(): JSX.Element {
           )}
         </>
       )}
+      {shared
+        ? shared.config.fiber && (
+            <p className="text-xs text-muted-foreground">
+              Glasfaser-Strecke: die von „{shared.name}“.
+            </p>
+          )
+        : (resolved.model === 'novapro-uhd-jr' || s.fiber) && <FiberFields />}
       <Checkbox
         label="Backup-Leitung für neue Ketten"
         hint="Vorgabe für Signalketten ohne eigene Angabe: vom letzten Modul zurück an einen Backup-Port (im Plan ein „B“). Je Kette umschaltbar in der Verlauf-Leiste des Signalplans."
@@ -545,6 +566,77 @@ function ProcessorPanel(): JSX.Element {
         {resolved.ports > 0 && ` · ${resolved.ports} Ports`}
       </p>
     </PanelSection>
+  )
+}
+
+/**
+ * Glasfaser-Strecke zum Prozessor (CVT10, Festlegungen 28/33) – gehört zum Prozessor, deshalb in
+ * dessen Schublade. Die Rechnung (Gruppen, Boxen, Fasern) steht in processors.ts.
+ */
+function FiberFields(): JSX.Element {
+  const f = useLedWall((s) => s.fiber)
+  const set = useLedWall((s) => s.set)
+  const setF = (p: Partial<FiberConfig>): void => {
+    if (!f) return
+    const next: FiberConfig = { ...f, ...p }
+    if (next.lengthM === undefined) delete next.lengthM
+    set({ fiber: next })
+  }
+  return (
+    <div className="space-y-3 rounded-md border border-border p-3">
+      <Checkbox
+        label="Glasfaser-Strecke (CVT10)"
+        hint="Signal über Glasfaser zur Breakout-Box NovaStar CVT10 an der Wand. Am UHD Jr trägt eine Box die Ports 1–8 (OPT1), eine zweite die Ports 9–16 (OPT2). Packliste: Boxen, Fasern, Stromkabel."
+        checked={!!f}
+        onChange={(on) =>
+          set({ fiber: on ? { box: 'cvt10', variant: 'S', redundancy: 'none' } : null })
+        }
+      />
+      {f && (
+        <>
+          <Field
+            label="Variante"
+            hint="S: Singlemode (OS1/OS2, LC, bis 10 km) · M: Multimode (OM3/OM4, LC, bis 300 m)."
+          >
+            <Segmented
+              label="Variante"
+              value={f.variant}
+              options={[
+                { value: 'S', label: 'S · Singlemode' },
+                { value: 'M', label: 'M · Multimode' }
+              ]}
+              onChange={(variant) => setF({ variant })}
+            />
+          </Field>
+          <Field
+            label="Redundanz der Strecke"
+            hint="Faser redundant: zweite Faser von OPT3/OPT4 in dieselbe Box. Hot-Backup: zweite CVT10, die die Kettenenden vom selben Port speist – deckt Faser und Box mit ab und braucht keine Backup-Ports am Prozessor. Beides zugleich geht nicht."
+          >
+            <Select
+              aria-label="Redundanz der Strecke"
+              value={f.redundancy}
+              onChange={(e) => setF({ redundancy: e.target.value as FiberRedundancy })}
+            >
+              {(Object.keys(FIBER_REDUNDANCY_LABELS) as FiberRedundancy[]).map((r) => (
+                <option key={r} value={r}>
+                  {FIBER_REDUNDANCY_LABELS[r]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Länge der Faser (m)">
+            <NumCommit
+              aria-label="Länge der Faser"
+              integer
+              min={0}
+              max={10_000}
+              value={f.lengthM ?? 0}
+              onCommit={(v) => setF({ lengthM: v || undefined })}
+            />
+          </Field>
+        </>
+      )}
+    </div>
   )
 }
 

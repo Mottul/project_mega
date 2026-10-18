@@ -36,7 +36,11 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
    - `describe(data)` für Rückfragen („Messe · Kunde, 4 × 2,5 m“), `isDefault…` für „nichts zu
      verlieren“.
    - Schema-Version des Abschnitts als Konstante; neue Felder = Version hoch, `sanitize`
-     ergänzt sie beim Lesen alter Abschnitte.
+     ergänzt sie beim Lesen alter Abschnitte. Auch wenn `sanitize` ein Feld mit Vorgabe auffüllt:
+     Eine ältere Mottulbox würde es beim Speichern verlieren (so LED-Wall 4 `shareWith`, 5
+     `fiber`; Anleitung 4 Kapitel Verkabelung, `antwortAus`). Neue Kapitel/Listeneinträge, die
+     eine alte Datei nicht hat, an ihre Stelle einsortieren (`neuesKapitel`, hinter den Vorgänger),
+     und eine neue, unberührte Anleitung muss die Prüfung unverändert bestehen.
 3. **Store:** `file: ProjectBinding | null` **neben** der Konfiguration (Vorlagen nehmen die
    Bindung nie mit), `setFile`, `replaceConfig` (Bedienzustand behalten). Persist-`version`
    erhöhen, `migrate` als reine exportierte Funktion: Konfiguration **und jede Vorlage** durch

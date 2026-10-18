@@ -56,6 +56,22 @@ export interface ProcessorConfig {
   shareWith?: string
 }
 
+/**
+ * Glasfaser-Strecke zum Prozessor (Festlegungen 28/33): NovaPro UHD Jr → Breakout-Box CVT10. Je
+ * Gruppe von acht Ports eine Box (Ports 1–8 an OPT1, 9–16 an OPT2). Redundanz: zweite Faser in
+ * dieselbe Box (OPT3/OPT4 → OPT2) oder Hot-Backup mit zweiter Box, die die Kettenenden speist.
+ * Gehört zum Prozessor: Bei geteiltem Prozessor gilt die Strecke der Wand, die ihn hat.
+ */
+export type FiberRedundancy = 'none' | 'fiber' | 'hot-backup'
+export interface FiberConfig {
+  box: 'cvt10'
+  /** S = Singlemode (OS1/OS2, bis 10 km), M = Multimode (OM3/OM4, bis 300 m) */
+  variant: 'S' | 'M'
+  redundancy: FiberRedundancy
+  /** Länge der Faser in m; fehlt = nicht angegeben */
+  lengthM?: number
+}
+
 /** Reine Konfigurationsfelder (das, was eine gespeicherte Vorlage ausmacht). */
 export interface LedWallConfig {
   moduleKey: string
@@ -85,6 +101,8 @@ export interface LedWallConfig {
   redundancy: boolean
   mains: { voltage: number; breakerA: number }
   processor: ProcessorConfig
+  /** null = Signal über Kupfer direkt vom Prozessor */
+  fiber: FiberConfig | null
 }
 
 /** Bedienzustand – gehört in Vorlagen, aber nicht in die Projektdatei (sonst wäre schon das
@@ -94,10 +112,10 @@ export type LedWallSection = Omit<LedWallConfig, (typeof UI_ONLY)[number]>
 
 /**
  * Schema-Version des Abschnitts in der Projektdatei – 4 (Oktober 2026): geteilter Prozessor
- * (`processor.shareWith`). Eine ältere Mottulbox öffnet den Abschnitt nicht, statt das Feld beim
- * Speichern zu verlieren.
+ * (`processor.shareWith`); 5: Glasfaser-Strecke (`fiber`). Eine ältere Mottulbox öffnet den
+ * Abschnitt nicht, statt das Feld beim Speichern zu verlieren.
  */
-export const LED_WALL_SECTION_VERSION = 4
+export const LED_WALL_SECTION_VERSION = 5
 
 /** Eine Wand der Planung mit ihrer Konfiguration (Projekt und Kunde gelten für alle). */
 export interface PlannedWall {
@@ -150,7 +168,8 @@ export const DEFAULT_LED_WALL_CONFIG: LedWallConfig = {
   feed: 'bottom',
   redundancy: false,
   mains: { voltage: 230, breakerA: 16 },
-  processor: { model: null, bitDepth: 8, hz: 60 }
+  processor: { model: null, bitDepth: 8, hz: 60 },
+  fiber: null
 }
 
 export const CONFIG_KEYS = Object.keys(DEFAULT_LED_WALL_CONFIG) as (keyof LedWallConfig)[]
@@ -285,6 +304,18 @@ function processor(v: unknown, d: ProcessorConfig): ProcessorConfig {
   return p
 }
 
+function fiber(v: unknown): FiberConfig | null {
+  if (!isObj(v) || v.box !== 'cvt10') return null
+  const f: FiberConfig = {
+    box: 'cvt10',
+    variant: oneOf(v.variant, ['S', 'M'] as const) ?? 'S',
+    redundancy: oneOf(v.redundancy, ['none', 'fiber', 'hot-backup'] as const) ?? 'none'
+  }
+  const lengthM = num(v.lengthM, 1, 10_000)
+  if (lengthM !== undefined) f.lengthM = lengthM
+  return f
+}
+
 /**
  * Planung aus fremder oder älterer Quelle feldweise prüfen: Gültiges bleibt, Ungültiges oder
  * Fehlendes wird zur Vorgabe. So werden Version-1-Stände (ohne Kabelverlauf) und Vorlagen
@@ -328,7 +359,8 @@ export function sanitizeLedWallConfig(
       voltage: num(mainsIn.voltage, 100, 400) ?? base.mains.voltage,
       breakerA: num(mainsIn.breakerA, 1, 125) ?? base.mains.breakerA
     },
-    processor: processor(v.processor, base.processor)
+    processor: processor(v.processor, base.processor),
+    fiber: 'fiber' in v ? fiber(v.fiber) : structuredClone(base.fiber)
   }
 }
 

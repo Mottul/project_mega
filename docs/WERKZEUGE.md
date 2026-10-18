@@ -333,6 +333,14 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
     Grenze je Port (kleinerer Wert aus Prozessor und Empfangskarte, Werte aus den Handbüchern),
     Last je Kette und warnt – über der Grenze je Port, zu viele Ports, zu viele Pixel gesamt,
     zu breit oder hoch für den Prozessor, Backup nicht am Partner-Port, doppelter Port.
+  - **Glasfaser-Strecke (CVT10):** in der Schublade „Prozessor“ (nur NovaPro UHD Jr) – Variante
+    S (Singlemode, bis 10 km) oder M (Multimode, bis 300 m), Länge der Faser und die Redundanz
+    der Strecke: keine, **Faser redundant** (zweite Faser von OPT3/OPT4 in dieselbe Box) oder
+    **Hot-Backup** (zweite CVT10, die die Kettenenden vom selben Port speist – dann braucht keine
+    Kette einen Backup-Port am Prozessor, ab Werk hat jede eine Backup-Leitung). Ports 1–8 gehen
+    an eine Box (OPT1), 9–16 an eine zweite (OPT2). Die Karte **Signal** nennt Boxen und Fasern,
+    die Liste „B 3 (2. CVT10)“; warnt bei Multimode über 300 m. Bei geteiltem Prozessor gilt
+    die Strecke der Wand, die ihn hat.
   - **Stromkreise und Phasen:** Je Stromkette in der Verlauf-Leiste **Kreis** (frei, z. B. „F3“)
     und **Phase** L1–L3. Ohne Phase verteilt die Rechnung die Kreise als Vorschlag auf die
     jeweils schwächste Phase (in Klammern, gespeichert wird er nicht); Ketten am selben Kreis
@@ -344,8 +352,8 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
   - **Signal + Strom** nebeneinander (untereinander, wenn das Fenster dafür zu schmal ist) und
     **Vorne/Hinten**: Von hinten sind die Pläne gespiegelt und groß beschriftet, Spalten- und
     Kettennummern bleiben am Modul. Die PDF-Doku druckt die Pläne mit Pfeilen in der gewählten
-    Blickrichtung, dazu Prozessor, Ports und Last je Signalkette sowie Netz, Kreis, Phase und
-    Strom je Stromkette.
+    Blickrichtung, dazu Prozessor, Ports und Last je Signalkette (mit Glasfaser-Strecke) sowie
+    Netz, Kreis, Phase und Strom je Stromkette.
 - **Daneben:** Signal, Strom (typisch und maximal in W und A, Ketten, Phasen), Aufbau (LSU-Füße,
   Ballast je Fuß und gesamt bzw. Gewicht an der Traverse) und die Daten des Moduls (mit IMs je
   Modul). Ist die Arbeitsfläche schmal,
@@ -566,7 +574,7 @@ sonst kommt ein Hinweis).
   Pfeil-Knöpfen (Tastatur).
 - **Kapitel** (Schublade: an/ab, Reihenfolge, Stufe): Auf einen Blick, Systemübersicht (Grafik
   aus der Geräteliste), Geräte und Standorte, Zugangsdaten, Ein- und Ausschalten, Software,
-  Bedienfeld, Inhalte tauschen, LED-Wall, Fehlersuche, Pflege und Verbote, Ersatzteile,
+  Bedienfeld, Inhalte tauschen, LED-Wall, Verkabelung, Fehlersuche, Pflege und Verbote, Ersatzteile,
   Kontakt und Support (mit QR-Code zum Anrufen), Dokumentstand. Dazu das Deckblatt.
 - **Geräteliste mit Signalwegen:** Rolle (Zuspieler, Verteiler wie ein HDMI-Splitter, Prozessor,
   Bedienfeld, Netzwerk, Strom, Sonstiges), Name, Modell, Standort, IP, Hinweis, Foto. Ein
@@ -579,8 +587,8 @@ sonst kommt ein Hinweis).
   Export meldet Wände ohne Prozessor, Prozessoren ohne Wand, Zuspieler ohne Ziel und Ausschnitte,
   die über das Bild ragen oder skaliert werden.
 - **Texte** mit kleiner Auszeichnung (Leerzeile = Absatz, „- “ Liste, „1. “ nummeriert, „> “
-  Hinweis bis zur nächsten Leerzeile – Listen darin erlaubt –, `**fett**`) und **Platzhaltern** wie `{prozessor.name}`, `{pc.ip}`,
-  `{wand.aufloesung}`, `{kontakt.mobil}` – die Kurznamen der Geräte sind die Quelle. Eingesetzte
+  Hinweis bis zur nächsten Leerzeile – Listen darin erlaubt –, `**fett**`) und **Platzhaltern**
+  wie `{prozessor.name}`, `{pc.ip}`, `{wand.aufloesung}`, `{kontakt.mobil}` – die Kurznamen der Geräte sind die Quelle. Eingesetzte
   Werte stehen **fett** im Text, damit man Namen und Adressen beim Lesen sofort findet. Leere
   Platzhalter zeigt die Vorschau rot gestrichelt, im PDF wird daraus eine Linie zum Ausfüllen.
 - **Bausteine:** mitgelieferte (Ein-/Ausschalten, Stromausfall, MadMapper, Mottulbox-Player,
@@ -600,12 +608,19 @@ sonst kommt ein Hinweis).
   Modul (IM-Tausch: 496-2,0/rX3ioBF werkzeuglos mit Rücksprache, uS2+ nur Technik). Die Prüfung
   meldet fehlende Ziele, nie erreichte Schritte, Schleifen und Fälle ohne „Anrufen“. 15 Fälle
   aus Praxis und Herstellerhilfen liegen bei; eine neue Anleitung enthält die wichtigsten.
+  **Antwort aus der Planung:** Eine Frage wie „Läuft das Signal über Glasfaser?“ entfällt in der
+  Ausgabe, wenn alle Wände der LED-Wall-Kopie Glasfaser haben (bzw. keine) – es geht gleich mit
+  Ja bzw. Nein weiter, die Box-Schritte erscheinen also nur mit Glasfaser.
 - **LED-Wall:** Kennzahlen als Kopie aus der LED-Wall-Planung **derselben Projektdatei**
   (oder aus dem aktuellen Konfigurator) – bei mehreren Wänden jede mit Namen, im Kapitel je Wand
   eine Tabelle, Platzhalter `{wand.…}` für die erste und `{wand2.…}` usw. für die weiteren.
   Speichert jemand die Planung neu, zeigt die Anleitung „Planung geändert (Stand 7 → 9)“ mit den
   Unterschieden (auch neue, entfernte und umbenannte Wände) und übernimmt erst auf Klick. Haben
   die Wände verschiedene Module, gilt beim IM-Tausch die strengere Regel.
+- **Verkabelung:** je Wand der Kopie Signal- und Stromplan mit Kabelverlauf (dieselbe Zeichnung
+  wie die PDF-Doku des Konfigurators), Ports und Backup je Signalkette, Kreis, Phase und Strom je
+  Stromkette, Prozessor und Glasfaser-Strecke. Blickrichtung im Kapitel: **von hinten** (ab Werk –
+  dort wird gesteckt; gespiegelt, groß beschriftet) oder von vorne.
 - **Kontakte** kommen aus dem **Firmenprofil** (App-Menü: Name, Logo, Akzentfarbe für Linien
   und Überschriften, Kontakte, Fernwartung) – als Kopie, damit die Datei beim Kollegen
   vollständig ist.
@@ -613,7 +628,7 @@ sonst kommt ein Hinweis).
   übergeben“, wahlweise geschwärzt oder gedruckt. Die Stufe Bedienung zeigt sie nie.
 - **Vor dem Export** (Schublade, Zahl in der Leiste): leere Platzhalter, fehlender Kontakt,
   gedruckte Passwörter, fehlende oder veraltete LED-Wall-Planung, Probleme der Fehlerfälle,
-  leere Kapitel. Bei Fehlern fragt der Export nach.
+  leere Kapitel, Fehler der Verkabelung laut Planung (Port oder Kreis überlastet, zu viele Ports). Bei Fehlern fragt der Export nach.
 - **Fotos** stehen zentriert, die Bildunterschrift mittig darunter; mehrere Foto-Blöcke
   hintereinander stehen nebeneinander (zwei bzw. vier in zwei Spalten, sonst drei).
 - **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel.
@@ -709,7 +724,9 @@ Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
 - **LED-Wall-Konfigurator → Packliste:** übernimmt Module, Standfüße, Ballast und Kabel und
   öffnet die Packliste im eigenen Fenster. Bei mehreren Wänden je Wand eine Kategorie
   („LED-Wall · Bar“); gleiche Module nennen die Summe über alle Wände. Dazu der Prozessor
-  (geteilte einmal) und die Backup-Leitungen der Signalketten.
+  (geteilte einmal), die Backup-Leitungen der Signalketten und die Glasfaser-Strecke: CVT10-Boxen,
+  Fasern (Typ aus der Variante, Länge), je Box ein PowerCON-Kabel; die Einspeisung heißt dann
+  „CVT10 → erste Kachel“.
 - **Netzwerk-Scanner → NovaStar:** IP eines Geräts in die NovaStar-Steuerung bzw. die
   NovaStar-Kacheln der OSC-Steuerung übernehmen.
 - **Video-Player → OSC-Steuerung:** Die Anzeige-Kachel kann die Restzeit des laufenden Clips

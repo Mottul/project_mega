@@ -67,6 +67,7 @@ export type KapitelId =
   | 'bedienfeld'
   | 'inhalte'
   | 'ledWall'
+  | 'verkabelung'
   | 'fehlersuche'
   | 'pflege'
   | 'ersatzteile'
@@ -74,7 +75,8 @@ export type KapitelId =
   | 'dokumentstand'
 
 /** Wie ein Kapitel entsteht: frei aus Blöcken oder aus festen Daten */
-export type KapitelArt = 'bloecke' | 'auto' | 'geraete' | 'zugang' | 'fehlersuche' | 'ledWall'
+export type KapitelArt =
+  'bloecke' | 'auto' | 'geraete' | 'zugang' | 'fehlersuche' | 'ledWall' | 'verkabelung'
 
 export interface KapitelDef {
   id: KapitelId
@@ -162,6 +164,14 @@ export const KAPITEL: KapitelDef[] = [
     info: 'Kennzahlen aus der LED-Wall-Planung derselben Projektdatei (Kopie), Status-LEDs.'
   },
   {
+    id: 'verkabelung',
+    titel: 'Verkabelung',
+    art: 'verkabelung',
+    stufe: 2,
+    an: true,
+    info: 'Signal- und Strompläne der LED-Wall-Kopie mit Kabelverlauf, Ports, Stromkreisen und Glasfaser – von hinten oder von vorne gesehen.'
+  },
+  {
     id: 'fehlersuche',
     titel: 'Fehlersuche',
     art: 'fehlersuche',
@@ -206,6 +216,18 @@ export const KAPITEL: KapitelDef[] = [
 export const kapitelDef = (id: KapitelId): KapitelDef =>
   KAPITEL.find((k) => k.id === id) ?? KAPITEL[0]
 
+/** Kapitel mit den Vorgaben aus KAPITEL (neue Anleitung, neues Kapitel einer späteren Version) */
+export function neuesKapitel(id: KapitelId): KapitelEintrag {
+  const k = kapitelDef(id)
+  return {
+    id,
+    an: k.an,
+    stufe: k.stufe,
+    bloecke: [],
+    ...(k.art === 'verkabelung' ? { ansicht: 'hinten' as const } : {})
+  }
+}
+
 /** Kapitel mit eigenen Blöcken (Bausteine): freie Kapitel und LED-Wall (Status-LEDs …) */
 export const hatBloecke = (id: KapitelId): boolean => {
   const art = kapitelDef(id).art
@@ -218,6 +240,8 @@ export interface KapitelEintrag {
   stufe: Stufe
   /** nur bei Kapiteln der Art „bloecke“ (sonst leer) */
   bloecke: Block[]
+  /** nur Verkabelung: Blickrichtung der Pläne (ab Werk von hinten – dort wird gesteckt) */
+  ansicht?: 'vorne' | 'hinten'
 }
 
 export type GeraetRolle =
@@ -341,6 +365,11 @@ export interface FSchritt {
   ruecksprache: boolean
   /** Stufe aus den Stammdaten des Moduls statt fest (IM-Tausch: 496-2,0 werkzeuglos, uS2+ verschraubt) */
   stufeAus: 'im-tausch' | null
+  /**
+   * Frage, die die LED-Wall-Planung beantwortet („Läuft das Signal über Glasfaser?“): Wissen es
+   * alle Wände der Kopie gleich, entfällt die Frage in der Ausgabe und es geht mit Ja bzw. Nein weiter.
+   */
+  antwortAus: 'glasfaser' | null
   ja: Ziel
   /** null = Schritt ohne Frage, nur „Weiter“ (`ja`) */
   nein: Ziel | null
@@ -429,7 +458,7 @@ export function leereAnleitung(): Anleitung {
   return {
     titel: DEFAULT_TITEL,
     deckblatt: { projekt: '', kunde: '', ort: '', zeitraum: '', foto: null },
-    kapitel: KAPITEL.map((k) => ({ id: k.id, an: k.an, stufe: k.stufe, bloecke: [] })),
+    kapitel: KAPITEL.map((k) => neuesKapitel(k.id)),
     geraete: [],
     zugaenge: [],
     fehlerfaelle: [],

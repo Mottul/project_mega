@@ -110,6 +110,7 @@ export function neuerSchritt(stufe: Stufe): FSchritt {
     foto: null,
     ruecksprache: false,
     stufeAus: null,
+    antwortAus: null,
     ja: { art: 'geloest' },
     nein: { art: 'anrufen' }
   }
@@ -174,6 +175,7 @@ export function eintraege(a: Anleitung, id: KapitelId): number | null {
     case 'fehlersuche':
       return a.fehlerfaelle.length
     case 'auto':
+    case 'verkabelung':
       return null
     default: {
       const k = a.kapitel.find((x) => x.id === id)

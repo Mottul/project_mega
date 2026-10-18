@@ -256,6 +256,47 @@ try {
       }
     ],
     [
+      'Glasfaser mit Hot-Backup: zweite CVT10 speist die Kettenenden, kein Port am Prozessor',
+      async () => {
+        const head = page.getByTestId('settings-drawer').getByRole('button', { name: /^Prozessor/ })
+        if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
+        const faser = page.getByRole('checkbox', { name: 'Glasfaser-Strecke (CVT10)' })
+        await faser.check()
+        await page
+          .getByRole('combobox', { name: 'Redundanz der Strecke' })
+          .selectOption('hot-backup')
+        const card = page.getByRole('heading', { name: 'Signal', exact: true }).locator('../..')
+        await card
+          .getByText('CVT10-S · 2 Boxen · 2 Fasern · Hot-Backup (zweite CVT10)')
+          .waitFor({ timeout: 5000 })
+        // S1 hatte Backup auf Port 2 – jetzt vom selben Port der zweiten Box; S2 bekommt eins
+        const zeilen = await waitFor(async () => {
+          const r = await card
+            .getByRole('table', { name: 'Signalketten' })
+            .evaluate((t) =>
+              [...t.querySelectorAll('tbody tr')].map((tr) =>
+                [...tr.querySelectorAll('td')].map((td) => td.textContent.trim())
+              )
+            )
+          return r[0]?.[3]?.includes('2. CVT10') ? r : null
+        }, 5000)
+        assert.deepEqual(
+          zeilen?.map(([kette, , , port]) => [kette, port]),
+          [
+            ['S1', '1 · B 1 (2. CVT10)'],
+            ['S2', '2 · B 2 (2. CVT10)']
+          ]
+        )
+        assert.ok(
+          await waitFor(async () => (await stored()).fiber?.redundancy === 'hot-backup', 5000),
+          JSON.stringify((await stored()).fiber)
+        )
+        // wieder ohne Glasfaser – die nächsten Schritte rechnen mit Ports am Prozessor
+        await faser.uncheck()
+        await card.getByText(/CVT10-S/).waitFor({ state: 'detached', timeout: 5000 })
+      }
+    ],
+    [
       'Zweite Wand teilt den Prozessor: Ports fortlaufend, Karte nennt „geteilt“',
       async () => {
         const bar = page.getByTestId('tool-bar')

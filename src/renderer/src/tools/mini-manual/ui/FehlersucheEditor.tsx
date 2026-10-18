@@ -203,6 +203,14 @@ function SchrittZeile({
           label="vorher kurz anrufen"
           hint="Erscheint als Hinweis mit dem Kontakt. Der Schritt bleibt für seine Stufe sichtbar."
         />
+        {s.nein && (
+          <Checkbox
+            checked={s.antwortAus === 'glasfaser'}
+            onChange={(v) => set({ ...s, antwortAus: v ? 'glasfaser' : null })}
+            label="Antwort aus der Planung: Glasfaser"
+            hint="Für „Läuft das Signal über Glasfaser?“: Haben alle Wände der LED-Wall-Kopie Glasfaser (bzw. keine), entfällt die Frage in der Ausgabe und es geht gleich mit Ja (bzw. Nein) weiter."
+          />
+        )}
         <Checkbox
           checked={s.stufeAus === 'im-tausch'}
           onChange={(v) => set({ ...s, stufeAus: v ? 'im-tausch' : null })}

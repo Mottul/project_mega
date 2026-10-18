@@ -9,8 +9,13 @@ import { fotoUrl } from '@shared/fotos'
 import { esc, safeHref } from '@shared/html'
 import { DEFAULT_AKZENT, type FirmenKontakt, type FirmenProfil } from '@shared/types'
 import { qrMatrix } from '@renderer/components/qr'
+import { computeWall } from '../led-wall/compute'
+import { PWR_COLORS, SIG_COLORS } from '../led-wall/data'
+import { amps, analyzePower, circuitLabel } from '../led-wall/power'
+import { gridSvg } from '../led-wall/printHtml'
+import { analyzeProcessors, backupLabel, fiberSummary } from '../led-wall/processors'
 import { faelleFuerStufe, type AusgabeFall, type AusgabeZiel } from './fehlersuche'
-import { modulKeys } from './ledWallKopie'
+import { geplanteWaende, glasfaser, modulKeys } from './ledWallKopie'
 import { inline, markup, type MarkupOptionen } from './markup'
 import { signalwege, type Signalweg } from './signalwege'
 import {
@@ -92,6 +97,12 @@ function css(c: SeitenKontext): string {
 .mm .fotos.n3 figure{flex-basis:calc(33.333% - 8px);max-width:calc(33.333% - 8px)}
 .mm .fotos img.foto{max-height:200px}
 .mm table{border-collapse:collapse;width:100%;margin:0 0 10px}
+.mm .plaene{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;margin:6px 0 8px}
+.mm .plaene>div{min-width:0}
+.mm .plaene svg{display:block;max-width:100%;height:auto}
+.mm .plaene table{width:auto;margin:0}
+.mm .plaene h4{font-size:11px;margin:0 0 3px;text-transform:uppercase;letter-spacing:.4px;color:#676c76}
+.mm .rueck{border:1px solid #e0a800;background:#fff8e1;color:#7a5a00;font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.04em;text-align:center;padding:3px 6px;margin:4px 0 8px;border-radius:3px}
 .mm td,.mm th{border:1px solid #ddd;padding:4px 7px;text-align:left;vertical-align:top}
 .mm th{background:#f7f7f7;font-size:10px;text-transform:uppercase;letter-spacing:.4px}
 .mm .stufe{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;border:1px solid #999;border-radius:8px;padding:0 6px;margin-left:6px;color:#555;vertical-align:middle}
@@ -391,6 +402,105 @@ function passwort(a: Anleitung, pw: string): string {
 
 // ---------------------------------------------------------------- Kapitel
 
+/** Breite der Seite, die die Pläne nutzen dürfen (A4 hoch abzüglich Rand) */
+const PLAN_BREITE = 660
+
+/**
+ * Kapitel Verkabelung: je Wand der Kopie die Pläne (dieselbe Zeichnung wie die PDF-Doku des
+ * Konfigurators) in der gewählten Blickrichtung, dazu Ports und Stromkreise und die
+ * Glasfaser-Strecke. Gerechnet wie im Konfigurator (geteilte Prozessoren über alle Wände).
+ */
+function verkabelung(k: KapitelEintrag, a: Anleitung): string {
+  const walls = geplanteWaende(a.ledWall)
+  if (!walls.length)
+    return '<p class="muted">Noch keine LED-Wall-Planung übernommen (Kapitel LED-Wall).</p>'
+  const hinten = (k.ansicht ?? 'hinten') === 'hinten'
+  const groups = analyzeProcessors(walls)
+  return walls
+    .map((w, wi) => {
+      const c = w.config
+      const d = computeWall(c)
+      const g = groups.find((x) => x.walls.some((y) => y.wallId === w.id))
+      const sig = g?.walls.find((y) => y.wallId === w.id)?.chains ?? []
+      const power = analyzePower(c)
+      const titel = walls.length > 1 ? `<h3>${esc(w.name)}</h3>` : ''
+      if (!sig.length && !power.chains.length)
+        return `${titel}<p class="muted">In der Planung ist keine Verkabelung gezeichnet.</p>`
+      // nebeneinander, solange die Module lesbar bleiben – sonst untereinander und größer
+      const halb = Math.floor((PLAN_BREITE / 2 - 20) / d.cols) - 2
+      const px = Math.max(
+        6,
+        Math.min(28, halb >= 14 ? halb : Math.floor((PLAN_BREITE - 10) / d.cols) - 2)
+      )
+      const backups = new Set(sig.filter((l) => l.backupPort !== null).map((l) => l.chain))
+      const plan = (art: 'S' | 'P'): string =>
+        art === 'S'
+          ? gridSvg(
+              c.sig,
+              c.sigMeta,
+              SIG_COLORS,
+              'S',
+              d.cols,
+              d.rows,
+              px,
+              hinten,
+              backups,
+              `mm-${wi}-S`
+            )
+          : gridSvg(
+              c.pwr,
+              c.pwrMeta,
+              PWR_COLORS,
+              'P',
+              d.cols,
+              d.rows,
+              px,
+              hinten,
+              undefined,
+              `mm-${wi}-P`
+            )
+      const kopf = [
+        g
+          ? `<b>Prozessor:</b> ${esc(g.processor.name)}${
+              g.walls.length > 1
+                ? ` (geteilt mit ${esc(
+                    g.walls
+                      .filter((y) => y.wallId !== w.id)
+                      .map((y) => y.wallName)
+                      .join(', ')
+                  )})`
+                : ''
+            }`
+          : '',
+        g?.fiber
+          ? `<b>Glasfaser:</b> ${esc(fiberSummary(g.fiber))} – ${g.fiber.groups.map((x) => `Box ${x.name} an ${x.opt} (Ports ${x.ports.join(', ')})`).join('; ')}`
+          : '',
+        `<b>Strom:</b> ${power.voltage} V, Absicherung ${power.breakerA} A je Kreis`
+      ]
+        .filter(Boolean)
+        .map((x) => `<p>${x}</p>`)
+        .join('')
+      const sigTab = sig.length
+        ? `<table><thead><tr><th>Kette</th><th>Module</th><th>Port</th></tr></thead><tbody>${sig
+            .map(
+              (l) =>
+                `<tr><td>S${l.chain + 1}</td><td>${l.modules}</td><td>${l.port}${l.backupPort !== null ? ` · ${esc(backupLabel(l))}` : ''}</td></tr>`
+            )
+            .join('')}</tbody></table>`
+        : ''
+      const pwrTab = power.chains.length
+        ? `<table><thead><tr><th>Kette</th><th>Module</th><th>Kreis · Phase</th><th>Strom</th></tr></thead><tbody>${power.chains
+            .map(
+              (l) =>
+                `<tr><td>P${l.chain + 1}</td><td>${l.modules}</td><td>${esc(circuitLabel(l))}</td><td>${amps(l.amps)} A</td></tr>`
+            )
+            .join('')}</tbody></table>`
+        : ''
+      return `${titel}${kopf}${hinten ? '<div class="rueck">Ansicht von hinten – Publikum auf der anderen Seite</div>' : ''}<div class="plaene"><div><h4>Signal</h4>${plan('S')}</div><div><h4>Strom</h4>${plan('P')}</div></div><div class="plaene"><div>${sigTab}</div><div>${pwrTab}</div></div>`
+    })
+    .join('')
+}
+
 function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): string {
   const g = grenze(c)
   const o = mo(a, c)
@@ -401,7 +511,10 @@ function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): strin
       const listen = (einAus?.an ? einAus.bloecke : []).filter(
         (b) => b.typ === 'schritte' && b.stufe <= 1
       )
-      const faelle = faelleFuerStufe(a.fehlerfaelle, c.stufe, module).slice(0, 5)
+      const faelle = faelleFuerStufe(a.fehlerfaelle, c.stufe, module, glasfaser(a.ledWall)).slice(
+        0,
+        5
+      )
       const kontakt = a.kontakte[0]
       return `${bloecke(listen, a, { ...c, lern: false, stufe: 1 })}${
         faelle.length
@@ -452,8 +565,10 @@ function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): strin
           : waende.map((w) => `<h3>${esc(w.name)}</h3>${tabelle(w.kennzahlen)}`).join('')
       return tab + bloecke(k.bloecke, a, c)
     }
+    case 'verkabelung':
+      return verkabelung(k, a)
     case 'fehlersuche': {
-      const alle = faelleFuerStufe(a.fehlerfaelle, g, module)
+      const alle = faelleFuerStufe(a.fehlerfaelle, g, module, glasfaser(a.ledWall))
       if (!alle.length) return '<p class="muted">Noch keine Fehlerfälle.</p>'
       const uebersicht = `<h3>Was siehst du?</h3><ul class="symptome">${alle
         .map(
@@ -569,7 +684,12 @@ export function kurzkarteHtml(a: Anleitung, c: SeitenKontext): string {
     .filter(Boolean)
     .map((x) => esc(x))
     .join(' · ')
-  const faelle = faelleFuerStufe(a.fehlerfaelle, c.stufe, modulKeys(a.ledWall))
+  const faelle = faelleFuerStufe(
+    a.fehlerfaelle,
+    c.stufe,
+    modulKeys(a.ledWall),
+    glasfaser(a.ledWall)
+  )
   const fsNr = sichtbareKapitel(a, c).findIndex((k) => k.id === 'fehlersuche') + 1
   const k = a.kontakte[0]
   const tel = k ? telNummer(k.mobil || k.buero) : ''

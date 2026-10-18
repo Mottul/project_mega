@@ -46,7 +46,7 @@ import { LED_WALL_FILE } from './fileSection'
 import { exportLedWallPdf } from './print'
 import { BUILD_LABELS, LedWallSettings } from './Settings'
 import { amps, analyzePower, circuitLabel, PHASES, type PowerAnalysis } from './power'
-import { analyzeProcessors, type GroupLoad } from './processors'
+import { analyzeProcessors, backupLabel, fiberSummary, type GroupLoad } from './processors'
 import { plannedWalls, useLedWall } from './store'
 import { topDownMarkup } from './topdown'
 import { WallMenu } from './WallMenu'
@@ -423,7 +423,9 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
           ? {
               count: group.processor.ports || 16,
               loads,
-              redundancy: s.redundancy,
+              // Hot-Backup über eine zweite CVT10: ab Werk jede Kette mit Backup
+              redundancy: s.redundancy || group.fiber?.redundancy === 'hot-backup',
+              hotBackup: group.fiber?.redundancy === 'hot-backup',
               onChange: (c, patch) => s.setSigChain(c, patch)
             }
           : undefined
@@ -615,6 +617,7 @@ function SignalCard(): JSX.Element | null {
       <Specs
         rows={[
           ['Prozessor', several ? `${p.name} (geteilt)` : p.name],
+          ...(g.fiber ? [['Glasfaser', fiberSummary(g.fiber)] as [string, string]] : []),
           [
             'Ports belegt',
             p.ports ? `${g.portsUsed} von ${p.ports}` : String(g.portsUsed),
@@ -649,7 +652,7 @@ function SignalCard(): JSX.Element | null {
                 <td className="text-right">
                   {c.port}
                   {c.backupPort !== null && (
-                    <span className="text-muted-foreground"> · B {c.backupPort}</span>
+                    <span className="text-muted-foreground"> · {backupLabel(c)}</span>
                   )}
                 </td>
               </tr>

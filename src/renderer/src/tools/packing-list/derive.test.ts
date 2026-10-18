@@ -117,6 +117,57 @@ describe('deriveFromLedWall – Prozessor und Backup', () => {
   })
 })
 
+describe('deriveFromLedWall – Glasfaser-Strecke', () => {
+  it('Boxen, Fasern und Stromkabel einmal beim Prozessor; Einspeisung von der CVT10', () => {
+    const base = sanitizeLedWallConfig({})
+    const items = deriveFromLedWall([
+      {
+        id: 'a',
+        name: 'Wand 1',
+        config: {
+          ...base,
+          sig: [[0, 0, 1, 1]],
+          fiber: { box: 'cvt10', variant: 'S', redundancy: 'fiber', lengthM: 150 }
+        }
+      }
+    ])
+    expect(
+      items.filter((i) => /CVT10|Glasfaser/.test(i.name)).map((i) => [i.name, i.qty, i.note])
+    ).toEqual([
+      ['NovaStar CVT10-S', 1, 'je Achtergruppe eine (Ports 1–8, 9–16)'],
+      ['Glasfaser Singlemode (OS1/OS2), LC', 2, 'je 150 m · mit Ersatzfaser je Box'],
+      ['Netzkabel PowerCON (CVT10)', 1, '']
+    ])
+    expect(byName(items, 'Datenleitung (Einspeisung/Kette)')?.note).toBe(
+      'CVT10 → erste Kachel je Kette (Patchkabel)'
+    )
+  })
+
+  it('Hot-Backup: zweite Box, Backup-Leitungen von dort', () => {
+    const base = sanitizeLedWallConfig({})
+    const items = deriveFromLedWall([
+      {
+        id: 'a',
+        name: 'Wand 1',
+        config: {
+          ...base,
+          sig: [[0, 0, 1, 1]],
+          fiber: { box: 'cvt10', variant: 'M', redundancy: 'hot-backup' }
+        }
+      }
+    ])
+    expect(byName(items, 'NovaStar CVT10-M')?.qty).toBe(2)
+    expect(byName(items, 'Glasfaser Multimode (OM3/OM4), LC')?.note).toBe(
+      'Länge eintragen · mit Ersatzfaser je Box'
+    )
+    const b = byName(items, 'Datenleitung Backup (letztes Modul → Prozessor)')
+    expect([b?.qty, b?.note]).toEqual([
+      2,
+      'Backup-Leitungen der Signalketten, von der zweiten CVT10'
+    ])
+  })
+})
+
 describe('deriveFromLedWall – Property', () => {
   it('Modul-Menge ist immer ≥ 1 (cols/rows mind. 1, auch bei leerer Eingabe)', () => {
     for (const dim of ['0', '0,1', '10']) {

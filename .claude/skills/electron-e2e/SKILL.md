@@ -180,6 +180,14 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   einfachsten über `el.shadowRoot.textContent` per `evaluate` (Beispiel `e2e/mini-manual.mjs`).
 - **Gepufferte Felder** (`LiveInput`, `TextArea`) übernehmen nach 250 ms Pause oder beim
   Verlassen – nach `fill()` einmal `Tab`, dann prüfen.
+- **Segmented** (Umschalter wie „Ausgabe für“, „Blickrichtung der Pläne“) ist eine `group` mit
+  Knöpfen (`aria-pressed`), keine Radios: `getByRole('group', { name: 'Ausgabe für' })
+  .getByRole('button', { name: 'Technik' })`. Die Modulwahl der LED-Wall dagegen sind Radios.
+- **HTML-Seite ansehen** (Kapitel des Mini-Manuals ohne den ganzen Klickweg): das HTML einmal mit
+  einem temporären vitest-Test aus `handbuchHtml()` in den Scratch-Ordner schreiben (Test danach
+  löschen), dann in der gebauten App ein verstecktes `BrowserWindow` `loadFile` + `capturePage`
+  (per `launchApp` und `app.evaluate`). Das Browser-Fenster der Desktop-App zeigt lokale Dateien
+  nur als Standbild ohne Werkzeuge.
 - **PDF ansehen statt nur zählen:** Im main ein `BrowserWindow` mit `webPreferences: { plugins:
   true }` die PDF-Datei laden lassen, nach 2–3 s `capturePage()` – zeigt Chromiums Betrachter mit
   der ersten Seite (so fiel die Reihenfolge der Fehlerfälle im Handbuch auf). Die Zieldatei
