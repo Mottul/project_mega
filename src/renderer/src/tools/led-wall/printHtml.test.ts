@@ -46,10 +46,26 @@ describe('PDF-Doku der LED-Wall', () => {
     const { html } = ledWallPrintHtml({ ...d, wallId: 'a', signal: g })
     expect(html).toContain('<h2>Signal: Prozessor und Ports</h2>')
     expect(html).toContain('NovaPro UHD Jr · 8 bit · 60 Hz · Ports 3 von 16')
-    expect(html).toContain('<td>1 · Backup 2</td>')
+    expect(html).toContain('<td>1 · B 2</td>')
     expect(html).toContain('<g data-backup="0">')
     // ohne Analyse keine Tabelle (z. B. ohne Ketten)
     expect(ledWallPrintHtml(daten()).html).not.toContain('Prozessor und Ports')
+  })
+
+  it('Glasfaser: Boxen an OPT1, Hot-Backup speist vom selben Port der zweiten Box', () => {
+    const d = daten()
+    const c = sanitizeLedWallConfig({
+      widthM: '2',
+      heightM: '1',
+      sig: d.sig,
+      fiber: { box: 'cvt10', variant: 'M', redundancy: 'hot-backup', lengthM: 80 }
+    })
+    const [g] = analyzeProcessors([{ id: 'a', name: 'Wand 1', config: c }])
+    const { html } = ledWallPrintHtml({ ...d, wallId: 'a', signal: g })
+    expect(html).toContain(
+      'Glasfaser: CVT10-M · 2 Boxen · 2 Fasern à 80 m · Hot-Backup (zweite CVT10) – Box A an OPT1 (Ports 1, 2), Box A′ an OPT3'
+    )
+    expect(html).toContain('<td>1 · B 1 (2. CVT10)</td>')
   })
 
   it('Strom: Netz, Kreis und Phase je Kette (Vorschlag in Klammern), IMs je Modul', () => {

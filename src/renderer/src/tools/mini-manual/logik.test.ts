@@ -137,7 +137,7 @@ describe('Bibliothek', () => {
     const a = neueAnleitung()
     expect(sanitizeAnleitung(structuredClone(a))).toEqual(a)
     expect(neueAnleitung()).toEqual(a) // „Neu“ ergibt immer dieselben Daten
-    expect(ANLEITUNG_VERSION).toBe(3)
+    expect(ANLEITUNG_VERSION).toBe(4)
   })
 })
 
@@ -206,6 +206,36 @@ describe('Fehlersuche je Stufe – Beispiel aus dem Plan', () => {
   })
 })
 
+describe('Fragen, die die Planung beantwortet (Glasfaser)', () => {
+  const wand = fallById('lib-wand-dunkel')!
+  const aus = (glasfaser: boolean | null) => faelleFuerStufe([wand], 3, [], glasfaser)[0]
+  const id = (f: ReturnType<typeof aus>, nr: number): string =>
+    f.schritte.find((s) => s.nr === nr)!.schritt.id
+
+  it('unbekannt (keine oder gemischte Planung): die Frage bleibt', () => {
+    expect(aus(null).schritte.map((s) => s.schritt.id)).toContain('w9')
+  })
+
+  it('mit Glasfaser: Frage entfällt, Schritt 8 „Ja“ geht gleich zur Breakout-Box', () => {
+    const f = aus(true)
+    const ids = f.schritte.map((s) => s.schritt.id)
+    expect(ids).not.toContain('w9')
+    expect(ids).toEqual(expect.arrayContaining(['w10', 'w11']))
+    const w8 = f.schritte.find((s) => s.schritt.id === 'w8')!
+    expect(w8.ja.art === 'schritt' && id(f, w8.ja.nr)).toBe('w10')
+  })
+
+  it('ohne Glasfaser: Frage und Box-Schritte entfallen, Schritt 8 „Ja“ heißt anrufen', () => {
+    const f = aus(false)
+    const ids = f.schritte.map((s) => s.schritt.id)
+    expect(ids.some((x) => x === 'w9' || x === 'w10' || x === 'w11')).toBe(false)
+    expect(f.schritte.find((s) => s.schritt.id === 'w8')!.ja).toEqual({
+      art: 'anrufen',
+      grund: 'ende'
+    })
+  })
+})
+
 describe('Prüfung eines Falls', () => {
   it('meldet fehlende Ziele, leere Lösung, unerreichbare Schritte und Schleifen', () => {
     const f: Fehlerfall = {
@@ -223,6 +253,7 @@ describe('Prüfung eines Falls', () => {
           foto: null,
           ruecksprache: false,
           stufeAus: null,
+          antwortAus: null,
           ja: { art: 'schritt', id: 'b' },
           nein: { art: 'schritt', id: 'weg' }
         },
@@ -234,6 +265,7 @@ describe('Prüfung eines Falls', () => {
           foto: null,
           ruecksprache: false,
           stufeAus: null,
+          antwortAus: null,
           ja: { art: 'schritt', id: 'a' },
           nein: { art: 'loesung', text: ' ' }
         },
@@ -245,6 +277,7 @@ describe('Prüfung eines Falls', () => {
           foto: null,
           ruecksprache: false,
           stufeAus: null,
+          antwortAus: null,
           ja: { art: 'geloest' },
           nein: null
         }
@@ -275,7 +308,7 @@ describe('Prüfung der gespeicherten Daten', () => {
     expect(a.titel).toBe('So bedienst du deine LED-Wall')
     expect(a.deckblatt).toMatchObject({ projekt: 'P', foto: null })
     expect(a.kapitel[0]).toMatchObject({ id: 'fehlersuche', an: false })
-    expect(a.kapitel.map((k) => k.id)).toHaveLength(14)
+    expect(a.kapitel.map((k) => k.id)).toHaveLength(15)
     expect(a.geraete[0]).toMatchObject({ rolle: 'sonstiges', kurzname: 'pc1' })
     expect(a.fehlerfaelle[0].schritte[0]).toMatchObject({
       stufe: 1,
@@ -284,6 +317,34 @@ describe('Prüfung der gespeicherten Daten', () => {
     })
     expect(a.ausgabe.passwoerter).toBe('separat')
     expect(fotosIn(a)).toEqual(['a'.repeat(64)])
+  })
+
+  it('Verkabelung (Version 4) kommt in älteren Anleitungen hinter LED-Wall, von hinten gesehen', () => {
+    const alt = sanitizeAnleitung({
+      kapitel: [
+        { id: 'ledWall', an: true },
+        { id: 'fehlersuche', an: true },
+        { id: 'kontakt', an: false }
+      ]
+    })
+    // fehlende Kapitel hinter ihren Vorgänger (Pflege hinter Fehlersuche …), die eigene
+    // Reihenfolge bleibt
+    const ids = alt.kapitel.map((k) => k.id)
+    expect(ids.slice(0, 3)).toEqual(['ledWall', 'verkabelung', 'fehlersuche'])
+    expect(ids.indexOf('kontakt')).toBeGreaterThan(ids.indexOf('fehlersuche'))
+    expect(alt.kapitel[1]).toEqual({
+      id: 'verkabelung',
+      an: true,
+      stufe: 2,
+      bloecke: [],
+      ansicht: 'hinten'
+    })
+    const vorne = sanitizeAnleitung({ kapitel: [{ id: 'verkabelung', ansicht: 'vorne' }] })
+    expect(vorne.kapitel[0].ansicht).toBe('vorne')
+    // nur die Verkabelung hat eine Blickrichtung
+    expect(
+      sanitizeAnleitung({ kapitel: [{ id: 'pflege', ansicht: 'vorne' }] }).kapitel[0]
+    ).not.toHaveProperty('ansicht')
   })
 
   it('Blöcke nur in Kapiteln, die welche haben (frei und LED-Wall)', () => {

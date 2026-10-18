@@ -6,7 +6,7 @@ import { esc } from '@shared/html'
 import { chainCounts, chainRoutes, routeSvg } from './cabling'
 import type { ChainRoute, SigChainMeta } from './config'
 import { amps, circuitLabel, PHASES, type PowerAnalysis } from './power'
-import type { GroupLoad } from './processors'
+import { backupLabel, fiberSummary, type GroupLoad } from './processors'
 import { PWR_COLORS, SIG_COLORS, type LedModule } from './data'
 import type { Fit169 } from './math'
 
@@ -62,9 +62,10 @@ export interface PrintData {
 /**
  * Plan als SVG: Module mit Kettennummer, darüber die Pfeile des Verlaufs (cabling.ts, dieselbe
  * Quelle wie am Bildschirm). Von hinten gespiegelt; die Spaltennummern stehen dann oben, damit
- * man am Modul abzählen kann.
+ * man am Modul abzählen kann. Auch fürs Kapitel Verkabelung im Mini-Manual (`markerId` je Plan
+ * eindeutig – mehrere Wände stehen in einem Dokument).
  */
-function gridSvg(
+export function gridSvg(
   assign: number[][],
   meta: Record<string, ChainRoute>,
   colors: string[],
@@ -73,7 +74,8 @@ function gridSvg(
   rows: number,
   px: number,
   mirror: boolean,
-  backups?: Set<number>
+  backups?: Set<number>,
+  markerId = `pdf-${prefix}`
 ): string {
   const gap = 2
   const pad = 4
@@ -103,7 +105,7 @@ function gridSvg(
     y0,
     cols,
     colors,
-    id: `pdf-${prefix}`,
+    id: markerId,
     mirror,
     backups
   })
@@ -120,7 +122,7 @@ function signalTable(g: GroupLoad, wallId: string | undefined): string {
     .flatMap((w) =>
       w.chains.map(
         (c) =>
-          `<tr${c.over ? ' style="color:#b91c1c;font-weight:700"' : ''}><td>${several ? `${esc(w.wallName)} ` : ''}S${c.chain + 1}${w.wallId === wallId || !several ? '' : ' (andere Wand)'}</td><td>${c.modules}</td><td>${num(c.px)}</td><td>${c.port}${c.backupPort !== null ? ` · Backup ${c.backupPort}` : ''}</td></tr>`
+          `<tr${c.over ? ' style="color:#b91c1c;font-weight:700"' : ''}><td>${several ? `${esc(w.wallName)} ` : ''}S${c.chain + 1}${w.wallId === wallId || !several ? '' : ' (andere Wand)'}</td><td>${c.modules}</td><td>${num(c.px)}</td><td>${c.port}${c.backupPort !== null ? ` · ${backupLabel(c)}` : ''}</td></tr>`
       )
     )
     .join('')
@@ -129,7 +131,11 @@ function signalTable(g: GroupLoad, wallId: string | undefined): string {
     .filter((w) => w.level !== 'info')
     .map((w) => `<div class="bar" style="border-left-color:#b91c1c">${esc(w.text)}</div>`)
     .join('')
-  return `<h2>Signal: Prozessor und Ports</h2><div style="font-size:11px;margin-bottom:4px">${head}</div>${rows ? `<table><tr><th style="width:auto">Kette</th><th style="width:auto">Module</th><th style="width:auto">Pixel</th><th style="width:auto">Port</th></tr>${rows}</table>` : ''}${warn}`
+  const f = g.fiber
+  const fiber = f
+    ? `<div style="font-size:11px;margin-bottom:4px">Glasfaser: ${esc(fiberSummary(f))} – ${f.groups.map((x) => `Box ${x.name} an ${x.opt} (Ports ${x.ports.join(', ')})${f.redundancy === 'fiber' ? `, zweite Faser von ${x.spare}` : f.redundancy === 'hot-backup' ? `, Box ${x.name}′ an ${x.spare}` : ''}`).join('; ')}</div>`
+    : ''
+  return `<h2>Signal: Prozessor und Ports</h2><div style="font-size:11px;margin-bottom:4px">${head}</div>${fiber}${rows ? `<table><tr><th style="width:auto">Kette</th><th style="width:auto">Module</th><th style="width:auto">Pixel</th><th style="width:auto">Port</th></tr>${rows}</table>` : ''}${warn}`
 }
 
 /** Strom: Netz, je Kette Last, Kreis und Phase (Vorschlag in Klammern), Phasen, Warnungen */

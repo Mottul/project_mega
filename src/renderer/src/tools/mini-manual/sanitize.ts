@@ -11,6 +11,7 @@ import {
   KAPITEL,
   ROLLEN,
   hatBloecke,
+  neuesKapitel,
   leereAnleitung,
   uid,
   type Anleitung,
@@ -36,10 +37,11 @@ import {
 
 /**
  * Schema-Version des Abschnitts „anleitung“ – 2: LED-Wall-Kopie mit mehreren Wänden; 3: Geräte
- * mit „bespielt“ (Prozessor) und Ausgängen samt Signalweg (Zuspieler), Rolle „Verteiler“.
+ * mit „bespielt“ (Prozessor) und Ausgängen samt Signalweg (Zuspieler), Rolle „Verteiler“;
+ * 4: Kapitel Verkabelung (mit Blickrichtung), Fragen mit Antwort aus der Planung (Glasfaser).
  * Eine ältere Mottulbox öffnet neuere Abschnitte nicht – sonst fielen die Felder beim Speichern weg.
  */
-export const ANLEITUNG_VERSION = 3
+export const ANLEITUNG_VERSION = 4
 
 export const GRENZEN = {
   kurz: 200,
@@ -148,13 +150,19 @@ function kapitel(v: unknown): KapitelEintrag[] {
         ? list(raw.bloecke, GRENZEN.bloecke)
             .map(block)
             .filter((b): b is Block => !!b)
-        : []
+        : [],
+      ...(k.art === 'verkabelung' ? { ansicht: raw.ansicht === 'vorne' ? 'vorne' : 'hinten' } : {})
     })
   }
-  // neue Kapitel einer späteren Version: hinten anhängen, ab Werk angehakt wie vorgesehen
-  for (const k of KAPITEL) {
-    if (!seen.has(k.id)) out.push({ id: k.id, an: k.an, stufe: k.stufe, bloecke: [] })
-  }
+  // fehlende Kapitel (neu in einer späteren Version) hinter ihren Vorgänger laut KAPITEL –
+  // Verkabelung hinter LED-Wall –, ohne Vorgänger ans Ende; ab Werk angehakt wie vorgesehen
+  KAPITEL.forEach((k, i) => {
+    if (seen.has(k.id)) return
+    const vor = i > 0 ? out.findIndex((x) => x.id === KAPITEL[i - 1].id) : -1
+    if (vor < 0) out.push(neuesKapitel(k.id))
+    else out.splice(vor + 1, 0, neuesKapitel(k.id))
+    seen.add(k.id)
+  })
   return out
 }
 
@@ -269,6 +277,7 @@ function fSchritt(v: unknown): FSchritt | null {
     foto: foto(v.foto),
     ruecksprache: bool(v.ruecksprache),
     stufeAus: v.stufeAus === 'im-tausch' ? 'im-tausch' : null,
+    antwortAus: v.antwortAus === 'glasfaser' ? 'glasfaser' : null,
     ja: ziel(v.ja),
     nein: v.nein === null ? null : ziel(v.nein)
   }

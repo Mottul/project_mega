@@ -169,11 +169,14 @@ export interface AusgabeFall {
 /**
  * Fälle für eine Stufe: Fälle über der Stufe fallen ganz weg, ihre Schritte wie oben.
  * `alle` (Lernausgabe): jede Stufe, Kennzeichen macht der Seitenbauer.
+ * `glasfaser` (aus der LED-Wall-Kopie, null = unbekannt): Fragen mit `antwortAus: 'glasfaser'`
+ * entfallen, wenn die Planung die Antwort weiß – es geht gleich mit Ja bzw. Nein weiter.
  */
 export function faelleFuerStufe(
   faelle: Fehlerfall[],
   stufe: Stufe,
-  module: string[]
+  module: string[],
+  glasfaser: boolean | null = null
 ): AusgabeFall[] {
   const sichtbar = faelle.filter((f) => f.stufe <= stufe && f.schritte.length)
   const fallNr = new Map(sichtbar.map((f, i) => [f.id, i + 1]))
@@ -182,6 +185,17 @@ export function faelleFuerStufe(
     const index = new Map(f.schritte.map((s, i) => [s.id, i]))
     const w = f.schritte.map((s) => wirksam(s, module))
     const zeigt = (i: number): boolean => w[i].stufe <= stufe
+    // Ziel durch Fragen hindurch, deren Antwort die Planung kennt (Schleifen: höchstens n Sprünge)
+    const durch = (z: Ziel): Ziel => {
+      let cur = z
+      for (let n = 0; n < f.schritte.length && cur.art === 'schritt'; n++) {
+        const i = index.get(cur.id)
+        const s = i === undefined ? undefined : f.schritte[i]
+        if (!s || i === 0 || s.antwortAus !== 'glasfaser' || glasfaser === null) break
+        cur = glasfaser ? s.ja : (s.nein ?? s.ja)
+      }
+      return cur
+    }
 
     if (!zeigt(0)) return { fall: f, nr: fi + 1, nurAnrufen: true, schritte: [] }
 
@@ -192,14 +206,16 @@ export function faelleFuerStufe(
       const i = queue.shift()!
       if (seen.has(i) || !zeigt(i)) continue
       seen.add(i)
-      for (const z of [f.schritte[i].ja, f.schritte[i].nein]) {
+      for (const raw of [f.schritte[i].ja, f.schritte[i].nein]) {
+        const z = raw && durch(raw)
         if (z?.art === 'schritt' && index.has(z.id)) queue.push(index.get(z.id)!)
       }
     }
     const order = [...seen].sort((a, b) => a - b)
     const nrOf = new Map(order.map((i, n) => [i, n + 1]))
 
-    const map = (z: Ziel): AusgabeZiel => {
+    const map = (raw: Ziel): AusgabeZiel => {
+      const z = durch(raw)
       switch (z.art) {
         case 'schritt': {
           const i = index.get(z.id)

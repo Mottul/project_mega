@@ -180,3 +180,87 @@ describe('Geteilter Prozessor', () => {
     ).not.toHaveProperty('shareWith')
   })
 })
+
+describe('Glasfaser-Strecke (CVT10)', () => {
+  const mitFaser = (
+    fiber: Record<string, unknown>,
+    p: Record<string, unknown> = {}
+  ): LedWallConfig => cfg({ ...p, fiber: { box: 'cvt10', ...fiber } })
+  const zehn = reihe(...Array.from({ length: 10 }, (_, k) => [k, 5] as [number, number]))
+
+  it('Achtergruppen: Ports 1–8 an OPT1, 9–16 an OPT2 – je Gruppe eine Box und eine Faser', () => {
+    const c = mitFaser({ variant: 'S', redundancy: 'none', lengthM: 120 }, { sig: zehn })
+    const g = analyzeProcessors([wall('a', c)])[0]
+    expect(g.fiber).toEqual({
+      variant: 'S',
+      redundancy: 'none',
+      lengthM: 120,
+      groups: [
+        { name: 'A', opt: 'OPT1', spare: 'OPT3', ports: [1, 2, 3, 4, 5, 6, 7, 8] },
+        { name: 'B', opt: 'OPT2', spare: 'OPT4', ports: [9, 10] }
+      ],
+      boxes: 2,
+      fibers: 2,
+      lines: 10
+    })
+    expect(g.warnings).toEqual([])
+  })
+
+  it('Faser redundant: zweite Faser in dieselbe Box', () => {
+    const c = mitFaser({ redundancy: 'fiber' }, { sig: reihe([0, 5], [1, 5]) })
+    const f = analyzeProcessors([wall('a', c)])[0].fiber!
+    expect([f.groups.length, f.boxes, f.fibers, f.lines]).toEqual([1, 1, 2, 2])
+  })
+
+  it('Hot-Backup: zweite Box speist die Kettenenden vom selben Port – kein Port am Prozessor', () => {
+    const c = mitFaser(
+      { redundancy: 'hot-backup' },
+      { sig: reihe([0, 5], [1, 5], [2, 5]), sigMeta: { '2': { backup: null } } }
+    )
+    const g = analyzeProcessors([wall('a', c)])[0]
+    expect(g.walls[0].chains.map((l) => [l.port, l.backupPort, l.backupBox ?? false])).toEqual([
+      [1, 1, true],
+      [2, 2, true],
+      [3, null, false]
+    ])
+    expect(g.portsUsed).toBe(3)
+    expect([g.fiber!.boxes, g.fiber!.fibers, g.fiber!.lines]).toEqual([2, 2, 5])
+    expect(g.warnings.map((w) => w.text)).toEqual([
+      'Hot-Backup: S3 ohne Backup-Leitung – die zweite CVT10 speist nur Ketten mit Backup.'
+    ])
+  })
+
+  it('nur am UHD Jr; Länge über der Reichweite der Variante', () => {
+    const vx = mitFaser({}, { processor: { model: 'vx4s', bitDepth: 8, hz: 60 } })
+    const g = analyzeProcessors([wall('a', vx)])[0]
+    expect(g.fiber).toBeNull()
+    expect(g.warnings.map((w) => w.text)).toEqual([
+      'Glasfaser mit CVT10 gibt es nur am NovaPro UHD Jr – beim VX4S bleibt sie unberücksichtigt.'
+    ])
+    const lang = mitFaser({ variant: 'M', lengthM: 450 }, { sig: reihe([0, 5]) })
+    expect(analyzeProcessors([wall('a', lang)])[0].warnings.map((w) => w.text)).toEqual([
+      'Glasfaser 450 m – Multimode reicht bis 300 m; dafür die CVT10-S (Singlemode).'
+    ])
+  })
+
+  it('geteilter Prozessor: es gilt die Strecke der Wand mit dem Prozessor', () => {
+    const a = wall('a', mitFaser({ redundancy: 'fiber' }, { sig: reihe([0, 5]) }))
+    const b = wall(
+      'b',
+      cfg({ sig: reihe([0, 5]), processor: { model: null, bitDepth: 8, hz: 60, shareWith: 'a' } })
+    )
+    const [g] = analyzeProcessors([a, b])
+    expect(g.fiber?.redundancy).toBe('fiber')
+    expect(g.fiber?.groups[0].ports).toEqual([1, 2])
+  })
+
+  it('Prüfung: Unbekanntes wird null, Fehlendes zur Vorgabe', () => {
+    expect(cfg({}).fiber).toBeNull()
+    expect(cfg({ fiber: { box: 'andere' } }).fiber).toBeNull()
+    expect(cfg({ fiber: { box: 'cvt10', variant: 'X', lengthM: -3 } }).fiber).toEqual({
+      box: 'cvt10',
+      variant: 'S',
+      redundancy: 'none'
+    })
+  })
+})

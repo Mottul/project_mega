@@ -1,10 +1,12 @@
 // Arbeitsfläche für das gewählte Kapitel: je nach Art Blöcke, Geräte, Zugänge, Fehlersuche,
-// LED-Wall oder ein automatisch zusammengestelltes Kapitel (mit Erklärung, woher es kommt).
+// LED-Wall, Verkabelung oder ein automatisch zusammengestelltes Kapitel (mit Erklärung, woher es
+// kommt).
 
 import { Download } from 'lucide-react'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Button } from '@renderer/components/ui/button'
 import { Field } from '@renderer/components/ui/field'
+import { Segmented } from '@renderer/components/ui/segmented'
 import { LiveInput, TextArea } from '@renderer/components/ui/textarea'
 import { kapitel as patchKapitel } from '../aktionen'
 import { kapitelDef, type KapitelId } from '../model'
@@ -17,6 +19,41 @@ import { FotoFeld, StufeSelect } from './teile'
 import type { LedWallQuelle } from './useLedWallQuelle'
 
 export type Auswahl = KapitelId | 'deckblatt'
+
+/** Verkabelung: Pläne kommen aus der LED-Wall-Kopie – hier nur die Blickrichtung */
+function Verkabelung(): JSX.Element {
+  const ansicht = useMiniManual(
+    (s) => s.anleitung.kapitel.find((x) => x.id === 'verkabelung')?.ansicht ?? 'hinten'
+  )
+  const hatKopie = useMiniManual((s) => !!s.anleitung.ledWall)
+  const update = useMiniManual((s) => s.update)
+  return (
+    <div className="space-y-3">
+      <Field
+        label="Blickrichtung der Pläne"
+        hint="Gesteckt wird meist hinter der Wand. Von hinten gesehen sind die Pläne gespiegelt und groß beschriftet; Spalten- und Kettennummern bleiben am Modul."
+      >
+        <Segmented
+          label="Blickrichtung der Pläne"
+          className="w-auto"
+          value={ansicht}
+          options={[
+            { value: 'hinten', label: 'von hinten' },
+            { value: 'vorne', label: 'von vorne' }
+          ]}
+          onChange={(v) =>
+            update((a) => patchKapitel(a, 'verkabelung', (k) => ({ ...k, ansicht: v })))
+          }
+        />
+      </Field>
+      <p className="text-sm text-muted-foreground">
+        {hatKopie
+          ? 'Pläne, Ports, Stromkreise und Glasfaser kommen aus der LED-Wall-Kopie. Geändert wird im LED-Wall-Konfigurator – danach im Kapitel LED-Wall neu übernehmen.'
+          : 'Noch keine LED-Wall-Planung übernommen – das geht im Kapitel LED-Wall.'}
+      </p>
+    </div>
+  )
+}
 
 function Deckblatt(): JSX.Element {
   const d = useMiniManual((s) => s.anleitung.deckblatt)
@@ -97,6 +134,9 @@ export function KapitelEditor({ id, q }: { id: Auswahl; q: LedWallQuelle }): JSX
       break
     case 'ledWall':
       inhalt = <LedWallKapitel q={q} />
+      break
+    case 'verkabelung':
+      inhalt = <Verkabelung />
       break
     default:
       inhalt =

@@ -378,8 +378,96 @@ try {
           return r?.section?.data.geraete?.[1]?.ausgaenge?.[0]?.breite === 3840 ? r : null
         }, 10_000)
         assert.ok(s, 'Ausgang nicht in der Datei')
-        assert.equal(s.section.version, 3)
+        assert.equal(s.section.version, 4)
         assert.deepEqual(s.section.data.geraete[0].waende, ['wand-1', 'bar'])
+      }
+    ],
+    [
+      'Verkabelung aus der Kopie (von hinten), Glasfaser macht die Box-Schritte sichtbar',
+      async () => {
+        // Technik sieht alle Schritte der Fehlersuche
+        await bar()
+          .getByRole('group', { name: 'Ausgabe für' })
+          .getByRole('button', { name: 'Technik' })
+          .click()
+        await kapitel('fehlersuche')
+        const box = 'Hat die Breakout-Box Strom'
+        const frage = 'Läuft das Signal über Glasfaser'
+        // Kopie ohne Glasfaser: Frage und Box-Schritte entfallen
+        assert.ok(await waitFor(async () => (await vorschau()).includes('Die ganze Wand'), 5000))
+        assert.ok(!(await vorschau()).includes(box), 'Box-Schritt ohne Glasfaser')
+        assert.ok(!(await vorschau()).includes(frage), 'Frage trotz bekannter Antwort')
+
+        // Planung neu: eine Wand mit Ketten, Kreis und Glasfaser (Abschnitt Version 5)
+        const cur = await peek('ledWall')
+        const r = await page.evaluate(
+          ([path, base]) =>
+            window.api.projects.save({
+              path,
+              section: 'ledWall',
+              version: 5,
+              data: {
+                projectName: 'Messe Test',
+                customerName: '',
+                walls: [
+                  {
+                    id: 'wand-1',
+                    name: 'Wand 1',
+                    data: {
+                      moduleKey: '496-2,0',
+                      widthM: '2',
+                      heightM: '1',
+                      sig: [
+                        [0, 0, 1, 1],
+                        [0, 0, 1, 1]
+                      ],
+                      pwr: [
+                        [0, 0, 0, 0],
+                        [0, 0, 0, 0]
+                      ],
+                      sigMeta: { 0: { start: 'bl', axis: 'row' } },
+                      pwrMeta: { 0: { circuit: 'F3', phase: 'L2' } },
+                      fiber: { box: 'cvt10', variant: 'S', redundancy: 'none', lengthM: 80 }
+                    }
+                  }
+                ]
+              },
+              baseSha: base,
+              force: false
+            }),
+          [datei, cur.section.sha256]
+        )
+        assert.ok(r.ok, JSON.stringify(r))
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+        await kapitel('ledWall')
+        await page.getByRole('button', { name: 'Unterschiede ansehen' }).click()
+        await page.getByRole('button', { name: 'Übernehmen', exact: true }).click()
+        await page.getByText(/aus der Projektdatei, Stand 4/).waitFor({ timeout: 5000 })
+
+        await kapitel('verkabelung')
+        assert.ok(
+          await waitFor(async () => {
+            const t = await vorschau()
+            return (
+              t.includes('Ansicht von hinten') &&
+              t.includes('CVT10-S · 1 Box · 1 Faser à 80 m') &&
+              t.includes('F3 · L2')
+            )
+          }, 5000),
+          await vorschau()
+        )
+        await page
+          .getByRole('group', { name: 'Blickrichtung der Pläne' })
+          .getByRole('button', { name: 'von vorne' })
+          .click()
+        assert.ok(
+          await waitFor(async () => !(await vorschau()).includes('Ansicht von hinten'), 5000),
+          'Blickrichtung bleibt hinten'
+        )
+
+        await kapitel('fehlersuche')
+        assert.ok(await waitFor(async () => (await vorschau()).includes(box), 5000), 'Box fehlt')
+        assert.ok(!(await vorschau()).includes(frage), 'Frage trotz Glasfaser in der Planung')
       }
     ],
     [

@@ -57,11 +57,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   Messplatz oder auf dem Handy.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
-- **LED-Wall-Konfigurator:** Glasfaser-Strecke (CVT10) samt Packliste und das Kapitel
-  Verkabelung im Mini-Manual – geplant in
-  [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md#kabelverlauf-im-led-wall-konfigurator) (Phase 2b,
-  Teil 4). Mehrere Wände, Prozessor-Presets, Kabelverlauf, Backup-Leitungen und Stromkreise
-  sind umgesetzt.
 
 ### Neue Werkzeuge
 

@@ -197,6 +197,12 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   war grün, in der echten App hätte „Messen“ mit „Zugriff verweigert“ geendet (Oktober 2026).
   Prüfen, was ein Testschalter außer dem Gewünschten noch abschaltet; danach eine Gegenprobe
   gegen den alten Stand: Der Test muss dort scheitern.
+- **Erwartungen, die nie scheitern können** (beide im eigenen Review gefunden, 18.10.2026):
+  `expect(liste).not.toContain(expect.stringMatching(/…/))` – `toContain` vergleicht strikt, ein
+  Matcher-Objekt ist nie enthalten, das `not` ist also immer wahr; stattdessen
+  `expect(liste.some((t) => /…/.test(t))).toBe(false)`. Und kein stilles `if (…) return` im Test,
+  wenn eine Vorbedingung fehlt – dann prüft er nichts und bleibt grün; die Vorbedingung selbst
+  erwarten (`expect(ids).toContain('lib-wand-dunkel')`).
 
 ## Vor dem Abschluss
 
