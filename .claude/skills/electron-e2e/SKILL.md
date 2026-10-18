@@ -202,6 +202,11 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 
 ## Grenzen
 
+- **Alle Skripte laufen in einem Prozess nacheinander** (`run.mjs` importiert sie): Hängt eines,
+  steht der ganze Lauf bis zum Abbruch der CI (45 min). Deshalb beendet `ctx.close()` die App mit
+  Zeitlimit (20 s) und danach hart – in der macOS-CI hing `app.close()` nach `player.mjs` mit
+  allen Schritten grün (PR #169). Steht im Log „App nach 20 s nicht beendet“, hängt das Beenden,
+  nicht ein Test. Neue Wartestellen im Skript immer mit Zeitlimit (`waitFor`, `timeout`).
 - `timer.mjs` öffnet kurz das Timer-Ausgabefenster auf dem ersten Bildschirm und minimiert
   einmal das Hauptfenster.
 - **Das Hauptfenster erscheint erst bei `ready-to-show`**, manchmal nach dem ersten Inhalt;
