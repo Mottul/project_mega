@@ -81,6 +81,12 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   `e2e/mini-manual.mjs`.
 - **Einstellungs-Broadcast erreicht das auslösende Fenster nicht.** „Ein anderes Fenster
   speichert“ also wirklich testen: `api.openToolWindow(id)` + `app.waitForEvent('window')`.
+  Umgekehrt: `window.api.setSettings(…)` aus dem Testfenster ändert zwar settings.json, aber
+  nicht die Oberfläche desselben Fensters (Menüpunkt blieb „deaktiviert“, 18.10.2026) – solche
+  Einstellungen über die Oberfläche setzen (App-Menü, Dialog per Stub), wie ein Nutzer.
+- **Exportierte HTML-Seite durchklicken** (Handy-Fassung mit eigenem Skript): in main ein
+  `BrowserWindow` die Datei `loadFile`-en lassen und es über `app.waitForEvent('window')` als
+  Playwright-Seite greifen (`e2e/mini-manual.mjs`) – so laufen Skript und Klicks wie im Browser.
 - **Dieselbe Route noch einmal setzen lädt nichts neu**, und Ausgabe-Routen (`#/output`) lesen
   ihre Konfiguration nur beim Öffnen: erst `/`, dann die Zielroute.
 - **Gesteuerte Checkboxen:** `.check()` scheitert, wenn der Zustand erst nach dem Speichern

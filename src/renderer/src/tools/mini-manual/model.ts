@@ -441,7 +441,12 @@ export interface Anleitung {
   /** Kopien aus dem Firmenprofil, damit die Datei beim Kollegen vollständig ist */
   kontakte: FirmenKontakt[]
   ledWall: LedWallKopie | null
-  ausgabe: { passwoerter: Passwoerter }
+  ausgabe: {
+    passwoerter: Passwoerter
+    /** Online-Fassung: Ordner in der Online-Ablage und seine Adresse (QR-Code der Kurzkarte) –
+     *  bleibt beim Aktualisieren gleich; null = noch nicht online */
+    online: { ordner: string; url: string } | null
+  }
   stand: { bearbeitet: string; aenderungen: string }
 }
 
@@ -464,7 +469,7 @@ export function leereAnleitung(): Anleitung {
     fehlerfaelle: [],
     kontakte: [],
     ledWall: null,
-    ausgabe: { passwoerter: 'separat' },
+    ausgabe: { passwoerter: 'separat', online: null },
     stand: { bearbeitet: '', aenderungen: '' }
   }
 }

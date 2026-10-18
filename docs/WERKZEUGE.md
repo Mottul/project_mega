@@ -562,7 +562,19 @@ Kurz-Anleitungen für die Leute vor Ort („So bedienst du deine LED-Wall“): w
 einschaltet und bedient, was wo steht – und im Fehlerfall Schritt für Schritt, was man prüfen und
 selbst beheben darf, bevor man anruft. Ausgabe als **Handbuch** (PDF, A4, Fußzeile mit Seiten)
 und **Kurzkarte** (PDF, A5, genau eine Seite – passt sie nicht, wird sie bis 62 % verkleinert,
-sonst kommt ein Hinweis).
+sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
+
+- **Handy-Fassung** (Leiste → Handy): eine einzige HTML-Datei, die nichts nachlädt – Fotos und
+  Logo stecken darin. Inhaltsverzeichnis, unten eine Leiste „Anrufen“ mit dem ersten Kontakt; die
+  Fehlersuche läuft mit **Schritt für Schritt** (eine Frage, Ja/Nein, Zurück, Von vorn), ohne
+  Skript bleibt alles lesbar und „weiter bei 3“ ist ein Link. **Als Datei speichern** zum
+  Verschicken (WhatsApp, Mail) – mit der Stufe aus der Leiste wie das PDF.
+- **Online stellen:** schreibt dieselbe Seite in die **Online-Ablage** (App-Menü), je Anleitung
+  in einen eigenen Ordner mit nicht erratbarem Namen („messe-dornbirn-k7f3q2x9/index.html“);
+  beim Aktualisieren bleibt die Adresse gleich, „Unter neuer Adresse“ legt einen neuen Ordner an.
+  Online **nie Zugangsdaten** und höchstens Stufe Betreuung. Die Adresse steht in der Schublade
+  unter „Ausgabe“ (Link), „Adresse kopieren“ im Menü, und die **Kurzkarte** druckt sie als
+  QR-Code („Am Handy: die ganze Anleitung“).
 
 - **Stufen:** In der Leiste wählst du, für wen die Ausgabe ist – **Bedienung** (Kunde,
   Moderation), **Betreuung** (Haustechnik, Stagehand), **Technik** (Techniker, Lehrlinge) oder
@@ -761,6 +773,10 @@ die anderen bleiben beim Speichern unverändert.
 - **Sicherungen:** Vor jedem Überschreiben legt die App die bisherige Datei im Benutzerordner unter
   `Sicherungen/` ab (die letzten 10 je Datei; gleichnamige Dateien in anderen Ordnern haben
   eigene Sicherungen).
+- **Online-Ablage** (App-Menü, für die Handy-Fassung des Mini-Manuals): ein Ordner, den ein
+  Cloud-Dienst im Netz veröffentlicht – z. B. der **pCloud Public Folder** über pCloud Drive –, und
+  seine Adresse (`https://filedn.eu/…/`). Die Mottulbox schreibt nur hinein, hochladen tut der
+  Dienst; ein Zugang zu ihm steht nie in der App.
 - **Projektordner:** im App-Menü; ab Werk `Dokumente/Mottulbox-Projekte` (wird beim ersten
   Speichern angelegt), änderbar, auch auf ein Netzlaufwerk. Eine neue Datei beginnt immer dort,
   „Öffnen“ im zuletzt benutzten Projektordner.

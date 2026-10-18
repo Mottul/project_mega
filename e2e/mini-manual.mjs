@@ -5,7 +5,7 @@
 // Export, Import). Dialoge werden im main ersetzt.
 
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
   launchApp,
@@ -378,7 +378,7 @@ try {
           return r?.section?.data.geraete?.[1]?.ausgaenge?.[0]?.breite === 3840 ? r : null
         }, 10_000)
         assert.ok(s, 'Ausgang nicht in der Datei')
-        assert.equal(s.section.version, 4)
+        assert.equal(s.section.version, 5)
         assert.deepEqual(s.section.data.geraete[0].waende, ['wand-1', 'bar'])
       }
     ],
@@ -468,6 +468,97 @@ try {
         await kapitel('fehlersuche')
         assert.ok(await waitFor(async () => (await vorschau()).includes(box), 5000), 'Box fehlt')
         assert.ok(!(await vorschau()).includes(frage), 'Frage trotz Glasfaser in der Planung')
+      }
+    ],
+    [
+      'Handy-Fassung: Datei mit eingesetzten Fotos, Online-Ablage, Adresse in der Schublade',
+      async () => {
+        const handy = (eintrag) =>
+          bar()
+            .getByRole('button', { name: /^Handy/ })
+            .click()
+            .then(() => page.getByRole('menuitem', { name: eintrag }).click())
+        // als Datei: eine Seite, die nichts nachlädt – das Deckblatt-Foto steckt darin
+        const f = join(ctx.userData, 'handy.html')
+        await saveTo(f)
+        await handy('Als Datei speichern …')
+        assert.ok(await waitFor(() => existsSync(f), 10_000), 'Handy-Datei fehlt')
+        const html = readFileSync(f, 'utf8')
+        assert.ok(html.includes('<meta name="viewport"'), 'ohne viewport')
+        assert.ok(html.includes('<script>(function(){'), 'ohne Skript')
+        assert.ok(html.includes('src="data:image/jpeg;base64,'), 'Foto nicht eingesetzt')
+        assert.ok(!html.includes('foto://'), 'foto:// in der Datei')
+
+        // Online-Ablage (wie ein pCloud Public Folder): Ordner und Adresse in den Einstellungen
+        const ablage = join(ctx.userData, 'Public Folder')
+        mkdirSync(ablage, { recursive: true })
+        // über das App-Menü wie ein Nutzer (setSettings aus diesem Fenster käme hier nicht an –
+        // der Abgleich erreicht das auslösende Fenster nicht)
+        await app.evaluate(({ dialog }, p) => {
+          dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [p] })
+        }, ablage)
+        await page
+          .getByRole('button', { name: /Mottulbox/ })
+          .first()
+          .click()
+        await page.getByRole('button', { name: 'Ordner wählen …' }).click()
+        await page.getByTestId('online-ordner').getByText(ablage).waitFor({ timeout: 5000 })
+        await page.getByLabel('Adresse der Online-Ablage').fill('https://filedn.eu/test/')
+        await page.keyboard.press('Tab')
+        assert.ok(
+          await waitFor(
+            async () =>
+              (await page.evaluate(() => window.api.getSettings())).online.url ===
+              'https://filedn.eu/test/',
+            5000
+          ),
+          'Adresse nicht gespeichert'
+        )
+        await page.keyboard.press('Escape')
+        await handy('Online stellen')
+        const link = page.getByTestId('online-adresse')
+        const ausgabe = drawer().getByRole('button', { name: /^Ausgabe/ })
+        if ((await ausgabe.getAttribute('aria-expanded')) !== 'true') await ausgabe.click()
+        await link.waitFor({ timeout: 10_000 })
+        const url = await link.textContent()
+        const m = url.match(/^https:\/\/filedn\.eu\/test\/(messe-test-[a-z2-9]{8})\/index\.html$/)
+        assert.ok(m, url)
+        const online = readFileSync(join(ablage, m[1], 'index.html'), 'utf8')
+        assert.ok(!online.includes('id="k-zugang"'), 'online mit Zugangsdaten')
+        // aktualisieren: gleicher Ordner, gleiche Adresse (der QR-Code bleibt gültig)
+        await handy('Online aktualisieren')
+        await page.getByText('Online gestellt').last().waitFor({ timeout: 10_000 })
+        assert.equal(await link.textContent(), url)
+        assert.deepEqual(readdirSync(ablage), [m[1]])
+      }
+    ],
+    [
+      'Handy-Fassung im Browser: Fehlersuche Schritt für Schritt',
+      async () => {
+        const f = join(ctx.userData, 'handy.html')
+        const [win] = await Promise.all([
+          app.waitForEvent('window'),
+          app.evaluate(({ BrowserWindow }, file) => {
+            const w = new BrowserWindow({ show: false, width: 400, height: 800 })
+            void w.loadFile(file)
+          }, f)
+        ])
+        await win.waitForLoadState()
+        const fall = win.locator('.fall[data-fall="lib-wand-dunkel"]')
+        await fall.getByRole('button', { name: 'Schritt für Schritt' }).click()
+        const aktiv = () => fall.locator('.fs.aktiv').getAttribute('data-nr')
+        assert.equal(await fall.locator('.fs.aktiv').count(), 1)
+        assert.equal(await aktiv(), '1')
+        // Frage 1 „Leuchten die Module …“ – Ja/Nein als Knöpfe, sonst keine Schritte sichtbar
+        await fall.locator('.sfs-box').getByRole('button', { name: 'Nein', exact: true }).click()
+        const zwei = await aktiv().catch(() => null)
+        const ende = await fall.locator('.sfs-ende').count()
+        assert.ok((zwei && zwei !== '1') || ende === 1, `weder Schritt noch Ende: ${zwei}`)
+        await fall.locator('.sfs-box').getByRole('button', { name: 'Zurück' }).click()
+        assert.equal(await aktiv(), '1')
+        await fall.locator('.sfs-box').getByRole('button', { name: 'Alle Schritte zeigen' }).click()
+        assert.ok((await fall.locator('.fs:visible').count()) > 3, 'Liste nicht zurück')
+        await win.close()
       }
     ],
     [

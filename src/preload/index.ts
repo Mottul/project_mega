@@ -155,6 +155,8 @@ const api: ToolboxApi = {
   util: {
     exportPdf: (html, suggestedName, page) =>
       ipcRenderer.invoke(Channels.utilExportPdf, html, suggestedName, page ?? {}),
+    exportHtml: (html, suggestedName) =>
+      ipcRenderer.invoke(Channels.utilExportHtml, html, suggestedName),
     saveText: (text, suggestedName, filters) =>
       ipcRenderer.invoke(Channels.utilSaveText, text, suggestedName, filters),
     openText: () => ipcRenderer.invoke(Channels.utilOpenText),
@@ -181,6 +183,10 @@ const api: ToolboxApi = {
     remove: (id) => ipcRenderer.invoke(Channels.bausteineRemove, id),
     export: (ids) => ipcRenderer.invoke(Channels.bausteineExport, ids),
     import: () => ipcRenderer.invoke(Channels.bausteineImport)
+  },
+
+  online: {
+    publish: (html, ordner, name) => ipcRenderer.invoke(Channels.onlinePublish, html, ordner, name)
   },
 
   jingles: {

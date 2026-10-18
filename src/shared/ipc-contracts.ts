@@ -15,6 +15,7 @@ import type {
   NotifyOptions,
   BausteinExport,
   BausteinImport,
+  OnlinePublish,
   EigenerBaustein,
   FotoImport,
   PdfExportResult,
@@ -210,6 +211,8 @@ export const Channels = {
   windowFitContent: 'window:fitContent', // kleines Werkzeugfenster auf Inhaltshöhe bringen
   // Werkzeuge
   utilExportPdf: 'util:exportPdf', // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
+  utilExportHtml: 'util:exportHtml', // HTML-Datei mit eingesetzten Fotos (Save-Dialog)
+  onlinePublish: 'online:publish', // Handy-Fassung in die Online-Ablage schreiben
   utilSaveText: 'util:saveText', // Text/JSON in Datei speichern (Save-Dialog)
   utilOpenText: 'util:openText', // Textdatei einlesen (Open-Dialog)
   utilLog: 'util:log', // Renderer -> main-Debug-Log (Feld-Diagnose)
@@ -510,6 +513,9 @@ export interface ToolboxApi {
       suggestedName: string,
       page?: PdfPageOptions
     ): Promise<PdfExportResult | null>
+    /** Eigenständige HTML-Datei speichern (Fotos als data:-URLs eingesetzt, Speichern-Dialog) –
+     *  zum Verschicken, sie lädt nichts nach. Liefert den Pfad oder null (abgebrochen). */
+    exportHtml(html: string, suggestedName: string): Promise<string | null>
     /** Text (z.B. JSON) über einen Speichern-Dialog in eine Datei schreiben.
      *  Liefert den gewählten Pfad oder null (abgebrochen). Ohne filters: JSON. */
     saveText(
@@ -569,6 +575,16 @@ export interface ToolboxApi {
      * gleicher Name mit „(2)“ – nie still überschreiben. null = abgebrochen; je Datei ein Ergebnis.
      */
     import(): Promise<BausteinImport[] | null>
+  }
+
+  /** Online-Ablage der Handy-Fassung (Ordner und Adresse in den Einstellungen, App-Menü) */
+  online: {
+    /**
+     * HTML (Fotos setzt main ein) als index.html in einen Ordner der Ablage schreiben. `ordner`:
+     * der bisherige der Anleitung (gleiche Adresse, der QR-Code bleibt gültig) oder null = neu
+     * aus `name` und Zufall, nicht erratbar.
+     */
+    publish(html: string, ordner: string | null, name: string): Promise<OnlinePublish>
   }
 
   jingles: {

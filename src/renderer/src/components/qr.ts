@@ -1,6 +1,7 @@
-// Minimaler, dependency-freier QR-Encoder (Byte-Modus, EC-Level L, Version 1–4,
-// Einzelblock). Reicht locker für kurze LAN-URLs (V4-L ~78 Bytes). Bewusst klein
-// gehalten: keine Block-Verschachtelung (die gibt es bei V1–4/L nicht). Reed-
+// Minimaler, dependency-freier QR-Encoder (Byte-Modus, EC-Level L, Version 1–5,
+// Einzelblock). Reicht für LAN-URLs und die Online-Adresse einer Anleitung (V5-L 106 Bytes,
+// z. B. https://filedn.eu/<Kennung>/<Ordner>/index.html). Bewusst klein gehalten: keine
+// Block-Verschachtelung (die gibt es bei V1–5/L nicht, erst ab V6). Reed-
 // Solomon, BCH-Formatinfo und Maskenwahl werden zur Laufzeit berechnet.
 
 interface VersionSpec {
@@ -14,7 +15,8 @@ const VERSIONS: Record<number, VersionSpec> = {
   1: { size: 21, centers: [], data: 19, ec: 7 },
   2: { size: 25, centers: [6, 18], data: 34, ec: 10 },
   3: { size: 29, centers: [6, 22], data: 55, ec: 15 },
-  4: { size: 33, centers: [6, 26], data: 80, ec: 20 }
+  4: { size: 33, centers: [6, 26], data: 80, ec: 20 },
+  5: { size: 37, centers: [6, 30], data: 108, ec: 26 }
 }
 
 // ---- Galois-Feld GF(256), primitives Polynom 0x11d ----
@@ -298,7 +300,7 @@ function penalty(matrix: number[][], size: number): number {
 export function qrMatrix(text: string): boolean[][] | null {
   const byteLen = new TextEncoder().encode(text).length
   let version = 0
-  for (const v of [1, 2, 3, 4]) {
+  for (const v of [1, 2, 3, 4, 5]) {
     if (byteLen + 2 <= VERSIONS[v].data) {
       version = v
       break

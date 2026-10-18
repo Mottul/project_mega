@@ -13,6 +13,7 @@ import { cn } from '@renderer/lib/utils'
 import { DEFAULT_FIRMENPROFIL, type ThemeMode, type UiDensity } from '@shared/types'
 import { FfmpegSettings } from './FfmpegSettings'
 import { FirmenprofilDialog } from './FirmenprofilDialog'
+import { OnlineSettings } from './OnlineSettings'
 import { ProjectsSettings } from './ProjectsSettings'
 import { YtdlpSettings } from './YtdlpSettings'
 import { useAppearance } from './useAppearance'
@@ -171,6 +172,11 @@ export function AppMenu({
             >
               <Building2 className="size-4" /> Bearbeiten …
             </Button>
+          </section>
+
+          <section className="space-y-2">
+            <Heading>Online-Ablage</Heading>
+            <OnlineSettings />
           </section>
 
           <div className="h-px bg-border" />

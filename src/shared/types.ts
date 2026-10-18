@@ -1676,6 +1676,28 @@ export interface ProjectsSettings {
 
 export const DEFAULT_PROJECTS_SETTINGS: ProjectsSettings = { dir: '', recent: [] }
 
+/**
+ * Online-Ablage der Handy-Fassung (Mini-Manual): ein Ordner, den ein Cloud-Dienst im Netz
+ * veröffentlicht (pCloud Public Folder über pCloud Drive), und seine Web-Adresse. Die Mottulbox
+ * schreibt nur dorthin – hochladen tut der Dienst, ein Zugang zu ihm steht nie in der App.
+ */
+export interface OnlineSettings {
+  /** lokaler Ordner, z. B. P:Public Folder; leer = nicht eingerichtet */
+  dir: string
+  /** Web-Adresse dieses Ordners, z. B. https://filedn.eu/<Kennung>/ */
+  url: string
+}
+
+export const DEFAULT_ONLINE_SETTINGS: OnlineSettings = { dir: '', url: '' }
+
+/** Ergebnis von „Online stellen“: Ordner und Adresse merkt sich die Anleitung (QR-Code) */
+export type OnlinePublish =
+  | { ok: true; ordner: string; url: string; path: string }
+  | {
+      ok: false
+      reason: 'nicht-eingerichtet' | 'nicht-erreichbar' | 'adresse' | 'zu-gross' | 'fehler'
+    }
+
 /** Ansprechpartner aus dem Firmenprofil (im Mini-Manual als Kopie je Anleitung) */
 export interface FirmenKontakt {
   id: string
@@ -1869,6 +1891,8 @@ export interface AppSettings {
   projects: ProjectsSettings
   /** Firmenprofil für Anleitungen (Mini-Manual) und PDFs */
   firmenprofil: FirmenProfil
+  /** Online-Ablage der Handy-Fassung des Mini-Manuals */
+  online: OnlineSettings
 }
 
 /** Teiländerung: Objekte feldweise optional, Listen immer ganz (siehe settingsMerge.ts). */
@@ -1920,5 +1944,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   videoGen: DEFAULT_VIDEOGEN_SETTINGS,
   remoteControls: DEFAULT_REMOTE_CONTROLS,
   projects: DEFAULT_PROJECTS_SETTINGS,
-  firmenprofil: DEFAULT_FIRMENPROFIL
+  firmenprofil: DEFAULT_FIRMENPROFIL,
+  online: DEFAULT_ONLINE_SETTINGS
 }
