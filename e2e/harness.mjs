@@ -58,9 +58,11 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
     args: [...sandbox, `--user-data-dir=${userData}`, ...args, root],
     env: full
   })
+  // gleich hier holen: Hat sich die App schon selbst beendet (Hauptfenster zu, shutdown.mjs),
+  // wirft app.process() in Playwright („reading '_object'“ – CI rot unter Windows und macOS)
+  const proc = app.process()
   // E2E_DEBUG=1: Ausgabe und Ende des main-Prozesses mitschreiben (Abstürze, Fehler im main)
   if (process.env.E2E_DEBUG) {
-    const proc = app.process()
     proc.stdout?.on('data', (d) => process.stdout.write(`[main] ${d}`))
     proc.stderr?.on('data', (d) => process.stdout.write(`[main!] ${d}`))
     proc.on('exit', (code, signal) => console.log(`[main] beendet: Code ${code}, Signal ${signal}`))
@@ -100,7 +102,6 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
       // grün, dann 42 Minuten nichts, bis der Lauf nach 45 abgebrochen wurde (PR #169,
       // 18.10.2026). Die App räumt laufende Arbeit selbst in höchstens 3 s ab; was danach noch
       // steht, wird hart beendet, damit die übrigen Skripte laufen.
-      const proc = app.process()
       const zu = await Promise.race([
         app.close().then(
           () => true,
@@ -108,7 +109,7 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
         ),
         sleep(CLOSE_TIMEOUT_MS).then(() => false)
       ])
-      if (!zu) {
+      if (!zu && proc.exitCode === null && proc.signalCode === null) {
         console.log(
           `  [e2e] App nach ${CLOSE_TIMEOUT_MS / 1000} s nicht beendet – Prozess wird beendet`
         )

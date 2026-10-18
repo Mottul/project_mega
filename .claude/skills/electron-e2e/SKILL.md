@@ -207,6 +207,10 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   Zeitlimit (20 s) und danach hart – in der macOS-CI hing `app.close()` nach `player.mjs` mit
   allen Schritten grün (PR #169). Steht im Log „App nach 20 s nicht beendet“, hängt das Beenden,
   nicht ein Test. Neue Wartestellen im Skript immer mit Zeitlimit (`waitFor`, `timeout`).
+- **`app.process()` nur beim Start holen:** Hat sich die App schon selbst beendet (Hauptfenster
+  zu in `layout.mjs`, `shutdown.mjs`), wirft Playwright beim Abfragen („reading '_object'“) – so
+  war #170 unter Windows und macOS rot. Änderungen am Harness gegen **alle** Skripte prüfen, nicht
+  nur gegen das, um das es ging; besonders die, in denen die App sich selbst beendet.
 - `timer.mjs` öffnet kurz das Timer-Ausgabefenster auf dem ersten Bildschirm und minimiert
   einmal das Hauptfenster.
 - **Das Hauptfenster erscheint erst bei `ready-to-show`**, manchmal nach dem ersten Inhalt;
