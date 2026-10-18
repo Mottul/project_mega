@@ -15,7 +15,8 @@ import { cn } from '@renderer/lib/utils'
 const isMac = navigator.platform.toLowerCase().includes('mac')
 const MOD = isMac ? '⌘' : 'Strg+'
 
-function Item({
+/** Eintrag eines Leisten-Menüs (auch im Mini-Manual: Menü „Handy“) */
+export function MenuItem({
   onClick,
   disabled,
   shortcut,
@@ -43,12 +44,14 @@ function Item({
   )
 }
 
-export function ProjectFileMenu({ file }: { file: ProjectFileControls }): JSX.Element {
+/** Leisten-Menü auf/zu: Klick außerhalb oder Escape schließt es */
+export function useMenu(): {
+  open: boolean
+  setOpen: (v: boolean | ((o: boolean) => boolean)) => void
+  ref: React.RefObject<HTMLDivElement>
+} {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const recent = useSettings((s) => s.projects.recent) ?? []
-
-  // Klick außerhalb / Escape schließt das Menü
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent): void => {
@@ -64,6 +67,12 @@ export function ProjectFileMenu({ file }: { file: ProjectFileControls }): JSX.El
       window.removeEventListener('keydown', onKey)
     }
   }, [open])
+  return { open, setOpen, ref }
+}
+
+export function ProjectFileMenu({ file }: { file: ProjectFileControls }): JSX.Element {
+  const { open, setOpen, ref } = useMenu()
+  const recent = useSettings((s) => s.projects.recent) ?? []
 
   const run = (fn: () => unknown): void => {
     setOpen(false)
@@ -91,23 +100,26 @@ export function ProjectFileMenu({ file }: { file: ProjectFileControls }): JSX.El
             aria-label="Datei"
             className="absolute left-0 top-full z-50 mt-1 w-72 rounded-lg border border-border bg-card p-1.5 shadow-xl"
           >
-            <Item onClick={() => run(file.newFile)}>Neu</Item>
-            <Item onClick={() => run(() => file.open())} shortcut={`${MOD}O`}>
+            <MenuItem onClick={() => run(file.newFile)}>Neu</MenuItem>
+            <MenuItem onClick={() => run(() => file.open())} shortcut={`${MOD}O`}>
               Öffnen …
-            </Item>
-            <Item onClick={() => run(file.save)} shortcut={`${MOD}S`}>
+            </MenuItem>
+            <MenuItem onClick={() => run(file.save)} shortcut={`${MOD}S`}>
               Speichern
-            </Item>
-            <Item onClick={() => run(file.saveAs)} shortcut={`${MOD}${isMac ? '⇧' : 'Umschalt+'}S`}>
+            </MenuItem>
+            <MenuItem
+              onClick={() => run(file.saveAs)}
+              shortcut={`${MOD}${isMac ? '⇧' : 'Umschalt+'}S`}
+            >
               Speichern unter …
-            </Item>
-            <Item
+            </MenuItem>
+            <MenuItem
               disabled={!b}
               onClick={() => run(() => b && api.showItemInFolder(b.path))}
               title={b?.path}
             >
               Im Ordner zeigen
-            </Item>
+            </MenuItem>
             {recent.length > 0 && (
               <>
                 <div className="my-1 h-px bg-border" />
@@ -115,9 +127,9 @@ export function ProjectFileMenu({ file }: { file: ProjectFileControls }): JSX.El
                   Zuletzt geöffnet
                 </p>
                 {recent.map((p) => (
-                  <Item key={p} title={p} onClick={() => run(() => file.open(p))}>
+                  <MenuItem key={p} title={p} onClick={() => run(() => file.open(p))}>
                     {projectDisplayName(p)}
-                  </Item>
+                  </MenuItem>
                 ))}
               </>
             )}

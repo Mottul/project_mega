@@ -160,6 +160,14 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   wie GPS-Koordinaten des Aufbauorts weg, bevor die Datei an Kunden geht. Andere Abschnitte
   derselben Datei liest ein Werkzeug nur über `projects.peek` (nur `.mottul`, ohne Freigabe zum
   Schreiben).
+- **Handy-Fassung und Online-Ablage (Mini-Manual):** Die HTML-Datei lädt nichts nach (Fotos als
+  `data:`-URLs, die main aus der eigenen Ablage über den geprüften Hash einsetzt) und enthält nur
+  unser eigenes kleines Skript; alle Texte sind escaped wie im PDF. **Online nie Zugangsdaten** –
+  das Kapitel fällt weg, höchstens Stufe Betreuung –, `noindex` im Kopf. main schreibt nur in den
+  Ordner der Online-Ablage (Einstellung, im Ordner-Dialog gewählt, mit Zeitlimit geprüft) und
+  dort nur `<Ordner>/index.html` mit einem Namen, den main selbst erzeugt hat (`[a-z0-9-]`, kein
+  Weg nach oben); die Adresse nur `https` ohne Abfrage. Der Ordnername ist nicht erratbar
+  (40 Bit Zufall) – geheim ist die Seite trotzdem nicht: Wer die Kurzkarte sieht, kann sie öffnen.
 - **Anleitungen (Mini-Manual):** Alle Texte aus der Datei werden zuerst escaped, erst dann wird
   das kleine Auszeichnungs-Subset umgesetzt; Links nur `https:`, `tel:`, `mailto:`; die
   Akzentfarbe kommt nur als geprüftes Hex ins CSS. **Zugangsdaten stehen im Klartext** in der

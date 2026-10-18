@@ -38,10 +38,11 @@ import {
 /**
  * Schema-Version des Abschnitts „anleitung“ – 2: LED-Wall-Kopie mit mehreren Wänden; 3: Geräte
  * mit „bespielt“ (Prozessor) und Ausgängen samt Signalweg (Zuspieler), Rolle „Verteiler“;
- * 4: Kapitel Verkabelung (mit Blickrichtung), Fragen mit Antwort aus der Planung (Glasfaser).
+ * 4: Kapitel Verkabelung (mit Blickrichtung), Fragen mit Antwort aus der Planung (Glasfaser);
+ * 5: Online-Fassung (Ordner und Adresse in der Online-Ablage).
  * Eine ältere Mottulbox öffnet neuere Abschnitte nicht – sonst fielen die Felder beim Speichern weg.
  */
-export const ANLEITUNG_VERSION = 4
+export const ANLEITUNG_VERSION = 5
 
 export const GRENZEN = {
   kurz: 200,
@@ -374,6 +375,14 @@ function ledWall(v: unknown): LedWallKopie | null {
   }
 }
 
+/** Online-Fassung: nur ein Ordnername, wie main ihn erzeugt, und eine https-Adresse ohne Abfrage */
+function online(v: unknown): Anleitung['ausgabe']['online'] {
+  if (!isObj(v) || typeof v.ordner !== 'string' || typeof v.url !== 'string') return null
+  if (!/^[a-z0-9][a-z0-9-]{2,59}$/.test(v.ordner)) return null
+  if (v.url.length > 300 || !/^https:\/\/[^\s?#"'<>]+$/.test(v.url)) return null
+  return { ordner: v.ordner, url: v.url }
+}
+
 export function sanitizeAnleitung(raw: unknown): Anleitung {
   const d = leereAnleitung()
   if (!isObj(raw)) return d
@@ -409,7 +418,8 @@ export function sanitizeAnleitung(raw: unknown): Anleitung {
       passwoerter:
         aus.passwoerter === 'drucken' || aus.passwoerter === 'schwaerzen'
           ? aus.passwoerter
-          : 'separat'
+          : 'separat',
+      online: online(aus.online)
     },
     stand: { bearbeitet: str(st.bearbeitet), aenderungen: str(st.aenderungen, 4000) }
   }

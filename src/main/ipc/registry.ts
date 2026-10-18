@@ -18,6 +18,7 @@ import { registerBausteineHandlers } from './bausteine.handlers'
 import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
 import { registerFotosHandlers } from './fotos.handlers'
+import { registerHtmlHandlers } from './html.handlers'
 import { registerJingleHandlers } from './jingle.handlers'
 import { registerManualsHandlers } from './manuals.handlers'
 import { registerNetscanHandlers } from './netscan.handlers'
@@ -243,6 +244,7 @@ export function registerIpcHandlers(): void {
   registerPlayerHandlers()
   registerProjectsHandlers()
   registerFotosHandlers()
+  registerHtmlHandlers()
   registerBausteineHandlers()
   registerTimerHandlers()
   registerUtilHandlers()

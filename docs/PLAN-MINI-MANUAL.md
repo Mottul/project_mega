@@ -82,6 +82,15 @@ ein Prozessor) gelten ohne Angabe als verbunden – so bleibt die einfache Anlei
 
 **Phase 2b ist damit umgesetzt.**
 
+**Phase 3, Teil A umgesetzt (18.10.2026):** Handy-Fassung als eine HTML-Datei (`handy.ts`: Fotos
+setzt main ein, Inhaltsverzeichnis, Anrufen-Leiste, Fehlersuche Schritt für Schritt mit einem
+kleinen Skript, ohne Skript lesbar), Speichern zum Verschicken, **Online-Ablage** im App-Menü
+(Ordner + Adresse, z. B. pCloud Public Folder; main schreibt `<Ordner>/index.html`, Ordnername
+aus Projekt + Zufall, bleibt je Anleitung gleich) und der QR-Code der Adresse auf der Kurzkarte
+(QR-Encoder bis Version 5, 106 Bytes). Anleitung Version 5 (`ausgabe.online`). Online nie
+Zugangsdaten, höchstens Stufe Betreuung. **Teil B** (mit den Beispieldateien): Tastenfeld-Editor,
+Import Stream Deck/Companion/OBS, Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player.
+
 Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.
@@ -1222,8 +1231,10 @@ Phase 0 und den Start von Phase 1 ist nichts mehr offen. Später zu klären:
 3. ~~Firmenfarbe~~ – geklärt: nur Akzent, nicht Papier (Festlegung 23). Logo, Farbwert und
    Kontakte bringt Matthias zum Firmenprofil mit.
 4. ~~Kurzkarte A4 oder A5~~ – geklärt: A5 (Festlegung 22).
-5. **HTML-Fassung ablegen:** Gibt es einen Ort (Website, Cloud-Link), auf den ein QR-Code zeigen
-   kann – oder geht die Datei nur per WhatsApp/Mail an den Kunden? (Phase 3)
+5. ~~HTML-Fassung ablegen~~ – geklärt (18.10.2026): eine in sich vollständige Datei; Standard
+   ist verschicken (WhatsApp/Mail), online optional über den pCloud Public Folder von Matthias
+   (Adressen `https://filedn.eu/<Kennung>/<Pfad>`) oder einen anderen veröffentlichten Ordner.
+   Online nie Zugangsdaten; QR-Code auf der Kurzkarte nur mit Adresse.
 6. ~~Kabelverlauf – Annahmen zu den Einspeisepunkten~~ – entfällt: Verlauf vorerst nur von Hand
    (Festlegung 24, 17.10.2026).
 

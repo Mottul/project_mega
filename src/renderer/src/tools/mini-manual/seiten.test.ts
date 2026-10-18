@@ -6,6 +6,7 @@ import { kopieAus } from './ledWallKopie'
 import { leereAnleitung, type Anleitung, type Block } from './model'
 import { platzhalterWerte } from './platzhalter'
 import { pruefung } from './pruefung'
+import { sanitizeAnleitung } from './sanitize'
 import { handbuchHtml, kapitelNummern, kurzkarteHtml, vorschau, type SeitenKontext } from './seiten'
 import { neueAnleitung } from './vorlage'
 
@@ -154,6 +155,36 @@ describe('Kurzkarte und Vorschau', () => {
     a.kapitel = a.kapitel.map((k) => (k.id === 'pflege' ? { ...k, an: false } : k))
     expect(vorschau(a, ctx(1), 'pflege').html).toContain('erscheint in dieser Ausgabe nicht')
     expect(vorschau(a, ctx(1), 'deckblatt').html).toContain('Messe &lt;Dornbirn&gt;')
+  })
+})
+
+describe('Online-Fassung', () => {
+  const URL_ = 'https://filedn.eu/llBIn2VtMT8YMNyN4Vaac98/messe-dornbirn-2026-k7f3q2x9/index.html'
+
+  it('Kurzkarte druckt die Adresse als QR-Code (Version 5 passt)', () => {
+    const a = beispiel()
+    expect(kurzkarteHtml(a, ctx(1))).not.toContain('class="handy"')
+    a.ausgabe.online = { ordner: 'messe-dornbirn-2026-k7f3q2x9', url: URL_ }
+    const html = kurzkarteHtml(a, ctx(1))
+    expect(html).toContain('<b>Am Handy:</b>')
+    expect(html).toContain(
+      'filedn.eu/llBIn2VtMT8YMNyN4Vaac98/messe-dornbirn-2026-k7f3q2x9/index.html'
+    )
+    // 37 Module + 2 × 4 Ruhezone
+    expect(html).toContain('viewBox="0 0 45 45"')
+  })
+
+  it('gespeichert wird nur ein Ordnername wie von main und eine https-Adresse', () => {
+    const mit = (online: unknown) => sanitizeAnleitung({ ausgabe: { online } }).ausgabe.online
+    expect(mit({ ordner: 'messe-k7f3q2x9', url: URL_ })).toEqual({
+      ordner: 'messe-k7f3q2x9',
+      url: URL_
+    })
+    expect(mit(null)).toBeNull()
+    expect(mit({ ordner: '../x', url: URL_ })).toBeNull()
+    expect(mit({ ordner: 'messe-k7f3q2x9', url: 'http://filedn.eu/x/index.html' })).toBeNull()
+    expect(mit({ ordner: 'messe-k7f3q2x9', url: 'javascript:alert(1)' })).toBeNull()
+    expect(mit({ ordner: 'messe-k7f3q2x9', url: 'https://x.eu/"><script>' })).toBeNull()
   })
 })
 

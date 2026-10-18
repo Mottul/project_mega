@@ -1,10 +1,12 @@
 // Mini-Manual im Werkzeug-Muster (ToolShell, docs/PLAN-MINI-MANUAL.md, Skizze „Arbeitsplatz“):
 //   Leiste „Anleitung“  Datei-Menü (Projektdatei, Abschnitt „anleitung“), Stufe der Ausgabe,
-//                       Kurzkarte (A5, eine Seite) und Handbuch (A4) als PDF
+//                       Kurzkarte (A5, eine Seite) und Handbuch (A4) als PDF, Handy-Fassung
+//                       (eine HTML-Datei, auch in die Online-Ablage)
 //   Schublade           Projekt, Kapitel an/ab, Ausgabe, Prüfung vor dem Export
 //   Arbeitsfläche       gewähltes Kapitel | Vorschau (dieselbe Seite wie im PDF)
 
 import { useMemo, useState } from 'react'
+import type { OnlinePublish } from '@shared/types'
 import { ChevronLeft, ChevronRight, FileDown, IdCard, Library } from 'lucide-react'
 import { ProjectFileMenu } from '@renderer/components/ProjectFileMenu'
 import { BarDivider, ToolBar, ToolShell } from '@renderer/components/ToolShell'
@@ -20,11 +22,13 @@ import { useElementWidth } from '@renderer/lib/useElementWidth'
 import { usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
 import { DEFAULT_FIRMENPROFIL } from '@shared/types'
 import { MINI_MANUAL_FILE } from './fileSection'
+import { handyHtml, ONLINE_STUFE } from './handy'
 import { KAPITEL, kapitelDef, stufeLabel, type Stufe } from './model'
 import { pruefung } from './pruefung'
 import { fusszeile, handbuchHtml, kurzkarteHtml, vorschau, type SeitenKontext } from './seiten'
 import { useMiniManual } from './store'
 import { BausteineDialog } from './ui/BausteineDialog'
+import { HandyMenu } from './ui/HandyMenu'
 import { KapitelEditor, type Auswahl } from './ui/KapitelEditor'
 import { Schublade } from './ui/Schublade'
 import { Vorschau } from './ui/Vorschau'
@@ -50,6 +54,15 @@ const auswahlCodec: Codec<Auswahl> = {
 }
 
 const dateiname = (s: string): string => s.replace(/[^\wäöüÄÖÜß -]+/g, '').trim()
+
+const ONLINE_GRUND: Record<Extract<OnlinePublish, { ok: false }>['reason'], string> = {
+  'nicht-eingerichtet': 'Die Online-Ablage ist nicht eingerichtet (App-Menü → Online-Ablage).',
+  'nicht-erreichbar':
+    'Der Ordner der Online-Ablage ist nicht erreichbar – läuft pCloud Drive bzw. ist das Laufwerk verbunden?',
+  adresse: 'Die Adresse der Online-Ablage ist ungültig (App-Menü → Online-Ablage, https://…).',
+  'zu-gross': 'Die Anleitung ist mit ihren Fotos zu groß.',
+  fehler: 'Die Datei ließ sich nicht schreiben.'
+}
 
 export function MiniManual(): JSX.Element {
   const file = useProjectFile(MINI_MANUAL_FILE)
@@ -83,6 +96,65 @@ export function MiniManual(): JSX.Element {
     if (next) setAuswahl(next)
   }
 
+  /** Fehler der Prüfung vor einem Export: weiter nur auf ausdrückliche Bestätigung */
+  async function freigabe(
+    an: typeof a,
+    k: SeitenKontext,
+    label = 'Trotzdem exportieren'
+  ): Promise<boolean> {
+    const fehler = pruefung(an, k, { ledWallNeuer: q.neuer }).filter((p) => p.schwere === 'fehler')
+    if (!fehler.length) return true
+    return api.confirm({
+      message: `Die Prüfung meldet ${fehler.length === 1 ? 'einen Fehler' : `${fehler.length} Fehler`}.`,
+      detail: fehler.map((f) => `• ${f.text}`).join('\n'),
+      confirmLabel: label
+    })
+  }
+
+  /** Handy-Fassung als Datei – zum Verschicken (WhatsApp, Mail), wie das PDF mit allen Stufen */
+  async function handyDatei(): Promise<void> {
+    const an = useMiniManual.getState().anleitung
+    const k: SeitenKontext = { ...ctx, modus: 'druck' }
+    if (!(await freigabe(an, k))) return
+    const name = dateiname(an.deckblatt.projekt) || 'Anleitung'
+    const p = await api.util.exportHtml(
+      handyHtml(an, k, { online: false }),
+      `${name} - Handy ${lern ? 'Lernausgabe' : stufeLabel(stufe)}.html`
+    )
+    if (p) toast.success('Handy-Fassung gespeichert', p)
+  }
+
+  /**
+   * In die Online-Ablage: gleicher Ordner wie beim letzten Mal (die Adresse auf der Kurzkarte
+   * bleibt gültig) – `neu` legt einen neuen an. Ordner und Adresse merkt sich die Anleitung.
+   */
+  async function handyOnline(neu: boolean): Promise<void> {
+    const an = useMiniManual.getState().anleitung
+    const k: SeitenKontext = { ...ctx, modus: 'druck' }
+    if (!(await freigabe(an, k, 'Trotzdem online stellen'))) return
+    const r = await api.online.publish(
+      handyHtml(an, k, { online: true }),
+      neu ? null : (an.ausgabe.online?.ordner ?? null),
+      an.deckblatt.projekt || an.titel
+    )
+    if (!r.ok) {
+      toast.error('Online stellen ging nicht', ONLINE_GRUND[r.reason])
+      return
+    }
+    // frisch lesen: Während des Schreibens kann sich die Anleitung geändert haben
+    const alt = useMiniManual.getState().anleitung.ausgabe.online
+    if (alt?.ordner !== r.ordner || alt.url !== r.url)
+      useMiniManual.getState().update((x) => ({
+        ...x,
+        ausgabe: { ...x.ausgabe, online: { ordner: r.ordner, url: r.url } }
+      }))
+    const gekappt = lern || stufe > ONLINE_STUFE
+    toast.success(
+      'Online gestellt – der Dienst lädt die Datei hoch',
+      `${r.url}${gekappt ? ` · als ${stufeLabel(ONLINE_STUFE)}` : ''} · ohne Zugangsdaten`
+    )
+  }
+
   async function exportiere(art: 'handbuch' | 'kurzkarte'): Promise<void> {
     const an = useMiniManual.getState().anleitung
     // Kurzkarte ist die Karte fürs Rack: ohne Lernausgabe, höchstens die gewählte Stufe
@@ -92,17 +164,7 @@ export function MiniManual(): JSX.Element {
       lern: art === 'handbuch' && lern,
       stufe: art === 'kurzkarte' && lern ? 1 : stufe
     }
-    const fehler = pruefung(an, druck, { ledWallNeuer: q.neuer }).filter(
-      (p) => p.schwere === 'fehler'
-    )
-    if (fehler.length) {
-      const ok = await api.confirm({
-        message: `Die Prüfung meldet ${fehler.length === 1 ? 'einen Fehler' : `${fehler.length} Fehler`}.`,
-        detail: fehler.map((f) => `• ${f.text}`).join('\n'),
-        confirmLabel: 'Trotzdem exportieren'
-      })
-      if (!ok) return
-    }
+    if (!(await freigabe(an, druck))) return
     const name = dateiname(an.deckblatt.projekt) || 'Anleitung'
     const res =
       art === 'handbuch'
@@ -159,6 +221,7 @@ export function MiniManual(): JSX.Element {
           <Button size="sm" onClick={() => void exportiere('handbuch')}>
             <FileDown className="size-4" /> Handbuch (PDF)
           </Button>
+          <HandyMenu onDatei={handyDatei} onOnline={handyOnline} />
           <BarDivider />
           <Button
             size="sm"

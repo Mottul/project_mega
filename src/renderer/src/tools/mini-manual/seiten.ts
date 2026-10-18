@@ -65,7 +65,7 @@ export function sichtbareKapitel(a: Anleitung, c: SeitenKontext): KapitelEintrag
 
 // Bilder direkt im Deckblatt (Flex-Spalte) brauchen align-self: Sonst streckt der Browser sie
 // auf die volle Breite und begrenzt nur die Höhe – das Foto war verzerrt.
-function css(c: SeitenKontext): string {
+export function css(c: SeitenKontext): string {
   const ak = akzent(c.firma)
   return `
 *{box-sizing:border-box;margin:0;padding:0;print-color-adjust:exact;-webkit-print-color-adjust:exact}
@@ -351,10 +351,18 @@ function wegListe(a: Anleitung, wege: Signalweg[]): string {
   return `<h3>Signalwege</h3><ul class="wege">${zeilen.join('')}</ul>`
 }
 
-function zielText(z: AusgabeZiel, o: MarkupOptionen): string {
+/** Sprungmarke eines Schritts (Links im Text, Schritt für Schritt am Handy) */
+const schrittId = (fallId: string, nr: number): string => `fs-${fallId}-${nr}`
+
+/** Ziel maschinenlesbar fürs Handy-Skript: Schritt, anderer Fall oder Ende des Wegs */
+function zielCode(z: AusgabeZiel): string {
+  return z.art === 'schritt' ? `s:${z.nr}` : z.art === 'fall' ? `f:${z.id}` : 'ende'
+}
+
+function zielText(z: AusgabeZiel, o: MarkupOptionen, fallId: string): string {
   switch (z.art) {
     case 'schritt':
-      return `weiter bei <b>${z.nr}</b>`
+      return `weiter bei <a href="#${esc(schrittId(fallId, z.nr))}"><b>${z.nr}</b></a>`
     case 'loesung':
       return `<span class="ok">${inline(z.text, o)}</span>`
     case 'geloest':
@@ -377,15 +385,18 @@ function fallHtml(f: AusgabeFall, a: Anleitung, c: SeitenKontext): string {
   const kopf = `<h3 id="fall-${esc(f.fall.id)}">${f.nr}. ${inline(f.fall.titel, o)}${badge(c, f.fall.stufe)}</h3>${f.fall.symptom ? `<div class="symptom">${inline(f.fall.symptom, o)}</div>` : ''}`
   if (f.nurAnrufen)
     return `<div class="fall">${kopf}<div class="anrufen">Bitte anrufen${ruf}</div></div>`
+  const id = f.fall.id
+  // je Ziel: Beschriftung, maschinenlesbares Ziel (data-ziel) und der Text des Ziels (.zt) –
+  // das Handy-Skript macht daraus Knöpfe, der Druck zeigt die Zeile wie sie ist
+  const z = (wahl: 'Ja' | 'Nein' | 'Dann', ziel: AusgabeZiel): string =>
+    `<span class="z" data-wahl="${wahl}" data-ziel="${esc(zielCode(ziel))}"><b>${wahl}:</b> <span class="zt">${zielText(ziel, o, id)}</span></span>`
   const schritte = f.schritte
     .map((s) => {
-      const ziele = s.nein
-        ? `<span><b>Ja:</b> ${zielText(s.ja, o)}</span><span><b>Nein:</b> ${zielText(s.nein, o)}</span>`
-        : `<span><b>Dann:</b> ${zielText(s.ja, o)}</span>`
-      return `<div class="fs"><span class="n">${s.nr}</span><div><div class="q">${inline(s.schritt.text, o)}${badge(c, s.stufe)}</div>${s.hinweis ? `<div class="muted">${inline(s.hinweis, o)}</div>` : ''}${s.ruecksprache ? `<div class="ruecksprache">Vorher kurz anrufen${ruf}</div>` : ''}${foto(s.schritt.foto, 'foto mini')}<div class="ziele">${ziele}</div></div></div>`
+      const ziele = s.nein ? z('Ja', s.ja) + z('Nein', s.nein) : z('Dann', s.ja)
+      return `<div class="fs" id="${esc(schrittId(id, s.nr))}" data-nr="${s.nr}"><span class="n">${s.nr}</span><div><div class="q">${inline(s.schritt.text, o)}${badge(c, s.stufe)}</div>${s.hinweis ? `<div class="muted">${inline(s.hinweis, o)}</div>` : ''}${s.ruecksprache ? `<div class="ruecksprache">Vorher kurz anrufen${ruf}</div>` : ''}${foto(s.schritt.foto, 'foto mini')}<div class="ziele">${ziele}</div></div></div>`
     })
     .join('')
-  return `<div class="fall">${kopf}${schritte}</div>`
+  return `<div class="fall" data-fall="${esc(id)}">${kopf}${schritte}</div>`
 }
 
 function passwort(a: Anleitung, pw: string): string {
@@ -597,12 +608,12 @@ ${a.ledWall ? `<tr><th>LED-Wall</th><td>${q ? `Planung Stand ${q.rev}` : 'aus de
   }
 }
 
-function kapitelHtml(k: KapitelEintrag, nr: number, a: Anleitung, c: SeitenKontext): string {
+export function kapitelHtml(k: KapitelEintrag, nr: number, a: Anleitung, c: SeitenKontext): string {
   const d = kapitelDef(k.id)
   return `<section class="kapitel" id="k-${k.id}"><h2><span class="nr">${String(nr).padStart(2, '0')}</span>${esc(d.titel)}${badge(c, k.stufe)}</h2>${kapitelInhalt(k, a, c)}</section>`
 }
 
-function deckblatt(a: Anleitung, c: SeitenKontext): string {
+export function deckblatt(a: Anleitung, c: SeitenKontext): string {
   const d = a.deckblatt
   const logo = c.firma.logo ? foto(c.firma.logo, 'logo') : ''
   const zeilen = [d.projekt, d.kunde, d.ort, d.zeitraum].filter((x) => x.trim())
@@ -705,7 +716,14 @@ export function kurzkarteHtml(a: Anleitung, c: SeitenKontext): string {
 .kk ol{margin:0 0 0 16px}
 .kk .alarm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:#fff7d6;border:1.5px solid ${ak};border-radius:5px;padding:7px 9px}
 .kk .alarm ul{margin:3px 0 0 16px}
-.kk .kontakt-zeile{display:flex;justify-content:space-between;gap:10px;color:#444;border-top:1px solid #e2e2e2;padding-top:5px;flex-wrap:wrap}`
+.kk .kontakt-zeile{display:flex;justify-content:space-between;gap:10px;color:#444;border-top:1px solid #e2e2e2;padding-top:5px;flex-wrap:wrap}
+.kk .handy{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid #e2e2e2;border-radius:5px;padding:6px 9px}
+.kk .handy .adr{color:#676c76;font-size:9px;word-break:break-all}`
+  // Online-Fassung: die Adresse als QR-Code – am Handy die ganze Anleitung, Schritt für Schritt
+  const url = a.ausgabe.online?.url ?? ''
+  const handy = url
+    ? `<div class="handy"><div><b>Am Handy:</b> die ganze Anleitung, Fehlersuche Schritt für Schritt<div class="adr">${esc(url.replace(/^https:\/\//, ''))}</div></div>${qrSvg(url, 84)}</div>`
+    : ''
   const body = `<div class="kk">
 <div class="top">${c.firma.logo ? foto(c.firma.logo, 'logo') : `<b>${esc(c.firma.name)}</b>`}<div class="meta">Kurzkarte · Stand ${esc(c.datum)}<br>Stufe ${esc(stufeLabel(c.stufe))}</div></div>
 <div><h1>${esc(a.titel)}</h1>${sub ? `<div class="sub">${sub}</div>` : '<div class="sub"></div>'}</div>
@@ -720,6 +738,7 @@ ${spalten ? `<div class="cols">${spalten}</div>` : '<p class="muted">Im Kapitel 
           )}</ul>Schritt für Schritt im Handbuch${fsNr > 0 ? `, Kapitel ${fsNr} Fehlersuche` : ''}.`
       : ' Bitte anrufen.'
   }</div>${tel.length > 3 ? qrSvg(`tel:${tel}`, 70) : ''}</div>
+${handy}
 ${k ? `<div class="kontakt-zeile"><span><b>${esc(k.name)}</b>${k.mobil ? ` · ${esc(k.mobil)}` : ''}</span><span>${esc(k.erreichbarkeit)}</span></div>` : ''}
 </div>`
   return dokument(`Kurzkarte – ${a.titel}`, style, body)

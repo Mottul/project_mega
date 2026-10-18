@@ -156,15 +156,34 @@ function KapitelPanel({
 
 function AusgabePanel(): JSX.Element {
   const pw = useMiniManual((s) => s.anleitung.ausgabe.passwoerter)
+  const online = useMiniManual((s) => s.anleitung.ausgabe.online)
   const update = useMiniManual((s) => s.update)
   return (
     <PanelSection
       id="ausgabe"
       title="Ausgabe"
       icon={FileCog}
-      summary={`Passwörter: ${PASSWOERTER.find((p) => p.value === pw)?.label}`}
+      summary={`Passwörter: ${PASSWOERTER.find((p) => p.value === pw)?.label}${online ? ' · online' : ''}`}
       defaultOpen={false}
     >
+      <Field
+        label="Online-Fassung"
+        hint="Über die Leiste: Handy ▾ → Online stellen. Beim Aktualisieren bleibt die Adresse gleich; die Kurzkarte druckt sie als QR-Code. Online nie Zugangsdaten, höchstens Stufe Betreuung."
+      >
+        {online ? (
+          <a
+            href={online.url}
+            target="_blank"
+            rel="noreferrer"
+            className="block break-all text-xs text-primary underline-offset-2 hover:underline"
+            data-testid="online-adresse"
+          >
+            {online.url}
+          </a>
+        ) : (
+          <p className="text-xs text-muted-foreground">noch nicht online</p>
+        )}
+      </Field>
       <Field
         label="Passwörter im PDF"
         hint="separat: „wird separat übergeben“ · schwärzen: Punkte statt Passwort · drucken: im Klartext. Die Stufe Bedienung zeigt Zugangsdaten nie."

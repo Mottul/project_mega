@@ -36,7 +36,10 @@ Preload per Typ zur Vollständigkeit – `npm run typecheck` zeigt vergessene St
 - ffmpeg-Aufrufe immer über `runFfmpeg()` (siehe CLAUDE.md, Abschnitt Konvertierung).
 - **Schreiben in Pfade des Nutzers** nur, wenn main den Pfad selbst freigegeben hat (aus einem
   Dialog oder einer geöffneten Datei) – Muster `services/projects/projectFiles.ts`; atomar über
-  `services/fsAtomic.ts`. Rückfragen mit mehr als zwei Antworten: `api.choose`.
+  `services/fsAtomic.ts`. Rückfragen mit mehr als zwei Antworten: `api.choose`. Ein Ordner aus
+  den Einstellungen, den der Nutzer im Ordner-Dialog gewählt hat (Projektordner, Online-Ablage),
+  zählt als freigegeben – darin aber nur Namen, die main selbst erzeugt, und vorher mit Zeitlimit
+  prüfen (`isDirReachable`; Muster `services/html/onlineAblage.ts`).
 - **Datei-Dialoge** immer über `showOpenDialog`/`showSaveDialog` aus `services/fileDialogs.ts`,
   nie direkt `dialog.show…Dialog`: Seit Electron 43 startet ein Dialog ohne absoluten Pfad im
   Downloads-Ordner; der Helfer merkt sich den Ordner (je Art, in settings.json). Eine neue Art
