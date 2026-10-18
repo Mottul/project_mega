@@ -5,6 +5,7 @@ import { APP_NAME } from '@shared/brand'
 import { esc } from '@shared/html'
 import { chainCounts, chainRoutes, routeSvg } from './cabling'
 import type { ChainRoute, SigChainMeta } from './config'
+import { amps, circuitLabel, PHASES, type PowerAnalysis } from './power'
 import type { GroupLoad } from './processors'
 import { PWR_COLORS, SIG_COLORS, type LedModule } from './data'
 import type { Fit169 } from './math'
@@ -45,6 +46,8 @@ export interface PrintData {
   rear: boolean
   /** Prozessor, Ports und Lasten der Signalketten (processors.ts) – fehlt = ohne Tabelle */
   signal?: GroupLoad
+  /** Lasten, Kreise und Phasen der Stromketten (power.ts) – fehlt = ohne Tabelle */
+  power?: PowerAnalysis
   landscape: boolean
   curve: {
     modeLabel: string
@@ -129,6 +132,25 @@ function signalTable(g: GroupLoad, wallId: string | undefined): string {
   return `<h2>Signal: Prozessor und Ports</h2><div style="font-size:11px;margin-bottom:4px">${head}</div>${rows ? `<table><tr><th style="width:auto">Kette</th><th style="width:auto">Module</th><th style="width:auto">Pixel</th><th style="width:auto">Port</th></tr>${rows}</table>` : ''}${warn}`
 }
 
+/** Strom: Netz, je Kette Last, Kreis und Phase (Vorschlag in Klammern), Phasen, Warnungen */
+function powerTable(p: PowerAnalysis): string {
+  const rows = p.chains
+    .map(
+      (c) =>
+        `<tr${c.over ? ' style="color:#b91c1c;font-weight:700"' : ''}><td>P${c.chain + 1}</td><td>${c.modules}</td><td>${amps(c.amps)} A</td><td>${esc(circuitLabel(c))}</td></tr>`
+    )
+    .join('')
+  const head = `Netz ${p.voltage} V · Absicherung ${p.breakerA} A je Kreis${p.maxModules ? ` · höchstens ${p.maxModules} Module je Kreis (Maximalleistung)` : ''} · Phasen: ${PHASES.map((ph) => `${ph} ${amps(p.phases[ph])} A`).join(' · ')}`
+  const warn = p.warnings
+    .filter((w) => w.level !== 'info')
+    .map((w) => `<div class="bar" style="border-left-color:#b91c1c">${esc(w.text)}</div>`)
+    .join('')
+  const auto = p.chains.some((c) => c.phaseAuto)
+    ? '<div style="font-size:9px;color:#777;margin-top:2px">Phase in Klammern: Vorschlag, nicht festgelegt.</div>'
+    : ''
+  return `<h2>Strom: Kreise und Phasen</h2><div style="font-size:11px;margin-bottom:4px">${head}</div><table><tr><th style="width:auto">Kette</th><th style="width:auto">Module</th><th style="width:auto">Strom (max.)</th><th style="width:auto">Kreis · Phase</th></tr>${rows}</table>${auto}${warn}`
+}
+
 function legend(assign: number[][], colors: string[], prefix: string): string {
   return [...chainCounts(assign)]
     .sort((a, b) => a[0] - b[0])
@@ -179,7 +201,8 @@ th{background:#f7f7f7;font-weight:600;width:44%}
 <tr><th>Leistung (max.)</th><td>${d.powerMaxW} W (${d.ampsMax} A)</td></tr>
 <tr><th>Helligkeit</th><td>${d.mod.brightnessMax ? `${d.mod.brightness} (max ${d.mod.brightnessMax})` : d.mod.brightness} nit</td></tr>
 <tr><th>Kontrast</th><td>&gt; ${d.mod.contrast}</td></tr>
-<tr><th>Tiefe</th><td>${d.mod.dimD} mm</td></tr></table>`
+<tr><th>Tiefe</th><td>${d.mod.dimD} mm</td></tr>
+<tr><th>IMs je Modul</th><td>${d.mod.ims.count} (${esc(d.mod.ims.layout)})</td></tr></table>`
   if (d.buildMode === 'stacked')
     html += `<div class="bar"><b>Ground-Stack:</b> ${d.baseUnits} Standfüße × ${d.ballastPerBase} kg = <b>${d.totalBallast} kg Ballast</b></div>`
   else html += `<div class="bar"><b>Fliegend:</b> Gesamtgewicht ${d.weightKg} kg an Traverse</div>`
@@ -215,6 +238,7 @@ th{background:#f7f7f7;font-weight:600;width:44%}
   html += `<div><h2>Stromverkabelung</h2><div style="margin-bottom:4px">${legend(d.pwr, PWR_COLORS, 'P')}</div>${gridSvg(d.pwr, d.pwrMeta, PWR_COLORS, 'P', d.cols, d.rows, printPx, d.rear)}</div></div>`
   if (d.signal && d.signal.walls.some((w) => w.chains.length))
     html += signalTable(d.signal, d.wallId)
+  if (d.power && d.power.chains.length) html += powerTable(d.power)
   html += `<div style="margin-top:14px;padding-top:5px;border-top:1px solid #ccc;font-size:9px;color:#999">${APP_NAME} · LED-Wall-Konfigurator · ${dt}</div></body></html>`
 
   const safe = [d.projectName, d.wallName ?? '']

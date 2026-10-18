@@ -4,38 +4,35 @@
 // anrufen“ – die Eskalationsgrenze ergibt sich so von selbst. Übrig bleibt nur, was vom ersten
 // Schritt aus erreichbar ist; die Nummern zählen neu von 1.
 
+import { MODULES } from '../led-wall/data'
 import type { Fehlerfall, FSchritt, Stufe, Ziel } from './model'
 
+const IM_UNBEKANNT = { stufe: 3 as Stufe, ruecksprache: false, hinweis: '' }
+
 /**
- * Stufe des IM-Tauschs je Modul (Festlegungen 13/14). Bis Phase 2 die IMs in die Stammdaten des
- * LED-Wall-Konfigurators bringt, steht die Tabelle hier. Ohne bekannte Wand: nur Technik.
+ * IM-Tausch eines Moduls aus den Stammdaten des LED-Wall-Konfigurators (Festlegungen 13/14).
+ * Unbekanntes Modul oder ohne Wand: nur Technik.
  */
-export const IM_TAUSCH: Record<string, { stufe: Stufe; ruecksprache: boolean; hinweis: string }> = {
-  '496-2,0': {
-    stufe: 1,
-    ruecksprache: true,
-    hinweis: '4 IMs je Modul, werkzeuglos von vorne oder hinten.'
-  },
-  rX3ioBF: {
-    stufe: 1,
-    ruecksprache: true,
-    hinweis: '4 IMs je Modul, werkzeuglos von vorne oder hinten.'
-  },
-  'uS2+': {
-    stufe: 3,
-    ruecksprache: false,
-    hinweis: '2 IMs je Modul (übereinander), je 8 Schrauben – nur Technik.'
+export function imTausch(moduleKey: string): {
+  stufe: Stufe
+  ruecksprache: boolean
+  hinweis: string
+} {
+  if (!Object.hasOwn(MODULES, moduleKey)) return IM_UNBEKANNT
+  const im = MODULES[moduleKey].ims
+  return {
+    stufe: im.swap.level,
+    ruecksprache: im.swap.consult,
+    hinweis: `${im.count} IMs je Modul (${im.layout}), ${im.swap.note}.`
   }
 }
-
-const IM_UNBEKANNT = { stufe: 3 as Stufe, ruecksprache: false, hinweis: '' }
 
 /**
  * IM-Tausch für die Module der Planung. Mehrere Wände mit verschiedenen Modulen: die strengere
  * Regel (höchste Stufe, Rücksprache, wenn eines sie verlangt), Hinweise je Modul.
  */
 function imRegel(module: string[]): { stufe: Stufe; ruecksprache: boolean; hinweis: string } {
-  const regeln = module.map((k) => (Object.hasOwn(IM_TAUSCH, k) ? IM_TAUSCH[k] : IM_UNBEKANNT))
+  const regeln = module.map(imTausch)
   if (!regeln.length) return IM_UNBEKANNT
   if (regeln.length === 1) return regeln[0]
   return {

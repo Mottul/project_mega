@@ -27,6 +27,7 @@ import {
   type LedWallFileData,
   type PlannedWall,
   type PlanningData,
+  type PwrChainMeta,
   type SigChainMeta
 } from './config'
 import { chainCells, chainRoute } from './cabling'
@@ -90,6 +91,8 @@ interface LedWallState extends LedWallConfig {
   ) => void
   /** Port bzw. Backup einer Signalkette ändern (undefined = Feld entfernen → Vorgabe) */
   setSigChain: (chain: number, patch: Partial<SigChainMeta>) => void
+  /** Stromkreis bzw. Phase einer Stromkette ändern (undefined = Feld entfernen → Vorschlag) */
+  setPwrChain: (chain: number, patch: Partial<PwrChainMeta>) => void
   /** Aktuelle Konfiguration (der gewählten Wand) als Vorlage sichern (gleicher Name -> überschreiben). */
   savePreset: (name: string) => void
   /** Vorlage in die gewählte Wand laden; Projekt und Kunde bleiben (leer: aus der Vorlage), die
@@ -104,6 +107,23 @@ interface LedWallState extends LedWallConfig {
 }
 
 type WallsState = LedWallConfig & { walls: WallSlot[]; wallId: string }
+
+/** Felder einer Kette setzen; undefined entfernt das Feld (dann gilt die Vorgabe bzw. der Vorschlag) */
+function patchMeta<T extends object>(
+  meta: Record<string, T>,
+  chain: number,
+  patch: Partial<T>
+): Record<string, T> {
+  const out = { ...meta }
+  const k = String(chain)
+  const next: Record<string, unknown> = { ...(Object.hasOwn(out, k) ? out[k] : {}) }
+  for (const [key, v] of Object.entries(patch)) {
+    if (v === undefined) delete next[key]
+    else next[key] = v
+  }
+  out[k] = next as T
+  return out
+}
 
 /** Alle Wände in Reihenfolge – die gewählte mit ihrem aktuellen Stand, Projekt und Kunde überall gleich. */
 export function plannedWalls(s: WallsState): PlannedWall[] {
@@ -392,17 +412,9 @@ export const useLedWall = create<LedWallState>()(
         set({ [grid]: next, [metaKey]: meta } as Partial<LedWallState>)
       },
 
-      setSigChain: (chain, patch) => {
-        const meta = { ...get().sigMeta }
-        const k = String(chain)
-        const next: Record<string, unknown> = { ...(Object.hasOwn(meta, k) ? meta[k] : {}) }
-        for (const [key, v] of Object.entries(patch)) {
-          if (v === undefined) delete next[key]
-          else next[key] = v
-        }
-        meta[k] = next as SigChainMeta
-        set({ sigMeta: meta })
-      },
+      setSigChain: (chain, patch) => set({ sigMeta: patchMeta(get().sigMeta, chain, patch) }),
+
+      setPwrChain: (chain, patch) => set({ pwrMeta: patchMeta(get().pwrMeta, chain, patch) }),
 
       savePreset: (name) => {
         const trimmed = name.trim()

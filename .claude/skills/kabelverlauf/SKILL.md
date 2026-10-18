@@ -1,6 +1,6 @@
 ---
 name: kabelverlauf
-description: Am Kabelverlauf des LED-Wall-Konfigurators arbeiten – Ketten, Startecke und Richtung, gezeichnete Reihenfolge, Pfeile am Bildschirm und im PDF, Ansicht von hinten, Signal und Strom nebeneinander, später Ports, Backup, Stromkreise und Prozessor-Grenzen. Verwenden, bevor an cabling.ts, CableGrid.tsx, printHtml.ts oder den Feldern sigMeta/pwrMeta gearbeitet wird.
+description: Am Kabelverlauf des LED-Wall-Konfigurators arbeiten – Ketten, Startecke und Richtung, gezeichnete Reihenfolge, Pfeile am Bildschirm und im PDF, Ansicht von hinten, Signal und Strom nebeneinander, Ports, Backup, Prozessor-Grenzen, Stromkreise, Phasen und Absicherung. Verwenden, bevor an cabling.ts, CableGrid.tsx, printHtml.ts, processors.ts, power.ts oder den Feldern sigMeta/pwrMeta/mains gearbeitet wird.
 ---
 
 # Kabelverlauf (LED-Wall-Konfigurator)
@@ -21,6 +21,9 @@ Einspeisepunkt, keine Automatik.
 | PDF-Doku (rein, getestet) und dünner Export | `led-wall/printHtml.ts` + `printHtml.test.ts`, `led-wall/print.ts` |
 | Prozessoren (Handbuch-Werte), Karte je Modul, Vorbelegung, Gruppen, Port-Vergabe, Lasten, Warnungen | `led-wall/processors.ts` + `processors.test.ts` |
 | Schublade „Prozessor“, Karte „Signal“ | `led-wall/Settings.tsx` (`ProcessorPanel`), `led-wall/LedWall.tsx` (`SignalCard`) |
+| Strom: Last je Kette und Kreis, Phasen-Vorschlag und -Bilanz, Warnungen | `led-wall/power.ts` + `power.test.ts` |
+| Schublade „Strom“ (Netz, Absicherung), Karte „Strom“, Kreis/Phase in der Verlauf-Leiste | `led-wall/Settings.tsx` (`PowerPanel`), `led-wall/LedWall.tsx` (`PowerCard`), `CableGrid.tsx` (`power`) |
+| IMs je Modul (Anzahl, Anordnung, wer tauschen darf) | `led-wall/data.ts` (`ims`) – Mini-Manual liest über `imTausch()` |
 | E2E | `e2e/kabelverlauf.mjs` |
 
 ## Regeln
@@ -67,6 +70,17 @@ Einspeisepunkt, keine Automatik.
   dem Prozessor zuerst. Alles, was alle Wände braucht (Karte, PDF, Packliste), rechnet über
   `analyzeProcessors(plannedWalls(s))`.
 
+- **Strom** (`led-wall/power.ts`): gerechnet bei Maximalleistung und der Spannung der Wand
+  (`mains`, auch in `computeWall`). Ein eingetragener Kreis (ohne Groß/Klein, Leerraum) ist eine
+  Einheit: Ketten daran zählen zusammen und liegen auf einer Phase. **Phasen nie speichern, wenn
+  sie nur vorgeschlagen sind** – leer = Vorschlag auf die gerade schwächste Phase in
+  Kettenreihenfolge (wie die fortlaufenden Ports). Überlast meldet der Kreis, wenn mehrere Ketten
+  daran hängen, sonst die Kette. Schieflage nur, wenn die beste Verteilung (größte Einheit zuerst)
+  merklich besser wäre – zwei gleiche Ketten lassen L3 zwangsläufig leer. Der Hinweis zum
+  Einschaltstrom ist `info` und entfällt neben einer Überlast.
+- Ein Textfeld in der Verlauf-Leiste (Kreis) bekommt `key={activeChain}`: Beim Wechsel der Kette
+  baut es neu auf und speichert das Getippte noch für die alte Kette.
+
 ## Tests
 
 - Rein: alle 8 Muster auf einem 2 × 3-Bereich, Praxisbeispiel (Viertel, Start innen unten,
@@ -74,5 +88,7 @@ Einspeisepunkt, keine Automatik.
   kleine Zellen, Sprung), Store-Aktionen, PDF-HTML (Pfeile nur mit Verlauf, Ansicht von hinten).
 - E2E `e2e/kabelverlauf.mjs`: Hinweis ohne Verlauf, Startecke → 7 Pfeile bei 8 Modulen, Hinten
   (Start wandert, Beschriftung „unten rechts“), Zeichnen per `page.mouse` und Verlängern,
-  Signal + Strom nebeneinander (Rechtecke vergleichen), PDF geschrieben.
+  Signal + Strom nebeneinander (Rechtecke vergleichen), Prozessor und Ports, Strom (Kreis F3 auf L2,
+  zweite Kette als Vorschlag, Überlast-Warnung, Absicherung 25 A in der Schublade), PDF geschrieben.
+  Gespeicherte Werte (`localStorage`) mit `waitFor` lesen – der Store schreibt verzögert.
 - Ausdruck ansehen (Skill `electron-e2e`, „PDF ansehen“): gelbe Kette (S2) im Ausdruck lesbar?

@@ -1,6 +1,7 @@
 // Kabelverlauf im LED-Wall-Konfigurator (Phase 2b, von Hand): Kette ohne Verlauf (Hinweis, keine
 // Pfeile), Startecke + Richtung (Schlange), Ansicht von hinten (gespiegelt, Startecke anders
-// beschriftet), Kette mit der Maus zeichnen und verlängern, Signal + Strom nebeneinander, PDF.
+// beschriftet), Kette mit der Maus zeichnen und verlängern, Signal + Strom nebeneinander,
+// Prozessor und Ports, Strom (Kreis, Phase, Überlast, Absicherung), PDF.
 // Gelesen wird der gespeicherte Stand im localStorage und das Pfeil-SVG über dem Raster.
 
 import assert from 'node:assert/strict'
@@ -190,6 +191,68 @@ try {
         await page.getByRole('combobox', { name: 'Prozessor', exact: true }).selectOption('')
         await page.getByTitle('Zeile 4 – ganze Zeile zuweisen').click()
         assert.ok(await waitFor(async () => (await warn.count()) === 0, 5000), 'Warnung bleibt')
+      }
+    ],
+    [
+      'Strom: Kreis und Phase je Kette, Überlast gemeldet, Absicherung in der Schublade',
+      async () => {
+        await tab('Strom').click()
+        const zeilen = () =>
+          page
+            .getByRole('table', { name: 'Stromketten' })
+            .evaluate((t) =>
+              [...t.querySelectorAll('tbody tr')].map((tr) =>
+                [...tr.querySelectorAll('td')].map((td) => td.textContent.trim())
+              )
+            )
+            .catch(() => [])
+        // P1 = unterste Reihe (8 × 180 W = 6,3 A), Kreis F3 auf L2
+        await page.getByTitle('Zeile 5 – ganze Zeile zuweisen').click()
+        await page.getByRole('textbox', { name: 'Stromkreis' }).fill('F3')
+        await page.keyboard.press('Tab')
+        await page.getByRole('combobox', { name: 'Phase', exact: true }).selectOption('L2')
+        assert.ok(
+          await waitFor(async () => {
+            const m = (await stored()).pwrMeta?.['0']
+            return m?.circuit === 'F3' && m.phase === 'L2'
+          }, 5000),
+          JSON.stringify((await stored()).pwrMeta)
+        )
+        // P2 = Reihen 1–3 (24 Module = 18,8 A) – Vorschlag L1, über 16 A
+        await page.getByRole('button', { name: 'Neue Strom-Kette' }).click()
+        for (const z of [1, 2, 3])
+          await page.getByTitle(`Zeile ${z} – ganze Zeile zuweisen`).click()
+        const r = await waitFor(async () => {
+          const v = await zeilen()
+          return v.length === 2 ? v : null
+        }, 5000)
+        assert.deepEqual(r, [
+          ['P1', '8', '6,3', 'F3 · L2'],
+          ['P2', '24', '18,8', '(L1)']
+        ])
+        const warn = page.getByTestId('strom-warnungen')
+        await warn
+          .getByText(
+            'P2: 24 Module = 18,8 A – über der Absicherung (16 A). Kette teilen, höchstens 20 Module je Kreis.'
+          )
+          .waitFor({ timeout: 5000 })
+        // 25 A je Kreis: keine Überlast mehr
+        const head = page.getByTestId('settings-drawer').getByRole('button', { name: /^Strom/ })
+        if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
+        await page.getByRole('combobox', { name: 'Absicherung je Kreis' }).selectOption('25')
+        assert.ok(
+          await waitFor(
+            async () => (await warn.getByText(/über der Absicherung/).count()) === 0,
+            5000
+          ),
+          'Überlast bleibt gemeldet'
+        )
+        // gespeichert wird verzögert (debouncedStorage)
+        assert.ok(
+          await waitFor(async () => (await stored()).mains?.breakerA === 25, 5000),
+          JSON.stringify((await stored()).mains)
+        )
+        await tab('Signal').click()
       }
     ],
     [

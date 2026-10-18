@@ -45,6 +45,7 @@ import { gridCellSize } from './front'
 import { LED_WALL_FILE } from './fileSection'
 import { exportLedWallPdf } from './print'
 import { BUILD_LABELS, LedWallSettings } from './Settings'
+import { amps, analyzePower, circuitLabel, PHASES, type PowerAnalysis } from './power'
 import { analyzeProcessors, type GroupLoad } from './processors'
 import { plannedWalls, useLedWall } from './store'
 import { topDownMarkup } from './topdown'
@@ -112,7 +113,8 @@ export function LedWall(): JSX.Element {
         builderSegs: s.builderSegs,
         sqD: s.sqD,
         sqCorner: s.sqCorner,
-        selectedCircle: s.selectedCircle
+        selectedCircle: s.selectedCircle,
+        mains: s.mains
       }),
     [
       s.moduleKey,
@@ -123,7 +125,8 @@ export function LedWall(): JSX.Element {
       s.builderSegs,
       s.sqD,
       s.sqCorner,
-      s.selectedCircle
+      s.selectedCircle,
+      s.mains
     ]
   )
 
@@ -161,6 +164,7 @@ export function LedWall(): JSX.Element {
       signal: analyzeProcessors(plannedWalls(useLedWall.getState())).find((g) =>
         g.walls.some((w) => w.wallId === s.wallId)
       ),
+      power: analyzePower(s),
       buildMode: s.buildMode,
       sig: s.sig,
       pwr: s.pwr,
@@ -396,6 +400,8 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
   const loads = new Map(
     (group?.walls.find((w) => w.wallId === s.wallId)?.chains ?? []).map((c) => [c.chain, c])
   )
+  const power = usePower()
+  const powerLoads = new Map(power.chains.map((c) => [c.chain, c]))
   const grid = (g: 'sig' | 'pwr'): JSX.Element => (
     <CableGrid
       label={g === 'sig' ? 'Signal' : 'Strom'}
@@ -420,6 +426,11 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
               redundancy: s.redundancy,
               onChange: (c, patch) => s.setSigChain(c, patch)
             }
+          : undefined
+      }
+      power={
+        g === 'pwr'
+          ? { loads: powerLoads, onChange: (c, patch) => s.setPwrChain(c, patch) }
           : undefined
       }
     />
@@ -565,6 +576,7 @@ function ModuleCard({ d }: { d: WallMetrics }): JSX.Element {
           ['Refresh', `≥ ${fmt(m.refresh, 0)} Hz`],
           ['Blickwinkel', m.viewAngle],
           ['Schutzart', m.ip],
+          ['IMs je Modul', `${m.ims.count} (${m.ims.layout})`],
           ['Stromanschluss', m.connector]
         ]}
       />
@@ -664,11 +676,28 @@ function SignalCard(): JSX.Element | null {
   )
 }
 
+/** Strom der gewählten Wand: Lasten je Kette, Kreise, Phasen (power.ts) */
+function usePower(): PowerAnalysis {
+  const moduleKey = useLedWall((s) => s.moduleKey)
+  const pwr = useLedWall((s) => s.pwr)
+  const pwrMeta = useLedWall((s) => s.pwrMeta)
+  const mains = useLedWall((s) => s.mains)
+  return useMemo(
+    () => analyzePower({ moduleKey, pwr, pwrMeta, mains }),
+    [moduleKey, pwr, pwrMeta, mains]
+  )
+}
+
+/**
+ * Strom: Summe der Wand, darunter je Stromkette Last, Kreis und Phase, die Phasenbilanz und
+ * Warnungen (keine Sperre). Phasen ohne Angabe sind ein Vorschlag (in Klammern).
+ */
 function PowerCard({ d }: { d: WallMetrics }): JSX.Element {
+  const p = usePower()
   return (
     <SideCard
       title="Strom"
-      hint={`Leistung je Modul ${d.mod.powerTyp} W typisch, ${d.mod.powerMax} W maximal; Strom bei 230 V.`}
+      hint={`Leistung je Modul ${d.mod.powerTyp} W typisch, ${d.mod.powerMax} W maximal; Strom bei ${p.voltage} V. Ein Kreis mit ${p.breakerA} A trägt bei Maximalleistung ${p.maxModules} Module. Netz und Absicherung in der Schublade (Strom), Kreis und Phase je Kette in der Leiste über dem Strom-Plan; ohne Phase verteilt die Rechnung die Kreise als Vorschlag (in Klammern).`}
     >
       <table className="w-full text-sm tabular-nums">
         <thead>
@@ -691,6 +720,61 @@ function PowerCard({ d }: { d: WallMetrics }): JSX.Element {
           </tr>
         </tbody>
       </table>
+      {p.chains.length > 0 && (
+        <>
+          <table className="mt-2 w-full text-xs tabular-nums" aria-label="Stromketten">
+            <thead>
+              <tr className="text-muted-foreground">
+                <th className="text-left font-normal">Kette</th>
+                <th className="text-right font-normal">Module</th>
+                <th className="text-right font-normal">A max</th>
+                <th className="text-right font-normal">Kreis · Phase</th>
+              </tr>
+            </thead>
+            <tbody>
+              {p.chains.map((c) => (
+                <tr key={c.chain} className={cn(c.over && 'font-semibold text-danger')}>
+                  <td>P{c.chain + 1}</td>
+                  <td className="text-right">{c.modules}</td>
+                  <td className="text-right">{amps(c.amps)}</td>
+                  <td
+                    className={cn('text-right', c.phaseAuto && !c.over && 'text-muted-foreground')}
+                  >
+                    {circuitLabel(c)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div
+            className="mt-2 grid grid-cols-3 gap-1 text-center text-xs"
+            role="group"
+            aria-label="Phasen"
+          >
+            {PHASES.map((ph) => (
+              <div key={ph} className="rounded bg-muted/40 py-1">
+                <div className="text-muted-foreground">{ph}</div>
+                <div className="font-semibold tabular-nums">{amps(p.phases[ph])} A</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {p.warnings.length > 0 && (
+        <div className="mt-2 space-y-1.5" data-testid="strom-warnungen">
+          {p.warnings.map((w, i) =>
+            w.level === 'info' ? (
+              <p key={i} className="text-xs text-muted-foreground">
+                {w.text}
+              </p>
+            ) : (
+              <Alert key={i} tone={w.level}>
+                {w.text}
+              </Alert>
+            )
+          )}
+        </div>
+      )}
     </SideCard>
   )
 }

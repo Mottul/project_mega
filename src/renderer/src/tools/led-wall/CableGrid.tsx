@@ -13,6 +13,7 @@ import { PenLine } from 'lucide-react'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
+import { LiveInput } from '@renderer/components/ui/textarea'
 import { useElementSize } from '@renderer/lib/useElementSize'
 import { cn } from '@renderer/lib/utils'
 import {
@@ -23,8 +24,9 @@ import {
   routeSvg,
   type Cell
 } from './cabling'
-import type { ChainRoute, Corner, SigChainMeta } from './config'
+import type { ChainRoute, Corner, PwrChainMeta, SigChainMeta } from './config'
 import { GRID_GAP, GRID_HEADER, gridCellSize } from './front'
+import { amps, circuitLabel, PHASES, type Phase, type PowerChainLoad } from './power'
 import { hasBackup, type ChainLoad } from './processors'
 
 interface Props {
@@ -54,6 +56,11 @@ interface Props {
     redundancy: boolean
     onChange: (chain: number, patch: Partial<SigChainMeta>) => void
   }
+  /** nur Strom: Stromkreis und Phase je Kette, Last (power.ts) */
+  power?: {
+    loads: Map<number, PowerChainLoad>
+    onChange: (chain: number, patch: Partial<PwrChainMeta>) => void
+  }
 }
 
 const CORNERS: Corner[] = ['tl', 'tr', 'bl', 'br']
@@ -73,7 +80,8 @@ export function CableGrid({
   onReset,
   onRoute,
   onDraw,
-  ports
+  ports,
+  power
 }: Props): JSX.Element {
   const [areaRef, area] = useElementSize<HTMLDivElement>()
   const [drawing, setDrawing] = useState(false)
@@ -149,6 +157,8 @@ export function CableGrid({
   })
   const load = ports?.loads.get(activeChain)
   const sigOwn = own as SigChainMeta | undefined
+  const pwrOwn = own as PwrChainMeta | undefined
+  const pload = power?.loads.get(activeChain)
   const backupOn = ports ? hasBackup(sigOwn, ports.redundancy) : false
   const portOptions = Array.from({ length: Math.max(ports?.count ?? 0, 1) }, (_, i) => i + 1)
 
@@ -159,9 +169,12 @@ export function CableGrid({
         {Array.from({ length: btnCount }, (_, i) => {
           const n = routes.get(i)?.cells.length ?? 0
           const l = ports?.loads.get(i)
+          const pl = power?.loads.get(i)
           const extra = l
             ? ` · ${l.px.toLocaleString('de-DE')} px · Port ${l.port}${l.backupPort !== null ? `, Backup ${l.backupPort}` : ''}${l.over ? ' · über der Grenze je Port' : ''}`
-            : ''
+            : pl
+              ? ` · ${amps(pl.amps)} A · ${circuitLabel(pl)}${pl.over ? ' · über der Absicherung' : ''}`
+              : ''
           return (
             <button
               key={i}
@@ -180,7 +193,7 @@ export function CableGrid({
               {n > 0 && (
                 <span className="rounded-sm bg-black/15 px-1 font-semibold tabular-nums">{n}</span>
               )}
-              {l?.over && (
+              {(l?.over || pl?.over) && (
                 <span className="rounded-sm bg-destructive px-1 text-white" aria-hidden>
                   !
                 </span>
@@ -317,6 +330,46 @@ export function CableGrid({
                   </option>
                 ))}
               </Select>
+            )}
+          </>
+        )}
+        {power && (
+          <>
+            <LiveInput
+              key={activeChain}
+              aria-label="Stromkreis"
+              value={pwrOwn?.circuit ?? ''}
+              placeholder="Kreis, z. B. F3"
+              maxLength={40}
+              className="h-7 w-28 text-xs"
+              onCommit={(v) => power.onChange(activeChain, { circuit: v.trim() || undefined })}
+            />
+            <Select
+              size="xs"
+              aria-label="Phase"
+              value={pwrOwn?.phase ?? ''}
+              onChange={(e) =>
+                power.onChange(activeChain, {
+                  phase: (e.target.value || undefined) as Phase | undefined
+                })
+              }
+            >
+              <option value="">{pload ? `${pload.phase} (Vorschlag)` : 'Phase …'}</option>
+              {PHASES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </Select>
+            {pload && (
+              <span
+                className={cn(
+                  'tabular-nums',
+                  pload.over ? 'font-semibold text-danger' : 'text-muted-foreground'
+                )}
+              >
+                {amps(pload.amps)} A
+              </span>
             )}
           </>
         )}
