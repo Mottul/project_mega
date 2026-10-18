@@ -24,6 +24,13 @@ export interface LedModule {
   canCurve: boolean
   maxAngle?: number // Grad pro Modul
   minRadius?: number // m
+  /** IMs (Paneele im Modul) und wer sie tauschen darf (Festlegungen 13/14, Mini-Manual) */
+  ims: {
+    count: number
+    layout: string
+    /** Stufe 1 Bedienung, 2 Betreuung, 3 Technik; consult = nur nach Rücksprache */
+    swap: { level: 1 | 2 | 3; consult: boolean; note: string }
+  }
 }
 
 export const MODULES: Record<string, LedModule> = {
@@ -46,7 +53,12 @@ export const MODULES: Record<string, LedModule> = {
     viewAngle: '170°',
     refresh: 3840,
     tag: 'Indoor Fine-Pitch',
-    canCurve: false
+    canCurve: false,
+    ims: {
+      count: 4,
+      layout: '2 × 2',
+      swap: { level: 1, consult: true, note: 'werkzeuglos von vorne oder hinten' }
+    }
   },
   'uS2+': {
     name: 'uS2+',
@@ -68,7 +80,12 @@ export const MODULES: Record<string, LedModule> = {
     tag: 'Indoor Curved',
     canCurve: true,
     maxAngle: 45,
-    minRadius: 0.637
+    minRadius: 0.637,
+    ims: {
+      count: 2,
+      layout: 'übereinander',
+      swap: { level: 3, consult: false, note: 'je 8 Schrauben – nur Technik' }
+    }
   },
   rX3ioBF: {
     name: 'rX3ioBF',
@@ -88,7 +105,12 @@ export const MODULES: Record<string, LedModule> = {
     viewAngle: '85°',
     refresh: 3840,
     tag: 'Outdoor IP65',
-    canCurve: false
+    canCurve: false,
+    ims: {
+      count: 4,
+      layout: '2 × 2',
+      swap: { level: 1, consult: true, note: 'werkzeuglos von vorne oder hinten' }
+    }
   }
 }
 

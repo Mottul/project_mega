@@ -18,6 +18,8 @@ export interface WallInput {
   sqD: string
   sqCorner: number
   selectedCircle: number
+  /** Netz der Wand; fehlt = 230 V */
+  mains?: { voltage: number }
 }
 
 export interface WallMetrics {
@@ -71,6 +73,7 @@ export function computeWall(s: WallInput): WallMetrics {
   const g = gcd(resX, resY)
   const powerTypW = total * mod.powerTyp
   const powerMaxW = total * mod.powerMax
+  const voltage = s.mains?.voltage ?? 230
   const ballastPerBase = getBallastPerBase(parseFloat(actualH))
   const baseUnits = Math.max(1, Math.ceil(floorWidthM))
   return {
@@ -89,8 +92,8 @@ export function computeWall(s: WallInput): WallMetrics {
     weightKg: (total * mod.weight).toFixed(1),
     powerTypW,
     powerMaxW,
-    ampsTyp: (powerTypW / 230).toFixed(1),
-    ampsMax: (powerMaxW / 230).toFixed(1),
+    ampsTyp: (powerTypW / voltage).toFixed(1),
+    ampsMax: (powerMaxW / voltage).toFixed(1),
     ballastPerBase,
     baseUnits,
     totalBallast: ballastPerBase * baseUnits

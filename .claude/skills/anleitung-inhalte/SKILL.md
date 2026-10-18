@@ -33,7 +33,8 @@ still. Datenmodell: `model.ts`; Ausgabe je Stufe: `fehlersuche.ts`; Seiten: `sei
 - Ein Sprung zu einem höheren Schritt wird in der Ausgabe von selbst zu „Ab hier bitte anrufen“ –
   keine eigenen „anrufen, wenn du nicht Technik bist“-Texte schreiben.
 - Hängt die Stufe am Modul (IM-Tausch), `stufeAus: 'im-tausch'` setzen statt einer festen Stufe;
-  die Tabelle `IM_TAUSCH` in `fehlersuche.ts` liefert Stufe, Rücksprache und Hinweis.
+  `imTausch()` in `fehlersuche.ts` liest Stufe, Rücksprache und Hinweis aus den Stammdaten
+  (`led-wall/data.ts`, Feld `ims`) – ein neues Modul trägt sie dort ein.
 - **Keine Textvarianten je Stufe.** Die Stufe steuert nur, was erscheint.
 
 ## Fehlerfälle

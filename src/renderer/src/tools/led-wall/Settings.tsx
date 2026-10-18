@@ -1,7 +1,19 @@
 // Schublade des LED-Wall-Konfigurators: alles, was die Wand festlegt (Vorlagen, Projekt, Modul,
 // Größe und Aufbau, Curving-Form). Die Arbeitsfläche zeigt, was daraus folgt.
 
-import { Bookmark, Box, Briefcase, Cpu, Plus, Ruler, Save, Spline, Trash2, X } from 'lucide-react'
+import {
+  Bookmark,
+  Box,
+  Briefcase,
+  Cpu,
+  Plug,
+  Plus,
+  Ruler,
+  Save,
+  Spline,
+  Trash2,
+  X
+} from 'lucide-react'
 import { PanelSection } from '@renderer/components/ToolShell'
 import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
@@ -57,6 +69,7 @@ export function LedWallSettings({ d }: { d: WallMetrics }): JSX.Element {
       <WallPanel d={d} />
       {MODULES[moduleKey]?.canCurve && <CurvingPanel d={d} />}
       <ProcessorPanel />
+      <PowerPanel />
     </>
   )
 }
@@ -330,6 +343,64 @@ const HZ = [24, 25, 30, 48, 50, 60, 72, 100, 120, 144, 240]
  * Prozessor der Wand: Vorbelegung je Modul oder eigene Wahl, Farbtiefe, Bildrate, Backup-Vorgabe
  * für neue Ketten; bei mehreren Wänden desselben Moduls „teilen mit“ (Ports zählen gemeinsam).
  */
+const VOLTAGES = [230, 220, 120, 110]
+const BREAKERS = [10, 13, 16, 20, 25, 32]
+/** Auswahl samt einem Wert aus der Datei, der nicht in der Liste steht */
+const withValue = (list: number[], v: number): number[] =>
+  list.includes(v) ? list : [...list, v].sort((a, b) => a - b)
+
+/** Netz und Absicherung der Wand; Kreis und Phase je Kette stehen über dem Strom-Plan */
+function PowerPanel(): JSX.Element {
+  const mains = useLedWall((s) => s.mains)
+  const set = useLedWall((s) => s.set)
+  const setM = (p: Partial<typeof mains>): void => set({ mains: { ...mains, ...p } })
+  return (
+    <PanelSection
+      id="strom"
+      title="Strom"
+      icon={Plug}
+      defaultOpen={false}
+      summary={`${mains.voltage} V · ${mains.breakerA} A je Kreis`}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Netzspannung">
+          <Select
+            aria-label="Netzspannung"
+            value={String(mains.voltage)}
+            onChange={(e) => setM({ voltage: Number(e.target.value) })}
+          >
+            {withValue(VOLTAGES, mains.voltage).map((v) => (
+              <option key={v} value={v}>
+                {v} V
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field
+          label="Absicherung je Kreis"
+          hint="Leitungsschutzschalter der Stromkreise, an denen die Stromketten hängen. Daraus folgt, wie viele Module ein Kreis bei Maximalleistung trägt; mehrere Ketten an einem Kreis zählen zusammen."
+        >
+          <Select
+            aria-label="Absicherung je Kreis"
+            value={String(mains.breakerA)}
+            onChange={(e) => setM({ breakerA: Number(e.target.value) })}
+          >
+            {withValue(BREAKERS, mains.breakerA).map((v) => (
+              <option key={v} value={v}>
+                {v} A
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Stromkreis und Phase je Kette legst du in der Leiste über dem Strom-Plan fest. Ohne Phase
+        verteilt die Rechnung die Kreise als Vorschlag auf L1–L3.
+      </p>
+    </PanelSection>
+  )
+}
+
 function ProcessorPanel(): JSX.Element {
   const s = useLedWall()
   const p = s.processor

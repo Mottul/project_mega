@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeWall } from './compute'
 import { sanitizeLedWallConfig } from './config'
+import { analyzePower } from './power'
 import { ledWallPrintHtml, type PrintData } from './printHtml'
 import { analyzeProcessors } from './processors'
 
@@ -49,6 +50,24 @@ describe('PDF-Doku der LED-Wall', () => {
     expect(html).toContain('<g data-backup="0">')
     // ohne Analyse keine Tabelle (z. B. ohne Ketten)
     expect(ledWallPrintHtml(daten()).html).not.toContain('Prozessor und Ports')
+  })
+
+  it('Strom: Netz, Kreis und Phase je Kette (Vorschlag in Klammern), IMs je Modul', () => {
+    const d = daten()
+    const ohne = ledWallPrintHtml(d).html
+    expect(ohne).not.toContain('Strom: Kreise und Phasen')
+    expect(ohne).toContain('<th>IMs je Modul</th><td>4 (2 × 2)</td>')
+    const power = analyzePower({
+      moduleKey: '496-2,0',
+      pwr: d.pwr,
+      pwrMeta: { '0': { circuit: 'F<3>' } },
+      mains: { voltage: 230, breakerA: 16 }
+    })
+    const { html } = ledWallPrintHtml({ ...d, power })
+    expect(html).toContain('Strom: Kreise und Phasen')
+    expect(html).toContain('Netz 230 V · Absicherung 16 A je Kreis · höchstens 20 Module je Kreis')
+    expect(html).toContain('<td>P1</td><td>4</td><td>3,1 A</td><td>F&lt;3&gt; · (L1)</td>')
+    expect(html).toContain('Phase in Klammern: Vorschlag')
   })
 
   it('Ansicht von hinten: Hinweis und gespiegelte Pläne mit Spaltennummern', () => {

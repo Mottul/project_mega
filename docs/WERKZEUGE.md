@@ -303,10 +303,11 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 - **Schublade:** Vorlagen (eine Wand unter dem Projektnamen speichern; laden ersetzt die gewählte
   Wand, die übrigen Wände und die Verbindung zur Datei bleiben), Projekt und Kunde, Modul
   (Bestand: 496-2,0 / uS2+ / rX3ioBF), Wand (Name, Breite, Höhe – gerundet auf ganze Module –,
-  Ground-Stack oder fliegend) und beim uS2+ die Curving-Form.
+  Ground-Stack oder fliegend), beim uS2+ die Curving-Form, Prozessor und **Strom** (Netzspannung,
+  Absicherung je Kreis).
 - **Kennzahlen:** Auflösung mit Seitenverhältnis, Module (Spalten × Reihen), Größe (mit Fläche
-  bzw. abgewickeltem Bogen), Gewicht, maximale Leistung (Strom bei 230 V), Ballast bzw. Last an
-  der Traverse.
+  bzw. abgewickeltem Bogen), Gewicht, maximale Leistung (Strom bei der eingestellten
+  Netzspannung, ab Werk 230 V), Ballast bzw. Last an der Traverse.
 - **Zeichenfläche** mit Reitern, so groß wie das Fenster:
   - **Ansicht:** Vorderansicht mit Modulraster, 16:9-Nutzfläche und den schwarzen Rändern (in
     Pixeln), Maßketten in Metern und Pixeln; Ground-Stack auf seinen Standfüßen mit einer Person
@@ -332,12 +333,22 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
     Grenze je Port (kleinerer Wert aus Prozessor und Empfangskarte, Werte aus den Handbüchern),
     Last je Kette und warnt – über der Grenze je Port, zu viele Ports, zu viele Pixel gesamt,
     zu breit oder hoch für den Prozessor, Backup nicht am Partner-Port, doppelter Port.
+  - **Stromkreise und Phasen:** Je Stromkette in der Verlauf-Leiste **Kreis** (frei, z. B. „F3“)
+    und **Phase** L1–L3. Ohne Phase verteilt die Rechnung die Kreise als Vorschlag auf die
+    jeweils schwächste Phase (in Klammern, gespeichert wird er nicht); Ketten am selben Kreis
+    zählen zusammen und liegen auf einer Phase. Die Karte **Strom** zeigt je Kette Module,
+    Strom bei Maximalleistung, Kreis und Phase, darunter die Last je Phase, und warnt: Kette oder
+    Kreis über der Absicherung (mit „höchstens n Module je Kreis“), ein Kreis auf zwei Phasen,
+    Phasen deutlich ungleicher belastet als nötig; Kreise nah an der Absicherung bekommen den
+    Hinweis, nacheinander einzuschalten (Einschaltstrom).
   - **Signal + Strom** nebeneinander (untereinander, wenn das Fenster dafür zu schmal ist) und
     **Vorne/Hinten**: Von hinten sind die Pläne gespiegelt und groß beschriftet, Spalten- und
     Kettennummern bleiben am Modul. Die PDF-Doku druckt die Pläne mit Pfeilen in der gewählten
-    Blickrichtung, dazu Prozessor, Ports und Last je Signalkette.
-- **Daneben:** Strom (typisch und maximal in W und A), Aufbau (LSU-Füße, Ballast je Fuß und
-  gesamt bzw. Gewicht an der Traverse) und die Daten des Moduls. Ist die Arbeitsfläche schmal,
+    Blickrichtung, dazu Prozessor, Ports und Last je Signalkette sowie Netz, Kreis, Phase und
+    Strom je Stromkette.
+- **Daneben:** Signal, Strom (typisch und maximal in W und A, Ketten, Phasen), Aufbau (LSU-Füße,
+  Ballast je Fuß und gesamt bzw. Gewicht an der Traverse) und die Daten des Moduls (mit IMs je
+  Modul). Ist die Arbeitsfläche schmal,
   stehen Zeichnung und Daten untereinander.
 - **Curving-Planung** für uS2+: Vollkreise mit gleichem Winkel je Modul zur Auswahl, Kreissegment
   aus Sehne (Wandbreite) und Stichhöhe (auch als Start für den Builder), freier Segment-Builder

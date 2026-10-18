@@ -17,8 +17,8 @@ Abweichungen vom Plan:
   Seitenumbrüche („Seite 3 von 8“ kennt erst Chromiums Druck).
 - **Foto-Speicher** für alle Dateien gemeinsam statt eines Arbeitsordners je Datei (siehe
   [Sicherheit](#sicherheit)).
-- **IM-Tausch je Modul** steht bis Phase 2 als kleine Tabelle in
-  `src/renderer/src/tools/mini-manual/fehlersuche.ts` (`IM_TAUSCH`), nicht in den Stammdaten.
+- **IM-Tausch je Modul** steht seit Phase 2b (Teil 3) in den Stammdaten des Konfigurators
+  (`led-wall/data.ts`, Feld `ims`); die Fehlersuche liest sie über `imTausch()`.
 - **Fehlerfälle** 1–3 bilden zusammen „Ein Teil der Wand ist dunkel“, 5, 7 und 15 stecken in
   „Die ganze Wand ist dunkel“ (mit Glasfaser/CVT10) – 15 Fälle statt 18.
 - **Logo** als PNG/JPG im Foto-Speicher; SVG geht noch nicht (müsste vorher bereinigt werden).
@@ -61,8 +61,15 @@ ein Prozessor) gelten ohne Angabe als verbunden – so bleibt die einfache Anlei
    und Backup-Leitungen in der Packliste, Prozessoren im Mini-Manual aus der Kopie anlegen.
    Abschnitt `ledWall` Version 4 (`processor.shareWith`). Abweichung: „bespielt“ nicht still
    vorbelegt, sondern per Klick („Prozessoren aus der LED-Wall-Planung übernehmen“).
-3. **Strom** – Kreis und Phase je Stromkette, Netz und Absicherung, Last je Kette,
-   Phasenbilanz; IMs in den Stammdaten (`IM_TAUSCH` zieht um).
+3. **Strom** – umgesetzt (18.10.2026): Netz und Absicherung je Wand (Schublade „Strom“), Kreis
+   und Phase je Stromkette in der Verlauf-Leiste, Last je Kette und Kreis, Phasenbilanz, Karte
+   „Strom“ mit Warnungen, Tabelle im PDF (`led-wall/power.ts`, rein und getestet); IMs in den
+   Stammdaten (`data.ts` `ims`, auch in Modulkarte und PDF). Abweichungen: Phasen ohne Angabe
+   sind ein Vorschlag (schwächste Phase, ein Kreis auf einer Phase) und werden nicht gespeichert;
+   Schieflage nur, wenn eine andere Verteilung merklich besser wäre; Strom je Wand (Kreise
+   zweier Wände am selben Verteiler zählen nicht zusammen); „höchstens n Module je
+   Stromschleife“ laut Hersteller fehlt noch (keine Angaben) – die Grenze kommt aus der
+   Absicherung.
 4. **Glasfaser und Anleitung** – Glasfaser-Strecke mit CVT10 und Packliste; Kapitel
    Verkabelung im Mini-Manual (Pläne aus der Kopie, vorne/hinten).
 
