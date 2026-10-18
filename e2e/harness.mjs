@@ -35,6 +35,9 @@ function aufraeumen(dir) {
  * `userData`: vorhandenen Ordner weiterverwenden (Neustart nachstellen) – der Aufrufer räumt ihn
  * dann selbst auf. Liefert { app, page, userData, close } – `page` ist das Hauptfenster.
  */
+/** So lange darf das Beenden einer App am Ende eines Skripts dauern */
+const CLOSE_TIMEOUT_MS = 20_000
+
 export async function launchApp({ env = {}, args = [], userData: given } = {}) {
   let userData = given
   if (!userData) {
@@ -55,9 +58,11 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
     args: [...sandbox, `--user-data-dir=${userData}`, ...args, root],
     env: full
   })
+  // gleich hier holen: Hat sich die App schon selbst beendet (Hauptfenster zu, shutdown.mjs),
+  // wirft app.process() in Playwright („reading '_object'“ – CI rot unter Windows und macOS)
+  const proc = app.process()
   // E2E_DEBUG=1: Ausgabe und Ende des main-Prozesses mitschreiben (Abstürze, Fehler im main)
   if (process.env.E2E_DEBUG) {
-    const proc = app.process()
     proc.stdout?.on('data', (d) => process.stdout.write(`[main] ${d}`))
     proc.stderr?.on('data', (d) => process.stdout.write(`[main!] ${d}`))
     proc.on('exit', (code, signal) => console.log(`[main] beendet: Code ${code}, Signal ${signal}`))
@@ -93,7 +98,28 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
     errors,
     userData,
     async close() {
-      await app.close().catch(() => {})
+      // Beenden mit Zeitlimit: In der macOS-CI hing app.close() nach player.mjs – alle Schritte
+      // grün, dann 42 Minuten nichts, bis der Lauf nach 45 abgebrochen wurde (PR #169,
+      // 18.10.2026). Die App räumt laufende Arbeit selbst in höchstens 3 s ab; was danach noch
+      // steht, wird hart beendet, damit die übrigen Skripte laufen.
+      const zu = await Promise.race([
+        app.close().then(
+          () => true,
+          () => true
+        ),
+        sleep(CLOSE_TIMEOUT_MS).then(() => false)
+      ])
+      if (!zu && proc.exitCode === null && proc.signalCode === null) {
+        console.log(
+          `  [e2e] App nach ${CLOSE_TIMEOUT_MS / 1000} s nicht beendet – Prozess wird beendet`
+        )
+        try {
+          proc.kill('SIGKILL')
+        } catch {
+          // schon weg
+        }
+        await sleep(500)
+      }
       if (!given) aufraeumen(userData)
     }
   }
