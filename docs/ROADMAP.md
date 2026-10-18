@@ -26,6 +26,20 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ## Funktionen
 
+### App
+
+- **Beenden mit Rückfrage:** Läuft beim Schließen noch etwas, fragt die App „Wirklich beenden?“ und
+  nennt, was läuft – Video-Player oder Stage-Timer mit offenem Ausgabefenster oder NDI-Ausgabe,
+  Testbild- bzw. Testton-Ausgabe, Konvertierung, Player-Import, Download oder Video-Generator
+  (Warteschlange), eine **verbundene** Handy-Fernsteuerung (offene Verbindung, nicht nur „Server
+  an“), ein spielender Jingle, zyklisch sendende OSC-Befehle. Ohne Laufendes keine Frage. Gilt für
+  jeden Weg (Hauptfenster schließen, App-Menü, Cmd+Q unter macOS). Heute bricht die App laufende
+  Aufträge still ab (`services/shutdown.ts`, höchstens 3 s). Ansatz: `hasRunningWork()` zu einer
+  Liste mit Namen ausbauen, die Rückfrage im `before-quit` des main als nativer Dialog am
+  Hauptfenster; beim Herunterfahren oder Abmelden des Rechners nicht fragen. E2E: Die Rückfrage
+  im Harness beantworten (`stubConfirm`), sonst hält sie das Beenden auf – `ctx.close()` bricht
+  dann nach 20 s hart ab.
+
 ### Bestehende Werkzeuge ausbauen
 
 - **OSC-Steuerung**
