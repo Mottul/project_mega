@@ -87,12 +87,23 @@ export interface RemoteHost {
   stop(): void
 }
 
+/** Alle Fernsteuer-Server mit ihren offenen Verbindungen – für „Wirklich beenden?“ */
+const hosts: { tag: string; clients: Set<ServerResponse> }[] = []
+
+/** Verbundene Geräte je Fernsteuerung (Log-Kennung → offene Verbindungen), nur > 0 */
+export function verbundeneGeraete(): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const h of hosts) if (h.clients.size) out[h.tag] = (out[h.tag] ?? 0) + h.clients.size
+  return out
+}
+
 /** Lebenszyklus + Client-Verwaltung eines Fernsteuer-Servers. `logTag` erscheint
  *  im Log, `defaultPort` ist der gemeldete Port, solange nicht gestartet wurde. */
 export function createRemoteHost(logTag: string, defaultPort = 0): RemoteHost {
   let server: Server | null = null
   let currentPort = defaultPort
   const clients = new Set<ServerResponse>()
+  hosts.push({ tag: logTag, clients })
 
   function status(): RemoteStatus {
     return { running: server !== null, port: currentPort, urls: server ? lanUrls(currentPort) : [] }

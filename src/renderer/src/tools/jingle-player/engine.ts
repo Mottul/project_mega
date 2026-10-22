@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { JINGLE_PROTOCOL } from '@shared/ipc-contracts'
 import { toast } from '@renderer/lib/toast'
+import { useAktivMelden } from '@renderer/lib/aktivMelden'
 import type { Pad } from './store'
 
 interface EngineArgs {
@@ -217,6 +218,7 @@ export function useJingleEngine({ pads, outputDeviceId, soloMode }: EngineArgs):
 
   // Fortschritts-Schleife, solange etwas läuft.
   const hasPlaying = Object.keys(playing).length > 0
+  useAktivMelden('jingle', hasPlaying)
   useEffect(() => {
     if (!hasPlaying) {
       setProgress((p) => (Object.keys(p).length ? {} : p))

@@ -50,6 +50,11 @@ export class JobQueue {
     return n
   }
 
+  /** Laufende und wartende Aufträge (für „Wirklich beenden?“) */
+  count(): number {
+    return this.running.size + this.waiting.length
+  }
+
   /** Läuft oder wartet noch etwas? */
   busy(): boolean {
     return this.running.size > 0 || this.waiting.length > 0

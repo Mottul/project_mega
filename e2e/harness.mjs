@@ -102,6 +102,13 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
       // grün, dann 42 Minuten nichts, bis der Lauf nach 45 abgebrochen wurde (PR #169,
       // 18.10.2026). Die App räumt laufende Arbeit selbst in höchstens 3 s ab; was danach noch
       // steht, wird hart beendet, damit die übrigen Skripte laufen.
+      // Läuft noch etwas, fragt die App „Wirklich beenden?“ – hier immer „Beenden“ (Knopf 0)
+      if (proc.exitCode === null && proc.signalCode === null)
+        await app
+          .evaluate(({ dialog }) => {
+            dialog.showMessageBox = async () => ({ response: 0, checkboxChecked: false })
+          })
+          .catch(() => {})
       const zu = await Promise.race([
         app.close().then(
           () => true,

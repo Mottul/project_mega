@@ -14,6 +14,7 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { Select } from '@renderer/components/ui/select'
 import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { toast } from '@renderer/lib/toast'
+import { useAktivMelden } from '@renderer/lib/aktivMelden'
 import { ToneEngine } from './engine'
 import {
   CHANNEL_OPTIONS,
@@ -61,6 +62,7 @@ export function useTestTone(): TestTone {
   const [playing, setPlaying] = useState(false)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const engine = useRef<ToneEngine | null>(null)
+  useAktivMelden('testton', playing)
 
   // Ausgabegeräte auflisten (Labels brauchen u. U. eine Audio-Berechtigung)
   useEffect(() => {

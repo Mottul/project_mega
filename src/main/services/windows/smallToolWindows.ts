@@ -108,6 +108,9 @@ export function fitToolWindow(sender: WebContents, requested: unknown): void {
   showWhenFitted(win)
 }
 
+/** Offene kleine Werkzeuge (gehen mit dem Hauptfenster zu – für „Wirklich beenden?“) */
+export const smallToolWindowList = (): BrowserWindow[] => [...smallToolWindows.values()]
+
 export function closeSmallToolWindows(): void {
   for (const win of [...smallToolWindows.values()]) if (!win.isDestroyed()) win.close()
 }
