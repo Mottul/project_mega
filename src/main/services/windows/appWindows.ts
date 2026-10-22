@@ -88,7 +88,19 @@ export function createWindow(
     })
   })
 
-  if (!opts.deferShow) win.once('ready-to-show', () => win.show())
+  if (!opts.deferShow) {
+    // Sicherheitsnetz: In der Linux-CI blieb das Hauptfenster zweimal über 15 s unsichtbar
+    // (22.10.2026) – kommt 'ready-to-show' nicht, nach 5 s trotzdem zeigen. Ein kurz leeres
+    // Fenster ist besser als ein Programm, das scheinbar nicht startet.
+    const notfalls = setTimeout(() => {
+      if (!win.isDestroyed() && !win.isVisible()) win.show()
+    }, 5000)
+    win.once('ready-to-show', () => {
+      clearTimeout(notfalls)
+      win.show()
+    })
+    win.once('closed', () => clearTimeout(notfalls))
+  }
   // Pinch-/Strg-Rad-Seitenzoom des ganzen Fensters abschalten -> der PDF-Viewer
   // steuert den Zoom selbst (sonst zoomt/scrollt die ganze App ungewollt).
   win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})

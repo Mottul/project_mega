@@ -223,6 +223,12 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Das Hauptfenster erscheint erst bei `ready-to-show`**, manchmal nach dem ersten Inhalt;
   `launchApp` wartet deshalb, bis es sichtbar ist (sonst galt es beim Schließen einer Ausgabe
   noch nicht als gezeigt, und die App beendete sich – timer.mjs war jeden zweiten Lauf rot).
+  In der Linux-CI blieb es zweimal über 15 s unsichtbar (22.10.2026, im Neulauf grün): Der Harness
+  wartet jetzt 30 s und nennt im Fehler Fenster (sichtbar, lädt, URL) und Konsolenfehler;
+  `createWindow` zeigt das Fenster nach 5 s auch ohne `ready-to-show`.
+- **Gepackte App unter macOS:** Der erste Start einer frisch gepackten Binary (ffmpeg) dauert
+  länger als das Zeitlimit der App (10 s) – Versionen deshalb mit `waitFor` erneut abfragen
+  (`e2e/paket.mjs`); `binaryVersion` merkt sich ein `null` nicht.
 - **Verdeckte und minimierte Fenster bekommen kein `requestAnimationFrame`:** Was im Bildtakt
   misst oder zählt, steht dann still. Messen per Timer; Prüfung: Fenster minimieren und schauen,
   dass Werte nachkommen (`e2e/rta.mjs`).

@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { launchApp, root, runSteps } from './harness.mjs'
+import { launchApp, root, runSteps, waitFor } from './harness.mjs'
 
 /** Startdatei der entpackten App in dist/ (Namen aus electron-builder.yml und package.json) */
 function paketPfad() {
@@ -50,7 +50,13 @@ try {
     [
       'ffmpeg aus dem Paket (extraResources) läuft',
       async () => {
-        const s = await page.evaluate(() => window.api.ffmpeg.status())
+        // Der erste Start der frisch gepackten Binary dauert unter macOS länger als das Zeitlimit
+        // der App (10 s) – die nächste Abfrage fragt neu (binaryVersion merkt sich kein null)
+        let s = null
+        await waitFor(async () => {
+          s = await page.evaluate(() => window.api.ffmpeg.status())
+          return s.active.version !== null
+        }, 60_000)
         assert.equal(s.active.source, 'mitgeliefert')
         assert.match(s.active.version ?? '', /^ffmpeg version/)
       }

@@ -100,10 +100,24 @@ export async function launchApp({
       app
         .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.isVisible()))
         .catch(() => false),
-    15_000,
+    30_000,
     100
   )
-  if (!shown) throw new Error('Hauptfenster wird nicht angezeigt')
+  if (!shown) {
+    // Was war los? Zweimal am 22.10.2026 in der Linux-CI ohne jeden Hinweis rot
+    const fenster = await app
+      .evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().map((w) => ({
+          sichtbar: w.isVisible(),
+          laedt: w.webContents.isLoading(),
+          url: w.webContents.getURL()
+        }))
+      )
+      .catch((e) => String(e))
+    throw new Error(
+      `Hauptfenster wird nicht angezeigt – Fenster: ${JSON.stringify(fenster)}; Fehler: ${JSON.stringify(errors)}`
+    )
+  }
   return {
     app,
     page,
