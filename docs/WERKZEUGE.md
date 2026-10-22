@@ -75,6 +75,12 @@ Jedes Werkzeug ist gleich aufgebaut:
   (Standard), Hell oder wie das System; 13 Akzentfarben (Gold, Bernstein, Türkis, Blau, Violett,
   Pink, Grün, Limette, Cyan, Indigo, Orchidee, Rosé, Silber); eine kompakte Anzeige setzt die
   ganze Oberfläche etwas kleiner. Ergebnisse in den Rechnern stehen in der Akzentfarbe.
+- **Beenden mit Rückfrage:** Läuft beim Beenden noch etwas, fragt die App „Wirklich beenden?“
+  und nennt es – Ausgaben von Video-Player, Stage-Timer und Testbild (auch NDI), laufende oder
+  wartende Aufträge, die Vorschau des Video-Generators, verbundene Geräte der Fernsteuerungen
+  (auch die Bühnen-Anzeige des Timers), Testton und spielende Jingles. Gefragt wird beim
+  Schließen des letzten Fensters (das Hauptfenster nimmt Ausgaben und kleine Werkzeuge mit) und
+  bei Cmd+Q; beim Herunterfahren oder Abmelden des Rechners nie. „Abbrechen“ lässt alles laufen.
 - **Robust in der Show:** Ein abstürzendes Werkzeug bleibt in seinem Bereich (Fehlergrenze), die
   App läuft weiter. Stille Fehler werden als Hinweis sichtbar (z. B. defekte Jingle-Datei,
   verlorenes Audiogerät). `settings.json` wird atomar gespeichert; eine beschädigte
@@ -120,7 +126,8 @@ Playlist-Player für LED-Wände und Beamer.
   übersprungen, zwei Fassungen desselben Clips laufen zu einer zusammen).
 - **Ausgabe-Leiste:** Ausgabe-Monitor, Vollbild starten/beenden („Monitor wechseln“ legt die
   laufende Ausgabe um), NDI und Handy-Fernsteuerung ein/aus, rechts der laufende Titel. Die
-  Wand-Auflösung (Eingabe, Vorgabe oder „Vom Monitor“) steht in der Schublade unter „Wand“.
+  Wand-Auflösung (Eingabe, Vorgabe, „Vom Monitor“ oder „Aus LED-Wall“ – die im Konfigurator
+  gewählte Wand) steht in der Schublade unter „Wand“.
 - **Vollbild-Ausgabe** mit doppelt gepuffertem Player: nahtlose Übergänge, wahlweise Schnitt oder
   echtes Überblenden (das alte Video läuft weiter, Ton blendet mit). Shuffle ist lückenlos – das
   nächste Zufallsmedium wird vorab geladen.
@@ -278,8 +285,9 @@ Gerätetyp. Adapter, „Scannen“/„Stopp“ und der Fortschritt stehen in der
   HTTP/SSH/RDP …), ATEM per UDP-Handshake, Bonjour/mDNS-Namen.
 - Gerätetyp und Symbol lassen sich überschreiben (an der MAC gemerkt), eigene Bezeichnungen
   vergeben.
-- Web-Oberfläche eines Geräts öffnen oder seine IP an die NovaStar-Steuerung bzw. die
-  NovaStar-Kacheln der OSC-Steuerung übergeben.
+- Web-Oberfläche eines Geräts öffnen, seine IP an die NovaStar-Steuerung bzw. die
+  NovaStar-Kacheln der OSC-Steuerung übergeben oder **Handbücher des Herstellers** in der
+  Manuals-Bibliothek suchen (aus „Xi'an NovaStar Tech Co., Ltd.“ wird die Suche „NovaStar“).
 
 ### DMX-Dip-Schalter
 
@@ -403,8 +411,9 @@ Clips passend fürs Zielsystem (früher „HAP-Konverter“).
   („Lautheit −32,3 → −23 LUFS, gleichmäßig“).
 - **Sicher:** überschreibt nie (`…_2`), halbfertige Dateien werden entfernt – auch wenn man die
   App mitten im Auftrag beendet (sie bricht dann alle Konvertierungen, Generator-Läufe, Importe
-  und Downloads ab, räumt auf und schließt höchstens 3 s später); „Ergebnis prüfen“
-  öffnet die fertige Datei in der Medien-Info.
+  und Downloads ab, räumt auf und schließt höchstens 3 s später – vorher fragt sie, siehe
+  „Beenden mit Rückfrage“); „Ergebnis prüfen“ öffnet die fertige Datei in der Medien-Info,
+  „In Player-Bibliothek übernehmen“ gibt sie an den Video-Player.
 - **ffmpeg aktuell** (Menü „Mottulbox“ → ffmpeg; gilt für die ganze App): zeigt, welcher Build
   läuft (mitgeliefert oder in der App aktualisiert). Unter Windows und Linux holt die App einmal am
   Tag den neuesten Build, der mindestens 7 Tage alt ist, prüft ihn (Prüfsumme, Encoder und
@@ -521,7 +530,8 @@ Wrapper um yt-dlp. Adresse und „Laden“ stehen in der Leiste „Download“ (
 Downloads laufen oder warten), Format, Zielordner und Anmeldung in der Schublade.
 
 - Video (MP4) oder Audio (MP3/M4A) mit Auflösungsdeckel; Warteschlange mit Fortschritt, Tempo und
-  Restzeit (zwei Downloads parallel, „Alle abbrechen“); Muxing über das gebündelte ffmpeg.
+  Restzeit (zwei Downloads parallel, „Alle abbrechen“); Muxing über das gebündelte ffmpeg. Ein
+  fertiges Video geht mit „In Player-Bibliothek übernehmen“ direkt an den Video-Player.
 - **Playlists werden erkannt:** Jede Adresse wird vor dem Laden geprüft. Ein Video startet sofort,
   eine Playlist zeigt ihre Einträge mit Dauer zur Auswahl – „Alle/Keine“, Umschalt-Klick für
   Bereiche; private oder gelöschte Einträge sind gesperrt, Unter-Playlists (z. B. Kanal-Reiter)
@@ -685,6 +695,8 @@ Messmikrofon), am Handy in der Web-App.
   (größter Abtastwert, mit Warnung bei Übersteuerung).
 - **Ablesen:** Zeiger bzw. Finger aufs Spektrum zeigt Frequenz, nächste Note mit Cent, Band- und
   Kurvenpegel.
+- **Farbe** (Anzeige → Farbe): Akzent wie die App oder **neutral** – Pegel, Spektrum und
+  Wasserfall in Weiß (im hellen Design Schwarz), z. B. für ein ruhiges Bild am Messplatz.
 - **Spektrogramm** unter dem Spektrum (Anzeige → Spektrogramm), Farbe = Pegel, eine Zeile je
   0,1 s (gut 15 s Verlauf): **Wasserfall** – Frequenz waagrecht auf derselben Achse wie das
   Spektrum, eine Linie steht also genau unter ihrer Spitze, die Zeit läuft nach unten; oder
@@ -741,6 +753,10 @@ Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
   „CVT10 → erste Kachel“.
 - **Netzwerk-Scanner → NovaStar:** IP eines Geräts in die NovaStar-Steuerung bzw. die
   NovaStar-Kacheln der OSC-Steuerung übernehmen.
+- **Netzwerk-Scanner → Manuals-Bibliothek:** den Hersteller eines Geräts als Handbuch-Suche.
+- **Video-Konverter / YouTube-Downloader → Video-Player:** „In Player-Bibliothek übernehmen“ an
+  fertigen Konvertierungen und Video-Downloads (wie beim Video-Generator).
+- **LED-Wall-Konfigurator → Video-Player:** „Aus LED-Wall“ übernimmt die Wand-Auflösung.
 - **Video-Player → OSC-Steuerung:** Die Anzeige-Kachel kann die Restzeit des laufenden Clips
   zeigen.
 

@@ -26,20 +26,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ## Funktionen
 
-### App
-
-- **Beenden mit Rückfrage:** Läuft beim Schließen noch etwas, fragt die App „Wirklich beenden?“ und
-  nennt, was läuft – Video-Player oder Stage-Timer mit offenem Ausgabefenster oder NDI-Ausgabe,
-  Testbild- bzw. Testton-Ausgabe, Konvertierung, Player-Import, Download oder Video-Generator
-  (Warteschlange), eine **verbundene** Handy-Fernsteuerung (offene Verbindung, nicht nur „Server
-  an“), ein spielender Jingle, zyklisch sendende OSC-Befehle. Ohne Laufendes keine Frage. Gilt für
-  jeden Weg (Hauptfenster schließen, App-Menü, Cmd+Q unter macOS). Heute bricht die App laufende
-  Aufträge still ab (`services/shutdown.ts`, höchstens 3 s). Ansatz: `hasRunningWork()` zu einer
-  Liste mit Namen ausbauen, die Rückfrage im `before-quit` des main als nativer Dialog am
-  Hauptfenster; beim Herunterfahren oder Abmelden des Rechners nicht fragen. E2E: Die Rückfrage
-  im Harness beantworten (`stubConfirm`), sonst hält sie das Beenden auf – `ctx.close()` bricht
-  dann nach 20 s hart ab.
-
 ### Bestehende Werkzeuge ausbauen
 
 - **OSC-Steuerung**
@@ -66,9 +52,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 - **Testbildgenerator:** AV-Sync auch als Video mit Ton exportieren (für Medienserver und Player
   ohne Mottulbox).
 - **Jingle-Player:** Ducking, MIDI-Pads.
-- **RTA:** Farbe von Pegelanzeige und Spektrum (Balken, Kurve, Wasserfall) wählbar – Akzentfarbe
-  wie heute oder Weiß (im hellen Design entsprechend Schwarz), z. B. für ein neutrales Bild am
-  Messplatz oder auf dem Handy.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
 
@@ -84,18 +67,13 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 ### Verzahnung
 
 Heute gibt es Medien-Info ↔ Video-Konverter, Video-Konverter/Medien-Info → Video-Generator →
-Video-Player, LED-Wall → Packliste und Netzwerk-Scanner → NovaStar (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Geplant:
+Video-Player, Video-Konverter/YouTube-Downloader → Video-Player, LED-Wall → Packliste und
+Video-Player, Netzwerk-Scanner → NovaStar und Manuals (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Geplant:
 
 - **Übergabe-Speicher verallgemeinern** – heute gibt es nur einen NovaStar-IP-Slot. Deshalb setzt
   „IP in der OSC-Steuerung verwenden“ nur die NovaStar-IP, nicht das OSC-Ziel. Ein Slot „Wert +
   Zielwerkzeug“ ist die Grundlage für alles Weitere.
-- **Fertiger Auftrag → Player-Bibliothek:** Download oder Konvertierung mit einem Klick in den
-  Video-Player (spart den Umweg über den Dateimanager kurz vor der Show) – der Video-Generator kann
-  es schon, YouTube-Downloader und Video-Konverter noch nicht.
-- **LED-Wall → Video-Player:** Wandauflösung übernehmen (das Testbild kann es schon: Raster und
-  Auflösung „Aus LED-Wall-Konfigurator“).
 - **LED-Wall → Stromlast/Rigging:** Gewicht und Stromaufnahme sind schon berechnet.
-- **Netzwerk-Scanner → Manuals:** den erkannten Hersteller als Handbuch-Suche öffnen.
 - **Packliste aus mehr Quellen:** Rigging (Anschlagmittel je Bridle) und Stromlast (Kabel und
   Verteiler je Kreis).
 - **Show-Profil:** Grundlage ist die Projektdatei `.mottul` (ein Abschnitt je Werkzeug, heute
