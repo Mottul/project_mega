@@ -38,7 +38,7 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
    - Schema-Version des Abschnitts als Konstante; neue Felder = Version hoch, `sanitize`
      ergänzt sie beim Lesen alter Abschnitte. Auch wenn `sanitize` ein Feld mit Vorgabe auffüllt:
      Eine ältere Mottulbox würde es beim Speichern verlieren (so LED-Wall 4 `shareWith`, 5
-     `fiber`; Anleitung 4 Kapitel Verkabelung, `antwortAus`; Anleitung 5 `ausgabe.online`). Neue Kapitel/Listeneinträge, die
+     `fiber`; Anleitung 4 Kapitel Verkabelung, `antwortAus`; Anleitung 5 `ausgabe.online`; Anleitung 6 `bedienfelder`). Neue Kapitel/Listeneinträge, die
      eine alte Datei nicht hat, an ihre Stelle einsortieren (`neuesKapitel`, hinter den Vorgänger),
      und eine neue, unberührte Anleitung muss die Prüfung unverändert bestehen.
 3. **Store:** `file: ProjectBinding | null` **neben** der Konfiguration (Vorlagen nehmen die
@@ -118,7 +118,8 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
 - **Versionssprung des Abschnitts:** Tests, die als „Kollege“ per `api.projects.save` schreiben,
   auf die neue Version ziehen – main lehnt eine ältere Version über einer neueren ab (gewollt;
   so war `projektdatei.mjs` nach LED-Wall Version 4 dreimal rot). Erwartete `section.version`
-  ebenso.
+  ebenso – alle Stellen findet `grep -nE "section\.version|version: [0-9]" e2e/*.mjs` (Anleitung 6:
+  `mini-manual.mjs` prüfte noch 5).
 - E2E nach `e2e/projektdatei.mjs`: Dialoge im main ersetzen (`showSaveDialog`, `showOpenDialog`,
   `showMessageBox` mit Antwortfolge und Mitschrift), Datei über `api.projects.open` prüfen,
   „Kollege“ per `api.projects.save(… force: true)` simulieren, fremde Datei ohne eigenen

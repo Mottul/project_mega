@@ -76,7 +76,14 @@ export type KapitelId =
 
 /** Wie ein Kapitel entsteht: frei aus Blöcken oder aus festen Daten */
 export type KapitelArt =
-  'bloecke' | 'auto' | 'geraete' | 'zugang' | 'fehlersuche' | 'ledWall' | 'verkabelung'
+  | 'bloecke'
+  | 'auto'
+  | 'geraete'
+  | 'zugang'
+  | 'fehlersuche'
+  | 'ledWall'
+  | 'verkabelung'
+  | 'bedienfeld'
 
 export interface KapitelDef {
   id: KapitelId
@@ -142,10 +149,10 @@ export const KAPITEL: KapitelDef[] = [
   {
     id: 'bedienfeld',
     titel: 'Bedienfeld',
-    art: 'bloecke',
+    art: 'bedienfeld',
     stufe: 1,
     an: false,
-    info: 'Stream Deck, Companion, OSC-Steuerung, Jingle-Player (Tastenfeld folgt in Phase 3).'
+    info: 'Tastenbelegung von Stream Deck, Companion oder einem freien Raster – Seite für Seite, mit Funktion und Notiz je Taste.'
   },
   {
     id: 'inhalte',
@@ -228,10 +235,10 @@ export function neuesKapitel(id: KapitelId): KapitelEintrag {
   }
 }
 
-/** Kapitel mit eigenen Blöcken (Bausteine): freie Kapitel und LED-Wall (Status-LEDs …) */
+/** Kapitel mit eigenen Blöcken (Bausteine): freie Kapitel, LED-Wall (Status-LEDs …), Bedienfeld */
 export const hatBloecke = (id: KapitelId): boolean => {
   const art = kapitelDef(id).art
-  return art === 'bloecke' || art === 'ledWall'
+  return art === 'bloecke' || art === 'ledWall' || art === 'bedienfeld'
 }
 
 export interface KapitelEintrag {
@@ -321,6 +328,60 @@ export function leeresGeraet(rolle: GeraetRolle = 'zuspieler'): Geraet {
 
 export function leererAusgang(name = ''): Ausgang {
   return { id: uid(), name, breite: 0, hoehe: 0, ueber: null, an: [], ausschnitte: [] }
+}
+
+// ---------------------------------------------------------------- Bedienfelder
+
+/** Geräte mit Tasten: Stream Deck (feste Raster), Companion und frei (Raster wählbar) */
+export type BedienGeraet =
+  | 'sd'
+  | 'sd-mini'
+  | 'sd-xl'
+  | 'sd-plus'
+  | 'sd-neo'
+  | 'sd-plus-xl'
+  | 'sd-studio'
+  | 'companion'
+  | 'frei'
+
+/** Navigationstaste: Seite weiter/zurück oder zu einer bestimmten Seite (Ordner am Stream Deck) */
+export type TastenNav = { art: 'weiter' } | { art: 'zurueck' } | { art: 'seite'; ziel: string }
+
+export interface Taste {
+  /** Platz im Raster ab 0; die Nummer zählt Zeile für Zeile (zeile × spalten + spalte + 1) */
+  spalte: number
+  zeile: number
+  titel: string
+  /** '#rrggbb' oder '' = Vorgabe (helle Schrift auf dunkler Taste) */
+  textfarbe: string
+  hintergrund: string
+  /** was die Taste tut, z. B. „Startet das Intro-Video“ */
+  funktion: string
+  notiz: string
+  stufe: Stufe
+  /** Bild auf der Taste (Foto-Speicher) – Importe bringen es mit, Titel fehlen dort oft */
+  bild: string | null
+  nav: TastenNav | null
+}
+
+export interface BedienSeite {
+  id: string
+  name: string
+  /** nur belegte Plätze; je Platz höchstens eine Taste */
+  tasten: Taste[]
+}
+
+export interface Bedienfeld {
+  id: string
+  name: string
+  geraet: BedienGeraet
+  spalten: number
+  zeilen: number
+  /** erscheint ab Stufe */
+  stufe: Stufe
+  /** Drehregler, Touchleiste, Profil-Name … */
+  notiz: string
+  seiten: BedienSeite[]
 }
 
 export interface Zugang {
@@ -437,6 +498,8 @@ export interface Anleitung {
   kapitel: KapitelEintrag[]
   geraete: Geraet[]
   zugaenge: Zugang[]
+  /** Tastenfelder des Kapitels Bedienfeld (Version 6) */
+  bedienfelder: Bedienfeld[]
   fehlerfaelle: Fehlerfall[]
   /** Kopien aus dem Firmenprofil, damit die Datei beim Kollegen vollständig ist */
   kontakte: FirmenKontakt[]
@@ -466,6 +529,7 @@ export function leereAnleitung(): Anleitung {
     kapitel: KAPITEL.map((k) => neuesKapitel(k.id)),
     geraete: [],
     zugaenge: [],
+    bedienfelder: [],
     fehlerfaelle: [],
     kontakte: [],
     ledWall: null,
@@ -489,5 +553,6 @@ export function fotosIn(a: Anleitung): string[] {
     }
   }
   for (const f of a.fehlerfaelle) for (const s of f.schritte) add(s.foto)
+  for (const b of a.bedienfelder) for (const s of b.seiten) for (const t of s.tasten) add(t.bild)
   return [...out]
 }

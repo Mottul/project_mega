@@ -90,6 +90,15 @@ aus Projekt + Zufall, bleibt je Anleitung gleich) und der QR-Code der Adresse au
 Zugangsdaten, höchstens Stufe Betreuung. **Teil B** (mit den Beispieldateien): Tastenfeld-Editor,
 Import Stream Deck/Companion/OBS, Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player.
 
+**Teil B, Tastenfeld-Editor umgesetzt (22.10.2026):** Modell wie unter
+[Bedienfelder](#bedienfelder) (`bedienfeld.ts`: Geräte-Tabelle, Tasten setzen/tauschen, Raster
+wechseln, Seiten), Anleitung Version 6 (`bedienfelder`), Kapitel Bedienfeld als eigene Art mit
+Blöcken darüber, Ausgabe in Handbuch, Vorschau und Handy (`tastenfeldHtml.ts`), Prüfung (leer,
+Tasten ohne Aufschrift). Abweichungen: Navigationstasten gibt es schon im Editor (nächste/vorige
+Seite, „Öffnet …“ als Ordner-Ersatz), nicht erst beim Import; Drehregler und Touchleisten stehen
+vorerst in der Notiz des Bedienfelds. Offen in Teil B: Übernahme aus Jingle-Player,
+OSC-Steuerung und Video-Player; Importe, sobald die Beispieldateien da sind.
+
 Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
 liegen als Artifact bei Matthias.

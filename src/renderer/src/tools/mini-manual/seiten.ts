@@ -18,6 +18,7 @@ import { faelleFuerStufe, type AusgabeFall, type AusgabeZiel } from './fehlersuc
 import { geplanteWaende, glasfaser, modulKeys } from './ledWallKopie'
 import { inline, markup, type MarkupOptionen } from './markup'
 import { signalwege, type Signalweg } from './signalwege'
+import { TASTENFELD_CSS, tastenfeldHtml } from './tastenfeldHtml'
 import {
   ROLLEN,
   kapitelDef,
@@ -134,7 +135,7 @@ export function css(c: SeitenKontext): string {
 .mm .deckblatt .linie{border-bottom:3px solid ${ak};padding-bottom:8px}
 .mm .deckblatt .meta{margin-top:auto;color:#676c76;border-top:1px solid #e2e2e2;padding-top:8px}
 .mm .deckblatt img.foto{max-height:120mm}
-`
+${TASTENFELD_CSS}`
 }
 
 function foto(hash: string | null, cls = 'foto'): string {
@@ -578,6 +579,14 @@ function kapitelInhalt(k: KapitelEintrag, a: Anleitung, c: SeitenKontext): strin
     }
     case 'verkabelung':
       return verkabelung(k, a)
+    case 'bedienfeld': {
+      // erst der Text (wie bedienen), dann die Belegung je Gerät
+      const felder = a.bedienfelder
+        .filter((b) => b.stufe <= g)
+        .map((b) => tastenfeldHtml(b, o, g, (s) => badge(c, s)))
+        .join('')
+      return bloecke(k.bloecke, a, c) + felder || '<p class="muted">Noch kein Bedienfeld.</p>'
+    }
     case 'fehlersuche': {
       const alle = faelleFuerStufe(a.fehlerfaelle, g, module, glasfaser(a.ledWall))
       if (!alle.length) return '<p class="muted">Noch keine Fehlerfälle.</p>'

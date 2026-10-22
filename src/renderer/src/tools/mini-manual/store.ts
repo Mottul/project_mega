@@ -53,9 +53,9 @@ export const useMiniManual = create<MiniManualState>()(
       name: 'mini-manual',
       storage: debouncedStorage(),
       // 2 (Oktober 2026): LED-Wall-Kopie mit mehreren Wänden; 3: Signalwege der Geräte;
-      // 4: Kapitel Verkabelung, Antwort aus der Planung; 5: Online-Fassung – migrate ist die
-      // Prüfung
-      version: 5,
+      // 4: Kapitel Verkabelung, Antwort aus der Planung; 5: Online-Fassung; 6: Bedienfelder –
+      // migrate ist die Prüfung
+      version: 6,
       partialize: (s) => ({ anleitung: s.anleitung, file: s.file }) as MiniManualState,
       migrate: (persisted) => migrateMiniManual(persisted) as MiniManualState,
       // auch ohne Versionswechsel prüfen: localStorage kann von Hand oder aus einem älteren
