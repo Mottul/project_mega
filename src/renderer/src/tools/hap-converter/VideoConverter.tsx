@@ -15,6 +15,7 @@ import {
   FolderOpen,
   FolderSearch,
   Images,
+  ListPlus,
   Loader2,
   Play,
   SlidersHorizontal,
@@ -38,6 +39,7 @@ import { useKiosk } from '@renderer/launcher/kiosk'
 import { useHandoff } from '@renderer/lib/handoff'
 import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { cn } from '@renderer/lib/utils'
+import { inDenPlayer } from '@renderer/lib/inDenPlayer'
 import { DEFAULT_LOUDNESS, LOUDNESS_CHOICES } from '@shared/loudness'
 import { PROBE_EXTENSIONS, VIDEO_EXTENSIONS } from '@shared/mediaExtensions'
 import {
@@ -940,6 +942,15 @@ function JobRow({
         )}
         {job.status === 'done' && job.outputPath && (
           <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => void inDenPlayer(job.outputPath as string)}
+              aria-label="In Player-Bibliothek übernehmen"
+              title="In Player-Bibliothek übernehmen"
+            >
+              <ListPlus className="size-4" />
+            </Button>
             {onCheck && (
               <Button
                 variant="ghost"

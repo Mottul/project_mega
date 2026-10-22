@@ -29,6 +29,7 @@ import { useHandoff } from '@renderer/lib/handoff'
 import { toast } from '@renderer/lib/toast'
 import { usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
 import { cn } from '@renderer/lib/utils'
+import { inDenPlayer } from '@renderer/lib/inDenPlayer'
 import { rateText } from '@shared/convertPlan'
 import type { ConvertCapabilities, VgenJob } from '@shared/types'
 import { planVideoGen, type VgenCaps } from '@shared/videoGenPlan'
@@ -180,20 +181,7 @@ export function VideoGenerator(): JSX.Element {
   }
 
   async function toPlayer(job: VgenJob): Promise<void> {
-    const s = await api.getSettings()
-    try {
-      await api.player.import({
-        sources: [job.outputPath],
-        fitMode: s.player.defaultFit,
-        wall: { width: s.player.wallWidth, height: s.player.wallHeight }
-      })
-      toast.success('An den Video-Player übergeben – der Import läuft dort.')
-    } catch (e) {
-      toast.error(
-        'Übernahme in den Player fehlgeschlagen',
-        e instanceof Error ? e.message : String(e)
-      )
-    }
+    await inDenPlayer(job.outputPath)
   }
 
   function showInMediaInfo(path: string): void {
