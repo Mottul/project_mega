@@ -12,6 +12,7 @@ import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/compone
 import { Alert } from '@renderer/components/ui/alert'
 import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
+import { toast } from '@renderer/lib/toast'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
 import type {
@@ -112,6 +113,22 @@ export function VideoPlayer(): JSX.Element {
     setWallW(ww)
     setWallH(hh)
     void persistPlayer({ wallWidth: ww, wallHeight: hh })
+  }
+
+  /** Auflösung der im LED-Wall-Konfigurator gewählten Wand (wie beim Testbild) */
+  async function fromLedWall(): Promise<void> {
+    const [{ useLedWall }, { computeWall }] = await Promise.all([
+      import('../led-wall/store'),
+      import('../led-wall/compute')
+    ])
+    const s = useLedWall.getState()
+    const d = computeWall(s)
+    setWall(d.resX, d.resY)
+    const wand = s.walls.length > 1 ? `${s.walls.find((w) => w.id === s.wallId)?.name ?? ''}: ` : ''
+    toast.success(
+      'Wand-Auflösung aus dem LED-Wall-Konfigurator',
+      `${wand}${d.resX} × ${d.resY} px (${d.cols} × ${d.rows} Module ${d.mod.name})`
+    )
   }
 
   function fromMonitor(): void {
@@ -215,6 +232,7 @@ export function VideoPlayer(): JSX.Element {
               wallH={wallH}
               onWall={setWall}
               onFromMonitor={fromMonitor}
+              onFromLedWall={() => void fromLedWall()}
               canFromMonitor={displayId != null}
             />
           )}

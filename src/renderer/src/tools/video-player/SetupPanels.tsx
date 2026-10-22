@@ -48,19 +48,22 @@ export function WallSection({
   wallH,
   onWall,
   onFromMonitor,
-  canFromMonitor
+  canFromMonitor,
+  onFromLedWall
 }: {
   wallW: number
   wallH: number
   onWall: (w: number, h: number) => void
   onFromMonitor: () => void
   canFromMonitor: boolean
+  /** Auflösung der im LED-Wall-Konfigurator gewählten Wand */
+  onFromLedWall: () => void
 }): JSX.Element {
   return (
     <PanelSection id="wall" title="Wand" icon={Ratio} summary={`${wallW} × ${wallH}`}>
       <Field
         label="Wand-Auflösung"
-        hint="Auf diese Größe werden neue Medien beim Import gebacken. „Vom Monitor“ übernimmt die Auflösung des Ausgabe-Monitors."
+        hint="Auf diese Größe werden neue Medien beim Import gebacken. „Vom Monitor“ übernimmt die Auflösung des Ausgabe-Monitors, „Aus LED-Wall“ die der im Konfigurator gewählten Wand."
       >
         <div className="flex items-center gap-2">
           <NumberField
@@ -94,6 +97,14 @@ export function WallSection({
           title="Auflösung des gewählten Ausgabe-Monitors übernehmen"
         >
           Vom Monitor
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onFromLedWall}
+          title="Auflösung der im LED-Wall-Konfigurator gewählten Wand übernehmen"
+        >
+          Aus LED-Wall
         </Button>
       </div>
     </PanelSection>
