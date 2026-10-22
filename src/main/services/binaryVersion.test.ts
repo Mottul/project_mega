@@ -26,6 +26,13 @@ describe('binaryVersion', () => {
     expect(await v).toBe('spät')
   })
 
+  it('merkt sich einen Fehlschlag nicht (Zeitlimit beim ersten Start)', async () => {
+    const args = ['-e', 'setTimeout(() => console.log("langsam"), 1500)']
+    expect(await binaryVersion(node, args, { timeoutMs: 300 })).toBeNull()
+    // nächste Abfrage startet neu – mit genug Zeit klappt es
+    expect(await binaryVersion(node, args, opts)).toBe('langsam')
+  })
+
   it('startet für gleichzeitige Abfragen nur einen Prozess', () => {
     const args = ['-e', 'console.log("einmal")']
     expect(binaryVersion(node, args, opts)).toBe(binaryVersion(node, args, opts))

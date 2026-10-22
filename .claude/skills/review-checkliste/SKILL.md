@@ -29,6 +29,10 @@ Zusätzlich gilt der allgemeine `/code-review`.
   anderen Fenster gespeicherte. Einstellungen ersetzen Listen, sie mergen sie nicht → frischen
   Stand holen (`api.getSettings()`) und daraus filtern.
 - Der Einstellungs-Broadcast erreicht das auslösende Fenster nicht; mehrere Fenster mitdenken.
+- **Fehlschläge nicht zwischenspeichern, wenn sie vorübergehend sein können** (Zeitlimit,
+  Netz, gerade gesperrte Datei): `binaryVersion` merkte sich `null` bis zum Neustart, und die
+  gepackte App meldete unter macOS „kein ffmpeg“, weil der erste Start länger als 10 s dauerte
+  (22.10.2026). Erfolg merken, Fehlschlag beim nächsten Mal neu fragen.
 - **Ein Start mit `await` kann von einem Stopp oder zweiten Start überholt werden.** Die
   NDI-Sender öffneten nach dem Erstellen des Senders ihr Offscreen-Fenster, auch wenn inzwischen
   gestoppt oder neu gestartet war → verwaiste Fenster, die unbemerkt weitersendeten (Oktober 2026).

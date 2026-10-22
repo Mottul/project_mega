@@ -267,7 +267,9 @@ Browser der PWA fragt das Handy selbst (nur über HTTPS).
   Browser samt Verbindungsabbruch, Zeitzone und totem Strom; öffnet kurz das Timer-Ausgabefenster),
   `player` (Playlist-Rückfrage, parallele Importe; braucht `npm run ff:fetch`), `video-generator`
   (Rechenlauf bild- und samplegenau, Zwischenspeicher, Schleife, Abbrechen, Eingabeprüfung,
-  Oberfläche; braucht ffmpeg). `E2E_DEBUG=1` schreibt Ausgabe und Fenster des main-Prozesses mit.
+  Oberfläche; braucht ffmpeg), `paket` (die gepackte App aus `dist/`: Start aus dem `app.asar`,
+  ffmpeg aus dem Paket, PDF-Import mit pdfjs und SQLite – nur auf Wunsch, vorher
+  `npm run package:dir`). `E2E_DEBUG=1` schreibt Ausgabe und Fenster des main-Prozesses mit.
   `e2e/harness.mjs`
   bringt `launchApp`, `openRoute`, `waitFor`, Dialog-Stubs, `openBrowserWindow` (unsichtbares
   Electron-Fenster als fremder Browser), `findFfmpeg`, `portFree` und `runSteps`. Ein neues Skript
@@ -278,7 +280,8 @@ Browser der PWA fragt das Handy selbst (nur über HTTPS).
     Tests), Tests, Build der App und der Rechner-PWA.
   - **App** auf Linux, Windows und macOS: `npm ci`, gebündeltes ffmpeg (`ff:fetch`, je Woche
     gecacht), Unit-Tests samt Labortest des Video-Generators, Build und alle E2E-Skripte (Linux
-    mit `xvfb-run`). Arbeits-Branches laufen nur über ihren Pull Request; ein neuer Push bricht
+    mit `xvfb-run`); danach das Paket (`electron-builder --dir`, ohne Installer und Signatur)
+    und `e2e/paket.mjs` gegen die gepackte App. Arbeits-Branches laufen nur über ihren Pull Request; ein neuer Push bricht
     den veralteten Lauf ab.
 
 ## Build & Paketierung
@@ -298,7 +301,10 @@ Der erste `package`-Lauf lädt electron-builder einmalig in den npx-Cache, nicht
 | Linux   | AppImage       | `Mottulbox-<Version>.AppImage`   |
 
 - Die entpackte App liegt zusätzlich unter `dist/win-unpacked/` bzw. `dist/linux-unpacked/`
-  (macOS: `dist/mac*/`) und ist von dort direkt startbar; `npm run package:dir` baut nur diese.
+  (macOS: `dist/mac*/`) und ist von dort direkt startbar; `npm run package:dir` baut nur diese,
+  `npm run e2e -- paket` startet sie über Playwright (so prüft es auch die CI je Betriebssystem).
+  Nach Änderungen an `electron-builder.yml` (Dateien, `asarUnpack`, `extraResources`) oder einem
+  neuen Modul, das nicht ins asar darf, lokal beides laufen lassen.
 - **Auf dem Zielsystem bauen:** ffmpeg und das native Modul sind plattformspezifisch. Für macOS
   liefert evermeet getrennte x64- und arm64-Binaries; ein DMG passt zur Architektur des
   Bau-Rechners (für Universal-Builds wären beide nötig).

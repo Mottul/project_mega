@@ -44,6 +44,13 @@ export function binaryVersion(
       resolve(null) // ungültiger Aufruf wirft sofort statt über den Rückruf
     }
   })
-  cache.set(key, { stamp, version })
+  const eintrag = { stamp, version }
+  cache.set(key, eintrag)
+  // Ein Fehlschlag gilt nicht bis zum Neustart: Der erste Start einer frisch installierten Binary
+  // dauert unter macOS (Prüfung, Rosetta) mitunter länger als das Zeitlimit – in der CI meldete
+  // die gepackte App deshalb „kein ffmpeg“, obwohl es lief (22.10.2026). Die nächste Abfrage fragt neu.
+  void version.then((v) => {
+    if (v === null && cache.get(key) === eintrag) cache.delete(key)
+  })
   return version
 }

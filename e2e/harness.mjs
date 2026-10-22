@@ -33,19 +33,30 @@ function aufraeumen(dir) {
 /**
  * Startet die App. `env` ergänzt die Umgebung, `args` kommt vor dem Projektordner.
  * `userData`: vorhandenen Ordner weiterverwenden (Neustart nachstellen) – der Aufrufer räumt ihn
- * dann selbst auf. Liefert { app, page, userData, close } – `page` ist das Hauptfenster.
+ * dann selbst auf. `settings` ergänzt die Start-Einstellungen eines frischen Ordners.
+ * `executablePath`: die gepackte App (`e2e/paket.mjs`) statt Electron mit dem Projektordner.
+ * Liefert { app, page, userData, close } – `page` ist das Hauptfenster.
  */
 /** So lange darf das Beenden einer App am Ende eines Skripts dauern */
 const CLOSE_TIMEOUT_MS = 20_000
 
-export async function launchApp({ env = {}, args = [], userData: given } = {}) {
+export async function launchApp({
+  env = {},
+  args = [],
+  userData: given,
+  settings = {},
+  executablePath
+} = {}) {
   let userData = given
   if (!userData) {
     userData = mkdtempSync(join(tmpdir(), 'mottulbox-e2e-'))
     // Ohne die yt-dlp-Prüfung beim Start: Sie lädt yt-dlp aus dem Netz und startet es. Schloss
     // ein kurzes Skript die App mittendrin, blieb yt-dlp.exe unter Windows gesperrt, und das
     // Aufräumen brach den ganzen E2E-Lauf ab (CI rot, Oktober 2026). youtube.mjs macht es selbst.
-    writeFileSync(join(userData, 'settings.json'), JSON.stringify({ ytdlpAutoUpdate: false }))
+    writeFileSync(
+      join(userData, 'settings.json'),
+      JSON.stringify({ ytdlpAutoUpdate: false, ...settings })
+    )
   }
   const full = { ...process.env, ...env }
   // Von einer Electron-Umgebung (z. B. der Claude-Desktop-App) geerbt, würde die Binary als
@@ -54,8 +65,9 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
   // Linux (Container/CI): ohne Chromium-Sandbox und mit virtuellem Display (xvfb-run).
   const sandbox = process.platform === 'linux' ? ['--no-sandbox'] : []
   const app = await electron.launch({
-    executablePath: require('electron'),
-    args: [...sandbox, `--user-data-dir=${userData}`, ...args, root],
+    // Die gepackte App lädt ihr app.asar selbst – ohne Projektordner als Argument
+    executablePath: executablePath ?? require('electron'),
+    args: [...sandbox, `--user-data-dir=${userData}`, ...args, ...(executablePath ? [] : [root])],
     env: full
   })
   // gleich hier holen: Hat sich die App schon selbst beendet (Hauptfenster zu, shutdown.mjs),
@@ -88,10 +100,24 @@ export async function launchApp({ env = {}, args = [], userData: given } = {}) {
       app
         .evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.isVisible()))
         .catch(() => false),
-    15_000,
+    30_000,
     100
   )
-  if (!shown) throw new Error('Hauptfenster wird nicht angezeigt')
+  if (!shown) {
+    // Was war los? Zweimal am 22.10.2026 in der Linux-CI ohne jeden Hinweis rot
+    const fenster = await app
+      .evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().map((w) => ({
+          sichtbar: w.isVisible(),
+          laedt: w.webContents.isLoading(),
+          url: w.webContents.getURL()
+        }))
+      )
+      .catch((e) => String(e))
+    throw new Error(
+      `Hauptfenster wird nicht angezeigt – Fenster: ${JSON.stringify(fenster)}; Fehler: ${JSON.stringify(errors)}`
+    )
+  }
   return {
     app,
     page,

@@ -28,6 +28,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `fotos.mjs` | Fotos für Projektdateien: Einfügen über den gestubbten Dialog (3000 × 1500 mit EXIF 6 → 1000 × 2000, Farben oben/unten im main gelesen, kein EXIF mehr), falsches Format, Anzeige über `foto://`, Speichern in die Datei und Zurückholen beim Öffnen, Einsetzen ins PDF |
 | `mini-manual.mjs` | Mini-Manual wie ein Nutzer: Werkzeug-Muster, Firmenprofil über den Dialog im App-Menü, Gerät mit Kurzname → Platzhalter fett in der Vorschau (Shadow DOM, `getComputedStyle`), Kontakt aus dem Profil (Prüfung meldet ihn nicht mehr), Fall aus der Bibliothek, Kurzkarte A5 genau eine Seite, Handbuch A4 ≥ 6 Seiten, Projektdatei mit Foto (Hochformat behält auf dem Deckblatt sein Seitenverhältnis; Datei enthält `fotos/<hash>.jpg`, Abschnitt per `projects.peek`), LED-Wall derselben Datei übernehmen (Abschnitt Version 2, also auch die alte Form) und „Planung geändert (Stand 1 → 2)“ mit Unterschieden, dann eine zweite Wand per Version 3 („Bar (neu)“, Liste und Vorschau nennen beide); Signalweg: Prozessor bespielt beide Wände (Checkboxen in der Gruppe „Bespielt“), Laptop mit Ausgang, Bildgröße und Ausschnitt, Liste der Signalwege in der Vorschau, Datei mit Anleitung Version 3; eigene Bausteine (gleicher Name, Export/Import); Vorschlag nach Stichworten (Knopf „1 passt“, „passt zum Projekt“ in der Auswahl) und „Neuere Fassung“: eigenen Baustein einfügen, per „Ersetzen“ auf Version 2 heben, Hinweis „Aktualisieren“ verschwindet danach |
 | `shutdown.mjs` | App mitten in Konverter-, Generator- und Vorschau-Läufen beenden: kein ffmpeg läuft weiter, keine halben Dateien, Beenden unter 10 s |
+| `paket.mjs` | Die **gepackte** App (`dist/*-unpacked`, nur auf Wunsch: `npm run package:dir`, dann `npm run e2e -- paket`; CI je Betriebssystem nach den E2E): Start aus dem `app.asar`, ffmpeg aus `extraResources`, PDF über die Brücke erzeugen, als Handbuch importieren und auf Seite 1 finden (pdfjs-dist aus `app.asar.unpacked`, better-sqlite3). Gegenprobe: ohne `app.asar.unpacked/node_modules/pdfjs-dist` wird der Import-Schritt rot. `launchApp({ executablePath, settings })` |
 | `video-generator.mjs` | Rechenlauf über die Brücke (Bilder/Samples exakt, Cache, Schleife, Abbrechen, Eingabeprüfung, Vorschau rechnen, Musik, Quelladressen), Oberfläche mit gestubbten Datei-/Speicherdialogen (Live-Vorschau, Ken-Burns-Rahmen, Bereichsregler, Musik-Panel) |
 
 ## Neues Skript
@@ -222,6 +223,12 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 - **Das Hauptfenster erscheint erst bei `ready-to-show`**, manchmal nach dem ersten Inhalt;
   `launchApp` wartet deshalb, bis es sichtbar ist (sonst galt es beim Schließen einer Ausgabe
   noch nicht als gezeigt, und die App beendete sich – timer.mjs war jeden zweiten Lauf rot).
+  In der Linux-CI blieb es zweimal über 15 s unsichtbar (22.10.2026, im Neulauf grün): Der Harness
+  wartet jetzt 30 s und nennt im Fehler Fenster (sichtbar, lädt, URL) und Konsolenfehler;
+  `createWindow` zeigt das Fenster nach 5 s auch ohne `ready-to-show`.
+- **Gepackte App unter macOS:** Der erste Start einer frisch gepackten Binary (ffmpeg) dauert
+  länger als das Zeitlimit der App (10 s) – Versionen deshalb mit `waitFor` erneut abfragen
+  (`e2e/paket.mjs`); `binaryVersion` merkt sich ein `null` nicht.
 - **Verdeckte und minimierte Fenster bekommen kein `requestAnimationFrame`:** Was im Bildtakt
   misst oder zählt, steht dann still. Messen per Timer; Prüfung: Fenster minimieren und schauen,
   dass Werte nachkommen (`e2e/rta.mjs`).
