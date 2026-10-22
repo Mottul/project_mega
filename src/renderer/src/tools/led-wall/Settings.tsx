@@ -43,6 +43,7 @@ import { CIRCLE_TABLE, MODULES } from './data'
 import type { BuilderSegment } from './math'
 import {
   DEFAULT_PROCESSOR,
+  faserAusLager,
   FIBER_REDUNDANCY_LABELS,
   PROCESSOR_LABELS,
   PROCESSORS,
@@ -596,7 +597,7 @@ function FiberFields(): JSX.Element {
         <>
           <Field
             label="Variante"
-            hint="S: Singlemode (OS1/OS2, LC, bis 10 km) · M: Multimode (OM3/OM4, LC, bis 300 m)."
+            hint="S: Singlemode (OS1/OS2, LC, bis 10 km) · M: Multimode (OM3/OM4, LC, bis 300 m). Im Lager: CVT10-S mit Singlemode-Fasern LC-LC (20, 50, 100 m, Patch 1 und 3 m)."
           >
             <Segmented
               label="Variante"
@@ -634,6 +635,12 @@ function FiberFields(): JSX.Element {
               onCommit={(v) => setF({ lengthM: v || undefined })}
             />
           </Field>
+          {f.variant === 'S' && !!f.lengthM && (
+            <p className="text-xs text-muted-foreground" data-testid="faser-lager">
+              Aus dem Lager: {faserAusLager(f.lengthM).join(' m + ')} m
+              {faserAusLager(f.lengthM).length > 1 ? ' (mit Kupplung)' : ''}
+            </p>
+          )}
         </>
       )}
     </div>

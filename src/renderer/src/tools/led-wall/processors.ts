@@ -107,6 +107,38 @@ export const CVT10 = {
   }
 } as const
 
+/**
+ * Glasfasern im Lager (Frage 11, Auskunft Matthias 22.10.2026): CVT10 in der Variante S, alle
+ * Fasern Singlemode mit LC-LC – Strecken 20, 50 und 100 m, Patchkabel 1 und 3 m.
+ */
+export const FASER_LAGER_S = [1, 3, 20, 50, 100] as const
+
+/**
+ * Stücke aus dem Lager für eine Strecke: das kürzeste, das reicht; über der längsten Faser so
+ * wenige Stücke wie möglich (jede Verbindung braucht eine Kupplung), dabei die kürzeste Summe.
+ */
+export function faserAusLager(laengeM: number, lager: readonly number[] = FASER_LAGER_S): number[] {
+  const stuecke = [...lager].sort((a, b) => a - b)
+  const max = stuecke[stuecke.length - 1]
+  if (!(laengeM > 0) || !max) return []
+  const eins = stuecke.find((l) => l >= laengeM)
+  if (eins) return [eins]
+  const k = Math.ceil(laengeM / max)
+  // höchstens wenige Stücke: alle Mehrfachmengen der Größe k durchprobieren (k ≤ 4 genügt locker)
+  if (k > 4) return Array<number>(k).fill(max)
+  let best: number[] | null = null
+  const suche = (ab: number, wahl: number[]): void => {
+    if (wahl.length === k) {
+      const summe = wahl.reduce((a, b) => a + b, 0)
+      if (summe >= laengeM && (!best || summe < best.reduce((a, b) => a + b, 0))) best = [...wahl]
+      return
+    }
+    for (let i = ab; i < stuecke.length; i++) suche(i, [...wahl, stuecke[i]])
+  }
+  suche(0, [])
+  return (best ?? Array<number>(k).fill(max)).sort((a, b) => b - a)
+}
+
 export const FIBER_REDUNDANCY_LABELS: Record<FiberRedundancy, string> = {
   none: 'keine',
   fiber: 'Faser redundant',

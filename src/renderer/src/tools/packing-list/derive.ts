@@ -6,7 +6,13 @@
 import { chainStats } from '../led-wall/cabling'
 import { computeWall } from '../led-wall/compute'
 import type { LedWallConfig, PlannedWall } from '../led-wall/config'
-import { analyzeProcessors, CVT10, type FiberPlan } from '../led-wall/processors'
+import {
+  analyzeProcessors,
+  CVT10,
+  FASER_LAGER_S,
+  faserAusLager,
+  type FiberPlan
+} from '../led-wall/processors'
 import { plannedWalls, useLedWall } from '../led-wall/store'
 import type { PackItem } from './store'
 
@@ -84,8 +90,53 @@ export function deriveFromLedWall(
 }
 
 /** Glasfaser-Strecke eines Prozessors: Boxen, Fasern, Stromkabel der Boxen (Festlegung 28) */
+/**
+ * Fasern einer Strecke: Variante S aus dem Lager (Singlemode LC-LC, feste Längen, über 100 m
+ * gestückelt mit Kupplung), sonst wie geplant mit Länge zum Besorgen.
+ */
+function faserItems(f: FiberPlan, cat: string): DerivedItem[] {
+  const ersatz = f.redundancy === 'none' ? '' : 'mit Ersatzfaser je Box'
+  const mit = (...t: string[]): string => t.filter(Boolean).join(' · ')
+  if (f.variant !== 'S' || !f.lengthM) {
+    const lager =
+      f.variant === 'S' ? ` (Lager: ${FASER_LAGER_S.filter((l) => l >= 20).join(', ')} m)` : ''
+    return [
+      {
+        category: cat,
+        name: `Glasfaser ${CVT10.variants[f.variant].label}, LC-LC`,
+        qty: f.fibers,
+        unit: 'Stk.',
+        note: mit(
+          f.lengthM ? `je ${f.lengthM} m` : `Länge eintragen${lager}`,
+          f.variant === 'M' ? 'nicht im Lager' : '',
+          ersatz
+        )
+      }
+    ]
+  }
+  const stuecke = faserAusLager(f.lengthM)
+  const anzahl = new Map<number, number>()
+  for (const l of stuecke) anzahl.set(l, (anzahl.get(l) ?? 0) + 1)
+  const strecke = stuecke.length > 1 ? `${f.lengthM} m aus ${stuecke.join(' + ')} m` : ''
+  const items: DerivedItem[] = [...anzahl].map(([l, n]) => ({
+    category: cat,
+    name: `Glasfaser Singlemode LC-LC ${l} m`,
+    qty: n * f.fibers,
+    unit: 'Stk.',
+    note: mit(strecke, ersatz)
+  }))
+  if (stuecke.length > 1)
+    items.push({
+      category: cat,
+      name: 'LC-LC-Kupplung Singlemode',
+      qty: (stuecke.length - 1) * f.fibers,
+      unit: 'Stk.',
+      note: `je Faser ${stuecke.length - 1}`
+    })
+  return items
+}
+
 function fiberItems(f: FiberPlan, cat: string, fuer: string): DerivedItem[] {
-  const len = f.lengthM ? `je ${f.lengthM} m` : 'Länge eintragen'
   const boxNote =
     f.redundancy === 'hot-backup'
       ? `je Achtergruppe eine Box plus eine für Hot-Backup${fuer ? ` · ${fuer}` : ''}`
@@ -98,13 +149,7 @@ function fiberItems(f: FiberPlan, cat: string, fuer: string): DerivedItem[] {
       unit: 'Stk.',
       note: boxNote
     },
-    {
-      category: cat,
-      name: `Glasfaser ${CVT10.variants[f.variant].label}, LC`,
-      qty: f.fibers,
-      unit: 'Stk.',
-      note: f.redundancy === 'none' ? len : `${len} · mit Ersatzfaser je Box`
-    },
+    ...faserItems(f, cat),
     { category: cat, name: 'Netzkabel PowerCON (CVT10)', qty: f.boxes, unit: 'Stk.', note: '' }
   ]
 }

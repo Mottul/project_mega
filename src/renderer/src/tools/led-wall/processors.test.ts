@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { sanitizeLedWallConfig, type LedWallConfig, type PlannedWall } from './config'
-import { analyzeProcessors, processorGroups, resolveProcessor } from './processors'
+import { analyzeProcessors, faserAusLager, processorGroups, resolveProcessor } from './processors'
 
 const cfg = (p: Partial<LedWallConfig> | Record<string, unknown> = {}): LedWallConfig =>
   sanitizeLedWallConfig(p)
@@ -178,6 +178,23 @@ describe('Geteilter Prozessor', () => {
     expect(
       cfg({ processor: { model: null, bitDepth: 8, hz: 60, shareWith: 'Bühne!' } }).processor
     ).not.toHaveProperty('shareWith')
+  })
+})
+
+describe('Glasfasern aus dem Lager', () => {
+  it('das kürzeste Stück, das reicht; Patchkabel für kurze Wege', () => {
+    expect(faserAusLager(1)).toEqual([1])
+    expect(faserAusLager(2)).toEqual([3])
+    expect(faserAusLager(15)).toEqual([20])
+    expect(faserAusLager(50)).toEqual([50])
+    expect(faserAusLager(51)).toEqual([100])
+  })
+  it('über 100 m: so wenige Stücke wie möglich, dabei die kürzeste Summe', () => {
+    expect(faserAusLager(120)).toEqual([100, 20])
+    expect(faserAusLager(140)).toEqual([100, 50])
+    expect(faserAusLager(160)).toEqual([100, 100])
+    expect(faserAusLager(230)).toEqual([100, 100, 50])
+    expect(faserAusLager(0)).toEqual([])
   })
 })
 
