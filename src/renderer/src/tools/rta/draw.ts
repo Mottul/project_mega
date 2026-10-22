@@ -37,6 +37,11 @@ export function readTheme(): Theme {
 
 export const hsl = (c: string, a = 1): string => `hsl(${c} / ${a})`
 
+/** Neutral: Pegel, Spektrum und Wasserfall in der Schriftfarbe statt im Akzent */
+export function mitFarbe(th: Theme, farbe: 'akzent' | 'neutral'): Theme {
+  return farbe === 'neutral' ? { ...th, primary: th.fg } : th
+}
+
 /** Farben der Referenzkurven (Index = RtaReference.color) */
 export const REF_TOKENS: (keyof Theme)[] = [
   'success',

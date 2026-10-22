@@ -109,6 +109,25 @@ try {
 
   await runSteps('Video-Player', [
     [
+      'Wand-Auflösung „Aus LED-Wall“: die gewählte Wand des Konfigurators',
+      async () => {
+        // frischer Konfigurator: 496-2,0, 4 × 2,5 m = 8 × 5 Module à 240 px
+        await reopenPlayer()
+        const schublade = w.getByRole('button', { name: 'Einstellungen', exact: true })
+        if ((await schublade.getAttribute('aria-expanded')) !== 'true') await schublade.click()
+        const head = w.getByTestId('settings-drawer').getByRole('button', { name: /^Wand/ })
+        if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
+        await w.getByRole('button', { name: 'Aus LED-Wall' }).click()
+        assert.ok(
+          await waitFor(async () => {
+            const p = (await settings()).player
+            return p.wallWidth === 1920 && p.wallHeight === 1200
+          }, 5000),
+          JSON.stringify((await settings()).player.wallWidth)
+        )
+      }
+    ],
+    [
       'Playlist löschen: Abbrechen behält, Bestätigen löscht',
       async () => {
         await w.evaluate(() =>

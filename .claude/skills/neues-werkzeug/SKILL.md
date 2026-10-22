@@ -44,6 +44,11 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `TextArea`/`LiveInput` aus `components/ui/textarea`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten
      Zeilen – nie ein rohes `<select>` mit eigenen Klassen), Farben nur über Tailwind-Tokens
      (`primary`, `border` …; Rot ist „live“).
+     Läuft etwas nur im Fenster (Ton wie Testton und Jingle), mit `useAktivMelden(key, an)`
+     (`@renderer/lib/aktivMelden`) melden – sonst nennt die Rückfrage beim Beenden es nicht;
+     neue Kennung in `RENDERER_AKTIV` (`main/services/beenden/laufendText.ts`). Was main kennt
+     (Ausgabefenster, Aufträge, Fernsteuerung), sammelt `laufend.ts` selbst.
+     Fertige Dateien an den Player: `inDenPlayer(path)` aus `@renderer/lib/inDenPlayer`.
      Listen mit Reihenfolge: `useSortable` + `Griff` aus `components/ui/sortable` (Ziehen nur
      am Griff, damit Text in den Feldern markierbar bleibt), umsortiert über Kennungen
      (`zieheNach`); die Pfeil-Knöpfe bleiben für die Tastatur. Eine Liste in einer Liste bekommt

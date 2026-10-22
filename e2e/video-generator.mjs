@@ -538,6 +538,18 @@ try {
         assert.equal(counts(out).frames, 338)
         await w.getByRole('button', { name: 'In Player-Bibliothek übernehmen' }).first().waitFor()
         await shot('6-fertig')
+        // Übergabe an den Player (inDenPlayer, auch im Konverter und Downloader): ein Import läuft
+        await w.getByRole('button', { name: 'In Player-Bibliothek übernehmen' }).first().click()
+        assert.ok(
+          await waitFor(
+            async () =>
+              JSON.stringify(await w.evaluate(() => window.api.player.convertList())).includes(
+                'ui.mp4'
+              ),
+            10_000
+          ),
+          'kein Import im Player'
+        )
       }
     ],
     [

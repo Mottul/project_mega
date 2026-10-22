@@ -53,6 +53,9 @@ export function openPlayerOutput(displayId: number): void {
   setOutputOpen(true)
 }
 
+/** Das Ausgabefenster (geht mit dem Hauptfenster zu – für „Wirklich beenden?“) */
+export const playerOutputWindow = (): BrowserWindow | null => win
+
 export function closePlayerOutput(emit = true): void {
   if (win && !win.isDestroyed()) {
     win.close()

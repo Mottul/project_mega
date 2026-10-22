@@ -25,6 +25,10 @@ interface HandoffState {
   convertProfile: ConvertProfileHandoff | null
   giveConvertProfile: (p: ConvertProfileHandoff) => void
   takeConvertProfile: () => ConvertProfileHandoff | null
+  /** Suchbegriff für die Manuals-Bibliothek (Netzwerk-Scanner: Hersteller des Geräts) */
+  manualsQuery: string | null
+  giveManualsQuery: (q: string) => void
+  takeManualsQuery: () => string | null
 }
 
 export const useHandoff = create<HandoffState>((set, get) => ({
@@ -57,5 +61,12 @@ export const useHandoff = create<HandoffState>((set, get) => ({
     const p = get().convertProfile
     if (p) set({ convertProfile: null })
     return p
+  },
+  manualsQuery: null,
+  giveManualsQuery: (q) => set({ manualsQuery: q }),
+  takeManualsQuery: () => {
+    const q = get().manualsQuery
+    if (q) set({ manualsQuery: null })
+    return q
   }
 }))

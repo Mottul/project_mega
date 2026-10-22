@@ -12,6 +12,7 @@ const api: ToolboxApi = {
   selectPaths: (options) => ipcRenderer.invoke(Channels.dialogSelect, options),
   confirm: (options) => ipcRenderer.invoke(Channels.dialogConfirm, options),
   choose: (options) => ipcRenderer.invoke(Channels.dialogChoose, options),
+  setAktiv: (key, an) => ipcRenderer.send(Channels.appSetAktiv, key, an),
   notify: (options) => ipcRenderer.invoke(Channels.dialogNotify, options),
   openPath: (target) => ipcRenderer.invoke(Channels.shellOpenPath, target),
   showItemInFolder: (target) => ipcRenderer.invoke(Channels.shellShowItem, target),

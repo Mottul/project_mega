@@ -13,10 +13,15 @@ import {
 } from './ipc/registry'
 import { createWindow } from './services/windows/appWindows'
 import { installWindowGuards } from './services/windows/windowGuards'
-import { closePattern } from './services/pattern/patternWindow'
-import { closePlayerOutput } from './services/player/playerWindow'
-import { closeSmallToolWindows } from './services/windows/smallToolWindows'
-import { closeTimerOutput } from './services/timer/timerWindow'
+import { closePattern, patternWindow } from './services/pattern/patternWindow'
+import { closePlayerOutput, playerOutputWindow } from './services/player/playerWindow'
+import { closeSmallToolWindows, smallToolWindowList } from './services/windows/smallToolWindows'
+import { closeTimerOutput, timerOutputWindow } from './services/timer/timerWindow'
+import {
+  beendenFreigegeben,
+  installBeendenRueckfrage,
+  wacheBeimSchliessen
+} from './services/beenden/rueckfrage'
 import { killAllFfmpeg } from './services/convert/runFfmpeg'
 import { initFfmpegUpdates } from './services/ffmpeg/ffmpegUpdate'
 import { logLine } from './services/log'
@@ -99,9 +104,13 @@ function migrateUserData(): void {
 // Das Hauptfenster nimmt beim Schließen die Vollbild-Ausgaben (Testbild/Player/Timer) mit;
 // Zusatzfenster (z.B. parallel geöffnete große Werkzeuge) lassen sie weiterlaufen. Die kleinen
 // Werkzeuge gehen mit: Ihre Fenster haben keinen Weg zurück zum Startbildschirm.
+let mainWin: BrowserWindow | null = null
+
 function createMainWindow(): void {
   const win = createWindow()
+  mainWin = win
   win.on('closed', () => {
+    if (mainWin === win) mainWin = null
     closePattern()
     closePlayerOutput()
     closeTimerOutput()
@@ -145,9 +154,25 @@ app.on('window-all-closed', () => {
 // „unsichtbar“ – war die Mottulbox minimiert und schloss man die Vollbild-Ausgabe (Escape im
 // Timer-, Player- oder Testbild-Fenster), beendete sich die ganze App.
 const shownWindows = new Set<BrowserWindow>()
+
+/**
+ * Beendet das Schließen dieses Fensters die App? Ja, wenn danach kein gezeigtes Fenster bleibt –
+ * das Hauptfenster nimmt Ausgaben und kleine Werkzeuge mit (createMainWindow). macOS beendet nie.
+ */
+function wuerdeBeenden(win: BrowserWindow): boolean {
+  if (process.platform === 'darwin' || !shownWindows.has(win)) return false
+  const mit = new Set<BrowserWindow | null>(
+    win === mainWin
+      ? [playerOutputWindow(), timerOutputWindow(), patternWindow(), ...smallToolWindowList()]
+      : []
+  )
+  return [...shownWindows].every((w) => w === win || w.isDestroyed() || mit.has(w))
+}
+
 app.on('browser-window-created', (_e, win) => {
   if (win.isVisible()) shownWindows.add(win)
   win.on('show', () => shownWindows.add(win))
+  wacheBeimSchliessen(win, () => wuerdeBeenden(win))
   win.on('closed', () => {
     const wasShown = shownWindows.delete(win)
     if (process.platform === 'darwin' || !wasShown || shownWindows.size > 0) return
@@ -156,9 +181,14 @@ app.on('browser-window-created', (_e, win) => {
   })
 })
 
+// Läuft noch etwas, erst fragen („Wirklich beenden?“) – als ERSTER before-quit-Handler: Die
+// folgenden stoppen NDI und Aufträge und laufen nur, wenn das Beenden freigegeben ist.
+installBeendenRueckfrage(() => mainWin)
+
 // NDI-Sender stoppen, BEVOR die Fenster abgeräumt werden -> die Quelle
 // verschwindet sauber aus dem Netz (kein hängender Eintrag bei Empfängern).
 app.on('before-quit', () => {
+  if (!beendenFreigegeben()) return
   stopTimerNdi(false)
   stopPlayerNdi(false)
 })
@@ -168,7 +198,7 @@ app.on('before-quit', () => {
 // (services/shutdown.ts). Der zweite quit() läuft hier durch.
 let workStopped = false
 app.on('before-quit', (e) => {
-  if (workStopped || !hasRunningWork()) return
+  if (!beendenFreigegeben() || workStopped || !hasRunningWork()) return
   e.preventDefault()
   workStopped = true
   void stopAllWork().finally(() => app.quit())

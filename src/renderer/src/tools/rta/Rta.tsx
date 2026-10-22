@@ -36,6 +36,7 @@ import {
   ROW_MS,
   spectroFreq,
   spectroRow,
+  mitFarbe,
   readTheme,
   xToFreq,
   type GraphData,
@@ -185,10 +186,10 @@ export function Rta(): JSX.Element {
     }
   }, [p.spectrogram])
 
-  /* ---- Farben aus den Tokens, neu bei Design- oder Akzentwechsel ---- */
+  /* ---- Farben aus den Tokens, neu bei Design-, Akzent- oder Farbwechsel ---- */
   useEffect(() => {
     const load = (): void => {
-      theme.current = readTheme()
+      theme.current = mitFarbe(readTheme(), p.farbe)
       lut.current = heatLut(theme.current)
       specDirty.current = true
       axesKey.current = ''
@@ -197,7 +198,7 @@ export function Rta(): JSX.Element {
     const mo = new MutationObserver(load)
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] })
     return () => mo.disconnect()
-  }, [])
+  }, [p.farbe])
 
   /* ---- Eingänge (Bezeichnungen erst nach der ersten Freigabe) ---- */
   const refreshInputs = useCallback((): void => {

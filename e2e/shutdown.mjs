@@ -134,9 +134,61 @@ try {
       }
     ],
     [
+      'Rückfrage „Wirklich beenden?“ nennt die Aufträge; Abbrechen lässt alles weiterlaufen',
+      async () => {
+        const proc = ctx.app.process()
+        await ctx.app.evaluate(({ dialog }) => {
+          globalThis.__rueckfragen = []
+          dialog.showMessageBox = async (...args) => {
+            const o = args.length > 1 ? args[1] : args[0]
+            globalThis.__rueckfragen.push({ message: o.message, detail: o.detail })
+            return { response: 1, checkboxChecked: false } // Abbrechen
+          }
+        })
+        await ctx.app.evaluate(({ app }) => {
+          setTimeout(() => app.quit(), 0)
+        })
+        const fragen = await waitFor(async () => {
+          const f = await ctx.app.evaluate(() => globalThis.__rueckfragen)
+          return f.length ? f : null
+        }, 5000)
+        assert.ok(fragen, 'keine Rückfrage beim Beenden')
+        assert.equal(fragen[0].message, 'Es läuft noch etwas – wirklich beenden?')
+        assert.match(fragen[0].detail, /Aufträge? \(Konvertierung/)
+        await sleep(1500)
+        assert.ok(proc.exitCode === null && proc.signalCode === null, 'App trotz Abbrechen beendet')
+        assert.ok(fresh().length >= 1, 'ffmpeg trotz Abbrechen beendet')
+        // zweiter Weg: das letzte Fenster schließen (macOS beendet damit nie – dort keine Frage)
+        if (process.platform !== 'darwin') {
+          await ctx.app.evaluate(({ BrowserWindow }) => {
+            setTimeout(
+              () =>
+                BrowserWindow.getAllWindows()
+                  .find((w) => w.isVisible())
+                  ?.close(),
+              0
+            )
+          })
+          assert.ok(
+            await waitFor(
+              async () => (await ctx.app.evaluate(() => globalThis.__rueckfragen.length)) === 2,
+              5000
+            ),
+            'keine Rückfrage beim Schließen des Fensters'
+          )
+          await sleep(500)
+          assert.equal(ctx.page.isClosed(), false, 'Fenster trotz Abbrechen geschlossen')
+        }
+      }
+    ],
+    [
       'Beenden hängt nicht, danach läuft kein ffmpeg der App weiter',
       async () => {
         const proc = ctx.app.process()
+        // Rückfrage mit „Beenden“ beantworten
+        await ctx.app.evaluate(({ dialog }) => {
+          dialog.showMessageBox = async () => ({ response: 0, checkboxChecked: false })
+        })
         const exited = new Promise((resolve) => proc.once('exit', resolve))
         const t0 = Date.now()
         await ctx.app

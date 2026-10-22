@@ -8,7 +8,16 @@
 // zur Auswahl (je Eintrag ein Download). Muxing über das gebündelte ffmpeg.
 
 import { useEffect, useRef, useState } from 'react'
-import { AlertTriangle, Download, FileVideo, FolderOpen, KeyRound, Loader2, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Download,
+  FileVideo,
+  FolderOpen,
+  KeyRound,
+  ListPlus,
+  Loader2,
+  X
+} from 'lucide-react'
 import { PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { useYtdlp, YtdlpUpdateButton } from '@renderer/components/app/YtdlpSettings'
 import { Alert } from '@renderer/components/ui/alert'
@@ -25,6 +34,7 @@ import { toast } from '@renderer/lib/toast'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
 import { toolPageClass } from '@renderer/lib/toolPage'
 import { errorText } from '@renderer/lib/utils'
+import { inDenPlayer } from '@renderer/lib/inDenPlayer'
 import {
   DEFAULT_YOUTUBE_SETTINGS,
   type YoutubeSettings,
@@ -502,6 +512,17 @@ function JobRow({ job }: { job: YtJob }): JSX.Element {
             aria-label="Abbrechen"
           >
             <X className="size-4" />
+          </button>
+        )}
+        {done && job.outputFile && job.format === 'video' && (
+          <button
+            type="button"
+            onClick={() => void inDenPlayer(job.outputFile!)}
+            className="text-muted-foreground hover:text-foreground"
+            title="In Player-Bibliothek übernehmen"
+            aria-label="In Player-Bibliothek übernehmen"
+          >
+            <ListPlus className="size-4" />
           </button>
         )}
         {done && job.outputFile && (

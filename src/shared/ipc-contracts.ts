@@ -92,6 +92,7 @@ export const Channels = {
   dialogSelect: 'dialog:select',
   dialogConfirm: 'dialog:confirm',
   dialogChoose: 'dialog:choose', // Rückfrage mit 2–4 Antworten
+  appSetAktiv: 'app:setAktiv', // Werkzeug meldet „läuft“ (Testton, Jingle) – für „Wirklich beenden?“
   dialogNotify: 'dialog:notify',
   shellOpenPath: 'shell:openPath',
   shellShowItem: 'shell:showItemInFolder',
@@ -304,6 +305,11 @@ export interface ToolboxApi {
   confirm(options: ConfirmOptions): Promise<boolean>
   /** Native Rückfrage mit 2–4 Antworten; liefert den Index des Knopfs (Esc = cancelId). */
   choose(options: ChooseOptions): Promise<number>
+  /**
+   * Werkzeug meldet, dass etwas läuft, das main nicht kennt (Ton im Fenster) – die Rückfrage beim
+   * Beenden nennt es. Je Fenster; ein geschlossenes Fenster zählt nicht mehr.
+   */
+  setAktiv(key: 'testton' | 'jingle', an: boolean): void
   /** Native Hinweis-Meldung (main-Prozess). Ersetzt window.alert() (gleicher
    *  Tastatur-Bug). */
   notify(options: NotifyOptions): Promise<void>

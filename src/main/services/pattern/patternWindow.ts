@@ -23,6 +23,9 @@ export function isPatternOpen(): boolean {
   return win !== null && !win.isDestroyed()
 }
 
+/** Das Ausgabefenster (geht mit dem Hauptfenster zu – für „Wirklich beenden?“) */
+export const patternWindow = (): BrowserWindow | null => win
+
 export function listDisplays(): DisplayInfo[] {
   const primary = screen.getPrimaryDisplay()
   return screen.getAllDisplays().map((d, i) => ({

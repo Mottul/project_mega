@@ -20,6 +20,7 @@ import { Input } from '@renderer/components/ui/input'
 import { Progress } from '@renderer/components/ui/progress'
 import { ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { api } from '@renderer/lib/api'
+import { useHandoff } from '@renderer/lib/handoff'
 import { toast } from '@renderer/lib/toast'
 import type { ImportProgress, ImportSummary, ManualMeta, ManualSearchHit } from '@shared/types'
 import { PdfViewer } from './PdfViewer'
@@ -106,6 +107,12 @@ export function ManualsLibrary(): JSX.Element {
     void refreshList()
     const off = api.manuals.onImportProgress((p) => setProgress(p))
     return off
+  }, [])
+
+  // Suchbegriff aus einem anderen Werkzeug (Netzwerk-Scanner: Hersteller des Geräts)
+  useEffect(() => {
+    const q = useHandoff.getState().takeManualsQuery()
+    if (q) setQuery(q)
   }, [])
 
   // Volltextsuche (debounced)

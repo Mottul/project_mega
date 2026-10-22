@@ -138,6 +138,12 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
 
 ## Fenster (Oktober 2026)
 
+- **`before-quit`: `preventDefault()` hält die übrigen Handler nicht an.** Alle registrierten
+  Listener laufen trotzdem – der NDI-Stopp hätte die Ausgabe beendet, obwohl die Rückfrage
+  „Wirklich beenden?“ noch offen war und danach „Abbrechen“ kam. Deshalb fragt
+  `services/beenden/rueckfrage.ts` als ERSTER Handler, und jeder weitere prüft
+  `beendenFreigegeben()`. Beim Schließen des letzten Fensters muss die Frage schon in `'close'`
+  kommen – bei `before-quit` wäre das Fenster weg.
 - **Electron meldet `'closed'` asynchron.** Wer ein Fenster schließt und sofort ein neues in
   dieselbe Modul-Variable legt (Monitorwechsel der Ausgaben), bekommt das `'closed'` des ALTEN
   Fensters erst danach – ein `win = null` dort verliert das neue Fenster (Zustand „zu“, Schließen

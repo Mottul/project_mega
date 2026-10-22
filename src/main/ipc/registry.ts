@@ -15,6 +15,7 @@ import { resolveVgenFile } from '../services/convert/videoGenCache'
 import { resolveVgenSource } from '../services/convert/videoGenSources'
 import { getSettings, onSettingsChange, setSettings } from '../services/store'
 import { registerBausteineHandlers } from './bausteine.handlers'
+import { registerBeendenHandlers } from './beenden.handlers'
 import { registerDialogHandlers } from './dialog.handlers'
 import { registerFfmpegHandlers } from './ffmpeg.handlers'
 import { registerFotosHandlers } from './fotos.handlers'
@@ -251,6 +252,7 @@ export function registerIpcHandlers(): void {
   registerJingleHandlers()
   registerYoutubeHandlers()
   registerWindowHandlers()
+  registerBeendenHandlers()
   registerOscHandlers()
   registerNovastarHandlers()
   registerNetscanHandlers()

@@ -14,6 +14,7 @@ import {
 } from 'react'
 import {
   Ban,
+  BookOpen,
   Camera,
   Check,
   ChevronDown,
@@ -48,6 +49,7 @@ import { Progress } from '@renderer/components/ui/progress'
 import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
+import { herstellerSuchbegriff } from './hersteller'
 import { toast } from '@renderer/lib/toast'
 import { toolPageClass } from '@renderer/lib/toolPage'
 import { useHandoff } from '@renderer/lib/handoff'
@@ -210,6 +212,11 @@ export function NetScan(): JSX.Element {
   function openInOsc(ip: string): void {
     useHandoff.getState().setNovastarHost(ip)
     navigate('/tool/osc-control')
+  }
+  /** Handbücher des Herstellers in der Manuals-Bibliothek suchen */
+  function openInManuals(q: string): void {
+    useHandoff.getState().giveManualsQuery(q)
+    navigate('/tool/manuals')
   }
 
   const pct = progress.total > 0 ? progress.scanned / progress.total : 0
@@ -385,6 +392,17 @@ export function NetScan(): JSX.Element {
                         disabled={!hasWeb}
                       >
                         <ExternalLink className="size-4" />
+                      </IconBtn>
+                      <IconBtn
+                        title={
+                          d.vendor
+                            ? `Handbuch suchen: ${herstellerSuchbegriff(d.vendor)}`
+                            : 'Hersteller unbekannt'
+                        }
+                        onClick={() => d.vendor && openInManuals(herstellerSuchbegriff(d.vendor))}
+                        disabled={!d.vendor}
+                      >
+                        <BookOpen className="size-4" />
                       </IconBtn>
                       <IconBtn
                         title="IP im NovaStar-Tool verwenden"

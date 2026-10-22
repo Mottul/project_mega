@@ -48,6 +48,9 @@ export function openTimerOutput(displayId: number): void {
   setTimerOutputOpen(true)
 }
 
+/** Das Ausgabefenster (geht mit dem Hauptfenster zu – für „Wirklich beenden?“) */
+export const timerOutputWindow = (): BrowserWindow | null => win
+
 export function closeTimerOutput(emit = true): void {
   if (win && !win.isDestroyed()) win.close()
   win = null

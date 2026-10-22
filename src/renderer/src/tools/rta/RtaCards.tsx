@@ -20,7 +20,7 @@ import {
   type Sensitivity
 } from './feedback'
 import type { Channel } from './engine'
-import { MAX_REFERENCES, useRta, type ScaleMode, type SpectroMode } from './store'
+import { MAX_REFERENCES, useRta, type RtaFarbe, type ScaleMode, type SpectroMode } from './store'
 
 /** Tailwind-Klassen je Referenzfarbe (gleiche Reihenfolge wie REF_TOKENS in draw.ts) */
 const REF_DOT: Record<(typeof REF_TOKENS)[number], string> = {
@@ -395,6 +395,15 @@ export function DisplayCard(): JSX.Element {
       >
         <option value="auto">Automatisch</option>
         <option value="fixed">Fest</option>
+      </SelectField>
+      <SelectField
+        label="Farbe"
+        hint="Akzent: wie die App. Neutral: Pegel, Spektrum und Wasserfall in Weiß (im hellen Design Schwarz) – ein ruhiges Bild am Messplatz oder auf einem zweiten Bildschirm."
+        value={p.farbe}
+        onChange={(v) => set({ farbe: v as RtaFarbe })}
+      >
+        <option value="akzent">Akzent</option>
+        <option value="neutral">Neutral</option>
       </SelectField>
       <SelectField
         label="Spektrogramm"
