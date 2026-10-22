@@ -20,6 +20,9 @@ description: Prüfung vor dem Abschluss einer Änderung in Mottulbox – Prettie
 6. **App-Verhalten geändert** (Oberfläche, IPC, Ausgabefenster, Fernsteuerung)? Dann zusätzlich
    `npm run e2e` (baut die App und startet den Rauchtest). Für ein neues Werkzeug ein eigenes
    Skript neben `e2e/smoke.mjs` anlegen, das `launchApp` aus `e2e/harness.mjs` nutzt.
+   **Paket betroffen** (`electron-builder.yml`, `asarUnpack`, `extraResources`, ein neues natives
+   oder ESM-only-Modul im main)? Dann `npm run package:dir` und `npm run e2e -- paket` – die CI
+   prüft die gepackte App zwar je Betriebssystem, aber erst ganz am Ende des Laufs.
 7. **Doku:** Neue oder geänderte Funktion in `docs/WERKZEUGE.md`, Erledigtes aus
    `docs/ROADMAP.md` streichen (CLAUDE.md, Abschnitt Doku).
 8. **Bericht:** kurz sagen, was grün ist und was nicht (mit Ausgabe), nichts beschönigen.

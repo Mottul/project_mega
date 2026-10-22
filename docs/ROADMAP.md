@@ -20,9 +20,9 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
    Abstand, [SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)) – als Nächstes kommen u. a.
    pdfjs-dist 6.4.299 und Electron 44.7.0. Eine neue Electron-Hauptversion vor dem Merge an den
    Breaking Changes prüfen.
-2. **Paketierung in der CI** – Installer je Betriebssystem probeweise bauen (heute prüft die CI
-   Build, Tests und E2E auf allen drei, aber nicht `electron-builder`).
-3. **App-Aktualisierung** – darauf aufbauend (siehe [Große Umbauten](#große-umbauten)).
+2. **App-Aktualisierung** – baut auf der Paketierung in der CI auf (die prüft seit 22.10.2026 je
+   Betriebssystem das entpackte Paket samt Start; für Releases fehlen noch die Installer selbst,
+   siehe [Große Umbauten](#große-umbauten)).
 
 ## Funktionen
 
@@ -120,8 +120,6 @@ Video-Player, Netzwerk-Scanner → NovaStar und Manuals (siehe [WERKZEUGE.md](WE
 - **GPU-Encoder auf echter Hardware gegenprüfen** (NVENC, Quick Sync, AMF, VideoToolbox inkl.
   ProRes): ohne GPU im Testrechner sind nur Erkennung, Argumente und der Rückfall auf die CPU
   geprüft.
-- **Paketierung in der CI** (`electron-builder --dir` je Betriebssystem) – Tests und E2E laufen
-  schon auf Linux, Windows und macOS.
 
 ### Upgrades
 
