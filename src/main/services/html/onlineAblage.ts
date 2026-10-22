@@ -24,7 +24,7 @@ export function slug(name: string): string {
     .toLowerCase()
     .replace(/[äöüß]/g, (x) => UMLAUTE[x])
     .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '') // Akzente: „Café“ → cafe, nicht caf-e
+    .replace(/[\u0300-\u036f]/g, '') // Akzente: „Café“ → cafe, nicht caf-e
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 20)
