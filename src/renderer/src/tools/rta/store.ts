@@ -14,6 +14,8 @@ export type ViewMode = 'bars' | 'curve' | 'both'
 /** Spektrogramm: aus, Wasserfall (Frequenz waagrecht wie das Spektrum, Zeit nach unten) oder
  *  Zeitachse waagrecht (Frequenz senkrecht) */
 export type SpectroMode = 'off' | 'waterfall' | 'timeline'
+/** Farbe von Pegel und Spektrum: Akzent oder neutral (Schriftfarbe – Weiß bzw. im hellen Design Schwarz) */
+export type RtaFarbe = 'akzent' | 'neutral'
 export type ScaleMode = 'auto' | 'fixed'
 
 /** Referenzkurve: unbewertete 1/24-Pegel (dBFS, ohne Offset, mit Mikrofon-Korrektur) */
@@ -36,6 +38,7 @@ export interface RtaPrefs {
   view: ViewMode
   scale: ScaleMode
   spectrogram: SpectroMode
+  farbe: RtaFarbe
   feedback: boolean
   sensitivity: Sensitivity
   deviceId: string | null
@@ -67,6 +70,7 @@ export const DEFAULT_RTA: RtaPrefs = {
   view: 'both',
   scale: 'auto',
   spectrogram: 'off',
+  farbe: 'akzent',
   feedback: true,
   sensitivity: 'mid',
   deviceId: null,
