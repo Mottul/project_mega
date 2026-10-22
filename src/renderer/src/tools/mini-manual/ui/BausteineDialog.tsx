@@ -13,6 +13,7 @@ import { toast } from '@renderer/lib/toast'
 import { namensgleiche } from '@shared/bausteine'
 import type { BausteinImport, EigenerBaustein } from '@shared/types'
 import { KAPITEL, kapitelDef, type KapitelId } from '../model'
+import { meldeBausteineGeaendert } from './eigeneBausteine'
 
 const gruppeVon = (b: EigenerBaustein): string =>
   b.art === 'fall'
@@ -51,6 +52,11 @@ export function BausteineDialog({ onClose }: { onClose: () => void }): JSX.Eleme
     void api.bausteine.list().then(setListe)
   }
   useEffect(neuLaden, [])
+  /** nach einer Änderung: diese Liste und die übrigen im Fenster (Auswahl, „Neuere Fassung“) */
+  const geaendert = (): void => {
+    neuLaden()
+    meldeBausteineGeaendert()
+  }
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -76,7 +82,7 @@ export function BausteineDialog({ onClose }: { onClose: () => void }): JSX.Eleme
     }
     const res = await api.bausteine.save({ ...b, titel: t })
     if (!res) toast.error('Umbenennen fehlgeschlagen')
-    neuLaden()
+    geaendert()
   }
 
   async function loeschen(b: EigenerBaustein): Promise<void> {
@@ -89,7 +95,7 @@ export function BausteineDialog({ onClose }: { onClose: () => void }): JSX.Eleme
     if (!ok) return
     await api.bausteine.remove(b.id)
     setWahl((w) => new Set([...w].filter((x) => x !== b.id)))
-    neuLaden()
+    geaendert()
   }
 
   async function exportieren(ids: string[]): Promise<void> {
@@ -104,7 +110,7 @@ export function BausteineDialog({ onClose }: { onClose: () => void }): JSX.Eleme
     const text = importText(r)
     if (r.some((x) => !x.ok)) toast.warning('Import', text)
     else toast.success('Import', text)
-    neuLaden()
+    geaendert()
   }
 
   const alle = liste ?? []

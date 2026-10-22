@@ -2,7 +2,8 @@
 // Geräteliste in der Vorschau, Kontakt aus dem Profil, Fall aus der Bibliothek, Kurzkarte (A5,
 // genau eine Seite) und Handbuch als PDF, Projektdatei mit Foto, LED-Wall-Planung derselben
 // Datei übernehmen und „Planung geändert“, Ziehen zum Sortieren, eigene Bausteine (gleicher Name,
-// Export, Import). Dialoge werden im main ersetzt.
+// Export, Import, neuere Fassung aktualisieren), Vorschläge nach Stichworten. Dialoge werden im
+// main ersetzt.
 
 import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -639,6 +640,49 @@ try {
         assert.ok(await waitFor(async () => (await zeilen.count()) === 2, 5000))
         await page.keyboard.press('Escape')
         await dlg.waitFor({ state: 'detached' })
+      }
+    ],
+    [
+      'Vorschlag nach Stichworten, „Neuere Fassung“ eines eigenen Bausteins aktualisieren',
+      async () => {
+        const einfuegen = page.getByRole('button', { name: /Baustein einfügen/ })
+        const wahl = page.getByRole('dialog', { name: 'Bausteine', exact: true })
+        // die Wand der Kopie (Modul 496-2,0, NovaStar) passt zu „Status-LEDs der Module“
+        await kapitel('ledWall')
+        await page.getByTestId('baustein-passend').getByText('1 passt').waitFor({ timeout: 5000 })
+        await einfuegen.click()
+        await wahl
+          .getByRole('listitem')
+          .filter({ hasText: 'Status-LEDs der Module' })
+          .getByText('passt zum Projekt')
+          .waitFor()
+        await wahl.getByRole('button', { name: /Status-LEDs der Module/ }).click()
+        await page.getByTestId('baustein-passend').waitFor({ state: 'detached' })
+
+        // eigener Baustein: speichern, einfügen, dann „Ersetzen“ = Version 2 -> Hinweis im Kapitel
+        await kapitel('einAus')
+        const speichern = async () => {
+          await einfuegen.click()
+          await wahl.getByLabel('Titel des neuen Bausteins').fill('Mein Ablauf')
+          await wahl.getByRole('button', { name: /Kapitel als Baustein speichern/ }).click()
+        }
+        await speichern()
+        const version = async () => (await eigene()).find((b) => b.titel === 'Mein Ablauf')?.version
+        assert.ok(await waitFor(async () => (await version()) === 1, 5000))
+        await wahl.getByRole('button', { name: 'Mein Ablauf' }).click()
+        await wahl.waitFor({ state: 'detached' })
+        // Rückfrage gleicher Name: Ersetzen (0)
+        await stubConfirmSequence(app, [0])
+        await speichern()
+        assert.ok(await waitFor(async () => (await version()) === 2, 5000))
+        const hinweis = page.getByTestId('neuere-fassung')
+        await hinweis
+          .getByText('Neuere Fassung von „Mein Ablauf“: Version 1 → 2 (eigener Baustein)')
+          .waitFor({ timeout: 5000 })
+        await stubConfirm(app, true)
+        await hinweis.getByRole('button', { name: 'Aktualisieren' }).click()
+        await hinweis.waitFor({ state: 'detached', timeout: 5000 })
+        await wahl.getByRole('button', { name: 'Schließen' }).click()
       }
     ],
     [

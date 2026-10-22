@@ -3,6 +3,7 @@
 
 import { analyzePower } from '../led-wall/power'
 import { analyzeProcessors } from '../led-wall/processors'
+import { neuereFassungen, quellen } from './aktualisieren'
 import { pruefeFall } from './fehlersuche'
 import { geplanteWaende } from './ledWallKopie'
 import { kapitelDef, type Anleitung, type KapitelId } from './model'
@@ -45,6 +46,9 @@ function texteImKapitel(a: Anleitung, id: KapitelId, c: SeitenKontext): string[]
   if (id === 'aufEinenBlick') return texteImKapitel(a, 'einAus', { ...c, stufe: 1, lern: false })
   return out
 }
+
+/** Die Bibliothek ändert sich nur mit einer neuen App-Version – einmal aufbauen reicht */
+let bibliothek: ReturnType<typeof quellen> | null = null
 
 export function pruefung(a: Anleitung, c: SeitenKontext, extra: PruefExtra): PruefPunkt[] {
   const out: PruefPunkt[] = []
@@ -138,5 +142,14 @@ export function pruefung(a: Anleitung, c: SeitenKontext, extra: PruefExtra): Pru
     )
       out.push({ schwere: 'info', text: `${kapitelDef(k.id).titel}: noch leer.`, kapitel: k.id })
   }
+
+  // Eigene Bausteine meldet der Editor (Ablage über IPC); hier nur die mitgelieferte Bibliothek
+  bibliothek ??= quellen()
+  for (const n of neuereFassungen(a, bibliothek))
+    out.push({
+      schwere: 'info',
+      text: `„${n.titel}“: neuere Fassung in der Bibliothek (Version ${n.von} → ${n.auf}).`,
+      kapitel: n.kapitel ?? 'fehlersuche'
+    })
   return out
 }

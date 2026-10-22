@@ -2,7 +2,7 @@
 // Zeile je Schritt – Stufe, Frage, Ja-Ziel, Nein-Ziel. Ziele zeigen auf Kennungen, Nummern
 // ergeben sich aus der Reihenfolge; die Prüfung meldet tote Ziele, Unerreichbares, Schleifen.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { BookPlus, Plus, Save } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
@@ -15,7 +15,6 @@ import { LiveInput } from '@renderer/components/ui/textarea'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
 import { cn } from '@renderer/lib/utils'
-import type { EigenerBaustein } from '@shared/types'
 import {
   bibliotheksFallEinfuegen,
   ersetze,
@@ -32,6 +31,8 @@ import { BEREICHE, uid, type Bereich, type Fehlerfall, type FSchritt, type Ziel 
 import { fehlerfall as pruefeFehlerfall } from '../sanitize'
 import { useMiniManual } from '../store'
 import { speichereBaustein } from './bausteinSpeichern'
+import { useEigeneBausteine } from './eigeneBausteine'
+import { NeuereFassungHinweis } from './NeuereFassung'
 import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
 
 /** Ziel als Wert der Auswahlliste */
@@ -246,6 +247,7 @@ function FallEditor({ fall, faelle }: { fall: Fehlerfall; faelle: Fehlerfall[] }
 
   return (
     <div className="space-y-3">
+      <NeuereFassungHinweis fallId={fall.id} />
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Field label="Titel (was man sieht)">
           <LiveInput
@@ -336,14 +338,7 @@ function FallEditor({ fall, faelle }: { fall: Fehlerfall; faelle: Fehlerfall[] }
 function FallWahl({ onClose }: { onClose: () => void }): JSX.Element {
   const faelle = useMiniManual((s) => s.anleitung.fehlerfaelle)
   const update = useMiniManual((s) => s.update)
-  const [eigene, setEigene] = useState<EigenerBaustein[]>([])
-  useEffect(() => {
-    let alive = true
-    void api.bausteine.list().then((l) => alive && setEigene(l.filter((b) => b.art === 'fall')))
-    return () => {
-      alive = false
-    }
-  }, [])
+  const eigene = useEigeneBausteine().filter((b) => b.art === 'fall')
   const fehlt = FEHLERFAELLE.filter((f) => !faelle.some((x) => x.id === f.id))
   return (
     <div

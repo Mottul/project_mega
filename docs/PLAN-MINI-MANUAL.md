@@ -26,9 +26,8 @@ Abweichungen vom Plan:
 Rückmeldung aus dem ersten Test (17.10.2026), erledigt: Foto auf dem Deckblatt nicht mehr
 verzerrt, Logo größer, eingesetzte Platzhalter-Werte fett.
 
-Noch offen aus Phase 1 (klein, bei Bedarf): Bausteine der Bibliothek „aktualisieren“, wenn ihre
-Version neuer ist (die Herkunft mit Version steht schon in jeder Kopie); Vorschläge nach
-Stichworten (heute zeigt die Auswahl alle Bausteine des Kapitels); Aufräumen des Foto-Speichers.
+Noch offen aus Phase 1 (klein, bei Bedarf): Aufräumen des Foto-Speichers. (Bausteine
+„aktualisieren“ und Vorschläge nach Stichworten sind umgesetzt, 22.10.2026, siehe WERKZEUGE.)
 
 **Phase 2a, erster Teil umgesetzt (17.10.2026):** mehrere Wände je Datei – Abschnitt `ledWall`
 Version 3 mit Migration (Speicher, Vorlagen, Datei), Wand-Menü im Konfigurator, Name der Wand in
@@ -1249,8 +1248,9 @@ Geklärt am 17. Oktober 2026 (Abend, Festlegungen 30–34):
 
 Noch offen (klein, halten Phase 2a nicht auf):
 
-11. **CVT10 im Bestand:** Variante S (Singlemode) oder M (Multimode)? Welche Fasern und Stecker
-    liegen im Lager (LC-Duplex, opticalCON, Längen)? Gebraucht für die Packliste (Phase 2b).
+11. ~~CVT10 im Bestand~~ – geklärt (22.10.2026): Variante S, alle Fasern Singlemode LC-LC,
+    Längen 20, 50 und 100 m, Patch 1 und 3 m. Die Packliste nimmt die Stücke aus dem Lager
+    (`faserAusLager` in `src/renderer/src/tools/led-wall/processors.ts`).
 12. **Tessera S8 – Redundanz-Paare:** Das Handbuch nennt nur 1 → 2 und 3 → 4. Gehen am S8 auch
     5 → 6 und 7 → 8? (Im Betrieb nachsehen; Phase 2b.)
 13. **rX3ioBF:** Welche Empfangskarte und welcher Prozessor? Die Tabelle rechnet bis dahin mit

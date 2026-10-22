@@ -135,9 +135,12 @@ describe('deriveFromLedWall – Glasfaser-Strecke', () => {
       items.filter((i) => /CVT10|Glasfaser/.test(i.name)).map((i) => [i.name, i.qty, i.note])
     ).toEqual([
       ['NovaStar CVT10-S', 1, 'je Achtergruppe eine (Ports 1–8, 9–16)'],
-      ['Glasfaser Singlemode (OS1/OS2), LC', 2, 'je 150 m · mit Ersatzfaser je Box'],
+      // 150 m aus dem Lager: 100 + 50 m mit Kupplung, je Box zwei Fasern (redundant)
+      ['Glasfaser Singlemode LC-LC 100 m', 2, '150 m aus 100 + 50 m · mit Ersatzfaser je Box'],
+      ['Glasfaser Singlemode LC-LC 50 m', 2, '150 m aus 100 + 50 m · mit Ersatzfaser je Box'],
       ['Netzkabel PowerCON (CVT10)', 1, '']
     ])
+    expect(byName(items, 'LC-LC-Kupplung Singlemode')?.qty).toBe(2)
     expect(byName(items, 'Datenleitung (Einspeisung/Kette)')?.note).toBe(
       'CVT10 → erste Kachel je Kette (Patchkabel)'
     )
@@ -157,8 +160,8 @@ describe('deriveFromLedWall – Glasfaser-Strecke', () => {
       }
     ])
     expect(byName(items, 'NovaStar CVT10-M')?.qty).toBe(2)
-    expect(byName(items, 'Glasfaser Multimode (OM3/OM4), LC')?.note).toBe(
-      'Länge eintragen · mit Ersatzfaser je Box'
+    expect(byName(items, 'Glasfaser Multimode (OM3/OM4), LC-LC')?.note).toBe(
+      'Länge eintragen · nicht im Lager · mit Ersatzfaser je Box'
     )
     const b = byName(items, 'Datenleitung Backup (letztes Modul → Prozessor)')
     expect([b?.qty, b?.note]).toEqual([
