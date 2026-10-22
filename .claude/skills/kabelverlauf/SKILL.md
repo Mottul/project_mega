@@ -86,6 +86,11 @@ Einspeisepunkt, keine Automatik.
   belegt keinen Prozessor-Port (`backupBox`), ab Werk hat jede Kette eins (`hasBackup(meta,
   redundancy || hot)`), feste Backup-Ports gelten dann nicht. Anzeigen immer über `backupLabel`
   („B 3 (2. CVT10)“) und `fiberSummary` – Karte, PDF und Mini-Manual sagen dasselbe.
+- **Fasern aus dem Lager:** Im Bestand ist nur Variante S mit Singlemode LC-LC (`FASER_LAGER_S`:
+  1, 3, 20, 50, 100 m). `faserAusLager(länge)` nimmt das kürzeste Stück, das reicht, darüber
+  die kleinste Summe aus k = ⌈Länge/100⌉ Stücken; Packliste (`faserItems` in
+  `packing-list/derive.ts`, je Stoß eine LC-LC-Kupplung) und der Hinweis unter der Länge in
+  `FiberFields` rechnen damit. Ändert sich das Lager, nur die Liste anpassen.
 - Ein Textfeld in der Verlauf-Leiste (Kreis) bekommt `key={activeChain}`: Beim Wechsel der Kette
   baut es neu auf und speichert das Getippte noch für die alte Kette.
 

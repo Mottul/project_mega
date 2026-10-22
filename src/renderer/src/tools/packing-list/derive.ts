@@ -89,7 +89,6 @@ export function deriveFromLedWall(
   )
 }
 
-/** Glasfaser-Strecke eines Prozessors: Boxen, Fasern, Stromkabel der Boxen (Festlegung 28) */
 /**
  * Fasern einer Strecke: Variante S aus dem Lager (Singlemode LC-LC, feste Längen, über 100 m
  * gestückelt mit Kupplung), sonst wie geplant mit Länge zum Besorgen.
@@ -136,6 +135,7 @@ function faserItems(f: FiberPlan, cat: string): DerivedItem[] {
   return items
 }
 
+/** Glasfaser-Strecke eines Prozessors: Boxen, Fasern, Stromkabel der Boxen (Festlegung 28) */
 function fiberItems(f: FiberPlan, cat: string, fuer: string): DerivedItem[] {
   const boxNote =
     f.redundancy === 'hot-backup'

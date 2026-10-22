@@ -67,10 +67,18 @@ selbst fett (Klasse `ph`); `**…**` drumherum nur, wenn mehr als der Wert hervo
 
 ## Bausteine
 
-- Ein Baustein gehört zu genau einem Kapitel (`kapitel`), `stichworte` (klein) für Vorschläge.
+- Ein Baustein gehört zu genau einem Kapitel (`kapitel`). `stichworte` (klein) ergeben die
+  Vorschläge (`vorschlaege.ts`): Sie werden als **ganze Wörter** gegen Name, Modell und Notiz der
+  Geräte, `led-wand` (sobald eine Wand übernommen ist), Modul-Kennung und Prozessor samt Hersteller
+  (`NovaStar`, `Brompton`) gesucht. Also Wörter nehmen, die dort wirklich stehen
+  (`madmapper`, `stream deck`, `496-2,0`), keine Oberbegriffe wie „software“.
 - Die Kurzkarte nimmt die **Schritt-Listen** (`typ: 'schritte'`) des Kapitels „Ein- und
   Ausschalten“ – Titel kurz halten („Einschalten“, „Ausschalten“).
-- Inhalt geändert → `version` erhöhen (Anleitungen sehen später „aktualisieren“).
+- Inhalt geändert → `version` erhöhen, beim Baustein im Objekt, beim Fehlerfall über
+  `fall({ version: 2, … })` mit Kommentar (Datum, was sich geändert hat). Anleitungen mit der
+  älteren Kopie zeigen dann „Neuere Fassung … Aktualisieren“ (`aktualisieren.ts`), die Prüfung
+  nennt sie. Ohne Erhöhung bleibt jede alte Kopie stillschweigend alt. Ein Fall wird unter seiner
+  Kennung ersetzt – Schritt-Kennungen, auf die andere Fälle zeigen, nicht umbenennen.
 - **Eigene Bausteine** (Nutzer, `userData/Bausteine`): Namen sind je Kapitel eindeutig
   (`namensgleiche` in `shared/bausteine.ts`, ohne Groß/Klein und Leerraum). Speichern läuft immer
   über `speichereBaustein()` (`ui/bausteinSpeichern.ts`): Bei gleichem Namen fragt es

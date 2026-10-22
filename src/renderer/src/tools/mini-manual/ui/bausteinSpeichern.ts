@@ -5,6 +5,7 @@
 import { freierTitel, namensgleiche } from '@shared/bausteine'
 import type { EigenerBaustein } from '@shared/types'
 import { api } from '@renderer/lib/api'
+import { meldeBausteineGeaendert } from './eigeneBausteine'
 
 type Entwurf = Pick<EigenerBaustein, 'id' | 'art' | 'titel' | 'kapitel' | 'daten'>
 
@@ -29,5 +30,6 @@ export async function speichereBaustein(
     else return { baustein: null, fehler: false }
   }
   const baustein = await api.bausteine.save(entwurf)
+  if (baustein) meldeBausteineGeaendert()
   return { baustein, fehler: !baustein }
 }

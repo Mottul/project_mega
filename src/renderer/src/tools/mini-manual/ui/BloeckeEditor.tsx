@@ -2,16 +2,14 @@
 // Bausteine (mitgeliefert oder eigene) kommen als Kopie mit Herkunft dazu; eigene Bausteine
 // liegen als Datei im main (api.bausteine).
 
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { BookPlus, ListOrdered, MessageSquareWarning, Plus, Save, Type } from 'lucide-react'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Select } from '@renderer/components/ui/select'
 import { LiveInput, TextArea } from '@renderer/components/ui/textarea'
-import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
-import type { EigenerBaustein } from '@shared/types'
 import { Griff, useSortable, type Sortable } from '@renderer/components/ui/sortable'
 import { cn } from '@renderer/lib/utils'
 import {
@@ -23,11 +21,14 @@ import {
   verschiebe,
   zieheNach
 } from '../aktionen'
+import { alsBaustein } from '../aktualisieren'
 import { BAUSTEINE, bausteinById, type Baustein } from '../bibliothek'
 import { kapitelDef, uid, type Block, type KapitelId, type Schritt } from '../model'
-import { block as pruefeBlock } from '../sanitize'
 import { useMiniManual } from '../store'
+import { projektText, treffer, vorschlaege } from '../vorschlaege'
 import { speichereBaustein } from './bausteinSpeichern'
+import { useEigeneBausteine } from './eigeneBausteine'
+import { NeuereFassungHinweis } from './NeuereFassung'
 import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
 
 export const AUSZEICHNUNG_HILFE =
@@ -190,31 +191,26 @@ function BlockKarte({
   )
 }
 
-function eigeneBloecke(e: EigenerBaustein): Block[] {
-  return (Array.isArray(e.daten) ? e.daten : [])
-    .map(pruefeBlock)
-    .filter((b): b is Block => !!b)
-    .map((b) => ({ ...b, id: uid() }))
+/** Was das Projekt über sich sagt (Geräte, LED-Wand) – für die Vorschläge nach Stichworten */
+function useProjektText(): string {
+  const geraete = useMiniManual((s) => s.anleitung.geraete)
+  const ledWall = useMiniManual((s) => s.anleitung.ledWall)
+  return useMemo(() => projektText({ geraete, ledWall }), [geraete, ledWall])
 }
 
 /** Bausteine für dieses Kapitel: mitgelieferte und eigene; dazu „als eigenen Baustein speichern“ */
 function BausteinWahl({ id, onClose }: { id: KapitelId; onClose: () => void }): JSX.Element {
   const update = useMiniManual((s) => s.update)
-  const [eigene, setEigene] = useState<EigenerBaustein[]>([])
+  const alleEigenen = useEigeneBausteine()
+  const eigene = alleEigenen.filter((b) => b.art === 'bloecke' && b.kapitel === id)
   const [titel, setTitel] = useState('')
   const aktuelle = useMiniManual((s) => s.anleitung.kapitel.find((k) => k.id === id)?.bloecke ?? [])
 
-  useEffect(() => {
-    let alive = true
-    void api.bausteine.list().then((l) => {
-      if (alive) setEigene(l.filter((b) => b.art === 'bloecke' && b.kapitel === id))
-    })
-    return () => {
-      alive = false
-    }
-  }, [id])
-
+  const text = useProjektText()
+  // Passende zuerst (sort ist stabil: sonst Reihenfolge der Bibliothek)
   const mitgeliefert = BAUSTEINE.filter((b) => b.kapitel === id)
+    .map((b) => ({ b, passt: treffer(b, text) }))
+    .sort((x, y) => Number(y.passt.length > 0) - Number(x.passt.length > 0))
   const einfuegen = (b: Baustein): void => {
     update((a) => bausteinEinfuegen(a, b, id))
     onClose()
@@ -232,7 +228,6 @@ function BausteinWahl({ id, onClose }: { id: KapitelId; onClose: () => void }): 
     })
     if (res) {
       toast.success(`Baustein „${res.titel}“ gespeichert`)
-      setEigene((l) => [...l.filter((x) => x.id !== res.id), res])
       setTitel('')
     } else if (fehler) toast.error('Baustein ließ sich nicht speichern')
   }
@@ -255,30 +250,22 @@ function BausteinWahl({ id, onClose }: { id: KapitelId; onClose: () => void }): 
         </p>
       )}
       <ul className="space-y-1">
-        {mitgeliefert.map((b) => (
+        {mitgeliefert.map(({ b, passt }) => (
           <li key={b.id} className="flex items-center gap-2">
             <Button size="sm" variant="outline" onClick={() => einfuegen(b)}>
               <BookPlus className="size-4" /> {b.titel}
             </Button>
             <span className="text-xs text-muted-foreground">mitgeliefert</span>
+            {passt.length > 0 && (
+              <Badge tone="info" title={`Stichworte: ${passt.join(', ')}`}>
+                passt zum Projekt
+              </Badge>
+            )}
           </li>
         ))}
         {eigene.map((e) => (
           <li key={e.id} className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() =>
-                einfuegen({
-                  id: e.id,
-                  version: e.version,
-                  titel: e.titel,
-                  kapitel: id,
-                  stichworte: [],
-                  bloecke: eigeneBloecke(e)
-                })
-              }
-            >
+            <Button size="sm" variant="outline" onClick={() => einfuegen(alsBaustein(e, id))}>
               <BookPlus className="size-4" /> {e.titel}
             </Button>
             <span className="text-xs text-muted-foreground">
@@ -313,6 +300,9 @@ export function BloeckeEditor({ id }: { id: KapitelId }): JSX.Element {
   const k = useMiniManual((s) => s.anleitung.kapitel.find((x) => x.id === id))
   const update = useMiniManual((s) => s.update)
   const [wahl, setWahl] = useState(false)
+  const text = useProjektText()
+  // passende Bausteine, die im Kapitel noch fehlen – als Zahl am Knopf, nicht als Aufforderung
+  const passend = useMemo(() => (k ? vorschlaege(text, k).length : 0), [text, k])
   const setBloecke = (fn: (b: Block[]) => Block[]): void => update((a) => bloecke(a, id, fn))
   const sort = useSortable((von, nach, hinter) =>
     setBloecke((bs) => zieheNach(bs, von, nach, hinter))
@@ -322,6 +312,7 @@ export function BloeckeEditor({ id }: { id: KapitelId }): JSX.Element {
 
   return (
     <div className="space-y-3">
+      <NeuereFassungHinweis kapitel={id} />
       {k.bloecke.map((b, i) => (
         <BlockKarte
           key={b.id}
@@ -350,6 +341,11 @@ export function BloeckeEditor({ id }: { id: KapitelId }): JSX.Element {
         </Button>
         <Button size="sm" onClick={() => setWahl((v) => !v)} aria-expanded={wahl}>
           <BookPlus className="size-4" /> Baustein einfügen …
+          {passend > 0 && (
+            <span className="text-xs opacity-80" data-testid="baustein-passend">
+              {passend === 1 ? '1 passt' : `${passend} passen`}
+            </span>
+          )}
         </Button>
         <InfoTip text={AUSZEICHNUNG_HILFE} label="Auszeichnung und Platzhalter" />
       </div>

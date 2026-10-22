@@ -45,6 +45,11 @@ Zusätzlich gilt der allgemeine `/code-review`.
   im nächsten Durchlauf – ein Wächter-Effekt sieht den Mischstand und dreht die Änderung zurück
   (Video-Generator, 8. Oktober 2026: „Gerechnet“ sprang auf „Live“ zurück). Den Store erst in
   einem Effekt auf den lokalen Zustand nachziehen.
+- **Eine Liste aus main, die mehrere Teile anzeigen, nicht je Komponente einmal beim Einhängen
+  laden.** Der Hinweis „Neuere Fassung“ hätte nach „Ersetzen“ im selben Fenster nichts gemerkt,
+  weil er die eigenen Bausteine nur beim Aufbau las (22.10.2026). Ein Hook für alle
+  (`useEigeneBausteine` in `mini-manual/ui/eigeneBausteine.ts`): lädt bei einem Fenster-Ereignis
+  nach jeder Änderung und beim Fokus (anderes Fenster); nur die letzte Anfrage darf setzen.
 - **`key` von Listen mit Medien nicht aus der Position bilden**, wenn Einträge den Platz
   wechseln: Das `<video>` wird sonst neu geladen und hakt (Live-Vorschau beim Übergang).
 

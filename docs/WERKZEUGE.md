@@ -346,8 +346,9 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
     der Strecke: keine, **Faser redundant** (zweite Faser von OPT3/OPT4 in dieselbe Box) oder
     **Hot-Backup** (zweite CVT10, die die Kettenenden vom selben Port speist – dann braucht keine
     Kette einen Backup-Port am Prozessor, ab Werk hat jede eine Backup-Leitung). Ports 1–8 gehen
-    an eine Box (OPT1), 9–16 an eine zweite (OPT2). Die Karte **Signal** nennt Boxen und Fasern,
-    die Liste „B 3 (2. CVT10)“; warnt bei Multimode über 300 m. Bei geteiltem Prozessor gilt
+    an eine Box (OPT1), 9–16 an eine zweite (OPT2). Unter der Länge steht, welche Stücke aus dem
+    Lager dafür gehen (Singlemode LC-LC 1, 3, 20, 50, 100 m). Die Karte **Signal** nennt Boxen
+    und Fasern, die Liste „B 3 (2. CVT10)“; warnt bei Multimode über 300 m. Bei geteiltem Prozessor gilt
     die Strecke der Wand, die ihn hat.
   - **Stromkreise und Phasen:** Je Stromkette in der Verlauf-Leiste **Kreis** (frei, z. B. „F3“)
     und **Phase** L1–L3. Ohne Phase verteilt die Rechnung die Kreise als Vorschlag auf die
@@ -616,9 +617,20 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
 - **Bausteine:** mitgelieferte (Ein-/Ausschalten, Stromausfall, MadMapper, Mottulbox-Player,
   OBS, Stream Deck, Inhalte, Pflege, Ersatzteile, Status-LEDs) und **eigene** – ein Kapitel als
   Baustein speichern, eine Datei je Baustein im Benutzerordner unter `Bausteine/`. Eingefügt wird
-  eine Kopie; die Anleitung ändert sich nicht, wenn sich die Bibliothek ändert. Gibt es den Namen
-  im selben Kapitel schon, fragt das Speichern: **Ersetzen** (gleicher Baustein, Version + 1),
-  **Beide behalten** (der neue heißt „… (2)“) oder Abbrechen.
+  eine Kopie; die Anleitung ändert sich nicht von selbst, wenn sich die Bibliothek ändert. Gibt es
+  den Namen im selben Kapitel schon, fragt das Speichern: **Ersetzen** (gleicher Baustein,
+  Version + 1), **Beide behalten** (der neue heißt „… (2)“) oder Abbrechen.
+- **Neuere Fassung:** Ist ein eingefügter Baustein oder Fehlerfall inzwischen neuer – in der
+  mitgelieferten Bibliothek (mit einer neuen App-Version) oder als eigener Baustein (ersetzt oder
+  vom Kollegen importiert) –, steht im Kapitel bzw. am Fall „Neuere Fassung von „…“: Version
+  1 → 2“ mit **Aktualisieren**. Nach einer Rückfrage ersetzt die neue Fassung die Kopie an ihrer
+  Stelle (eigene Änderungen daran gehen verloren); ein Fall behält seine Kennung, Verweise anderer
+  Fälle bleiben. Die Prüfung in der Schublade nennt neuere Fassungen der Bibliothek als Hinweis.
+- **Vorschläge nach Stichworten:** Jeder mitgelieferte Baustein trägt Stichworte (Software, Gerät,
+  Prozessor, Modul). Was das Projekt nennt – Name, Modell und Notiz der Geräte, die LED-Wand mit
+  Modul und Prozessor-Hersteller –, ergibt die Vorschläge: Der Knopf „Baustein einfügen …“ zeigt,
+  wie viele noch fehlende Bausteine des Kapitels passen („2 passen“), in der Auswahl stehen sie
+  oben mit „passt zum Projekt“. Nur ganze Wörter zählen („PC“ trifft „Medien-PC“, nicht „PCIe“).
 - **Bausteine verwalten** (Leiste → Bausteine): alle eigenen nach Kapitel, mit Version, Autor
   und Datum; umbenennen, löschen, einzeln, als Auswahl oder alle **exportieren** (eine
   JSON-Datei zum Weitergeben per Mail oder Stick). **Importieren** nimmt eine oder mehrere solcher
@@ -749,8 +761,11 @@ Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
   öffnet die Packliste im eigenen Fenster. Bei mehreren Wänden je Wand eine Kategorie
   („LED-Wall · Bar“); gleiche Module nennen die Summe über alle Wände. Dazu der Prozessor
   (geteilte einmal), die Backup-Leitungen der Signalketten und die Glasfaser-Strecke: CVT10-Boxen,
-  Fasern (Typ aus der Variante, Länge), je Box ein PowerCON-Kabel; die Einspeisung heißt dann
-  „CVT10 → erste Kachel“.
+  Fasern, je Box ein PowerCON-Kabel; die Einspeisung heißt dann „CVT10 → erste Kachel“. Die
+  Fasern kommen **aus dem Lager** (Singlemode LC-LC 20, 50, 100 m, Patch 1 und 3 m): je Faser das
+  kürzeste Stück, das reicht, über 100 m die kleinste Kombination aus 100-m-Stücken plus Rest
+  (150 m = 100 + 50 m, dazu LC-LC-Kupplungen für die Stöße). Multimode und Fasern ohne Länge
+  stehen als Zeile zum Ausfüllen da.
 - **Netzwerk-Scanner → NovaStar:** IP eines Geräts in die NovaStar-Steuerung bzw. die
   NovaStar-Kacheln der OSC-Steuerung übernehmen.
 - **Netzwerk-Scanner → Manuals-Bibliothek:** den Hersteller eines Geräts als Handbuch-Suche.

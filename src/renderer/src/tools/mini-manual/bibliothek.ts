@@ -314,14 +314,23 @@ export const BAUSTEINE: Baustein[] = [
 
 // ---------------------------------------------------------------- Fehlerfälle
 
-const fall = (f: Omit<Fehlerfall, 'herkunft'>): Fehlerfall => ({
+/**
+ * Fall der Bibliothek. `version` erhöhen, wenn sich der Inhalt ändert – Anleitungen mit einer
+ * älteren Kopie bieten dann „Aktualisieren“ an (aktualisieren.ts).
+ */
+const fall = ({
+  version = 1,
+  ...f
+}: Omit<Fehlerfall, 'herkunft'> & { version?: number }): Fehlerfall => ({
   ...f,
-  herkunft: { baustein: f.id, version: 1 }
+  herkunft: { baustein: f.id, version }
 })
 
 export const FEHLERFAELLE: Fehlerfall[] = [
   fall({
     id: 'lib-wand-dunkel',
+    // 2 (22.10.2026): „Läuft das Signal über Glasfaser?“ beantwortet die Planung (antwortAus)
+    version: 2,
     titel: 'Die ganze Wand ist dunkel',
     symptom: 'Die ganze Wand zeigt nichts – kein Bild, kein Testbild.',
     bereich: 'strom',
