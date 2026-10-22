@@ -254,7 +254,9 @@ async function run() {
           assert.ok(ourYtdlp().length > 0, 'es sollte noch ein Download laufen')
           const proc = app.process()
           const exited = new Promise((resolve) => proc.once('exit', resolve))
-          await app.evaluate(({ app: a }) => {
+          // Der Download zählt als laufend: Rückfrage „Wirklich beenden?“ mit „Beenden“ beantworten
+          await app.evaluate(({ app: a, dialog }) => {
+            dialog.showMessageBox = async () => ({ response: 0, checkboxChecked: false })
             setTimeout(() => a.quit(), 0)
           })
           await Promise.race([exited, sleep(20_000)])
