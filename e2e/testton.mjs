@@ -263,15 +263,20 @@ try {
               requestAnimationFrame(loop)
             })
         )
-        // helle Frames nur knapp nach der vollen Sekunde (40 ms Blitz + bis zu einem Frame
-        // Verzug, weil die Vorschau im selben Frame vor oder nach dieser Messung zeichnet)
+        // helle Frames nur knapp nach der vollen Sekunde: 40 ms Blitz plus ein Frame Verzug, weil
+        // die Vorschau im selben Frame vor oder nach dieser Messung zeichnet. Der Verzug ist der
+        // Abstand zum vorigen Frame – auf dem langsamen macOS-Runner kam der nächste Frame einmal
+        // erst bei 69 ms und zeigte noch den Blitz von 39 ms (CI rot, #179). Also: hell nach 60 ms
+        // nur, wenn der Frame davor noch im Blitz lag.
         const lit = frames.filter(([, v]) => v > 200)
         const dark = frames.filter(([ms]) => ms >= 100 && ms < 900)
         assert.ok(lit.length > 0, 'die Vorschau blitzt nicht')
-        assert.ok(
-          lit.every(([ms]) => ms < 60),
-          JSON.stringify(lit)
-        )
+        const zuSpaet = frames.filter(([ms, v], i) => {
+          if (v <= 200 || ms < 60) return false
+          const vor = frames[i - 1]?.[0]
+          return !(vor !== undefined && vor < 40 && vor <= ms)
+        })
+        assert.ok(zuSpaet.length === 0, JSON.stringify({ zuSpaet, lit }))
         assert.ok(
           dark.length > 10 && dark.every(([, v]) => v < 60),
           'Vorschau blitzt zur falschen Zeit'

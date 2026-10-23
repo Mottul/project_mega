@@ -6,6 +6,8 @@ import { fotoUrl } from '@shared/fotos'
 import { esc } from '@shared/html'
 import {
   abgedeckt,
+  flaecheMasse,
+  flaecheText,
   geraetDef,
   hatSpannen,
   navText,
@@ -46,7 +48,8 @@ function seiteHtml(
   const zeigt = (t: Taste | undefined): t is Taste => !!t && t.stufe <= g
   // Kacheln mit Spanne (OSC-Steuerung) stehen ausdrücklich an ihrem Platz; leere Plätze bleiben
   // dort frei, weil das feine Raster sonst aus lauter Mini-Kästchen bestünde
-  const spannen = hatSpannen(b)
+  // mit OSC-Fläche immer ausdrücklich angeordnet, auch wenn jede Kachel nur einen Platz belegt
+  const spannen = hatSpannen(b) || !!b.flaeche
   const osc = b.geraet === 'osc'
   const zu = abgedeckt(s)
   let zellen = ''
@@ -76,11 +79,19 @@ function seiteHtml(
   const titel = b.seiten.length > 1 || s.name.trim() ? `<h4>${esc(seitenName(b, s.id))}</h4>` : ''
   // feste Breite je Spalte, damit kleine Raster nicht auf die ganze Seite aufgeblasen werden;
   // mit Spannen feste Zeilenhöhe (etwas flacher als breit, wie in der OSC-Steuerung)
-  const zelle = Math.min(64, Math.floor(680 / b.spalten))
-  const raster = spannen
-    ? `grid-template-columns:repeat(${b.spalten},minmax(0,1fr));grid-template-rows:repeat(${b.zeilen},${Math.max(8, Math.round(zelle * 0.75))}px)`
-    : `grid-template-columns:repeat(${b.spalten},minmax(0,1fr))`
-  return `<div class="tf-seite">${titel}<div class="tf-raster${spannen ? ' frei' : ''}" style="${raster};max-width:${zelle * b.spalten + 14}px">${zellen}</div>${zeilen ? `<table class="tf-liste"><tbody>${zeilen}</tbody></table>` : ''}</div>`
+  const spalten = `grid-template-columns:repeat(${b.spalten},minmax(0,1fr))`
+  let raster: string
+  if (b.flaeche) {
+    // wie in der OSC-Steuerung: ein Handy-Layout bleibt schmal, ein Desktop-Layout breit
+    const m = flaecheMasse(b.flaeche, 680, 0.75)
+    raster = `${spalten};grid-template-rows:repeat(${b.zeilen},${m.zeile}px);gap:${m.abstand}px;max-width:${m.breite + 14}px`
+  } else {
+    const zelle = Math.min(64, Math.floor(680 / b.spalten))
+    raster = spannen
+      ? `${spalten};grid-template-rows:repeat(${b.zeilen},${Math.max(8, Math.round(zelle * 0.75))}px);max-width:${zelle * b.spalten + 14}px`
+      : `${spalten};max-width:${zelle * b.spalten + 14}px`
+  }
+  return `<div class="tf-seite">${titel}<div class="tf-raster${spannen ? ' frei' : ''}" style="${raster}">${zellen}</div>${zeilen ? `<table class="tf-liste"><tbody>${zeilen}</tbody></table>` : ''}</div>`
 }
 
 export function tastenfeldHtml(
@@ -90,7 +101,10 @@ export function tastenfeldHtml(
   badge: (s: Stufe) => string
 ): string {
   const d = geraetDef(b.geraet)
-  const kopf = `<h3>${esc(b.name.trim() || d.label)}${b.name.trim() ? `<span class="muted"> · ${esc(d.label)}</span>` : ''}${badge(b.stufe)}</h3>`
+  const geraet = [b.name.trim() ? d.label : '', b.flaeche ? flaecheText(b.flaeche) : '']
+    .filter(Boolean)
+    .join(' · ')
+  const kopf = `<h3>${esc(b.name.trim() || d.label)}${geraet ? `<span class="muted"> · ${esc(geraet)}</span>` : ''}${badge(b.stufe)}</h3>`
   // Seiten ohne sichtbare Taste nicht als leeres Raster drucken
   const seiten = b.seiten
     .filter((s) => s.tasten.some((t) => t.stufe <= g))

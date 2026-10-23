@@ -18,6 +18,7 @@ import {
   type Anleitung,
   type Ausgang,
   type Ausschnitt,
+  type BedienFlaeche,
   type BedienGeraet,
   type BedienSeite,
   type Bedienfeld,
@@ -47,10 +48,11 @@ import {
  * 4: Kapitel Verkabelung (mit Blickrichtung), Fragen mit Antwort aus der Planung (Glasfaser);
  * 5: Online-Fassung (Ordner und Adresse in der Online-Ablage); 6: Bedienfelder (Tastenfelder mit
  * Seiten und Tasten); 7: Tasten mit Spanne, Quelle des Bedienfelds, Geräte Jingle-Player und
- * OSC-Steuerung (Übernahme aus den Werkzeugen).
+ * OSC-Steuerung (Übernahme aus den Werkzeugen); 8: Fläche der OSC-Vorlage (Handy, Tablet, Desktop –
+ * Verhältnis der Kacheln).
  * Eine ältere Mottulbox öffnet neuere Abschnitte nicht – sonst fielen die Felder beim Speichern weg.
  */
-export const ANLEITUNG_VERSION = 7
+export const ANLEITUNG_VERSION = 8
 
 export const GRENZEN = {
   kurz: 200,
@@ -427,6 +429,19 @@ function taste(v: unknown, spalten: number, zeilen: number): Taste | null {
   }
 }
 
+/** Fläche der Vorlage – nur am Gerät 'osc', Maße in sinnvollen Grenzen (px) */
+function flaeche(v: unknown): BedienFlaeche | null {
+  if (!isObj(v)) return null
+  const geraet = v.geraet === 'handy' || v.geraet === 'tablet' ? v.geraet : 'desktop'
+  return {
+    geraet,
+    quer: bool(v.quer),
+    breite: num(v.breite, 100, 4000, 1200),
+    zeile: num(v.zeile, 8, 200, 38),
+    abstand: num(v.abstand, 0, 50, 8)
+  }
+}
+
 function bedienfeld(v: unknown): Bedienfeld | null {
   if (!isObj(v)) return null
   const geraet = BEDIEN_GERAETE.some((g) => g.value === v.geraet)
@@ -473,6 +488,7 @@ function bedienfeld(v: unknown): Bedienfeld | null {
     zeilen,
     stufe: stufe(v.stufe),
     notiz: str(v.notiz, 4000),
+    flaeche: geraet === 'osc' ? flaeche(v.flaeche) : null,
     quelle: str(v.quelle, 200),
     seiten
   }

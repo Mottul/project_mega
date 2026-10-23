@@ -672,7 +672,10 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
     Kacheln mit Lage und Größe, Beschriftung und Farbe, „was sie tut“ in Worten (Regler, Taster,
     Schalter, Auswahl mit ihren Einträgen, Befehle an den LED-Prozessor), ohne OSC-Adressen. Bei
     mehreren Projekten erst das Projekt wählen. Kacheln werden der Reihe nach nummeriert; Lage
-    und Größe bleiben wie in der Steuerung (kein Ziehen).
+    und Größe bleiben wie in der Steuerung (kein Ziehen). Das **Verhältnis** folgt der Vorschau,
+    die im Set eingestellt ist – Handy oder Tablet (hochkant oder quer) bzw. Desktop: Ein
+    Handy-Layout steht schmal mit hohen Kacheln im Handbuch, ein Desktop-Layout breit; der Kopf
+    des Felds nennt die Ansicht („Handy hochkant“).
   - **Video-Player** (Kapitel Software): ein Text zum Player (Ausgabe-Bildschirm, Überblendung,
     was die Wand zeigt, wenn nichts läuft) und je gespeicherter Playlist eine nummerierte Liste
     mit Titel und Dauer (ohne gespeicherte die gerade geladene).

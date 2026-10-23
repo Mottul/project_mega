@@ -54,8 +54,9 @@ export const useMiniManual = create<MiniManualState>()(
       storage: debouncedStorage(),
       // 2 (Oktober 2026): LED-Wall-Kopie mit mehreren Wänden; 3: Signalwege der Geräte;
       // 4: Kapitel Verkabelung, Antwort aus der Planung; 5: Online-Fassung; 6: Bedienfelder;
-      // 7: Übernahme aus Jingle-Player und OSC-Steuerung – migrate ist die Prüfung
-      version: 7,
+      // 7: Übernahme aus Jingle-Player und OSC-Steuerung; 8: Fläche der OSC-Vorlage – migrate ist
+      // die Prüfung
+      version: 8,
       partialize: (s) => ({ anleitung: s.anleitung, file: s.file }) as MiniManualState,
       migrate: (persisted) => migrateMiniManual(persisted) as MiniManualState,
       // auch ohne Versionswechsel prüfen: localStorage kann von Hand oder aus einem älteren
