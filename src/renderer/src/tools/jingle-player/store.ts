@@ -42,28 +42,7 @@ export const PAD_COLORS = [
   '#f43f5e'
 ]
 
-/** Tastenbelegung nach Pad-Position (oben links beginnend). */
-export const HOTKEYS = [
-  '1',
-  '2',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  'q',
-  'w',
-  'e',
-  'r',
-  't',
-  'z',
-  'u',
-  'i',
-  'o',
-  'p'
-]
+export { HOTKEYS } from './hotkeys'
 
 function emptyPad(): Pad {
   return {

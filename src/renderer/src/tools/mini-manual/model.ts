@@ -332,7 +332,8 @@ export function leererAusgang(name = ''): Ausgang {
 
 // ---------------------------------------------------------------- Bedienfelder
 
-/** Geräte mit Tasten: Stream Deck (feste Raster), Companion und frei (Raster wählbar) */
+/** Geräte mit Tasten: Stream Deck (feste Raster), Companion, frei und die Mottulbox-Werkzeuge
+ *  Jingle-Player und OSC-Steuerung (Raster wählbar) */
 export type BedienGeraet =
   | 'sd'
   | 'sd-mini'
@@ -343,6 +344,8 @@ export type BedienGeraet =
   | 'sd-studio'
   | 'companion'
   | 'frei'
+  | 'jingle'
+  | 'osc'
 
 /** Navigationstaste: Seite weiter/zurück oder zu einer bestimmten Seite (Ordner am Stream Deck) */
 export type TastenNav = { art: 'weiter' } | { art: 'zurueck' } | { art: 'seite'; ziel: string }
@@ -351,6 +354,9 @@ export interface Taste {
   /** Platz im Raster ab 0; die Nummer zählt Zeile für Zeile (zeile × spalten + spalte + 1) */
   spalte: number
   zeile: number
+  /** Spanne in Spalten und Zeilen – 1 am Stream Deck, größer bei Kacheln der OSC-Steuerung */
+  breite: number
+  hoehe: number
   titel: string
   /** '#rrggbb' oder '' = Vorgabe (helle Schrift auf dunkler Taste) */
   textfarbe: string
@@ -381,6 +387,8 @@ export interface Bedienfeld {
   stufe: Stufe
   /** Drehregler, Touchleiste, Profil-Name … */
   notiz: string
+  /** übernommen aus einem Werkzeug ('jingle', 'osc:<Projekt>:<Set>'); '' = von Hand */
+  quelle: string
   seiten: BedienSeite[]
 }
 

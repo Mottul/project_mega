@@ -96,8 +96,18 @@ wechseln, Seiten), Anleitung Version 6 (`bedienfelder`), Kapitel Bedienfeld als 
 Blöcken darüber, Ausgabe in Handbuch, Vorschau und Handy (`tastenfeldHtml.ts`), Prüfung (leer,
 Tasten ohne Aufschrift). Abweichungen: Navigationstasten gibt es schon im Editor (nächste/vorige
 Seite, „Öffnet …“ als Ordner-Ersatz), nicht erst beim Import; Drehregler und Touchleisten stehen
-vorerst in der Notiz des Bedienfelds. Offen in Teil B: Übernahme aus Jingle-Player,
-OSC-Steuerung und Video-Player; Importe, sobald die Beispieldateien da sind.
+vorerst in der Notiz des Bedienfelds.
+
+**Teil B, Übernahme aus Mottulbox umgesetzt (23.10.2026):** `uebernahme.ts` (rein, getestet) –
+Jingle-Player (Bänke → Seiten, Pads → Tasten mit Tastaturkürzel), OSC-Steuerung (je Set ein
+Bedienfeld; Tasten bekommen dafür eine Spanne, Gerät „OSC-Steuerung“ mit feinem Raster bis
+48 × 64, Kacheln der Reihe nach nummeriert), Video-Player (Text im Kapitel Software, je Playlist
+Titel und Dauer). Anleitung Version 7 (Spanne, `quelle` des Bedienfelds, Geräte `jingle`/`osc`).
+Die Stores der Werkzeuge lädt erst der Klick (dynamischer Import); ihre Beschriftungen liegen
+dafür ohne Store in `osc-control/labels.ts` und `jingle-player/hotkeys.ts`. Abweichungen: keine
+Vorschaubilder der Clips (lägen erst nach einem Weg in den Foto-Speicher vor), keine
+OSC-Adressen (die Anleitung ist für die Bedienung). Offen in Teil B: die Importe, sobald die
+Beispieldateien da sind.
 
 Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
 Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)

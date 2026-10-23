@@ -296,7 +296,8 @@ function BausteinWahl({ id, onClose }: { id: KapitelId; onClose: () => void }): 
   )
 }
 
-export function BloeckeEditor({ id }: { id: KapitelId }): JSX.Element {
+/** `extra`: Knöpfe nur für dieses Kapitel (Software: „Aus dem Video-Player“) */
+export function BloeckeEditor({ id, extra }: { id: KapitelId; extra?: JSX.Element }): JSX.Element {
   const k = useMiniManual((s) => s.anleitung.kapitel.find((x) => x.id === id))
   const update = useMiniManual((s) => s.update)
   const [wahl, setWahl] = useState(false)
@@ -347,6 +348,7 @@ export function BloeckeEditor({ id }: { id: KapitelId }): JSX.Element {
             </span>
           )}
         </Button>
+        {extra}
         <InfoTip text={AUSZEICHNUNG_HILFE} label="Auszeichnung und Platzhalter" />
       </div>
       {wahl && <BausteinWahl id={id} onClose={() => setWahl(false)} />}

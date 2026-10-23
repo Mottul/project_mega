@@ -9,6 +9,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { APP_SLUG } from '@shared/brand'
 import { debouncedStorage, syncAcrossWindows } from '@renderer/lib/persistStorage'
+import { NOVA_FN_LABEL, WIDGET_TYPE_LABEL } from './labels'
 
 export type OscWidgetType =
   'fader' | 'button' | 'toggle' | 'xy' | 'color' | 'label' | 'meter' | 'select' | 'bank' | 'knob'
@@ -129,18 +130,7 @@ export const WIDGET_COLORS = [
   '#f43f5e'
 ]
 
-export const WIDGET_TYPE_LABEL: Record<OscWidgetType, string> = {
-  fader: 'Fader',
-  button: 'Taster',
-  toggle: 'Schalter',
-  xy: 'XY-Pad',
-  color: 'Farbe',
-  label: 'Label',
-  meter: 'Anzeige',
-  select: 'Auswahl',
-  bank: 'Bank',
-  knob: 'Poti'
-}
+export { NOVA_FN_LABEL, WIDGET_TYPE_LABEL }
 
 // Standard-Rastergröße je Widget-Typ (Zellen, bezogen auf 24 Spalten).
 const DEFAULT_SIZE: Record<OscWidgetType, { cw: number; ch: number }> = {
@@ -383,16 +373,6 @@ export const NOVA_PALETTE: { kind: NovaWidgetKind; type: OscWidgetType; label: s
   { kind: 'nova-blackout', type: 'toggle', label: 'Blackout' },
   { kind: 'nova-preset', type: 'select', label: 'Presets' }
 ]
-
-export const NOVA_FN_LABEL: Record<NovaFn, string> = {
-  brightness: 'Helligkeit (Fader)',
-  brightnessSet: 'Helligkeit setzen',
-  brightnessStep: 'Helligkeit ±',
-  fadeToBlack: 'Fade to Black',
-  freeze: 'Freeze',
-  blackout: 'Blackout',
-  preset: 'Preset abrufen'
-}
 
 /** Fertig konfiguriertes NovaStar-Widget für einen Palette-Eintrag. */
 export function makeNovaWidget(kind: NovaWidgetKind): OscWidget {

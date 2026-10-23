@@ -38,7 +38,7 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
    - Schema-Version des Abschnitts als Konstante; neue Felder = Version hoch, `sanitize`
      ergänzt sie beim Lesen alter Abschnitte. Auch wenn `sanitize` ein Feld mit Vorgabe auffüllt:
      Eine ältere Mottulbox würde es beim Speichern verlieren (so LED-Wall 4 `shareWith`, 5
-     `fiber`; Anleitung 4 Kapitel Verkabelung, `antwortAus`; Anleitung 5 `ausgabe.online`; Anleitung 6 `bedienfelder`). Neue Kapitel/Listeneinträge, die
+     `fiber`; Anleitung 4 Kapitel Verkabelung, `antwortAus`; Anleitung 5 `ausgabe.online`; Anleitung 6 `bedienfelder`; Anleitung 7 Spanne je Taste, `quelle`, Geräte `jingle`/`osc` – auch ein neuer Wert in einer Allowlist ist ein Versionssprung, sonst macht eine ältere Fassung still „frei“ daraus). Neue Kapitel/Listeneinträge, die
      eine alte Datei nicht hat, an ihre Stelle einsortieren (`neuesKapitel`, hinter den Vorgänger),
      und eine neue, unberührte Anleitung muss die Prüfung unverändert bestehen.
 3. **Store:** `file: ProjectBinding | null` **neben** der Konfiguration (Vorlagen nehmen die

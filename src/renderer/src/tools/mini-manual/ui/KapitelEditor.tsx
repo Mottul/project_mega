@@ -17,6 +17,7 @@ import { FehlersucheEditor } from './FehlersucheEditor'
 import { LedWallKapitel } from './LedWallKapitel'
 import { GeraeteEditor, KontaktEditor, ZugangEditor } from './ListenEditoren'
 import { FotoFeld, StufeSelect } from './teile'
+import { PlayerUebernahme } from './Uebernahme'
 import type { LedWallQuelle } from './useLedWallQuelle'
 
 export type Auswahl = KapitelId | 'deckblatt'
@@ -122,7 +123,9 @@ export function KapitelEditor({ id, q }: { id: Auswahl; q: LedWallQuelle }): JSX
   let inhalt: JSX.Element
   switch (d.art) {
     case 'bloecke':
-      inhalt = <BloeckeEditor id={id} />
+      inhalt = (
+        <BloeckeEditor id={id} extra={id === 'software' ? <PlayerUebernahme /> : undefined} />
+      )
       break
     case 'geraete':
       inhalt = <GeraeteEditor />

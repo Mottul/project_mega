@@ -5,7 +5,7 @@
 
 import { isFotoHash } from '@shared/fotos'
 import type { FirmenKontakt } from '@shared/types'
-import { BEDIEN_GERAETE, RASTER_MAX, geraetDef, neueSeite } from './bedienfeld'
+import { BEDIEN_GERAETE, geraetDef, neueSeite, rasterMax } from './bedienfeld'
 import {
   BEREICHE,
   DEFAULT_TITEL,
@@ -46,10 +46,11 @@ import {
  * mit „bespielt“ (Prozessor) und Ausgängen samt Signalweg (Zuspieler), Rolle „Verteiler“;
  * 4: Kapitel Verkabelung (mit Blickrichtung), Fragen mit Antwort aus der Planung (Glasfaser);
  * 5: Online-Fassung (Ordner und Adresse in der Online-Ablage); 6: Bedienfelder (Tastenfelder mit
- * Seiten und Tasten).
+ * Seiten und Tasten); 7: Tasten mit Spanne, Quelle des Bedienfelds, Geräte Jingle-Player und
+ * OSC-Steuerung (Übernahme aus den Werkzeugen).
  * Eine ältere Mottulbox öffnet neuere Abschnitte nicht – sonst fielen die Felder beim Speichern weg.
  */
-export const ANLEITUNG_VERSION = 6
+export const ANLEITUNG_VERSION = 7
 
 export const GRENZEN = {
   kurz: 200,
@@ -412,6 +413,9 @@ function taste(v: unknown, spalten: number, zeilen: number): Taste | null {
   return {
     spalte,
     zeile,
+    // Spanne bis an den Rand des Rasters (vor Version 7: immer 1)
+    breite: num(v.breite, 1, spalten - spalte, 1),
+    hoehe: num(v.hoehe, 1, zeilen - zeile, 1),
     titel: str(v.titel),
     textfarbe: farbe(v.textfarbe),
     hintergrund: farbe(v.hintergrund),
@@ -429,8 +433,9 @@ function bedienfeld(v: unknown): Bedienfeld | null {
     ? (v.geraet as BedienGeraet)
     : 'frei'
   const d = geraetDef(geraet)
-  const spalten = d.waehlbar ? num(v.spalten, 1, RASTER_MAX.spalten, d.spalten) : d.spalten
-  const zeilen = d.waehlbar ? num(v.zeilen, 1, RASTER_MAX.zeilen, d.zeilen) : d.zeilen
+  const max = rasterMax(geraet)
+  const spalten = d.waehlbar ? num(v.spalten, 1, max.spalten, d.spalten) : d.spalten
+  const zeilen = d.waehlbar ? num(v.zeilen, 1, max.zeilen, d.zeilen) : d.zeilen
   const ids = new Set<string>()
   const seiten: BedienSeite[] = []
   for (const raw of list(v.seiten, GRENZEN.seiten)) {
@@ -438,13 +443,17 @@ function bedienfeld(v: unknown): Bedienfeld | null {
     let sid = id(raw.id)
     while (ids.has(sid)) sid = uid()
     ids.add(sid)
-    // je Platz eine Taste – die erste gewinnt
+    // je Platz eine Taste, auch mit Spanne keine Überlappung – die erste gewinnt
     const belegt = new Set<string>()
     const tasten: Taste[] = []
     for (const t of list(raw.tasten, spalten * zeilen)) {
       const x = taste(t, spalten, zeilen)
-      if (!x || belegt.has(`${x.spalte},${x.zeile}`)) continue
-      belegt.add(`${x.spalte},${x.zeile}`)
+      if (!x) continue
+      const plaetze: string[] = []
+      for (let z = x.zeile; z < x.zeile + x.hoehe; z++)
+        for (let s = x.spalte; s < x.spalte + x.breite; s++) plaetze.push(`${s},${z}`)
+      if (plaetze.some((p) => belegt.has(p))) continue
+      for (const p of plaetze) belegt.add(p)
       tasten.push(x)
     }
     tasten.sort((a, b) => a.zeile - b.zeile || a.spalte - b.spalte)
@@ -464,6 +473,7 @@ function bedienfeld(v: unknown): Bedienfeld | null {
     zeilen,
     stufe: stufe(v.stufe),
     notiz: str(v.notiz, 4000),
+    quelle: str(v.quelle, 200),
     seiten
   }
 }

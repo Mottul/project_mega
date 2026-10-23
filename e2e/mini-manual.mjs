@@ -379,7 +379,7 @@ try {
           return r?.section?.data.geraete?.[1]?.ausgaenge?.[0]?.breite === 3840 ? r : null
         }, 10_000)
         assert.ok(s, 'Ausgang nicht in der Datei')
-        assert.equal(s.section.version, 6)
+        assert.equal(s.section.version, 7)
         assert.deepEqual(s.section.data.geraete[0].waende, ['wand-1', 'bar'])
       }
     ],
@@ -744,6 +744,76 @@ try {
         await taste('Taste 3: Intro').waitFor()
         assert.ok(
           await waitFor(async () => !(await vorschau()).includes('▸ Licht'), 5000),
+          await vorschau()
+        )
+      }
+    ],
+    [
+      'Übernahme: Jingle-Player und OSC-Steuerung ins Bedienfeld, Video-Player in Software',
+      async () => {
+        // Belegung, wie der Jingle-Player sie speichert – die Audiodatei braucht die Übernahme
+        // nicht; der Store des Jingle-Players ist in diesem Fenster noch nicht geladen
+        await page.evaluate(() =>
+          localStorage.setItem(
+            'jingle-player',
+            JSON.stringify({
+              state: {
+                banks: [
+                  {
+                    id: 'b1',
+                    name: 'Gala',
+                    pads: [
+                      {
+                        id: 'p1',
+                        storedName: 'a.mp3',
+                        originalName: 'Applaus.mp3',
+                        label: '',
+                        color: '#ef4444',
+                        volume: 1,
+                        loop: false,
+                        mode: 'oneshot',
+                        fadeMs: 400,
+                        startSec: 0,
+                        endSec: null
+                      }
+                    ]
+                  }
+                ],
+                currentBankId: 'b1',
+                columns: 4,
+                outputDeviceId: '',
+                soloMode: false,
+                mode: 'edit'
+              },
+              version: 1
+            })
+          )
+        )
+        await kapitel('bedienfeld')
+        const jingle = page.getByRole('button', { name: 'Aus dem Jingle-Player' })
+        const zahl = async (text) => (await vorschau()).split(text).length - 1
+        await jingle.click()
+        assert.ok(await waitFor(async () => (await zahl('Spielt „Applaus“')) === 1, 5000))
+        // noch einmal: Rückfrage „ersetzen?“ – danach steht das Feld weiter nur einmal da
+        await stubConfirmSequence(app, [0])
+        await jingle.click()
+        await page.getByText('Der Jingle-Player übernommen').waitFor({ timeout: 5000 })
+        assert.equal(await zahl('Spielt „Applaus“'), 1)
+
+        // eine frische App hat ein OSC-Projekt mit Beispiel-Kacheln (je Typ eine)
+        await page.getByRole('button', { name: /Aus der OSC-Steuerung/ }).click()
+        assert.ok(
+          await waitFor(async () => {
+            const v = await vorschau()
+            return v.includes('OSC-Steuerung (Mottulbox)') && v.includes('Regler')
+          }, 5000),
+          await vorschau()
+        )
+
+        await kapitel('software')
+        await page.getByRole('button', { name: 'Aus dem Video-Player' }).click()
+        assert.ok(
+          await waitFor(async () => (await vorschau()).includes('Mottulbox-Player'), 5000),
           await vorschau()
         )
       }

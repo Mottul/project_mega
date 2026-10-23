@@ -137,7 +137,7 @@ describe('Bibliothek', () => {
     const a = neueAnleitung()
     expect(sanitizeAnleitung(structuredClone(a))).toEqual(a)
     expect(neueAnleitung()).toEqual(a) // „Neu“ ergibt immer dieselben Daten
-    expect(ANLEITUNG_VERSION).toBe(6)
+    expect(ANLEITUNG_VERSION).toBe(7)
   })
 })
 
