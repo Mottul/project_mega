@@ -377,6 +377,17 @@ export interface BedienSeite {
   tasten: Taste[]
 }
 
+/** Fläche der Vorlage (OSC-Steuerung: Vorschau Handy, Tablet oder Desktop) – Druck und Editor
+ *  halten damit das Verhältnis von Spaltenbreite und Zeilenhöhe wie in der Steuerung ein */
+export interface BedienFlaeche {
+  geraet: 'desktop' | 'tablet' | 'handy'
+  quer: boolean
+  /** Breite des Rasters, Zeilenhöhe und Abstand in px wie in der Steuerung */
+  breite: number
+  zeile: number
+  abstand: number
+}
+
 export interface Bedienfeld {
   id: string
   name: string
@@ -387,6 +398,8 @@ export interface Bedienfeld {
   stufe: Stufe
   /** Drehregler, Touchleiste, Profil-Name … */
   notiz: string
+  /** Verhältnis wie in der Vorlage (OSC-Steuerung); null = Tasten wie am Gerät (quadratisch) */
+  flaeche: BedienFlaeche | null
   /** übernommen aus einem Werkzeug ('jingle', 'osc:<Projekt>:<Set>'); '' = von Hand */
   quelle: string
   seiten: BedienSeite[]

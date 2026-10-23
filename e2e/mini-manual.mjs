@@ -379,7 +379,7 @@ try {
           return r?.section?.data.geraete?.[1]?.ausgaenge?.[0]?.breite === 3840 ? r : null
         }, 10_000)
         assert.ok(s, 'Ausgang nicht in der Datei')
-        assert.equal(s.section.version, 7)
+        assert.equal(s.section.version, 8)
         assert.deepEqual(s.section.data.geraete[0].waende, ['wand-1', 'bar'])
       }
     ],
@@ -805,7 +805,8 @@ try {
         assert.ok(
           await waitFor(async () => {
             const v = await vorschau()
-            return v.includes('OSC-Steuerung (Mottulbox)') && v.includes('Regler')
+            // eine frische App zeigt die OSC-Fläche am Desktop – das Verhältnis kommt mit
+            return v.includes('OSC-Steuerung (Mottulbox) · Desktop') && v.includes('Regler')
           }, 5000),
           await vorschau()
         )

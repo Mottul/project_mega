@@ -7,9 +7,17 @@ import type { MediaItem, PlayerState, SavedPlaylist } from '@shared/types'
 import { HOTKEYS } from '../jingle-player/hotkeys'
 import type { Bank } from '../jingle-player/store'
 import { NOVA_FN_LABEL, WIDGET_TYPE_LABEL } from '../osc-control/labels'
+import { DEVICES, GAP, ROW_H } from '../osc-control/oscShared'
 import type { OscProject, OscSet, OscWidget } from '../osc-control/store'
 import { leereTaste, neueSeite, neuesBedienfeld, rasterMax } from './bedienfeld'
-import { uid, type Bedienfeld, type Block, type Herkunft, type Taste } from './model'
+import {
+  uid,
+  type BedienFlaeche,
+  type Bedienfeld,
+  type Block,
+  type Herkunft,
+  type Taste
+} from './model'
 
 const HEX = /^#[0-9a-f]{6}$/i
 const hex = (c: string): string => (HEX.test(c) ? c.toLowerCase() : '')
@@ -72,6 +80,26 @@ export function ausJingle(j: JingleQuelle): Bedienfeld {
 // ---------------------------------------------------------------- OSC-Steuerung
 
 export const quelleOsc = (p: { id: string }, s: { id: string }): string => `osc:${p.id}:${s.id}`
+
+/** Breite der Steuerfläche am Desktop – dort füllt sie das Fenster; das ist ein typisches Maß */
+export const DESKTOP_BREITE = 1200
+
+/**
+ * Fläche wie in der Vorschau der OSC-Steuerung: Handy bzw. Tablet (quer = Breite und Höhe
+ * getauscht, abzüglich des Innenrands von 12 px je Seite) oder Desktop; Zeilen sind dort immer
+ * gleich hoch – das Verhältnis der Kacheln folgt also der Breite.
+ */
+export function oscFlaeche(s: Pick<OscSet, 'device' | 'landscape'>): BedienFlaeche {
+  const masse = { zeile: ROW_H, abstand: GAP }
+  if (s.device === 'off') return { geraet: 'desktop', quer: true, breite: DESKTOP_BREITE, ...masse }
+  const d = DEVICES[s.device]
+  return {
+    geraet: s.device === 'phone' ? 'handy' : 'tablet',
+    quer: s.landscape,
+    breite: (s.landscape ? d.h : d.w) - 24,
+    ...masse
+  }
+}
 
 /** Was eine Kachel tut – in Worten für die Bedienung, ohne OSC-Adressen */
 export function oscFunktion(w: OscWidget): string {
@@ -159,6 +187,7 @@ export function ausOscSet(p: OscProject, s: OscSet): Bedienfeld {
     ...neuesBedienfeld('osc', name),
     spalten,
     zeilen,
+    flaeche: oscFlaeche(s),
     quelle: quelleOsc(p, s),
     seiten: [{ ...neueSeite(), tasten }]
   }

@@ -30,6 +30,8 @@ import {
   tastenNr,
   tauscheTasten,
   abgedeckt,
+  flaecheMasse,
+  flaecheText,
   hatSpannen,
   nummer
 } from '../bedienfeld'
@@ -210,6 +212,11 @@ function Tastenfeld({
         />
         <ZeilenKnoepfe was="Bedienfeld" onUp={oben} onDown={unten} onDelete={weg} />
       </div>
+      {b.flaeche && (
+        <p className="text-xs text-muted-foreground" data-testid="bedienfeld-flaeche">
+          Verhältnis wie in der Vorschau der OSC-Steuerung: {flaecheText(b.flaeche)}
+        </p>
+      )}
       <TextArea
         rows={2}
         value={b.notiz}
@@ -336,10 +343,12 @@ function Raster({
   const [ueber, setUeber] = useState<string | null>(null)
   // Kacheln mit Spanne (OSC-Steuerung): ausdrücklich platziert, feste Zeilenhöhe, kein Tauschen;
   // leere Plätze des feinen OSC-Rasters bleiben frei
-  const spannen = hatSpannen(b)
+  // mit OSC-Fläche immer ausdrücklich angeordnet, im Verhältnis von Handy, Tablet oder Desktop
+  const spannen = hatSpannen(b) || !!b.flaeche
   const osc = b.geraet === 'osc'
   const zu = abgedeckt(seite)
   const zelle = spannen ? Math.min(84, Math.max(18, Math.floor(1100 / b.spalten))) : 84
+  const m = b.flaeche ? flaecheMasse(b.flaeche, 760, 0.8) : null
   const zellen: JSX.Element[] = []
   for (let zeile = 0; zeile < b.zeilen; zeile++)
     for (let spalte = 0; spalte < b.spalten; spalte++) {
@@ -417,10 +426,18 @@ function Raster({
       className="grid gap-1.5 rounded-lg bg-muted p-2"
       style={{
         gridTemplateColumns: `repeat(${b.spalten}, minmax(0, 1fr))`,
-        ...(spannen
-          ? { gridTemplateRows: `repeat(${b.zeilen}, ${Math.round(zelle * 0.75)}px)` }
-          : {}),
-        maxWidth: b.spalten * zelle
+        ...(m
+          ? {
+              gridTemplateRows: `repeat(${b.zeilen}, ${m.zeile}px)`,
+              gap: m.abstand,
+              maxWidth: m.breite + 16
+            }
+          : spannen
+            ? {
+                gridTemplateRows: `repeat(${b.zeilen}, ${Math.round(zelle * 0.75)}px)`,
+                maxWidth: b.spalten * zelle
+              }
+            : { maxWidth: b.spalten * zelle })
       }}
       data-testid="tastenraster"
     >

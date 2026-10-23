@@ -103,6 +103,9 @@ Jingle-Player (Bänke → Seiten, Pads → Tasten mit Tastaturkürzel), OSC-Steu
 Bedienfeld; Tasten bekommen dafür eine Spanne, Gerät „OSC-Steuerung“ mit feinem Raster bis
 48 × 64, Kacheln der Reihe nach nummeriert), Video-Player (Text im Kapitel Software, je Playlist
 Titel und Dauer). Anleitung Version 7 (Spanne, `quelle` des Bedienfelds, Geräte `jingle`/`osc`).
+Nachtrag (23.10.2026): Version 8 mit `flaeche` – das Verhältnis der Kacheln folgt der Vorschau
+des Sets (Handy/Tablet hochkant oder quer, Desktop mit angenommenen 1200 px Breite), in Druck und
+Editor (`flaecheMasse` in `bedienfeld.ts`).
 Die Stores der Werkzeuge lädt erst der Klick (dynamischer Import); ihre Beschriftungen liegen
 dafür ohne Store in `osc-control/labels.ts` und `jingle-player/hotkeys.ts`. Abweichungen: keine
 Vorschaubilder der Clips (lägen erst nach einem Weg in den Foto-Speicher vor), keine

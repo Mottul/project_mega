@@ -4,6 +4,7 @@
 
 import {
   uid,
+  type BedienFlaeche,
   type BedienGeraet,
   type BedienSeite,
   type Bedienfeld,
@@ -93,6 +94,7 @@ export function neuesBedienfeld(geraet: BedienGeraet = 'sd', name = ''): Bedienf
     zeilen: d.zeilen,
     stufe: 1,
     notiz: '',
+    flaeche: null,
     quelle: '',
     seiten: [neueSeite()]
   }
@@ -211,6 +213,8 @@ export function mitRaster(
     geraet,
     spalten,
     zeilen,
+    // das Verhältnis der OSC-Fläche gilt nur, solange es eine OSC-Fläche ist
+    flaeche: geraet === 'osc' ? b.flaeche : null,
     seiten: b.seiten.map((s) => ({
       ...s,
       tasten: s.tasten.filter((t) => drin(t, spalten, zeilen))
@@ -258,3 +262,26 @@ export function navText(b: Bedienfeld, nav: TastenNav): string {
 /** Zahl der belegten Tasten (Schublade) */
 export const belegteTasten = (felder: Bedienfeld[]): number =>
   felder.reduce((n, b) => n + b.seiten.reduce((m, s) => m + s.tasten.length, 0), 0)
+
+/** Beschriftung der Fläche im Kopf des Bedienfelds („Handy hochkant“) */
+export function flaecheText(f: BedienFlaeche): string {
+  if (f.geraet === 'desktop') return 'Desktop'
+  return `${f.geraet === 'handy' ? 'Handy' : 'Tablet'} ${f.quer ? 'quer' : 'hochkant'}`
+}
+
+/**
+ * Maße zum Zeichnen: die Fläche verkleinert (höchstens `massstab`, höchstens `maxBreite` breit) –
+ * Spaltenbreite und Zeilenhöhe behalten ihr Verhältnis, ein Handy-Layout bleibt schmal.
+ */
+export function flaecheMasse(
+  f: BedienFlaeche,
+  maxBreite: number,
+  massstab: number
+): { breite: number; zeile: number; abstand: number } {
+  const k = Math.min(massstab, maxBreite / f.breite)
+  return {
+    breite: Math.round(f.breite * k),
+    zeile: Math.max(6, Math.round(f.zeile * k)),
+    abstand: Math.max(1, Math.round(f.abstand * k))
+  }
+}

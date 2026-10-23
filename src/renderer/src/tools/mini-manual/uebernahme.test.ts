@@ -2,16 +2,18 @@ import { describe, expect, it } from 'vitest'
 import type { MediaItem } from '@shared/types'
 import type { Bank, Pad } from '../jingle-player/store'
 import type { OscProject, OscWidget } from '../osc-control/store'
-import { neuesBedienfeld } from './bedienfeld'
+import { mitRaster, neuesBedienfeld } from './bedienfeld'
 import type { Anleitung, Block } from './model'
 import { sanitizeAnleitung } from './sanitize'
 import { vorschau } from './seiten'
 import {
+  DESKTOP_BREITE,
   HERKUNFT_PLAYER,
   ausJingle,
   ausOsc,
   ausPlayer,
   felderEinsetzen,
+  oscFlaeche,
   playerEinsetzen,
   quelleOsc
 } from './uebernahme'
@@ -209,6 +211,56 @@ describe('Übernahme aus der OSC-Steuerung', () => {
     ).html
     expect(h).toContain('grid-column:1 / span 6;grid-row:1 / span 2')
     expect(h).toContain('<td class="n">4</td><td><b>Szene</b> – Auswahl: Intro · Show</td>')
+  })
+
+  it('Fläche wie in der Vorschau der Steuerung: Handy, Tablet quer, Desktop', () => {
+    expect(oscFlaeche({ device: 'phone', landscape: false })).toEqual({
+      geraet: 'handy',
+      quer: false,
+      breite: 366,
+      zeile: 38,
+      abstand: 8
+    })
+    expect(oscFlaeche({ device: 'tablet', landscape: true })).toMatchObject({
+      geraet: 'tablet',
+      quer: true,
+      breite: 1088
+    })
+    expect(oscFlaeche({ device: 'off', landscape: false })).toMatchObject({
+      geraet: 'desktop',
+      breite: DESKTOP_BREITE
+    })
+  })
+
+  it('im Druck folgen Zeilenhöhe und Breite der Fläche – ein Handy-Layout bleibt schmal', () => {
+    const ctx = {
+      stufe: 1 as const,
+      lern: false,
+      firma: DEFAULT_FIRMENPROFIL,
+      datum: '23.10.2026',
+      modus: 'druck' as const
+    }
+    const druck = (device: 'off' | 'phone'): string => {
+      const p = structuredClone(projekt)
+      p.sets[0].device = device
+      return vorschau(mitFeldern(ausOsc(p)), ctx, 'bedienfeld').html
+    }
+    const handy = druck('phone')
+    // 366 px Breite, 38 px Zeilen, 8 px Abstand × 0,75
+    expect(handy).toContain('grid-template-rows:repeat(8,29px);gap:6px;max-width:289px')
+    expect(handy).toContain('OSC-Steuerung (Mottulbox) · Handy hochkant')
+    // Desktop 1200 px auf 680 px: flachere Zeilen, volle Breite
+    expect(druck('off')).toContain('grid-template-rows:repeat(8,22px);gap:5px;max-width:694px')
+  })
+
+  it('ein anderes Gerät nimmt das Verhältnis der OSC-Fläche nicht mit; Prüfung beim Laden', () => {
+    const [b] = ausOsc(projekt)
+    expect(mitRaster(b, 'sd-xl').flaeche).toBeNull()
+    expect(mitRaster(b, 'osc', { spalten: 12 }).flaeche).toEqual(b.flaeche)
+    const [x] = sanitizeAnleitung({
+      bedienfelder: [{ ...neuesBedienfeld('sd'), flaeche: { geraet: 'handy', breite: 366 } }]
+    }).bedienfelder
+    expect(x.flaeche).toBeNull()
   })
 
   it('erneut übernehmen ersetzt das Feld derselben Quelle an seiner Stelle', () => {
