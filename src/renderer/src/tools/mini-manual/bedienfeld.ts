@@ -20,6 +20,8 @@ export interface GeraetDef {
   waehlbar?: boolean
   /** Was das Raster nicht zeigt – gehört in die Notiz des Bedienfelds */
   hinweis?: string
+  /** größtes wählbares Raster, sonst RASTER_MAX */
+  max?: { spalten: number; zeilen: number }
 }
 
 export const BEDIEN_GERAETE: GeraetDef[] = [
@@ -55,7 +57,17 @@ export const BEDIEN_GERAETE: GeraetDef[] = [
     hinweis: '2 Drehregler – in der Notiz beschreiben.'
   },
   { value: 'companion', label: 'Companion', spalten: 8, zeilen: 4, waehlbar: true },
-  { value: 'frei', label: 'Freies Raster', spalten: 5, zeilen: 3, waehlbar: true }
+  { value: 'frei', label: 'Freies Raster', spalten: 5, zeilen: 3, waehlbar: true },
+  { value: 'jingle', label: 'Jingle-Player (Mottulbox)', spalten: 4, zeilen: 2, waehlbar: true },
+  // feines Raster wie in der OSC-Steuerung (Kacheln mit Spanne, 4–48 Spalten)
+  {
+    value: 'osc',
+    label: 'OSC-Steuerung (Mottulbox)',
+    spalten: 24,
+    zeilen: 12,
+    waehlbar: true,
+    max: { spalten: 48, zeilen: 64 }
+  }
 ]
 
 /** Grenzen eines wählbaren Rasters (Companion kann mehr, eine Druckseite nicht) */
@@ -63,6 +75,9 @@ export const RASTER_MAX = { spalten: 16, zeilen: 12 } as const
 
 export const geraetDef = (g: BedienGeraet): GeraetDef =>
   BEDIEN_GERAETE.find((x) => x.value === g) ?? BEDIEN_GERAETE[0]
+
+export const rasterMax = (g: BedienGeraet): { spalten: number; zeilen: number } =>
+  geraetDef(g).max ?? RASTER_MAX
 
 export function neueSeite(name = ''): BedienSeite {
   return { id: uid(), name, tasten: [] }
@@ -78,6 +93,7 @@ export function neuesBedienfeld(geraet: BedienGeraet = 'sd', name = ''): Bedienf
     zeilen: d.zeilen,
     stufe: 1,
     notiz: '',
+    quelle: '',
     seiten: [neueSeite()]
   }
 }
@@ -86,6 +102,8 @@ export function leereTaste(spalte: number, zeile: number): Taste {
   return {
     spalte,
     zeile,
+    breite: 1,
+    hoehe: 1,
     titel: '',
     textfarbe: '',
     hintergrund: '',
@@ -100,6 +118,27 @@ export function leereTaste(spalte: number, zeile: number): Taste {
 /** Nummer der Taste wie am Stream Deck: Zeile für Zeile, ab 1 */
 export const tastenNr = (spalten: number, t: { spalte: number; zeile: number }): number =>
   t.zeile * spalten + t.spalte + 1
+
+/** Nummer im Druck und Editor: am Gerät nach Platz, in der OSC-Steuerung (Kacheln auf feinem
+ *  Raster) der Reihe nach – Platznummern wären dort 1, 4, 49 … */
+export function nummer(b: Bedienfeld, s: BedienSeite, t: Taste): number {
+  const i = s.tasten.indexOf(t)
+  return b.geraet === 'osc' && i >= 0 ? i + 1 : tastenNr(b.spalten, t)
+}
+
+/** Gibt es Tasten über mehrere Plätze? Dann ordnen Editor und Druck jede Taste ausdrücklich an. */
+export const hatSpannen = (b: Bedienfeld): boolean =>
+  b.seiten.some((s) => s.tasten.some((t) => t.breite > 1 || t.hoehe > 1))
+
+/** Plätze, die eine größere Taste zusätzlich zu ihrem eigenen bedeckt ("spalte,zeile") */
+export function abgedeckt(s: BedienSeite): Set<string> {
+  const out = new Set<string>()
+  for (const t of s.tasten)
+    for (let z = t.zeile; z < t.zeile + t.hoehe; z++)
+      for (let sp = t.spalte; sp < t.spalte + t.breite; sp++)
+        if (sp !== t.spalte || z !== t.zeile) out.add(`${sp},${z}`)
+  return out
+}
 
 export const tasteAn = (s: BedienSeite, spalte: number, zeile: number): Taste | undefined =>
   s.tasten.find((t) => t.spalte === spalte && t.zeile === zeile)
@@ -132,6 +171,8 @@ export function tauscheTasten(s: BedienSeite, von: Platz, nach: Platz): BedienSe
   if (von.spalte === nach.spalte && von.zeile === nach.zeile) return s
   const a = tasteAn(s, von.spalte, von.zeile)
   const b = tasteAn(s, nach.spalte, nach.zeile)
+  // große Kacheln (OSC) würden sich überlappen – dort tauscht der Editor nicht
+  if ([a, b].some((t) => t && (t.breite > 1 || t.hoehe > 1))) return s
   const rest = s.tasten.filter((t) => t !== a && t !== b)
   const neu = [...rest]
   if (a) neu.push({ ...a, ...nach })
@@ -140,7 +181,7 @@ export function tauscheTasten(s: BedienSeite, von: Platz, nach: Platz): BedienSe
 }
 
 const drin = (t: Taste, spalten: number, zeilen: number): boolean =>
-  t.spalte < spalten && t.zeile < zeilen
+  t.spalte + t.breite <= spalten && t.zeile + t.hoehe <= zeilen
 
 /** So viele belegte Tasten lägen bei diesem Raster außerhalb (für die Rückfrage) */
 export function ausserhalb(b: Bedienfeld, spalten: number, zeilen: number): number {
@@ -160,12 +201,11 @@ export function mitRaster(
   wunsch?: { spalten?: number; zeilen?: number }
 ): Bedienfeld {
   const d = geraetDef(geraet)
+  const max = rasterMax(geraet)
   const spalten = d.waehlbar
-    ? klemme(wunsch?.spalten ?? b.spalten, RASTER_MAX.spalten, d.spalten)
+    ? klemme(wunsch?.spalten ?? b.spalten, max.spalten, d.spalten)
     : d.spalten
-  const zeilen = d.waehlbar
-    ? klemme(wunsch?.zeilen ?? b.zeilen, RASTER_MAX.zeilen, d.zeilen)
-    : d.zeilen
+  const zeilen = d.waehlbar ? klemme(wunsch?.zeilen ?? b.zeilen, max.zeilen, d.zeilen) : d.zeilen
   return {
     ...b,
     geraet,

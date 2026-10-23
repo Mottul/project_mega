@@ -663,6 +663,21 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
   ein leerer Platz, leere Seiten fallen weg. Die Prüfung meldet Tasten ohne Aufschrift. Text und
   Bausteine (z. B. „Stream Deck“) stehen über den Tastenfeldern. Importe aus Stream Deck,
   Companion und OBS füllen später dasselbe Modell.
+- **Aus Mottulbox übernehmen** (immer als Kopie, danach von Hand ergänzbar):
+  - **Jingle-Player** (Kapitel Bedienfeld): jede Bank eine Seite, jedes belegte Pad eine Taste
+    mit Name, Farbe, „Spielt …“ bzw. „Startet bzw. stoppt …“ (Schleife) und dem Tastaturkürzel
+    als Notiz; die Notiz des Felds sagt, dass erst „Live“ gewählt sein muss (und ob immer nur ein
+    Jingle spielt).
+  - **OSC-Steuerung** (Kapitel Bedienfeld): je Set ein Bedienfeld auf dem Raster der Steuerung –
+    Kacheln mit Lage und Größe, Beschriftung und Farbe, „was sie tut“ in Worten (Regler, Taster,
+    Schalter, Auswahl mit ihren Einträgen, Befehle an den LED-Prozessor), ohne OSC-Adressen. Bei
+    mehreren Projekten erst das Projekt wählen. Kacheln werden der Reihe nach nummeriert; Lage
+    und Größe bleiben wie in der Steuerung (kein Ziehen).
+  - **Video-Player** (Kapitel Software): ein Text zum Player (Ausgabe-Bildschirm, Überblendung,
+    was die Wand zeigt, wenn nichts läuft) und je gespeicherter Playlist eine nummerierte Liste
+    mit Titel und Dauer (ohne gespeicherte die gerade geladene).
+  - Noch einmal übernehmen ersetzt die frühere Übernahme an ihrer Stelle – nach einer
+    Rückfrage, denn Ergänzungen daran gehen verloren.
 - **Verkabelung:** je Wand der Kopie Signal- und Stromplan mit Kabelverlauf (dieselbe Zeichnung
   wie die PDF-Doku des Konfigurators), Ports und Backup je Signalkette, Kreis, Phase und Strom je
   Stromkette, Prozessor und Glasfaser-Strecke. Blickrichtung im Kapitel: **von hinten** (ab Werk –
@@ -784,6 +799,8 @@ Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
 - **Video-Konverter / YouTube-Downloader → Video-Player:** „In Player-Bibliothek übernehmen“ an
   fertigen Konvertierungen und Video-Downloads (wie beim Video-Generator).
 - **LED-Wall-Konfigurator → Video-Player:** „Aus LED-Wall“ übernimmt die Wand-Auflösung.
+- **Jingle-Player, OSC-Steuerung, Video-Player → Mini-Manual:** Bänke und Kacheln als Bedienfeld,
+  Playlists als Text im Kapitel Software (siehe Mini-Manual, „Aus Mottulbox übernehmen“).
 - **Video-Player → OSC-Steuerung:** Die Anzeige-Kachel kann die Restzeit des laufenden Clips
   zeigen.
 

@@ -68,7 +68,8 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 Heute gibt es Medien-Info ↔ Video-Konverter, Video-Konverter/Medien-Info → Video-Generator →
 Video-Player, Video-Konverter/YouTube-Downloader → Video-Player, LED-Wall → Packliste und
-Video-Player, Netzwerk-Scanner → NovaStar und Manuals (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Geplant:
+Video-Player, Netzwerk-Scanner → NovaStar und Manuals, Jingle-Player/OSC-Steuerung/Video-Player →
+Mini-Manual (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)). Geplant:
 
 - **Übergabe-Speicher verallgemeinern** – heute gibt es nur einen NovaStar-IP-Slot. Deshalb setzt
   „IP in der OSC-Steuerung verwenden“ nur die NovaStar-IP, nicht das OSC-Ziel. Ein Slot „Wert +

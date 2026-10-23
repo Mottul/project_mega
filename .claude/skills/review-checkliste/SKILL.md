@@ -219,6 +219,13 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   wenn eine Vorbedingung fehlt – dann prüft er nichts und bleibt grün; die Vorbedingung selbst
   erwarten (`expect(ids).toContain('lib-wand-dunkel')`).
 
+- **Reine Module importieren Stores anderer Werkzeuge nur als Typ.** Ein Store zieht `api`
+  (`window.api`) mit – in den Node-Tests gibt es kein `window`, der Test bricht schon beim Import.
+  Was ein reines Modul an Werten braucht (Beschriftungen, Tastenkürzel), liegt in einer eigenen
+  Datei ohne Store (`osc-control/labels.ts`, `jingle-player/hotkeys.ts`, der Store exportiert es
+  weiter); die Oberfläche lädt den Store erst beim Klick per `await import(…)` (Übernahme ins
+  Mini-Manual, 23.10.2026).
+
 ## Vor dem Abschluss
 
 Hat der Befund ein Gegenstück in der echten App? Mit `/electron-e2e` nachstellen, bevor man

@@ -28,12 +28,16 @@ import {
   setzeTaste,
   tasteAn,
   tastenNr,
-  tauscheTasten
+  tauscheTasten,
+  abgedeckt,
+  hatSpannen,
+  nummer
 } from '../bedienfeld'
 import type { BedienGeraet, BedienSeite, Bedienfeld, Taste, TastenNav } from '../model'
 import { useMiniManual } from '../store'
 import { BloeckeEditor } from './BloeckeEditor'
 import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
+import { BedienfeldUebernahme } from './Uebernahme'
 
 type Platz = { spalte: number; zeile: number }
 
@@ -80,6 +84,7 @@ export function BedienfeldKapitel(): JSX.Element {
       >
         <Plus className="size-4" /> Bedienfeld
       </Button>
+      <BedienfeldUebernahme />
     </div>
   )
 }
@@ -306,7 +311,9 @@ function Tastenfeld({
         />
       ) : (
         <p className="text-sm text-muted-foreground">
-          Taste anklicken, um sie zu beschriften; zum Tauschen auf einen anderen Platz ziehen.
+          {hatSpannen(b)
+            ? 'Kachel anklicken, um sie zu beschriften – Lage und Größe kommen aus der OSC-Steuerung.'
+            : 'Taste anklicken, um sie zu beschriften; zum Tauschen auf einen anderen Platz ziehen.'}
         </p>
       )}
     </div>
@@ -327,11 +334,19 @@ function Raster({
   tausche: (von: Platz, nach: Platz) => void
 }): JSX.Element {
   const [ueber, setUeber] = useState<string | null>(null)
+  // Kacheln mit Spanne (OSC-Steuerung): ausdrücklich platziert, feste Zeilenhöhe, kein Tauschen;
+  // leere Plätze des feinen OSC-Rasters bleiben frei
+  const spannen = hatSpannen(b)
+  const osc = b.geraet === 'osc'
+  const zu = abgedeckt(seite)
+  const zelle = spannen ? Math.min(84, Math.max(18, Math.floor(1100 / b.spalten))) : 84
   const zellen: JSX.Element[] = []
   for (let zeile = 0; zeile < b.zeilen; zeile++)
     for (let spalte = 0; spalte < b.spalten; spalte++) {
+      if (zu.has(`${spalte},${zeile}`)) continue
       const t = tasteAn(seite, spalte, zeile)
-      const nr = tastenNr(b.spalten, { spalte, zeile })
+      if (!t && osc) continue
+      const nr = t ? nummer(b, seite, t) : tastenNr(b.spalten, { spalte, zeile })
       const an = platz?.spalte === spalte && platz.zeile === zeile
       const aufschrift = t?.titel.trim() || (t?.nav ? navTitel(b, t.nav) : '')
       const k = `${spalte},${zeile}`
@@ -341,7 +356,7 @@ function Raster({
           type="button"
           aria-label={`Taste ${nr}${aufschrift ? `: ${aufschrift}` : ''}`}
           aria-pressed={an}
-          draggable={!!t}
+          draggable={!!t && !spannen}
           onClick={() => waehle({ spalte, zeile })}
           onDragStart={(e) => {
             e.dataTransfer.setData(ZIEHEN, k)
@@ -361,13 +376,20 @@ function Raster({
               tausche({ spalte: s, zeile: z }, { spalte, zeile })
           }}
           // Farben der Taste sind Daten des Nutzers (wie am Gerät), keine Theme-Farben
-          style={
-            t
+          style={{
+            ...(spannen
+              ? {
+                  gridColumn: `${spalte + 1} / span ${t?.breite ?? 1}`,
+                  gridRow: `${zeile + 1} / span ${t?.hoehe ?? 1}`
+                }
+              : {}),
+            ...(t
               ? { background: t.hintergrund || undefined, color: t.textfarbe || undefined }
-              : undefined
-          }
+              : {})
+          }}
           className={cn(
-            'relative flex aspect-square min-w-0 items-center justify-center overflow-hidden rounded-md p-1 pt-3 text-center text-[11px] font-semibold leading-tight',
+            'relative flex min-w-0 items-center justify-center overflow-hidden rounded-md p-1 pt-3 text-center text-[11px] font-semibold leading-tight',
+            !spannen && 'aspect-square',
             t
               ? 'bg-card text-foreground shadow-sm'
               : 'border border-dashed border-border bg-background/40',
@@ -395,7 +417,10 @@ function Raster({
       className="grid gap-1.5 rounded-lg bg-muted p-2"
       style={{
         gridTemplateColumns: `repeat(${b.spalten}, minmax(0, 1fr))`,
-        maxWidth: b.spalten * 84
+        ...(spannen
+          ? { gridTemplateRows: `repeat(${b.zeilen}, ${Math.round(zelle * 0.75)}px)` }
+          : {}),
+        maxWidth: b.spalten * zelle
       }}
       data-testid="tastenraster"
     >
@@ -457,7 +482,7 @@ function TastenForm({
   t: Taste
   aendern: (p: Partial<Taste>) => void
 }): JSX.Element {
-  const nr = tastenNr(b.spalten, t)
+  const nr = nummer(b, seite, t)
   return (
     <div className="space-y-3 rounded-md border border-primary/40 p-3" data-testid="taste-form">
       <div className="flex items-center justify-between gap-2">
