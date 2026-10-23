@@ -651,6 +651,18 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
   Speichert jemand die Planung neu, zeigt die Anleitung „Planung geändert (Stand 7 → 9)“ mit den
   Unterschieden (auch neue, entfernte und umbenannte Wände) und übernimmt erst auf Klick. Haben
   die Wände verschiedene Module, gilt beim IM-Tausch die strengere Regel.
+- **Bedienfeld:** ein oder mehrere Tastenfelder, je mit Gerät (Stream Deck Mini, MK.2, XL, +,
+  Neo, + XL, Studio mit festem Raster; Companion und „frei“ mit wählbarem Raster bis 16 × 12),
+  Name, Notiz (Drehregler, Touchleiste, Profil) und Stufe. Seiten anlegen, benennen, sortieren;
+  eine Taste anklicken und Aufschrift (mehrzeilig wie am Gerät), „Was die Taste tut“, Notiz,
+  Schrift- und Tastenfarbe, Bild und Stufe eintragen. **Navigation:** nächste Seite, vorige Seite
+  oder „Öffnet …“ eine bestimmte Seite (Ordner) – ohne Aufschrift steht das Ziel auf der Taste.
+  Tasten per Ziehen tauschen. Ein kleineres Raster (anderes Gerät) fragt nach, wenn dabei Tasten
+  wegfallen. Im Handbuch und am Handy erscheint je Seite das Raster wie am Gerät (Nummer und
+  Aufschrift) und darunter die Liste „Nummer – was die Taste tut“; Tasten über der Stufe bleiben
+  ein leerer Platz, leere Seiten fallen weg. Die Prüfung meldet Tasten ohne Aufschrift. Text und
+  Bausteine (z. B. „Stream Deck“) stehen über den Tastenfeldern. Importe aus Stream Deck,
+  Companion und OBS füllen später dasselbe Modell.
 - **Verkabelung:** je Wand der Kopie Signal- und Stromplan mit Kabelverlauf (dieselbe Zeichnung
   wie die PDF-Doku des Konfigurators), Ports und Backup je Signalkette, Kreis, Phase und Strom je
   Stromkette, Prozessor und Glasfaser-Strecke. Blickrichtung im Kapitel: **von hinten** (ab Werk –

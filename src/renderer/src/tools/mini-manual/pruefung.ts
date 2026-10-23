@@ -4,6 +4,7 @@
 import { analyzePower } from '../led-wall/power'
 import { analyzeProcessors } from '../led-wall/processors'
 import { neuereFassungen, quellen } from './aktualisieren'
+import { geraetDef } from './bedienfeld'
 import { pruefeFall } from './fehlersuche'
 import { geplanteWaende } from './ledWallKopie'
 import { kapitelDef, type Anleitung, type KapitelId } from './model'
@@ -43,6 +44,12 @@ function texteImKapitel(a: Anleitung, id: KapitelId, c: SeitenKontext): string[]
     }
   }
   if (id === 'geraete') out.push(...a.geraete.map((x) => x.notiz))
+  if (id === 'bedienfeld')
+    for (const b of a.bedienfelder.filter((x) => x.stufe <= g)) {
+      out.push(b.notiz)
+      for (const s of b.seiten)
+        for (const t of s.tasten.filter((x) => x.stufe <= g)) out.push(t.funktion, t.notiz)
+    }
   if (id === 'aufEinenBlick') return texteImKapitel(a, 'einAus', { ...c, stufe: 1, lern: false })
   return out
 }
@@ -135,13 +142,32 @@ export function pruefung(a: Anleitung, c: SeitenKontext, extra: PruefExtra): Pru
     }
   }
 
+  const g = c.lern ? 3 : c.stufe
   for (const k of sichtbar) {
-    if (
-      kapitelDef(k.id).art === 'bloecke' &&
-      !k.bloecke.some((b) => b.stufe <= (c.lern ? 3 : c.stufe))
-    )
+    const art = kapitelDef(k.id).art
+    const leer =
+      (art === 'bloecke' || art === 'bedienfeld') &&
+      !k.bloecke.some((b) => b.stufe <= g) &&
+      (art !== 'bedienfeld' || !a.bedienfelder.some((b) => b.stufe <= g))
+    if (leer)
       out.push({ schwere: 'info', text: `${kapitelDef(k.id).titel}: noch leer.`, kapitel: k.id })
   }
+
+  // Tasten ohne Aufschrift zeigen im Raster nur ihre Nummer – nach einem Import häufig
+  if (zeigt('bedienfeld'))
+    for (const b of a.bedienfelder.filter((x) => x.stufe <= g)) {
+      const n = b.seiten.reduce(
+        (m, s) =>
+          m + s.tasten.filter((t) => t.stufe <= g && !t.titel.trim() && !t.nav && !t.bild).length,
+        0
+      )
+      if (n)
+        out.push({
+          schwere: 'info',
+          text: `Bedienfeld „${b.name.trim() || geraetDef(b.geraet).label}“: ${n === 1 ? 'eine Taste' : `${n} Tasten`} ohne Aufschrift (nur die Nummer).`,
+          kapitel: 'bedienfeld'
+        })
+    }
 
   // Eigene Bausteine meldet der Editor (Ablage über IPC); hier nur die mitgelieferte Bibliothek
   bibliothek ??= quellen()

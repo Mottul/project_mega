@@ -2,8 +2,8 @@
 // Geräteliste in der Vorschau, Kontakt aus dem Profil, Fall aus der Bibliothek, Kurzkarte (A5,
 // genau eine Seite) und Handbuch als PDF, Projektdatei mit Foto, LED-Wall-Planung derselben
 // Datei übernehmen und „Planung geändert“, Ziehen zum Sortieren, eigene Bausteine (gleicher Name,
-// Export, Import, neuere Fassung aktualisieren), Vorschläge nach Stichworten. Dialoge werden im
-// main ersetzt.
+// Export, Import, neuere Fassung aktualisieren), Vorschläge nach Stichworten, Bedienfeld
+// (Tastenfeld-Editor). Dialoge werden im main ersetzt.
 
 import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -379,7 +379,7 @@ try {
           return r?.section?.data.geraete?.[1]?.ausgaenge?.[0]?.breite === 3840 ? r : null
         }, 10_000)
         assert.ok(s, 'Ausgang nicht in der Datei')
-        assert.equal(s.section.version, 5)
+        assert.equal(s.section.version, 6)
         assert.deepEqual(s.section.data.geraete[0].waende, ['wand-1', 'bar'])
       }
     ],
@@ -683,6 +683,69 @@ try {
         await hinweis.getByRole('button', { name: 'Aktualisieren' }).click()
         await hinweis.waitFor({ state: 'detached', timeout: 5000 })
         await wahl.getByRole('button', { name: 'Schließen' }).click()
+      }
+    ],
+    [
+      'Bedienfeld: Taste beschriften, Navigation zur zweiten Seite, Ziehen, kleineres Raster',
+      async () => {
+        await kapitel('bedienfeld')
+        const an = page.getByLabel('in der Anleitung', { exact: true })
+        if (!(await an.isChecked())) await an.check()
+        await page.getByRole('button', { name: 'Bedienfeld hinzufügen' }).click()
+        const feld = page.getByTestId('bedienfeld')
+        const form = page.getByTestId('taste-form')
+        const taste = (name) => feld.getByRole('button', { name, exact: true })
+        await feld.getByLabel('Name des Bedienfelds').fill('Regie')
+        await taste('Taste 1').click()
+        await form.getByRole('textbox', { name: 'Aufschrift' }).fill('Intro')
+        await form.getByRole('textbox', { name: 'Funktion' }).fill('Startet das Intro-Video')
+        // zweite Seite „Licht“, dann auf Seite 1 eine Taste dorthin
+        await feld.getByRole('button', { name: 'Seite hinzufügen' }).click()
+        await feld.getByLabel('Name der Seite').fill('Licht')
+        await feld.getByRole('tab', { name: 'Seite 1' }).click()
+        await taste('Taste 15').click()
+        await form.getByRole('combobox', { name: 'Navigation' }).selectOption({
+          label: 'Öffnet „Licht“'
+        })
+        assert.ok(
+          await waitFor(async () => {
+            const v = await vorschau()
+            return ['Regie', 'Intro', 'Startet das Intro-Video', '▸ Licht', 'Öffnet „Licht“'].every(
+              (x) => v.includes(x)
+            )
+          }, 5000),
+          await vorschau()
+        )
+
+        // Ziehen in Schritten (siehe „Ziehen zum Sortieren“): Taste 1 auf den leeren Platz 3
+        const von = taste('Taste 1: Intro')
+        const nach = taste('Taste 3')
+        await von.scrollIntoViewIfNeeded()
+        await von.hover()
+        const a = await von.boundingBox()
+        const b = await nach.boundingBox()
+        await page.mouse.down()
+        await page.mouse.move(a.x + a.width / 2 + 8, a.y + a.height / 2, { steps: 4 })
+        await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 })
+        await page.mouse.move(b.x + b.width / 2 + 2, b.y + b.height / 2 + 2, { steps: 2 })
+        await page.mouse.up()
+        await taste('Taste 3: Intro').waitFor({ timeout: 5000 })
+        await taste('Taste 1').waitFor()
+
+        // kleineres Raster: die Navigation auf Platz 15 fällt nach der Rückfrage weg
+        await stubConfirm(app, true)
+        await feld.getByRole('combobox', { name: 'Gerät' }).selectOption('sd-mini')
+        assert.ok(
+          await waitFor(
+            async () => (await feld.getByRole('button', { name: /^Taste \d+/ }).count()) === 6,
+            5000
+          )
+        )
+        await taste('Taste 3: Intro').waitFor()
+        assert.ok(
+          await waitFor(async () => !(await vorschau()).includes('▸ Licht'), 5000),
+          await vorschau()
+        )
       }
     ],
     [

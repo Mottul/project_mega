@@ -3,6 +3,7 @@
 // Kennung angesprochen, nie über die Position: Ziele der Fehlersuche zeigen auf Kennungen, und
 // zwei Fenster können gleichzeitig sortieren.
 
+import { belegteTasten } from './bedienfeld'
 import { fallMitVerweisen, kopiereBaustein, type Baustein } from './bibliothek'
 import {
   kapitelDef,
@@ -177,6 +178,10 @@ export function eintraege(a: Anleitung, id: KapitelId): number | null {
     case 'auto':
     case 'verkabelung':
       return null
+    case 'bedienfeld':
+      return (
+        belegteTasten(a.bedienfelder) + (a.kapitel.find((x) => x.id === id)?.bloecke.length ?? 0)
+      )
     default: {
       const k = a.kapitel.find((x) => x.id === id)
       return k ? k.bloecke.length : 0

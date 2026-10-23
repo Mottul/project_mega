@@ -5,6 +5,7 @@
 
 import { isFotoHash } from '@shared/fotos'
 import type { FirmenKontakt } from '@shared/types'
+import { BEDIEN_GERAETE, RASTER_MAX, geraetDef, neueSeite } from './bedienfeld'
 import {
   BEREICHE,
   DEFAULT_TITEL,
@@ -17,6 +18,9 @@ import {
   type Anleitung,
   type Ausgang,
   type Ausschnitt,
+  type BedienGeraet,
+  type BedienSeite,
+  type Bedienfeld,
   type Bereich,
   type Block,
   type Fehlerfall,
@@ -29,6 +33,8 @@ import {
   type LedWallKopie,
   type Schritt,
   type Stufe,
+  type Taste,
+  type TastenNav,
   type WandKennzahlen,
   type WandKopie,
   type Zugang,
@@ -39,10 +45,11 @@ import {
  * Schema-Version des Abschnitts „anleitung“ – 2: LED-Wall-Kopie mit mehreren Wänden; 3: Geräte
  * mit „bespielt“ (Prozessor) und Ausgängen samt Signalweg (Zuspieler), Rolle „Verteiler“;
  * 4: Kapitel Verkabelung (mit Blickrichtung), Fragen mit Antwort aus der Planung (Glasfaser);
- * 5: Online-Fassung (Ordner und Adresse in der Online-Ablage).
+ * 5: Online-Fassung (Ordner und Adresse in der Online-Ablage); 6: Bedienfelder (Tastenfelder mit
+ * Seiten und Tasten).
  * Eine ältere Mottulbox öffnet neuere Abschnitte nicht – sonst fielen die Felder beim Speichern weg.
  */
-export const ANLEITUNG_VERSION = 5
+export const ANLEITUNG_VERSION = 6
 
 export const GRENZEN = {
   kurz: 200,
@@ -55,7 +62,9 @@ export const GRENZEN = {
   kontakte: 50,
   // wie WALLS_MAX im LED-Wall-Konfigurator
   waende: 20,
-  ausgaenge: 16
+  ausgaenge: 16,
+  bedienfelder: 20,
+  seiten: 50
 } as const
 
 type Obj = Record<string, unknown>
@@ -383,6 +392,96 @@ function online(v: unknown): Anleitung['ausgabe']['online'] {
   return { ordner: v.ordner, url: v.url }
 }
 
+const FARBE = /^#[0-9a-f]{6}$/i
+const farbe = (v: unknown): string =>
+  typeof v === 'string' && FARBE.test(v) ? v.toLowerCase() : ''
+
+function tastenNav(v: unknown): TastenNav | null {
+  if (!isObj(v)) return null
+  if (v.art === 'weiter' || v.art === 'zurueck') return { art: v.art }
+  if (v.art === 'seite' && typeof v.ziel === 'string' && KENNUNG.test(v.ziel))
+    return { art: 'seite', ziel: v.ziel }
+  return null
+}
+
+function taste(v: unknown, spalten: number, zeilen: number): Taste | null {
+  if (!isObj(v)) return null
+  const spalte = num(v.spalte, -1, 1000, -1)
+  const zeile = num(v.zeile, -1, 1000, -1)
+  if (spalte < 0 || zeile < 0 || spalte >= spalten || zeile >= zeilen) return null
+  return {
+    spalte,
+    zeile,
+    titel: str(v.titel),
+    textfarbe: farbe(v.textfarbe),
+    hintergrund: farbe(v.hintergrund),
+    funktion: str(v.funktion, 2000),
+    notiz: str(v.notiz, 4000),
+    stufe: stufe(v.stufe),
+    bild: foto(v.bild),
+    nav: tastenNav(v.nav)
+  }
+}
+
+function bedienfeld(v: unknown): Bedienfeld | null {
+  if (!isObj(v)) return null
+  const geraet = BEDIEN_GERAETE.some((g) => g.value === v.geraet)
+    ? (v.geraet as BedienGeraet)
+    : 'frei'
+  const d = geraetDef(geraet)
+  const spalten = d.waehlbar ? num(v.spalten, 1, RASTER_MAX.spalten, d.spalten) : d.spalten
+  const zeilen = d.waehlbar ? num(v.zeilen, 1, RASTER_MAX.zeilen, d.zeilen) : d.zeilen
+  const ids = new Set<string>()
+  const seiten: BedienSeite[] = []
+  for (const raw of list(v.seiten, GRENZEN.seiten)) {
+    if (!isObj(raw)) continue
+    let sid = id(raw.id)
+    while (ids.has(sid)) sid = uid()
+    ids.add(sid)
+    // je Platz eine Taste – die erste gewinnt
+    const belegt = new Set<string>()
+    const tasten: Taste[] = []
+    for (const t of list(raw.tasten, spalten * zeilen)) {
+      const x = taste(t, spalten, zeilen)
+      if (!x || belegt.has(`${x.spalte},${x.zeile}`)) continue
+      belegt.add(`${x.spalte},${x.zeile}`)
+      tasten.push(x)
+    }
+    tasten.sort((a, b) => a.zeile - b.zeile || a.spalte - b.spalte)
+    seiten.push({ id: sid, name: str(raw.name), tasten })
+  }
+  if (!seiten.length) seiten.push(neueSeite())
+  // Ziele, die es nicht (mehr) gibt, verlieren die Navigation
+  for (const s of seiten)
+    s.tasten = s.tasten.map((t) =>
+      t.nav?.art === 'seite' && !ids.has(t.nav.ziel) ? { ...t, nav: null } : t
+    )
+  return {
+    id: id(v.id),
+    name: str(v.name),
+    geraet,
+    spalten,
+    zeilen,
+    stufe: stufe(v.stufe),
+    notiz: str(v.notiz, 4000),
+    seiten
+  }
+}
+
+/** Bedienfelder mit eindeutigen Kennungen */
+function bedienfelder(v: unknown): Bedienfeld[] {
+  const out: Bedienfeld[] = []
+  const ids = new Set<string>()
+  for (const raw of list(v, GRENZEN.bedienfelder)) {
+    const b = bedienfeld(raw)
+    if (!b) continue
+    while (ids.has(b.id)) b.id = uid()
+    ids.add(b.id)
+    out.push(b)
+  }
+  return out
+}
+
 export function sanitizeAnleitung(raw: unknown): Anleitung {
   const d = leereAnleitung()
   if (!isObj(raw)) return d
@@ -407,6 +506,7 @@ export function sanitizeAnleitung(raw: unknown): Anleitung {
     zugaenge: list(raw.zugaenge, GRENZEN.zugaenge)
       .map(zugang)
       .filter((z): z is Zugang => !!z),
+    bedienfelder: bedienfelder(raw.bedienfelder),
     fehlerfaelle: list(raw.fehlerfaelle, GRENZEN.fehlerfaelle)
       .map(fehlerfall)
       .filter((f): f is Fehlerfall => !!f),

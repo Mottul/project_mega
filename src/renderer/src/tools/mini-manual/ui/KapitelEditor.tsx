@@ -11,6 +11,7 @@ import { LiveInput, TextArea } from '@renderer/components/ui/textarea'
 import { kapitel as patchKapitel } from '../aktionen'
 import { kapitelDef, type KapitelId } from '../model'
 import { useMiniManual } from '../store'
+import { BedienfeldKapitel } from './BedienfeldEditor'
 import { BloeckeEditor } from './BloeckeEditor'
 import { FehlersucheEditor } from './FehlersucheEditor'
 import { LedWallKapitel } from './LedWallKapitel'
@@ -134,6 +135,9 @@ export function KapitelEditor({ id, q }: { id: Auswahl; q: LedWallQuelle }): JSX
       break
     case 'ledWall':
       inhalt = <LedWallKapitel q={q} />
+      break
+    case 'bedienfeld':
+      inhalt = <BedienfeldKapitel />
       break
     case 'verkabelung':
       inhalt = <Verkabelung />
