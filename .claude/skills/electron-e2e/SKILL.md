@@ -55,6 +55,11 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 ## Was sich bewährt hat (jeweils schon in Skripten gelöst)
 
 - **Zustand über die Brücke setzen** statt klicken: `page.evaluate(() => window.api.…)`.
+- **Zeitgrenzen im Bildtakt nie als feste Millisekunden** („hell nur bis 60 ms“): Ein Frame kann
+  auf dem macOS-Runner 30 ms und mehr dauern, und wer im selben Frame vor dem Zeichnen misst,
+  sieht das alte Bild. Stattdessen den Verzug am vorigen Frame messen – „hell nach 60 ms nur,
+  wenn der Frame davor noch im Blitz lag“ (`e2e/testton.mjs`, AV-Sync, macOS rot bei #179 mit
+  39 → 69 ms). Gegenprobe: ein Blitz zur falschen Zeit muss weiter rot werden.
 - **Nach Öffnen oder Klick nie sofort zählen oder Attribute lesen:** Auf macOS in der CI sind
   Leiste und Schublade dann oft noch nicht nachgezogen (rot bei #153: Schublade noch da, Knopf
   „PDF exportieren“ noch nicht da). `expectCount(locator, n, was)` / `expectAttr(…)` in
