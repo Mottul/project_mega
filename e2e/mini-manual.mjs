@@ -897,6 +897,51 @@ try {
       }
     ],
     [
+      'Geführter Einstieg: neue Anleitung, Projekt, ohne Wand, Bedienfeld anlegen, Kapitel-Vorschlag',
+      async () => {
+        // eine frische Anleitung über „Datei → Neu“ (ungespeicherte Änderungen: Verwerfen = 1)
+        await stubConfirmSequence(app, [1])
+        await bar()
+          .getByRole('button', { name: /^Datei/ })
+          .click()
+        await page.getByRole('menuitem', { name: /^Neu/ }).click()
+        const hinweis = page.getByTestId('einstieg-hinweis')
+        await hinweis.waitFor({ timeout: 5000 })
+        await hinweis.getByRole('button', { name: 'Einrichten' }).click()
+        const dlg = page.getByRole('dialog', { name: 'Neue Anleitung einrichten' })
+        await dlg.getByLabel('Projekt', { exact: true }).fill('Einstieg Test')
+        await dlg.getByRole('button', { name: 'Weiter' }).click()
+        await dlg.getByRole('button', { name: 'Ohne LED-Wand weiter' }).click()
+        await dlg.getByLabel('Rolle des neuen Geräts').selectOption('bedienfeld')
+        await dlg.getByLabel('Name des neuen Geräts').fill('Stream Deck')
+        await dlg.getByRole('button', { name: 'Gerät', exact: true }).click()
+        await dlg.getByRole('list', { name: 'Geräte' }).getByText('Stream Deck').waitFor()
+        await dlg.getByRole('button', { name: 'Weiter' }).click()
+        // Vorschlag: mit Bedienfeld-Gerät das Kapitel dazu, ohne Wand LED-Wall und Verkabelung weg
+        assert.ok(
+          await waitFor(
+            async () => await dlg.getByRole('checkbox', { name: 'Bedienfeld' }).isChecked(),
+            5000
+          ),
+          'Kapitel Bedienfeld nicht vorgeschlagen'
+        )
+        assert.equal(await dlg.getByRole('checkbox', { name: 'LED-Wall' }).isChecked(), false)
+        assert.equal(await dlg.getByRole('checkbox', { name: 'Verkabelung' }).isChecked(), false)
+        await dlg.getByRole('button', { name: 'Fertig' }).click()
+        await dlg.waitFor({ state: 'detached' })
+        // nicht mehr frisch: kein Hinweis; weiter im Kapitel Ein- und Ausschalten
+        await hinweis.waitFor({ state: 'detached', timeout: 5000 })
+        assert.equal(
+          await page.getByRole('combobox', { name: 'Kapitel', exact: true }).inputValue(),
+          'einAus'
+        )
+        assert.equal(
+          await drawer().getByLabel('Projekt', { exact: true }).inputValue(),
+          'Einstieg Test'
+        )
+      }
+    ],
+    [
       'keine Fehler in der Konsole',
       async () => {
         assert.deepEqual(ctx.errors, [])

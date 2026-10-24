@@ -721,6 +721,13 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
 - **Was fehlt noch** (oben in der Schublade): Fortschritt über wenige Meilensteine – Projekt,
   LED-Wall, Geräte, Ein-/Ausschalten, Fehlerfälle, Kontakt, leere Platzhalter, Fehler der
   Prüfung; abgewählte Kapitel zählen nicht. Ein offener Punkt führt mit einem Klick an seine Stelle.
+- **Geführter Einstieg:** Solange die Anleitung frisch ist (kein Projekt, kein Kunde, keine Geräte,
+  keine LED-Wand), bietet ein Hinweis oben **Einrichten** an. Vier Schritte: Projekt (Projekt,
+  Kunde, Ort, Zeitraum, Titel) → LED-Wall (aus dieser Projektdatei, aus dem Konfigurator oder
+  ohne Wand) → Geräte (Rolle und Name; Prozessoren aus der Planung mit einem Klick) → Kapitel. Die
+  Kapitel sind vorgeschlagen: ohne Wand fallen LED-Wall und Verkabelung weg, mit einem Bedienfeld
+  kommt das Kapitel dazu, mit einem Zuspieler „Software“. Jeder Schritt wirkt sofort – **Später**
+  schließt, ohne etwas zu verlieren; **Fertig** führt ins Kapitel „Ein- und Ausschalten“.
 - **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel. Umschaltbar
   auf **Seiten**: das echte Handbuch-PDF der gewählten Stufe (derselbe Druck wie beim Export,
   mit Fußzeile) Seite für Seite – so sieht man, wo umbrochen wird; die Ansicht springt zur Seite,

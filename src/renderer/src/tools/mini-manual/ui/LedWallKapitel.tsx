@@ -6,13 +6,10 @@ import { useState } from 'react'
 import { Download, GitCompare } from 'lucide-react'
 import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
-import { digest } from '@shared/projectFile'
-import { api } from '@renderer/lib/api'
-import { toast } from '@renderer/lib/toast'
-import { ledWallFile, useLedWall } from '../../led-wall/store'
-import { kopieAus, waendeAus, wandUnterschiede } from '../ledWallKopie'
+import { waendeAus, wandUnterschiede } from '../ledWallKopie'
 import { useMiniManual } from '../store'
 import { BloeckeEditor } from './BloeckeEditor'
+import { ausDatei, ausKonfigurator } from './ledWallUebernahme'
 import type { LedWallQuelle } from './useLedWallQuelle'
 
 const PROBLEM: Record<string, string> = {
@@ -23,51 +20,11 @@ const PROBLEM: Record<string, string> = {
 
 export function LedWallKapitel({ q }: { q: LedWallQuelle }): JSX.Element {
   const kopie = useMiniManual((s) => s.anleitung.ledWall)
-  const deckblatt = useMiniManual((s) => s.anleitung.deckblatt)
   const gebunden = useMiniManual((s) => !!s.file)
-  const update = useMiniManual((s) => s.update)
   const [diff, setDiff] = useState(false)
 
-  const ausDatei = (): void => {
-    if (!q.stand) return
-    const s = q.stand
-    const k = kopieAus(s.data, { rev: s.rev, sha256: s.sha256 })
-    if (!k) {
-      toast.error('Die LED-Wall-Planung in der Datei ist unlesbar.')
-      return
-    }
-    update((a) => ({ ...a, ledWall: k }))
-    setDiff(false)
-  }
-
-  async function ausKonfigurator(): Promise<void> {
-    const c = useLedWall.getState()
-    // alle Wände der Planung, nicht nur die gewählte
-    const data = ledWallFile(c)
-    const andere =
-      (deckblatt.projekt.trim() &&
-        c.projectName.trim() &&
-        deckblatt.projekt.trim() !== c.projectName.trim()) ||
-      (deckblatt.kunde.trim() &&
-        c.customerName.trim() &&
-        deckblatt.kunde.trim() !== c.customerName.trim())
-    if (andere) {
-      const ok = await api.confirm({
-        message: 'Die Planung im Konfigurator gehört zu einem anderen Projekt.',
-        detail: `Konfigurator: ${[c.projectName, c.customerName].filter(Boolean).join(' · ')}\nAnleitung: ${[deckblatt.projekt, deckblatt.kunde].filter(Boolean).join(' · ')}`,
-        confirmLabel: 'Trotzdem übernehmen'
-      })
-      if (!ok) return
-      // Rückfragen sperren nur dieses Fenster: Hat ein anderes die Planung inzwischen geändert,
-      // gilt die Zustimmung nicht für den neuen Stand (review-checkliste, „Zustand nach await“)
-      if (digest(ledWallFile(useLedWall.getState())) !== digest(data)) {
-        toast.warning(
-          'Die Planung im Konfigurator hat sich inzwischen geändert – bitte noch einmal.'
-        )
-        return
-      }
-    }
-    update((a) => ({ ...a, ledWall: kopieAus(data, null) }))
+  const ausDateiKlick = (): void => {
+    if (ausDatei(q)) setDiff(false)
   }
 
   const neu =
@@ -97,7 +54,7 @@ export function LedWallKapitel({ q }: { q: LedWallQuelle }): JSX.Element {
             >
               <GitCompare className="size-4" /> Unterschiede ansehen
             </Button>
-            <Button size="sm" onClick={ausDatei}>
+            <Button size="sm" onClick={ausDateiKlick}>
               <Download className="size-4" /> Übernehmen
             </Button>
           </div>
@@ -147,7 +104,7 @@ export function LedWallKapitel({ q }: { q: LedWallQuelle }): JSX.Element {
 
       <div className="flex flex-wrap gap-2">
         {q.stand && !q.neuer && (
-          <Button size="sm" variant="outline" onClick={ausDatei}>
+          <Button size="sm" variant="outline" onClick={ausDateiKlick}>
             <Download className="size-4" /> Aus dieser Projektdatei übernehmen (Stand {q.stand.rev})
           </Button>
         )}
