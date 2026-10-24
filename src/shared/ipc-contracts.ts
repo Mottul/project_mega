@@ -212,6 +212,7 @@ export const Channels = {
   windowFitContent: 'window:fitContent', // kleines Werkzeugfenster auf Inhaltshöhe bringen
   // Werkzeuge
   utilExportPdf: 'util:exportPdf', // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
+  utilRenderPdf: 'util:renderPdf', // HTML -> PDF-Bytes ohne Speichern (Seitenansicht)
   utilExportHtml: 'util:exportHtml', // HTML-Datei mit eingesetzten Fotos (Save-Dialog)
   onlinePublish: 'online:publish', // Handy-Fassung in die Online-Ablage schreiben
   utilSaveText: 'util:saveText', // Text/JSON in Datei speichern (Save-Dialog)
@@ -519,6 +520,9 @@ export interface ToolboxApi {
       suggestedName: string,
       page?: PdfPageOptions
     ): Promise<PdfExportResult | null>
+    /** Dasselbe PDF wie exportPdf, nur ohne Speichern – für die Seitenansicht der Vorschau, die
+     *  die echten Umbrüche zeigt. Bytes wie manuals.bytes, weil pdf.js sie im Renderer braucht. */
+    renderPdf(html: string, page?: PdfPageOptions): Promise<Uint8Array>
     /** Eigenständige HTML-Datei speichern (Fotos als data:-URLs eingesetzt, Speichern-Dialog) –
      *  zum Verschicken, sie lädt nichts nach. Liefert den Pfad oder null (abgebrochen). */
     exportHtml(html: string, suggestedName: string): Promise<string | null>

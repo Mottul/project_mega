@@ -694,8 +694,9 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
     Rückfrage, denn Ergänzungen daran gehen verloren.
 - **Verkabelung:** je Wand der Kopie Signal- und Stromplan mit Kabelverlauf (dieselbe Zeichnung
   wie die PDF-Doku des Konfigurators), Ports und Backup je Signalkette, Kreis, Phase und Strom je
-  Stromkette, Prozessor und Glasfaser-Strecke. Blickrichtung im Kapitel: **von hinten** (ab Werk –
-  dort wird gesteckt; gespiegelt, groß beschriftet) oder von vorne.
+  Stromkette, Prozessor und Glasfaser-Strecke – die Tabelle jeweils direkt unter ihrem Plan, klein
+  und fein gesetzt. Blickrichtung im Kapitel: **von hinten** (ab Werk – dort wird gesteckt;
+  gespiegelt, groß beschriftet) oder von vorne.
 - **Kontakte** kommen aus dem **Firmenprofil** (App-Menü: Name, Logo, Akzentfarbe für Linien
   und Überschriften, Kontakte, Fernwartung) – als Kopie, damit die Datei beim Kollegen
   vollständig ist.
@@ -706,7 +707,10 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
   leere Kapitel, Fehler der Verkabelung laut Planung (Port oder Kreis überlastet, zu viele Ports). Bei Fehlern fragt der Export nach.
 - **Fotos** stehen zentriert, die Bildunterschrift mittig darunter; mehrere Foto-Blöcke
   hintereinander stehen nebeneinander (zwei bzw. vier in zwei Spalten, sonst drei).
-- **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel.
+- **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel. Umschaltbar
+  auf **Seiten**: das echte Handbuch-PDF der gewählten Stufe (derselbe Druck wie beim Export,
+  mit Fußzeile) Seite für Seite – so sieht man, wo umbrochen wird; die Ansicht springt zur Seite,
+  auf der das gewählte Kapitel beginnt. Erstellt wird es nach einer kurzen Pause im Tippen.
 - Gespeichert wird als Teil „Anleitung“ der [Projektdatei](#projektdateien-und-projektordner),
   mit Fotos.
 
