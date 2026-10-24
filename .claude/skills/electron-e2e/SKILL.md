@@ -233,7 +233,10 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
   `createWindow` zeigt das Fenster nach 5 s auch ohne `ready-to-show`.
 - **Gepackte App unter macOS:** Der erste Start einer frisch gepackten Binary (ffmpeg) dauert
   länger als das Zeitlimit der App (10 s) – Versionen deshalb mit `waitFor` erneut abfragen
-  (`e2e/paket.mjs`); `binaryVersion` merkt sich ein `null` nicht.
+  (`e2e/paket.mjs`); `binaryVersion` merkt sich ein `null` nicht. Liegen mehrere Mac-Pakete in
+  `dist/` (der Ablauf „Installer bauen“ baut arm64 und x64), nimmt das Skript das, was auf dem
+  Rechner nativ läuft (`mac-arm64` auf Apple Silicon) – ffmpeg ist dort trotzdem ein Intel-Build
+  (evermeet), der über Rosetta läuft; daher der langsame erste Aufruf.
 - **Verdeckte und minimierte Fenster bekommen kein `requestAnimationFrame`:** Was im Bildtakt
   misst oder zählt, steht dann still. Messen per Timer; Prüfung: Fenster minimieren und schauen,
   dass Werte nachkommen (`e2e/rta.mjs`).

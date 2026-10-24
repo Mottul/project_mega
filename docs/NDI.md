@@ -42,7 +42,9 @@ ABI-Abweichung wird erkannt und automatisch neu gebaut.
 
 **Paketierung:** `npm run package` nimmt nur die Laufzeitdateien mit (Binary, NDI-Runtime-DLL,
 `index.js`/`package.json`, Lizenz) – nicht SDK, `.git` oder Build-Reste. Die DLL liegt neben dem
-Binary, der Zielrechner braucht also keine eigene NDI-Installation.
+Binary, der Zielrechner braucht also keine eigene NDI-Installation. Die Installer aus der CI
+(„Installer bauen“) enthalten NDI **nicht** – dort läuft kein `ndi:setup`; vor einer Weitergabe
+über GitHub die Lizenz des NDI-SDK prüfen.
 
 > **Warum kein `npm install github:rse/grandiose`?** Neuere npm-Versionen blockieren
 > Install-Skripte fremder Pakete (allow-scripts). Das Paket landet dann ohne NDI-SDK und
