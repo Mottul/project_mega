@@ -48,6 +48,8 @@ schickt sie als eigenen PR.
    `npm_config_before=<Datum> npx --yes electron-builder@26 --dir`, dann
    `dist/<os>-unpacked` mit eigenem `--user-data-dir` starten und Datenbank-Aufrufe testen
    (z. B. `api.manuals.list('')`, `api.player.libraryList()`) – nie mit den echten App-Daten.
+   Für alle drei Systeme danach auf GitHub *Actions → Installer bauen → Run workflow* (baut die
+   echten Installer und startet jede gepackte App einmal, `e2e/paket.mjs`).
 5. **Doku:** Version in `README.md` (Technik) und `docs/ENTWICKLUNG.md` (Node-Vorgabe),
    Systemvoraussetzungen in `docs/INSTALL.md`, „Stand der bekannten Lücken“ in
    `docs/SICHERHEIT.md`, `docs/ROADMAP.md` (Bereits erledigt).

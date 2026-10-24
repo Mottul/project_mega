@@ -1,0 +1,95 @@
+name: Installer bauen
+
+# Fertige Installer je Betriebssystem zum Herunterladen (Actions → dieser Lauf → Artifacts):
+# Windows .exe (NSIS), macOS .dmg für Apple Silicon und Intel, Linux .AppImage. Ohne Signatur
+# (siehe docs/INSTALL.md) und ohne NDI – das Binding richtet `npm run ndi:setup` nur lokal ein.
+# Vor dem Hochladen startet die gepackte App einmal zur Probe (e2e/paket.mjs).
+#
+# Auslöser: von Hand („Run workflow“), bei einem Versions-Tag v* und in Pull Requests, die die
+# Paketierung ändern – sonst sähe man einen kaputten Installer erst nach dem Merge.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/installer.yml'
+      - 'electron-builder.yml'
+      - 'e2e/paket.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installer-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installer:
+    name: Installer · ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            ziel: --win
+            dateien: dist/*.exe
+          # Der Runner hat Apple Silicon; das Intel-Paket entsteht daneben (eigene Electron-Binary
+          # und das darwin-x64-Binary von better-sqlite3), geprüft wird das passende arm64
+          - os: macos-latest
+            name: macOS
+            ziel: --mac --arm64 --x64
+            dateien: dist/*.dmg
+          - os: ubuntu-latest
+            name: Linux
+            ziel: --linux
+            dateien: dist/*.AppImage
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci
+      # ffmpeg wie in ci.yml: je Woche einmal laden, sonst aus dem Cache (evermeet lässt kurz
+      # hintereinander keine zwei Downloads zu)
+      - name: Woche für den ffmpeg-Cache
+        id: week
+        shell: bash
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: resources/ffmpeg
+          key: ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-${{ hashFiles('scripts/download-ffmpeg.mjs') }}
+          restore-keys: |
+            ffmpeg-${{ runner.os }}-${{ steps.week.outputs.week }}-
+            ffmpeg-${{ runner.os }}-
+      - run: node scripts/download-ffmpeg.mjs --max-age 7
+      - run: npx electron-vite build
+      - name: Installer
+        run: npx --yes electron-builder@26 ${{ matrix.ziel }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Gepackte App starten (virtuelles Display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a --server-args="-screen 0 1920x1080x24" node e2e/run.mjs paket
+      - name: Gepackte App starten
+        if: runner.os != 'Linux'
+        run: node e2e/run.mjs paket
+      - name: Übersicht
+        shell: bash
+        run: |
+          {
+            echo "### Installer ${{ matrix.name }}"
+            echo
+            for f in ${{ matrix.dateien }}; do echo "- \`$(basename "$f")\` – $(du -h "$f" | cut -f1)"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: Mottulbox-${{ matrix.name }}-${{ github.run_number }}
+          path: ${{ matrix.dateien }}
+          if-no-files-found: error
+          retention-days: 30

@@ -89,7 +89,8 @@ mac:
   # macOS fragt beim ersten Mikrofon-Zugriff (RTA) mit diesem Text; ohne ihn verweigert es still
   extendInfo:
     NSMicrophoneUsageDescription: Der RTA (Echtzeit-Analysator) misst über das Mikrofon.
-  artifactName: ${productName}-${version}.${ext}
+  # mit Architektur: Die CI baut Apple Silicon (arm64) und Intel (x64) nebeneinander
+  artifactName: ${productName}-${version}-${arch}.${ext}
 
 linux:
   target:

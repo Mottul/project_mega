@@ -7,11 +7,16 @@ in [ENTWICKLUNG.md](ENTWICKLUNG.md#build--paketierung) (`npm run package`, Ergeb
 beim ersten Start selbst — weder Python noch eine der beiden Anwendungen müssen
 von Hand eingerichtet werden.
 
-| System                       | Datei                           |
-| ---------------------------- | ------------------------------- |
-| Windows 10/11 (64 Bit)       | `Mottulbox-<Version>-setup.exe` |
-| macOS 13 (Ventura) und neuer | `Mottulbox-<Version>.dmg`       |
-| Linux (64 Bit)               | `Mottulbox-<Version>.AppImage`  |
+| System                                        | Datei                           |
+| --------------------------------------------- | ------------------------------- |
+| Windows 10/11 (64 Bit)                        | `Mottulbox-<Version>-setup.exe` |
+| macOS 13 (Ventura) und neuer, Apple Silicon   | `Mottulbox-<Version>-arm64.dmg` |
+| macOS 13 (Ventura) und neuer, Intel           | `Mottulbox-<Version>-x64.dmg`   |
+| Linux (64 Bit)                                | `Mottulbox-<Version>.AppImage`  |
+
+**Woher:** Auf GitHub unter *Actions → Installer bauen* den neuesten grünen Lauf öffnen und unten
+bei *Artifacts* das passende Paket laden (Anmeldung bei GitHub nötig; die Dateien bleiben 30
+Tage). Die Installer aus der CI enthalten **kein NDI** – siehe [NDI.md](NDI.md).
 
 Ältere Systeme (32-Bit-Windows, macOS 12 und älter) unterstützt die zugrunde liegende
 Electron-Version 44 nicht mehr.
@@ -48,9 +53,10 @@ Einstellungen, Bibliotheken und yt-dlp liegen unter `%APPDATA%\Mottulbox`.
 Einstellungen, Bibliotheken und yt-dlp liegen unter
 `~/Library/Application Support/Mottulbox`.
 
-> **Prozessor beachten:** Das DMG passt zu dem Mac, auf dem es gebaut wurde. Ein
-> auf Intel gebautes Paket läuft auf Apple Silicon über Rosetta, umgekehrt gar
-> nicht. Im Zweifel auf dem Zielsystem bauen.
+> **Prozessor beachten:** `-arm64.dmg` für Apple Silicon (M1 und neuer), `-x64.dmg` für
+> Intel-Macs (*Apple-Menü → Über diesen Mac* zeigt, welcher). Das Intel-Paket liefe auf
+> Apple Silicon über Rosetta, umgekehrt gar nicht. ffmpeg im Paket ist ein Intel-Build: Auf
+> Apple Silicon fragt macOS beim ersten Mal womöglich, ob Rosetta installiert werden soll – zustimmen.
 
 ---
 

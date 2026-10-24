@@ -22,7 +22,8 @@ description: Prüfung vor dem Abschluss einer Änderung in Mottulbox – Prettie
    Skript neben `e2e/smoke.mjs` anlegen, das `launchApp` aus `e2e/harness.mjs` nutzt.
    **Paket betroffen** (`electron-builder.yml`, `asarUnpack`, `extraResources`, ein neues natives
    oder ESM-only-Modul im main)? Dann `npm run package:dir` und `npm run e2e -- paket` – die CI
-   prüft die gepackte App zwar je Betriebssystem, aber erst ganz am Ende des Laufs.
+   prüft die gepackte App zwar je Betriebssystem, aber erst ganz am Ende des Laufs. Ändert der PR
+   `electron-builder.yml`, läuft dazu „Installer bauen“ (echte Installer, macOS arm64 + x64).
 7. **Doku:** Neue oder geänderte Funktion in `docs/WERKZEUGE.md`, Erledigtes aus
    `docs/ROADMAP.md` streichen (CLAUDE.md, Abschnitt Doku).
 8. **Bericht:** kurz sagen, was grün ist und was nicht (mit Ausgabe), nichts beschönigen.
