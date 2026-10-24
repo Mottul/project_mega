@@ -460,6 +460,15 @@ try {
           return c.includes('LED-Wall · Bar') ? c : null
         }, 10_000)
         assert.ok(cats?.includes('LED-Wall · Wand 1'), JSON.stringify(cats))
+        // je Wand eine eigene Farbe für den Block
+        const farben = JSON.parse(await page.evaluate(() => localStorage.getItem('packing-list')))
+          .state.colors
+        assert.ok(
+          farben['LED-Wall · Bar'] &&
+            farben['LED-Wall · Wand 1'] &&
+            farben['LED-Wall · Bar'] !== farben['LED-Wall · Wand 1'],
+          JSON.stringify(farben)
+        )
         // Neu und wieder öffnen: beide Wände, Wand 1 gewählt, nichts ungespeichert
         await menu('Neu')
         await chip().getByText('ohne Datei').waitFor({ timeout: 5_000 })

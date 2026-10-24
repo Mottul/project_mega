@@ -89,4 +89,11 @@ export function registerUtilHandlers(): void {
       return { path: res.filePath, pages, scale }
     }
   )
+
+  // derselbe Druck ohne Dialog und ohne Datei – die Vorschau zeigt die Seiten mit pdf.js
+  ipcMain.handle(Channels.utilRenderPdf, async (_e, html: unknown, page: unknown) => {
+    if (typeof html !== 'string') throw new Error('PDF-Vorschau: HTML fehlt')
+    const { pdf } = await htmlToPdf(html, pageOptions(page))
+    return new Uint8Array(pdf)
+  })
 }

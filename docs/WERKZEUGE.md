@@ -572,6 +572,17 @@ Kabelmengen aus den gezeichneten Ketten); Export als PDF oder JSON. PDF, JSON un
 übernehmen“ stehen in der Leiste „Projekt“, Projektname und gespeicherte Jobs (laden, löschen,
 aktuelle speichern) in der Schublade – wie die Vorlagen des LED-Wall-Konfigurators.
 
+- **Blöcke** (Kategorien): Der Titel nutzt die ganze Breite der Kopfzeile. Jeder Block kann eine
+  **Farbe** bekommen (Tupfen links vom Titel: acht Farben oder keine) – sie färbt den Rand und den
+  Kopf des Blocks und im PDF die Linie unter dem Titel. Kommen mehrere Wände aus dem
+  LED-Wall-Konfigurator, bekommt jede Wand gleich beim Übernehmen eine eigene Farbe; eine
+  gewählte Farbe bleibt beim nächsten Übernehmen. Farben ziehen beim Umbenennen mit und gehen in
+  gespeicherte Jobs und die JSON-Datei mit.
+- **PDF** (Schublade): Blöcke in der Reihenfolge der Liste. **Blöcke nicht über Seiten teilen**:
+  Ein Block, der nicht mehr ganz auf die Seite passt, beginnt auf der nächsten (ein Block länger
+  als eine Seite bricht trotzdem um, die Kopfzeile der Tabelle wiederholt sich). Aus: alles
+  fortlaufend, nur der Titel bleibt bei seiner Tabelle und keine Zeile wird geteilt.
+
 ### Mini-Manual
 
 Kurz-Anleitungen für die Leute vor Ort („So bedienst du deine LED-Wall“): wie man die Wand
@@ -688,8 +699,9 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
     Rückfrage, denn Ergänzungen daran gehen verloren.
 - **Verkabelung:** je Wand der Kopie Signal- und Stromplan mit Kabelverlauf (dieselbe Zeichnung
   wie die PDF-Doku des Konfigurators), Ports und Backup je Signalkette, Kreis, Phase und Strom je
-  Stromkette, Prozessor und Glasfaser-Strecke. Blickrichtung im Kapitel: **von hinten** (ab Werk –
-  dort wird gesteckt; gespiegelt, groß beschriftet) oder von vorne.
+  Stromkette, Prozessor und Glasfaser-Strecke – die Tabelle jeweils direkt unter ihrem Plan, klein
+  und fein gesetzt. Blickrichtung im Kapitel: **von hinten** (ab Werk – dort wird gesteckt;
+  gespiegelt, groß beschriftet) oder von vorne.
 - **Kontakte** kommen aus dem **Firmenprofil** (App-Menü: Name, Logo, Akzentfarbe für Linien
   und Überschriften, Kontakte, Fernwartung) – als Kopie, damit die Datei beim Kollegen
   vollständig ist.
@@ -700,7 +712,10 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
   leere Kapitel, Fehler der Verkabelung laut Planung (Port oder Kreis überlastet, zu viele Ports). Bei Fehlern fragt der Export nach.
 - **Fotos** stehen zentriert, die Bildunterschrift mittig darunter; mehrere Foto-Blöcke
   hintereinander stehen nebeneinander (zwei bzw. vier in zwei Spalten, sonst drei).
-- **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel.
+- **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel. Umschaltbar
+  auf **Seiten**: das echte Handbuch-PDF der gewählten Stufe (derselbe Druck wie beim Export,
+  mit Fußzeile) Seite für Seite – so sieht man, wo umbrochen wird; die Ansicht springt zur Seite,
+  auf der das gewählte Kapitel beginnt. Erstellt wird es nach einer kurzen Pause im Tippen.
 - Gespeichert wird als Teil „Anleitung“ der [Projektdatei](#projektdateien-und-projektordner),
   mit Fotos.
 

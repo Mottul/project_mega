@@ -25,7 +25,7 @@ Einspeisepunkt, keine Automatik.
 | Schublade „Strom“ (Netz, Absicherung), Karte „Strom“, Kreis/Phase in der Verlauf-Leiste | `led-wall/Settings.tsx` (`PowerPanel`), `led-wall/LedWall.tsx` (`PowerCard`), `CableGrid.tsx` (`power`) |
 | IMs je Modul (Anzahl, Anordnung, wer tauschen darf) | `led-wall/data.ts` (`ims`) – Mini-Manual liest über `imTausch()` |
 | Glasfaser-Strecke (CVT10): Daten `fiber`, Gruppen, Boxen, Fasern, Hot-Backup | `config.ts` (`FiberConfig`), `processors.ts` (`CVT10`, `FiberPlan`, `fiberSummary`, `backupLabel`); Schublade `FiberFields` in `Settings.tsx`; Packliste `packing-list/derive.ts` (`fiberItems`) |
-| Pläne im Mini-Manual (Kapitel Verkabelung) | `gridSvg` aus `printHtml.ts` (eigene `markerId` je Wand), `mini-manual/seiten.ts` (`verkabelung`), Wände der Kopie über `geplanteWaende()` |
+| Pläne im Mini-Manual (Kapitel Verkabelung) | `gridSvg` aus `printHtml.ts` (eigene `markerId` je Wand), `mini-manual/seiten.ts` (`verkabelung`), Wände der Kopie über `geplanteWaende()`; je Plan seine Tabelle direkt darunter (gleiches `<div>` in `.plaene`, Test in `seiten.test.ts`) |
 | E2E | `e2e/kabelverlauf.mjs` |
 
 ## Regeln

@@ -820,6 +820,29 @@ try {
       }
     ],
     [
+      'Vorschau „Seiten“: das Handbuch wie im PDF Seite für Seite, Sprung zum gewählten Kapitel',
+      async () => {
+        await kapitel('fehlersuche')
+        const art = page.getByRole('group', { name: 'Art der Vorschau' })
+        await art.getByRole('button', { name: 'Seiten', exact: true }).click()
+        const seiten = page.getByTestId('pdf-seite')
+        // gedruckt wird im main nach einer Pause – auf langsamen Rechnern ein paar Sekunden
+        assert.ok(
+          await waitFor(async () => (await seiten.count()) >= 3, 30_000),
+          `${await seiten.count()} Seiten`
+        )
+        assert.match((await seiten.first().textContent()) ?? '', /^Seite 1 von \d+$/)
+        // zum Kapitel Fehlersuche gesprungen: die Liste steht nicht mehr ganz oben
+        const liste = page.getByTestId('mini-manual-seiten')
+        assert.ok(
+          await waitFor(async () => (await liste.evaluate((el) => el.scrollTop)) > 0, 5_000),
+          'nicht zum Kapitel gesprungen'
+        )
+        await art.getByRole('button', { name: 'Kapitel', exact: true }).click()
+        await page.getByTestId('mini-manual-vorschau').waitFor({ timeout: 5_000 })
+      }
+    ],
+    [
       'keine Fehler in der Konsole',
       async () => {
         assert.deepEqual(ctx.errors, [])

@@ -305,9 +305,17 @@ Der erste `package`-Lauf lädt electron-builder einmalig in den npx-Cache, nicht
   `npm run e2e -- paket` startet sie über Playwright (so prüft es auch die CI je Betriebssystem).
   Nach Änderungen an `electron-builder.yml` (Dateien, `asarUnpack`, `extraResources`) oder einem
   neuen Modul, das nicht ins asar darf, lokal beides laufen lassen.
-- **Auf dem Zielsystem bauen:** ffmpeg und das native Modul sind plattformspezifisch. Für macOS
-  liefert evermeet getrennte x64- und arm64-Binaries; ein DMG passt zur Architektur des
-  Bau-Rechners (für Universal-Builds wären beide nötig).
+- **Auf dem Zielsystem bauen:** ffmpeg ist plattformspezifisch, ein Mac-Paket entsteht nur auf
+  einem Mac. Für macOS liefert evermeet ffmpeg nur für Intel (x86_64); auf Apple Silicon läuft es
+  über Rosetta (der erste Aufruf dauert dort länger). Die App selbst gibt es je Architektur:
+  `--mac --arm64 --x64` baut beide nebeneinander (`Mottulbox-<Version>-arm64.dmg`, `-x64.dmg`).
+- **Installer aus der CI:** Der Ablauf „Installer bauen“ (`.github/workflows/installer.yml`)
+  baut auf GitHub Windows (`.exe`), macOS (`.dmg` für Apple Silicon und Intel) und Linux
+  (`.AppImage`), startet die gepackte App zur Probe (`e2e/paket.mjs`) und legt die Installer als
+  Artifacts ab (30 Tage). Start von Hand unter *Actions → Installer bauen → Run workflow*; von
+  selbst bei einem Tag `v*` und in Pull Requests, die `electron-builder.yml`, den Ablauf oder
+  `e2e/paket.mjs` ändern. Ohne NDI: Das Binding richtet `npm run ndi:setup` nur lokal ein – wer
+  NDI braucht, baut Windows weiter selbst.
 - **Keine Code-Signierung** (`win.signAndEditExecutable: false` in `electron-builder.yml`): Sonst
   wollte electron-builder jede `.exe` signieren – auch `ffmpeg.exe`/`ffprobe.exe` – und dafür das
   `winCodeSign`-Paket laden, dessen Entpacken unter Windows an macOS-Symlinks scheitert („Dem

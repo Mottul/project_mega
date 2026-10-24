@@ -222,6 +222,10 @@ describe('Kapitel Verkabelung', () => {
     expect(html).toContain('<tr><td>S1</td><td>4</td><td>1 · B 2</td></tr>')
     expect(html).toContain('<tr><td>P1</td><td>4</td><td>F3 · L2</td><td>3,1 A</td></tr>')
     expect(html).toContain('<b>Prozessor:</b> NovaPro UHD Jr')
+    // je Plan die Tabelle direkt darunter (nicht mehr beide Tabellen in einer eigenen Reihe)
+    expect(html).toMatch(
+      /<div><h4>Signal<\/h4><svg[\s\S]*?<\/svg><table>(?:(?!<\/div>)[\s\S])*?<td>S1<\/td>[\s\S]*?<\/table><\/div><div><h4>Strom<\/h4><svg[\s\S]*?<\/svg><table>(?:(?!<\/div>)[\s\S])*?<td>P1<\/td>/
+    )
     expect(html).not.toContain('Glasfaser')
   })
 

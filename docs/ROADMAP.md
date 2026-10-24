@@ -20,9 +20,10 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
    Abstand, [SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)) – als Nächstes kommen u. a.
    pdfjs-dist 6.4.299 und Electron 44.7.0. Eine neue Electron-Hauptversion vor dem Merge an den
    Breaking Changes prüfen.
-2. **App-Aktualisierung** – baut auf der Paketierung in der CI auf (die prüft seit 22.10.2026 je
-   Betriebssystem das entpackte Paket samt Start; für Releases fehlen noch die Installer selbst,
-   siehe [Große Umbauten](#große-umbauten)).
+2. **App-Aktualisierung** – baut auf der Paketierung in der CI auf: Seit 24.10.2026 baut
+   „Installer bauen“ die Installer je Betriebssystem; es fehlen noch GitHub Releases und
+   `electron-updater` (siehe [Große Umbauten](#große-umbauten)). Danach NDI im Installer (Lizenz
+   des NDI-SDK für die Weitergabe prüfen).
 
 ## Funktionen
 
@@ -55,25 +56,9 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
 - **Mini-Manual**
-  - **Verkabelung:** Die Tabellen zu Signal und Strom direkt unter den jeweiligen Plan stellen
-    (heute stehen beide Pläne in einer Reihe, die Tabellen in einer eigenen Reihe darunter,
-    `verkabelung()` in `seiten.ts`) und für die Lesbarkeit feiner setzen.
-  - **Seitenumbrüche in der Vorschau:** Die Vorschau zeigt das gewählte Kapitel als durchgehende
-    Seite, ohne zu zeigen, wo das PDF umbricht. Möglich wäre das echte PDF im Hintergrund
-    erzeugen und mit pdf.js zeigen (genau, aber verzögert) oder A4-Seiten in der Vorschau
-    nachbilden (sofort, aber nur annähernd); beides braucht den Umbruch des ganzen Dokuments,
-    nicht nur des Kapitels.
   - **Bedienbarkeit:** Die vielen Optionen wirken überwältigend und teils unübersichtlich – Ansatz
     noch offen (z. B. Wichtiges zuerst und Seltenes einklappen, ein geführter Einstieg für eine
     neue Anleitung).
-- **Packliste**
-  - **Titel der Blöcke** werden beschnitten, obwohl noch Platz wäre (das Namensfeld ist auf
-    240 px begrenzt).
-  - **Farben für die Blöcke**, wo es hilft (z. B. je Kategorie oder je Wand aus dem
-    LED-Wall-Konfigurator).
-  - **Seitenumbrüche im PDF:** Blöcke sollen nicht mitten auf der Seite zerrissen werden. Option
-    zum Umschalten: alles fortlaufend (wie heute) oder ein Block, der nicht mehr ganz auf die
-    Seite passt, beginnt auf einer neuen (ein Block länger als eine Seite bricht trotzdem um).
 
 ### Neue Werkzeuge
 
@@ -122,7 +107,8 @@ Mini-Manual (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)).
 
 - **App-Aktualisierung** (`electron-updater` über GitHub Releases): Electron mit Chromium und
   alle npm-Pakete kommen heute nur mit einem neuen Installer – selbst aktuell halten sich nur
-  ffmpeg und yt-dlp. Braucht gebaute Installer in der CI (Releases); Windows warnt ohne Signatur
+  ffmpeg und yt-dlp. Die Installer baut die CI schon („Installer bauen“), es fehlen Releases;
+  Windows warnt ohne Signatur
   beim Installieren, macOS geht nur mit einem Apple-Entwicklerzertifikat.
 - **IPC-Vertrag generieren:** ein generischer Preload-Proxy aus `Channels` und ein typisierter
   `handle(Channels.x, fn)`-Wrapper. Neue Kanäle brauchen dann zwei statt vier Stellen, die 31
