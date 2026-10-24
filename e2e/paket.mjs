@@ -13,12 +13,14 @@ function paketPfad() {
   const dist = join(root, 'dist')
   if (process.platform === 'win32') return join(dist, 'win-unpacked', 'Mottulbox.exe')
   if (process.platform === 'linux') return join(dist, 'linux-unpacked', 'mottulbox')
-  // macOS: dist/mac oder dist/mac-arm64 – je nach Architektur des Bau-Rechners
-  const mac = existsSync(dist)
-    ? readdirSync(dist).find(
-        (d) => d.startsWith('mac') && existsSync(join(dist, d, 'Mottulbox.app'))
-      )
-    : undefined
+  // macOS: dist/mac-arm64 bzw. dist/mac (x64) – zuerst das, was auf diesem Rechner nativ läuft
+  // (die CI baut beide; ein Intel-Paket auf Apple Silicon bräuchte Rosetta)
+  const reihenfolge =
+    process.arch === 'arm64' ? ['mac-arm64', 'mac-universal', 'mac'] : ['mac', 'mac-universal']
+  const vorhanden = existsSync(dist) ? readdirSync(dist) : []
+  const mac = [...reihenfolge, ...vorhanden.filter((d) => d.startsWith('mac'))].find((d) =>
+    existsSync(join(dist, d, 'Mottulbox.app'))
+  )
   return mac
     ? join(dist, mac, 'Mottulbox.app', 'Contents', 'MacOS', 'Mottulbox')
     : join(dist, 'mac')
