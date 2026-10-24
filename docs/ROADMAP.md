@@ -55,9 +55,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 - **Jingle-Player:** Ducking, MIDI-Pads.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
-- **Mini-Manual**
-  - **Bedienbarkeit:** „Wichtiges zuerst“ und „Was fehlt noch“ sind umgesetzt (24.10.2026); offen
-    ist der geführte Einstieg für eine neue Anleitung (Projekt → LED-Wall → Geräte → Kapitel).
 
 ### Neue Werkzeuge
 

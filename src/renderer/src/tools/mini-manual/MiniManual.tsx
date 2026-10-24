@@ -7,7 +7,7 @@
 
 import { useMemo, useState } from 'react'
 import type { OnlinePublish } from '@shared/types'
-import { ChevronLeft, ChevronRight, FileDown, IdCard, Library } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileDown, IdCard, Library, Sparkles } from 'lucide-react'
 import { ProjectFileMenu } from '@renderer/components/ProjectFileMenu'
 import { BarDivider, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Badge } from '@renderer/components/ui/badge'
@@ -34,7 +34,9 @@ import {
   type SeitenKontext
 } from './seiten'
 import { useMiniManual } from './store'
+import { istFrisch } from './einstieg'
 import { BausteineDialog } from './ui/BausteineDialog'
+import { Einstieg } from './ui/Einstieg'
 import { HandyMenu } from './ui/HandyMenu'
 import { KapitelEditor, type Auswahl } from './ui/KapitelEditor'
 import { Schublade } from './ui/Schublade'
@@ -78,6 +80,10 @@ export function MiniManual(): JSX.Element {
   const firma = useSettings((s) => s.firmenprofil) ?? DEFAULT_FIRMENPROFIL
   const [wahl, setWahl] = usePersistentState<AusgabeWahl>('mini-manual:ausgabe', '2', ausgabeCodec)
   const [bausteine, setBausteine] = useState(false)
+  // geführter Einstieg: angeboten, solange die Anleitung frisch ist; „Nicht jetzt“ gilt bis zum
+  // nächsten Öffnen des Werkzeugs
+  const [einstieg, setEinstieg] = useState(false)
+  const [einstiegWeg, setEinstiegWeg] = useState(false)
   const [auswahl, setAuswahl] = usePersistentState<Auswahl>(
     'mini-manual:kapitel',
     'einAus',
@@ -260,6 +266,34 @@ export function MiniManual(): JSX.Element {
       aside={<Schublade auswahl={auswahl} waehle={setAuswahl} punkte={punkte} />}
       main={
         <div ref={measure} className="space-y-4 p-4">
+          {istFrisch(a) && !einstiegWeg && (
+            <div
+              className="flex flex-wrap items-center gap-3 rounded-lg border border-primary/40 bg-primary/5 px-4 py-3"
+              data-testid="einstieg-hinweis"
+            >
+              <Sparkles className="size-5 shrink-0 text-primary" />
+              <p className="min-w-0 flex-1 text-sm">
+                <b>Neue Anleitung?</b> In vier Schritten einrichten: Projekt, LED-Wall, Geräte,
+                Kapitel.
+              </p>
+              <Button size="sm" onClick={() => setEinstieg(true)}>
+                Einrichten
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEinstiegWeg(true)}>
+                Nicht jetzt
+              </Button>
+            </div>
+          )}
+          {einstieg && (
+            <Einstieg
+              q={q}
+              onClose={() => setEinstieg(false)}
+              onFertig={(ziel) => {
+                setEinstieg(false)
+                setAuswahl(ziel)
+              }}
+            />
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="ghost"
