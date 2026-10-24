@@ -54,6 +54,12 @@ export interface ProcessorConfig {
   totalPx?: number
   /** Kennung einer anderen Wand derselben Planung, deren Prozessor diese Wand mitnutzt */
   shareWith?: string
+  /**
+   * Wohin die Backup-Leitungen gehen (nur NovaStar, Ports frei wählbar): fehlt = Paare wie bisher
+   * (Haupt 1 → Backup 2, 3 → 4 …), 'haelften' = Haupt auf der ersten Hälfte der Ports, Backup auf
+   * der zweiten (bei 16 Ports 1 → 9, 2 → 10 …)
+   */
+  backupPorts?: 'haelften'
 }
 
 /**
@@ -112,10 +118,11 @@ export type LedWallSection = Omit<LedWallConfig, (typeof UI_ONLY)[number]>
 
 /**
  * Schema-Version des Abschnitts in der Projektdatei – 4 (Oktober 2026): geteilter Prozessor
- * (`processor.shareWith`); 5: Glasfaser-Strecke (`fiber`). Eine ältere Mottulbox öffnet den
- * Abschnitt nicht, statt das Feld beim Speichern zu verlieren.
+ * (`processor.shareWith`); 5: Glasfaser-Strecke (`fiber`); 6: Verteilung der Backup-Ports
+ * (`processor.backupPorts`). Eine ältere Mottulbox öffnet den Abschnitt nicht, statt das Feld beim
+ * Speichern zu verlieren.
  */
-export const LED_WALL_SECTION_VERSION = 5
+export const LED_WALL_SECTION_VERSION = 6
 
 /** Eine Wand der Planung mit ihrer Konfiguration (Projekt und Kunde gelten für alle). */
 export interface PlannedWall {
@@ -301,6 +308,7 @@ function processor(v: unknown, d: ProcessorConfig): ProcessorConfig {
   if (portPx !== undefined) p.portPx = portPx
   if (totalPx !== undefined) p.totalPx = totalPx
   if (typeof v.shareWith === 'string' && WALL_ID_RE.test(v.shareWith)) p.shareWith = v.shareWith
+  if (v.backupPorts === 'haelften') p.backupPorts = 'haelften'
   return p
 }
 
