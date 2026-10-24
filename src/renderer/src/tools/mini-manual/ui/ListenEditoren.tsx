@@ -17,7 +17,7 @@ import { kurzname } from '../sanitize'
 import { prozessorVorschlaege } from '../signalwege'
 import { useMiniManual } from '../store'
 import { AusgaengeEditor, BespieltFeld } from './SignalwegEditor'
-import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
+import { FotoFeld, Mehr, StufeSelect, ZeilenKnoepfe } from './teile'
 
 export function GeraeteEditor(): JSX.Element {
   const geraete = useMiniManual((s) => s.anleitung.geraete)
@@ -83,20 +83,40 @@ export function GeraeteEditor(): JSX.Element {
               onDelete={() => set((l) => entferne(l, g.id))}
             />
           </div>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {feld(g, 'modell', 'Modell')}
             {feld(g, 'standort', 'Standort', 'Standort, z. B. Rack links')}
-            {feld(g, 'ip', 'IP', 'IP (nur Stufe Technik)')}
-            {feld(g, 'notiz', 'Hinweis')}
           </div>
-          {g.rolle === 'prozessor' && <BespieltFeld g={g} />}
-          {g.rolle === 'zuspieler' && <AusgaengeEditor g={g} />}
-          {g.kurzname && (
-            <p className="text-xs text-muted-foreground">
-              Platzhalter: {`{${g.kurzname}.name}`}, {`{${g.kurzname}.standort}`},{' '}
-              {`{${g.kurzname}.ip}`}
-            </p>
-          )}
+          {/* IP, Hinweis und Signalweg braucht nicht jedes Gerät – eindeutige Fälle (eine Wand,
+              ein Prozessor) kommen ohne aus */}
+          <Mehr
+            was={g.name.trim() || 'Gerät'}
+            marken={[
+              g.ip.trim() ? `IP ${g.ip.trim()}` : '',
+              g.notiz.trim() ? 'Hinweis' : '',
+              g.rolle === 'prozessor' && g.waende.length
+                ? `bespielt ${g.waende.length === 1 ? 'eine Wand' : `${g.waende.length} Wände`}`
+                : '',
+              g.rolle === 'zuspieler' && g.ausgaenge.length
+                ? g.ausgaenge.length === 1
+                  ? '1 Ausgang'
+                  : `${g.ausgaenge.length} Ausgänge`
+                : ''
+            ].filter(Boolean)}
+          >
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              {feld(g, 'ip', 'IP', 'IP (nur Stufe Technik)')}
+              {feld(g, 'notiz', 'Hinweis')}
+            </div>
+            {g.rolle === 'prozessor' && <BespieltFeld g={g} />}
+            {g.rolle === 'zuspieler' && <AusgaengeEditor g={g} />}
+            {g.kurzname && (
+              <p className="text-xs text-muted-foreground">
+                Platzhalter: {`{${g.kurzname}.name}`}, {`{${g.kurzname}.standort}`},{' '}
+                {`{${g.kurzname}.ip}`}
+              </p>
+            )}
+          </Mehr>
         </div>
       ))}
       <div className="flex flex-wrap gap-2">

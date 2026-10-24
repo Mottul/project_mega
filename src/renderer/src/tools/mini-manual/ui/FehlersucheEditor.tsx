@@ -27,13 +27,21 @@ import {
 } from '../aktionen'
 import { FEHLERFAELLE } from '../bibliothek'
 import { pruefeFall } from '../fehlersuche'
-import { BEREICHE, uid, type Bereich, type Fehlerfall, type FSchritt, type Ziel } from '../model'
+import {
+  BEREICHE,
+  stufeLabel,
+  uid,
+  type Bereich,
+  type Fehlerfall,
+  type FSchritt,
+  type Ziel
+} from '../model'
 import { fehlerfall as pruefeFehlerfall } from '../sanitize'
 import { useMiniManual } from '../store'
 import { speichereBaustein } from './bausteinSpeichern'
 import { useEigeneBausteine } from './eigeneBausteine'
 import { NeuereFassungHinweis } from './NeuereFassung'
-import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
+import { FotoFeld, Mehr, StufeKnopf, StufeSelect, ZeilenKnoepfe } from './teile'
 
 /** Ziel als Wert der Auswahlliste */
 function zielWert(z: Ziel | null): string {
@@ -152,15 +160,18 @@ function SchrittZeile({
           placeholder={s.nein ? 'Frage, z. B. Leuchtet die LED?' : 'Anweisung'}
           onCommit={(text) => set({ ...s, text })}
         />
-        <ZeilenKnoepfe was="Schritt" onUp={oben} onDown={unten} onDelete={weg} />
-      </div>
-      <div className="flex flex-wrap items-center gap-2 pl-8">
         {s.stufeAus ? (
-          <Badge tone="neutral">Stufe je Modul</Badge>
+          <Badge tone="neutral" title="Stufe aus dem Modul (IM-Tausch)">
+            je Modul
+          </Badge>
         ) : (
-          <StufeSelect value={s.stufe} onChange={(stufe) => set({ ...s, stufe })} />
+          <StufeKnopf
+            was={`Schritt ${nr}`}
+            value={s.stufe}
+            onChange={(stufe) => set({ ...s, stufe })}
+          />
         )}
-        <FotoFeld klein hash={s.foto} onChange={(foto) => set({ ...s, foto })} />
+        <ZeilenKnoepfe was="Schritt" onUp={oben} onDown={unten} onDelete={weg} />
       </div>
       <div className="grid grid-cols-1 gap-2 pl-8 md:grid-cols-2">
         <div className="space-y-1">
@@ -190,34 +201,48 @@ function SchrittZeile({
           />
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pl-8">
-        <LiveInput
-          value={s.hinweis}
-          aria-label={`Schritt ${nr}: Hinweis`}
-          placeholder="Hinweis (optional), z. B. wo der Schalter sitzt"
-          className="min-w-[220px] flex-1"
-          onCommit={(hinweis) => set({ ...s, hinweis })}
-        />
-        <Checkbox
-          checked={s.ruecksprache}
-          onChange={(ruecksprache) => set({ ...s, ruecksprache })}
-          label="vorher kurz anrufen"
-          hint="Erscheint als Hinweis mit dem Kontakt. Der Schritt bleibt für seine Stufe sichtbar."
-        />
-        {s.nein && (
-          <Checkbox
-            checked={s.antwortAus === 'glasfaser'}
-            onChange={(v) => set({ ...s, antwortAus: v ? 'glasfaser' : null })}
-            label="Antwort aus der Planung: Glasfaser"
-            hint="Für „Läuft das Signal über Glasfaser?“: Haben alle Wände der LED-Wall-Kopie Glasfaser (bzw. keine), entfällt die Frage in der Ausgabe und es geht gleich mit Ja (bzw. Nein) weiter."
-          />
-        )}
-        <Checkbox
-          checked={s.stufeAus === 'im-tausch'}
-          onChange={(v) => set({ ...s, stufeAus: v ? 'im-tausch' : null })}
-          label="Stufe aus dem Modul (IM-Tausch)"
-          hint="496-2,0 und rX3ioBF: werkzeuglos, ab Bedienung mit Rücksprache. uS2+: 8 Schrauben je IM, nur Technik. Ohne LED-Wall-Planung: Technik."
-        />
+      <div className="pl-8">
+        <Mehr
+          was={`Schritt ${nr}`}
+          marken={[
+            s.foto ? 'Foto' : '',
+            s.hinweis.trim() ? 'Hinweis' : '',
+            s.ruecksprache ? 'vorher anrufen' : '',
+            s.antwortAus ? 'Antwort aus der Planung' : '',
+            s.stufeAus ? 'Stufe je Modul' : ''
+          ].filter(Boolean)}
+        >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <FotoFeld klein hash={s.foto} onChange={(foto) => set({ ...s, foto })} />
+            <LiveInput
+              value={s.hinweis}
+              aria-label={`Schritt ${nr}: Hinweis`}
+              placeholder="Hinweis (optional), z. B. wo der Schalter sitzt"
+              className="min-w-[220px] flex-1"
+              onCommit={(hinweis) => set({ ...s, hinweis })}
+            />
+            <Checkbox
+              checked={s.ruecksprache}
+              onChange={(ruecksprache) => set({ ...s, ruecksprache })}
+              label="vorher kurz anrufen"
+              hint="Erscheint als Hinweis mit dem Kontakt. Der Schritt bleibt für seine Stufe sichtbar."
+            />
+            {s.nein && (
+              <Checkbox
+                checked={s.antwortAus === 'glasfaser'}
+                onChange={(v) => set({ ...s, antwortAus: v ? 'glasfaser' : null })}
+                label="Antwort aus der Planung: Glasfaser"
+                hint="Für „Läuft das Signal über Glasfaser?“: Haben alle Wände der LED-Wall-Kopie Glasfaser (bzw. keine), entfällt die Frage in der Ausgabe und es geht gleich mit Ja (bzw. Nein) weiter."
+              />
+            )}
+            <Checkbox
+              checked={s.stufeAus === 'im-tausch'}
+              onChange={(v) => set({ ...s, stufeAus: v ? 'im-tausch' : null })}
+              label="Stufe aus dem Modul (IM-Tausch)"
+              hint="496-2,0 und rX3ioBF: werkzeuglos, ab Bedienung mit Rücksprache. uS2+: 8 Schrauben je IM, nur Technik. Ohne LED-Wall-Planung: Technik."
+            />
+          </div>
+        </Mehr>
       </div>
     </div>
   )
@@ -259,23 +284,33 @@ function FallEditor({ fall, faelle }: { fall: Fehlerfall; faelle: Fehlerfall[] }
         <Field label="Symptom" hint="Kurz beschreiben, woran man den Fall erkennt.">
           <LiveInput value={fall.symptom} onCommit={(symptom) => set((f) => ({ ...f, symptom }))} />
         </Field>
-        <Field label="Bereich">
-          <Select
-            size="sm"
-            value={fall.bereich}
-            onChange={(e) => set((f) => ({ ...f, bereich: e.target.value as Bereich }))}
-          >
-            {BEREICHE.map((b) => (
-              <option key={b.value} value={b.value}>
-                {b.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Fall erscheint" hint="Darunter fehlt der ganze Fall in der Ausgabe.">
-          <StufeSelect value={fall.stufe} onChange={(stufe) => set((f) => ({ ...f, stufe }))} />
-        </Field>
       </div>
+      <Mehr
+        was="Fall"
+        marken={[
+          BEREICHE.find((b) => b.value === fall.bereich)?.label ?? '',
+          fall.stufe > 1 ? `ab ${stufeLabel(fall.stufe)}` : ''
+        ].filter(Boolean)}
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Field label="Bereich">
+            <Select
+              size="sm"
+              value={fall.bereich}
+              onChange={(e) => set((f) => ({ ...f, bereich: e.target.value as Bereich }))}
+            >
+              {BEREICHE.map((b) => (
+                <option key={b.value} value={b.value}>
+                  {b.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Fall erscheint" hint="Darunter fehlt der ganze Fall in der Ausgabe.">
+            <StufeSelect value={fall.stufe} onChange={(stufe) => set((f) => ({ ...f, stufe }))} />
+          </Field>
+        </div>
+      </Mehr>
 
       {probleme.length > 0 && (
         <ul className="space-y-1 text-sm" aria-label="Prüfung des Falls">

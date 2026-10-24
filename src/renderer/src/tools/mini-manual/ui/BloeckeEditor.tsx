@@ -29,7 +29,7 @@ import { projektText, treffer, vorschlaege } from '../vorschlaege'
 import { speichereBaustein } from './bausteinSpeichern'
 import { useEigeneBausteine } from './eigeneBausteine'
 import { NeuereFassungHinweis } from './NeuereFassung'
-import { FotoFeld, StufeSelect, ZeilenKnoepfe } from './teile'
+import { FotoFeld, StufeKnopf, ZeilenKnoepfe } from './teile'
 
 export const AUSZEICHNUNG_HILFE =
   'Leerzeile = neuer Absatz · „- “ Aufzählung · „1. “ nummeriert · „> “ Hinweis (bis zur Leerzeile, Listen darin erlaubt) · **fett** · Platzhalter wie {pc.name}, {prozessor.ip}, {wand.aufloesung}, {kontakt.mobil}, {projekt.ort}'
@@ -63,7 +63,8 @@ function SchritteListe({
               placeholder="Was ist zu tun?"
               onCommit={(text) => onChange(ersetze(schritte, s.id, (x) => ({ ...x, text })))}
             />
-            <StufeSelect
+            <StufeKnopf
+              was={`Schritt ${i + 1}`}
               value={s.stufe}
               onChange={(stufe) => onChange(ersetze(schritte, s.id, (x) => ({ ...x, stufe })))}
             />
@@ -133,7 +134,11 @@ function BlockKarte({
           </Badge>
         )}
         <span className="ml-auto" />
-        <StufeSelect value={b.stufe} onChange={(stufe) => set({ ...b, stufe })} />
+        <StufeKnopf
+          was={TYP_LABEL[b.typ]}
+          value={b.stufe}
+          onChange={(stufe) => set({ ...b, stufe })}
+        />
         <ZeilenKnoepfe was="Block" onUp={oben} onDown={unten} onDelete={weg} />
       </div>
       {b.typ === 'text' && (
