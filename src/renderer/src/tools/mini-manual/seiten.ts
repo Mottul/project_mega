@@ -101,7 +101,9 @@ export function css(c: SeitenKontext): string {
 .mm .plaene{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;margin:6px 0 8px}
 .mm .plaene>div{min-width:0}
 .mm .plaene svg{display:block;max-width:100%;height:auto}
-.mm .plaene table{width:auto;margin:0}
+.mm .plaene table{width:auto;margin:6px 0 0;font-size:10px;line-height:1.35}
+.mm .plaene td,.mm .plaene th{padding:2px 6px;border-color:#e6e6e6}
+.mm .plaene th{font-size:8.5px;background:#fafafa}
 .mm .plaene h4{font-size:11px;margin:0 0 3px;text-transform:uppercase;letter-spacing:.4px;color:#676c76}
 .mm .rueck{border:1px solid #e0a800;background:#fff8e1;color:#7a5a00;font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.04em;text-align:center;padding:3px 6px;margin:4px 0 8px;border-radius:3px}
 .mm td,.mm th{border:1px solid #ddd;padding:4px 7px;text-align:left;vertical-align:top}
@@ -508,7 +510,8 @@ function verkabelung(k: KapitelEintrag, a: Anleitung): string {
             )
             .join('')}</tbody></table>`
         : ''
-      return `${titel}${kopf}${hinten ? '<div class="rueck">Ansicht von hinten – Publikum auf der anderen Seite</div>' : ''}<div class="plaene"><div><h4>Signal</h4>${plan('S')}</div><div><h4>Strom</h4>${plan('P')}</div></div><div class="plaene"><div>${sigTab}</div><div>${pwrTab}</div></div>`
+      // je Plan seine Tabelle direkt darunter – so liest man Kette, Port bzw. Kreis neben dem Bild
+      return `${titel}${kopf}${hinten ? '<div class="rueck">Ansicht von hinten – Publikum auf der anderen Seite</div>' : ''}<div class="plaene"><div><h4>Signal</h4>${plan('S')}${sigTab}</div><div><h4>Strom</h4>${plan('P')}${pwrTab}</div></div>`
     })
     .join('')
 }

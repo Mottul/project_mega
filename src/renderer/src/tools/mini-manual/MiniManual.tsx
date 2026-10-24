@@ -19,18 +19,26 @@ import { useProjectFile } from '@renderer/lib/projectFile'
 import { useSettings } from '@renderer/lib/settings'
 import { toast } from '@renderer/lib/toast'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
-import { usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
+import { flag, usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
 import { DEFAULT_FIRMENPROFIL } from '@shared/types'
 import { MINI_MANUAL_FILE } from './fileSection'
 import { handyHtml, ONLINE_STUFE } from './handy'
 import { KAPITEL, kapitelDef, stufeLabel, type Stufe } from './model'
 import { pruefung } from './pruefung'
-import { fusszeile, handbuchHtml, kurzkarteHtml, vorschau, type SeitenKontext } from './seiten'
+import {
+  fusszeile,
+  handbuchHtml,
+  kapitelNummern,
+  kurzkarteHtml,
+  vorschau,
+  type SeitenKontext
+} from './seiten'
 import { useMiniManual } from './store'
 import { BausteineDialog } from './ui/BausteineDialog'
 import { HandyMenu } from './ui/HandyMenu'
 import { KapitelEditor, type Auswahl } from './ui/KapitelEditor'
 import { Schublade } from './ui/Schublade'
+import { Seitenansicht } from './ui/Seitenansicht'
 import { Vorschau } from './ui/Vorschau'
 import { useLedWallQuelle } from './ui/useLedWallQuelle'
 
@@ -88,6 +96,21 @@ export function MiniManual(): JSX.Element {
   )
   const punkte = useMemo(() => pruefung(a, ctx, { ledWallNeuer: q.neuer }), [a, ctx, q.neuer])
   const seite = useMemo(() => vorschau(a, ctx, auswahl), [a, ctx, auswahl])
+  // Seitenansicht: das Handbuch wie im PDF (Druck-Modus, mit Fußzeile) – zeigt die Umbrüche
+  const [seitenansicht, setSeitenansicht] = usePersistentState(
+    'mini-manual:seitenansicht',
+    false,
+    flag
+  )
+  const druckCtx = useMemo<SeitenKontext>(() => ({ ...ctx, modus: 'druck' }), [ctx])
+  const druck = useMemo(
+    () =>
+      seitenansicht
+        ? { html: handbuchHtml(a, druckCtx), footer: fusszeile(a, druckCtx) }
+        : { html: '', footer: '' },
+    [seitenansicht, a, druckCtx]
+  )
+  const zielNr = auswahl === 'deckblatt' ? null : (kapitelNummern(a, druckCtx).get(auswahl) ?? null)
   const ernst = punkte.filter((p) => p.schwere !== 'info').length
 
   const index = AUSWAHLEN.indexOf(auswahl)
@@ -282,10 +305,28 @@ export function MiniManual(): JSX.Element {
               <KapitelEditor id={auswahl} q={q} />
             </div>
             <div className={breit ? 'sticky top-0 space-y-2' : 'space-y-2'}>
-              <div className="text-xs text-muted-foreground">
-                Vorschau · {lern ? 'Lernausgabe' : `Stufe ${stufeLabel(stufe)}`}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>Vorschau · {lern ? 'Lernausgabe' : `Stufe ${stufeLabel(stufe)}`}</span>
+                <Segmented
+                  label="Art der Vorschau"
+                  value={seitenansicht ? 'seiten' : 'kapitel'}
+                  options={[
+                    { value: 'kapitel', label: 'Kapitel' },
+                    { value: 'seiten', label: 'Seiten' }
+                  ]}
+                  onChange={(v) => setSeitenansicht(v === 'seiten')}
+                />
               </div>
-              <Vorschau css={seite.css} html={seite.html} />
+              {seitenansicht ? (
+                <Seitenansicht
+                  html={druck.html}
+                  footer={druck.footer}
+                  zielNr={zielNr}
+                  zielTitel={auswahl === 'deckblatt' ? '' : kapitelDef(auswahl).titel}
+                />
+              ) : (
+                <Vorschau css={seite.css} html={seite.html} />
+              )}
             </div>
           </div>
         </div>
