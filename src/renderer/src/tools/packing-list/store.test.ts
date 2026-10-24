@@ -88,3 +88,52 @@ describe('usePacking – gespeicherte Jobs', () => {
     expect(usePacking.getState().saved).toHaveLength(0)
   })
 })
+
+describe('usePacking – Farben der Blöcke', () => {
+  beforeEach(() => usePacking.setState({ colors: {} }))
+
+  it('setzen, beim Umbenennen mitnehmen, beim Löschen entfernen; ungültig = keine', () => {
+    const s = (): ReturnType<typeof usePacking.getState> => usePacking.getState()
+    s().setColor('A', '#22C55E')
+    expect(s().colors).toEqual({ A: '#22c55e' })
+    s().renameCategory('A', 'Ton')
+    expect(s().colors).toEqual({ Ton: '#22c55e' })
+    s().setColor('B', 'rot')
+    expect(s().colors.B).toBeUndefined()
+    s().removeCategory('Ton')
+    expect(s().colors).toEqual({})
+  })
+
+  it('mehrere LED-Wände bekommen beim Übernehmen je eine eigene Farbe, eine einzelne keine', () => {
+    usePacking.getState().mergeItems([
+      { category: 'LED-Wall · Bühne', name: 'Modul', qty: 4, unit: 'Stk.', note: '' },
+      { category: 'LED-Wall · Bar', name: 'Modul', qty: 2, unit: 'Stk.', note: '' },
+      { category: 'LED-Wall', name: 'Modul', qty: 1, unit: 'Stk.', note: '' }
+    ])
+    const c = usePacking.getState().colors
+    expect(c['LED-Wall · Bühne']).toMatch(/^#[0-9a-f]{6}$/)
+    expect(c['LED-Wall · Bar']).toMatch(/^#[0-9a-f]{6}$/)
+    expect(c['LED-Wall · Bühne']).not.toBe(c['LED-Wall · Bar'])
+    expect(c['LED-Wall']).toBeUndefined()
+    // eine schon gewählte Farbe bleibt beim nächsten Übernehmen
+    usePacking.getState().setColor('LED-Wall · Bar', '#000000')
+    usePacking
+      .getState()
+      .mergeItems([{ category: 'LED-Wall · Bar', name: 'Modul', qty: 3, unit: 'Stk.', note: '' }])
+    expect(usePacking.getState().colors['LED-Wall · Bar']).toBe('#000000')
+  })
+
+  it('Jobs nehmen die Farben mit', () => {
+    usePacking.setState({
+      categories: ['A'],
+      items: [mk('a1', 'A', 'Kabel')],
+      colors: { A: '#3b82f6' }
+    })
+    usePacking.getState().saveJob('Mit Farbe')
+    usePacking.setState({ colors: {} })
+    usePacking
+      .getState()
+      .loadJob(usePacking.getState().saved.find((j) => j.name === 'Mit Farbe')!.id)
+    expect(usePacking.getState().colors).toEqual({ A: '#3b82f6' })
+  })
+})

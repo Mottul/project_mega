@@ -72,14 +72,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
     Verlauf-Leiste; „Backup-Leitung für neue Ketten“ gilt nur für neue).
   - **Verteilung von Haupt- und Backup-Leitungen umschaltbar:** wie bisher gerade/ungerade
     (Portpaare 1 → 2, 3 → 4) und zusätzlich Hälften (Haupt auf 1–8, Backup auf 9–16).
-- **Packliste**
-  - **Titel der Blöcke** werden beschnitten, obwohl noch Platz wäre (das Namensfeld ist auf
-    240 px begrenzt).
-  - **Farben für die Blöcke**, wo es hilft (z. B. je Kategorie oder je Wand aus dem
-    LED-Wall-Konfigurator).
-  - **Seitenumbrüche im PDF:** Blöcke sollen nicht mitten auf der Seite zerrissen werden. Option
-    zum Umschalten: alles fortlaufend (wie heute) oder ein Block, der nicht mehr ganz auf die
-    Seite passt, beginnt auf einer neuen (ein Block länger als eine Seite bricht trotzdem um).
 
 ### Neue Werkzeuge
 

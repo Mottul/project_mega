@@ -24,6 +24,31 @@ export interface SavedJob {
   projectName: string
   categories: string[]
   items: PackItem[]
+  /** Farbe je Kategorie (seit Version 2; ältere Jobs haben keine) */
+  colors?: Record<string, string>
+}
+
+/** Farben für Blöcke – kräftig genug für einen Rand, hell genug als Tönung hinter dem Titel */
+export const BLOCK_FARBEN = [
+  '#3b82f6',
+  '#22c55e',
+  '#f97316',
+  '#a855f7',
+  '#ef4444',
+  '#14b8a6',
+  '#eab308',
+  '#ec4899'
+]
+
+const HEX = /^#[0-9a-f]{6}$/i
+
+/** Nur gültige Farben bekannter Kategorien (Import, ältere Stände) */
+export function farbenPruefen(v: unknown, categories: string[]): Record<string, string> {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {}
+  const out: Record<string, string> = {}
+  for (const [k, c] of Object.entries(v))
+    if (categories.includes(k) && typeof c === 'string' && HEX.test(c)) out[k] = c.toLowerCase()
+  return out
 }
 
 interface PackState {
@@ -31,12 +56,16 @@ interface PackState {
   /** Existenz + Reihenfolge der Kategorien (auch leere). */
   categories: string[]
   items: PackItem[]
+  /** Farbe je Kategorie (#rrggbb); fehlt = ohne Farbe */
+  colors: Record<string, string>
   /** Gespeicherte Jobs (im Store persistiert). */
   saved: SavedJob[]
   set: (patch: Partial<Pick<PackState, 'projectName'>>) => void
   addCategory: (name?: string) => void
   renameCategory: (oldName: string, newName: string) => void
   removeCategory: (name: string) => void
+  /** Farbe einer Kategorie setzen ('' = keine) */
+  setColor: (category: string, color: string) => void
   /** Kategorie in der Reihenfolge verschieben (dir = -1 vor, +1 zurück). */
   moveCategory: (name: string, dir: -1 | 1) => void
   addItem: (category?: string) => void
@@ -50,7 +79,12 @@ interface PackState {
    *  Vorkommende Kategorien werden angelegt. */
   mergeItems: (items: Omit<PackItem, 'id' | 'checked'>[]) => void
   /** Aktuelle Liste komplett ersetzen (z.B. beim Import/Laden). */
-  replaceAll: (snap: { projectName: string; categories: string[]; items: PackItem[] }) => void
+  replaceAll: (snap: {
+    projectName: string
+    categories: string[]
+    items: PackItem[]
+    colors?: Record<string, string>
+  }) => void
   /** Aktuelle Liste als Job unter `name` speichern (gleicher Name überschreibt). */
   saveJob: (name: string) => void
   /** Gespeicherten Job laden (ersetzt die aktuelle Liste). */
@@ -68,6 +102,7 @@ export const usePacking = create<PackState>()(
       projectName: '',
       categories: ['Allgemein'],
       items: [],
+      colors: {},
       saved: [],
       set: (patch) => set(patch),
 
@@ -92,9 +127,14 @@ export const usePacking = create<PackState>()(
           const mapped = c === oldName ? n : c
           if (!categories.includes(mapped)) categories.push(mapped)
         }
+        // die Farbe zieht mit; trägt schon die neue Kategorie eine, bleibt deren
+        const colors = { ...s.colors }
+        if (colors[oldName] && !colors[n]) colors[n] = colors[oldName]
+        delete colors[oldName]
         set({
           categories,
-          items: s.items.map((it) => (it.category === oldName ? { ...it, category: n } : it))
+          items: s.items.map((it) => (it.category === oldName ? { ...it, category: n } : it)),
+          colors
         })
       },
 
@@ -103,10 +143,19 @@ export const usePacking = create<PackState>()(
         if (s.categories.length <= 1) return
         const categories = s.categories.filter((c) => c !== name)
         const fallback = categories[0]
+        const colors = { ...s.colors }
+        delete colors[name]
         set({
           categories,
-          items: s.items.map((it) => (it.category === name ? { ...it, category: fallback } : it))
+          items: s.items.map((it) => (it.category === name ? { ...it, category: fallback } : it)),
+          colors
         })
+      },
+      setColor: (category, color) => {
+        const colors = { ...get().colors }
+        if (HEX.test(color)) colors[category] = color.toLowerCase()
+        else delete colors[category]
+        set({ colors })
       },
 
       moveCategory: (name, dir) => {
@@ -155,20 +204,30 @@ export const usePacking = create<PackState>()(
         const s = get()
         const items = [...s.items]
         const categories = [...s.categories]
+        const colors = { ...s.colors }
         for (const inc of incoming) {
-          if (!categories.includes(inc.category)) categories.push(inc.category)
+          if (!categories.includes(inc.category)) {
+            categories.push(inc.category)
+            // mehrere Wände aus dem LED-Wall-Konfigurator: je Wand eine Farbe, gleich beim Anlegen
+            if (inc.category.startsWith('LED-Wall · ') && !colors[inc.category]) {
+              const frei = BLOCK_FARBEN.find((f) => !Object.values(colors).includes(f))
+              colors[inc.category] =
+                frei ?? BLOCK_FARBEN[Object.keys(colors).length % BLOCK_FARBEN.length]
+            }
+          }
           const i = items.findIndex((it) => it.category === inc.category && it.name === inc.name)
           if (i >= 0) items[i] = { ...items[i], qty: inc.qty, unit: inc.unit, note: inc.note }
           else items.push({ ...inc, id: uid(), checked: false })
         }
-        set({ items, categories })
+        set({ items, categories, colors })
       },
 
       replaceAll: (snap) =>
         set({
           projectName: snap.projectName,
           categories: snap.categories.length ? [...snap.categories] : ['Allgemein'],
-          items: snap.items.map((it) => ({ ...it }))
+          items: snap.items.map((it) => ({ ...it })),
+          colors: farbenPruefen(snap.colors, snap.categories)
         }),
 
       saveJob: (name) => {
@@ -177,7 +236,8 @@ export const usePacking = create<PackState>()(
         const snapshot = {
           projectName: s.projectName,
           categories: [...s.categories],
-          items: s.items.map((it) => ({ ...it }))
+          items: s.items.map((it) => ({ ...it })),
+          colors: { ...s.colors }
         }
         const existing = s.saved.find((j) => j.name === n)
         const job: SavedJob = {
@@ -199,7 +259,8 @@ export const usePacking = create<PackState>()(
         get().replaceAll({
           projectName: job.projectName,
           categories: job.categories,
-          items: job.items
+          items: job.items,
+          colors: job.colors
         })
       },
 
@@ -209,8 +270,8 @@ export const usePacking = create<PackState>()(
       name: 'packing-list',
       storage: debouncedStorage(),
       // Basisversion: v0 (unversioniert) und v1 haben dieselbe Form -> durchreichen
-      // (Feld-Absicherung erledigt onRehydrateStorage). Migrationspunkt ab jetzt.
-      version: 1,
+      // (Feld-Absicherung erledigt onRehydrateStorage). 2: Farben je Kategorie (fehlen = keine).
+      version: 2,
       migrate: (persisted) => persisted as PackState,
       // Migration/Defensive: Kategorienliste muss alle Item-Kategorien enthalten.
       onRehydrateStorage: () => (state) => {
@@ -221,6 +282,7 @@ export const usePacking = create<PackState>()(
             : ['Allgemein']
         for (const it of state.items) if (!cats.includes(it.category)) cats.push(it.category)
         state.categories = cats
+        state.colors = farbenPruefen(state.colors, cats)
         if (!Array.isArray(state.saved)) state.saved = []
       }
     }

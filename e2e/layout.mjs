@@ -399,6 +399,29 @@ try {
       }
     ],
     [
+      'Packliste: langer Blocktitel nutzt die Breite, Farbe je Block, PDF-Option in der Schublade',
+      async () => {
+        await tool('packing-list')
+        const block = page.getByTestId('pack-block').first()
+        const name = block.getByRole('textbox', { name: 'Name des Blocks' })
+        await name.fill('Kabel, Stecker und Adapter für Bühne, Regie und FOH-Platz')
+        await name.press('Enter')
+        // früher auf 240 px begrenzt, obwohl daneben Platz war
+        const breite = await name.evaluate((el) => el.getBoundingClientRect().width)
+        assert.ok(breite > 260, `Titel nur ${Math.round(breite)} px breit`)
+        await block.getByRole('button', { name: /^Farbe für/ }).click()
+        await page.getByRole('option', { name: 'Farbe #22c55e' }).click()
+        assert.ok(
+          await waitFor(
+            async () => (await block.getAttribute('style'))?.includes('rgb(34, 197, 94)'),
+            3_000
+          ),
+          await block.getAttribute('style')
+        )
+        await drawer().getByRole('button', { name: /^PDF/ }).waitFor({ timeout: 5_000 })
+      }
+    ],
+    [
       'Fernsteuerung überall gleich: „Handy“ in der Leiste, Port und QR-Code in der Schublade',
       async () => {
         const toggles = {
