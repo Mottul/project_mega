@@ -44,7 +44,8 @@ Preload per Typ zur Vollständigkeit – `npm run typecheck` zeigt vergessene St
   nie direkt `dialog.show…Dialog`: Seit Electron 43 startet ein Dialog ohne absoluten Pfad im
   Downloads-Ordner; der Helfer merkt sich den Ordner (je Art, in settings.json). Eine neue Art
   (wie `'fotos'`) braucht einen Eintrag in `DialogDirKind` und `DEFAULT_SETTINGS.dialogDirs`.
-- **Große Daten nie über IPC hin und her** (Fotos, Medien): Sie bleiben im main, der Renderer
+- **Große Daten nie über IPC hin und her** (Fotos, Medien; Ausnahme PDF-Bytes, wo pdf.js sie im
+  Renderer braucht: `manuals.bytes`, `util.renderPdf` für die Seitenansicht des Mini-Manuals): Sie bleiben im main, der Renderer
   bekommt einen Schlüssel (Hash, Name) und lädt über ein eigenes Protokoll. Ein neues Protokoll
   braucht vier Stellen: `protocol.registerSchemesAsPrivileged` vor `app.whenReady` und
   `protocol.handle` danach (`main/index.ts`, Muster `ipc/fotos.handlers.ts`: nur ein

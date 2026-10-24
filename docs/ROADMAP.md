@@ -55,14 +55,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
 - **Mini-Manual**
-  - **Verkabelung:** Die Tabellen zu Signal und Strom direkt unter den jeweiligen Plan stellen
-    (heute stehen beide Pläne in einer Reihe, die Tabellen in einer eigenen Reihe darunter,
-    `verkabelung()` in `seiten.ts`) und für die Lesbarkeit feiner setzen.
-  - **Seitenumbrüche in der Vorschau:** Die Vorschau zeigt das gewählte Kapitel als durchgehende
-    Seite, ohne zu zeigen, wo das PDF umbricht. Möglich wäre das echte PDF im Hintergrund
-    erzeugen und mit pdf.js zeigen (genau, aber verzögert) oder A4-Seiten in der Vorschau
-    nachbilden (sofort, aber nur annähernd); beides braucht den Umbruch des ganzen Dokuments,
-    nicht nur des Kapitels.
   - **Bedienbarkeit:** Die vielen Optionen wirken überwältigend und teils unübersichtlich – Ansatz
     noch offen (z. B. Wichtiges zuerst und Seltenes einklappen, ein geführter Einstieg für eine
     neue Anleitung).
