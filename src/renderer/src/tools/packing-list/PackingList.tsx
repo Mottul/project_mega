@@ -2,10 +2,10 @@
 // gruppiert nach frei anlegbaren Kategorien. Befüllbar aus der LED-Wall-
 // Konfiguration, Export als PDF. Werkzeug-Muster:
 //   Leiste „Projekt“   PDF, JSON sichern/laden, aus der LED-Wall übernehmen
-//   Schublade          Projektname, gespeicherte Jobs (wie die Vorlagen der LED-Wall)
+//   Schublade          Projektname, PDF (Blöcke zusammenhalten), gespeicherte Jobs
 //   Arbeitsfläche      die Kategorien mit ihren Positionen
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Bookmark,
   Briefcase,
@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Download,
   FileDown,
+  FileText,
   FolderPlus,
   LayoutGrid,
   Plus,
@@ -26,16 +27,19 @@ import {
 import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
 import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
+import { cn } from '@renderer/lib/utils'
 import { deriveFromLedWall } from './derive'
 import { parse, serialize } from './io'
 import { exportPackingPdf } from './print'
-import { usePacking, type PackItem, type SavedJob } from './store'
+import { BLOCK_FARBEN, usePacking, type PackItem, type SavedJob } from './store'
 import { toolPageClass } from '@renderer/lib/toolPage'
 import { useDraft } from '@renderer/lib/useDraft'
+import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 
 /** Dateiname-tauglicher Slug aus dem Projektnamen. */
 const slug = (s: string): string =>
@@ -47,6 +51,8 @@ const slug = (s: string): string =>
 
 export function PackingList(): JSX.Element {
   const s = usePacking()
+  // Druck-Vorliebe, keine Listendaten: gilt für jede Packliste auf diesem Rechner
+  const [zusammen, setZusammen] = usePersistentState('packing:bloeckeZusammen', false, flag)
 
   // Gruppen in Kategorie-Reihenfolge; unbekannte Kategorien (Altdaten) hinten anhängen.
   const groups = useMemo(() => {
@@ -89,7 +95,8 @@ export function PackingList(): JSX.Element {
     const text = serialize({
       projectName: s.projectName,
       categories: s.categories,
-      items: s.items
+      items: s.items,
+      colors: s.colors
     })
     await api.util.saveText(text, `${slug(s.projectName)}.json`)
   }
@@ -134,7 +141,13 @@ export function PackingList(): JSX.Element {
           <Button
             size="sm"
             disabled={s.items.length === 0}
-            onClick={() => void exportPackingPdf(s.projectName, s.items)}
+            onClick={() =>
+              void exportPackingPdf(s.projectName, s.items, {
+                categories: s.categories,
+                colors: s.colors,
+                bloeckeZusammen: zusammen
+              })
+            }
           >
             <FileDown className="size-4" /> PDF exportieren
           </Button>
@@ -184,6 +197,19 @@ export function PackingList(): JSX.Element {
                 onChange={(e) => s.set({ projectName: e.target.value })}
               />
             </Field>
+          </PanelSection>
+          <PanelSection
+            id="pdf"
+            title="PDF"
+            icon={FileText}
+            summary={zusammen ? 'Blöcke zusammenhalten' : 'fortlaufend'}
+          >
+            <Checkbox
+              checked={zusammen}
+              onChange={setZusammen}
+              label="Blöcke nicht über Seiten teilen"
+              hint="Ein Block, der nicht mehr ganz auf die Seite passt, beginnt auf der nächsten. Ein Block, der länger als eine Seite ist, bricht trotzdem um. Aus: alles fortlaufend – nur der Titel bleibt bei seiner Tabelle."
+            />
           </PanelSection>
           <PanelSection
             id="jobs"
@@ -245,9 +271,19 @@ export function PackingList(): JSX.Element {
           <div className="gap-4 xl:columns-2 2xl:columns-3">
             {groups.map(([cat, items]) => {
               const catIndex = s.categories.indexOf(cat)
+              const farbe = s.colors[cat]
               return (
-                <Card key={cat} className="mb-4 break-inside-avoid overflow-hidden">
-                  <div className="flex items-center gap-1.5 border-b border-border bg-muted/30 px-3 py-2">
+                <Card
+                  key={cat}
+                  className="mb-4 break-inside-avoid overflow-hidden"
+                  // Farbe des Blocks ist Nutzer-Wahl (Daten), kein Theme-Token
+                  style={farbe ? { borderLeft: `4px solid ${farbe}` } : undefined}
+                  data-testid="pack-block"
+                >
+                  <div
+                    className="flex items-center gap-1.5 border-b border-border bg-muted/30 px-3 py-2"
+                    style={farbe ? { backgroundColor: `${farbe}1f` } : undefined}
+                  >
                     <ReorderCtl
                       canUp={catIndex > 0}
                       canDown={catIndex >= 0 && catIndex < s.categories.length - 1}
@@ -255,13 +291,14 @@ export function PackingList(): JSX.Element {
                       onDown={() => s.moveCategory(cat, 1)}
                       title="Kategorie verschieben"
                     />
+                    <FarbWahl farbe={farbe} name={cat} onChange={(f) => s.setColor(cat, f)} />
+                    {/* nimmt den freien Platz – ein langer Titel wird erst knapp vor den Knöpfen gekürzt */}
                     <CategoryName
                       value={cat}
                       onCommit={(v) => s.renameCategory(cat, v)}
-                      className="h-7 max-w-[240px] flex-1 text-xs font-bold uppercase tracking-wide text-primary"
+                      className="h-7 min-w-0 flex-1 text-xs font-bold uppercase tracking-wide text-primary"
                     />
                     <span className="text-xs text-muted-foreground">{items.length}</span>
-                    <div className="flex-1" />
                     <Button variant="ghost" size="sm" onClick={() => s.addItem(cat)}>
                       <Plus className="size-4" /> Position
                     </Button>
@@ -363,6 +400,80 @@ function ReorderCtl({
 
 /** Kategoriename mit lokalem Puffer – Umbenennen erst beim Verlassen/Enter
  *  (sonst würde der Gruppen-Key bei jedem Tastendruck wechseln). */
+/** Farbe eines Blocks: Tupfen zeigt die Farbe, Klick öffnet die Auswahl (oder „keine“) */
+function FarbWahl({
+  farbe,
+  name,
+  onChange
+}: {
+  farbe: string | undefined
+  name: string
+  onChange: (f: string) => void
+}): JSX.Element {
+  const [offen, setOffen] = useState(false)
+  const waehle = (f: string): void => {
+    onChange(f)
+    setOffen(false)
+  }
+  return (
+    <span className="relative shrink-0">
+      <button
+        type="button"
+        aria-label={`Farbe für „${name}“`}
+        aria-expanded={offen}
+        title="Farbe des Blocks"
+        onClick={() => setOffen((v) => !v)}
+        className={cn(
+          'block size-4 rounded-full border',
+          farbe ? 'border-transparent' : 'border-dashed border-muted-foreground'
+        )}
+        style={farbe ? { backgroundColor: farbe } : undefined}
+      />
+      {offen && (
+        <>
+          {/* Klick daneben schließt */}
+          <button
+            type="button"
+            aria-label="Farbauswahl schließen"
+            className="fixed inset-0 z-10 cursor-default"
+            onClick={() => setOffen(false)}
+          />
+          <span
+            role="listbox"
+            aria-label="Farben"
+            className="absolute left-0 top-6 z-20 flex gap-1 rounded-md border border-border bg-card p-1.5 shadow-lg"
+          >
+            {BLOCK_FARBEN.map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="option"
+                aria-selected={f === farbe}
+                aria-label={`Farbe ${f}`}
+                onClick={() => waehle(f)}
+                className={cn(
+                  'size-5 rounded-full',
+                  f === farbe && 'ring-2 ring-foreground ring-offset-1 ring-offset-card'
+                )}
+                style={{ backgroundColor: f }}
+              />
+            ))}
+            <button
+              type="button"
+              role="option"
+              aria-selected={!farbe}
+              onClick={() => waehle('')}
+              className="ml-1 rounded px-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              keine
+            </button>
+          </span>
+        </>
+      )}
+    </span>
+  )
+}
+
 function CategoryName({
   value,
   onCommit,
@@ -381,6 +492,8 @@ function CategoryName({
     <Input
       ref={ref}
       value={text}
+      aria-label="Name des Blocks"
+      title={text}
       className={className}
       onChange={(e) => setText(e.target.value)}
       onBlur={commit}

@@ -45,3 +45,17 @@ describe('packing-list io', () => {
     expect(parse(JSON.stringify({ type: 'anderes', items: [] }))).toBeNull()
   })
 })
+
+describe('packing-list io – Farben', () => {
+  it('kommen mit zurück; ungültige Farben und fremde Kategorien fallen weg', () => {
+    const snap = {
+      projectName: '',
+      categories: ['A', 'B'],
+      items: [item(), item({ category: 'B' })],
+      colors: { A: '#3B82F6', B: 'blau' }
+    }
+    expect(parse(serialize(snap))!.colors).toEqual({ A: '#3b82f6' })
+    const fremd = JSON.stringify({ items: [item()], colors: { A: '#ffffff', Z: '#000000' } })
+    expect(parse(fremd)!.colors).toEqual({ A: '#ffffff' })
+  })
+})

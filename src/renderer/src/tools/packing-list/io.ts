@@ -4,12 +4,14 @@
 // Felder werden mit Standardwerten ergänzt, ungültige Dateien liefern null.
 
 import { APP_SLUG } from '@shared/brand'
-import type { PackItem } from './store'
+import { farbenPruefen, type PackItem } from './store'
 
 export interface PackSnapshot {
   projectName: string
   categories: string[]
   items: PackItem[]
+  /** Farbe je Kategorie (ab Dateiversion 2; eine ältere Mottulbox übergeht sie beim Import) */
+  colors?: Record<string, string>
 }
 
 const FILE_TYPE = 'packing-list'
@@ -17,12 +19,12 @@ const FILE_TYPE = 'packing-list'
 interface PackFile extends PackSnapshot {
   app: string // Marken-Kennung (informativ; beim Import nicht geprüft)
   type: typeof FILE_TYPE
-  version: 1
+  version: 2
 }
 
 /** Snapshot als hübsches JSON (mit Kopf zum Wiedererkennen). */
 export function serialize(snap: PackSnapshot): string {
-  const file: PackFile = { app: APP_SLUG, type: FILE_TYPE, version: 1, ...snap }
+  const file: PackFile = { app: APP_SLUG, type: FILE_TYPE, version: 2, ...snap }
   return JSON.stringify(file, null, 2)
 }
 
@@ -67,5 +69,10 @@ export function parse(text: string): PackSnapshot | null {
   for (const it of items) if (!categories.includes(it.category)) categories.push(it.category)
   if (categories.length === 0) categories.push('Allgemein')
 
-  return { projectName: str(o.projectName), categories, items }
+  return {
+    projectName: str(o.projectName),
+    categories,
+    items,
+    colors: farbenPruefen(o.colors, categories)
+  }
 }
