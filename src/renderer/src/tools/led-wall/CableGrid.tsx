@@ -57,6 +57,8 @@ interface Props {
     /** Hot-Backup über eine zweite CVT10: Backup kommt vom selben Port, keine Port-Wahl */
     hotBackup?: boolean
     onChange: (chain: number, patch: Partial<SigChainMeta>) => void
+    /** Backup bei allen Ketten an bzw. aus (setzt auch die Vorgabe für neue Ketten) */
+    onAlle?: (an: boolean) => void
   }
   /** nur Strom: Stromkreis und Phase je Kette, Last (power.ts) */
   power?: {
@@ -162,6 +164,8 @@ export function CableGrid({
   const pwrOwn = own as PwrChainMeta | undefined
   const pload = power?.loads.get(activeChain)
   const backupOn = ports ? hasBackup(sigOwn, ports.redundancy) : false
+  // haben schon alle Ketten ein Backup? Dann schaltet der Knopf aus, sonst ein
+  const alleMitBackup = !!ports && ports.loads.size > 0 && backups.size === ports.loads.size
   const portOptions = Array.from({ length: Math.max(ports?.count ?? 0, 1) }, (_, i) => i + 1)
 
   return (
@@ -328,13 +332,23 @@ export function CableGrid({
                   })
                 }
               >
-                <option value="">Backup {load?.backupPort ?? '–'} (fortlaufend)</option>
+                <option value="">Backup {load?.backupPort ?? '–'} (automatisch)</option>
                 {portOptions.map((p) => (
                   <option key={p} value={String(p)}>
                     Backup {p}
                   </option>
                 ))}
               </Select>
+            )}
+            {ports.onAlle && ports.loads.size > 1 && (
+              <button
+                type="button"
+                onClick={() => ports.onAlle?.(!alleMitBackup)}
+                title="Gilt für alle Signalketten dieser Wand und als Vorgabe für neue Ketten"
+                className="h-7 rounded px-1.5 text-muted-foreground hover:text-foreground"
+              >
+                {alleMitBackup ? 'Backup bei allen aus' : 'Backup bei allen an'}
+              </button>
             )}
           </>
         )}

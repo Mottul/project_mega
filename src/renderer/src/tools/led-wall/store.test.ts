@@ -373,3 +373,30 @@ describe('mehrere Wände', () => {
     expect(ids[0]).toBe('a')
   })
 })
+
+describe('Backup bei allen Ketten', () => {
+  it('an: jede Kette ausdrücklich mit Backup (feste Ports bleiben), Vorgabe für neue Ketten an', () => {
+    useLedWall.getState().replaceConfig({
+      ...DEFAULT_LED_WALL_CONFIG,
+      sig: [[0, 0, 1, 1, 2, 2]],
+      sigMeta: { '0': { backup: null }, '1': { port: '5', backup: { port: '9' } } },
+      redundancy: false
+    })
+    useLedWall.getState().setBackupAlle(true)
+    const s = useLedWall.getState()
+    expect(s.redundancy).toBe(true)
+    expect([s.sigMeta['0'].backup, s.sigMeta['1'], s.sigMeta['2'].backup]).toEqual([
+      {},
+      { port: '5', backup: { port: '9' } },
+      {}
+    ])
+  })
+
+  it('aus: jede Kette ausdrücklich ohne – auch dort, wo die Strecke es sonst vorgäbe', () => {
+    useLedWall.getState().setBackupAlle(false)
+    const s = useLedWall.getState()
+    expect(s.redundancy).toBe(false)
+    expect(['0', '1', '2'].map((k) => s.sigMeta[k].backup)).toEqual([null, null, null])
+    expect(s.sigMeta['1'].port).toBe('5')
+  })
+})

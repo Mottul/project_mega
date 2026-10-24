@@ -1,7 +1,8 @@
 // Kabelverlauf im LED-Wall-Konfigurator (Phase 2b, von Hand): Kette ohne Verlauf (Hinweis, keine
 // Pfeile), Startecke + Richtung (Schlange), Ansicht von hinten (gespiegelt, Startecke anders
 // beschriftet), Kette mit der Maus zeichnen und verlängern, Signal + Strom nebeneinander,
-// Prozessor und Ports, Strom (Kreis, Phase, Überlast, Absicherung), PDF.
+// Prozessor und Ports, Backup bei allen und Verteilung der Backup-Ports, Strom (Kreis, Phase,
+// Überlast, Absicherung), PDF.
 // Gelesen wird der gespeicherte Stand im localStorage und das Pfeil-SVG über dem Raster.
 
 import assert from 'node:assert/strict'
@@ -294,6 +295,46 @@ try {
         // wieder ohne Glasfaser – die nächsten Schritte rechnen mit Ports am Prozessor
         await faser.uncheck()
         await card.getByText(/CVT10-S/).waitFor({ state: 'detached', timeout: 5000 })
+      }
+    ],
+    [
+      'Backup bei allen Ketten an, Backup-Ports in Hälften (1 → 9), dann wieder wie vorher',
+      async () => {
+        const card = page.getByRole('heading', { name: 'Signal', exact: true }).locator('../..')
+        const ports = async (erwartet) =>
+          waitFor(async () => {
+            const r = await card
+              .getByRole('table', { name: 'Signalketten' })
+              .evaluate((t) =>
+                [...t.querySelectorAll('tbody tr')].map((tr) =>
+                  [...tr.querySelectorAll('td')].map((td) => td.textContent.trim())
+                )
+              )
+            const z = r.map(([kette, , , port]) => `${kette} ${port}`)
+            return JSON.stringify(z) === JSON.stringify(erwartet) ? z : null
+          }, 5000)
+        // S1 hat Backup, S2 nicht – „an“ gibt beiden eins (Paare: 1 → 2, 3 → 4)
+        await page.getByRole('button', { name: 'Backup bei allen an' }).click()
+        assert.ok(await ports(['S1 1 · B 2', 'S2 3 · B 4']), 'Paare')
+        const head = page.getByTestId('settings-drawer').getByRole('button', { name: /^Prozessor/ })
+        if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
+        const verteilung = page.getByRole('combobox', { name: 'Verteilung der Backup-Ports' })
+        await verteilung.selectOption('haelften')
+        assert.ok(await ports(['S1 1 · B 9', 'S2 2 · B 10']), 'Hälften')
+        assert.ok(
+          await waitFor(async () => (await stored()).processor?.backupPorts === 'haelften', 5000),
+          JSON.stringify((await stored()).processor)
+        )
+        // zurück: Paare, alle aus, S1 wieder mit Backup (die nächsten Schritte rechnen damit)
+        await verteilung.selectOption('paare')
+        await page.getByRole('button', { name: 'Backup bei allen aus' }).click()
+        assert.ok(await ports(['S1 1', 'S2 2']), 'alle aus')
+        await page.getByRole('button', { name: /^Signal-Kette 1:/ }).click()
+        await page
+          .getByRole('group', { name: 'Verlauf S1' })
+          .getByRole('checkbox', { name: 'Backup' })
+          .check()
+        assert.ok(await ports(['S1 1 · B 2', 'S2 3']), 'S1 wieder mit Backup')
       }
     ],
     [

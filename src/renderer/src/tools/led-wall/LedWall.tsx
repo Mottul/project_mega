@@ -426,7 +426,8 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
               // Hot-Backup über eine zweite CVT10: ab Werk jede Kette mit Backup
               redundancy: s.redundancy || group.fiber?.redundancy === 'hot-backup',
               hotBackup: group.fiber?.redundancy === 'hot-backup',
-              onChange: (c, patch) => s.setSigChain(c, patch)
+              onChange: (c, patch) => s.setSigChain(c, patch),
+              onAlle: (an) => s.setBackupAlle(an)
             }
           : undefined
       }

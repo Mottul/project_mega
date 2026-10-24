@@ -560,6 +560,32 @@ function ProcessorPanel(): JSX.Element {
         checked={s.redundancy}
         onChange={(redundancy) => s.set({ redundancy })}
       />
+      {/* nur wo Backup-Ports frei wählbar sind (NovaStar); Tessera braucht Portpaare, Hot-Backup
+          keine Ports – und ein geteilter Prozessor nimmt die Wahl der Wand, die ihn hat */}
+      {!shared &&
+        resolved.backup === 'port' &&
+        resolved.ports >= 2 &&
+        s.fiber?.redundancy !== 'hot-backup' && (
+          <Field
+            label="Backup-Ports"
+            hint={`Paare: Backup auf dem nächsten freien Port (Haupt 1 → Backup 2, 3 → 4 …). Hälften: Haupt-Leitungen auf Port 1–${Math.floor(resolved.ports / 2)}, Backup auf demselben Platz der zweiten Hälfte (1 → ${Math.floor(resolved.ports / 2) + 1}). Ein je Kette fest gewählter Backup-Port geht vor.`}
+          >
+            <Select
+              size="sm"
+              aria-label="Verteilung der Backup-Ports"
+              value={p.backupPorts ?? 'paare'}
+              onChange={(e) =>
+                setP({ backupPorts: e.target.value === 'haelften' ? 'haelften' : undefined })
+              }
+            >
+              <option value="paare">Paare (1 → 2, 3 → 4 …)</option>
+              <option value="haelften">
+                Hälften (1 → {Math.floor(resolved.ports / 2) + 1}, 2 →{' '}
+                {Math.floor(resolved.ports / 2) + 2} …)
+              </option>
+            </Select>
+          </Field>
+        )}
       <p className="text-xs text-muted-foreground">
         {resolved.portPx > 0
           ? `Grenze je Port ${resolved.portPx.toLocaleString('de-DE')} px${resolved.limitBy === 'karte' ? ` (Empfangskarte ${resolved.card})` : ''}`

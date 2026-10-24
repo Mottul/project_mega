@@ -337,7 +337,12 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
     mehreren Wänden desselben Moduls „Prozessor teilen mit“ – dann laufen die Ports fortlaufend
     und die Kapazität zählt gemeinsam. Je Signalkette in der Verlauf-Leiste **Port** (ab Werk
     fortlaufend) und **Backup** mit eigenem Port (beim Tessera als Portpaar 1 → 2, 3 → 4); im
-    Plan steht dann ein „B“ am letzten Modul. Die Karte **Signal** neben dem Plan zeigt Ports,
+    Plan steht dann ein „B“ am letzten Modul. **Backup bei allen an/aus** (ebenfalls in der
+    Verlauf-Leiste) schaltet alle Signalketten der Wand auf einmal und setzt die Vorgabe für neue
+    Ketten mit; fest gewählte Backup-Ports bleiben. Bei NovaStar wählt die Schublade, wohin die
+    Backup-Leitungen gehen: **Paare** (Haupt 1 → Backup 2, 3 → 4 …, wie bisher) oder **Hälften**
+    (Haupt auf der ersten Hälfte der Ports, Backup auf demselben Platz der zweiten: beim UHD Jr
+    1 → 9, 2 → 10; ist der Platz fest vergeben, der nächste freie der zweiten Hälfte). Die Karte **Signal** neben dem Plan zeigt Ports,
     Grenze je Port (kleinerer Wert aus Prozessor und Empfangskarte, Werte aus den Handbüchern),
     Last je Kette und warnt – über der Grenze je Port, zu viele Ports, zu viele Pixel gesamt,
     zu breit oder hoch für den Prozessor, Backup nicht am Partner-Port, doppelter Port.
