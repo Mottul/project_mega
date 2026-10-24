@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 16. Oktober 2026
+**Stand:** 24. Oktober 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -54,6 +54,31 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 - **Jingle-Player:** Ducking, MIDI-Pads.
 - **Manuals-Bibliothek:** OCR für gescannte PDFs; Stecker-/Kabel-Kompendium mit Pin-Belegungen,
   Steckertypen und technischen Daten.
+- **Mini-Manual**
+  - **Verkabelung:** Die Tabellen zu Signal und Strom direkt unter den jeweiligen Plan stellen
+    (heute stehen beide Pläne in einer Reihe, die Tabellen in einer eigenen Reihe darunter,
+    `verkabelung()` in `seiten.ts`) und für die Lesbarkeit feiner setzen.
+  - **Seitenumbrüche in der Vorschau:** Die Vorschau zeigt das gewählte Kapitel als durchgehende
+    Seite, ohne zu zeigen, wo das PDF umbricht. Möglich wäre das echte PDF im Hintergrund
+    erzeugen und mit pdf.js zeigen (genau, aber verzögert) oder A4-Seiten in der Vorschau
+    nachbilden (sofort, aber nur annähernd); beides braucht den Umbruch des ganzen Dokuments,
+    nicht nur des Kapitels.
+  - **Bedienbarkeit:** Die vielen Optionen wirken überwältigend und teils unübersichtlich – Ansatz
+    noch offen (z. B. Wichtiges zuerst und Seltenes einklappen, ein geführter Einstieg für eine
+    neue Anleitung).
+- **LED-Wall-Konfigurator**
+  - **Backup für alle Ketten** mit einem Knopf ein- bzw. ausschalten (heute je Kette in der
+    Verlauf-Leiste; „Backup-Leitung für neue Ketten“ gilt nur für neue).
+  - **Verteilung von Haupt- und Backup-Leitungen umschaltbar:** wie bisher gerade/ungerade
+    (Portpaare 1 → 2, 3 → 4) und zusätzlich Hälften (Haupt auf 1–8, Backup auf 9–16).
+- **Packliste**
+  - **Titel der Blöcke** werden beschnitten, obwohl noch Platz wäre (das Namensfeld ist auf
+    240 px begrenzt).
+  - **Farben für die Blöcke**, wo es hilft (z. B. je Kategorie oder je Wand aus dem
+    LED-Wall-Konfigurator).
+  - **Seitenumbrüche im PDF:** Blöcke sollen nicht mitten auf der Seite zerrissen werden. Option
+    zum Umschalten: alles fortlaufend (wie heute) oder ein Block, der nicht mehr ganz auf die
+    Seite passt, beginnt auf einer neuen (ein Block länger als eine Seite bricht trotzdem um).
 
 ### Neue Werkzeuge
 
