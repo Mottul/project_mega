@@ -567,6 +567,17 @@ Kabelmengen aus den gezeichneten Ketten); Export als PDF oder JSON. PDF, JSON un
 übernehmen“ stehen in der Leiste „Projekt“, Projektname und gespeicherte Jobs (laden, löschen,
 aktuelle speichern) in der Schublade – wie die Vorlagen des LED-Wall-Konfigurators.
 
+- **Blöcke** (Kategorien): Der Titel nutzt die ganze Breite der Kopfzeile. Jeder Block kann eine
+  **Farbe** bekommen (Tupfen links vom Titel: acht Farben oder keine) – sie färbt den Rand und den
+  Kopf des Blocks und im PDF die Linie unter dem Titel. Kommen mehrere Wände aus dem
+  LED-Wall-Konfigurator, bekommt jede Wand gleich beim Übernehmen eine eigene Farbe; eine
+  gewählte Farbe bleibt beim nächsten Übernehmen. Farben ziehen beim Umbenennen mit und gehen in
+  gespeicherte Jobs und die JSON-Datei mit.
+- **PDF** (Schublade): Blöcke in der Reihenfolge der Liste. **Blöcke nicht über Seiten teilen**:
+  Ein Block, der nicht mehr ganz auf die Seite passt, beginnt auf der nächsten (ein Block länger
+  als eine Seite bricht trotzdem um, die Kopfzeile der Tabelle wiederholt sich). Aus: alles
+  fortlaufend, nur der Titel bleibt bei seiner Tabelle und keine Zeile wird geteilt.
+
 ### Mini-Manual
 
 Kurz-Anleitungen für die Leute vor Ort („So bedienst du deine LED-Wall“): wie man die Wand

@@ -224,7 +224,8 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   Was ein reines Modul an Werten braucht (Beschriftungen, Tastenkürzel), liegt in einer eigenen
   Datei ohne Store (`osc-control/labels.ts`, `jingle-player/hotkeys.ts`, der Store exportiert es
   weiter); die Oberfläche lädt den Store erst beim Klick per `await import(…)` (Übernahme ins
-  Mini-Manual, 23.10.2026).
+  Mini-Manual, 23.10.2026). Ebenso Druck-HTML: Wer `api.util.exportPdf` ruft, baut das HTML in
+  einer eigenen reinen Datei (`packing-list/printHtml.ts`, `led-wall/printHtml.ts`) und testet dort.
 
 ## Vor dem Abschluss
 
