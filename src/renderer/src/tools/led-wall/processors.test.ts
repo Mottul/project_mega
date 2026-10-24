@@ -121,6 +121,80 @@ describe('Ports, Backup und Warnungen', () => {
   })
 })
 
+describe('Verteilung der Backup-Ports', () => {
+  const ports = (c: LedWallConfig): [number | null, number | null][] =>
+    analyzeProcessors([wall('a', c)])[0].walls[0].chains.map((x) => [x.port, x.backupPort])
+  const drei = { sig: reihe([0, 4], [1, 4], [2, 4]), redundancy: true }
+
+  it('Paare wie bisher, Hälften: Haupt 1–8, Backup auf demselben Platz von 9–16 (UHD Jr)', () => {
+    expect(ports(cfg(drei))).toEqual([
+      [1, 2],
+      [3, 4],
+      [5, 6]
+    ])
+    const haelften = cfg({
+      ...drei,
+      processor: { model: null, bitDepth: 8, hz: 60, backupPorts: 'haelften' }
+    })
+    expect(ports(haelften)).toEqual([
+      [1, 9],
+      [2, 10],
+      [3, 11]
+    ])
+    expect(analyzeProcessors([wall('a', haelften)])[0].warnings).toEqual([])
+  })
+
+  it('VX4S (4 Ports): Hälften 1 → 3, 2 → 4; ein fester Backup-Port geht vor', () => {
+    const vx = (meta = {}): LedWallConfig =>
+      cfg({
+        sig: reihe([0, 2], [1, 2]),
+        redundancy: true,
+        sigMeta: meta,
+        processor: { model: 'vx4s', bitDepth: 8, hz: 60, backupPorts: 'haelften' }
+      })
+    expect(ports(vx())).toEqual([
+      [1, 3],
+      [2, 4]
+    ])
+    // Platz 3 ist fest vergeben – das Backup von S1 weicht auf den nächsten freien der 2. Hälfte aus
+    const fest = vx({ '1': { backup: { port: '3' } } })
+    expect(ports(fest)).toEqual([
+      [1, 4],
+      [2, 3]
+    ])
+    expect(analyzeProcessors([wall('a', fest)])[0].warnings).toEqual([])
+  })
+
+  it('Tessera bleibt bei Portpaaren, Hot-Backup braucht keine Ports', () => {
+    const tessera = cfg({
+      moduleKey: 'uS2+',
+      sig: reihe([0, 2], [1, 2]),
+      redundancy: true,
+      processor: { model: null, bitDepth: 8, hz: 60, backupPorts: 'haelften' }
+    })
+    expect(ports(tessera)).toEqual([
+      [1, 2],
+      [3, 4]
+    ])
+    const hot = cfg({
+      ...drei,
+      fiber: { box: 'cvt10', variant: 'S', redundancy: 'hot-backup' },
+      processor: { model: null, bitDepth: 8, hz: 60, backupPorts: 'haelften' }
+    })
+    expect(ports(hot)).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 3]
+    ])
+  })
+
+  it('die Prüfung kennt nur „haelften“', () => {
+    const p = (v: unknown): unknown =>
+      cfg({ processor: { model: null, bitDepth: 8, hz: 60, backupPorts: v } }).processor.backupPorts
+    expect([p('haelften'), p('paare'), p(1)]).toEqual(['haelften', undefined, undefined])
+  })
+})
+
 describe('Geteilter Prozessor', () => {
   it('Wand B nutzt den Prozessor von A mit: Ports fortlaufend, Last gemeinsam', () => {
     const a = wall('a', cfg({ sig: reihe([0, 4], [1, 4]) }), 'Bühne')

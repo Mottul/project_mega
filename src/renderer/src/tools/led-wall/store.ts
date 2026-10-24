@@ -91,6 +91,8 @@ interface LedWallState extends LedWallConfig {
   ) => void
   /** Port bzw. Backup einer Signalkette ändern (undefined = Feld entfernen → Vorgabe) */
   setSigChain: (chain: number, patch: Partial<SigChainMeta>) => void
+  /** Backup-Leitung bei allen Signalketten an bzw. aus – und als Vorgabe für neue Ketten */
+  setBackupAlle: (an: boolean) => void
   /** Stromkreis bzw. Phase einer Stromkette ändern (undefined = Feld entfernen → Vorschlag) */
   setPwrChain: (chain: number, patch: Partial<PwrChainMeta>) => void
   /** Aktuelle Konfiguration (der gewählten Wand) als Vorlage sichern (gleicher Name -> überschreiben). */
@@ -413,6 +415,20 @@ export const useLedWall = create<LedWallState>()(
       },
 
       setSigChain: (chain, patch) => set({ sigMeta: patchMeta(get().sigMeta, chain, patch) }),
+
+      setBackupAlle: (an) => {
+        const s = get()
+        // je Kette ausdrücklich – die Vorgabe allein reicht nicht: Ketten mit eigener Angabe
+        // (null) blieben sonst ohne, und beim Hot-Backup ist „an“ schon die Vorgabe der Strecke.
+        // Feste Backup-Ports bleiben beim Einschalten erhalten
+        const meta = { ...s.sigMeta }
+        for (const chain of chainCells(s.sig).keys()) {
+          const k = String(chain)
+          const alt: SigChainMeta = Object.hasOwn(meta, k) ? meta[k] : {}
+          meta[k] = { ...alt, backup: an ? (alt.backup ?? {}) : null }
+        }
+        set({ redundancy: an, sigMeta: meta })
+      },
 
       setPwrChain: (chain, patch) => set({ pwrMeta: patchMeta(get().pwrMeta, chain, patch) }),
 

@@ -59,11 +59,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   - **Bedienbarkeit:** Die vielen Optionen wirken überwältigend und teils unübersichtlich – Ansatz
     noch offen (z. B. Wichtiges zuerst und Seltenes einklappen, ein geführter Einstieg für eine
     neue Anleitung).
-- **LED-Wall-Konfigurator**
-  - **Backup für alle Ketten** mit einem Knopf ein- bzw. ausschalten (heute je Kette in der
-    Verlauf-Leiste; „Backup-Leitung für neue Ketten“ gilt nur für neue).
-  - **Verteilung von Haupt- und Backup-Leitungen umschaltbar:** wie bisher gerade/ungerade
-    (Portpaare 1 → 2, 3 → 4) und zusätzlich Hälften (Haupt auf 1–8, Backup auf 9–16).
 
 ### Neue Werkzeuge
 

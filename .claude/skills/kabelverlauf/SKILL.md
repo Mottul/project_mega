@@ -67,6 +67,13 @@ Einspeisepunkt, keine Automatik.
   gerade). So verschiebt eine neue Kette keine fest vergebenen Ports.
 - **Backup:** ohne eigene Angabe gilt die Vorgabe der Wand (`redundancy`, `hasBackup`); `null` =
   ausdrücklich keins. Tessera: Last der Paare zählt doppelt, höchstens 50 Module je Kette.
+  „Backup bei allen“ (`setBackupAlle`) setzt jede Kette **ausdrücklich** (`{}` bzw. `null`) und
+  die Vorgabe mit – die Vorgabe allein hälfe nicht gegen eigene `null` und nicht beim Hot-Backup,
+  wo „an“ schon Vorgabe der Strecke ist; feste Backup-Ports bleiben beim Einschalten.
+- **Verteilung der Backup-Ports** (`processor.backupPorts`, nur NovaStar mit ≥ 2 Ports, nicht beim
+  Hot-Backup): fehlt = Paare (nächster freier Port), `'haelften'` = Port + Hälfte der Ports
+  (UHD Jr 1 → 9); ist der Platz gegenüber fest vergeben, der nächste freie der zweiten Hälfte.
+  Neue Werte am Prozessor = Abschnitt-Version hoch (6), E2E-Schreiber in `projektdatei.mjs` mitziehen.
 - **Geteilter Prozessor** (`processor.shareWith`, nur gleiches Modul anbieten): `processorGroups`
   folgt Ketten von Verweisen, Kreise und fehlende Wände zählen als eigener Prozessor; die Wand mit
   dem Prozessor zuerst. Alles, was alle Wände braucht (Karte, PDF, Packliste), rechnet über

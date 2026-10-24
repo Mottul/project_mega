@@ -335,6 +335,14 @@ export function analyzeProcessors(walls: PlannedWall[]): GroupLoad[] {
     // Hot-Backup: die zweite CVT10 speist die Kettenenden vom selben Port – ab Werk jede Kette,
     // ohne eigenen Port am Prozessor
     const hot = fiberOn && fiberCfg.redundancy === 'hot-backup'
+    // Hälften: Haupt auf der ersten Hälfte, Backup auf demselben Platz der zweiten (1 → 9 bei 16
+    // Ports). Nur wo Backup-Ports frei wählbar sind (NovaStar), nicht beim Tessera (Portpaare)
+    const haelften =
+      !hot &&
+      proc.backup === 'port' &&
+      proc.ports >= 2 &&
+      group[0].config.processor.backupPorts === 'haelften'
+    const halb = Math.floor(proc.ports / 2)
     // erst alle festen Ports, dann die übrigen fortlaufend
     type Slot = {
       w: PlannedWall
@@ -411,7 +419,16 @@ export function analyzeProcessors(walls: PlannedWall[]): GroupLoad[] {
         s.load.backupPort = s.load.port
         s.load.backupBox = true
       } else if (backup && s.load.backupPort === null) {
-        const b = proc.backup === 'pairs' ? s.load.port + 1 : free()
+        // Hälften: ist der Platz gegenüber schon fest vergeben, der nächste freie der zweiten Hälfte
+        const gegenueber = s.load.port + halb
+        const b =
+          proc.backup === 'pairs'
+            ? s.load.port + 1
+            : haelften
+              ? used.has(gegenueber)
+                ? free(halb + 1)
+                : gegenueber
+              : free()
         s.load.backupPort = b
         take(b, `${who} (Backup)`)
       }
