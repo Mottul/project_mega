@@ -90,6 +90,26 @@ try {
       }
     ],
     [
+      'Was fehlt noch: Fortschritt in der Schublade, ein offener Punkt führt an seine Stelle',
+      async () => {
+        const kopf = drawer().getByRole('button', { name: /^Was fehlt noch/ })
+        await kopf.waitFor({ timeout: 5000 })
+        assert.match((await kopf.textContent()) ?? '', /\d von \d+ erledigt/)
+        if ((await kopf.getAttribute('aria-expanded')) !== 'true') await kopf.click()
+        const liste = drawer().getByRole('list', { name: 'Was fehlt noch' })
+        await liste.getByRole('button', { name: /Kontakt wählen/ }).click()
+        assert.ok(
+          await waitFor(
+            async () =>
+              (await page.getByRole('combobox', { name: 'Kapitel', exact: true }).inputValue()) ===
+              'kontakt',
+            5000
+          ),
+          'nicht zum Kapitel Kontakt gesprungen'
+        )
+      }
+    ],
+    [
       'Firmenprofil im App-Menü: Name und Kontakt',
       async () => {
         await page
@@ -339,6 +359,8 @@ try {
         await kapitel('geraete')
         const erstes = page.getByTestId('geraet').first()
         await erstes.getByRole('combobox', { name: 'Rolle' }).selectOption('prozessor')
+        // Signalweg steht unter „Mehr“ (Wichtiges zuerst)
+        await erstes.getByRole('button', { name: /^Mehr zu / }).click()
         const bespielt = erstes.getByRole('group', { name: 'Bespielt' })
         await bespielt.getByRole('checkbox', { name: 'Wand 1' }).check()
         await bespielt.getByRole('checkbox', { name: 'Bar' }).check()
@@ -346,6 +368,7 @@ try {
         const laptop = page.getByTestId('geraet').nth(1)
         await laptop.getByLabel('Name', { exact: true }).fill('Laptop')
         await page.keyboard.press('Tab')
+        await laptop.getByRole('button', { name: 'Mehr zu Laptop' }).click()
         await laptop.getByRole('button', { name: 'Ausgang', exact: true }).click()
         const ausgang = laptop.getByTestId('ausgang')
         assert.equal(await ausgang.getByLabel('Ausgang', { exact: true }).inputValue(), 'HDMI 1')
@@ -840,6 +863,37 @@ try {
         )
         await art.getByRole('button', { name: 'Kapitel', exact: true }).click()
         await page.getByTestId('mini-manual-vorschau').waitFor({ timeout: 5_000 })
+      }
+    ],
+    [
+      'Wichtiges zuerst: Seltenes unter „Mehr“, gesetzte Extras als Marken, Stufe als Knopf',
+      async () => {
+        await kapitel('fehlersuche')
+        await page
+          .getByRole('list', { name: 'Fehlerfälle' })
+          .getByRole('button', { name: /Die ganze Wand ist dunkel/ })
+          .click()
+        const schritte = page.getByTestId('fall-schritt')
+        await schritte.first().waitFor({ timeout: 5000 })
+        // zugeklappt: keine Häkchen zu sehen, aber die Marke der Glasfaser-Frage
+        assert.equal(await page.getByRole('checkbox', { name: 'vorher kurz anrufen' }).count(), 0)
+        await schritte
+          .filter({ hasText: 'Antwort aus der Planung' })
+          .first()
+          .waitFor({ timeout: 5000 })
+        // Stufe als Knopf: ein Klick schaltet weiter, drei Klicks wieder zurück
+        const knopf = schritte.first().getByRole('button', { name: /^Schritt 1: ab / })
+        const vorher = await knopf.getAttribute('aria-label')
+        await knopf.click()
+        assert.notEqual(await knopf.getAttribute('aria-label'), vorher)
+        await knopf.click()
+        await knopf.click()
+        assert.equal(await knopf.getAttribute('aria-label'), vorher)
+        await schritte.first().getByRole('button', { name: 'Mehr zu Schritt 1' }).click()
+        await schritte
+          .first()
+          .getByRole('checkbox', { name: 'vorher kurz anrufen' })
+          .waitFor({ timeout: 5000 })
       }
     ],
     [

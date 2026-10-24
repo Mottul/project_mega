@@ -1,8 +1,10 @@
 // Kleine Bauteile der Mini-Manual-Oberfläche: Stufe wählen und anzeigen, Zeilen verschieben,
-// Foto einfügen. Fotos laufen nur über api.fotos (main verkleinert, dreht, entfernt Metadaten);
+// Foto einfügen, Seltenes unter „Mehr“. Fotos laufen nur über api.fotos (main verkleinert, dreht, entfernt Metadaten);
 // hier steht nur der Hash.
 
-import { ArrowDown, ArrowUp, ImagePlus, Trash2, X } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ArrowDown, ArrowUp, ChevronRight, ImagePlus, Trash2, X } from 'lucide-react'
+import { Badge } from '@renderer/components/ui/badge'
 import { fotoUrl } from '@shared/fotos'
 import { Button } from '@renderer/components/ui/button'
 import { Select } from '@renderer/components/ui/select'
@@ -34,6 +36,74 @@ export function StufeSelect({
         </option>
       ))}
     </Select>
+  )
+}
+
+/**
+ * Stufe als kleiner Knopf mit den drei Balken: ein Klick schaltet weiter (Bedienung → Betreuung →
+ * Technik → Bedienung). Für Listen, in denen je Zeile eine Auswahl „ab Bedienung“ zu laut wäre.
+ */
+export function StufeKnopf({
+  value,
+  onChange,
+  was
+}: {
+  value: Stufe
+  onChange: (s: Stufe) => void
+  /** für die Beschriftung: „Schritt 3“, „Block“ … */
+  was: string
+}): JSX.Element {
+  const naechste = ((value % 3) + 1) as Stufe
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(naechste)}
+      aria-label={`${was}: ab ${stufeLabel(value)}`}
+      title={`erscheint ab ${stufeLabel(value)} (${STUFEN[value - 1].fuer}) – Klick: ab ${stufeLabel(naechste)}`}
+      className="flex h-7 shrink-0 items-center rounded border border-border px-1.5 hover:bg-muted/60"
+    >
+      <StufeBalken stufe={value} />
+    </button>
+  )
+}
+
+/**
+ * Seltenes eingeklappt („Wichtiges zuerst“): Ein Klick auf „Mehr“ öffnet den Rest; was darin
+ * gesetzt ist, steht zugeklappt als kleine Marke daneben – so verschwindet nichts.
+ */
+export function Mehr({
+  marken,
+  was,
+  children
+}: {
+  marken: string[]
+  /** für die Beschriftung des Knopfs: „Schritt 3“, „Laptop“ … */
+  was: string
+  children: ReactNode
+}): JSX.Element {
+  const [offen, setOffen] = useState(false)
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          aria-expanded={offen}
+          aria-label={`Mehr zu ${was}`}
+          onClick={() => setOffen((v) => !v)}
+          className="flex items-center gap-1 rounded px-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ChevronRight className={cn('size-3.5 transition-transform', offen && 'rotate-90')} />
+          Mehr
+        </button>
+        {!offen &&
+          marken.map((m) => (
+            <Badge key={m} tone="neutral">
+              {m}
+            </Badge>
+          ))}
+      </div>
+      {offen && children}
+    </div>
   )
 }
 

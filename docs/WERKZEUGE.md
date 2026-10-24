@@ -712,6 +712,15 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
   leere Kapitel, Fehler der Verkabelung laut Planung (Port oder Kreis überlastet, zu viele Ports). Bei Fehlern fragt der Export nach.
 - **Fotos** stehen zentriert, die Bildunterschrift mittig darunter; mehrere Foto-Blöcke
   hintereinander stehen nebeneinander (zwei bzw. vier in zwei Spalten, sonst drei).
+- **Wichtiges zuerst:** Sichtbar ist, was man fast immer braucht – im Fehlerfall Frage und
+  Ja-/Nein-Ziel, beim Gerät Rolle, Kurzname, Name, Modell und Standort. Seltenes steht unter
+  **Mehr** (Fall: Bereich und Stufe; Schritt: Foto, Hinweis, „vorher anrufen“, Antwort aus der
+  Planung, Stufe aus dem Modul; Gerät: IP, Hinweis, Signalweg). Was dort gesetzt ist, zeigt
+  zugeklappt eine kleine Marke („Hinweis“, „bespielt 2 Wände“). Die Stufe je Schritt und Block
+  ist ein kleiner Knopf mit drei Balken – ein Klick schaltet Bedienung → Betreuung → Technik.
+- **Was fehlt noch** (oben in der Schublade): Fortschritt über wenige Meilensteine – Projekt,
+  LED-Wall, Geräte, Ein-/Ausschalten, Fehlerfälle, Kontakt, leere Platzhalter, Fehler der
+  Prüfung; abgewählte Kapitel zählen nicht. Ein offener Punkt führt mit einem Klick an seine Stelle.
 - **Vorschau** neben dem Formular: dieselbe Seite wie im PDF, Kapitel für Kapitel. Umschaltbar
   auf **Seiten**: das echte Handbuch-PDF der gewählten Stufe (derselbe Druck wie beim Export,
   mit Fußzeile) Seite für Seite – so sieht man, wo umbrochen wird; die Ansicht springt zur Seite,

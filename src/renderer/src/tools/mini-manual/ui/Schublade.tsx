@@ -1,8 +1,17 @@
-// Schublade des Mini-Manuals: Projekt (Deckblatt), Kapitel an/ab und sortieren, Ausgabe
-// (Passwörter) und die Prüfung vor dem Export. Keine Aktionen hier (CLAUDE.md) – Exporte und
+// Schublade des Mini-Manuals: was noch fehlt (Fortschritt), Projekt (Deckblatt), Kapitel an/ab und
+// sortieren, Ausgabe (Passwörter) und die Prüfung vor dem Export. Keine Aktionen hier (CLAUDE.md) – Exporte und
 // Datei-Menü stehen in der Leiste, Inhalte bearbeitet man auf der Arbeitsfläche.
 
-import { BookOpen, ClipboardCheck, FileCog, ListChecks } from 'lucide-react'
+import { useMemo } from 'react'
+import {
+  BookOpen,
+  Circle,
+  CircleCheck,
+  ClipboardCheck,
+  FileCog,
+  ListChecks,
+  ListTodo
+} from 'lucide-react'
 import { PanelSection } from '@renderer/components/ToolShell'
 import { Badge } from '@renderer/components/ui/badge'
 import { Field } from '@renderer/components/ui/field'
@@ -12,6 +21,7 @@ import { LiveInput } from '@renderer/components/ui/textarea'
 import { cn } from '@renderer/lib/utils'
 import { Griff, useSortable } from '@renderer/components/ui/sortable'
 import { eintraege, kapitel as patchKapitel, verschiebe, zieheNach } from '../aktionen'
+import { fortschritt } from '../fortschritt'
 import { kapitelDef, type Passwoerter } from '../model'
 import type { PruefPunkt } from '../pruefung'
 import { useMiniManual } from '../store'
@@ -201,6 +211,64 @@ function AusgabePanel(): JSX.Element {
   )
 }
 
+/** „Was fehlt noch“: wenige Meilensteine mit Fortschritt; ein Klick führt an die Stelle */
+function FortschrittPanel({
+  punkte,
+  waehle
+}: {
+  punkte: PruefPunkt[]
+  waehle: (a: Auswahl) => void
+}): JSX.Element {
+  const a = useMiniManual((s) => s.anleitung)
+  const liste = useMemo(() => fortschritt(a, punkte), [a, punkte])
+  const fertig = liste.filter((m) => m.erledigt).length
+  return (
+    <PanelSection
+      id="fortschritt"
+      title="Was fehlt noch"
+      icon={ListTodo}
+      summary={
+        fertig === liste.length ? 'alles erledigt' : `${fertig} von ${liste.length} erledigt`
+      }
+    >
+      <div className="flex items-center gap-2" aria-hidden="true">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-primary transition-[width]"
+            style={{ width: `${Math.round((fertig / Math.max(1, liste.length)) * 100)}%` }}
+          />
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {fertig} von {liste.length}
+        </span>
+      </div>
+      <ul className="space-y-1" aria-label="Was fehlt noch">
+        {liste.map((m) => (
+          <li key={m.id}>
+            {m.erledigt ? (
+              <span className="flex items-start gap-2 px-1 py-0.5 text-sm text-muted-foreground">
+                <CircleCheck className="mt-0.5 size-4 shrink-0 text-success" />
+                {m.text}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => waehle(m.ziel)}
+                className="flex w-full items-start gap-2 rounded px-1 py-0.5 text-left text-sm hover:bg-muted/60"
+              >
+                <Circle className="mt-0.5 size-4 shrink-0 text-warning" />
+                <span>
+                  {m.text} <span className="text-primary">→</span>
+                </span>
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </PanelSection>
+  )
+}
+
 function PruefPanel({
   punkte,
   waehle
@@ -265,6 +333,7 @@ export function Schublade({
 }): JSX.Element {
   return (
     <>
+      <FortschrittPanel punkte={punkte} waehle={waehle} />
       <ProjektPanel />
       <KapitelPanel auswahl={auswahl} waehle={waehle} />
       <AusgabePanel />
