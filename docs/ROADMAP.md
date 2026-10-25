@@ -20,10 +20,11 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
    Abstand, [SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)) – als Nächstes kommen u. a.
    pdfjs-dist 6.4.299 und Electron 44.7.0. Eine neue Electron-Hauptversion vor dem Merge an den
    Breaking Changes prüfen.
-2. **App-Aktualisierung** – baut auf der Paketierung in der CI auf: Seit 24.10.2026 baut
-   „Installer bauen“ die Installer je Betriebssystem; es fehlen noch GitHub Releases und
-   `electron-updater` (siehe [Große Umbauten](#große-umbauten)). Danach NDI im Installer (Lizenz
-   des NDI-SDK für die Weitergabe prüfen).
+2. **App-Aktualisierung** – baut auf der Paketierung in der CI auf: „Installer bauen“ baut die
+   Installer je Betriebssystem und hängt sie bei einem Tag `v*` an ein GitHub Release; es fehlt
+   noch `electron-updater` (siehe [Große Umbauten](#große-umbauten)). Danach NDI im Installer
+   (die Lizenz erlaubt die Weitergabe mit Auflagen, die die App noch nicht erfüllt – siehe
+   [NDI.md](NDI.md)).
 
 ## Funktionen
 
@@ -103,9 +104,10 @@ Mini-Manual (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)).
 
 - **App-Aktualisierung** (`electron-updater` über GitHub Releases): Electron mit Chromium und
   alle npm-Pakete kommen heute nur mit einem neuen Installer – selbst aktuell halten sich nur
-  ffmpeg und yt-dlp. Die Installer baut die CI schon („Installer bauen“), es fehlen Releases;
-  Windows warnt ohne Signatur
-  beim Installieren, macOS geht nur mit einem Apple-Entwicklerzertifikat.
+  ffmpeg und yt-dlp. Die Installer baut die CI schon und legt sie bei einem Tag `v*` als
+  GitHub Release ab („Installer bauen“); `electron-updater` braucht dort zusätzlich die
+  `latest*.yml` und `.blockmap`-Dateien. Windows warnt ohne Signatur beim Installieren, macOS
+  geht nur mit einem Apple-Entwicklerzertifikat.
 - **IPC-Vertrag generieren:** ein generischer Preload-Proxy aus `Channels` und ein typisierter
   `handle(Channels.x, fn)`-Wrapper. Neue Kanäle brauchen dann zwei statt vier Stellen, die 31
   `as never`-Casts im Preload entfallen, falsche Handler-Signaturen werden zu Compile-Fehlern.

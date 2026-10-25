@@ -43,8 +43,22 @@ ABI-Abweichung wird erkannt und automatisch neu gebaut.
 **Paketierung:** `npm run package` nimmt nur die Laufzeitdateien mit (Binary, NDI-Runtime-DLL,
 `index.js`/`package.json`, Lizenz) – nicht SDK, `.git` oder Build-Reste. Die DLL liegt neben dem
 Binary, der Zielrechner braucht also keine eigene NDI-Installation. Die Installer aus der CI
-(„Installer bauen“) enthalten NDI **nicht** – dort läuft kein `ndi:setup`; vor einer Weitergabe
-über GitHub die Lizenz des NDI-SDK prüfen.
+(„Installer bauen“, GitHub Releases) enthalten NDI **nicht** – dort läuft kein `ndi:setup`.
+
+**Weitergabe:** Das NDI-SDK ist lizenzgebührenfrei, und die Runtime darf mit der App ausgeliefert
+werden – aber nur mit Auflagen, die die App noch nicht erfüllt (laut
+[NDI-Doku](https://docs.ndi.video/docs/sdk/licensing), Stand Oktober 2026; verbindlich ist der
+Lizenzvertrag im Hauptordner des SDK):
+
+- „NDI® is a registered trademark of Vizrt NDI AB“ im Info-Bereich der App und in der Doku,
+- ein Link zu ndi.video nahe jeder Stelle, an der NDI gewählt wird, dazu in Doku und Website,
+- die Lizenzbedingungen der App decken die Vorgaben des NDI-Lizenzvertrags ab,
+- die Hinweisdatei zu den Fremdbibliotheken des SDK reist mit den NDI-Binärdateien mit (das Setup
+  übernimmt bisher nur `include/` und `lib/`),
+- die mitgelieferte Runtime wird aktuell gehalten.
+
+Für Installer mit NDI müsste die CI außerdem das Binding je System und Architektur selbst bauen
+(Fork klonen, SDK laden, gegen Electron kompilieren) – für macOS also arm64 und x64 getrennt.
 
 > **Warum kein `npm install github:rse/grandiose`?** Neuere npm-Versionen blockieren
 > Install-Skripte fremder Pakete (allow-scripts). Das Paket landet dann ohne NDI-SDK und

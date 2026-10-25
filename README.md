@@ -78,8 +78,9 @@ Alles im Detail: [docs/WERKZEUGE.md](docs/WERKZEUGE.md)
 
 ## Schnellstart
 
-**Anwender:** Installer ausführen – Schritte und die Warnungen bei unsignierten Paketen stehen in
-[docs/INSTALL.md](docs/INSTALL.md). ffmpeg ist im Paket enthalten.
+**Anwender:** Installer für Windows, macOS und Linux unter *Releases* laden und ausführen –
+Schritte und die Warnungen bei unsignierten Paketen stehen in [docs/INSTALL.md](docs/INSTALL.md).
+ffmpeg ist im Paket enthalten.
 
 **Entwicklung** (Node.js ≥ 22.12, kein C++-Compiler nötig):
 

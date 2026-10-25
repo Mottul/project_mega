@@ -53,3 +53,6 @@ schickt sie als eigenen PR.
 5. **Doku:** Version in `README.md` (Technik) und `docs/ENTWICKLUNG.md` (Node-Vorgabe),
    Systemvoraussetzungen in `docs/INSTALL.md`, „Stand der bekannten Lücken“ in
    `docs/SICHERHEIT.md`, `docs/ROADMAP.md` (Bereits erledigt).
+6. **Ausliefern:** Ohne `electron-updater` erreicht ein Electron-Upgrade (Sicherheits-Patches in
+   Chromium) die Anwender erst mit einem neuen Release – nach dem Merge dem Nutzer eins vorschlagen
+   (Version erhöhen, Tag `v*`; `docs/ENTWICKLUNG.md`, „Release veröffentlichen“).
