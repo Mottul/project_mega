@@ -75,6 +75,26 @@ export function readBody(req: IncomingMessage, maxBytes = 100_000): Promise<stri
 /** Request-Handler eines Fernsteuer-Servers (auch von der Fernsteuer-App genutzt). */
 export type RemoteHandler = (req: IncomingMessage, res: ServerResponse) => void
 
+/**
+ * Handler absichern: Wirft er (etwa decodeURIComponent bei kaputter %-Kodierung in der Adresse,
+ * die ein Gerät im WLAN schickt), bekäme die Anfrage sonst nie eine Antwort, und der Fehler
+ * landete nur als uncaughtException im Log. So antwortet der Server mit 500 und läuft weiter.
+ */
+export function safeHandler(logTag: string, handle: RemoteHandler): RemoteHandler {
+  return (req, res) => {
+    try {
+      handle(req, res)
+    } catch (err) {
+      logLine(
+        `[${logTag}] Anfrage fehlgeschlagen:`,
+        err instanceof Error ? err.message : String(err)
+      )
+      if (!res.headersSent) res.writeHead(500)
+      res.end()
+    }
+  }
+}
+
 export interface RemoteHost {
   readonly clients: Set<ServerResponse>
   isRunning(): boolean
@@ -137,9 +157,11 @@ export function createRemoteHost(logTag: string, defaultPort = 0): RemoteHost {
     return new Promise((resolve, reject) => {
       stop()
       currentPort = Math.max(1, Math.min(65535, Math.round(port)))
-      const s = createServer((req, res) => {
-        if (!servePwaAsset(req, res)) handle(req, res)
-      })
+      const s = createServer(
+        safeHandler(logTag, (req, res) => {
+          if (!servePwaAsset(req, res)) handle(req, res)
+        })
+      )
       s.on('error', (err) => {
         server = null
         logLine(`[${logTag}] Serverfehler:`, err.message)
