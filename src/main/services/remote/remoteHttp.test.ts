@@ -7,7 +7,49 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', isPackaged: false }
 }))
 
-const { createSnapshotServer } = await import('./remoteHttp')
+const { createSnapshotServer, safeHandler } = await import('./remoteHttp')
+
+describe('safeHandler', () => {
+  it('beantwortet eine Anfrage mit 500, wenn der Handler wirft – statt sie hängen zu lassen', async () => {
+    const http = createServer(
+      safeHandler('test', (req) => {
+        // wie eine Medien-Adresse mit kaputter %-Kodierung vom Handy
+        decodeURIComponent(req.url ?? '')
+      })
+    )
+    await new Promise<void>((r) => http.listen(0, '127.0.0.1', r))
+    try {
+      const port = (http.address() as AddressInfo).port
+      const res = await fetch(`http://127.0.0.1:${port}/media/x%E0.mp4`, {
+        signal: AbortSignal.timeout(5_000)
+      })
+      expect(res.status).toBe(500)
+      // der Server läuft weiter und beantwortet auch die nächste
+      const zweite = await fetch(`http://127.0.0.1:${port}/media/y%FF`, {
+        signal: AbortSignal.timeout(5_000)
+      })
+      expect(zweite.status).toBe(500)
+    } finally {
+      await new Promise((r) => http.close(r))
+    }
+  })
+
+  it('reicht Anfragen sonst unverändert durch', async () => {
+    const http = createServer(
+      safeHandler('test', (_req, res) => {
+        res.writeHead(204)
+        res.end()
+      })
+    )
+    await new Promise<void>((r) => http.listen(0, '127.0.0.1', r))
+    try {
+      const port = (http.address() as AddressInfo).port
+      expect((await fetch(`http://127.0.0.1:${port}/`)).status).toBe(204)
+    } finally {
+      await new Promise((r) => http.close(r))
+    }
+  })
+})
 
 interface Snap {
   connected: boolean

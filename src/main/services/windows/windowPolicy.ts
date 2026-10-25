@@ -36,9 +36,22 @@ export function isAppPage(url: string | undefined, pages: AppPages): boolean {
   }
   if (pages.devOrigin) return u.origin === pages.devOrigin
   if (u.protocol !== 'file:') return false
-  // Laufwerksbuchstabe und Groß-/Kleinschreibung können je nach Quelle abweichen
-  const path = (p: string): string => decodeURIComponent(p).toLowerCase()
-  return path(u.pathname) === path(new URL(pages.indexFile).pathname)
+  const path = filePathKey(u.pathname)
+  return path !== null && path === filePathKey(new URL(pages.indexFile).pathname)
+}
+
+/**
+ * Pfad einer file:-Adresse zum Vergleichen: dekodiert und kleingeschrieben (Laufwerksbuchstabe
+ * und Groß-/Kleinschreibung können je nach Quelle abweichen). null bei kaputter %-Kodierung:
+ * decodeURIComponent wirft dann – und ein Wächter, der wirft, verhindert nichts. Vorher ging so
+ * die Navigation zu `file:///C:/x%E0.html` durch, samt Programmbrücke für die fremde Seite.
+ */
+function filePathKey(pathname: string): string | null {
+  try {
+    return decodeURIComponent(pathname).toLowerCase()
+  } catch {
+    return null
+  }
 }
 
 /**

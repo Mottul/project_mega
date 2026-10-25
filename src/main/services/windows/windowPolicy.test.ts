@@ -45,6 +45,12 @@ describe('isAppPage', () => {
     expect(isAppPage(undefined, built)).toBe(false)
   })
 
+  it('wirft nie, auch nicht bei kaputter %-Kodierung (sonst ginge die Navigation durch)', () => {
+    expect(() => isAppPage('file:///C:/x%E0.html', built)).not.toThrow()
+    expect(isAppPage('file:///C:/x%E0.html', built)).toBe(false)
+    expect(isAppPage('file:///E:/Mottulbox/out/renderer/index.html%', built)).toBe(false)
+  })
+
   it('erkennt beim Entwickeln nur den Vite-Server', () => {
     expect(isAppPage('http://localhost:5173/#/output', dev)).toBe(true)
     expect(isAppPage('http://localhost:5174/', dev)).toBe(false)

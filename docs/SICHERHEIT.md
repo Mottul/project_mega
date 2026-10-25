@@ -125,7 +125,9 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
   jedes andere Fenster bekommt es nie, auch nicht als Abfrage (sonst sähe sie die Namen aller
   Mikrofone). Kamera, Standort, Benachrichtigungen usw. nie. Regeln rein und getestet in
   `windowPolicy.ts`, in der echten App per E2E `security` und `rta` (dieser ohne
-  `--use-fake-ui-for-media-stream`, das die Regel umginge).
+  `--use-fake-ui-for-media-stream`, das die Regel umginge). Die Regeln werfen nie: Vor Oktober
+  2026 warf `isAppPage` bei kaputter %-Kodierung (`file:///C:/x%E0.html`), und der Wächter ließ die
+  Navigation samt App-API durch – jetzt per Unit- und E2E-Test abgedeckt.
 - **Shell-Aufrufe:** „Ordner öffnen“ (`shell.openPath` startet Dateien mit ihrem Programm) nur
   für vorhandene lokale Ordner; „Im Ordner zeigen“ nur mit absolutem Pfad (Netzwerkpfade erlaubt,
   es startet nichts).
@@ -185,7 +187,9 @@ eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhän
 - **Fernsteuerungen** sind standardmäßig aus, im lokalen Netz erreichbar und ohne Passwort – in
   fremden Netzen nur bei Bedarf einschalten. Befehle vom Handy werden Feld für Feld geprüft (nur
   bekannte Befehle, Werte begrenzt; das Idle-Bild bleibt dem Rechner vorbehalten), Nutzertexte in
-  den Steuerseiten escaped.
+  den Steuerseiten escaped. Wirft ein Handler (etwa bei kaputter %-Kodierung in einer
+  Medien-Adresse), antwortet der Server mit einem Fehler und läuft weiter (`safeHandler` in
+  `remoteHttp.ts`), statt die Anfrage hängen zu lassen.
 - **Uploads vom Handy** (Video-Player): höchstens 8 GB je Datei, danach müssen 2 GB frei bleiben –
   geprüft vorab und beim Schreiben, denn die Größenangabe kann fehlen oder falsch sein.
   Abgebrochene oder abgewiesene Uploads hinterlassen keine Dateien.

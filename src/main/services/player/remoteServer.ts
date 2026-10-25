@@ -299,7 +299,16 @@ export function handleRemote(req: IncomingMessage, res: ServerResponse): void {
   }
   if (path === '/api/upload' && req.method === 'POST') return receiveUpload(req, res)
   if (path.startsWith('/media/')) {
-    return serveMedia(req, res, decodeURIComponent(path.slice('/media/'.length)))
+    // kaputte %-Kodierung vom Handy: decodeURIComponent wirft -> ungültige Anfrage
+    let name: string
+    try {
+      name = decodeURIComponent(path.slice('/media/'.length))
+    } catch {
+      res.writeHead(400)
+      res.end('bad request')
+      return
+    }
+    return serveMedia(req, res, name)
   }
   res.writeHead(404)
   res.end('not found')

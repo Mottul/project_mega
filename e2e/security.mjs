@@ -67,6 +67,18 @@ try {
       }
     ],
     [
+      'Hauptfenster: auch mit kaputter %-Kodierung im Dateinamen (der Wächter darf nicht werfen)',
+      async () => {
+        await resetShell()
+        const url = await tryNavigate(
+          page,
+          pathToFileURL(foreignPage).href.replace('seite.html', 'seite%E0.html')
+        )
+        assert.match(url, /index\.html#\/$/)
+        assert.deepEqual(await shellCalls(), [])
+      }
+    ],
+    [
       'window.open: kein neues Fenster; nur http(s) geht an den Browser',
       async () => {
         await resetShell()
