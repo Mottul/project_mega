@@ -316,6 +316,16 @@ Der erste `package`-Lauf lädt electron-builder einmalig in den npx-Cache, nicht
   selbst bei einem Tag `v*` und in Pull Requests, die `electron-builder.yml`, den Ablauf oder
   `e2e/paket.mjs` ändern. Ohne NDI: Das Binding richtet `npm run ndi:setup` nur lokal ein – wer
   NDI braucht, baut Windows weiter selbst.
+- **Release veröffentlichen:** Bei einem Tag `v*` hängt der Job „Release“ desselben Ablaufs die
+  vier Installer an ein GitHub Release – erst wenn alle drei Systeme gebaut und zur Probe
+  gestartet sind, nie ein halbes. Der Text entsteht aus den Pull Requests seit dem letzten Tag;
+  eine Version mit Bindestrich (`v1.0.0-beta.1`) wird Vorabversion. Läuft der Ablauf zum selben
+  Tag noch einmal, ersetzt er nur die Dateien. Ablauf:
+  1. Version in `package.json` per Pull Request erhöhen (`npm version 0.2.0 --no-git-tag-version`
+     ändert auch `package-lock.json`).
+  2. Nach dem Merge auf dem aktuellen `main`: `git tag v0.2.0` und `git push origin v0.2.0`.
+  3. Passt der Tag nicht zur Version in `package.json`, bricht der Ablauf vor dem Bauen ab – dann
+     den Tag löschen (`git push origin :refs/tags/v0.2.0`, `git tag -d v0.2.0`) und neu setzen.
 - **Keine Code-Signierung** (`win.signAndEditExecutable: false` in `electron-builder.yml`): Sonst
   wollte electron-builder jede `.exe` signieren – auch `ffmpeg.exe`/`ffprobe.exe` – und dafür das
   `winCodeSign`-Paket laden, dessen Entpacken unter Windows an macOS-Symlinks scheitert („Dem

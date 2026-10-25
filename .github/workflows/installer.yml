@@ -7,6 +7,8 @@ name: Installer bauen
 #
 # Auslöser: von Hand („Run workflow“), bei einem Versions-Tag v* und in Pull Requests, die die
 # Paketierung ändern – sonst sähe man einen kaputten Installer erst nach dem Merge.
+# Bei einem Tag v* hängt der Job „Release“ die Installer zusätzlich an ein GitHub Release (bleibt,
+# anders als die Artifacts, dauerhaft und lädt ohne Anmeldung).
 on:
   workflow_dispatch:
   push:
@@ -53,6 +55,17 @@ jobs:
         with:
           node-version: '22.x'
           cache: npm
+      # Tag und package.json müssen zusammenpassen, sonst trügen die Installer im Release eine
+      # andere Versionsnummer als das Release selbst – vor dem Bauen, nicht erst nach 45 Minuten
+      - name: Version zum Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [[ "${GITHUB_REF_NAME#v}" != "$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME passt nicht zur Version $version in package.json"
+            exit 1
+          fi
       - run: npm ci
       # ffmpeg wie in ci.yml: je Woche einmal laden, sonst aus dem Cache (evermeet lässt kurz
       # hintereinander keine zwei Downloads zu)
@@ -93,3 +106,54 @@ jobs:
           path: ${{ matrix.dateien }}
           if-no-files-found: error
           retention-days: 30
+
+  # Nur bei einem Tag v*, und erst wenn alle drei Installer gebaut und zur Probe gestartet sind –
+  # scheitert ein System, gibt es kein halbes Release
+  release:
+    name: Release
+    needs: installer
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Als einziger Job mit Schreibrecht (Release anlegen, Dateien hochladen)
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: Mottulbox-*-${{ github.run_number }}
+          path: dist
+          merge-multiple: true
+      - name: Release anlegen
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version=${TAG#v}
+          # Genau diese vier Dateien (Namen aus electron-builder.yml) – sonst entstünde bei einem
+          # leeren Download ein Release ohne Installer
+          dateien=(
+            "dist/Mottulbox-$version-setup.exe"
+            "dist/Mottulbox-$version-arm64.dmg"
+            "dist/Mottulbox-$version-x64.dmg"
+            "dist/Mottulbox-$version.AppImage"
+          )
+          for f in "${dateien[@]}"; do
+            [[ -f "$f" ]] || { echo "::error::$f fehlt"; ls -l dist; exit 1; }
+          done
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # Erneuter Lauf zum selben Tag: Dateien ersetzen, Text und Status bleiben
+            gh release upload "$TAG" "${dateien[@]}" --clobber
+          else
+            # Ein Bindestrich in der Version (v1.0.0-beta.1) macht daraus eine Vorabversion
+            vorab=()
+            if [[ "$version" == *-* ]]; then vorab=(--prerelease); fi
+            gh release create "$TAG" "${dateien[@]}" "${vorab[@]}" --verify-tag \
+              --title "Mottulbox $version" --generate-notes \
+              --notes "Installer für Windows, macOS (Apple Silicon und Intel) und Linux – nicht signiert und ohne NDI. Installation und Warnungen beim ersten Start: [INSTALL.md](https://github.com/$GH_REPO/blob/$TAG/docs/INSTALL.md)"
+          fi
+          echo "### Release $TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/$GH_REPO/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"

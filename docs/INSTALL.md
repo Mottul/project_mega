@@ -14,9 +14,11 @@ von Hand eingerichtet werden.
 | macOS 13 (Ventura) und neuer, Intel           | `Mottulbox-<Version>-x64.dmg`   |
 | Linux (64 Bit)                                | `Mottulbox-<Version>.AppImage`  |
 
-**Woher:** Auf GitHub unter *Actions → Installer bauen* den neuesten grünen Lauf öffnen und unten
-bei *Artifacts* das passende Paket laden (Anmeldung bei GitHub nötig; die Dateien bleiben 30
-Tage). Die Installer aus der CI enthalten **kein NDI** – siehe [NDI.md](NDI.md).
+**Woher:** Auf GitHub unter *Releases* die neueste Version öffnen und unten bei *Assets* das
+passende Paket laden (ohne Anmeldung). Einen Zwischenstand seit dem letzten Release gibt es unter
+*Actions → Installer bauen*: den neuesten grünen Lauf öffnen, unten bei *Artifacts* laden
+(Anmeldung bei GitHub nötig; die Dateien bleiben 30 Tage). Beide enthalten **kein NDI** – siehe
+[NDI.md](NDI.md).
 
 Ältere Systeme (32-Bit-Windows, macOS 12 und älter) unterstützt die zugrunde liegende
 Electron-Version 44 nicht mehr.
