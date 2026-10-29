@@ -5,19 +5,17 @@
 
 import { useEffect, useState } from 'react'
 import { useKiosk } from '@renderer/launcher/kiosk'
-import { AlertTriangle, MonitorPlay, MonitorX, Pause, Play } from 'lucide-react'
-import { Button } from '@renderer/components/ui/button'
+import { AlertTriangle, Pause, Play } from 'lucide-react'
+import { OutputControls, useOutputTarget } from '@renderer/components/OutputControl'
 import { BarDivider, BarToggle, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
 import { Alert } from '@renderer/components/ui/alert'
-import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
 import type {
   AppSettings,
-  DisplayInfo,
   FitMode,
   MediaItem,
   PlayerEncoderStatus,
@@ -44,7 +42,6 @@ export function VideoPlayer(): JSX.Element {
   const [enc, setEnc] = useState<PlayerEncoderStatus | null>(null)
   const [library, setLibrary] = useState<MediaItem[]>([])
   const [pstate, setPstate] = useState<PlayerState>(EMPTY_PLAYER_STATE)
-  const [displays, setDisplays] = useState<DisplayInfo[]>([])
 
   const [wallW, setWallW] = useState(1920)
   const [wallH, setWallH] = useState(1080)
@@ -56,7 +53,8 @@ export function VideoPlayer(): JSX.Element {
   const [blurDarken, setBlurDarken] = useState(0)
   const [loudnorm, setLoudnorm] = useState(false)
   const [loudnormI, setLoudnormI] = useState(-16)
-  const [displayId, setDisplayId] = useState<number | null>(null)
+  const out = useOutputTarget()
+  const setZiel = out.setZiel
 
   const rc = useRemoteControl(api.player, 8088)
   const [saved, setSaved] = useState<SavedPlaylist[]>([])
@@ -69,10 +67,6 @@ export function VideoPlayer(): JSX.Element {
     void api.player.encoders().then(setEnc)
     loadLibrary()
     void api.player.getState().then(setPstate)
-    void api.screen.list().then((list) => {
-      setDisplays(list)
-      setDisplayId((cur) => cur ?? (list.find((d) => !d.primary) ?? list[0])?.id ?? null)
-    })
     // Einstellungen übernehmen – beim Start und wenn ein anderes Fenster oder das Handy sie
     // ändert (z. B. gespeicherte Playlists, Fit-Modus): sonst schriebe dieses Fenster später
     // seinen veralteten Stand zurück.
@@ -86,7 +80,8 @@ export function VideoPlayer(): JSX.Element {
       setLoudnorm(s.player.loudnormEnabled ?? false)
       setLoudnormI(s.player.loudnormI ?? -16)
       setSaved(s.player.savedPlaylists ?? [])
-      if (s.player.outputDisplayId != null) setDisplayId(s.player.outputDisplayId)
+      // gemerktes Ziel (Monitor oder „Als Fenster“) gewinnt über die Vorwahl
+      if (s.player.outputDisplayId != null) setZiel(s.player.outputDisplayId)
     }
     void api.getSettings().then(applySettings)
     const offSettings = api.onSettingsChanged(applySettings)
@@ -98,7 +93,8 @@ export function VideoPlayer(): JSX.Element {
       offLib()
       offState()
     }
-  }, [])
+    // setZiel ist stabil (useState) – die Abhängigkeit löst keinen zweiten Lauf aus
+  }, [setZiel])
 
   const { current, position, duration } = playback
 
@@ -132,13 +128,8 @@ export function VideoPlayer(): JSX.Element {
   }
 
   function fromMonitor(): void {
-    const d = displays.find((x) => x.id === displayId)
+    const d = out.display
     if (d) setWall(Math.round(d.width * d.scaleFactor), Math.round(d.height * d.scaleFactor))
-  }
-
-  async function openOutput(): Promise<void> {
-    if (displayId == null) return
-    await api.player.openOutput(displayId)
   }
 
   async function persistSaved(next: SavedPlaylist[]): Promise<void> {
@@ -175,39 +166,12 @@ export function VideoPlayer(): JSX.Element {
             )
           }
         >
-          <Select
-            size="sm"
-            className="w-64 max-w-full"
-            aria-label="Ausgabe-Monitor"
-            value={displayId ?? ''}
-            onChange={(e) => setDisplayId(Number(e.target.value))}
-          >
-            {displays.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </Select>
-          {pstate.outputOpen ? (
-            <>
-              <Button size="sm" variant="destructive" onClick={() => void api.player.closeOutput()}>
-                <MonitorX className="size-4" /> Vollbild beenden
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => void openOutput()}
-                disabled={displayId == null}
-                title="Ausgabe auf den gewählten Monitor legen"
-              >
-                Monitor wechseln
-              </Button>
-            </>
-          ) : (
-            <Button size="sm" onClick={() => void openOutput()} disabled={displayId == null}>
-              <MonitorPlay className="size-4" /> Vollbild starten
-            </Button>
-          )}
+          <OutputControls
+            target={out}
+            open={pstate.outputOpen}
+            onStart={(ziel) => api.player.openOutput(ziel)}
+            onStop={() => api.player.closeOutput()}
+          />
           <BarDivider />
           <BarToggle
             on={Boolean(ndi.status?.running)}
@@ -233,7 +197,7 @@ export function VideoPlayer(): JSX.Element {
               onWall={setWall}
               onFromMonitor={fromMonitor}
               onFromLedWall={() => void fromLedWall()}
-              canFromMonitor={displayId != null}
+              canFromMonitor={!!out.display}
             />
           )}
           <FitSection

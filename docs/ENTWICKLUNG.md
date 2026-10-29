@@ -131,7 +131,9 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
 - **Renderer nur über `api`** (`@renderer/lib/api`), nie direkt `ipcRenderer`.
 - **Der Hauptprozess ist autoritativ** für alles, was fensterübergreifend laufen muss: Player- und
   Timer-Zustand ticken im main; Ausgabefenster (`#/output`, `#/player-output`, `#/timer-output`,
-  `#/osc-monitor`) und Handy-Seiten spiegeln nur.
+  `#/osc-monitor`) und Handy-Seiten spiegeln nur. Die drei Live-Ausgaben legt
+  `services/windows/outputWindow.ts` an (Vollbild oder Fenster, zweimal Esc); Leiste und
+  Schließen-Knopf kommen aus `components/OutputControl.tsx`.
 - **Kleine Werkzeuge im eigenen Fenster:** `SMALL_TOOLS` in `src/shared/toolWindows.ts` nennt je
   Rechner die Breite (eine Spalte 520 px, zwei Spalten 880 px). Diese Werkzeuge öffnen sich immer
   in einem eigenen Fenster (`openToolWindow` im main: höchstens eines je Werkzeug, Lage und

@@ -227,14 +227,14 @@ try {
       }
     ],
     [
-      'Testbild: Leiste wird live; Esc oder Schließen von außen beendet „Live“',
+      'Testbild: Leiste wird live; zweimal Esc oder Schließen von außen beendet „Live“, einmal Esc nicht',
       async () => {
         await tool('test-patterns')
         assert.equal(await barActive(), false)
         const before = await windowCount()
         // Tastendruck wie vom Bediener: über die Eingabe-Pipeline des Ausgabefensters
         // (Playwrights keyboard.press erreicht 'before-input-event' nicht zuverlässig).
-        const pressEsc = () =>
+        const esc = () =>
           app.evaluate(async ({ BrowserWindow }) => {
             const w = BrowserWindow.getAllWindows().find((x) =>
               x.webContents.getURL().endsWith('#/output')
@@ -249,6 +249,16 @@ try {
             w.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Escape' })
             return true
           })
+        // Ein einzelner Druck lässt die Ausgabe stehen (shared/ausgabe.ts, eine Sekunde); nach der
+        // Pause zählt der nächste wieder als erster – erst der übernächste schließt
+        const pressEsc = async () => {
+          assert.equal(await esc(), true)
+          await new Promise((r) => setTimeout(r, 1300))
+          assert.equal(await barActive(), true, 'ein einzelnes Esc hat geschlossen')
+          assert.equal(await windowCount(), before + 1, 'ein einzelnes Esc hat geschlossen')
+          assert.equal(await esc(), true)
+          return esc()
+        }
         const closeFromOutside = () =>
           app.evaluate(({ BrowserWindow }) => {
             BrowserWindow.getAllWindows()
@@ -279,6 +289,49 @@ try {
           assert.ok(await waitFor(async () => !(await barActive()), 10_000), 'bleibt live')
           assert.ok(await waitFor(async () => (await windowCount()) === before, 10_000))
         }
+      }
+    ],
+    [
+      'Ausgabe „Als Fenster“: kein Vollbild; Knopf und Mauszeiger nur bei Mausbewegung',
+      async () => {
+        await tool('test-patterns')
+        const before = await windowCount()
+        await bar().getByLabel('Ausgabe-Monitor').selectOption('fenster')
+        await bar().getByRole('button', { name: 'Im Fenster starten' }).click()
+        assert.ok(await waitFor(barActive, 10_000), 'Leiste wird nicht live')
+        const out = await waitFor(
+          async () => app.windows().find((p) => p.url().endsWith('#/output')) ?? null,
+          10_000
+        )
+        assert.ok(out, 'Ausgabefenster fehlt')
+        const vollbild = await app.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()
+            .find((x) => !x.isDestroyed() && x.webContents.getURL().endsWith('#/output'))
+            ?.isFullScreen()
+        )
+        assert.equal(vollbild, false, 'als Fenster, nicht im Vollbild')
+        // Der Knopf steht nie im Bild, solange die Maus ruht (auch im NDI-Bild des Timers)
+        const knopf = out.getByTestId('ausgabe-schliessen')
+        await knopf.waitFor({ state: 'attached', timeout: 10_000 })
+        const deckkraft = () => knopf.evaluate((el) => getComputedStyle(el).opacity)
+        const zeiger = () => out.evaluate(() => document.documentElement.style.cursor)
+        assert.ok(
+          await waitFor(async () => (await deckkraft()) === '0', 8_000),
+          'Knopf bleibt ohne Mausbewegung sichtbar'
+        )
+        assert.equal(await zeiger(), 'none', 'Mauszeiger bleibt ohne Bewegung sichtbar')
+        await out.mouse.move(40, 40)
+        await out.mouse.move(60, 60)
+        assert.ok(
+          await waitFor(async () => (await deckkraft()) === '1', 3_000),
+          'Knopf erscheint bei Mausbewegung nicht'
+        )
+        assert.equal(await zeiger(), '')
+        await bar().getByRole('button', { name: 'Fenster schließen' }).click()
+        assert.ok(await waitFor(async () => (await windowCount()) === before, 10_000))
+        assert.ok(await waitFor(async () => !(await barActive()), 5_000))
+        // die folgenden Schritte erwarten wieder einen Monitor
+        await bar().getByLabel('Ausgabe-Monitor').selectOption({ index: 0 })
       }
     ],
     [

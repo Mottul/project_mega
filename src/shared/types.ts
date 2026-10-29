@@ -724,6 +724,11 @@ export interface DisplayInfo {
   primary: boolean
 }
 
+/** Wohin eine Ausgabe (Testbild, Video-Player, Stage-Timer) geht: ein Monitor (`DisplayInfo.id`,
+ *  Vollbild) oder ein normales Fenster – zum Testen an einem Bildschirm oder für die
+ *  Fensteraufnahme in OBS. Prüfen mit `ausgabeZiel()` (shared/ausgabe.ts). */
+export type AusgabeZiel = number | 'fenster'
+
 export type PatternVideoFormat = 'mp4' | 'hap_q'
 
 export interface PatternVideoRequest {
@@ -1482,7 +1487,7 @@ export interface PlayerSettings {
   wallWidth: number
   wallHeight: number
   defaultFit: FitMode
-  outputDisplayId: number | null
+  outputDisplayId: AusgabeZiel | null
   imageDurationSec: number
   transition: TransitionMode
   transitionMs: number

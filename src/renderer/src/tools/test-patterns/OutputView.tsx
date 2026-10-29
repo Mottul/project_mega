@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { api } from '@renderer/lib/api'
 import { windowTitle } from '@shared/brand'
 import type { PatternConfig } from '@shared/types'
+import { OutputCloseButton } from '@renderer/components/OutputControl'
 import { drawPattern, frameKey, isAnimated } from './patterns'
 
-// Inhalt des rahmenlosen Vollbild-Ausgabefensters (#/output). Rendert das Testbild
-// in der NATIVEN Pixelauflösung des Monitors. Animierte Muster (Farbzyklus etc.)
+// Inhalt des Ausgabefensters (#/output). Rendert das Testbild in der NATIVEN Pixelauflösung
+// des Monitors (als Fenster: in dessen Größe). Animierte Muster (Farbzyklus etc.)
 // laufen in einer requestAnimationFrame-Schleife -> live am Beamer/an der Wand.
 export function OutputView(): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -56,41 +57,11 @@ export function OutputView(): JSX.Element {
     }
   }, [config])
 
-  // Vollbild per Escape schließen.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') void api.patterns.close()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
+  // Esc (zweimal) behandelt der main – ein zweiter Handler hier zählte jeden Druck doppelt
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#000' }}>
       <canvas ref={canvasRef} style={{ display: 'block', width: '100vw', height: '100vh' }} />
-      <button
-        onClick={() => void api.patterns.close()}
-        title="Vollbild schließen (Esc)"
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          padding: '6px 10px',
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: 13,
-          color: '#fff',
-          background: 'rgba(0,0,0,0.55)',
-          border: '1px solid rgba(255,255,255,0.4)',
-          borderRadius: 6,
-          cursor: 'pointer',
-          opacity: 0.15,
-          transition: 'opacity 0.15s'
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.15')}
-      >
-        ✕ Schließen (Esc)
-      </button>
+      <OutputCloseButton onClose={() => void api.patterns.close()} />
     </div>
   )
 }

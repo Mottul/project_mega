@@ -1,40 +1,29 @@
-// Rahmenloses Vollbild-Ausgabefenster des Players auf dem gewählten Monitor.
-// Gleiche Strategie wie der Testbildgenerator (echtes fullscreen, pixelgenau auf
-// den Display-Bounds). Der Fensterinhalt (#/player-output) treibt das HTML5-Video.
+// Ausgabefenster des Players: Vollbild auf dem gewählten Monitor oder als Fenster (gemeinsamer
+// Baustein windows/outputWindow.ts, wie Testbild und Timer). Der Fensterinhalt
+// (#/player-output) treibt das HTML5-Video.
 
-import { BrowserWindow, screen } from 'electron'
-import { loadRoute, secureWebPreferences } from '../windows/appWindows'
-import { logLine } from '../log'
+import type { BrowserWindow } from 'electron'
+import type { AusgabeZiel } from '@shared/types'
+import { createOutputWindow } from '../windows/outputWindow'
 import { setOutputOpen } from './playerState'
 
 let win: BrowserWindow | null = null
 
-export function openPlayerOutput(displayId: number): void {
-  const display =
-    screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay()
-  const b = display.bounds
-
+export function openPlayerOutput(ziel: AusgabeZiel): void {
   // Bestehendes Fenster schließen -> sauberer Monitorwechsel.
   closePlayerOutput(false)
 
-  win = new BrowserWindow({
-    x: b.x,
-    y: b.y,
-    width: b.width,
-    height: b.height,
-    frame: false,
-    fullscreen: true,
-    backgroundColor: '#000000',
-    skipTaskbar: true,
-    title: 'Player-Ausgabe',
-    // programmatischer play() (nahtloser Wechsel, entstummt) darf ohne Nutzergeste
-    // laufen; Throttling im Hintergrund aus -> Ausgabe darf nie einschlafen.
-    webPreferences: secureWebPreferences({
-      autoplayPolicy: 'no-user-gesture-required',
-      backgroundThrottling: false
-    })
+  win = createOutputWindow({
+    ziel,
+    titel: 'Player-Ausgabe',
+    route: '/player-output',
+    log: 'player',
+    // Wie alle Ausgaben erst beim zweiten Esc – ein versehentlicher Tastendruck nimmt das
+    // Live-Bild nicht weg
+    onEsc: () => closePlayerOutput(),
+    // programmatischer play() (nahtloser Wechsel, entstummt) darf ohne Nutzergeste laufen
+    webPreferences: { autoplayPolicy: 'no-user-gesture-required' }
   })
-  logLine('[player] Ausgabefenster auf Display', display.id, JSON.stringify(b))
 
   // Nur das AKTUELLE Fenster darf `win` leeren: Electron meldet 'closed' asynchron – beim
   // Monitorwechsel steht dann schon das neue Fenster in `win` und ginge sonst verloren.
@@ -44,11 +33,6 @@ export function openPlayerOutput(displayId: number): void {
     win = null
     setOutputOpen(false)
   })
-  // Bewusst KEIN Esc-zum-Schließen: ein Live-Bild darf nicht versehentlich per
-  // Tastendruck verschwinden. Geschlossen wird über die App (Ausgabe-Schalter)
-  // oder den dezenten Button im Ausgabefenster.
-
-  loadRoute(win, '/player-output')
 
   setOutputOpen(true)
 }

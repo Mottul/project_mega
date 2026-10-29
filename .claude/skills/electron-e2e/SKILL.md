@@ -152,11 +152,19 @@ der nächste Schritt auf dem macOS-Runner noch Attribute des vorigen Werkzeugs.
   und `getByTestId('settings-drawer')` (`data-pinned`); Knöpfe über ihre Namen („Einstellungen“,
   „Schublade lösen“, „Vollbild starten“). Eine Bereichs-Überschrift heißt Titel + Zusammenfassung –
   mit Regex suchen (`{ name: /Anzeige im Browser/ }`).
-- **Tastendruck im Ausgabefenster** (Esc schließt): `win.keyboard.press` erreicht
+- **Tastendruck im Ausgabefenster** (zweimal Esc schließt): `win.keyboard.press` erreicht
   `before-input-event` nicht zuverlässig. Erst warten, bis das Fenster geladen ist
   (`webContents.isLoading()` = false), dann per `app.evaluate` `w.focus()` und
-  `w.webContents.sendInputEvent({ type: 'keyDown' | 'keyUp', keyCode: 'Escape' })` (Beispiel
-  `e2e/layout.mjs`).
+  `w.webContents.sendInputEvent({ type: 'keyDown' | 'keyUp', keyCode: 'Escape' })` – zweimal
+  innerhalb einer Sekunde. Dass ein einzelner Druck NICHT schließt: einmal drücken, 1,3 s warten,
+  Fenster noch da; danach zählt der nächste Druck wieder als erster (Beispiel `e2e/layout.mjs`).
+- **Ausgabe „Als Fenster“ und der Schließen-Knopf:** `bar().getByLabel('Ausgabe-Monitor')
+  .selectOption('fenster')`, Knopf „Im Fenster starten“, danach „Fenster schließen“; Vollbild
+  per `isFullScreen()` im main prüfen. Den Knopf im Ausgabefenster greift man über dessen
+  Playwright-Seite (`app.windows().find((p) => p.url().endsWith('#/output'))`) und
+  `getByTestId('ausgabe-schliessen')`: ohne Mausbewegung `opacity` 0 und Mauszeiger `none`, nach
+  `out.mouse.move(…)` sichtbar. Danach die Auswahl zurück auf einen Monitor stellen – die
+  folgenden Schritte erwarten ihn.
 - **Fenster eines kleinen Werkzeugs** (`#/tool/<id>?fenster=1`): `app.waitForEvent('window')`
   VOR dem Klick anlegen. Zum Suchen in `BrowserWindow.getAllWindows()` immer
   `!x.isDestroyed() && !x.webContents.isDestroyed()` prüfen – ein Fenster, das gerade schließt,

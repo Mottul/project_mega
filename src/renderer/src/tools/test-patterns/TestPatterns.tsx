@@ -1,25 +1,18 @@
 import { useEffect, useState } from 'react'
-import {
-  Bookmark,
-  Film,
-  Image as ImageIcon,
-  LayoutGrid,
-  MonitorPlay,
-  MonitorX,
-  Ratio
-} from 'lucide-react'
+import { Bookmark, Film, Image as ImageIcon, LayoutGrid, Ratio } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Input } from '@renderer/components/ui/input'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Progress } from '@renderer/components/ui/progress'
 import { Select } from '@renderer/components/ui/select'
+import { OutputControls, useOutputTarget } from '@renderer/components/OutputControl'
 import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { api } from '@renderer/lib/api'
 import {
   DEFAULT_PATTERN_CONFIG,
-  type DisplayInfo,
+  type AusgabeZiel,
   type PatternConfig,
   type PatternPreset,
   type PatternVideoFormat
@@ -61,8 +54,7 @@ async function renderPngBytes(cfg: PatternConfig): Promise<Uint8Array> {
 
 export function TestPatterns(): JSX.Element {
   const [config, setConfig] = useState<PatternConfig>(DEFAULT_PATTERN_CONFIG)
-  const [displays, setDisplays] = useState<DisplayInfo[]>([])
-  const [displayId, setDisplayId] = useState<number | null>(null)
+  const out = useOutputTarget()
   const [outputOpen, setOutputOpen] = useState(false)
   // Nur das Fenster, das die Ausgabe geöffnet hat, spiegelt seine Änderungen hinein – sonst
   // schöbe ein zweites Testbild-Fenster beim „Ausgabe offen“-Broadcast seine eigene Einstellung
@@ -80,13 +72,8 @@ export function TestPatterns(): JSX.Element {
   const [selectedPreset, setSelectedPreset] = useState('')
   const tone = useTestTone()
 
-  // Monitore + Presets laden; bevorzugt einen nicht-primaeren (Beamer/Wand) vorauswaehlen
+  // Presets laden (die Monitore lädt useOutputTarget)
   useEffect(() => {
-    void api.screen.list().then((list) => {
-      setDisplays(list)
-      const target = list.find((d) => !d.primary) ?? list[0]
-      setDisplayId(target?.id ?? null)
-    })
     void api.getSettings().then((s) => setPresets(s.patternPresets ?? []))
     // Presets aus einem anderen Testbild-Fenster übernehmen (sonst überschriebe dieses sie)
     const offSettings = api.onSettingsChanged((s) => setPresets(s.patternPresets ?? []))
@@ -154,13 +141,12 @@ export function TestPatterns(): JSX.Element {
   }
 
   function fromMonitor(): void {
-    const d = displays.find((x) => x.id === displayId)
+    const d = out.display
     if (d) setRes(Math.round(d.width * d.scaleFactor), Math.round(d.height * d.scaleFactor))
   }
 
-  async function showFullscreen(): Promise<void> {
-    if (displayId == null) return
-    await api.patterns.open(config, displayId)
+  async function showFullscreen(ziel: AusgabeZiel): Promise<void> {
+    await api.patterns.open(config, ziel)
     setOutputOpen(true)
     setOwnsOutput(true)
     setNote(null)
@@ -266,44 +252,13 @@ export function TestPatterns(): JSX.Element {
             </>
           }
         >
-          <Select
-            size="sm"
-            className="w-64 max-w-full"
-            aria-label="Ausgabe-Monitor"
-            value={displayId ?? ''}
-            onChange={(e) => setDisplayId(Number(e.target.value))}
-          >
-            {displays.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </Select>
-          {outputOpen ? (
-            <>
-              <Button size="sm" variant="destructive" onClick={() => void closeFullscreen()}>
-                <MonitorX className="size-4" /> Vollbild beenden
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => void showFullscreen()}
-                disabled={displayId == null}
-                title="Testbild auf den gewählten Monitor legen"
-              >
-                Monitor wechseln
-              </Button>
-            </>
-          ) : (
-            <Button
-              size="sm"
-              onClick={() => void showFullscreen()}
-              disabled={displayId == null}
-              title="Pixelgenau in der nativen Auflösung des Monitors; Esc im Ausgabefenster beendet die Anzeige"
-            >
-              <MonitorPlay className="size-4" /> Vollbild starten
-            </Button>
-          )}
+          <OutputControls
+            target={out}
+            open={outputOpen}
+            onStart={showFullscreen}
+            onStop={closeFullscreen}
+            hint="Pixelgenau in der nativen Auflösung des Monitors."
+          />
           <BarDivider />
           <ToneToggle tone={tone} />
         </ToolBar>
@@ -549,12 +504,7 @@ export function TestPatterns(): JSX.Element {
                     {r.label}
                   </Button>
                 ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fromMonitor}
-                  disabled={displayId == null}
-                >
+                <Button variant="ghost" size="sm" onClick={fromMonitor} disabled={!out.display}>
                   Vom Monitor
                 </Button>
               </div>

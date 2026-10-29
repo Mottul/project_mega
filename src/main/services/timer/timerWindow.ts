@@ -1,35 +1,24 @@
-// Rahmenloses Vollbild-Ausgabefenster des Stage-Timers (Referentenmonitor).
-// Gleiche Strategie wie Testbild/Player: echtes fullscreen auf den Bounds des
-// Zielmonitors. backgroundThrottling aus -> Uhr/Timer ticken auch dann weiter,
-// wenn das Fenster nicht fokussiert ist.
+// Ausgabefenster des Stage-Timers (Referentenmonitor): Vollbild auf dem gewählten Monitor oder als
+// Fenster (gemeinsamer Baustein windows/outputWindow.ts, wie Testbild und Player – auch ohne
+// Drosselung, Uhr/Timer ticken weiter, wenn das Fenster nicht fokussiert ist).
 
-import { BrowserWindow, screen } from 'electron'
-import { loadRoute, secureWebPreferences } from '../windows/appWindows'
-import { logLine } from '../log'
+import type { BrowserWindow } from 'electron'
+import type { AusgabeZiel } from '@shared/types'
+import { createOutputWindow } from '../windows/outputWindow'
 import { setTimerOutputOpen } from './stageTimer'
 
 let win: BrowserWindow | null = null
 
-export function openTimerOutput(displayId: number): void {
-  const display =
-    screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay()
-  const b = display.bounds
-
+export function openTimerOutput(ziel: AusgabeZiel): void {
   closeTimerOutput(false)
 
-  win = new BrowserWindow({
-    x: b.x,
-    y: b.y,
-    width: b.width,
-    height: b.height,
-    frame: false,
-    fullscreen: true,
-    backgroundColor: '#000000',
-    skipTaskbar: true,
-    title: 'Stage-Timer',
-    webPreferences: secureWebPreferences({ backgroundThrottling: false })
+  win = createOutputWindow({
+    ziel,
+    titel: 'Stage-Timer',
+    route: '/timer-output',
+    log: 'timer',
+    onEsc: () => closeTimerOutput()
   })
-  logLine('[timer] Ausgabefenster auf Display', display.id, JSON.stringify(b))
 
   // Nur das AKTUELLE Fenster darf `win` leeren: Electron meldet 'closed' asynchron – beim
   // Monitorwechsel steht dann schon das neue Fenster in `win` und ginge sonst verloren.
@@ -39,11 +28,6 @@ export function openTimerOutput(displayId: number): void {
     win = null
     setTimerOutputOpen(false)
   })
-  win.webContents.on('before-input-event', (_e, input) => {
-    if (input.type === 'keyDown' && input.key === 'Escape') closeTimerOutput()
-  })
-
-  loadRoute(win, '/timer-output')
 
   setTimerOutputOpen(true)
 }
