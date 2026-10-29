@@ -17,9 +17,8 @@ beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 1. **Update-PRs von Dependabot** jeden Montag durchsehen und nach grüner CI mergen (7 Tage
-   Abstand, [SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)) – als Nächstes kommen u. a.
-   pdfjs-dist 6.4.299 und Electron 44.7.0. Eine neue Electron-Hauptversion vor dem Merge an den
-   Breaking Changes prüfen.
+   Abstand, [SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)). Eine neue Electron-Hauptversion vor
+   dem Merge an den Breaking Changes prüfen.
 2. **App-Aktualisierung** – baut auf der Paketierung in der CI auf: „Installer bauen“ baut die
    Installer je Betriebssystem und hängt sie bei einem Tag `v*` an ein GitHub Release; es fehlt
    noch `electron-updater` (siehe [Große Umbauten](#große-umbauten)). Danach NDI im Installer
@@ -93,8 +92,6 @@ Mini-Manual (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)).
 
 ### Sicherheit
 
-- **Letzte `npm audit`-Meldungen** (Tailwind-3-Kette, nur Build-Zeit) verschwinden mit
-  [Tailwind 4](#upgrades).
 - **PIN/Token für die Fernsteuerungen** (optional): Sie sind ohne Passwort; Befehle werden
   geprüft, Uploads begrenzt – wer im selben Netz ist, kann aber steuern.
 - **CSP ohne `'unsafe-inline'`** für Skripte im Produktiv-Build; braucht eine eigene Dev-CSP, weil
@@ -130,10 +127,10 @@ Mini-Manual (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)).
 
 - **React 18 → 19** – mechanisch: 160× globales `JSX.Element` → `React.JSX.Element`.
 - **Tailwind 3 → 4** – eigene Tokens und die `light:`-Variante auf `@theme`/`@custom-variant`
-  umstellen; postcss/autoprefixer entfallen, ebenso die letzten `npm audit`-Meldungen
-  (`braces`-Kette).
+  umstellen; postcss/autoprefixer entfallen.
 - **lucide-react 0.577 → 1.x** – Icon-Umbenennungen prüfen.
-- **Beobachten:** Vite 8 (electron-vite unterstützt bis Vite 7), TypeScript 7 („tsgo“).
+- **Beobachten:** Vite 8 (electron-vite 6 kann es schon; offen sind @vitejs/plugin-react und
+  vitest), TypeScript 7 („tsgo“).
 
 ## Bereits erledigt
 

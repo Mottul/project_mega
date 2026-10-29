@@ -1,14 +1,14 @@
 import { resolve } from 'path'
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
+import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
 // main + preload werden als CommonJS gebaut (kein "type":"module" in package.json),
 // damit better-sqlite3 (nativ, CJS) per require und pdfjs-dist (ESM) per dynamischem
 // import() problemlos genutzt werden koennen. Beide sind in `dependencies` und werden
-// via externalizeDepsPlugin NICHT gebundelt, sondern zur Laufzeit aus node_modules geladen.
+// NICHT gebundelt, sondern zur Laufzeit aus node_modules geladen (`build.externalizeDeps`,
+// bei main und preload ab Werk an – das frühere externalizeDepsPlugin ist veraltet).
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
         // Optionales NDI-Binding (bewusst NICHT in dependencies; wird zur Laufzeit
@@ -21,7 +21,6 @@ export default defineConfig({
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
     resolve: {
       alias: { '@shared': resolve('src/shared') }
     }
