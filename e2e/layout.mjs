@@ -140,6 +140,10 @@ const windowCount = () =>
 
 async function tool(id) {
   await openRoute(page, '/')
+  // openRoute setzt nur den Hash: Erst warten, bis die Leiste des vorigen Werkzeugs weg ist (die
+  // Startseite hat keine) – sonst liest der Schritt auf langsamen Runnern noch die alte Leiste
+  // (macOS-CI: Video-Konverter meldete data-kind „output“ des Video-Players)
+  await bar().waitFor({ state: 'detached', timeout: 15_000 })
   await openRoute(page, `/tool/${id}`)
   await bar().waitFor({ timeout: 15_000 })
 }
