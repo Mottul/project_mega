@@ -18,6 +18,18 @@ npm audit fix --before <Datum vor 7 Tagen>
 npm audit --omit=dev                  # Laufzeit: muss ohne Befund bleiben
 ```
 
+- **Electron fehlt in `--omit=dev`** (devDependency), ist aber die Laufzeit der App – immer auch
+  `npm audit` ansehen. Electron ist exakt festgelegt, deshalb schlägt `npm audit` nur die neueste
+  Version vor (`--force`). Die Meldung selbst nennt die korrigierte Version je Linie
+  (`gh api advisories/<GHSA-…> --jq .vulnerabilities`, ohne führenden Schrägstrich unter Git Bash) –
+  oft eine ältere Patch-Version, die die 7 Tage schon erfüllt (eMudhra-Zertifikate, Oktober 2026:
+  `npm audit` nannte 44.10.0 von vor 2 Tagen, behoben war es seit 44.9.1).
+  `npm install -D electron@<version> --save-exact --before <Datum>`.
+- **electron-vite:** main und preload lassen Abhängigkeiten ab Werk ungebündelt
+  (`build.externalizeDeps`, das `externalizeDepsPlugin` ist veraltet). Bei einem Update der
+  Bauwerkzeuge die gebauten Dateien von main und preload (index.js unter out/) vorher und nachher
+  vergleichen (`cmp`) – gleich = kein Risiko für die App.
+
 - Install-Skripte laufen nie (`.npmrc`: `ignore-scripts=true`). Nach einem Electron-Update fehlt
   deshalb die Binary, bis `npm run dev`/`e2e` (oder `npm run electron:bin`) sie holt.
 - **Neues Paket mit Install-Skript?** Prüfen, ob es ohne läuft (`npm ci` hat es nie ausgeführt).

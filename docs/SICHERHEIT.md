@@ -94,16 +94,15 @@ durchgehen – beim Schritt 42 → 44 z. B. starten Datei-Dialoge ohne Startpfad
 Prüfen mit `npm audit` (alles) bzw. `npm audit --omit=dev` (nur Laufzeit-Abhängigkeiten – Electron
 selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
 
-**Stand 11. Oktober 2026** (unverändert seit 9. Oktober) – nach den Updates auf Electron 44.5.1, better-sqlite3 13.0.3,
-eslint 10.11.0, typescript-eslint 8.71.0, prettier 3.9.9 u. a. (samt Unterabhängigkeiten, z. B.
-`source-map-js` 1.2.2):
+**Stand 29. Oktober 2026** – nach den Updates auf Electron 44.9.3, electron-vite 6.0.0 und den
+Unterabhängigkeiten `undici` 7.30.1 (lädt Electron bei der Installation), `zod` 4.6.7 (ESLint-Regeln)
+und `postcss-selector-parser` 6.1.5 (Tailwind):
 
-- `npm audit --omit=dev`: **keine Lücken**; Electron 44.5.1 enthält die Chromium-/V8-Korrekturen
-  vom 30. September (dieselben wie 42.11.10).
-- `npm audit`: **7 Meldungen der Tailwind-3-Kette** (`braces` → `micromatch`/`fast-glob`/`chokidar`
-  sowie `postcss-selector-parser` → `postcss-nested`, alle unter `tailwindcss`). Sie betreffen nur
-  den Build, der ausschließlich die eigenen Quelldateien verarbeitet, und verschwinden erst mit
-  Tailwind 4 (siehe [Roadmap](ROADMAP.md#upgrades)).
+- `npm audit --omit=dev` und `npm audit`: **keine Lücken**.
+- Electron 44.9.3 enthält die Sperre der kompromittierten eMudhra-Zwischenzertifikate
+  ([GHSA-jr5w-w6x2-84p9](https://github.com/advisories/GHSA-jr5w-w6x2-84p9), ab 44.9.1) – vorher
+  hätte ein Angreifer im selben Netz mit einem solchen Zertifikat einen HTTPS-Server der App
+  vortäuschen können (ffmpeg-/yt-dlp-Aktualisierung) – und die Chromium-/V8-Korrekturen aus 44.9.3.
 
 ## Die App
 
