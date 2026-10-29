@@ -52,6 +52,11 @@ Helfer in `e2e/harness.mjs`: `launchApp`, `openRoute`, `waitFor` (statt `sleep`)
 `stubConfirmSequence`, `holdConfirm`/`resolveConfirm`, `openBrowserWindow`, `findFfmpeg`,
 `portFree`, `Skip` (Schritt überspringen), `runSteps` (✓/✗/–, Exit-Code 1 bei Fehlern).
 
+`openRoute` setzt nur den Hash und wartet nicht aufs Rendern. Beim Wechsel zwischen Werkzeugen
+deshalb erst warten, bis die alte Leiste weg ist (`getByTestId('tool-bar').waitFor({ state:
+'detached' })` nach `openRoute(page, '/')`, Muster `tool()` in `e2e/layout.mjs`) – sonst liest
+der nächste Schritt auf dem macOS-Runner noch Attribute des vorigen Werkzeugs.
+
 ## Was sich bewährt hat (jeweils schon in Skripten gelöst)
 
 - **Zustand über die Brücke setzen** statt klicken: `page.evaluate(() => window.api.…)`.
