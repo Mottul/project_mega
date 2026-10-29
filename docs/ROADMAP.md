@@ -30,6 +30,12 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Bestehende Werkzeuge ausbauen
 
+- **Drucken und PDF einheitlich** (LED-Wall, Packliste, Mini-Manual): Heute heißt der Knopf je
+  Werkzeug anders („PDF exportieren“, „Handbuch (PDF)“, „Kurzkarte (A5)“), die Optionen liegen mal
+  in der Leiste (LED-Wall: Seitenformat), mal in der Schublade (Packliste: Blöcke zusammenhalten,
+  Mini-Manual: Passwörter), und alle führen nur in den Speichern-Dialog. Ziel: überall derselbe
+  Knopf an derselben Stelle der Leiste, der direkt zum Druckdialog führt (Drucker wählen oder als
+  PDF speichern); Optionen einheitlich im Abschnitt „PDF“ der Schublade.
 - **OSC-Steuerung**
   - **MadMapper-Vorlagen** (Surfaces, Medien, Cues) – bisher gibt es nur Beispiel-Kacheln.
   - **„Restzeit aus OSC-Position“:** Anzeige-Modus, der aus der eingehenden MadMapper-Position
@@ -49,6 +55,10 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   Texttafeln, Logo, LUT, Vorlagen und Transparenz (HAP Alpha/ProRes 4444); offen aus Phase 2: die
   4:4:4-Zwischenstufe für ProRes/HAP-Ziele messen und den Neustart des Players an der Naht einer
   nahtlosen Schleife prüfen.
+- **Ausgabefenster ohne sichtbaren Knopf** (Stage-Timer, Testbild): Oben rechts steht im Vollbild
+  dauerhaft „✕ Schließen (Esc)“ mit 15 % Deckkraft – auf Bühnenmonitor und LED-Wand sichtbar, im
+  Testbild störend. Nur bei Mausbewegung einblenden und nach kurzer Zeit wieder ausblenden; Esc
+  schließt weiter (der Video-Player zeigt keinen Knopf).
 - **Stage-Timer:** Teleprompter (scrollender Text auf dem Referentenmonitor); Steuerung per OSC
   (Start/Pause/±1 min aus Companion oder Stream Deck – heute nur über die HTTP-Fernsteuerung).
 - **Testbildgenerator:** AV-Sync auch als Video mit Ton exportieren (für Medienserver und Player
@@ -59,6 +69,12 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Neue Werkzeuge
 
+- **ATEM-Steuerung** im Stil von „Mix Effect Pro“: Blackmagic-ATEM-Mischer vom Laptop oder Tablet
+  bedienen – frei angeordnetes Bedienfeld mit mehreren Seiten (Programm/Vorschau, Cut/Auto,
+  Übergänge, Keyer, DSK, Makros, Media-Player, Audio) mit Rückmeldung vom Mischer (Tally, aktive
+  Quelle). Anbindung über das ATEM-Protokoll (UDP 9910, z. B. Bibliothek `atem-connection`, MIT).
+  Verzahnt mit dem Bedienfeld-Editor der OSC-Steuerung, der Handy-Fernsteuerung und dem
+  Bedienfeld-Kapitel im Mini-Manual. Zum Testen braucht es einen ATEM-Mischer.
 - **ArtNet/sACN-Tester** (DMX übers Netz senden, Node-Discovery) und **DMX-Universum-Planer**
   (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem DMX-Dip-Schalter.
 - **Rechner:** IP-/Subnetz (Dante, NDI, AV-over-IP – passend zum Netzwerk-Scanner),
