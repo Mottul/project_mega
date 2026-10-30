@@ -21,6 +21,7 @@ import type {
   PdfExportResult,
   PdfPageOptions,
   ConvertJob,
+  AusgabeZiel,
   DisplayInfo,
   FitMode,
   ConvertCapabilities,
@@ -414,8 +415,8 @@ export interface ToolboxApi {
   }
 
   patterns: {
-    /** Vollbild-Ausgabefenster auf dem gewaehlten Monitor oeffnen/aktualisieren. */
-    open(config: PatternConfig, displayId: number): Promise<void>
+    /** Ausgabefenster öffnen (Vollbild auf dem Monitor oder als Fenster) bzw. dorthin wechseln. */
+    open(config: PatternConfig, ziel: AusgabeZiel): Promise<void>
     update(config: PatternConfig): Promise<void>
     close(): Promise<void>
     /** Aktuelle Config (das Ausgabefenster holt sie beim Start). */
@@ -465,7 +466,8 @@ export interface ToolboxApi {
     command(cmd: PlayerCommand): Promise<void>
     /** Vom Ausgabefenster: aktuelle Position/Dauer melden. */
     report(positionSec: number, durationSec: number): Promise<void>
-    openOutput(displayId: number): Promise<void>
+    /** Ausgabe öffnen (Vollbild auf dem Monitor oder als Fenster); das Ziel wird gemerkt. */
+    openOutput(ziel: AusgabeZiel): Promise<void>
     closeOutput(): Promise<void>
     onState(cb: (state: PlayerState) => void): () => void
     onTick(cb: (tick: PlayerTick) => void): () => void
@@ -495,8 +497,8 @@ export interface ToolboxApi {
     /** Aktueller Timer-Zustand (Steuer-UI und Ausgabefenster holen ihn beim Start). */
     getState(): Promise<StageTimerState>
     command(cmd: TimerCommand): Promise<void>
-    /** Vollbild-Timeranzeige auf dem gewählten Monitor öffnen/schließen. */
-    openOutput(displayId: number): Promise<void>
+    /** Timeranzeige öffnen (Vollbild auf dem Monitor oder als Fenster) bzw. schließen. */
+    openOutput(ziel: AusgabeZiel): Promise<void>
     closeOutput(): Promise<void>
     onState(cb: (state: StageTimerState) => void): () => void
     onTick(cb: (tick: StageTimerTick) => void): () => void

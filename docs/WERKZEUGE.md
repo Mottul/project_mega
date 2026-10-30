@@ -31,6 +31,14 @@ Jedes Werkzeug ist gleich aufgebaut:
   Live-Ausgabe zeigen dort ihren Auftrag (Video-Konverter: Ziel, Ordner, „Konvertieren“;
   Video-Generator: „Video erzeugen“; Handbücher: Import) – **bernsteinfarben** mit „Läuft“,
   solange er läuft.
+- **Ausgaben** (Testbild, Video-Player, Stage-Timer) verhalten sich gleich: In der Auswahl stehen
+  die Monitore und **„Als Fenster“** – dann öffnet sich statt des Vollbilds ein normales Fenster
+  auf dem Bildschirm der App, halb so groß wie der Monitor (zum Testen an einem Bildschirm oder
+  für die Fensteraufnahme in OBS). „Monitor wechseln“ legt eine laufende Ausgabe um. Jedes
+  Ausgabefenster steht in der Taskleiste. **Zweimal Esc** (innerhalb einer Sekunde) schließt es –
+  ein versehentlicher Tastendruck nimmt das Bild nicht weg. Der Knopf „✕ Schließen“ und der
+  Mauszeiger erscheinen nur, wenn die Maus bewegt wird, und verschwinden nach 3 s wieder – auf
+  Bühnenmonitor, LED-Wand und im NDI-Bild steht nichts davon.
 - **Schublade links** mit den Einstellungen: Bereiche mit Symbol, Titel und einer Zusammenfassung
   der Werte, einzeln auf- und zuklappbar; längere Erklärungen hinter dem **ⓘ**. Mit der **Nadel**
   angeheftet schiebt sie die Arbeitsfläche zur Seite (zum Einrichten), gelöst schwebt sie darüber
@@ -124,8 +132,8 @@ Playlist-Player für LED-Wände und Beamer.
   angewandt wie im [Video-Konverter](#video-konverter). Gilt für neue Importe; „Vorhandene neu
   einbacken“ bringt die Bibliothek auf die aktuelle Einstellung (bereits passende Medien werden
   übersprungen, zwei Fassungen desselben Clips laufen zu einer zusammen).
-- **Ausgabe-Leiste:** Ausgabe-Monitor, Vollbild starten/beenden („Monitor wechseln“ legt die
-  laufende Ausgabe um), NDI und Handy-Fernsteuerung ein/aus, rechts der laufende Titel. Die
+- **Ausgabe-Leiste:** Ausgabe-Monitor oder „Als Fenster“, Vollbild starten/beenden („Monitor
+  wechseln“ legt die laufende Ausgabe um, siehe [Ausgaben](#startbildschirm--bedienung)), NDI und Handy-Fernsteuerung ein/aus, rechts der laufende Titel. Die
   Wand-Auflösung (Eingabe, Vorgabe, „Vom Monitor“ oder „Aus LED-Wall“ – die im Konfigurator
   gewählte Wand) steht in der Schublade unter „Wand“.
 - **Vollbild-Ausgabe** mit doppelt gepuffertem Player: nahtlose Übergänge, wahlweise Schnitt oder
@@ -168,7 +176,7 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
   Überziehen blinkt das Bild rot – abschaltbar (dann nur rote Ziffern), gilt für Ausgabefenster,
   NDI, Browser-Anzeige und Handy.
 - **Live:** ±1 Minute, Nachrichten an die Bühne (auf Wunsch blinkend, mit Schnellnachrichten).
-- **Vollbild-Anzeige** auf wählbarem Monitor, synchron zur Vorschau – der Timer läuft im
+- **Vollbild-Anzeige** auf wählbarem Monitor (oder als Fenster), synchron zur Vorschau – der Timer läuft im
   Hauptprozess. Alternativ eine große Uhr mit Sekunden.
 - **Anzeige im Browser** für Geräte ohne NDI: Fernseher, Tablet oder zweiter Rechner im selben
   Netz öffnen `http://<Rechner>:8092/anzeige` (QR-Code im Werkzeug, Link in der Fernsteuer-App).
@@ -211,7 +219,7 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
   - Akzent- und Hintergrundfarbe frei wählbar oder per Schnellwahl. Raster, Lineal und Schrift
     passen sich dem Hintergrund an (hell auf dunkel, dunkel auf hell).
 - **Bewegte Muster:** Pixelcheck-Loop, Scroll, Timecode, AV-Sync (siehe Testton).
-- **Vollbild-Ausgabe** auf wählbarem Monitor, pixelgenau und live.
+- **Vollbild-Ausgabe** auf wählbarem Monitor, pixelgenau und live (oder als Fenster).
 - **Testton** – „Ton“ in der Ausgabe-Leiste, eingestellt im Bereich „Testton“ der Schublade,
   gespielt auf dem gewählten Ausgabegerät:
   - Sinus mit freier Frequenz (Schnellwahl 100 Hz, 1 kHz, 10 kHz), Sweep 20 Hz – 20 kHz

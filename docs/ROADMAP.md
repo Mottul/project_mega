@@ -54,10 +54,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
   Texttafeln, Logo, LUT, Vorlagen und Transparenz (HAP Alpha/ProRes 4444); offen aus Phase 2: die
   4:4:4-Zwischenstufe für ProRes/HAP-Ziele messen und den Neustart des Players an der Naht einer
   nahtlosen Schleife prüfen.
-- **Ausgabefenster ohne sichtbaren Knopf** (Stage-Timer, Testbild): Oben rechts steht im Vollbild
-  dauerhaft „✕ Schließen (Esc)“ mit 15 % Deckkraft – auf Bühnenmonitor und LED-Wand sichtbar, im
-  Testbild störend. Nur bei Mausbewegung einblenden und nach kurzer Zeit wieder ausblenden; Esc
-  schließt weiter (der Video-Player zeigt keinen Knopf).
 - **Stage-Timer:** Teleprompter (scrollender Text auf dem Referentenmonitor); Steuerung per OSC
   (Start/Pause/±1 min aus Companion oder Stream Deck – heute nur über die HTTP-Fernsteuerung).
 - **Testbildgenerator:** AV-Sync auch als Video mit Ton exportieren (für Medienserver und Player

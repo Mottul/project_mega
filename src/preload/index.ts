@@ -82,7 +82,7 @@ const api: ToolboxApi = {
   },
 
   patterns: {
-    open: (config, displayId) => ipcRenderer.invoke(Channels.patternOpen, config, displayId),
+    open: (config, ziel) => ipcRenderer.invoke(Channels.patternOpen, config, ziel),
     update: (config) => ipcRenderer.invoke(Channels.patternUpdate, config),
     close: () => ipcRenderer.invoke(Channels.patternClose),
     current: () => ipcRenderer.invoke(Channels.patternCurrent),
@@ -115,7 +115,7 @@ const api: ToolboxApi = {
     command: (cmd) => ipcRenderer.invoke(Channels.playerCommand, cmd),
     report: (positionSec, durationSec) =>
       ipcRenderer.invoke(Channels.playerReport, positionSec, durationSec),
-    openOutput: (displayId) => ipcRenderer.invoke(Channels.playerOpenOutput, displayId),
+    openOutput: (ziel) => ipcRenderer.invoke(Channels.playerOpenOutput, ziel),
     closeOutput: () => ipcRenderer.invoke(Channels.playerCloseOutput),
     onState: (cb) => subscribe(Channels.playerState, (s) => cb(s as never)),
     onTick: (cb) => subscribe(Channels.playerTick, (t) => cb(t as never)),
@@ -139,7 +139,7 @@ const api: ToolboxApi = {
   timer: {
     getState: () => ipcRenderer.invoke(Channels.timerGetState),
     command: (cmd) => ipcRenderer.invoke(Channels.timerCommand, cmd),
-    openOutput: (displayId) => ipcRenderer.invoke(Channels.timerOpenOutput, displayId),
+    openOutput: (ziel) => ipcRenderer.invoke(Channels.timerOpenOutput, ziel),
     closeOutput: () => ipcRenderer.invoke(Channels.timerCloseOutput),
     onState: (cb) => subscribe(Channels.timerState, (s) => cb(s as never)),
     onTick: (cb) => subscribe(Channels.timerTick, (t) => cb(t as never)),

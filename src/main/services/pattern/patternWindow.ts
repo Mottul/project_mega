@@ -1,13 +1,10 @@
-// Verwaltet das rahmenlose Vollbild-Ausgabefenster fuer Testbilder.
-// Bewusst KEIN fullscreen-Flag, sondern ein rahmenloses Fenster exakt auf den
-// Bounds des gewaehlten Displays (alwaysOnTop) -> zielt zuverlaessig auf den
-// richtigen Monitor und deckt ihn pixelgenau ab.
+// Verwaltet das Ausgabefenster fuer Testbilder (Vollbild pixelgenau auf dem gewaehlten Monitor
+// oder als Fenster – gemeinsamer Baustein windows/outputWindow.ts).
 
 import { BrowserWindow, screen } from 'electron'
-import { loadRoute, secureWebPreferences } from '../windows/appWindows'
+import { createOutputWindow } from '../windows/outputWindow'
 import { Channels } from '@shared/ipc-contracts'
-import type { DisplayInfo, PatternConfig } from '@shared/types'
-import { logLine } from '../log'
+import type { AusgabeZiel, DisplayInfo, PatternConfig } from '@shared/types'
 
 let win: BrowserWindow | null = null
 let currentConfig: PatternConfig | null = null
@@ -44,32 +41,21 @@ export function getCurrentConfig(): PatternConfig | null {
   return currentConfig
 }
 
-export function openPattern(config: PatternConfig, displayId: number): void {
+export function openPattern(config: PatternConfig, ziel: AusgabeZiel): void {
   currentConfig = config
-  const display =
-    screen.getAllDisplays().find((d) => d.id === displayId) ?? screen.getPrimaryDisplay()
-  const b = display.bounds
 
   // Bestehendes Ausgabefenster schliessen -> sauberer (Monitor-)Wechsel, da ein
   // Vollbildfenster sich nicht zuverlaessig verschieben laesst.
   closeWindow()
 
-  const w = new BrowserWindow({
-    x: b.x,
-    y: b.y,
-    width: b.width,
-    height: b.height,
-    frame: false,
-    // echtes Vollbild auf dem Zielmonitor -> keine Win11-Rundung, kein Rand,
-    // randlos pixelgenau ueber den ganzen Schirm.
-    fullscreen: true,
-    backgroundColor: '#000000',
-    skipTaskbar: true,
-    title: 'Testbild',
-    webPreferences: secureWebPreferences()
+  const w = createOutputWindow({
+    ziel,
+    titel: 'Testbild',
+    route: '/output',
+    log: 'pattern',
+    onEsc: closePattern
   })
   win = w
-  logLine('[pattern] Ausgabefenster auf Display', display.id, JSON.stringify(b))
 
   // Nur das AKTUELLE Fenster darf `win` leeren: Beim Monitorwechsel schließt das alte Fenster
   // erst, wenn schon das neue in `win` steht – vorher verlor die App damit das neue Fenster.
@@ -78,15 +64,10 @@ export function openPattern(config: PatternConfig, displayId: number): void {
     win = null
     outputSink(false)
   })
-  // Esc schliesst das Ausgabefenster
-  w.webContents.on('before-input-event', (_e, input) => {
-    if (input.type === 'keyDown' && input.key === 'Escape') closePattern()
-  })
   w.webContents.on('did-finish-load', () => {
     if (!w.isDestroyed()) w.webContents.send(Channels.patternRender, currentConfig)
   })
 
-  loadRoute(w, '/output')
   outputSink(true)
 }
 

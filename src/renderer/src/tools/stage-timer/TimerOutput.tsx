@@ -1,7 +1,8 @@
-// Inhalt des rahmenlosen Vollbild-Ausgabefensters (#/timer-output): die reine
-// Bühnen-Anzeige, gespeist vom autoritativen Timer-Zustand des main-Prozesses.
+// Inhalt des Ausgabefensters (#/timer-output, auch fürs NDI-Bild): die reine Bühnen-Anzeige,
+// gespeist vom autoritativen Timer-Zustand des main-Prozesses.
 
 import { useEffect, useState } from 'react'
+import { OutputCloseButton } from '@renderer/components/OutputControl'
 import { api } from '@renderer/lib/api'
 import { windowTitle } from '@shared/brand'
 import type { StageTimerState } from '@shared/types'
@@ -30,42 +31,11 @@ export function TimerOutput(): JSX.Element {
     }
   }, [])
 
-  // Esc schließt (zusätzlich zum before-input-event im main – falls Fokus im DOM liegt).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') void api.timer.closeOutput()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
+  // Esc (zweimal) behandelt der main – ein zweiter Handler hier zählte jeden Druck doppelt
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#000' }}>
       {state && <TimerDisplay state={state} remainingSec={remaining} />}
-      <button
-        onClick={() => void api.timer.closeOutput()}
-        title="Vollbild schließen (Esc)"
-        style={{
-          position: 'fixed',
-          top: 12,
-          right: 12,
-          padding: '6px 10px',
-          fontFamily: 'system-ui, sans-serif',
-          fontSize: 13,
-          color: '#fff',
-          background: 'rgba(0,0,0,0.55)',
-          border: '1px solid rgba(255,255,255,0.4)',
-          borderRadius: 6,
-          cursor: 'pointer',
-          opacity: 0.15,
-          transition: 'opacity 0.15s',
-          zIndex: 10
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.15')}
-      >
-        ✕ Schließen (Esc)
-      </button>
+      <OutputCloseButton onClose={() => void api.timer.closeOutput()} />
     </div>
   )
 }

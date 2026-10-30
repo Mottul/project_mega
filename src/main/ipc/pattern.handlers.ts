@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { writeFile } from 'node:fs/promises'
+import { ausgabeZiel } from '@shared/ausgabe'
 import { Channels } from '@shared/ipc-contracts'
 import type {
   ColorLoopRequest,
@@ -22,9 +23,10 @@ import {
 
 export function registerPatternHandlers(): void {
   ipcMain.handle(Channels.screenList, () => listDisplays())
-  ipcMain.handle(Channels.patternOpen, (_e, config: PatternConfig, displayId: number) =>
-    openPattern(config, displayId)
-  )
+  ipcMain.handle(Channels.patternOpen, (_e, config: PatternConfig, z: unknown) => {
+    const ziel = ausgabeZiel(z)
+    if (ziel != null) openPattern(config, ziel)
+  })
   ipcMain.handle(Channels.patternUpdate, (_e, config: PatternConfig) => updatePattern(config))
   ipcMain.handle(Channels.patternClose, () => closePattern())
   ipcMain.handle(Channels.patternCurrent, () => getCurrentConfig())

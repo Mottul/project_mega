@@ -1,4 +1,5 @@
 import { app, ipcMain } from 'electron'
+import { ausgabeZiel } from '@shared/ausgabe'
 import { Channels } from '@shared/ipc-contracts'
 import type { TimerCommand, TimerNdiConfig, TimerSetup } from '@shared/types'
 import { broadcast } from '../services/broadcast'
@@ -55,7 +56,10 @@ export function registerTimerHandlers(): void {
 
   ipcMain.handle(Channels.timerGetState, () => getTimerState())
   ipcMain.handle(Channels.timerCommand, (_e, cmd: TimerCommand) => applyTimerCommand(cmd))
-  ipcMain.handle(Channels.timerOpenOutput, (_e, displayId: number) => openTimerOutput(displayId))
+  ipcMain.handle(Channels.timerOpenOutput, (_e, z: unknown) => {
+    const ziel = ausgabeZiel(z)
+    if (ziel != null) openTimerOutput(ziel)
+  })
   ipcMain.handle(Channels.timerCloseOutput, () => closeTimerOutput())
 
   // NDI-Ausgabe (experimentell; ohne optionales Binding meldet Status "nicht verfügbar")

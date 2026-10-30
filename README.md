@@ -7,7 +7,8 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 - **Parallel arbeiten:** Große Werkzeuge lassen sich auch im eigenen Fenster öffnen, die Rechner
   öffnen sich immer in einem eigenen, passend kleinen Fenster; der Startbildschirm zeigt, was
   gerade läuft, und ordnet Favoriten in eigenen Kategorien.
-- **Show-tauglich:** Vollbild-Ausgaben auf wählbarem Monitor, optional NDI, eine Fehlergrenze je
+- **Show-tauglich:** Vollbild-Ausgaben auf wählbarem Monitor (oder als Fenster, zweimal Esc
+  schließt), optional NDI, eine Fehlergrenze je
   Werkzeug und eine gesperrte Kundenansicht (Start direkt in einem Werkzeug, Strg+Shift+K beendet
   sie).
 - **Handy als Fernbedienung:** Video-Player, Jingles, OSC-Pult und Stage-Timer im WLAN steuern.

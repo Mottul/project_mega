@@ -71,7 +71,10 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
 - **Ausgabefenster** (Testbild, Player, Timer, OSC-Monitor) sind eigene
   BrowserWindows auf Renderer-Routen (`#/output`, `#/player-output`,
   `#/timer-output`, `#/osc-monitor`); der main-Prozess bleibt autoritativ
-  (Player-/Timer-Zustand tickt im main, Renderer spiegeln).
+  (Player-/Timer-Zustand tickt im main, Renderer spiegeln). Testbild, Player und Timer nur über
+  `createOutputWindow()` (`services/windows/outputWindow.ts`: Monitor im Vollbild oder
+  `'fenster'`, Taskleiste, keine Drosselung, zweimal Esc – Esc nie zusätzlich im Renderer) und im
+  Renderer `OutputControls`/`OutputCloseButton` (`components/OutputControl.tsx`).
 - **Handy-Fernsteuerungen** (Player/Jingle/OSC/Timer): dependency-freie HTTP-Server je Tool
   (`services/remote/remoteHttp.ts`), Steuerseiten als HTML-Strings. Die Fernsteuer-App
   (`remoteApp*.ts`, fester Port 8090) bindet laufende Fernsteuerungen unter `/<id>/` ein ->

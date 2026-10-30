@@ -12,7 +12,6 @@ import {
   Globe,
   Hourglass,
   MessageSquare,
-  MonitorUp,
   Pause,
   Play,
   Plus,
@@ -37,6 +36,7 @@ import {
   ToolBar,
   ToolShell
 } from '@renderer/components/ToolShell'
+import { OutputControls, useOutputTarget } from '@renderer/components/OutputControl'
 import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
@@ -48,7 +48,6 @@ import { useDraft } from '@renderer/lib/useDraft'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 import {
   DEFAULT_TIMER_SETTINGS,
-  type DisplayInfo,
   type RemoteStatus,
   type StageTimerState,
   type TimerCommand,
@@ -331,8 +330,7 @@ const END_LABEL: Record<StageTimerState['endBehavior'], string> = {
 export function StageTimer(): JSX.Element {
   const [state, setState] = useState<StageTimerState | null>(null)
   const [remaining, setRemaining] = useState(0)
-  const [displays, setDisplays] = useState<DisplayInfo[]>([])
-  const [displayId, setDisplayId] = useState<number | null>(null)
+  const out = useOutputTarget()
   const [msgText, setMsgText] = useState('')
   const [msgFlash, setMsgFlash] = useState(false)
   // Der Timer läuft im main-Prozess: Die Steuerseite funktioniert auch, wenn dieses Werkzeug
@@ -370,10 +368,6 @@ export function StageTimer(): JSX.Element {
       setRemaining(s.remainingSec)
     })
     const offTick = api.timer.onTick((t) => setRemaining(t.remainingSec))
-    void api.screen.list().then((d) => {
-      setDisplays(d)
-      setDisplayId((cur) => cur ?? (d.find((x) => !x.primary) ?? d[0])?.id ?? null)
-    })
     return () => {
       offState()
       offTick()
@@ -428,33 +422,12 @@ export function StageTimer(): JSX.Element {
             )
           }
         >
-          <Select
-            size="sm"
-            className="w-64 max-w-full"
-            aria-label="Ausgabe-Monitor"
-            value={displayId ?? ''}
-            onChange={(e) => setDisplayId(Number(e.target.value))}
-          >
-            {displays.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </Select>
-          {state.outputOpen ? (
-            <Button size="sm" variant="destructive" onClick={() => void api.timer.closeOutput()}>
-              <X className="size-4" /> Vollbild beenden
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              disabled={displayId == null}
-              title="Esc im Ausgabefenster schließt es wieder"
-              onClick={() => displayId != null && void api.timer.openOutput(displayId)}
-            >
-              <MonitorUp className="size-4" /> Vollbild starten
-            </Button>
-          )}
+          <OutputControls
+            target={out}
+            open={state.outputOpen}
+            onStart={(ziel) => api.timer.openOutput(ziel)}
+            onStop={() => api.timer.closeOutput()}
+          />
           <BarDivider />
           <BarToggle
             on={Boolean(ndi.status?.running)}

@@ -131,6 +131,7 @@ export function PlayerUebernahme(): JSX.Element {
       playlists: settings.player.savedPlaylists ?? [],
       bibliothek,
       zustand,
+      // „Als Fenster“ ist kein Bildschirm, den die Anleitung nennen könnte
       ausgabe: bildschirme.find((b) => b.id === settings.player.outputDisplayId)?.label ?? null
     })
     const k = useMiniManual.getState().anleitung.kapitel.find((x) => x.id === 'software')

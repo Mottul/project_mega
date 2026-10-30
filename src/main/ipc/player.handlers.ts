@@ -1,6 +1,7 @@
 import { readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { ipcMain } from 'electron'
+import { ausgabeZiel } from '@shared/ausgabe'
 import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
 import {
@@ -160,9 +161,11 @@ export function registerPlayerHandlers(): void {
   ipcMain.handle(Channels.playerReport, (_e, positionSec: number, durationSec: number) =>
     reportPlayback(positionSec, durationSec)
   )
-  ipcMain.handle(Channels.playerOpenOutput, (_e, displayId: number) => {
-    setSettings({ player: { outputDisplayId: displayId } })
-    openPlayerOutput(displayId)
+  ipcMain.handle(Channels.playerOpenOutput, (_e, z: unknown) => {
+    const ziel = ausgabeZiel(z)
+    if (ziel == null) return
+    setSettings({ player: { outputDisplayId: ziel } })
+    openPlayerOutput(ziel)
   })
   ipcMain.handle(Channels.playerCloseOutput, () => closePlayerOutput())
 

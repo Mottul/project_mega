@@ -21,6 +21,13 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Ausgabe (Monitor, NDI, Handy …), `label="Ausgabe"`, `active` = gerade live (rot), Schalter als
      `BarToggle`, rechts `status` (was läuft). Sonst `kind="job"` mit dem Auftrag (Ziel, Start;
      bernstein, solange er läuft). Weder noch: `bar` weglassen.
+   - **Bild-Ausgabe auf einen Monitor** (wie Testbild, Player, Timer): in der Leiste
+     `useOutputTarget()` + `OutputControls` (`components/OutputControl.tsx`: Monitore und „Als
+     Fenster“, Starten/Beenden, „Monitor wechseln“), im main `createOutputWindow()`
+     (`services/windows/outputWindow.ts`: Vollbild oder Fenster, Taskleiste, keine Drosselung,
+     zweimal Esc), auf der Ausgabe-Route `OutputCloseButton` – kein eigenes Fenster, kein eigener
+     Esc-Handler im Renderer, kein dauerhaft sichtbarer Knopf. Das Ziel per `ausgabeZiel()`
+     (`shared/ausgabe.ts`) im Handler prüfen.
    - **`aside`** = Schublade links: `PanelSection`s mit Symbol und `summary` (die wichtigsten Werte,
      auch zugeklappt sichtbar). Felder als `Field`/`Checkbox` mit `hint` – Erklärungen hinter
      dem ⓘ (`InfoTip`), keine Absätze unter jeder Option. **Keine Aktionen** in die Schublade

@@ -160,6 +160,13 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   `if (win !== self) return`. Regressionstest: `e2e/layout.mjs` (zweimal öffnen, dann prüfen).
 - **„Live“-Anzeigen** brauchen die Wahrheit aus dem main (Event), nicht den letzten Klick im
   Renderer: Ausgabefenster schließen auch per Esc oder vom Betriebssystem.
+- **Eine Taste an genau einer Stelle auswerten.** Testbild und Timer schlossen bei Esc doppelt
+  (before-input-event im main UND keydown im Renderer) – harmlos, solange ein Druck genügte. Mit
+  „zweimal Esc“ hätte so schon ein Druck geschlossen. Tasten der Ausgabefenster nur im main
+  (`services/windows/outputWindow.ts`).
+- **Drei Kopien laufen auseinander.** Die Ausgabefenster waren dreimal kopiert und unterschieden
+  sich nach und nach (Esc ja/nein, Knopf oben/unten, Drosselung an/aus, kein „Monitor wechseln“
+  beim Timer). Bei der dritten Kopie einen gemeinsamen Baustein ziehen.
 - **Fenster ohne App-Menü** (kleine Werkzeuge): Was app-weit wirkt, darf nicht an einem
   Bedienelement hängen, das dort fehlt. Die Darstellung hing am App-Menü – ein offenes kleines
   Fenster bekam Akzent, Design und Kompaktmodus nie mit. Heute `useAppearanceSync` an der
