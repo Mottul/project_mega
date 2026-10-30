@@ -60,6 +60,12 @@ der nächste Schritt auf dem macOS-Runner noch Attribute des vorigen Werkzeugs.
 ## Was sich bewährt hat (jeweils schon in Skripten gelöst)
 
 - **Zustand über die Brücke setzen** statt klicken: `page.evaluate(() => window.api.…)`.
+- **Vorbedingung prüfen, wenn ein Test auf laufende Arbeit angewiesen ist:** Testdaten so lang
+  wählen, dass die Arbeit auch auf einem schnellen Rechner noch läuft, und das vor dem Schritt
+  ausdrücklich feststellen (`api.converter.list()` = `running`). `shutdown.mjs` hatte 60 s Video:
+  ProRes war nach gut 10 s fertig, das vollständige Ergebnis sah wie eine liegen gebliebene halbe
+  Datei aus. Lehre: Vor einer Ursache im App-Code das Protokoll ansehen (`avtoolbox-debug.log` im
+  `userData` des Tests, die Rückfrage nennt die Zahl der Aufträge) und gegen `main` gegenprüfen.
 - **Zeitgrenzen im Bildtakt nie als feste Millisekunden** („hell nur bis 60 ms“): Ein Frame kann
   auf dem macOS-Runner 30 ms und mehr dauern, und wer im selben Frame vor dem Zeichnen misst,
   sieht das alte Bild. Stattdessen den Verzug am vorigen Frame messen – „hell nach 60 ms nur,
