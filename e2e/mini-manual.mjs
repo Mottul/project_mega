@@ -241,15 +241,19 @@ try {
       async () => {
         const dlg = await druckDialog('Handbuch', 'A4')
         const seiten = await dlg.getByTestId('druck-seite').count()
-        // zwei Seiten nebeneinander: Blättern geht eine Reihe weiter, nicht ins Leere
+        // Blättern geht eine Reihe weiter, auch wenn Seiten nebeneinander stehen (auf gleicher Höhe
+        // liefe es ins Leere). Wie viele in eine Reihe passen, hängt an der Fensterbreite: Im
+        // schmalen CI-Fenster ist die nächste Seite 2, sonst 3.
         const stelle = dlg.getByText(/^Seite \d+ von/)
-        const zeigt = (nr) =>
-          waitFor(async () => (await stelle.textContent()).startsWith(`Seite ${nr} von`), 3_000)
-        assert.ok(await zeigt(1), await stelle.textContent())
+        const nummer = async () => Number((await stelle.textContent()).match(/\d+/)[0])
+        assert.equal(await nummer(), 1)
         await dlg.getByRole('button', { name: 'Nächste Seite' }).click()
-        assert.ok(await zeigt(3), await stelle.textContent())
+        assert.ok(await waitFor(async () => (await nummer()) > 1, 3_000), 'Blättern bleibt stehen')
         await dlg.getByRole('button', { name: 'Vorige Seite' }).click()
-        assert.ok(await zeigt(1), await stelle.textContent())
+        assert.ok(
+          await waitFor(async () => (await nummer()) === 1, 3_000),
+          await stelle.textContent()
+        )
         // window.print() hält das Fenster an, bis der Systemdialog zu ist – daher festhalten, was
         // gedruckt würde, und es danach über Chromiums Druckpfad nachstellen
         await page.evaluate(() => {
