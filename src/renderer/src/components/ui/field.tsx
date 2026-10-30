@@ -7,11 +7,15 @@ import { InfoTip } from './info-tip'
  * daneben statt als Absatz darunter. Das <label> umschließt das Bedienelement (Klick auf die
  * Beschriftung fokussiert es); das ⓘ liegt bewusst AUSSERHALB, sonst würde ein Klick auf die
  * Beschriftung den ⓘ-Knopf auslösen.
+ *
+ * `group` für Knopfgruppen (`Segmented`): dann ohne <label> – es gälte sonst für den ersten Knopf.
+ * Der hieße für Vorlesewerkzeuge wie die Beschriftung, und ein Klick darauf löste ihn aus.
  */
 export function Field({
   label,
   hint,
   aside,
+  group,
   className,
   children
 }: {
@@ -19,12 +23,14 @@ export function Field({
   hint?: string
   /** kleine Anzeige rechts in der Beschriftungszeile (z. B. „50 %“) */
   aside?: ReactNode
+  group?: boolean
   className?: string
   children: ReactNode
 }): JSX.Element {
+  const Huelle = group ? 'div' : 'label'
   return (
     <div className={cn('relative flex flex-col', className)}>
-      <label className="flex flex-col gap-1.5">
+      <Huelle className="flex flex-col gap-1.5">
         <span className={cn('flex items-center gap-2 text-sm font-medium', hint && 'pr-6')}>
           <span className="min-w-0 flex-1">{label}</span>
           {aside != null && (
@@ -32,7 +38,7 @@ export function Field({
           )}
         </span>
         {children}
-      </label>
+      </Huelle>
       {hint && (
         <span className="absolute right-0 top-0.5">
           <InfoTip text={hint} label={`Erklärung zu „${label}“`} />

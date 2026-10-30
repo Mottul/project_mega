@@ -158,6 +158,21 @@ der nächste Schritt auf dem macOS-Runner noch Attribute des vorigen Werkzeugs.
   `w.webContents.sendInputEvent({ type: 'keyDown' | 'keyUp', keyCode: 'Escape' })` – zweimal
   innerhalb einer Sekunde. Dass ein einzelner Druck NICHT schließt: einmal drücken, 1,3 s warten,
   Fenster noch da; danach zählt der nächste Druck wieder als erster (Beispiel `e2e/layout.mjs`).
+- **Knopf sichtbar, `getByRole(…, { name })` findet ihn nicht:** Der barrierefreie Name weicht ab.
+  `await locator.ariaSnapshot()` zeigt ihn. Fund: Ein `Segmented` in einem `Field` ohne `group` –
+  das `<label>` benennt den ersten Knopf um. Fehlermeldungen kürzt `runSteps`; für die ganze
+  Meldung `e.message` im `catch` ausgeben.
+- **Druckvorschau** (`PrintDialog`): Knopf „Drucken / PDF“ in der Leiste, Dialog per
+  `getByRole('dialog', { name: /drucken$/ })`. Erst warten, bis die Seiten stehen
+  (`druck-stand` nennt das Format, `druck-seite` je Seite), dann „Als PDF speichern…“ mit
+  ersetztem `dialog.showSaveDialog`. Das Mini-Manual fragt bei Prüffehlern nach: vorher
+  `stubConfirm(app, true)`, sonst wartet der Klick ewig. **„Drucken…“ nie echt klicken:**
+  `window.print()` hält das Fenster an, bis der Systemdialog zu ist, und auch Playwrights Klick
+  kommt erst dann zurück (Windows 11: `PrintDialog.exe`, Fenster „… – Drucken“ einer fremden
+  App-Hülle, nicht im Electron-Prozess). Stattdessen `window.print` per `page.evaluate` ersetzen,
+  darin Wurzel und Stil festhalten und über `webContents.printToPDF({ preferCSSPageSize: true,
+  margins: { marginType: 'none' } })` nachstellen – das zeigt Seitenzahl und Format des Drucks
+  (Muster `e2e/mini-manual.mjs`).
 - **Ausgabe „Als Fenster“ und der Schließen-Knopf:** `bar().getByLabel('Ausgabe-Monitor')
   .selectOption('fenster')`, Knopf „Im Fenster starten“, danach „Fenster schließen“; Vollbild
   per `isFullScreen()` im main prüfen. Den Knopf im Ausgabefenster greift man über dessen

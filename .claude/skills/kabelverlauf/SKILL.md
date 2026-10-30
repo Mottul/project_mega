@@ -18,7 +18,7 @@ Einspeisepunkt, keine Automatik.
 | Aktionen `setRoute`, `drawChain`, `resetGrid` | `led-wall/store.ts` + `store.test.ts` |
 | Raster mit Verlauf-Leiste, Zeichnen, Pfeil-Overlay, Spiegelung | `led-wall/CableGrid.tsx` |
 | Reiter Signal / Strom / Signal + Strom, Umschalter Vorne/Hinten | `led-wall/LedWall.tsx` (`Drawing`) |
-| PDF-Doku (rein, getestet) und dünner Export | `led-wall/printHtml.ts` + `printHtml.test.ts`, `led-wall/print.ts` |
+| PDF-Doku (rein, getestet), Druckvorschau | `led-wall/printHtml.ts` + `printHtml.test.ts`, `PrintDialog` in `led-wall/LedWall.tsx` |
 | Prozessoren (Handbuch-Werte), Karte je Modul, Vorbelegung, Gruppen, Port-Vergabe, Lasten, Warnungen | `led-wall/processors.ts` + `processors.test.ts` |
 | Schublade „Prozessor“, Karte „Signal“ | `led-wall/Settings.tsx` (`ProcessorPanel`), `led-wall/LedWall.tsx` (`SignalCard`) |
 | Strom: Last je Kette und Kreis, Phasen-Vorschlag und -Bilanz, Warnungen | `led-wall/power.ts` + `power.test.ts` |

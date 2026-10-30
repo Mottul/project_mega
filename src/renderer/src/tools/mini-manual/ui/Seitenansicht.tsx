@@ -1,28 +1,15 @@
 // Seitenansicht der Vorschau: das echte Handbuch-PDF (derselbe Druck wie beim Export), Seite für
 // Seite – so sieht man, wo es umbricht. Das Kapitel-HTML allein kann das nicht zeigen: Umbrüche
 // hängen am ganzen Dokument. Gedruckt wird im main (verstecktes Fenster, gut eine Sekunde), deshalb
-// erst nach einer Pause im Tippen und nur die neueste Anfrage. pdf.js lädt erst hier.
+// erst nach einer Pause im Tippen und nur die neueste Anfrage.
 
 import { useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { api } from '@renderer/lib/api'
+import { pdfjs, type Pdfjs } from '@renderer/lib/pdfjs'
 import { useElementWidth } from '@renderer/lib/useElementWidth'
 
 const PAUSE_MS = 1200
-
-type Pdfjs = typeof import('pdfjs-dist')
-let pdfjsLaden: Promise<Pdfjs> | null = null
-
-function pdfjs(): Promise<Pdfjs> {
-  pdfjsLaden ??= (async () => {
-    const lib = await import('pdfjs-dist')
-    const { default: PdfWorker } = await import('pdfjs-dist/build/pdf.worker.min.mjs?worker')
-    // die Manuals-Bibliothek setzt den Worker womöglich schon – nur einer je Fenster
-    if (!lib.GlobalWorkerOptions.workerPort) lib.GlobalWorkerOptions.workerPort = new PdfWorker()
-    return lib
-  })()
-  return pdfjsLaden
-}
 
 const regexText = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 

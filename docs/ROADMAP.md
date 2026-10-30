@@ -29,12 +29,6 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Bestehende Werkzeuge ausbauen
 
-- **Drucken und PDF einheitlich** (LED-Wall, Packliste, Mini-Manual): Heute heißt der Knopf je
-  Werkzeug anders („PDF exportieren“, „Handbuch (PDF)“, „Kurzkarte (A5)“), die Optionen liegen mal
-  in der Leiste (LED-Wall: Seitenformat), mal in der Schublade (Packliste: Blöcke zusammenhalten,
-  Mini-Manual: Passwörter), und alle führen nur in den Speichern-Dialog. Ziel: überall derselbe
-  Knopf an derselben Stelle der Leiste, der direkt zum Druckdialog führt (Drucker wählen oder als
-  PDF speichern); Optionen einheitlich im Abschnitt „PDF“ der Schublade.
 - **OSC-Steuerung**
   - **MadMapper-Vorlagen** (Surfaces, Medien, Cues) – bisher gibt es nur Beispiel-Kacheln.
   - **„Restzeit aus OSC-Position“:** Anzeige-Modus, der aus der eingehenden MadMapper-Position

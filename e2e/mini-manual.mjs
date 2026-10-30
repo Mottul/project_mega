@@ -36,6 +36,21 @@ const saveTo = (file) =>
     dialog.showSaveDialog = async () => ({ canceled: false, filePath: f })
   }, file)
 
+/** Druckdialog öffnen, Dokument wählen und warten, bis die Seiten dieses Dokuments stehen */
+async function druckDialog(dokument, format) {
+  await bar().getByRole('button', { name: 'Drucken / PDF' }).click()
+  const dlg = page.getByRole('dialog', { name: /drucken$/ })
+  await dlg.getByRole('button', { name: dokument }).click()
+  assert.ok(
+    await waitFor(
+      async () => (await dlg.getByTestId('druck-stand').textContent()).includes(format),
+      30_000
+    ),
+    `Vorschau zeigt kein ${format}`
+  )
+  return dlg
+}
+
 function pdfInfo(buf) {
   const s = buf.toString('latin1')
   const m = s.match(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/)
@@ -79,9 +94,7 @@ try {
         await openRoute(page, '/tool/mini-manual')
         await bar().getByText('Anleitung', { exact: true }).waitFor({ timeout: 15_000 })
         assert.equal(await bar().getAttribute('data-kind'), 'job')
-        await bar()
-          .getByRole('button', { name: /Kurzkarte/ })
-          .waitFor()
+        await bar().getByRole('button', { name: 'Drucken / PDF' }).waitFor()
         // Bereichs-Kopf = Titel + Zusammenfassung („Kapitel 10 von 14“)
         await drawer()
           .getByRole('button', { name: /^Kapitel \d+ von/ })
@@ -197,10 +210,11 @@ try {
         await stubConfirm(app, true)
         const f = join(ctx.userData, 'kurzkarte.pdf')
         await saveTo(f)
-        await bar()
-          .getByRole('button', { name: /Kurzkarte/ })
-          .click()
+        const dlg = await druckDialog('Kurzkarte (A5)', 'A5')
+        assert.equal(await dlg.getByTestId('druck-seite').count(), 1)
+        await dlg.getByRole('button', { name: 'Als PDF speichern…' }).click()
         assert.ok(await waitFor(() => existsSync(f), 20_000), 'Kurzkarte nicht geschrieben')
+        await dlg.waitFor({ state: 'detached' })
         const i = pdfInfo(readFileSync(f))
         assert.equal(i.pages, 1)
         assert.ok(Math.abs(i.w - 420) < 2 && Math.abs(i.h - 595) < 2, `${i.w} × ${i.h}`)
@@ -211,13 +225,81 @@ try {
       async () => {
         const f = join(ctx.userData, 'handbuch.pdf')
         await saveTo(f)
-        await bar()
-          .getByRole('button', { name: /Handbuch/ })
-          .click()
+        const dlg = await druckDialog('Handbuch', 'A4')
+        const vorschauSeiten = await dlg.getByTestId('druck-seite').count()
+        await dlg.getByRole('button', { name: 'Als PDF speichern…' }).click()
         assert.ok(await waitFor(() => existsSync(f), 20_000), 'Handbuch nicht geschrieben')
+        await dlg.waitFor({ state: 'detached' })
         const i = pdfInfo(readFileSync(f))
         assert.ok(i.pages >= 6, `${i.pages} Seiten`)
+        assert.equal(i.pages, vorschauSeiten, 'Vorschau und PDF haben gleich viele Seiten')
         assert.ok(Math.abs(i.w - 595) < 2, `${i.w} × ${i.h}`)
+      }
+    ],
+    [
+      'Drucken: genau die Seiten der Vorschau, nichts vom Fenster, leere Seiten gibt es nicht',
+      async () => {
+        const dlg = await druckDialog('Handbuch', 'A4')
+        const seiten = await dlg.getByTestId('druck-seite').count()
+        // zwei Seiten nebeneinander: Blättern geht eine Reihe weiter, nicht ins Leere
+        const stelle = dlg.getByText(/^Seite \d+ von/)
+        const zeigt = (nr) =>
+          waitFor(async () => (await stelle.textContent()).startsWith(`Seite ${nr} von`), 3_000)
+        assert.ok(await zeigt(1), await stelle.textContent())
+        await dlg.getByRole('button', { name: 'Nächste Seite' }).click()
+        assert.ok(await zeigt(3), await stelle.textContent())
+        await dlg.getByRole('button', { name: 'Vorige Seite' }).click()
+        assert.ok(await zeigt(1), await stelle.textContent())
+        // window.print() hält das Fenster an, bis der Systemdialog zu ist – daher festhalten, was
+        // gedruckt würde, und es danach über Chromiums Druckpfad nachstellen
+        await page.evaluate(() => {
+          window.__print = window.print
+          window.print = () => {
+            const w = document.getElementById('druck-seiten')
+            window.__druck = {
+              html: w.outerHTML,
+              css: [...document.head.querySelectorAll('style')].pop().textContent,
+              titel: document.title
+            }
+          }
+        })
+        await dlg.getByRole('button', { name: 'Drucken…' }).click()
+        assert.ok(
+          await waitFor(() => page.evaluate(() => window.__druck != null), 30_000),
+          'Druck kam nicht an'
+        )
+        assert.match(await page.evaluate(() => window.__druck.titel), /Handbuch/)
+        // nach dem Dialog ist alles wieder weg, der Fenstertitel auch
+        assert.ok(await waitFor(async () => (await page.locator('#druck-seiten').count()) === 0))
+        assert.doesNotMatch(await page.title(), /Handbuch/)
+        await page.evaluate(() => {
+          const s = document.createElement('style')
+          s.id = 'druck-probe'
+          s.textContent = window.__druck.css
+          document.head.append(s)
+          document.body.insertAdjacentHTML('beforeend', window.__druck.html)
+        })
+        const b64 = await app.evaluate(async ({ BrowserWindow }) => {
+          const w = BrowserWindow.getAllWindows().find((x) =>
+            x.webContents.getURL().includes('mini-manual')
+          )
+          const pdf = await w.webContents.printToPDF({
+            preferCSSPageSize: true,
+            margins: { marginType: 'none' }
+          })
+          return pdf.toString('base64')
+        })
+        await page.evaluate(() => {
+          document.getElementById('druck-probe').remove()
+          document.getElementById('druck-seiten').remove()
+          window.print = window.__print
+          delete window.__druck
+        })
+        const i = pdfInfo(Buffer.from(b64, 'base64'))
+        assert.equal(i.pages, seiten, 'so viele Druckseiten wie in der Vorschau')
+        assert.ok(Math.abs(i.w - 595) < 2 && Math.abs(i.h - 842) < 2, `${i.w} × ${i.h}`)
+        await dlg.getByRole('button', { name: 'Schließen', exact: true }).click()
+        await dlg.waitFor({ state: 'detached' })
       }
     ],
     [

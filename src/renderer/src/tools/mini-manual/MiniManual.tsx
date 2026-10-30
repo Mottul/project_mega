@@ -6,12 +6,14 @@
 //   Arbeitsfläche       gewähltes Kapitel | Vorschau (dieselbe Seite wie im PDF)
 
 import { useMemo, useState } from 'react'
-import type { OnlinePublish } from '@shared/types'
-import { ChevronLeft, ChevronRight, FileDown, IdCard, Library, Sparkles } from 'lucide-react'
+import type { OnlinePublish, PdfExportResult } from '@shared/types'
+import { ChevronLeft, ChevronRight, Library, Sparkles } from 'lucide-react'
+import { PrintButton, PrintDialog, type DruckAuftrag } from '@renderer/components/PrintDialog'
 import { ProjectFileMenu } from '@renderer/components/ProjectFileMenu'
 import { BarDivider, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
+import { Field } from '@renderer/components/ui/field'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
@@ -39,6 +41,7 @@ import { BausteineDialog } from './ui/BausteineDialog'
 import { Einstieg } from './ui/Einstieg'
 import { HandyMenu } from './ui/HandyMenu'
 import { KapitelEditor, type Auswahl } from './ui/KapitelEditor'
+import { PasswortFeld } from './ui/PasswortFeld'
 import { Schublade } from './ui/Schublade'
 import { Seitenansicht } from './ui/Seitenansicht'
 import { Vorschau } from './ui/Vorschau'
@@ -57,6 +60,18 @@ const ausgabeCodec: Codec<AusgabeWahl> = {
   parse: (raw) => (AUSGABEN.some((a) => a.value === raw) ? (raw as AusgabeWahl) : null),
   format: (v) => v
 }
+type DruckArt = 'handbuch' | 'kurzkarte'
+const DRUCK_ARTEN: { value: DruckArt; label: string }[] = [
+  { value: 'handbuch', label: 'Handbuch' },
+  { value: 'kurzkarte', label: 'Kurzkarte (A5)' }
+]
+const druckArtCodec: Codec<DruckArt> = {
+  parse: (raw) => (raw === 'handbuch' || raw === 'kurzkarte' ? raw : null),
+  format: (v) => v
+}
+const KURZKARTE_ZU_LANG =
+  'Sie passt auch verkleinert nicht auf eine Seite – kürze die Schritte im Kapitel „Ein- und Ausschalten“.'
+
 const AUSWAHLEN: Auswahl[] = ['deckblatt', ...KAPITEL.map((k) => k.id)]
 const auswahlCodec: Codec<Auswahl> = {
   parse: (raw) => (AUSWAHLEN.includes(raw as Auswahl) ? (raw as Auswahl) : null),
@@ -80,6 +95,12 @@ export function MiniManual(): JSX.Element {
   const firma = useSettings((s) => s.firmenprofil) ?? DEFAULT_FIRMENPROFIL
   const [wahl, setWahl] = usePersistentState<AusgabeWahl>('mini-manual:ausgabe', '2', ausgabeCodec)
   const [bausteine, setBausteine] = useState(false)
+  const [drucken, setDrucken] = useState(false)
+  const [druckArt, setDruckArt] = usePersistentState<DruckArt>(
+    'mini-manual:druckart',
+    'handbuch',
+    druckArtCodec
+  )
   // geführter Einstieg: angeboten, solange die Anleitung frisch ist; „Nicht jetzt“ gilt bis zum
   // nächsten Öffnen des Werkzeugs
   const [einstieg, setEinstieg] = useState(false)
@@ -184,42 +205,41 @@ export function MiniManual(): JSX.Element {
     )
   }
 
-  async function exportiere(art: 'handbuch' | 'kurzkarte'): Promise<void> {
-    const an = useMiniManual.getState().anleitung
-    // Kurzkarte ist die Karte fürs Rack: ohne Lernausgabe, höchstens die gewählte Stufe
-    const druck: SeitenKontext = {
-      ...ctx,
-      modus: 'druck',
-      lern: art === 'handbuch' && lern,
-      stufe: art === 'kurzkarte' && lern ? 1 : stufe
+  // Kurzkarte ist die Karte fürs Rack: ohne Lernausgabe, höchstens die gewählte Stufe
+  const druckKontext: SeitenKontext = {
+    ...ctx,
+    modus: 'druck',
+    lern: druckArt === 'handbuch' && lern,
+    stufe: druckArt === 'kurzkarte' && lern ? 1 : stufe
+  }
+
+  function druckAuftrag(): DruckAuftrag {
+    const name = dateiname(a.deckblatt.projekt) || 'Anleitung'
+    if (druckArt === 'kurzkarte')
+      return {
+        html: kurzkarteHtml(a, druckKontext),
+        name: `${name} - Kurzkarte.pdf`,
+        page: { pageSize: 'A5', onePage: true }
+      }
+    const stufeName = druckKontext.lern ? 'Lernausgabe' : stufeLabel(druckKontext.stufe)
+    return {
+      html: handbuchHtml(a, druckKontext),
+      name: `${name} - Handbuch ${stufeName}.pdf`,
+      page: { footer: fusszeile(a, druckKontext) }
     }
-    if (!(await freigabe(an, druck))) return
-    const name = dateiname(an.deckblatt.projekt) || 'Anleitung'
-    const res =
-      art === 'handbuch'
-        ? await api.util.exportPdf(
-            handbuchHtml(an, druck),
-            `${name} - Handbuch ${druck.lern ? 'Lernausgabe' : stufeLabel(druck.stufe)}.pdf`,
-            { footer: fusszeile(an, druck) }
-          )
-        : await api.util.exportPdf(kurzkarteHtml(an, druck), `${name} - Kurzkarte.pdf`, {
-            pageSize: 'A5',
-            onePage: true
-          })
-    if (!res) return
-    if (art === 'kurzkarte' && res.pages > 1) {
-      toast.warning(
-        `Die Kurzkarte hat ${res.pages} Seiten`,
-        'Sie passt auch verkleinert nicht auf eine Seite – kürze die Schritte im Kapitel „Ein- und Ausschalten“.'
-      )
-    } else {
-      toast.success(
-        art === 'handbuch' ? 'Handbuch gespeichert' : 'Kurzkarte gespeichert',
-        res.scale < 1
-          ? `auf ${Math.round(res.scale * 100)} % verkleinert, damit sie auf eine Seite passt`
-          : res.path
-      )
+  }
+
+  function gespeichert(res: PdfExportResult): void {
+    if (druckArt === 'kurzkarte' && res.pages > 1) {
+      toast.warning(`Die Kurzkarte hat ${res.pages} Seiten`, KURZKARTE_ZU_LANG)
+      return
     }
+    toast.success(
+      druckArt === 'handbuch' ? 'Handbuch gespeichert' : 'Kurzkarte gespeichert',
+      res.scale < 1
+        ? `auf ${Math.round(res.scale * 100)} % verkleinert, damit sie auf eine Seite passt`
+        : res.path
+    )
   }
 
   return (
@@ -244,12 +264,50 @@ export function MiniManual(): JSX.Element {
           <BarDivider />
           <Segmented label="Ausgabe für" value={wahl} options={AUSGABEN} onChange={setWahl} />
           <BarDivider />
-          <Button size="sm" variant="outline" onClick={() => void exportiere('kurzkarte')}>
-            <IdCard className="size-4" /> Kurzkarte (A5)
-          </Button>
-          <Button size="sm" onClick={() => void exportiere('handbuch')}>
-            <FileDown className="size-4" /> Handbuch (PDF)
-          </Button>
+          <PrintButton onClick={() => setDrucken(true)} />
+          {drucken && (
+            <PrintDialog
+              titel={druckArt === 'handbuch' ? 'Handbuch drucken' : 'Kurzkarte drucken'}
+              auftrag={druckAuftrag()}
+              onClose={() => setDrucken(false)}
+              vorAusgabe={() => freigabe(useMiniManual.getState().anleitung, druckKontext)}
+              onGespeichert={gespeichert}
+              seitenHinweis={(n) =>
+                druckArt === 'kurzkarte' && n > 1
+                  ? `Die Kurzkarte hat ${n} Seiten. ${KURZKARTE_ZU_LANG}`
+                  : null
+              }
+              optionen={
+                <>
+                  <Field group label="Dokument">
+                    <Segmented
+                      label="Dokument"
+                      value={druckArt}
+                      options={DRUCK_ARTEN}
+                      onChange={setDruckArt}
+                    />
+                  </Field>
+                  <Field
+                    label="Stufe"
+                    hint="Dieselbe Wahl wie „Ausgabe für“ in der Leiste. Die Kurzkarte ist ohne Lernausgabe (dann Stufe Bedienung)."
+                  >
+                    <Select
+                      aria-label="Stufe des Dokuments"
+                      value={wahl}
+                      onChange={(e) => setWahl(e.target.value as AusgabeWahl)}
+                    >
+                      {AUSGABEN.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <PasswortFeld />
+                </>
+              }
+            />
+          )}
           <HandyMenu onDatei={handyDatei} onOnline={handyOnline} />
           <BarDivider />
           <Button

@@ -335,6 +335,7 @@ function WallPanel({ d }: { d: WallMetrics }): JSX.Element {
         · {d.cols} × {d.rows} = {d.total} Module
       </p>
       <Field
+        group
         label="Aufbau"
         hint="Ground-Stack: auf LSU-Füßen am Boden, mit Ballast (1 Fuß je laufendem Meter Bildbreite). Fliegend: an der Traverse."
       >
@@ -487,7 +488,7 @@ function ProcessorPanel(): JSX.Element {
             </Select>
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Farbtiefe">
+            <Field group label="Farbtiefe">
               <Segmented
                 label="Farbtiefe"
                 value={String(resolved.bitDepth)}
@@ -622,6 +623,7 @@ function FiberFields(): JSX.Element {
       {f && (
         <>
           <Field
+            group
             label="Variante"
             hint="S: Singlemode (OS1/OS2, LC, bis 10 km) · M: Multimode (OM3/OM4, LC, bis 300 m). Im Lager: CVT10-S mit Singlemode-Fasern LC-LC (20, 50, 100 m, Patch 1 und 3 m)."
           >
@@ -689,6 +691,7 @@ function CurvingPanel({ d }: { d: WallMetrics }): JSX.Element {
       }
     >
       <Field
+        group
         label="Form"
         hint="uS2+: 0° bis 45° je Modul in 2,5°-Schritten. Vollkreis: gleicher Winkel je Modul. Kreissegment: größter Bogen in Breite × Stichhöhe. Builder: freie Folge gerader und gebogener Abschnitte. Squircle: Rechteck mit runden 90°-Ecken."
       >

@@ -1,8 +1,8 @@
 // Packliste: editierbare Positionen (Menge/Einheit/Notiz/Kategorie), abhakbar,
 // gruppiert nach frei anlegbaren Kategorien. Befüllbar aus der LED-Wall-
-// Konfiguration, Export als PDF. Werkzeug-Muster:
-//   Leiste „Projekt“   PDF, JSON sichern/laden, aus der LED-Wall übernehmen
-//   Schublade          Projektname, PDF (Blöcke zusammenhalten), gespeicherte Jobs
+// Konfiguration, Drucken und PDF. Werkzeug-Muster:
+//   Leiste „Projekt“   Drucken / PDF, JSON sichern/laden, aus der LED-Wall übernehmen
+//   Schublade          Projektname, gespeicherte Jobs
 //   Arbeitsfläche      die Kategorien mit ihren Positionen
 
 import { useMemo, useState } from 'react'
@@ -13,8 +13,6 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
-  FileDown,
-  FileText,
   FolderPlus,
   LayoutGrid,
   Plus,
@@ -27,6 +25,7 @@ import {
 import { BarDivider, PanelSection, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { PrintButton, PrintDialog } from '@renderer/components/PrintDialog'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { Input } from '@renderer/components/ui/input'
@@ -35,7 +34,7 @@ import { api } from '@renderer/lib/api'
 import { cn } from '@renderer/lib/utils'
 import { deriveFromLedWall } from './derive'
 import { parse, serialize } from './io'
-import { exportPackingPdf } from './print'
+import { packingDateiname, packingHtml } from './printHtml'
 import { BLOCK_FARBEN, usePacking, type PackItem, type SavedJob } from './store'
 import { toolPageClass } from '@renderer/lib/toolPage'
 import { useDraft } from '@renderer/lib/useDraft'
@@ -53,6 +52,7 @@ export function PackingList(): JSX.Element {
   const s = usePacking()
   // Druck-Vorliebe, keine Listendaten: gilt für jede Packliste auf diesem Rechner
   const [zusammen, setZusammen] = usePersistentState('packing:bloeckeZusammen', false, flag)
+  const [druck, setDruck] = useState(false)
 
   // Gruppen in Kategorie-Reihenfolge; unbekannte Kategorien (Altdaten) hinten anhängen.
   const groups = useMemo(() => {
@@ -138,19 +138,30 @@ export function PackingList(): JSX.Element {
             </span>
           }
         >
-          <Button
-            size="sm"
-            disabled={s.items.length === 0}
-            onClick={() =>
-              void exportPackingPdf(s.projectName, s.items, {
-                categories: s.categories,
-                colors: s.colors,
-                bloeckeZusammen: zusammen
-              })
-            }
-          >
-            <FileDown className="size-4" /> PDF exportieren
-          </Button>
+          <PrintButton disabled={s.items.length === 0} onClick={() => setDruck(true)} />
+          {druck && (
+            <PrintDialog
+              titel="Packliste drucken"
+              auftrag={{
+                html: packingHtml(s.projectName, s.items, {
+                  categories: s.categories,
+                  colors: s.colors,
+                  bloeckeZusammen: zusammen,
+                  datum: new Date().toLocaleDateString('de-AT')
+                }),
+                name: packingDateiname(s.projectName)
+              }}
+              onClose={() => setDruck(false)}
+              optionen={
+                <Checkbox
+                  checked={zusammen}
+                  onChange={setZusammen}
+                  label="Blöcke nicht über Seiten teilen"
+                  hint="Ein Block, der nicht mehr ganz auf die Seite passt, beginnt auf der nächsten. Ein Block, der länger als eine Seite ist, bricht trotzdem um. Aus: alles fortlaufend – nur der Titel bleibt bei seiner Tabelle."
+                />
+              }
+            />
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -197,19 +208,6 @@ export function PackingList(): JSX.Element {
                 onChange={(e) => s.set({ projectName: e.target.value })}
               />
             </Field>
-          </PanelSection>
-          <PanelSection
-            id="pdf"
-            title="PDF"
-            icon={FileText}
-            summary={zusammen ? 'Blöcke zusammenhalten' : 'fortlaufend'}
-          >
-            <Checkbox
-              checked={zusammen}
-              onChange={setZusammen}
-              label="Blöcke nicht über Seiten teilen"
-              hint="Ein Block, der nicht mehr ganz auf die Seite passt, beginnt auf der nächsten. Ein Block, der länger als eine Seite ist, bricht trotzdem um. Aus: alles fortlaufend – nur der Titel bleibt bei seiner Tabelle."
-            />
           </PanelSection>
           <PanelSection
             id="jobs"

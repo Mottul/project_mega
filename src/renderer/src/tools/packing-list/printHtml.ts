@@ -16,6 +16,12 @@ export interface PackPdfOptionen {
 
 const HEX = /^#[0-9a-f]{6}$/i
 
+/** Vorgeschlagener Dateiname des PDFs */
+export function packingDateiname(projectName: string): string {
+  const safe = projectName.replace(/[^\wäöüÄÖÜß -]+/g, '').trim()
+  return `Packliste${safe ? '-' + safe : ''}.pdf`
+}
+
 export function packingHtml(projectName: string, items: PackItem[], o: PackPdfOptionen): string {
   // Kategorien in der Reihenfolge der Liste, dazu solche, die nur an Positionen hängen
   const cats = [...new Set([...o.categories, ...items.map((i) => i.category)])].filter((c) =>

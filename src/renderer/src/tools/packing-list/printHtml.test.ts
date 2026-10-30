@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { packingHtml, type PackPdfOptionen } from './printHtml'
+import { packingDateiname, packingHtml, type PackPdfOptionen } from './printHtml'
 import type { PackItem } from './store'
 
 const item = (category: string, name: string): PackItem => ({
@@ -22,6 +22,11 @@ const opt = (p: Partial<PackPdfOptionen> = {}): PackPdfOptionen => ({
 })
 
 describe('Packliste als PDF', () => {
+  it('Dateiname: nur unbedenkliche Zeichen, ohne Projekt schlicht „Packliste“', () => {
+    expect(packingDateiname('Messe Dornbirn: Halle/3')).toBe('Packliste-Messe Dornbirn Halle3.pdf')
+    expect(packingDateiname('  ')).toBe('Packliste.pdf')
+  })
+
   it('Blöcke in der Reihenfolge der Liste, leere Kategorien fallen weg', () => {
     const h = packingHtml('Messe', items, opt())
     const titel = [...h.matchAll(/<h2[^>]*>([^<]*)<\/h2>/g)].map((m) => m[1])
