@@ -44,10 +44,15 @@ try {
   if (!ffmpeg) throw new Skip('ffmpeg fehlt (npm run ff:fetch)')
   const make = (args) =>
     execFileSync(ffmpeg, ['-v', 'error', '-y', ...args], { stdio: ['ignore', 'pipe', 'pipe'] })
+  // 5 Minuten, aneinanderkopiert: Der Konverter muss beim Beenden noch laufen. Mit nur 60 s war
+  // ProRes auf einem schnellen Rechner nach gut 10 s fertig, und das vollständige Video sah im
+  // letzten Schritt wie eine liegen gebliebene halbe Ausgabe aus.
   make([
     ...['-f', 'lavfi', '-i', 'testsrc2=s=1920x1080:r=25:d=60'],
-    ...['-c:v', 'libx264', '-preset', 'ultrafast', f('lang.mp4')]
+    ...['-c:v', 'libx264', '-preset', 'ultrafast', f('stueck.mp4')]
   ])
+  make(['-stream_loop', '4', '-i', f('stueck.mp4'), '-c', 'copy', f('lang.mp4')])
+  rmSync(f('stueck.mp4'))
   make(['-f', 'lavfi', '-i', 'testsrc2=s=1600x1200', '-frames:v', '1', f('quer.jpg')])
   make(['-f', 'lavfi', '-i', 'testsrc2=s=1200x1600', '-frames:v', '1', f('hoch.jpg')])
   const before = new Set(bundledFfmpeg())
@@ -185,6 +190,13 @@ try {
       'Beenden hängt nicht, danach läuft kein ffmpeg der App weiter',
       async () => {
         const proc = ctx.app.process()
+        // Sonst prüfte dieser Schritt nichts: Ein fertiger Auftrag hinterlässt zu Recht eine Datei
+        const jobs = await w.evaluate(() => window.api.converter.list())
+        assert.deepEqual(
+          jobs.map((j) => j.status),
+          ['running'],
+          'der Konverter muss beim Beenden noch laufen'
+        )
         // Rückfrage mit „Beenden“ beantworten
         await ctx.app.evaluate(({ dialog }) => {
           dialog.showMessageBox = async () => ({ response: 0, checkboxChecked: false })
