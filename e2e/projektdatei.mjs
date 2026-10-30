@@ -176,9 +176,14 @@ try {
         assert.equal(r.section.data.projectName, 'Messe Dornbirn')
         assert.equal('sigChain' in wall0(r), false, 'Bedienzustand gehört nicht in die Datei')
         // Bedienzustand (PDF-Format) macht nichts ungespeichert
-        await bar().getByRole('button', { name: 'Hoch', exact: true }).click()
+        await bar().getByRole('button', { name: 'Drucken / PDF' }).click()
+        const dlg = page.getByRole('dialog', { name: /drucken$/ })
+        await dlg.getByRole('button', { name: 'Quer', exact: true }).click()
+        await dlg.getByRole('button', { name: 'Hoch', exact: true }).click()
         await page.waitForTimeout(300)
         assert.equal(await chip().getByLabel('ungespeichert').count(), 0)
+        await dlg.getByRole('button', { name: 'Schließen', exact: true }).click()
+        await dlg.waitFor({ state: 'detached' })
       }
     ],
     [

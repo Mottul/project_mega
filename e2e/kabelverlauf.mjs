@@ -377,7 +377,10 @@ try {
         await app.evaluate(({ dialog }, p) => {
           dialog.showSaveDialog = async () => ({ canceled: false, filePath: p })
         }, f)
-        await page.getByRole('button', { name: /PDF exportieren/ }).click()
+        await page.getByRole('button', { name: 'Drucken / PDF' }).click()
+        const dlg = page.getByRole('dialog', { name: /drucken$/ })
+        await dlg.getByTestId('druck-seite').first().waitFor({ timeout: 30_000 })
+        await dlg.getByRole('button', { name: 'Als PDF speichern…' }).click()
         assert.ok(await waitFor(() => existsSync(f), 20_000), 'PDF nicht geschrieben')
         assert.ok(readFileSync(f).subarray(0, 5).toString() === '%PDF-')
       }

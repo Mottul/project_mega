@@ -39,6 +39,13 @@ Jedes Werkzeug ist gleich aufgebaut:
   ein versehentlicher Tastendruck nimmt das Bild nicht weg. Der Knopf „✕ Schließen“ und der
   Mauszeiger erscheinen nur, wenn die Maus bewegt wird, und verschwinden nach 3 s wieder – auf
   Bühnenmonitor, LED-Wand und im NDI-Bild steht nichts davon.
+- **Drucken / PDF** (LED-Wall, Packliste, Mini-Manual) ist überall derselbe Knopf in der Leiste. Er
+  öffnet die Druckvorschau: links die Optionen des Werkzeugs, in der Mitte die echten Seiten – so
+  sieht man Umbrüche vorher, jede Option zeichnet sie neu. **Als PDF speichern…** fragt nach dem
+  Ort, **Drucken…** öffnet den Druckdialog des Systems und druckt genau diese Seiten (auch mit
+  Fußzeile; eine Seite im Querformat kommt gedreht aufs Blatt, ohne dass man im Dialog etwas
+  umstellen muss). Solange der Druckdialog offen ist, wartet das Werkzeugfenster; laufende
+  Ausgaben und Timer laufen weiter.
 - **Schublade links** mit den Einstellungen: Bereiche mit Symbol, Titel und einer Zusammenfassung
   der Werte, einzeln auf- und zuklappbar; längere Erklärungen hinter dem **ⓘ**. Mit der **Nadel**
   angeheftet schiebt sie die Arbeitsfläche zur Seite (zum Einrichten), gelöst schwebt sie darüber
@@ -306,8 +313,8 @@ DMX-Startadresse in Dip-Schalter umrechnen und zurück (binär, 9 Schalter, 1–
 ### LED-Wall-Konfigurator
 
 Aufgebaut wie die anderen Werkzeuge: Die **Leiste „Projekt“** hat das Menü **„Datei“** für
-[Projektdateien](#projektdateien-und-projektordner), die **Wand-Wahl**, exportiert die PDF-Doku
-(Hoch oder Quer) und übergibt das Material an die [Packliste](#packliste); rechts stehen Projekt
+[Projektdateien](#projektdateien-und-projektordner), die **Wand-Wahl**, **Drucken / PDF** für die
+Doku (Hoch oder Quer stellt man in der Druckvorschau ein) und übergibt das Material an die [Packliste](#packliste); rechts stehen Projekt
 und Kunde. Die **Schublade** hält alles, was die Wand festlegt, die **Arbeitsfläche** zeigt, was
 daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 
@@ -576,8 +583,8 @@ Downloads laufen oder warten), Format, Zielordner und Anmeldung in der Schublade
 
 Material-Checkliste mit Mengen, Einheiten und Notizen – abhakbar, nach Kategorie gruppiert,
 als Jobs speicherbar. Aus der LED-Wall-Konfiguration befüllbar (Module, Standfüße, Ballast,
-Kabelmengen aus den gezeichneten Ketten); Export als PDF oder JSON. PDF, JSON und „Aus LED-Wall
-übernehmen“ stehen in der Leiste „Projekt“, Projektname und gespeicherte Jobs (laden, löschen,
+Kabelmengen aus den gezeichneten Ketten); Drucken, PDF oder JSON. Drucken / PDF, JSON und „Aus
+LED-Wall übernehmen“ stehen in der Leiste „Projekt“, Projektname und gespeicherte Jobs (laden, löschen,
 aktuelle speichern) in der Schublade – wie die Vorlagen des LED-Wall-Konfigurators.
 
 - **Blöcke** (Kategorien): Der Titel nutzt die ganze Breite der Kopfzeile. Jeder Block kann eine
@@ -586,7 +593,7 @@ aktuelle speichern) in der Schublade – wie die Vorlagen des LED-Wall-Konfigura
   LED-Wall-Konfigurator, bekommt jede Wand gleich beim Übernehmen eine eigene Farbe; eine
   gewählte Farbe bleibt beim nächsten Übernehmen. Farben ziehen beim Umbenennen mit und gehen in
   gespeicherte Jobs und die JSON-Datei mit.
-- **PDF** (Schublade): Blöcke in der Reihenfolge der Liste. **Blöcke nicht über Seiten teilen**:
+- **Drucken / PDF:** Blöcke in der Reihenfolge der Liste. **Blöcke nicht über Seiten teilen**:
   Ein Block, der nicht mehr ganz auf die Seite passt, beginnt auf der nächsten (ein Block länger
   als eine Seite bricht trotzdem um, die Kopfzeile der Tabelle wiederholt sich). Aus: alles
   fortlaufend, nur der Titel bleibt bei seiner Tabelle und keine Zeile wird geteilt.
@@ -595,8 +602,8 @@ aktuelle speichern) in der Schublade – wie die Vorlagen des LED-Wall-Konfigura
 
 Kurz-Anleitungen für die Leute vor Ort („So bedienst du deine LED-Wall“): wie man die Wand
 einschaltet und bedient, was wo steht – und im Fehlerfall Schritt für Schritt, was man prüfen und
-selbst beheben darf, bevor man anruft. Ausgabe als **Handbuch** (PDF, A4, Fußzeile mit Seiten)
-und **Kurzkarte** (PDF, A5, genau eine Seite – passt sie nicht, wird sie bis 62 % verkleinert,
+selbst beheben darf, bevor man anruft. **Drucken / PDF** gibt das **Handbuch** aus (A4, Fußzeile
+mit Seiten) oder die **Kurzkarte** (A5, genau eine Seite – passt sie nicht, wird sie bis 62 % verkleinert,
 sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
 
 - **Handy-Fassung** (Leiste → Handy): eine einzige HTML-Datei, die nichts nachlädt – Fotos und
@@ -714,8 +721,8 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
   und Überschriften, Kontakte, Fernwartung) – als Kopie, damit die Datei beim Kollegen
   vollständig ist.
 - **Zugangsdaten** stehen im Klartext in der Projektdatei; im PDF ab Werk „wird separat
-  übergeben“, wahlweise geschwärzt oder gedruckt. Die Stufe Bedienung zeigt sie nie.
-- **Vor dem Export** (Schublade, Zahl in der Leiste): leere Platzhalter, fehlender Kontakt,
+  übergeben“, wahlweise geschwärzt oder gedruckt (Einstellung in der Druckvorschau). Die Stufe Bedienung zeigt sie nie.
+- **Vor dem Export** (Schublade, Zahl in der Leiste; bei Fehlern fragt auch das Drucken nach): leere Platzhalter, fehlender Kontakt,
   gedruckte Passwörter, fehlende oder veraltete LED-Wall-Planung, Probleme der Fehlerfälle,
   leere Kapitel, Fehler der Verkabelung laut Planung (Port oder Kreis überlastet, zu viele Ports). Bei Fehlern fragt der Export nach.
 - **Fotos** stehen zentriert, die Bildunterschrift mittig darunter; mehrere Foto-Blöcke

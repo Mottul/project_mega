@@ -160,6 +160,9 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   `if (win !== self) return`. Regressionstest: `e2e/layout.mjs` (zweimal öffnen, dann prüfen).
 - **„Live“-Anzeigen** brauchen die Wahrheit aus dem main (Event), nicht den letzten Klick im
   Renderer: Ausgabefenster schließen auch per Esc oder vom Betriebssystem.
+- **`Field` umschließt sein Kind mit einem `<label>`.** Bei einer Knopfgruppe (`Segmented`) gilt es
+  für den ersten Knopf: Er hieß „Dokument Dokument“ statt „Handbuch“, und ein Klick auf die
+  Beschriftung schaltete still um. Knopfgruppen immer mit `<Field group>`.
 - **Eine Taste an genau einer Stelle auswerten.** Testbild und Timer schlossen bei Esc doppelt
   (before-input-event im main UND keydown im Renderer) – harmlos, solange ein Druck genügte. Mit
   „zweimal Esc“ hätte so schon ein Druck geschlossen. Tasten der Ausgabefenster nur im main
@@ -231,7 +234,7 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   Was ein reines Modul an Werten braucht (Beschriftungen, Tastenkürzel), liegt in einer eigenen
   Datei ohne Store (`osc-control/labels.ts`, `jingle-player/hotkeys.ts`, der Store exportiert es
   weiter); die Oberfläche lädt den Store erst beim Klick per `await import(…)` (Übernahme ins
-  Mini-Manual, 23.10.2026). Ebenso Druck-HTML: Wer `api.util.exportPdf` ruft, baut das HTML in
+  Mini-Manual, 23.10.2026). Ebenso Druck-HTML: Wer `PrintDialog` füttert, baut das HTML in
   einer eigenen reinen Datei (`packing-list/printHtml.ts`, `led-wall/printHtml.ts`) und testet dort.
 
 ## Vor dem Abschluss

@@ -27,12 +27,22 @@ import { clamp } from './oscShared'
 
 /* ------------------------- Inspector: Widget ---------------------------- */
 
-export function Field({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+export function Field({
+  label,
+  group,
+  children
+}: {
+  label: string
+  /** Knopfgruppe: ohne <label>, es gälte sonst für den ersten Knopf (ui/field.tsx) */
+  group?: boolean
+  children: ReactNode
+}): JSX.Element {
+  const Huelle = group ? 'div' : 'label'
   return (
-    <label className="block">
+    <Huelle className="block">
       <span className="mb-1 block text-xs text-muted-foreground">{label}</span>
       {children}
-    </label>
+    </Huelle>
   )
 }
 
@@ -446,7 +456,7 @@ export function WidgetEditor({
       )}
 
       {w.type === 'label' && (
-        <Field label="Ausrichtung">
+        <Field group label="Ausrichtung">
           <Segmented
             value={w.align}
             options={[
@@ -460,7 +470,7 @@ export function WidgetEditor({
       )}
 
       {w.type === 'fader' && (
-        <Field label="Ausrichtung">
+        <Field group label="Ausrichtung">
           <Segmented
             value={w.orient}
             options={[
@@ -486,7 +496,7 @@ export function WidgetEditor({
 
       {w.type === 'bank' && (
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Modus">
+          <Field group label="Modus">
             <Segmented
               value={w.bankMode}
               options={[

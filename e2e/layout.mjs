@@ -387,9 +387,9 @@ try {
         await tool('led-wall')
         assert.equal(await bar().getAttribute('data-kind'), 'job')
         await expectCount(
-          bar().getByRole('button', { name: /PDF exportieren/ }),
+          bar().getByRole('button', { name: 'Drucken / PDF' }),
           1,
-          '„PDF exportieren“ in der Leiste'
+          '„Drucken / PDF“ in der Leiste'
         )
         await drawer().waitFor({ timeout: 10_000 })
         const tab = (name) => page.getByRole('tab', { name, exact: true })
@@ -456,7 +456,7 @@ try {
       }
     ],
     [
-      'Packliste: langer Blocktitel nutzt die Breite, Farbe je Block, PDF-Option in der Schublade',
+      'Packliste: langer Blocktitel nutzt die Breite, Farbe je Block, Drucken in der Leiste',
       async () => {
         await tool('packing-list')
         const block = page.getByTestId('pack-block').first()
@@ -475,7 +475,7 @@ try {
           ),
           await block.getAttribute('style')
         )
-        await drawer().getByRole('button', { name: /^PDF/ }).waitFor({ timeout: 5_000 })
+        await bar().getByRole('button', { name: 'Drucken / PDF' }).waitFor({ timeout: 5_000 })
       }
     ],
     [

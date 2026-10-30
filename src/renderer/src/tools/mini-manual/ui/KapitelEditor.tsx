@@ -32,6 +32,7 @@ function Verkabelung(): JSX.Element {
   return (
     <div className="space-y-3">
       <Field
+        group
         label="Blickrichtung der Pläne"
         hint="Gesteckt wird meist hinter der Wand. Von hinten gesehen sind die Pläne gespiegelt und groß beschriftet; Spalten- und Kettennummern bleiben am Modul."
       >

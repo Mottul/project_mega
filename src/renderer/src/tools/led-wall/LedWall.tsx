@@ -6,12 +6,11 @@
 //                     und Stromplan; daneben Strom, Aufbau und Moduldaten
 // Die Zeichenfläche füllt die Höhe des Fensters – auf dem Laptop passt alles auf einen Blick.
 
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   Cable,
   ClipboardList,
   Columns2,
-  FileDown,
   PlugZap,
   RectangleHorizontal,
   Spline,
@@ -23,6 +22,8 @@ import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { InfoTip } from '@renderer/components/ui/info-tip'
+import { PrintButton, PrintDialog, type DruckAuftrag } from '@renderer/components/PrintDialog'
+import { Field } from '@renderer/components/ui/field'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { api } from '@renderer/lib/api'
 import { flushStore } from '@renderer/lib/persistStorage'
@@ -43,7 +44,7 @@ import { PWR_COLORS, SIG_COLORS } from './data'
 import { FrontView, fitText } from './FrontView'
 import { gridCellSize } from './front'
 import { LED_WALL_FILE } from './fileSection'
-import { exportLedWallPdf } from './print'
+import { ledWallPrintHtml } from './printHtml'
 import { BUILD_LABELS, LedWallSettings } from './Settings'
 import { amps, analyzePower, circuitLabel, PHASES, type PowerAnalysis } from './power'
 import { analyzeProcessors, backupLabel, fiberSummary, type GroupLoad } from './processors'
@@ -101,6 +102,7 @@ const m2 = (n: number): string =>
 export function LedWall(): JSX.Element {
   const s = useLedWall()
   const file = useProjectFile(LED_WALL_FILE)
+  const [druck, setDruck] = useState(false)
 
   const d = useMemo(
     () =>
@@ -137,7 +139,7 @@ export function LedWall(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d.rows, d.cols, s.wallId])
 
-  function doExport(): void {
+  function druckAuftrag(): DruckAuftrag {
     const curve = d.curve
     const curveForPdf = curve
       ? {
@@ -155,7 +157,7 @@ export function LedWall(): JSX.Element {
           })
         }
       : null
-    void exportLedWallPdf({
+    const { html, fileName } = ledWallPrintHtml({
       ...d,
       projectName: s.projectName,
       customerName: s.customerName,
@@ -175,6 +177,7 @@ export function LedWall(): JSX.Element {
       landscape: s.pdfLandscape,
       curve: curveForPdf
     })
+    return { html, name: fileName, page: { landscape: s.pdfLandscape } }
   }
 
   function toPackingList(): void {
@@ -209,19 +212,27 @@ export function LedWall(): JSX.Element {
           <BarDivider />
           <WallMenu />
           <BarDivider />
-          <Button size="sm" onClick={doExport}>
-            <FileDown className="size-4" /> PDF exportieren
-          </Button>
-          <Segmented
-            label="Seitenformat der PDF-Doku"
-            className="w-auto [&>button]:py-1"
-            value={s.pdfLandscape ? 'quer' : 'hoch'}
-            options={[
-              { value: 'hoch', label: 'Hoch' },
-              { value: 'quer', label: 'Quer' }
-            ]}
-            onChange={(v) => s.set({ pdfLandscape: v === 'quer' })}
-          />
+          <PrintButton onClick={() => setDruck(true)} />
+          {druck && (
+            <PrintDialog
+              titel="LED-Wall-Doku drucken"
+              auftrag={druckAuftrag()}
+              onClose={() => setDruck(false)}
+              optionen={
+                <Field group label="Seitenformat">
+                  <Segmented
+                    label="Seitenformat der PDF-Doku"
+                    value={s.pdfLandscape ? 'quer' : 'hoch'}
+                    options={[
+                      { value: 'hoch', label: 'Hoch' },
+                      { value: 'quer', label: 'Quer' }
+                    ]}
+                    onChange={(v) => s.set({ pdfLandscape: v === 'quer' })}
+                  />
+                </Field>
+              }
+            />
+          )}
           <BarDivider />
           <Button
             size="sm"

@@ -817,7 +817,7 @@ Aufbau wie jedes Werkzeug (CLAUDE.md „Werkzeug-Layout“): `ToolShell` mit Auf
 
 Ein reiner Seitenbauer erzeugt HTML-Strings aus dem Modell, für alle drei Ausgaben und die
 Vorschau. Ein gemeinsamer, getesteter Escape-Helfer in `src/shared` ersetzt die zwei
-unterschiedlichen `esc()` in `led-wall/print.ts` und `packing-list/print.ts` (eines maskiert
+unterschiedlichen `esc()` in `led-wall/printHtml.ts` und `packing-list/printHtml.ts` (eines maskiert
 Anführungszeichen, das andere nicht).
 
 - **Handbuch (PDF):** A4 hoch, Kapitel beginnen auf neuer Seite (`break-before`), Schritte und
@@ -1078,7 +1078,7 @@ gleich dort mitkommen.
   erweitern, `loadPreset` mit Vorgaben auffüllen (heute bleiben fehlende Felder der aktuellen
   Planung stehen).
 - **Reine Funktionen** in einem neuen Modul `led-wall/cabling` (mit Tests): Kettenzählung (ersetzt
-  vier Kopien: `CableGrid.tsx`, `LedWall.tsx`, `print.ts`, `packing-list/derive.ts`),
+  vier Kopien: `CableGrid.tsx`, `LedWall.tsx`, `printHtml.ts`, `packing-list/derive.ts`),
   Schlangen-Route aus Startpunkt und Richtung, gezeichnete Reihenfolge und ihr Abgleich, Sprünge,
   Backup-Leitungen und Port-Belegung, Lasten je Kette, Port- und Gesamtkapazität aus
   Prozessor/Farbtiefe/Bildrate, Phasenbilanz, Geometrie und SVG-Markup des Verlaufs.
@@ -1086,7 +1086,7 @@ gleich dort mitkommen.
   absolut gelegtes SVG mit `pointer-events: none` über dem Knopf-Raster von `CableGrid.tsx`,
   im PDF an `gridSvg` angehängt. Marker-IDs je Plan eindeutig (Signal und Strom stehen im selben
   PDF).
-- **`print.ts` aufteilen** in einen reinen HTML-Bauer und einen dünnen Export – das Mini-Manual
+- **`printHtml.ts` aufteilen** in einen reinen HTML-Bauer und einen dünnen Export – das Mini-Manual
   nutzt die Bausteine mit. `deriveFromLedWall` (Packliste) bekommt die Konfiguration als
   Parameter statt den Store zu lesen.
 - Wer den Store von außen liest, wendet `resizeGrid` auf die aktuelle Größe an (`ensureGridSize`
@@ -1162,7 +1162,7 @@ Neue Dateien sind hier ohne Backticks genannt (`npm run check:refs` prüft nur V
   (`launcher/ToolHost.tsx` setzt `document.title`).
 - `components/ui` – `TextArea` mit Puffer.
 - `tools/led-wall/` – `cabling`, `sanitize`/Migration v2, Datei-Bindung, Pfeile, Ansicht
-  vorne/hinten, Prozessor/Port-Kapazität, `print.ts` geteilt.
+  vorne/hinten, Prozessor/Port-Kapazität, `printHtml.ts` geteilt.
 - tools/mini-manual/ – `index.ts` (ToolModule), Store, Modell und `sanitize`, Kapitel-Katalog,
   Bibliothek (mitgelieferte Bausteine), Platzhalter, Fehlerfall-Prüfung und Stufenfilter,
   Seitenbauer (Handbuch, Kurzkarte, HTML), Importe (je Format ein reines Modul mit Fixtures),
