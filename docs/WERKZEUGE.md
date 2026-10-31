@@ -6,8 +6,8 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
 - [Startbildschirm & Bedienung](#startbildschirm--bedienung)
 - [Wiedergabe & Show](#wiedergabe--show) – Video-Player, Jingle-Player, Stage-Timer & Uhr,
   Testbildgenerator
-- [Steuerung](#steuerung) – OSC-Steuerung, NovaStar-Steuerung, Netzwerk-Scanner,
-  DMX-Dip-Schalter
+- [Steuerung](#steuerung) – OSC-Steuerung, NovaStar-Steuerung, ATEM-Steuerung,
+  Netzwerk-Scanner, DMX-Dip-Schalter
 - [Bild & Projektion](#bild--projektion) – LED-Wall-Konfigurator, Projektionsverhältnis,
   Kameraobjektiv, Beamer-Lumen
 - [Medien & Bibliothek](#medien--bibliothek) – Video-Konverter, Video-Generator, Medien-Info,
@@ -289,6 +289,35 @@ Steuert NovaStar-LED-Prozessoren (NovaPro UHD Jr & Co.) über TCP 5200 – Vorab
   gegen das Bitfocus-Companion-Modul abgeglichen, die Prüfsummen per Unit-Test gesichert.
 - Roh-Befehl-Sender für andere Modelle.
 - Auch als Widgets in der OSC-Steuerung nutzbar – und damit am Handy.
+
+### ATEM-Steuerung
+
+Bedient Blackmagic-ATEM-Mischer über das Netzwerk (UDP 9910), mit Rückmeldung vom Mischer. Es gibt
+bisher die Seite „Mischen“; Keyer, SuperSource, Multiview, Makros und Ton folgen, siehe
+[PLAN-ATEM.md](PLAN-ATEM.md). Der Mischer braucht Ethernet, USB allein genügt nicht.
+
+- **Leiste „Mischer“:** Adresse, Verbinden/Trennen, Probebetrieb und Sperre, rechts Modell und
+  Status. „Beim Start verbinden“ und das Modell des Probebetriebs stehen in der Schublade.
+- **Eine Verbindung im Hintergrund:** Sie läuft weiter, wenn das Werkzeug zugeht, und belegt immer
+  genau einen Platz am Mischer. Bricht sie ab, zeigt das Werkzeug das rot, sperrt die Knöpfe und
+  verbindet sich von selbst neu; bis dahin bleibt der letzte Stand ausgegraut stehen.
+- **Programm und Vorschau:** Reihen mit allen Quellen, die der Mischer für diese M/E meldet, mit
+  seinen Namen, Eingänge zuerst. Hat er mehrere M/Es, gibt es eine Auswahl.
+- **Die Knöpfe zeigen den Mischer:** Ein Knopf leuchtet erst, wenn der Mischer es gemeldet hat, bis
+  dahin pulsiert er. Änderungen am Hardware-Panel oder in ATEM Software Control erscheinen ebenso.
+- **Cut, Auto, Hebel:** Der Hebel bleibt wie ein echter Griff nach dem Übergang am Ende stehen und
+  fährt beim nächsten von dort zurück, auch wenn Auto oder das Panel geschaltet haben. Beim Ziehen
+  gehen rund 30 Werte je Sekunde hinaus, immer der neueste.
+- **Übergang:** Mix, Dip, Wipe und DVE, Stinger, wenn der Mischer ihn hat. Die Dauer gilt in Bildern,
+  daneben stehen die Sekunden zur aktuellen Bildrate. Beim Stinger bestimmt der Clip die Länge.
+- **Fade to Black** verlangt einen zweiten Klick innerhalb von 3 Sekunden, in beide Richtungen.
+- **Sperre:** nimmt alle Knöpfe, den Hebel und die Tastatur aus der Bedienung und bleibt gemerkt.
+- **Tastatur:** 1–9 Vorschau, Umschalt + 1–9 Programm, Leertaste Cut, Eingabe Auto. Nicht in
+  Textfeldern, eine gehaltene Taste zählt einmal.
+- **Probebetrieb:** ATEM Mini, ATEM Mini Extreme oder eine Constellation mit vier M/Es ohne Gerät,
+  zum Üben und um die Oberfläche für andere Mischer-Größen zu sehen. Übergänge laufen Bild für Bild.
+- **Unbekannte Firmware:** Das Protokoll ist nicht offiziell dokumentiert. Meldet der Mischer eine
+  neuere Version, als die eingebaute Bibliothek kennt, warnt das Werkzeug.
 
 ### Netzwerk-Scanner
 

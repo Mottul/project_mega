@@ -28,7 +28,7 @@ Ein einzelner Test: `npx vitest run src/renderer/src/tools/led-wall/math.test.ts
 Drei Build-Targets (electron-vite, CJS für main/preload): `src/main` (Node,
 Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 (React SPA mit HashRouter). Aliase: `@shared`, `@renderer`. Dienste im main je Bereich in
-`src/main/services/<bereich>/` (`windows`, `remote`, `ndi`, `player`, `timer`, `convert`, `projects` …); lose
+`src/main/services/<bereich>/` (`windows`, `remote`, `ndi`, `player`, `timer`, `convert`, `projects`, `atem` …); lose
 Dateien dort nur fürs ganze Programm (`store`, `db`, `log`, `broadcast`, `fileDialogs`, `fsAtomic`,
 `shutdown`, `binaryVersion`, `reachableDir`).
 Im main nie synchron auf einen Prozess warten (`spawnSync`/`execSync`, ESLint sperrt es): Das hält
@@ -99,6 +99,10 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   mit Spuren `player`/`converter`/`download` (`services/jobs/queue.ts`), jede Auftragsliste erbt
   von `JobList` (`services/jobs/jobList.ts`: melden, abbrechen, Fertige entfernen, Fehler vs.
   Abbruch) und schreibt nur ihr `run()`.
+- **ATEM-Steuerung** (Tool-id `atem-control`, Skill `atem-steuerung`): eine Verbindung im main
+  (`services/atem/`), Fenster spiegeln nur eine verdichtete `AtemView`. Ein Knopf zeigt, was der Mischer
+  meldet, nie, was gedrückt wurde; Befehle laufen durch `atemCommand` (`shared/atem.ts`). Echte
+  Verbindung und Probebetrieb erfüllen dieselbe Schnittstelle (`atemVerbindung.ts`).
 - **Native/optionale Module:** better-sqlite3 (ab 13 über N-API: die Binaries liegen im Paket und
   laufen unter jeder Electron- und Node-Version, kein Rebuild, KEIN node-gyp im Baum); NDI-Binding
   `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`); NDI-Ausgaben nur über den
@@ -135,6 +139,6 @@ Umsetzung lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überfü
 Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
 `abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,
 `review-checkliste`, `abhaengigkeiten`, `aufraeumen`, `projektdatei`, `anleitung-inhalte`,
-`kabelverlauf`).
+`kabelverlauf`, `atem-steuerung`).
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.

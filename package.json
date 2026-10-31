@@ -39,6 +39,7 @@
     "package:dir": "npm run build && npx --yes electron-builder@26 --dir"
   },
   "dependencies": {
+    "atem-connection": "3.10.3",
     "better-sqlite3": "13.0.3",
     "pdfjs-dist": "6.4.299"
   },

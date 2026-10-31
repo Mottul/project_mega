@@ -15,6 +15,11 @@ files:
   - '!**/node_modules/better-sqlite3/binding.gyp'
   - '!**/node_modules/better-sqlite3/prebuilds/**'
   - '**/node_modules/better-sqlite3/prebuilds/${platform}-${arch}.node'
+  # Ebenso die FreeType-Bindung von atem-connection (Multiview-Beschriftungen, ~15 MB mit Quellen):
+  # nur das Binary der Zielplattform. node-addon-api sind Header zum Kompilieren.
+  - '!**/node_modules/@julusian/freetype2/{gyp,src,vendor,prebuilds,node_modules}/**'
+  - '!**/node_modules/@julusian/freetype2/binding.gyp'
+  - '**/node_modules/@julusian/freetype2/prebuilds/freetype2-${platform}-${arch}/**'
 
 # better-sqlite3 (ab 13) nutzt die N-API und bringt fertige Binaries mit -> electron-builder
 # muss/soll nicht selbst rebuilden (haelt die node-gyp/tar-Kette auch aus dem Packaging heraus).
@@ -24,6 +29,7 @@ asar: true
 # native Module + ESM-only Pakete duerfen nicht ins asar-Archiv (sonst Laufzeitfehler)
 asarUnpack:
   - '**/node_modules/better-sqlite3/**'
+  - '**/node_modules/@julusian/freetype2/**'
   - '**/node_modules/pdfjs-dist/**'
 
 # Pro Zielplattform wird nur das passende ffmpeg-Verzeichnis als Ressource mitgenommen.

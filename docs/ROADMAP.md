@@ -58,10 +58,9 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Neue Werkzeuge
 
-- **ATEM-Steuerung** mit dem Funktionsumfang von MixEffect Pro: Blackmagic-ATEM-Mischer vom Laptop
-  oder Tablet bedienen, mit SuperSource, bildgenau animierten Layoutwechseln und Multiview im
-  Werkzeug – Plan mit Aufbau, Entwurf und Phasen in [PLAN-ATEM.md](PLAN-ATEM.md). Zum Testen
-  braucht es einen ATEM-Mischer.
+- **ATEM-Steuerung, weitere Phasen:** Die Seite „Mischen“ steht, es fehlen die Abnahme am Mischer,
+  Keyer, Makros, SuperSource mit bildgenau animierten Layoutwechseln, Multiview im Werkzeug, Ton,
+  eigene Seiten und die Bedienung vom Tablet – Plan mit Phasen in [PLAN-ATEM.md](PLAN-ATEM.md).
 - **ArtNet/sACN-Tester** (DMX übers Netz senden, Node-Discovery) und **DMX-Universum-Planer**
   (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem DMX-Dip-Schalter.
 - **Rechner:** IP-/Subnetz (Dante, NDI, AV-over-IP – passend zum Netzwerk-Scanner),

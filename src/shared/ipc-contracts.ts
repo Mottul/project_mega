@@ -87,6 +87,7 @@ import type {
   YtProbeResult,
   YtToolStatus
 } from './types'
+import type { AtemStatus, AtemView } from './atem'
 
 /** Signatur eines Kanals; nur für die Typen, zur Laufzeit gibt es sie nicht. */
 export type KanalFn = (...args: never[]) => unknown
@@ -511,6 +512,23 @@ export const Channels = {
     preset: anfrage<(n: number) => void>('novastar:preset'),
     /** Roh-Befehl als Hex senden; addChecksum ergänzt Prüfsumme automatisch. */
     raw: anfrage<(hex: string, addChecksum: boolean) => void>('novastar:raw')
+  },
+
+  atem: {
+    /** Zustand der einen Verbindung im main */
+    status: anfrage<() => AtemStatus>('atem:status'),
+    /** Mit Mischer oder Probebetrieb verbinden; das Ziel prüft der Dienst (`AtemZiel`). */
+    connect: anfrage<(ziel: unknown) => AtemStatus>('atem:connect'),
+    /** Verbindung trennen. */
+    disconnect: anfrage<() => AtemStatus>('atem:disconnect'),
+    /** Letzte Ansicht, null ohne Verbindung. */
+    view: anfrage<() => AtemView | null>('atem:view'),
+    /** Befehl an den Mischer, Prüfung im Dienst (`AtemCommand`). Das Ergebnis kommt als Ansicht. */
+    command: anfrage<(cmd: unknown) => void>('atem:command'),
+    /** Statusänderungen. Liefert Cleanup. */
+    onStatus: ereignis<(status: AtemStatus) => void>('atem:statusChanged'),
+    /** Neue Ansicht, gedrosselt. Liefert Cleanup. */
+    onView: ereignis<(view: AtemView) => void>('atem:viewChanged')
   },
 
   netscan: {

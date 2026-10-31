@@ -6,10 +6,16 @@
 import assert from 'node:assert/strict'
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { startAtemFake } from './atemFake.mjs'
 import { launchApp, root, runSteps, waitFor } from './harness.mjs'
 
-/** Startdatei der entpackten App in dist/ (Namen aus electron-builder.yml und package.json) */
+/**
+ * Startdatei der App: Vorgabe ist die entpackte App in dist/ (Namen aus electron-builder.yml und
+ * package.json). `MOTTULBOX_PAKET_EXE` zeigt stattdessen auf eine aus dem Installer installierte
+ * App (Ablauf „Installer bauen“).
+ */
 function paketPfad() {
+  if (process.env.MOTTULBOX_PAKET_EXE) return process.env.MOTTULBOX_PAKET_EXE
   const dist = join(root, 'dist')
   if (process.platform === 'win32') return join(dist, 'win-unpacked', 'Mottulbox.exe')
   if (process.platform === 'linux') return join(dist, 'linux-unpacked', 'mottulbox')
@@ -85,6 +91,63 @@ try {
           hits.some((h) => h.pageNo === 1),
           JSON.stringify(hits)
         )
+      }
+    ],
+    [
+      'ATEM: Dienst der App, Socket-Thread aus dem app.asar, Befehl mit Rückmeldung',
+      async () => {
+        const mischer = await startAtemFake()
+        const status = () => page.evaluate(() => window.api.atem.status())
+        try {
+          // Über die App, nicht über die Bibliothek: Der Dienst lädt sie erst beim Verbinden
+          await page.evaluate((host) => window.api.atem.connect({ host }), mischer.host)
+          assert.ok(
+            await waitFor(async () => (await status()).phase === 'verbunden', 15_000),
+            JSON.stringify(await status())
+          )
+          assert.equal((await status()).modell, 'ATEM Mini Extreme')
+          const thread = await app.evaluate(() => {
+            const lade = process.mainModule.require.bind(process.mainModule)
+            const { ThreadedClassManager } = lade('threadedclass')
+            return {
+              modus: ThreadedClassManager.getThreadMode(),
+              threads: ThreadedClassManager.getThreadCount()
+            }
+          })
+          assert.deepEqual(thread, { modus: 'worker_threads', threads: 1 })
+          await page.evaluate(() => window.api.atem.command({ type: 'programm', me: 0, quelle: 3 }))
+          assert.ok(
+            await waitFor(
+              async () =>
+                (await page.evaluate(() => window.api.atem.view()))?.mes[0].programm === 3,
+              5000
+            ),
+            'Rückmeldung fehlt'
+          )
+          assert.deepEqual(mischer.empfangen, [{ name: 'CPgI', me: 0, quelle: 3 }])
+        } finally {
+          await page.evaluate(() => window.api.atem.disconnect())
+          await mischer.close()
+        }
+      }
+    ],
+    [
+      'FreeType zeichnet eine Multiview-Beschriftung (natives Modul, Schrift aus dem app.asar)',
+      async () => {
+        const r = await app.evaluate(async () => {
+          const lade = process.mainModule.require.bind(process.mainModule)
+          const beschriftung = lade('atem-connection/dist/lib/multiviewLabel')
+          const schrift = await beschriftung.loadFont()
+          const bild = beschriftung.generateMultiviewerLabel(schrift, 1, 'Kamera 1', {
+            UHD8K: false,
+            UHD4K: false,
+            HD1080: true,
+            HD720: false
+          })
+          return { bytes: bild.length, gezeichnet: bild.filter((b) => b !== 0).length }
+        })
+        assert.equal(r.bytes, 16_000)
+        assert.ok(r.gezeichnet > 1000, JSON.stringify(r))
       }
     ],
     [

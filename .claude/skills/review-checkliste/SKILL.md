@@ -71,6 +71,12 @@ einen Test **mit** und **ohne** Schrägstrich.
   setzen (`viewBox` hält das Bild rund und mittig) und Spalten als `minmax(0, 1fr)` statt `1fr`.
   Prüfen mit hoher, schmaler Kachel (`e2e/osc.mjs`, Rechtecke vergleichen).
 
+- **`sm:` und `lg:` richten sich nach dem Fenster, nicht nach dem Platz.** Die Schublade nimmt davon
+  360 px. Im Raster der ATEM-Steuerung lag das Dauer-Feld dadurch über den Stil-Knöpfen, unklickbar
+  (31.10.2026, nur auf den kleinen CI-Bildschirmen von Windows und macOS rot, lokal und unter Linux
+  grün). Für Inhalte neben der Schublade `flex-wrap` mit `min-w-…`, und im E2E einmal mit
+  `page.setViewportSize({ width: 1024, height: 700 })` und `click({ trial: true })` prüfen.
+
 ## Einstellungen und gemerkte Stände
 
 - Ändert eine Option, was ein bestehender Schalter bedeutet (Beispiel: „Kennung“ blendete früher
@@ -163,6 +169,14 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
 - **`Field` umschließt sein Kind mit einem `<label>`.** Bei einer Knopfgruppe (`Segmented`) gilt es
   für den ersten Knopf: Er hieß „Dokument Dokument“ statt „Handbuch“, und ein Klick auf die
   Beschriftung schaltete still um. Knopfgruppen immer mit `<Field group>`.
+- **Tasten eines Werkzeugs, die auf Sendung wirken** (ATEM, 31.10.2026, alle im E2E gefunden):
+  Ein angeklickter Knopf behält den Fokus, die Leertaste löst ihn dann erneut aus: Sie trennte die
+  Verbindung und öffnete die Sperre. Fokus nach Mausklicks abgeben (`e.detail > 0`), die Taste auch
+  im gesperrten Zustand mit `preventDefault` verschlucken, gehaltene Tasten (`repeat`) nie
+  wiederholen, und den Griff eines Hebels nicht wie ein Textfeld von der Tastatur ausschließen.
+- **Exit-Hooks aus Bibliotheken:** Sie beenden bei SIGTERM gern hart per `process.exit` und übergehen
+  Rückfrage und Aufräumen. Nur entfernen genügt nicht, dann gilt das Standardverhalten des Systems
+  statt Electrons: eigener Listener mit `app.quit()` (`atemVerbindung.ts`).
 - **Eine Taste an genau einer Stelle auswerten.** Testbild und Timer schlossen bei Esc doppelt
   (before-input-event im main UND keydown im Renderer) – harmlos, solange ein Druck genügte. Mit
   „zweimal Esc“ hätte so schon ein Druck geschlossen. Tasten der Ausgabefenster nur im main

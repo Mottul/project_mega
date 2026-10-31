@@ -26,6 +26,7 @@ import { killAllFfmpeg } from './services/convert/runFfmpeg'
 import { initFfmpegUpdates } from './services/ffmpeg/ffmpegUpdate'
 import { logLine } from './services/log'
 import { hasRunningWork, stopAllWork } from './services/shutdown'
+import { disposeAtem } from './services/atem/atemService'
 import { disposeOsc } from './services/osc/oscService'
 import { stopJingleRemote } from './services/jingle/jingleRemoteServer'
 import { stopOscRemote } from './services/osc/oscRemoteServer'
@@ -215,4 +216,5 @@ app.on('will-quit', () => {
   stopRemoteApp()
   disposeOsc()
   disposeTimer()
+  disposeAtem()
 })

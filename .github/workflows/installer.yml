@@ -3,7 +3,7 @@ name: Installer bauen
 # Fertige Installer je Betriebssystem zum Herunterladen (Actions → dieser Lauf → Artifacts):
 # Windows .exe (NSIS), macOS .dmg für Apple Silicon und Intel, Linux .AppImage. Ohne Signatur
 # (siehe docs/INSTALL.md) und ohne NDI – das Binding richtet `npm run ndi:setup` nur lokal ein.
-# Vor dem Hochladen startet die gepackte App einmal zur Probe (e2e/paket.mjs).
+# Vor dem Hochladen wird jeder Installer ausgeführt und die App daraus geprüft (e2e/paket.mjs).
 #
 # Auslöser: von Hand („Run workflow“), bei einem Versions-Tag v* und in Pull Requests, die die
 # Paketierung ändern – sonst sähe man einen kaputten Installer erst nach dem Merge.
@@ -86,10 +86,41 @@ jobs:
         run: npx --yes electron-builder@26 ${{ matrix.ziel }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - name: Gepackte App starten (virtuelles Display)
+      # Nicht dist/*-unpacked, sondern was beim Anwender ankommt: der fertige Installer. Der Runner
+      # wird danach verworfen. Unter Windows ist der Pfad nach /D der letzte Parameter, ohne
+      # Anführungszeichen. AppImage entpackt sich selbst (der Runner hat kein FUSE).
+      - name: Installer ausführen
+        shell: bash
+        run: |
+          set -euo pipefail
+          ziel="$RUNNER_TEMP/installiert"
+          case "$RUNNER_OS" in
+            Windows)
+              winziel=$(cygpath -w "$ziel")
+              powershell -NoProfile -Command "Start-Process -Wait -FilePath (Get-Item dist/*-setup.exe).FullName -ArgumentList '/S','/D=$winziel'"
+              exe="$ziel/Mottulbox.exe"
+              ;;
+            macOS)
+              mkdir -p "$ziel"
+              hdiutil attach dist/*-arm64.dmg -nobrowse -mountpoint "$RUNNER_TEMP/dmg"
+              cp -R "$RUNNER_TEMP/dmg/Mottulbox.app" "$ziel/"
+              hdiutil detach "$RUNNER_TEMP/dmg"
+              exe="$ziel/Mottulbox.app/Contents/MacOS/Mottulbox"
+              ;;
+            Linux)
+              mkdir -p "$ziel"
+              appimage=$(realpath dist/*.AppImage)
+              chmod +x "$appimage"
+              (cd "$ziel" && "$appimage" --appimage-extract > /dev/null)
+              exe="$ziel/squashfs-root/mottulbox"
+              ;;
+          esac
+          test -f "$exe"
+          echo "MOTTULBOX_PAKET_EXE=$exe" >> "$GITHUB_ENV"
+      - name: Installierte App starten (virtuelles Display)
         if: runner.os == 'Linux'
         run: xvfb-run -a --server-args="-screen 0 1920x1080x24" node e2e/run.mjs paket
-      - name: Gepackte App starten
+      - name: Installierte App starten
         if: runner.os != 'Linux'
         run: node e2e/run.mjs paket
       - name: Übersicht

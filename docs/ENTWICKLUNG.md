@@ -16,10 +16,11 @@ Die Installation für Anwender steht in [INSTALL.md](INSTALL.md).
 
 - **Node.js ≥ 22.12** und npm (von Electron 44 vorgegeben). `engine-strict=true` in `.npmrc`
   bricht den Install mit zu altem Node gleich mit klarer Meldung ab statt später kryptisch.
-- **Kein C++-Compiler nötig.** Das einzige native Modul (`better-sqlite3`) nutzt seit Version 13
-  die stabile N-API: Die fertigen Binaries (Windows, macOS, Linux; x64 und arm64) liegen im
-  npm-Paket und laufen unter jeder Electron- und Node-Version – kein Rebuild nach einem
-  Electron-Upgrade, und die Unit-Tests können die Datenbank direkt öffnen.
+- **Kein C++-Compiler nötig.** Die nativen Module (`better-sqlite3` seit Version 13,
+  `@julusian/freetype2` aus `atem-connection`) nutzen die stabile N-API: Die fertigen Binaries
+  (Windows, macOS, Linux; x64 und arm64) liegen im npm-Paket und laufen unter jeder Electron- und
+  Node-Version – kein Rebuild nach einem Electron-Upgrade, und die Unit-Tests können die Datenbank
+  direkt öffnen.
 
 ## Einrichten und starten
 
@@ -315,7 +316,8 @@ Der erste `package`-Lauf lädt electron-builder einmalig in den npx-Cache, nicht
   `--mac --arm64 --x64` baut beide nebeneinander (`Mottulbox-<Version>-arm64.dmg`, `-x64.dmg`).
 - **Installer aus der CI:** Der Ablauf „Installer bauen“ (`.github/workflows/installer.yml`)
   baut auf GitHub Windows (`.exe`), macOS (`.dmg` für Apple Silicon und Intel) und Linux
-  (`.AppImage`), startet die gepackte App zur Probe (`e2e/paket.mjs`) und legt die Installer als
+  (`.AppImage`), führt jeden Installer aus, prüft die App daraus (`e2e/paket.mjs`, unter macOS das
+  Apple-Silicon-Paket) und legt die Installer als
   Artifacts ab (30 Tage). Start von Hand unter *Actions → Installer bauen → Run workflow*; von
   selbst bei einem Tag `v*` und in Pull Requests, die `electron-builder.yml`, den Ablauf oder
   `e2e/paket.mjs` ändern. Ohne NDI: Das Binding richtet `npm run ndi:setup` nur lokal ein – wer

@@ -35,6 +35,8 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
   Feedback/Learn, NovaStar-Kacheln und Handy-Fernsteuerung.
 - **NovaStar-Steuerung** – LED-Prozessor über TCP 5200: Helligkeit, Fade-to-Black,
   Blackout/Freeze, Presets.
+- **ATEM-Steuerung** – Blackmagic-ATEM-Mischer über das Netzwerk: Programm, Vorschau, Cut, Auto, Hebel,
+  Fade to Black, Tastatur und Sperre, mit Rückmeldung vom Mischer und Probebetrieb ohne Gerät.
 - **Netzwerk-Scanner** – Geräte im LAN finden (IP, Hersteller, Typ): ATEM, PTZ-Kameras, NovaStar
   u. a.
 - **DMX-Dip-Schalter** – DMX-Startadresse ↔ Dip-Schalterbild.
@@ -109,4 +111,4 @@ Weiter in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 ## Technik
 
 Electron 44, React 18 und TypeScript (electron-vite), Tailwind CSS, zustand, react-router 7,
-`better-sqlite3` (FTS5), `pdfjs-dist`, gebündeltes ffmpeg mit HAP.
+`better-sqlite3` (FTS5), `pdfjs-dist`, `atem-connection`, gebündeltes ffmpeg mit HAP.

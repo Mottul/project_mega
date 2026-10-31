@@ -1,6 +1,7 @@
 // Gemeinsame Domain-Typen fuer main, preload und renderer.
 // Single source of truth -- nur hier werden Datenstrukturen definiert.
 
+import type { AtemSimModell } from './atem'
 import { APP_NAME } from './brand'
 
 export type ToolCategoryId = 'playback' | 'control' | 'visual' | 'media' | 'rigging' | 'calc'
@@ -1845,6 +1846,21 @@ export type FotoImport =
   | { ok: true; hash: string; ext: 'jpg' | 'png'; width: number; height: number; bytes: number }
   | { ok: false; name: string; reason: 'format' | 'kaputt' | 'zu-gross' | 'fehler' }
 
+export interface AtemSettings {
+  /** Letzte Adresse des Mischers */
+  host: string
+  /** Beim Start der App verbinden */
+  autoConnect: boolean
+  /** Welches Modell der Probebetrieb nachbildet */
+  simModell: AtemSimModell
+}
+
+export const DEFAULT_ATEM_SETTINGS: AtemSettings = {
+  host: '',
+  autoConnect: false,
+  simModell: 'mini-extreme'
+}
+
 export interface AppSettings {
   lastHapOutputDir: string | null
   lastHapFormat: HapFormat
@@ -1898,6 +1914,8 @@ export interface AppSettings {
   firmenprofil: FirmenProfil
   /** Online-Ablage der Handy-Fassung des Mini-Manuals */
   online: OnlineSettings
+  /** ATEM-Steuerung: letzte Adresse und Probebetrieb */
+  atem: AtemSettings
 }
 
 /** Teiländerung: Objekte feldweise optional, Listen immer ganz (siehe settingsMerge.ts). */
@@ -1950,5 +1968,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   remoteControls: DEFAULT_REMOTE_CONTROLS,
   projects: DEFAULT_PROJECTS_SETTINGS,
   firmenprofil: DEFAULT_FIRMENPROFIL,
-  online: DEFAULT_ONLINE_SETTINGS
+  online: DEFAULT_ONLINE_SETTINGS,
+  atem: DEFAULT_ATEM_SETTINGS
 }

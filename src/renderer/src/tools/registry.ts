@@ -1,3 +1,4 @@
+import { atemControlTool } from './atem-control'
 import { audioDelayTool } from './audio-delay'
 import { cameraLensTool } from './camera-lens'
 import { circleCalcTool } from './circle-calc'
@@ -36,6 +37,7 @@ export const tools: ToolModule[] = [
   jinglePlayerTool,
   oscControlTool,
   novastarTool,
+  atemControlTool,
   netscanTool,
   youtubeDlTool,
   stageTimerTool,
