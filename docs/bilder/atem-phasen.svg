@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 196" width="680" role="img" aria-labelledby="t d" font-family="Segoe UI, system-ui, sans-serif">
+  <title id="t">Phasen der ATEM-Steuerung</title>
+  <desc id="d">Sechs Phasen nacheinander, nach Phase 1 ist das Werkzeug bereits im Einsatz nutzbar.</desc>
+  <style>
+    .a { fill: #faeeda; stroke: #ba7517; }
+    .h { fill: #e6f1fb; stroke: #378add; }
+    .o { fill: #eaf3de; stroke: #639922; }
+    .k { fill: #f4f4f5; stroke: #a1a1aa; }
+    .t { fill: #18181b; font-size: 13px; font-weight: 600; }
+    .s { fill: #52525b; font-size: 11.5px; }
+    .l { stroke: #71717a; fill: none; stroke-dasharray: 4 3; }
+    @media (prefers-color-scheme: dark) {
+      .a { fill: #633806; stroke: #ef9f27; }
+      .h { fill: #0c447c; stroke: #85b7eb; }
+      .o { fill: #27500a; stroke: #97c459; }
+      .k { fill: #27272a; stroke: #52525b; }
+      .t { fill: #fafafa; }
+      .s { fill: #d4d4d8; }
+      .l { stroke: #a1a1aa; }
+    }
+  </style>
+  <rect class="a" x="10" y="14" width="96" height="60" rx="6"/>
+  <text class="t" x="58" y="38" text-anchor="middle">0 Probe</text>
+  <text class="s" x="58" y="56" text-anchor="middle">Bibliothek, Paket</text>
+
+  <rect class="o" x="112" y="14" width="150" height="60" rx="6"/>
+  <text class="t" x="187" y="38" text-anchor="middle">1 Mischen</text>
+  <text class="s" x="187" y="56" text-anchor="middle">Programm, Cut, Hebel</text>
+
+  <rect class="h" x="268" y="14" width="120" height="60" rx="6"/>
+  <text class="t" x="328" y="38" text-anchor="middle">2 Mehr Show</text>
+  <text class="s" x="328" y="56" text-anchor="middle">Keyer, DSK, Makros</text>
+
+  <rect class="h" x="394" y="14" width="94" height="60" rx="6"/>
+  <text class="t" x="441" y="38" text-anchor="middle">3 Ton</text>
+  <text class="s" x="441" y="56" text-anchor="middle">Pegel, Stream</text>
+
+  <rect class="h" x="494" y="14" width="88" height="60" rx="6"/>
+  <text class="t" x="538" y="38" text-anchor="middle">4 Seiten</text>
+  <text class="s" x="538" y="56" text-anchor="middle">frei belegen</text>
+
+  <rect class="k" x="588" y="14" width="82" height="60" rx="6"/>
+  <text class="t" x="629" y="38" text-anchor="middle">5 Handy</text>
+  <text class="s" x="629" y="56" text-anchor="middle">PIN zuerst</text>
+
+  <path class="l" d="M262 74V104"/>
+  <text class="s" x="262" y="122" text-anchor="middle">ab hier im Einsatz nutzbar</text>
+  <path class="l" d="M106 74V148"/>
+  <text class="s" x="14" y="166">Entscheidung: Bibliothek oder eigenes Protokoll</text>
+</svg>
