@@ -62,7 +62,60 @@ async function anGeraet(a: Atem, c: AtemCommand): Promise<void> {
       // dort den Übergang ab. Endet er schon beim Höchstwert, ändert die 0 nichts. Die Abnahme am
       // Gerät zeigt, ob sie nötig ist.
       if (c.wert >= ATEM_HEBEL_MAX) await a.setTransitionPosition(0, c.me)
+      return
+    case 'uskOnAir':
+      return a.setUpstreamKeyerOnAir(c.an, c.me, c.keyer)
+    case 'uskQuelle':
+      return c.art === 'fill'
+        ? a.setUpstreamKeyerFillSource(c.quelle, c.me, c.keyer)
+        : a.setUpstreamKeyerCutSource(c.quelle, c.me, c.keyer)
+    case 'naechster':
+      return a.setTransitionStyle({ nextSelection: auswahlBits(c.maske) }, c.me)
+    case 'dskOnAir':
+      return a.setDownstreamKeyOnAir(c.an, c.keyer)
+    case 'dskTie':
+      return a.setDownstreamKeyTie(c.an, c.keyer)
+    case 'dskAuto':
+      return a.autoDownstreamKey(c.keyer)
+    case 'dskRate':
+      return a.setDownstreamKeyRate(c.bilder, c.keyer)
+    case 'dskQuelle':
+      return c.art === 'fill'
+        ? a.setDownstreamKeyFillSource(c.quelle, c.keyer)
+        : a.setDownstreamKeyCutSource(c.quelle, c.keyer)
+    case 'makroStart':
+      return a.macroRun(c.index)
+    case 'makroStopp':
+      return a.macroStop()
+    case 'makroWeiter':
+      return a.macroContinue()
+    case 'mediaQuelle':
+      return a.setMediaPlayerSource(
+        c.art === 'still'
+          ? { sourceType: MEDIEN_STILL, stillIndex: c.index }
+          : { sourceType: MEDIEN_CLIP, clipIndex: c.index },
+        c.player
+      )
+    case 'clipSpielen':
+      return a.setMediaPlayerSettings({ playing: c.an }, c.player)
+    case 'clipSchleife':
+      return a.setMediaPlayerSettings({ loop: c.an }, c.player)
+    case 'clipAnfang':
+      return a.setMediaPlayerSettings({ atBeginning: true }, c.player)
+    case 'aux':
+      return a.setAuxSource(c.quelle, c.bus)
   }
+}
+
+/** `MediaSourceType` der Bibliothek: Sie selbst kommt erst beim Verbinden, siehe oben */
+const MEDIEN_STILL = 1
+const MEDIEN_CLIP = 2
+
+/** Bitmaske des nächsten Übergangs als Liste, wie die Bibliothek sie will */
+function auswahlBits(maske: number): number[] {
+  const bits: number[] = []
+  for (let bit = 1; bit <= maske; bit <<= 1) if (maske & bit) bits.push(bit)
+  return bits
 }
 
 let signaleUebernommen = false

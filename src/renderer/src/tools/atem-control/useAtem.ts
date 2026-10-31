@@ -2,8 +2,13 @@
 // der neue Stand kommt immer vom Mischer zurück.
 
 import { useEffect, useState } from 'react'
-import { ATEM_GETRENNT, type AtemStatus, type AtemView } from '@shared/atem'
+import { ATEM_GETRENNT, type AtemCommand, type AtemStatus, type AtemView } from '@shared/atem'
 import { api } from '@renderer/lib/api'
+
+/** Befehl an den Mischer; was daraus wird, kommt als Ansicht zurück */
+export function senden(cmd: AtemCommand): void {
+  void api.atem.command(cmd)
+}
 
 export function useAtem(): { status: AtemStatus; view: AtemView | null } {
   const [status, setStatus] = useState<AtemStatus>(ATEM_GETRENNT)

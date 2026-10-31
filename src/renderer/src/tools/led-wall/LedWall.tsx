@@ -22,6 +22,7 @@ import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { InfoTip } from '@renderer/components/ui/info-tip'
+import { Reiter } from '@renderer/components/ui/reiter'
 import { PrintButton, PrintDialog, type DruckAuftrag } from '@renderer/components/PrintDialog'
 import { Field } from '@renderer/components/ui/field'
 import { Segmented } from '@renderer/components/ui/segmented'
@@ -453,30 +454,7 @@ function Drawing({ d, className }: { d: WallMetrics; className?: string }): JSX.
   return (
     <Card className={cn('flex min-h-[22rem] flex-col', className)}>
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
-        <div
-          role="tablist"
-          aria-label="Darstellung"
-          className="flex rounded-md border border-border bg-muted/30 p-0.5"
-        >
-          {views.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              aria-selected={view === v.id}
-              onClick={() => setView(v.id)}
-              className={cn(
-                'flex items-center gap-1.5 rounded px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
-                view === v.id
-                  ? 'bg-card font-medium text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <v.icon className="size-4" />
-              {v.label}
-            </button>
-          ))}
-        </div>
+        <Reiter label="Darstellung" value={view} options={views} onChange={setView} />
         {plan && (
           <Segmented
             label="Blickrichtung der Pläne"

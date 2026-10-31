@@ -13,6 +13,7 @@ const NEUE_SITZUNG = 2
 const ACK = 16 // AckReply
 const SITZUNG = 0x8001
 const V9_6 = 131104
+const V8_0_1 = 131101
 /** Pakete bleiben unter der MTU wie am Gerät */
 const MAX_NUTZLAST = 1300
 
@@ -42,9 +43,28 @@ function startZustand() {
     hebel: 0,
     inUebergang: false,
     schwarz: false,
-    ftbRate: 25
+    ftbRate: 25,
+    /** Bits des nächsten Übergangs: Hintergrund */
+    auswahl: 1,
+    usk: [0, 1, 2, 3].map(() => ({ onAir: false, fill: 1, cut: 2 })),
+    dsk: [0, 1].map(() => ({ onAir: false, tie: false, rate: 25, fill: 1, cut: 2 })),
+    makroLaeuft: false,
+    makroIndex: 0,
+    player: [0, 1].map(() => ({
+      art: 1,
+      still: 0,
+      clip: 0,
+      spielt: false,
+      schleife: false,
+      anfang: true
+    })),
+    aux: [1]
   }
 }
+
+const MAKROS = ['Interview', '', 'Abspann']
+const STILLS = ['Logo', 'Bauchbinde']
+const CLIPS = ['Opener']
 
 /**
  * @param {{ produkt?: string, modell?: number, eingaenge?: number, version?: number }} [opt]
@@ -127,7 +147,7 @@ export async function startAtemFake(opt = {}) {
         b.writeUInt8(st.stil, 1)
         b.writeUInt8(1, 2)
         b.writeUInt8(st.stil, 3)
-        b.writeUInt8(1, 4)
+        b.writeUInt8(st.auswahl, 4)
       })
     )
   const mixMeldung = () =>
@@ -159,6 +179,117 @@ export async function startAtemFake(opt = {}) {
     kommando(
       'FtbP',
       bytes(4, (b) => b.writeUInt8(st.ftbRate, 1))
+    )
+
+  const uskMeldung = (i) =>
+    kommando(
+      'KeOn',
+      bytes(4, (b) => {
+        b.writeUInt8(i, 1)
+        b.writeUInt8(st.usk[i].onAir ? 1 : 0, 2)
+      })
+    )
+  const uskQuellen = (i) =>
+    kommando(
+      'KeBP',
+      bytes(20, (b) => {
+        b.writeUInt8(i, 1)
+        b.writeUInt16BE(st.usk[i].fill, 6)
+        b.writeUInt16BE(st.usk[i].cut, 8)
+      })
+    )
+  const dskMeldung = (i) =>
+    kommando(
+      'DskS',
+      bytes(8, (b) => {
+        b.writeUInt8(i, 0)
+        b.writeUInt8(st.dsk[i].onAir ? 1 : 0, 1)
+      })
+    )
+  const dskQuellen = (i) =>
+    kommando(
+      'DskB',
+      bytes(8, (b) => {
+        b.writeUInt8(i, 0)
+        b.writeUInt16BE(st.dsk[i].fill, 2)
+        b.writeUInt16BE(st.dsk[i].cut, 4)
+      })
+    )
+  const dskEigenschaften = (i) =>
+    kommando(
+      'DskP',
+      bytes(20, (b) => {
+        b.writeUInt8(i, 0)
+        b.writeUInt8(st.dsk[i].tie ? 1 : 0, 1)
+        b.writeUInt8(st.dsk[i].rate, 2)
+      })
+    )
+  const makroMeldung = () =>
+    kommando(
+      'MRPr',
+      bytes(4, (b) => {
+        b.writeUInt8(st.makroLaeuft ? 1 : 0, 0)
+        b.writeUInt16BE(st.makroIndex, 2)
+      })
+    )
+  const makroEintrag = (index, name) => {
+    const n = Buffer.from(name, 'latin1')
+    return kommando(
+      'MPrp',
+      bytes(8 + n.length + 4, (b) => {
+        b.writeUInt16BE(index, 0)
+        b.writeUInt8(1, 2)
+        b.writeUInt16BE(n.length, 4)
+        n.copy(b, 8)
+      })
+    )
+  }
+  const standbild = (index, name) =>
+    kommando(
+      'MPfe',
+      bytes(24 + name.length + 4, (b) => {
+        b.writeUInt16BE(index, 2)
+        b.writeUInt8(1, 4)
+        b.writeUInt8(name.length, 23)
+        b.write(name, 24, 'latin1')
+      })
+    )
+  const clipEintrag = (index, name) =>
+    kommando(
+      'MPCS',
+      bytes(72, (b) => {
+        b.writeUInt8(index, 0)
+        b.writeUInt8(1, 1)
+        b.write(name, 2, 64, 'latin1')
+      })
+    )
+  const playerQuelle = (i) =>
+    kommando(
+      'MPCE',
+      bytes(8, (b) => {
+        b.writeUInt8(i, 0)
+        b.writeUInt8(st.player[i].art, 1)
+        b.writeUInt8(st.player[i].still, 2)
+        b.writeUInt8(st.player[i].clip, 3)
+      })
+    )
+  const playerStatus = (i) =>
+    kommando(
+      'RCPS',
+      bytes(8, (b) => {
+        b.writeUInt8(i, 0)
+        b.writeUInt8(st.player[i].spielt ? 1 : 0, 1)
+        b.writeUInt8(st.player[i].schleife ? 1 : 0, 2)
+        b.writeUInt8(st.player[i].anfang ? 1 : 0, 3)
+      })
+    )
+  const auxMeldung = (bus) =>
+    kommando(
+      'AuxS',
+      bytes(4, (b) => {
+        b.writeUInt8(bus, 0)
+        b.writeUInt16BE(st.aux[bus], 2)
+      })
     )
 
   const eingang = (id, lang, kurz, intern, me = 0x0f) =>
@@ -207,6 +338,17 @@ export async function startAtemFake(opt = {}) {
       bytes(4, (b) => b.writeUInt8(4, 1))
     ),
     kommando(
+      '_MAC',
+      bytes(4, (b) => b.writeUInt8(100, 0))
+    ),
+    kommando(
+      '_mpl',
+      bytes(4, (b) => {
+        b.writeUInt8(20, 0)
+        b.writeUInt8(2, 1)
+      })
+    ),
+    kommando(
       'VidM',
       bytes(4, (b) => b.writeUInt8(12, 0))
     ), // 1080p50
@@ -229,6 +371,14 @@ export async function startAtemFake(opt = {}) {
     dveMeldung(),
     ftbMeldung(),
     ftbRateMeldung(),
+    ...st.usk.flatMap((_, i) => [uskQuellen(i), uskMeldung(i)]),
+    ...st.dsk.flatMap((_, i) => [dskQuellen(i), dskEigenschaften(i), dskMeldung(i)]),
+    ...MAKROS.flatMap((name, i) => (name ? [makroEintrag(i, name)] : [])),
+    makroMeldung(),
+    ...STILLS.map((name, i) => standbild(i, name)),
+    ...CLIPS.map((name, i) => clipEintrag(i, name)),
+    ...st.player.flatMap((_, i) => [playerQuelle(i), playerStatus(i)]),
+    ...st.aux.map((_, bus) => auxMeldung(bus)),
     kommando('InCm', Buffer.alloc(4))
   ]
 
@@ -260,10 +410,92 @@ export async function startAtemFake(opt = {}) {
         st.ftbRate = n.readUInt8(2)
         empfangen.push({ name, rate: st.ftbRate })
         return antworte([ftbRateMeldung()])
-      case 'CTTp':
-        st.stil = n.readUInt8(2)
-        empfangen.push({ name, stil: st.stil })
+      case 'CTTp': {
+        const flag = n.readUInt8(0)
+        if (flag & 1) st.stil = n.readUInt8(2)
+        if (flag & 2) st.auswahl = n.readUInt8(3)
+        empfangen.push({ name, ...(flag & 1 ? { stil: st.stil } : { auswahl: st.auswahl }) })
         return antworte([stilMeldung()])
+      }
+      case 'CKOn': {
+        const i = n.readUInt8(1)
+        st.usk[i].onAir = n.readUInt8(2) === 1
+        empfangen.push({ name, me: n.readUInt8(0), keyer: i, an: st.usk[i].onAir })
+        return antworte([uskMeldung(i)])
+      }
+      case 'CKeF':
+      case 'CKeC': {
+        const i = n.readUInt8(1)
+        st.usk[i][name === 'CKeF' ? 'fill' : 'cut'] = n.readUInt16BE(2)
+        empfangen.push({ name, keyer: i, quelle: n.readUInt16BE(2) })
+        return antworte([uskQuellen(i)])
+      }
+      case 'CDsL': {
+        const i = n.readUInt8(0)
+        st.dsk[i].onAir = n.readUInt8(1) === 1
+        empfangen.push({ name, keyer: i, an: st.dsk[i].onAir })
+        return antworte([dskMeldung(i)])
+      }
+      case 'CDsT': {
+        const i = n.readUInt8(0)
+        st.dsk[i].tie = n.readUInt8(1) === 1
+        empfangen.push({ name, keyer: i, an: st.dsk[i].tie })
+        return antworte([dskEigenschaften(i)])
+      }
+      case 'CDsR': {
+        const i = n.readUInt8(0)
+        st.dsk[i].rate = n.readUInt8(1)
+        empfangen.push({ name, keyer: i, rate: st.dsk[i].rate })
+        return antworte([dskEigenschaften(i)])
+      }
+      case 'CDsF':
+      case 'CDsC': {
+        const i = n.readUInt8(0)
+        st.dsk[i][name === 'CDsF' ? 'fill' : 'cut'] = n.readUInt16BE(2)
+        empfangen.push({ name, keyer: i, quelle: n.readUInt16BE(2) })
+        return antworte([dskQuellen(i)])
+      }
+      case 'DDsA': {
+        // Je nach Protokoll steht die Nummer im ersten oder zweiten Byte, siehe serialize
+        const i = version >= V8_0_1 ? n.readUInt8(1) : n.readUInt8(0)
+        st.dsk[i].onAir = !st.dsk[i].onAir
+        empfangen.push({ name, keyer: i })
+        return antworte([dskMeldung(i)])
+      }
+      case 'MAct': {
+        const aktion = n.readUInt8(2)
+        const index = n.readUInt16BE(0)
+        empfangen.push({ name, aktion, index })
+        st.makroLaeuft = aktion === 0
+        if (aktion === 0) st.makroIndex = index
+        return antworte([makroMeldung()])
+      }
+      case 'MPSS': {
+        const flag = n.readUInt8(0)
+        const i = n.readUInt8(1)
+        const p = st.player[i]
+        if (flag & 1) p.art = n.readUInt8(2)
+        if (flag & 2) p.still = n.readUInt8(3)
+        if (flag & 4) p.clip = n.readUInt8(4)
+        empfangen.push({ name, player: i, art: p.art, still: p.still, clip: p.clip })
+        return antworte([playerQuelle(i)])
+      }
+      case 'SCPS': {
+        const flag = n.readUInt8(0)
+        const i = n.readUInt8(1)
+        const p = st.player[i]
+        if (flag & 1) p.spielt = n.readUInt8(2) === 1
+        if (flag & 2) p.schleife = n.readUInt8(3) === 1
+        if (flag & 4) p.anfang = n.readUInt8(4) === 1
+        empfangen.push({ name, player: i, flag })
+        return antworte([playerStatus(i)])
+      }
+      case 'CAuS': {
+        const bus = n.readUInt8(1)
+        st.aux[bus] = n.readUInt16BE(2)
+        empfangen.push({ name, bus, quelle: st.aux[bus] })
+        return antworte([auxMeldung(bus)])
+      }
       case 'CTMx':
         st.raten.mix = n.readUInt8(1)
         empfangen.push({ name, rate: st.raten.mix })
@@ -362,6 +594,16 @@ export async function startAtemFake(opt = {}) {
     fremdesProgramm(quelle) {
       st.programm = quelle
       melde([programmMeldung()])
+    },
+    /** DSK am Hardware-Panel geschaltet */
+    fremderDsk(keyer, an) {
+      st.dsk[keyer].onAir = an
+      melde([dskMeldung(keyer)])
+    },
+    /** Makro am Gerät zu Ende gelaufen */
+    makroZuEnde() {
+      st.makroLaeuft = false
+      melde([makroMeldung()])
     },
     /** Kabel gezogen: keine Antwort mehr, bis `wieder()` */
     verstummen() {

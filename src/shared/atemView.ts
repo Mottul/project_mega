@@ -3,11 +3,29 @@
 // Teil, den die Ansicht liest: `AtemState` der Bibliothek passt darauf (der Compiler prüft das in
 // atemVerbindung.ts), der Simulator baut ihn selbst. So bleibt dieses Modul frei von der Bibliothek.
 
-import type { AtemFtb, AtemMe, AtemQuelle, AtemRatenStil, AtemStil, AtemView } from './atem'
+import {
+  ATEM_KEY_ARTEN,
+  type AtemAux,
+  type AtemDsk,
+  type AtemFtb,
+  type AtemMakro,
+  type AtemMe,
+  type AtemMedien,
+  type AtemMedium,
+  type AtemQuelle,
+  type AtemRatenStil,
+  type AtemStil,
+  type AtemUsk,
+  type AtemView
+} from './atem'
 
 /** Interner Quellentyp des Mischers, Werte wie `InternalPortType` der Bibliothek */
 const PORT_EXTERN = 0
 const PORT_EXTERN_DIREKT = 7
+/** Kennung des ersten AUX-Busses unter den Quellen: Dort steht sein Name */
+const AUX_ERSTE_KENNUNG = 8001
+/** `MediaSourceType.Clip` der Bibliothek */
+const MEDIEN_CLIP = 2
 
 export interface AtemRohQuelle {
   inputId: number
@@ -15,6 +33,22 @@ export interface AtemRohQuelle {
   shortName: string
   internalPortType: number
   meAvailability: number
+  sourceAvailability: number
+}
+
+export interface AtemRohUsk {
+  onAir: boolean
+  mixEffectKeyType: number
+  fillSource: number
+  cutSource: number
+}
+
+export interface AtemRohDsk {
+  onAir: boolean
+  inTransition: boolean
+  remainingFrames: number
+  sources?: { fillSource: number; cutSource: number }
+  properties?: { tie: boolean; rate: number }
 }
 
 export interface AtemRohMe {
@@ -25,7 +59,7 @@ export interface AtemRohMe {
     remainingFrames: number
     handlePosition: number
   }
-  transitionProperties: { nextStyle: number }
+  transitionProperties: { nextStyle: number; nextSelection: readonly number[] }
   transitionSettings: {
     mix?: { rate: number }
     dip?: { rate: number }
@@ -38,6 +72,7 @@ export interface AtemRohMe {
     remainingFrames: number
     rate: number
   }
+  upstreamKeyers: ReadonlyArray<AtemRohUsk | undefined>
 }
 
 export interface AtemRoh {
@@ -45,10 +80,36 @@ export interface AtemRoh {
     apiVersion: number
     productIdentifier?: string
     capabilities?: { DVEs: number; stingers: number }
+    macroPool?: { macroCount: number }
   }
-  video: { mixEffects: ReadonlyArray<AtemRohMe | undefined> }
+  video: {
+    mixEffects: ReadonlyArray<AtemRohMe | undefined>
+    downstreamKeyers: ReadonlyArray<AtemRohDsk | undefined>
+    auxilliaries: ReadonlyArray<number | undefined>
+  }
   inputs: Readonly<Record<number, AtemRohQuelle | undefined>>
   settings: { videoMode: number }
+  macro: {
+    macroPlayer: { isRunning: boolean; isWaiting: boolean; macroIndex: number }
+    macroProperties: ReadonlyArray<
+      { isUsed: boolean; name: string; description: string } | undefined
+    >
+  }
+  media: {
+    stillPool: ReadonlyArray<{ isUsed: boolean; fileName: string } | undefined>
+    clipPool: ReadonlyArray<{ isUsed: boolean; name: string } | undefined>
+    players: ReadonlyArray<
+      | {
+          sourceType: number
+          stillIndex: number
+          clipIndex: number
+          playing: boolean
+          loop: boolean
+          atBeginning: boolean
+        }
+      | undefined
+    >
+  }
 }
 
 /** Reihenfolge wie `TransitionStyle` der Bibliothek: Der Index ist der Wert am Gerät */
@@ -69,7 +130,10 @@ const istExtern = (q: AtemRohQuelle): boolean =>
 
 function quellen(roh: AtemRoh): AtemQuelle[] {
   return Object.values(roh.inputs)
-    .filter((q): q is AtemRohQuelle => q !== undefined && q.meAvailability !== 0)
+    .filter(
+      (q): q is AtemRohQuelle =>
+        q !== undefined && (q.meAvailability !== 0 || q.sourceAvailability !== 0)
+    )
     .sort(
       (a, b) =>
         Number(istExtern(b)) - Number(istExtern(a)) ||
@@ -81,7 +145,8 @@ function quellen(roh: AtemRoh): AtemQuelle[] {
       kurz: q.shortName,
       lang: q.longName,
       extern: istExtern(q),
-      meMaske: q.meAvailability
+      meMaske: q.meAvailability,
+      verfuegbar: q.sourceAvailability
     }))
 }
 
@@ -105,6 +170,73 @@ function ftb(me: AtemRohMe): AtemFtb {
   }
 }
 
+function keyer(me: AtemRohMe): AtemUsk[] {
+  return me.upstreamKeyers
+    .filter((k): k is AtemRohUsk => k !== undefined)
+    .map((k) => ({
+      onAir: k.onAir,
+      art: ATEM_KEY_ARTEN[k.mixEffectKeyType] ?? 'luma',
+      fill: k.fillSource,
+      cut: k.cutSource
+    }))
+}
+
+function dsk(roh: AtemRoh): AtemDsk[] {
+  return roh.video.downstreamKeyers
+    .filter((k): k is AtemRohDsk => k !== undefined)
+    .map((k) => ({
+      onAir: k.onAir,
+      laeuft: k.inTransition,
+      restBilder: k.remainingFrames,
+      tie: k.properties?.tie ?? false,
+      rate: k.properties?.rate ?? 0,
+      fill: k.sources?.fillSource ?? 0,
+      cut: k.sources?.cutSource ?? 0
+    }))
+}
+
+function makros(roh: AtemRoh): AtemMakro[] {
+  const liste: AtemMakro[] = []
+  roh.macro.macroProperties.forEach((m, index) => {
+    if (m?.isUsed) {
+      liste.push({ index, name: m.name || `Makro ${index + 1}`, beschreibung: m.description })
+    }
+  })
+  return liste
+}
+
+function medien(roh: AtemRoh): AtemMedien {
+  const belegt = (
+    pool: ReadonlyArray<{ isUsed: boolean } | undefined>,
+    name: (i: number) => string
+  ): AtemMedium[] =>
+    pool.flatMap((m, index) => (m?.isUsed ? [{ index, name: name(index) || `${index + 1}` }] : []))
+  const { stillPool, clipPool, players } = roh.media
+  return {
+    stills: belegt(stillPool, (i) => stillPool[i]?.fileName ?? ''),
+    clips: belegt(clipPool, (i) => clipPool[i]?.name ?? ''),
+    player: players
+      .filter((p) => p !== undefined)
+      .map((p) => {
+        const clip = p.sourceType === MEDIEN_CLIP
+        return {
+          art: clip ? 'clip' : 'still',
+          index: clip ? p.clipIndex : p.stillIndex,
+          spielt: p.playing,
+          schleife: p.loop,
+          amAnfang: p.atBeginning
+        }
+      })
+  }
+}
+
+function aux(roh: AtemRoh): AtemAux[] {
+  return roh.video.auxilliaries.map((quelle, bus) => ({
+    name: roh.inputs[AUX_ERSTE_KENNUNG + bus]?.longName ?? `AUX ${bus + 1}`,
+    quelle: quelle ?? 0
+  }))
+}
+
 function meView(me: AtemRohMe, hebelOben: boolean): AtemMe {
   return {
     programm: me.programInput,
@@ -115,7 +247,9 @@ function meView(me: AtemRohMe, hebelOben: boolean): AtemMe {
     uebergang: me.transitionPosition.inTransition,
     restBilder: me.transitionPosition.remainingFrames,
     hebelOben,
-    ftb: ftb(me)
+    ftb: ftb(me),
+    keyer: keyer(me),
+    naechster: me.transitionProperties.nextSelection.reduce((maske, bit) => maske | bit, 0)
   }
 }
 
@@ -136,7 +270,17 @@ export function atemViewAus(roh: AtemRoh, hebelOben: readonly boolean[]): AtemVi
       .filter((me): me is AtemRohMe => me !== undefined)
       .map((me, i) => meView(me, hebelOben[i] ?? false)),
     stile: stile(roh),
-    bildrate: bildrateAusModus(roh.settings.videoMode)
+    bildrate: bildrateAusModus(roh.settings.videoMode),
+    dsk: dsk(roh),
+    makros: makros(roh),
+    makroPlaetze: roh.info.macroPool?.macroCount ?? roh.macro.macroProperties.length,
+    makroPlayer: {
+      laeuft: roh.macro.macroPlayer.isRunning,
+      wartet: roh.macro.macroPlayer.isWaiting,
+      index: roh.macro.macroPlayer.macroIndex
+    },
+    medien: medien(roh),
+    aux: aux(roh)
   }
 }
 
