@@ -1,6 +1,5 @@
 import { readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { ipcMain } from 'electron'
 import { ausgabeZiel } from '@shared/ausgabe'
 import { Channels, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
@@ -42,6 +41,7 @@ import {
 } from '../services/player/remoteServer'
 import { registerRemoteControl } from './remoteControls'
 import { getSettings, setSettings } from '../services/store'
+import { handle } from './kanal'
 
 let wired = false
 
@@ -50,18 +50,18 @@ let wired = false
 function wireSinks(): void {
   if (wired) return
   wired = true
-  convertManager.setSink((job) => broadcast(Channels.playerConvertUpdate, job))
+  convertManager.setSink((job) => broadcast(Channels.player.onConvertUpdate, job))
   convertManager.setLibrarySink(() => {
     refreshPlaylist() // Playlist-Snapshots nach Reconvert/Änderung auffrischen
-    broadcast(Channels.playerLibraryChanged)
+    broadcast(Channels.player.onLibraryChanged)
     pushRemoteLibrary()
   })
   setStateSink((state) => {
-    broadcast(Channels.playerState, state)
+    broadcast(Channels.player.onState, state)
     pushRemoteState(state)
   })
   setTickSink((tick) => {
-    broadcast(Channels.playerTick, tick)
+    broadcast(Channels.player.onTick, tick)
     pushRemoteTick(tick)
   })
 }
@@ -70,27 +70,27 @@ export function registerPlayerHandlers(): void {
   wireSinks()
 
   // Bibliothek & Konvertierung
-  ipcMain.handle(Channels.playerEncoders, () => detectEncoders())
-  ipcMain.handle(Channels.playerImport, (_e, req: PlayerImportRequest) => {
+  handle(Channels.player.encoders, () => detectEncoders())
+  handle(Channels.player.import, (_e, req: PlayerImportRequest) => {
     // Einpass-Art nur aus der festen Liste (sonst die sichere Vorgabe)
     const fitMode = FIT_MODES.includes(req?.fitMode) ? req.fitMode : 'blur'
     return convertManager.enqueue({ ...req, fitMode })
   })
-  ipcMain.handle(Channels.playerConvertList, () => convertManager.list())
-  ipcMain.handle(Channels.playerConvertCancel, (_e, id: string) => convertManager.cancel(id))
-  ipcMain.handle(Channels.playerConvertClear, () => convertManager.clearFinished())
-  ipcMain.handle(Channels.playerLibraryList, () => listMedia())
-  ipcMain.handle(Channels.playerLibraryDelete, (_e, id: string) => {
+  handle(Channels.player.convertList, () => convertManager.list())
+  handle(Channels.player.convertCancel, (_e, id: string) => convertManager.cancel(id))
+  handle(Channels.player.convertClearFinished, () => convertManager.clearFinished())
+  handle(Channels.player.libraryList, () => listMedia())
+  handle(Channels.player.libraryDelete, (_e, id: string) => {
     deleteMedia(id)
     dropMediaFromPlaylist(id)
-    broadcast(Channels.playerLibraryChanged)
+    broadcast(Channels.player.onLibraryChanged)
   })
-  ipcMain.handle(Channels.playerLibraryClear, () => {
+  handle(Channels.player.libraryClear, () => {
     clearLibrary()
     applyCommand({ type: 'clear' })
-    broadcast(Channels.playerLibraryChanged)
+    broadcast(Channels.player.onLibraryChanged)
   })
-  ipcMain.handle(Channels.playerPickIdleMedia, async () => {
+  handle(Channels.player.pickIdleMedia, async () => {
     const res = await showOpenDialog(null, {
       title: 'Idle-Bild/-Video wählen',
       properties: ['openFile'],
@@ -118,9 +118,9 @@ export function registerPlayerHandlers(): void {
     return { url: `${MEDIA_PROTOCOL}://library/${storedName}?v=${Date.now()}`, kind }
   })
 
-  ipcMain.handle(Channels.playerMediaDir, () => mediaDir())
-  ipcMain.handle(
-    Channels.playerReconvert,
+  handle(Channels.player.mediaDir, () => mediaDir())
+  handle(
+    Channels.player.reconvert,
     (_e, mediaIds: string[], wall: { width: number; height: number }, fitIn?: FitMode) => {
       const fit = fitIn && FIT_MODES.includes(fitIn) ? fitIn : undefined
       const items: {
@@ -156,28 +156,23 @@ export function registerPlayerHandlers(): void {
   )
 
   // Wiedergabe & Ausgabe
-  ipcMain.handle(Channels.playerGetState, () => getPlayerState())
-  ipcMain.handle(Channels.playerCommand, (_e, cmd: PlayerCommand) => applyCommand(cmd))
-  ipcMain.handle(Channels.playerReport, (_e, positionSec: number, durationSec: number) =>
+  handle(Channels.player.getState, () => getPlayerState())
+  handle(Channels.player.command, (_e, cmd: PlayerCommand) => applyCommand(cmd))
+  handle(Channels.player.report, (_e, positionSec: number, durationSec: number) =>
     reportPlayback(positionSec, durationSec)
   )
-  ipcMain.handle(Channels.playerOpenOutput, (_e, z: unknown) => {
+  handle(Channels.player.openOutput, (_e, z: unknown) => {
     const ziel = ausgabeZiel(z)
     if (ziel == null) return
     setSettings({ player: { outputDisplayId: ziel } })
     openPlayerOutput(ziel)
   })
-  ipcMain.handle(Channels.playerCloseOutput, () => closePlayerOutput())
+  handle(Channels.player.closeOutput, () => closePlayerOutput())
 
   // Fernsteuerung (Tablet) – gemerkt unter player.remoteEnabled/remotePort
   registerRemoteControl({
     id: 'player',
-    channels: {
-      status: Channels.playerRemoteStatus,
-      start: Channels.playerRemoteStart,
-      stop: Channels.playerRemoteStop,
-      changed: Channels.playerRemoteChanged
-    },
+    channels: Channels.player,
     start: startRemote,
     stop: stopRemote,
     status: getRemoteStatus,
@@ -191,7 +186,7 @@ export function registerPlayerHandlers(): void {
 
   // NDI-Ausgabe (experimentell; ohne optionales Binding meldet Status "nicht verfügbar").
   // Der Audio-Kanal (playerNdiAudio) wird im Service selbst verdrahtet.
-  ipcMain.handle(Channels.playerNdiStart, (_e, cfg) => startPlayerNdi(cfg))
-  ipcMain.handle(Channels.playerNdiStop, () => stopPlayerNdi())
-  ipcMain.handle(Channels.playerNdiStatus, () => getPlayerNdiStatus())
+  handle(Channels.player.ndiStart, (_e, cfg) => startPlayerNdi(cfg))
+  handle(Channels.player.ndiStop, () => stopPlayerNdi())
+  handle(Channels.player.ndiStatus, () => getPlayerNdiStatus())
 }

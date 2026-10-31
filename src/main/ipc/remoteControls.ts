@@ -3,17 +3,24 @@
 // Start, Abgleich der Fernsteuer-App und Benachrichtigung aller Fenster
 // (Werkzeug-Panel + Homescreen-Kacheln/QR-Code).
 
-import { ipcMain, webContents, type WebContents } from 'electron'
-import { Channels } from '@shared/ipc-contracts'
+import { webContents, type WebContents } from 'electron'
+import { Channels, type Anfrage, type Ereignis } from '@shared/ipc-contracts'
 import type { RemoteControlId, RemoteControlSetting, RemoteStatus } from '@shared/types'
-import { broadcast } from '../services/broadcast'
+import { broadcast, sendeAn } from '../services/broadcast'
 import { logLine } from '../services/log'
 import { getRemoteAppStatus, syncRemoteApp, withAppLink } from '../services/remote/remoteAppServer'
 import { getSettings, setSettings } from '../services/store'
+import { handle } from './kanal'
 
 export interface RemoteControlDef {
   id: RemoteControlId
-  channels: { status: string; start: string; stop: string; changed: string }
+  /** Der Abschnitt des Werkzeugs im Vertrag – die vier Kanäle heißen überall gleich */
+  channels: {
+    remoteStatus: Anfrage<() => RemoteStatus>
+    remoteStart: Anfrage<(port: number) => RemoteStatus>
+    remoteStop: Anfrage<() => RemoteStatus>
+    onRemoteChanged: Ereignis<(status: RemoteStatus) => void>
+  }
   start(port: number): Promise<RemoteStatus>
   stop(): void
   status(): RemoteStatus
@@ -38,7 +45,7 @@ function settingsStore(id: Exclude<RemoteControlId, 'player'>): {
 export function registerRemoteControl(def: RemoteControlDef): void {
   if (!appStatusWired) {
     appStatusWired = true
-    ipcMain.handle(Channels.remoteAppStatus, () => getRemoteAppStatus())
+    handle(Channels.remoteApp.status, () => getRemoteAppStatus())
   }
   const store =
     def.persisted && def.persist
@@ -53,18 +60,18 @@ export function registerRemoteControl(def: RemoteControlDef): void {
   const changed = async (): Promise<RemoteStatus> => {
     await syncRemoteApp()
     const status = current()
-    broadcast(def.channels.changed, status)
-    broadcast(Channels.remoteAppChanged, getRemoteAppStatus())
+    broadcast(def.channels.onRemoteChanged, status)
+    broadcast(Channels.remoteApp.onChanged, getRemoteAppStatus())
     return status
   }
 
-  ipcMain.handle(def.channels.status, current)
-  ipcMain.handle(def.channels.start, async (_e, port: number) => {
+  handle(def.channels.remoteStatus, current)
+  handle(def.channels.remoteStart, async (_e, port) => {
     const started = await def.start(port)
     store.persist({ enabled: true, port: started.port })
     return changed()
   })
-  ipcMain.handle(def.channels.stop, () => {
+  handle(def.channels.remoteStop, () => {
     def.stop()
     store.persist({ ...store.persisted(), enabled: false })
     return changed()
@@ -110,8 +117,12 @@ export function publishFrom<Snap>(
 
 /** Befehl vom Handy NUR an das Fenster, dessen Stand das Handy sieht – sonst
  *  spielte ein in zwei Fenstern offener Jingle-Player das Pad doppelt ab. */
-export function sendToSource(channel: string, cmd: unknown, source: number | null): void {
+export function sendToSource<Cmd>(
+  k: Ereignis<(cmd: Cmd) => void>,
+  cmd: Cmd,
+  source: number | null
+): void {
   const wc = source != null ? webContents.fromId(source) : undefined
-  if (wc && !wc.isDestroyed()) wc.send(channel, cmd)
-  else broadcast(channel, cmd)
+  if (wc && !wc.isDestroyed()) sendeAn(wc, k, cmd)
+  else broadcast(k, cmd)
 }

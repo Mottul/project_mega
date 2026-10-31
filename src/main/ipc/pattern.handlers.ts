@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { ausgabeZiel } from '@shared/ausgabe'
 import { Channels } from '@shared/ipc-contracts'
@@ -8,7 +8,7 @@ import type {
   PatternVideoProgress,
   PatternVideoRequest
 } from '@shared/types'
-import { broadcast } from '../services/broadcast'
+import { broadcast, sendeAn } from '../services/broadcast'
 import { showSaveDialog } from '../services/fileDialogs'
 import { exportColorLoop, exportPatternVideo } from '../services/pattern/patternVideo'
 import {
@@ -20,20 +20,21 @@ import {
   setPatternOutputSink,
   updatePattern
 } from '../services/pattern/patternWindow'
+import { handle } from './kanal'
 
 export function registerPatternHandlers(): void {
-  ipcMain.handle(Channels.screenList, () => listDisplays())
-  ipcMain.handle(Channels.patternOpen, (_e, config: PatternConfig, z: unknown) => {
+  handle(Channels.screen.list, () => listDisplays())
+  handle(Channels.patterns.open, (_e, config: PatternConfig, z: unknown) => {
     const ziel = ausgabeZiel(z)
     if (ziel != null) openPattern(config, ziel)
   })
-  ipcMain.handle(Channels.patternUpdate, (_e, config: PatternConfig) => updatePattern(config))
-  ipcMain.handle(Channels.patternClose, () => closePattern())
-  ipcMain.handle(Channels.patternCurrent, () => getCurrentConfig())
-  ipcMain.handle(Channels.patternIsOpen, () => isPatternOpen())
-  setPatternOutputSink((open) => broadcast(Channels.patternOutputChanged, open))
+  handle(Channels.patterns.update, (_e, config: PatternConfig) => updatePattern(config))
+  handle(Channels.patterns.close, () => closePattern())
+  handle(Channels.patterns.current, () => getCurrentConfig())
+  handle(Channels.patterns.isOpen, () => isPatternOpen())
+  setPatternOutputSink((open) => broadcast(Channels.patterns.onOutputChanged, open))
 
-  ipcMain.handle(Channels.patternSavePng, async (e, bytes: Uint8Array, suggestedName: string) => {
+  handle(Channels.patterns.savePng, async (e, bytes: Uint8Array, suggestedName: string) => {
     const win = BrowserWindow.fromWebContents(e.sender)
     const opts = {
       title: 'Testbild als PNG speichern',
@@ -46,7 +47,7 @@ export function registerPatternHandlers(): void {
     return res.filePath
   })
 
-  ipcMain.handle(Channels.patternExportVideo, async (e, req: PatternVideoRequest) => {
+  handle(Channels.patterns.exportVideo, async (e, req: PatternVideoRequest) => {
     const win = BrowserWindow.fromWebContents(e.sender)
     const ext = req.format === 'hap_q' ? 'mov' : 'mp4'
     const opts = {
@@ -57,7 +58,8 @@ export function registerPatternHandlers(): void {
     const res = await showSaveDialog(win, opts)
     if (res.canceled || !res.filePath) return null
 
-    const emit = (p: PatternVideoProgress): void => e.sender.send(Channels.patternVideoProgress, p)
+    const emit = (p: PatternVideoProgress): void =>
+      sendeAn(e.sender, Channels.patterns.onVideoProgress, p)
     try {
       await exportPatternVideo(req, res.filePath, (progress) => emit({ progress, done: false }))
       emit({ progress: 1, done: true, outputPath: res.filePath })
@@ -68,7 +70,7 @@ export function registerPatternHandlers(): void {
     }
   })
 
-  ipcMain.handle(Channels.patternExportColorLoop, async (e, req: ColorLoopRequest) => {
+  handle(Channels.patterns.exportColorLoop, async (e, req: ColorLoopRequest) => {
     const win = BrowserWindow.fromWebContents(e.sender)
     const ext = req.format === 'hap_q' ? 'mov' : 'mp4'
     const opts = {
@@ -79,7 +81,8 @@ export function registerPatternHandlers(): void {
     const res = await showSaveDialog(win, opts)
     if (res.canceled || !res.filePath) return null
 
-    const emit = (p: PatternVideoProgress): void => e.sender.send(Channels.patternVideoProgress, p)
+    const emit = (p: PatternVideoProgress): void =>
+      sendeAn(e.sender, Channels.patterns.onVideoProgress, p)
     try {
       await exportColorLoop(req, res.filePath, (progress) => emit({ progress, done: false }))
       emit({ progress: 1, done: true, outputPath: res.filePath })

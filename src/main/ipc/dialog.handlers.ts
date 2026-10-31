@@ -1,7 +1,6 @@
 import {
   BrowserWindow,
   dialog,
-  ipcMain,
   shell,
   type MessageBoxOptions,
   type OpenDialogOptions
@@ -17,9 +16,10 @@ import { stat } from 'node:fs/promises'
 import { showOpenDialog } from '../services/fileDialogs'
 import { logLine } from '../services/log'
 import { shellTarget } from '../services/windows/windowPolicy'
+import { handle } from './kanal'
 
 export function registerDialogHandlers(): void {
-  ipcMain.handle(Channels.dialogSelect, async (_e, options: SelectPathsOptions) => {
+  handle(Channels.selectPaths, async (_e, options: SelectPathsOptions) => {
     const properties: NonNullable<OpenDialogOptions['properties']> = [
       options.directories ? 'openDirectory' : 'openFile'
     ]
@@ -35,7 +35,7 @@ export function registerDialogHandlers(): void {
   // Ja/Nein-Rückfrage als natives Dialogfenster. Bewusst NICHT window.confirm()
   // im Renderer: dessen blockierender Dialog killt in Electron danach die
   // Tastatureingabe in allen Textfeldern, bis das Fenster neu fokussiert wird.
-  ipcMain.handle(Channels.dialogConfirm, async (event, options: ConfirmOptions) => {
+  handle(Channels.confirm, async (event, options: ConfirmOptions) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     // Reihenfolge der Knöpfe: [Bestätigen, Abbrechen]. defaultId zeigt auf den
     // Bestätigen-Knopf, cancelId auf Abbrechen (Esc/Fenster-schließen = Abbruch).
@@ -57,7 +57,7 @@ export function registerDialogHandlers(): void {
   })
 
   // Rückfrage mit 2–4 Antworten. Knöpfe und Indizes werden geprüft (Eingabe aus dem Renderer).
-  ipcMain.handle(Channels.dialogChoose, async (event, options: ChooseOptions) => {
+  handle(Channels.choose, async (event, options: ChooseOptions) => {
     const buttons = Array.isArray(options?.buttons)
       ? options.buttons.filter((b): b is string => typeof b === 'string').map((b) => b.slice(0, 60))
       : []
@@ -85,7 +85,7 @@ export function registerDialogHandlers(): void {
   })
 
   // Hinweis-Meldung (ein OK-Knopf). Gleicher Grund wie oben: kein window.alert().
-  ipcMain.handle(Channels.dialogNotify, async (event, options: NotifyOptions) => {
+  handle(Channels.notify, async (event, options: NotifyOptions) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     const boxOptions: MessageBoxOptions = {
       type: options.kind ?? 'info',
@@ -102,7 +102,7 @@ export function registerDialogHandlers(): void {
 
   // openPath öffnet eine DATEI mit ihrem Standardprogramm – bei .exe, .bat, .lnk … startet es
   // also ein Programm. Deshalb nur lokale Ordner (heute: der Medienordner des Players).
-  ipcMain.handle(Channels.shellOpenPath, async (_e, target: unknown) => {
+  handle(Channels.openPath, async (_e, target: unknown) => {
     const dir = shellTarget(target, { network: false })
     const isDir = dir
       ? await stat(dir).then(
@@ -118,7 +118,7 @@ export function registerDialogHandlers(): void {
   })
 
   // „Im Ordner zeigen“ startet nichts – auch für Dateien auf dem NAS (Netzwerkpfade erlaubt).
-  ipcMain.handle(Channels.shellShowItem, (_e, target: unknown) => {
+  handle(Channels.showItemInFolder, (_e, target: unknown) => {
     const path = shellTarget(target, { network: true })
     if (!path) {
       logLine('[shell] Im Ordner zeigen abgelehnt:', String(target).slice(0, 200))

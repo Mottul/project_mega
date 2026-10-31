@@ -1,6 +1,6 @@
 // Eigene Bausteine des Mini-Manuals – dünne Hülle um services/bausteine/bausteinStore.ts.
 
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import {
   exportBausteine,
@@ -9,15 +9,14 @@ import {
   removeBaustein,
   saveBaustein
 } from '../services/bausteine/bausteinStore'
+import { handle } from './kanal'
 
 export function registerBausteineHandlers(): void {
-  ipcMain.handle(Channels.bausteineList, () => listBausteine())
-  ipcMain.handle(Channels.bausteineSave, (_e, b: unknown) => saveBaustein(b))
-  ipcMain.handle(Channels.bausteineRemove, (_e, id: unknown) => removeBaustein(id))
-  ipcMain.handle(Channels.bausteineExport, (e, ids: unknown) =>
+  handle(Channels.bausteine.list, () => listBausteine())
+  handle(Channels.bausteine.save, (_e, b: unknown) => saveBaustein(b))
+  handle(Channels.bausteine.remove, (_e, id: unknown) => removeBaustein(id))
+  handle(Channels.bausteine.export, (e, ids: unknown) =>
     exportBausteine(BrowserWindow.fromWebContents(e.sender), ids)
   )
-  ipcMain.handle(Channels.bausteineImport, (e) =>
-    importBausteine(BrowserWindow.fromWebContents(e.sender))
-  )
+  handle(Channels.bausteine.import, (e) => importBausteine(BrowserWindow.fromWebContents(e.sender)))
 }

@@ -1,4 +1,3 @@
-import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { ImportProgress, ManualPatch } from '@shared/types'
 import {
@@ -11,20 +10,22 @@ import {
   searchManuals,
   updateManual
 } from '../services/manuals/manualsService'
+import { sendeAn } from '../services/broadcast'
+import { handle } from './kanal'
 
 export function registerManualsHandlers(): void {
-  ipcMain.handle(Channels.manualsImport, (e, paths: string[]) =>
-    importManuals(paths, (p: ImportProgress) => e.sender.send(Channels.manualsImportProgress, p))
+  handle(Channels.manuals.import, (e, paths: string[]) =>
+    importManuals(paths, (p: ImportProgress) =>
+      sendeAn(e.sender, Channels.manuals.onImportProgress, p)
+    )
   )
-  ipcMain.handle(Channels.manualsList, (_e, query?: string) => listManuals(query))
-  ipcMain.handle(Channels.manualsSearch, (_e, query: string) => searchManuals(query))
-  ipcMain.handle(Channels.manualsSearchInDoc, (_e, manualId: number, query: string) =>
+  handle(Channels.manuals.list, (_e, query?: string) => listManuals(query))
+  handle(Channels.manuals.search, (_e, query: string) => searchManuals(query))
+  handle(Channels.manuals.searchInDoc, (_e, manualId: number, query: string) =>
     searchInManual(manualId, query)
   )
-  ipcMain.handle(Channels.manualsGet, (_e, id: number) => getManual(id))
-  ipcMain.handle(Channels.manualsBytes, (_e, id: number) => readManualBytes(id))
-  ipcMain.handle(Channels.manualsUpdate, (_e, id: number, patch: ManualPatch) =>
-    updateManual(id, patch)
-  )
-  ipcMain.handle(Channels.manualsDelete, (_e, id: number) => deleteManual(id))
+  handle(Channels.manuals.get, (_e, id: number) => getManual(id))
+  handle(Channels.manuals.bytes, (_e, id: number) => readManualBytes(id))
+  handle(Channels.manuals.update, (_e, id: number, patch: ManualPatch) => updateManual(id, patch))
+  handle(Channels.manuals.delete, (_e, id: number) => deleteManual(id))
 }

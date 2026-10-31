@@ -35,10 +35,10 @@ Im main nie synchron auf einen Prozess warten (`spawnSync`/`execSync`, ESLint sp
 Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersion.ts`; ebenso kein
 `statSync` auf Nutzerordner (Netzlaufwerk), sondern `isDirReachable()` mit Zeitlimit.
 
-- **IPC-Vertrag:** `src/shared/ipc-contracts.ts` definiert `Channels` +
-  `ToolboxApi` als einzige Quelle; `src/shared/types.ts` alle Domain-Typen.
-  Neue IPC-Fläche = Channel + ToolboxApi-Methode + preload-Mapping +
-  Handler in `src/main/ipc/*.handlers.ts` (Registrierung: `registry.ts`).
+- **IPC-Vertrag:** `Channels` in `src/shared/ipc-contracts.ts` ist die einzige Quelle (Kanalname,
+  Art, Signatur), `ToolboxApi` und der Preload (`preload/baueApi.ts`) entstehen daraus;
+  `src/shared/types.ts` alle Domain-Typen. Neue IPC-Fläche = Eintrag in `Channels` + Handler in
+  `src/main/ipc/*.handlers.ts` mit `handle`/`on` aus `ipc/kanal.ts` (Registrierung: `registry.ts`).
 - **Renderer-Zugriff nur über `api`** (`@renderer/lib/api`), nie direkt ipcRenderer.
 - **Datei-Dialoge** im main nur über `services/fileDialogs.ts` (merkt den Ordner je Art; Electron
   startet sie seit Version 43 sonst immer in „Downloads“).

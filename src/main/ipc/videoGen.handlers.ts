@@ -3,7 +3,7 @@
 // Die Zieldatei darf keine der Quellen sein und nicht schon von einem laufenden Auftrag
 // beschrieben werden.
 
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow } from 'electron'
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { CONVERT_FORMATS } from '@shared/convertPlan'
@@ -18,6 +18,7 @@ import { videoGenSourceUrl } from '../services/convert/videoGenSources'
 import { videoGenThumb } from '../services/convert/videoGenThumbs'
 import { showSaveDialog } from '../services/fileDialogs'
 import { getSettings, setSettings } from '../services/store'
+import { handle } from './kanal'
 
 // Pfadtrenner, Steuer- und unter Windows verbotene Zeichen
 // eslint-disable-next-line no-control-regex
@@ -30,15 +31,15 @@ function safeName(v: unknown): string {
 }
 
 export function registerVideoGenHandlers(): void {
-  videoGenJobs.setSink((job) => broadcast(Channels.vgenUpdate, job))
+  videoGenJobs.setSink((job) => broadcast(Channels.videoGen.onUpdate, job))
 
-  ipcMain.handle(Channels.vgenThumb, (_e, path: unknown, timeSec: unknown, width: unknown) =>
+  handle(Channels.videoGen.thumb, (_e, path: unknown, timeSec: unknown, width: unknown) =>
     typeof path === 'string'
       ? videoGenThumb(path, typeof timeSec === 'number' ? timeSec : null, width === 960 ? 960 : 320)
       : null
   )
 
-  ipcMain.handle(Channels.vgenPickOutput, async (e, format: unknown, suggestedName: unknown) => {
+  handle(Channels.videoGen.pickOutput, async (e, format: unknown, suggestedName: unknown) => {
     const fmt: ConvertFormat = VGEN_FORMATS.includes(format as ConvertFormat)
       ? (format as ConvertFormat)
       : 'h264'
@@ -60,7 +61,7 @@ export function registerVideoGenHandlers(): void {
     return path
   })
 
-  ipcMain.handle(Channels.vgenEnqueue, (_e, req: unknown) => {
+  handle(Channels.videoGen.enqueue, (_e, req: unknown) => {
     const r = (typeof req === 'object' && req !== null ? req : {}) as Record<string, unknown>
     const project = sanitizeVgenProject(r.project)
     if (!project) throw new Error('Ungültiges Projekt')
@@ -88,15 +89,15 @@ export function registerVideoGenHandlers(): void {
     return videoGenJobs.enqueue({ project, outputPath: out })
   })
 
-  ipcMain.handle(Channels.vgenList, () => videoGenJobs.list())
-  ipcMain.handle(Channels.vgenCancel, (_e, id: unknown) => {
+  handle(Channels.videoGen.list, () => videoGenJobs.list())
+  handle(Channels.videoGen.cancel, (_e, id: unknown) => {
     if (typeof id === 'string') videoGenJobs.cancel(id)
   })
-  ipcMain.handle(Channels.vgenClearFinished, () => videoGenJobs.clearFinished())
-  ipcMain.handle(Channels.vgenClearCache, () => clearCache())
+  handle(Channels.videoGen.clearFinished, () => videoGenJobs.clearFinished())
+  handle(Channels.videoGen.clearCache, () => clearCache())
 
-  setPreviewSink((p) => broadcast(Channels.vgenPreviewProgress, p))
-  ipcMain.handle(Channels.vgenPreview, (_e, req: unknown): Promise<VgenPreviewOutcome> => {
+  setPreviewSink((p) => broadcast(Channels.videoGen.onPreviewProgress, p))
+  handle(Channels.videoGen.preview, (_e, req: unknown): Promise<VgenPreviewOutcome> => {
     const r = (typeof req === 'object' && req !== null ? req : {}) as Record<string, unknown>
     const project = sanitizeVgenProject(r.project)
     const ok = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{1,64}$/.test(v)
@@ -105,6 +106,6 @@ export function registerVideoGenHandlers(): void {
     }
     return renderPreview({ requestId: r.requestId, project, elementId: r.elementId })
   })
-  ipcMain.handle(Channels.vgenPreviewCancel, () => cancelPreview())
-  ipcMain.handle(Channels.vgenSource, (_e, path: unknown) => videoGenSourceUrl(path))
+  handle(Channels.videoGen.cancelPreview, () => cancelPreview())
+  handle(Channels.videoGen.source, (_e, path: unknown) => videoGenSourceUrl(path))
 }

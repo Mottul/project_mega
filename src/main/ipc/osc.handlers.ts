@@ -1,4 +1,3 @@
-import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import {
   DEFAULT_OSC_SETTINGS,
@@ -19,6 +18,7 @@ import {
   stopOscRemote
 } from '../services/osc/oscRemoteServer'
 import { publishFrom, registerRemoteControl, sendToSource } from './remoteControls'
+import { handle } from './kanal'
 
 let wired = false
 
@@ -26,37 +26,32 @@ export function registerOscHandlers(): void {
   if (!wired) {
     wired = true
     // Steuerbefehle vom Handy an alle Fenster (der OSC-Tab wendet sie an + sendet OSC).
-    setOscCommandSink((cmd, source) => sendToSource(Channels.oscRemoteCommand, cmd, source))
+    setOscCommandSink((cmd, source) => sendToSource(Channels.osc.onRemoteCommand, cmd, source))
   }
 
-  ipcMain.handle(Channels.oscSend, (_e, msg: OscMessage) => oscSend(msg))
-  ipcMain.handle(Channels.oscSendMany, (_e, msgs: OscMessage[]) => {
+  handle(Channels.osc.send, (_e, msg: OscMessage) => oscSend(msg))
+  handle(Channels.osc.sendMany, (_e, msgs: OscMessage[]) => {
     for (const m of msgs) oscSend(m)
   })
-  ipcMain.handle(Channels.oscStatus, () => oscStatus())
-  ipcMain.handle(Channels.oscConfig, () => getSettings().osc ?? DEFAULT_OSC_SETTINGS)
-  ipcMain.handle(Channels.oscConfigSet, (_e, patch: Partial<OscSettings>) => oscSetConfig(patch))
+  handle(Channels.osc.status, () => oscStatus())
+  handle(Channels.osc.config, () => getSettings().osc ?? DEFAULT_OSC_SETTINGS)
+  handle(Channels.osc.setConfig, (_e, patch: Partial<OscSettings>) => oscSetConfig(patch))
 
   // Fernsteuerung (eingebetteter Webserver)
-  ipcMain.handle(Channels.oscPublish, (e, snap: OscRemoteSnapshot) =>
+  handle(Channels.osc.publish, (e, snap: OscRemoteSnapshot) =>
     publishFrom(e.sender, snap, publishOscSnapshot, forgetOscSnapshot)
   )
   registerRemoteControl({
     id: 'osc',
-    channels: {
-      status: Channels.oscRemoteStatus,
-      start: Channels.oscRemoteStart,
-      stop: Channels.oscRemoteStop,
-      changed: Channels.oscRemoteChanged
-    },
+    channels: Channels.osc,
     start: startOscRemote,
     stop: stopOscRemote,
     status: getOscRemoteStatus
   })
 
   // OSC-Monitor-Fenster: Aktivitäts-Log vom OSC-Tab an alle Fenster spiegeln.
-  ipcMain.handle(Channels.oscMonitorPublish, (_e, entries: OscLogEntry[]) =>
-    broadcast(Channels.oscMonitorLog, entries)
+  handle(Channels.osc.publishMonitor, (_e, entries: OscLogEntry[]) =>
+    broadcast(Channels.osc.onMonitor, entries)
   )
 
   // Feedback-Listener starten, wenn in den Settings aktiviert.

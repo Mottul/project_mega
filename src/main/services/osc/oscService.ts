@@ -41,7 +41,7 @@ export function oscStatus(): OscStatus {
 }
 
 function emitStatus(): void {
-  broadcast(Channels.oscStatusChanged, oscStatus())
+  broadcast(Channels.osc.onStatus, oscStatus())
 }
 
 function ensureSendSocket(): dgram.Socket {
@@ -117,7 +117,7 @@ function startRecv(): void {
   })
   sock.on('message', (data) => {
     recvCount++
-    for (const fb of decodeOsc(data)) broadcast(Channels.oscFeedback, fb)
+    for (const fb of decodeOsc(data)) broadcast(Channels.osc.onFeedback, fb)
   })
   sock.bind(c.inPort, () => {
     listening = true

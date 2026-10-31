@@ -111,10 +111,6 @@ Mini-Manual (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)).
   GitHub Release ab („Installer bauen“); `electron-updater` braucht dort zusätzlich die
   `latest*.yml` und `.blockmap`-Dateien. Windows warnt ohne Signatur beim Installieren, macOS
   geht nur mit einem Apple-Entwicklerzertifikat.
-- **IPC-Vertrag generieren:** ein generischer Preload-Proxy aus `Channels` und ein typisierter
-  `handle(Channels.x, fn)`-Wrapper. Neue Kanäle brauchen dann zwei statt vier Stellen, die 31
-  `as never`-Casts im Preload entfallen, falsche Handler-Signaturen werden zu Compile-Fehlern.
-  Größter langfristiger Gewinn.
 - **Handy-Steuerseiten** (~1.200 Zeilen HTML/CSS/JS in Template-Strings, ungelintet) als echte
   Build-Artefakte bzw. `?raw`-Importe.
 

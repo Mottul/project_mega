@@ -108,8 +108,8 @@ und `postcss-selector-parser` 6.1.5 (Tailwind):
 
 - **Abgeschottete Fenster:** `sandbox`, `contextIsolation`, `nodeIntegration: false` und keine
   Webviews in allen Fenstern mit App-Seite (Haupt-, Werkzeug-, Ausgabe- und NDI-Fenster, eine
-  Quelle: `secureWebPreferences` in `services/windows/appWindows.ts`). Der Preload gibt nur eine
-  typisierte API frei, nie rohes `ipcRenderer`. Das unsichtbare Fenster für den PDF-Export
+  Quelle: `secureWebPreferences` in `services/windows/appWindows.ts`). Der Preload gibt nur die
+  Methoden des IPC-Vertrags frei, nie rohes `ipcRenderer` oder einen allgemeinen Kanal-Aufruf. Das unsichtbare Fenster für den PDF-Export
   (`services/pdf/htmlToPdf.ts`) hat keinen Preload und kein JavaScript und eine eigene, flüchtige
   Partition, die nur Dateien aus dem eigenen Temp-Ordner lädt: Bilder von Servern oder
   UNC-Freigaben (`file://server/…`, unter Windows mit Anmeldeversuch) aus einer fremden

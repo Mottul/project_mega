@@ -9,20 +9,20 @@
 // als NDI-Audioframes (FLTp) an denselben Sender. Empfänger synchronisieren
 // Bild/Ton über die vom SDK gestempelten Zeiten (clockVideo/clockAudio).
 
-import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import { DEFAULT_PLAYER_NDI, type PlayerNdiConfig, type PlayerNdiStatus } from '@shared/types'
 import { broadcast } from '../broadcast'
 import { logLine } from '../log'
 import { clampNdiSize, isAudioChunk } from '../ndi/ndiFrames'
 import { OffscreenNdiSender } from '../ndi/ndiSender'
+import { on } from '../../ipc/kanal'
 
 let config: PlayerNdiConfig = { ...DEFAULT_PLAYER_NDI }
 let audioReceived = 0 // vom Spiegelfenster angekommene PCM-Blöcke (Diagnose)
 let silenceWarned = false
 
 const ndi = new OffscreenNdiSender('[player-ndi]', () =>
-  broadcast(Channels.playerNdiChanged, getPlayerNdiStatus())
+  broadcast(Channels.player.onNdiChanged, getPlayerNdiStatus())
 )
 
 export function getPlayerNdiStatus(): PlayerNdiStatus {
@@ -41,7 +41,7 @@ let audioIpcWired = false
 function wireAudioIpc(): void {
   if (audioIpcWired) return
   audioIpcWired = true
-  ipcMain.on(Channels.playerNdiAudio, (event, chunk: unknown) => {
+  on(Channels.player.ndiAudio, (event, chunk: unknown) => {
     // nur gültige Blöcke aus UNSEREM Spiegelfenster annehmen
     if (!config.audio || !ndi.isOwnWindow(event.sender.id) || !isAudioChunk(chunk)) return
     audioReceived++
@@ -69,7 +69,7 @@ function wireAudioIpc(): void {
   })
   // Fehler beim Aufbau des Audio-Taps (Worklet/WebAudio) sichtbar machen --
   // sonst gäbe es nur "0 Audio-Blöcke" ohne Erklärung.
-  ipcMain.on(Channels.playerNdiTapError, (event, text: unknown) => {
+  on(Channels.player.ndiTapError, (event, text: unknown) => {
     if (!ndi.isOwnWindow(event.sender.id)) return
     ndi.report(`Audio-Tap: ${String(text).slice(0, 400)}`)
   })
