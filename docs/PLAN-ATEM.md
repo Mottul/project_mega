@@ -1,7 +1,7 @@
 # Plan: ATEM-Steuerung
 
-**Status:** Phase 0 ohne Mischer und Phase 1 sind gebaut, die Seite „Mischen“ lief am ATEM Mini
-Extreme, siehe [Stand](#stand). Zum Testen stehen ein ATEM Mini Extreme und ein ATEM Mini bereit, die
+**Status:** Phase 0 ohne Mischer, Phase 1 und Phase 2 sind gebaut, die Seite „Mischen“ von Phase 1 lief
+am ATEM Mini Extreme, siehe [Stand](#stand). Zum Testen stehen ein ATEM Mini Extreme und ein ATEM Mini bereit, die
 [offenen Fragen](#offene-fragen) betreffen nur noch Details.
 
 Blackmagic-ATEM-Mischer vom Laptop bedienen, später auch vom Tablet oder Handy: Programm und
@@ -45,6 +45,12 @@ mit Phase 6.
 angeschlossene Quellen und Monitore: Alles funktionierte. Die Knöpfe zeigen nur, was der Mischer meldet,
 damit sind Verbinden, Befehle und Rückmeldung am Gerät belegt. Nicht belegt ist, was man nur im Bild sieht.
 
+**Phase 2: gebaut, die Abnahme am Mischer steht aus.** Keyer, DSK, Makros, Media-Player und AUX, dazu
+Reiter für die Seiten. Abweichungen vom Entwurf: Die AUX-Busse haben einen eigenen Reiter, sie passten
+in keine geplante Seite. Die Seite „Mischen“ zeigt neben „Tasten“ auch „Nächster Übergang“, sonst ginge
+ein Key nur hart auf Sendung. Die Art eines Upstream-Keyers wird nur angezeigt: Luma, Chroma und Muster
+haben eigene Einstellungen, die erst mit einer Seite dafür Sinn ergeben.
+
 **Noch offen:**
 
 1. Rest von Phase 0: Verbinden aus dem Installer unter Windows und macOS, die
@@ -53,7 +59,11 @@ damit sind Verbinden, Befehle und Rückmeldung am Gerät belegt. Nicht belegt is
 3. **Null am Ende des Hebels:** Wir senden 10000 und danach 0, wie ältere Hardware-Steuerungen. Im
    Grobtest fiel nichts auf, ob die Null nötig ist, wurde aber nicht gemessen. Sie stammt aus der
    Erinnerung an die Arduino-Bibliothek von SKAARHOJ.
-4. **Am ATEM Mini:** Verbinden, Quellen und Stile wie am Gerät.
+4. **Am ATEM Mini:** Verbinden, Quellen und Stile wie am Gerät, Reiter nur für das, was er kann.
+5. **Phase 2 am Extreme:** Key und DSK hart und mit Übergang, DSK-Auto mit Dauer, Fill und Cut. Makros
+   mit Pause. Standbilder im Media-Player. Zeigt die Liste bei den AUX-Bussen nur, was der jeweilige Bus
+   annimmt? Die Bibliothek nennt vier AUX-Bits, welches zu welchem Bus gehört, ist nicht belegt. Ist
+   einer der Busse der USB-Ausgang, gilt die Vorsicht aus [Multiview](#multiview-im-werkzeug).
 
 ## Entscheidung: eigenes Werkzeug
 

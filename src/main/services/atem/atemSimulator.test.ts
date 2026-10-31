@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AtemCommand, AtemSimModell } from '@shared/atem'
+import {
+  ATEM_HINTERGRUND,
+  keyerBit,
+  QUELLE_FUER_AUX,
+  QUELLE_FUER_KEY,
+  type AtemCommand,
+  type AtemSimModell
+} from '@shared/atem'
 import { atemViewAus, type AtemRoh } from '@shared/atemView'
 import { simulierteVerbindung } from './atemSimulator'
 import type { AtemMeldungen } from './atemVerbindung'
@@ -117,6 +124,109 @@ describe('Probebetrieb', () => {
     await s.befehl({ type: 'ftb', me: 0 })
     vi.advanceTimersByTime(40 * 5)
     expect(ftb()?.fadeToBlack?.isFullyBlack).toBe(false)
+  })
+
+  it('nimmt beim Übergang mit, was ausgewählt ist', async () => {
+    const s = aufbau('mini-extreme')
+    const me = (): NonNullable<AtemRoh['video']['mixEffects'][0]> =>
+      s.stand().video.mixEffects[0] as NonNullable<AtemRoh['video']['mixEffects'][0]>
+    // nur Key 2: Der Hintergrund bleibt, der Keyer geht on air
+    await s.befehl({ type: 'naechster', me: 0, maske: keyerBit(1) })
+    await s.befehl({ type: 'cut', me: 0 })
+    expect(me().programInput).toBe(1)
+    expect(me().upstreamKeyers.map((k) => k?.onAir)).toEqual([false, true, false, false])
+    // beides: Der Keyer geht wieder raus, die Busse tauschen
+    await s.befehl({ type: 'naechster', me: 0, maske: ATEM_HINTERGRUND | keyerBit(1) })
+    await s.befehl({ type: 'hebel', me: 0, wert: 10000 })
+    expect(me().programInput).toBe(2)
+    expect(me().upstreamKeyers[1]?.onAir).toBe(false)
+  })
+
+  it('schaltet Keyer direkt und lässt den Stil beim Ändern der Auswahl stehen', async () => {
+    const s = aufbau('mini-extreme')
+    await s.befehl({ type: 'stil', me: 0, stil: 'wipe' })
+    await s.befehl({ type: 'naechster', me: 0, maske: 3 })
+    await s.befehl({ type: 'uskOnAir', me: 0, keyer: 2, an: true })
+    await s.befehl({ type: 'uskQuelle', me: 0, keyer: 2, art: 'cut', quelle: 4 })
+    const v = atemViewAus(s.stand(), []).mes[0]
+    expect(v.stil).toBe('wipe')
+    expect(v.naechster).toBe(3)
+    expect(v.keyer[2]).toMatchObject({ onAir: true, cut: 4 })
+  })
+
+  it('blendet einen DSK über seine Dauer und nimmt verknüpfte beim Übergang mit', async () => {
+    const s = aufbau('mini-extreme')
+    const dsk = (): ReturnType<typeof atemViewAus>['dsk'] => atemViewAus(s.stand(), []).dsk
+    await s.befehl({ type: 'dskRate', keyer: 0, bilder: 5 })
+    await s.befehl({ type: 'dskAuto', keyer: 0 })
+    expect(dsk()[0]).toMatchObject({ laeuft: true, restBilder: 5, onAir: false })
+    vi.advanceTimersByTime(20 * 5)
+    expect(dsk()[0]).toMatchObject({ laeuft: false, restBilder: 0, onAir: true })
+
+    await s.befehl({ type: 'dskTie', keyer: 1, an: true })
+    await s.befehl({ type: 'cut', me: 0 })
+    expect(dsk()[1]).toMatchObject({ onAir: true, tie: true })
+    await s.befehl({ type: 'dskOnAir', keyer: 1, an: false })
+    await s.befehl({ type: 'dskQuelle', keyer: 1, art: 'fill', quelle: 3 })
+    expect(dsk()[1]).toMatchObject({ onAir: false, fill: 3 })
+  })
+
+  it('spielt ein Makro ab und meldet das Ende', async () => {
+    const s = aufbau()
+    await s.befehl({ type: 'makroStart', index: 1 })
+    expect(atemViewAus(s.stand(), []).makroPlayer).toEqual({
+      laeuft: true,
+      wartet: false,
+      index: 1
+    })
+    vi.advanceTimersByTime(1100)
+    expect(atemViewAus(s.stand(), []).makroPlayer.laeuft).toBe(false)
+  })
+
+  it('wartet an einer Pause auf „Weiter“, und Stopp beendet sofort', async () => {
+    const s = aufbau()
+    const makro = (): ReturnType<typeof atemViewAus>['makroPlayer'] =>
+      atemViewAus(s.stand(), []).makroPlayer
+    await s.befehl({ type: 'makroStart', index: 3 })
+    vi.advanceTimersByTime(5000)
+    expect(makro()).toMatchObject({ laeuft: true, wartet: true })
+    await s.befehl({ type: 'makroWeiter' })
+    expect(makro()).toMatchObject({ laeuft: false, wartet: false })
+    await s.befehl({ type: 'makroStart', index: 0 })
+    await s.befehl({ type: 'makroStopp' })
+    expect(makro().laeuft).toBe(false)
+  })
+
+  it('wählt Medien und steuert Clips, nur große Modelle haben welche', async () => {
+    expect(atemViewAus(aufbau('mini').stand(), []).medien.clips).toEqual([])
+    const s = aufbau('constellation')
+    const player = (): ReturnType<typeof atemViewAus>['medien']['player'][0] =>
+      atemViewAus(s.stand(), []).medien.player[1]
+    await s.befehl({ type: 'mediaQuelle', player: 1, art: 'clip', index: 1 })
+    expect(player()).toMatchObject({ art: 'clip', index: 1 })
+    await s.befehl({ type: 'clipSpielen', player: 1, an: true })
+    await s.befehl({ type: 'clipSchleife', player: 1, an: true })
+    expect(player()).toMatchObject({ spielt: true, schleife: true, amAnfang: false })
+    await s.befehl({ type: 'clipAnfang', player: 1 })
+    expect(player()).toMatchObject({ spielt: false, amAnfang: true })
+    await s.befehl({ type: 'mediaQuelle', player: 1, art: 'still', index: 2 })
+    expect(player()).toMatchObject({ art: 'still', index: 2 })
+    expect(atemViewAus(s.stand(), []).medien.player[0]).toMatchObject({ art: 'still', index: 0 })
+  })
+
+  it('schaltet AUX-Busse einzeln', async () => {
+    const s = aufbau('mini-extreme')
+    await s.befehl({ type: 'aux', bus: 1, quelle: 5 })
+    expect(atemViewAus(s.stand(), []).aux.map((a) => a.quelle)).toEqual([1, 5])
+  })
+
+  it('meldet auf jedem Modell Makros und taugliche Quellen für Key und AUX', () => {
+    for (const modell of ['mini', 'mini-extreme', 'constellation'] as const) {
+      const v = atemViewAus(aufbau(modell).stand(), [])
+      expect(v.makros.length).toBeGreaterThan(0)
+      expect(v.quellen.some((q) => q.verfuegbar & QUELLE_FUER_KEY)).toBe(true)
+      expect(v.quellen.some((q) => q.verfuegbar & QUELLE_FUER_AUX)).toBe(true)
+    }
   })
 
   it('hält die M/Es auseinander', async () => {

@@ -51,6 +51,7 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `TextArea`/`LiveInput` aus `components/ui/textarea`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten
      Zeilen – nie ein rohes `<select>` mit eigenen Klassen), Farben nur über Tailwind-Tokens
      (`primary`, `border` …; Rot ist „live“).
+     Seiten oder Ansichten eines Werkzeugs: `Reiter` aus `components/ui/reiter`.
      Tastenkürzel für das ganze Werkzeug: rein prüfen (Muster `atem-control/tastatur.ts`), nie in
      Textfeldern, den Fokus nach Mausklicks abgeben (Skill `review-checkliste`, Fenster).
      Läuft etwas nur im Fenster (Ton wie Testton und Jingle), mit `useAktivMelden(key, an)`

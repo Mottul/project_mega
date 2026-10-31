@@ -84,6 +84,9 @@ einen Test **mit** und **ohne** Schrägstrich.
   Migration oder bewusst begründete Ausnahme.
 - Neue Felder: `DEFAULT_SETTINGS`, nur geänderte Felder patchen, Stores mit `version`/`migrate`.
 - Textfelder für Einstellungen puffern (`useDraft`/`TextField`).
+- **Gemerktes auch zurücklesen.** Der Codec der M/E-Wahl las wegen eines fehlenden Backslash nie etwas
+  (`/^d$/`), geschrieben wurde richtig, nichts fiel auf (ATEM, 31.10.2026, gefunden beim Lesen). Im E2E
+  Wert setzen, Werkzeug zu und auf, Wert prüfen.
 
 ## Projektdateien und fremde Dateien (Oktober 2026)
 

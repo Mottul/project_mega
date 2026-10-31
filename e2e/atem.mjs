@@ -32,6 +32,31 @@ async function zeigt(bus, id, zustand = 'an') {
   )
 }
 
+/** Knopf mit Rückmeldung (Keyer, Makro …): Zustand nach `data-zustand` */
+async function schaltet(testId, zustand = 'an') {
+  const k = page.getByTestId(testId)
+  const ok = await waitFor(async () => (await k.getAttribute('data-zustand')) === zustand)
+  assert.ok(ok, `${testId} ist nicht ${zustand}: ${await k.getAttribute('data-zustand')}`)
+}
+
+async function reiter(name) {
+  await page.getByRole('tab', { name, exact: true }).click()
+  assert.ok(
+    await waitFor(
+      async () =>
+        (await page.getByRole('tab', { name, exact: true }).getAttribute('aria-selected')) ===
+        'true'
+    )
+  )
+}
+
+/** Auswahlliste zeigt den gemeldeten Stand: warten, bis er ankommt */
+async function waehlt(label, wert) {
+  const feld = page.getByLabel(label, { exact: true })
+  await feld.selectOption(wert)
+  assert.ok(await waitFor(async () => (await feld.inputValue()) === wert), `${label} bleibt`)
+}
+
 /**
  * Hebel mit der Maus ziehen, `bis` als Weg ab der Ruhelage: 0 Ruhelage, 1 anderes Ende. Die
  * Ruhelage wechselt nach jedem fertigen Übergang, auch nach Auto.
@@ -277,13 +302,106 @@ try {
       }
     ],
     [
-      'Kleines Modell: weniger Quellen, keine M/E-Auswahl',
+      'Tasten: Key und DSK schalten sofort, der nächste Übergang nimmt die Auswahl mit',
+      async () => {
+        await page.getByTestId('atem-usk-taste-0').click()
+        await schaltet('atem-usk-taste-0')
+        await page.getByTestId('atem-usk-taste-0').click()
+        await schaltet('atem-usk-taste-0', 'aus')
+        await page.getByTestId('atem-dsk-taste-1').click()
+        await schaltet('atem-dsk-taste-1')
+        await page.getByTestId('atem-dsk-taste-1').click()
+        await schaltet('atem-dsk-taste-1', 'aus')
+
+        const programm = await page
+          .locator('[data-testid^="atem-programm-"][data-zustand="an"]')
+          .getAttribute('data-testid')
+        await page.getByTestId('atem-naechster-0').click()
+        await schaltet('atem-naechster-0')
+        await page.getByTestId('atem-naechster-hintergrund').click()
+        await schaltet('atem-naechster-hintergrund', 'aus')
+        await page.getByTestId('atem-cut').click()
+        await schaltet('atem-usk-taste-0')
+        await schaltet(programm)
+        await page.getByTestId('atem-naechster-hintergrund').click()
+        await schaltet('atem-naechster-hintergrund')
+        await page.getByTestId('atem-naechster-0').click()
+        await schaltet('atem-naechster-0', 'aus')
+        await page.getByTestId('atem-usk-taste-0').click()
+        await schaltet('atem-usk-taste-0', 'aus')
+
+        // Einer muss bleiben: Der letzte Teil lässt sich nicht abwählen
+        await page.getByTestId('atem-naechster-hintergrund').click()
+        await sleep(1700)
+        await schaltet('atem-naechster-hintergrund')
+      }
+    ],
+    [
+      'Makros: Start in der Reihe, Ende vom Mischer, Pause mit Weiter, Stopp',
+      async () => {
+        await page.getByTestId('atem-makro-0').click()
+        await schaltet('atem-makro-0')
+        await schaltet('atem-makro-0', 'aus')
+        await reiter('Makros')
+        await page.getByTestId('atem-makro-3').click()
+        await schaltet('atem-makro-3')
+        await page.getByTestId('atem-makro-weiter').click()
+        await schaltet('atem-makro-3', 'aus')
+        assert.equal(await page.getByTestId('atem-makro-weiter').count(), 0)
+        await page.getByTestId('atem-makro-3').click()
+        await schaltet('atem-makro-3')
+        await page.getByTestId('atem-makro-stopp').click()
+        await schaltet('atem-makro-3', 'aus')
+      }
+    ],
+    [
+      'Seite Keyer: Quellen, Auto mit Dauer, Verknüpfung, und die Sperre gilt auch hier',
+      async () => {
+        await reiter('Keyer')
+        await waehlt('Key 2 Fill', '3')
+        await waehlt('Key 2 Cut', '4')
+        await waehlt('DSK 1 Fill', '5')
+        await page.getByLabel('DSK 1 Dauer in Bildern').fill('50')
+        await page.getByLabel('DSK 1 Dauer in Bildern').press('Tab')
+        const dsk = page.getByTestId('atem-dsk-auto-0')
+        await dsk.click()
+        assert.ok(
+          await waitFor(async () => (await dsk.getAttribute('data-laeuft')) === 'true', 5000, 20),
+          'Auto läuft nicht'
+        )
+        await schaltet('atem-dsk-0')
+        await page.getByTestId('atem-dsk-0').click()
+        await schaltet('atem-dsk-0', 'aus')
+        await page.getByTestId('atem-dsk-tie-0').click()
+        await schaltet('atem-dsk-tie-0')
+        await page.getByTestId('atem-dsk-tie-0').click()
+        await schaltet('atem-dsk-tie-0', 'aus')
+
+        await bar().getByRole('button', { name: 'Sperre' }).click()
+        await page.getByText('Gesperrt').first().waitFor()
+        assert.equal(await page.getByLabel('Key 2 Fill', { exact: true }).isDisabled(), true)
+        assert.equal(await page.getByTestId('atem-usk-0').isDisabled(), true)
+        await bar().getByRole('button', { name: 'Sperre' }).click()
+        await reiter('Medien')
+        assert.equal(await page.getByRole('group', { name: 'Media-Player 1 Art' }).count(), 0)
+        await waehlt('Media-Player 2 Inhalt', '1')
+        assert.equal(await page.getByTestId('atem-clip-spielen-1').count(), 0)
+        await reiter('AUX')
+        await waehlt('AUX 2', '5')
+        await reiter('Mischen')
+      }
+    ],
+    [
+      'Kleines Modell: weniger Quellen und Tasten, keine M/E-Auswahl',
       async () => {
         await probebetrieb('mini')
         assert.match(await bar().textContent(), /ATEM Mini · Probebetrieb/)
         assert.equal(await knopf('programm', 4).count(), 1)
         assert.equal(await knopf('programm', 5).count(), 0)
         assert.equal(await page.getByRole('group', { name: 'M/E' }).count(), 0)
+        assert.equal(await page.getByTestId('atem-usk-taste-0').count(), 1)
+        assert.equal(await page.getByTestId('atem-usk-taste-1').count(), 0)
+        assert.equal(await page.getByTestId('atem-dsk-taste-1').count(), 0)
       }
     ],
     [
@@ -296,8 +414,30 @@ try {
         await me.getByRole('button', { name: 'M/E 3' }).click()
         await knopf('programm', 9).click()
         await zeigt('programm', 9)
+        // Die Wahl bleibt, wenn das Werkzeug zugeht (der Codec las sie einmal nie zurück)
+        await openRoute(page, '/')
+        await bar().waitFor({ state: 'detached' })
+        await openRoute(page, '/tool/atem-control')
+        await zeigt('programm', 9)
+        assert.equal(
+          await me.getByRole('button', { name: 'M/E 3' }).getAttribute('aria-pressed'),
+          'true'
+        )
         await me.getByRole('button', { name: 'M/E 1' }).click()
         await zeigt('programm', 1)
+        // Clips gibt es nur auf großen Mischern
+        await reiter('Medien')
+        await page
+          .getByRole('group', { name: 'Media-Player 1 Art' })
+          .getByRole('button', { name: 'Clip' })
+          .click()
+        await page.getByTestId('atem-clip-spielen-0').click()
+        await schaltet('atem-clip-spielen-0')
+        await page.getByTestId('atem-clip-schleife-0').click()
+        await schaltet('atem-clip-schleife-0')
+        await page.getByTestId('atem-clip-anfang-0').click()
+        await schaltet('atem-clip-spielen-0', 'aus')
+        await reiter('Mischen')
         const stil = page.getByRole('group', { name: 'Übergang' })
         await stil.getByRole('button', { name: 'Stinger' }).click()
         assert.ok(
@@ -404,6 +544,102 @@ try {
       }
     ],
     [
+      'Keyer am echten Weg: läuft bis zur Rückmeldung, Bytes stimmen, Panel erscheint',
+      async () => {
+        mischer.halteZurueck()
+        await page.getByTestId('atem-usk-taste-1').click()
+        await schaltet('atem-usk-taste-1', 'laeuft')
+        assert.ok(await waitFor(async () => empfangen('CKOn').length === 1))
+        mischer.freigeben()
+        await schaltet('atem-usk-taste-1')
+        assert.deepEqual(empfangen('CKOn')[0], { name: 'CKOn', me: 0, keyer: 1, an: true })
+
+        await page.getByTestId('atem-dsk-taste-1').click()
+        await schaltet('atem-dsk-taste-1')
+        assert.deepEqual(empfangen('CDsL').at(-1), { name: 'CDsL', keyer: 1, an: true })
+        mischer.fremderDsk(1, false)
+        await schaltet('atem-dsk-taste-1', 'aus')
+        mischer.fremderDsk(0, true)
+        await schaltet('atem-dsk-taste-0')
+        mischer.fremderDsk(0, false)
+        await schaltet('atem-dsk-taste-0', 'aus')
+
+        await page.getByTestId('atem-naechster-1').click()
+        await schaltet('atem-naechster-1')
+        assert.deepEqual(empfangen('CTTp').at(-1), { name: 'CTTp', auswahl: 0b101 })
+        await page.getByTestId('atem-naechster-1').click()
+        await schaltet('atem-naechster-1', 'aus')
+
+        await reiter('Keyer')
+        await waehlt('Key 3 Fill', '4')
+        await waehlt('Key 3 Cut', '5')
+        await waehlt('DSK 2 Fill', '6')
+        await waehlt('DSK 2 Cut', '7')
+        await page.getByLabel('DSK 2 Dauer in Bildern').fill('40')
+        await page.getByLabel('DSK 2 Dauer in Bildern').press('Tab')
+        await page.getByTestId('atem-dsk-tie-1').click()
+        await schaltet('atem-dsk-tie-1')
+        await page.getByTestId('atem-dsk-auto-1').click()
+        await schaltet('atem-dsk-1')
+        assert.deepEqual(empfangen('CKeF').at(-1), { name: 'CKeF', keyer: 2, quelle: 4 })
+        assert.deepEqual(empfangen('CKeC').at(-1), { name: 'CKeC', keyer: 2, quelle: 5 })
+        assert.deepEqual(empfangen('CDsF').at(-1), { name: 'CDsF', keyer: 1, quelle: 6 })
+        assert.deepEqual(empfangen('CDsC').at(-1), { name: 'CDsC', keyer: 1, quelle: 7 })
+        assert.deepEqual(empfangen('CDsR').at(-1), { name: 'CDsR', keyer: 1, rate: 40 })
+        assert.deepEqual(empfangen('CDsT').at(-1), { name: 'CDsT', keyer: 1, an: true })
+        assert.deepEqual(empfangen('DDsA').at(-1), { name: 'DDsA', keyer: 1 })
+        await reiter('Mischen')
+      }
+    ],
+    [
+      'Makros am echten Weg: Namen vom Mischer, leere Plätze fehlen, Start und Stopp',
+      async () => {
+        await reiter('Makros')
+        assert.match(await page.getByTestId('atem-makro-2').textContent(), /Abspann/)
+        assert.equal(await page.getByTestId('atem-makro-1').count(), 0)
+        await page.getByTestId('atem-makro-2').click()
+        await schaltet('atem-makro-2')
+        assert.deepEqual(empfangen('MAct').at(-1), { name: 'MAct', aktion: 0, index: 2 })
+        await page.getByTestId('atem-makro-stopp').click()
+        await schaltet('atem-makro-2', 'aus')
+        assert.deepEqual(empfangen('MAct').at(-1), { name: 'MAct', aktion: 1, index: 0xffff })
+        await page.getByTestId('atem-makro-0').click()
+        await schaltet('atem-makro-0')
+        mischer.makroZuEnde()
+        await schaltet('atem-makro-0', 'aus')
+      }
+    ],
+    [
+      'Medien und AUX am echten Weg',
+      async () => {
+        await reiter('Medien')
+        await waehlt('Media-Player 2 Inhalt', '1')
+        assert.deepEqual(empfangen('MPSS').at(-1), {
+          name: 'MPSS',
+          player: 1,
+          art: 1,
+          still: 1,
+          clip: 0
+        })
+        await page
+          .getByRole('group', { name: 'Media-Player 1 Art' })
+          .getByRole('button', { name: 'Clip' })
+          .click()
+        await page.getByTestId('atem-clip-spielen-0').click()
+        await schaltet('atem-clip-spielen-0')
+        assert.equal(empfangen('MPSS').at(-1).art, 2)
+        assert.deepEqual(empfangen('SCPS').at(-1), { name: 'SCPS', player: 0, flag: 1 })
+        await page.getByTestId('atem-clip-anfang-0').click()
+        assert.ok(await waitFor(async () => empfangen('SCPS').at(-1).flag === 4))
+        await page.getByTestId('atem-clip-spielen-0').click()
+        await schaltet('atem-clip-spielen-0', 'aus')
+        await reiter('AUX')
+        await waehlt('AUX 1', '6')
+        assert.deepEqual(empfangen('CAuS').at(-1), { name: 'CAuS', bus: 0, quelle: 6 })
+        await reiter('Mischen')
+      }
+    ],
+    [
       'Geprüft wird im main: fremde Befehle und Adressen kommen nicht durch',
       async () => {
         const vorher = mischer.empfangen.length
@@ -414,6 +650,12 @@ try {
           await window.api.atem.command({ type: 'hebel', me: 0, wert: 20000 })
           await window.api.atem.command({ type: 'rate', me: 0, stil: 'mix', bilder: 9999 })
           await window.api.atem.command('cut')
+          await window.api.atem.command({ type: 'makroStart', index: 1 })
+          await window.api.atem.command({ type: 'uskOnAir', me: 0, keyer: 9, an: true })
+          await window.api.atem.command({ type: 'dskOnAir', keyer: 9, an: true })
+          await window.api.atem.command({ type: 'naechster', me: 0, maske: 0 })
+          await window.api.atem.command({ type: 'aux', bus: 5, quelle: 1 })
+          await window.api.atem.command({ type: 'mediaQuelle', player: 0, art: 'still', index: 9 })
         })
         await sleep(200)
         assert.equal(mischer.empfangen.length, vorher)

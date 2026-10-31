@@ -36,7 +36,8 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 - **NovaStar-Steuerung** – LED-Prozessor über TCP 5200: Helligkeit, Fade-to-Black,
   Blackout/Freeze, Presets.
 - **ATEM-Steuerung** – Blackmagic-ATEM-Mischer über das Netzwerk: Programm, Vorschau, Cut, Auto, Hebel,
-  Fade to Black, Tastatur und Sperre, mit Rückmeldung vom Mischer und Probebetrieb ohne Gerät.
+  Fade to Black, Keyer, Makros, Media-Player und AUX, mit Rückmeldung vom Mischer und Probebetrieb
+  ohne Gerät.
 - **Netzwerk-Scanner** – Geräte im LAN finden (IP, Hersteller, Typ): ATEM, PTZ-Kameras, NovaStar
   u. a.
 - **DMX-Dip-Schalter** – DMX-Startadresse ↔ Dip-Schalterbild.

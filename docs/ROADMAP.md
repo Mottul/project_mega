@@ -58,8 +58,8 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Neue Werkzeuge
 
-- **ATEM-Steuerung, weitere Phasen:** Die Seite „Mischen“ steht und lief am ATEM Mini Extreme, es
-  fehlen die Abnahme mit Bild und am ATEM Mini, Keyer, Makros, SuperSource mit bildgenau animierten Layoutwechseln, Multiview im Werkzeug, Ton,
+- **ATEM-Steuerung, weitere Phasen:** Mischen, Keyer, Makros, Medien und AUX stehen, die Seite
+  „Mischen“ lief am ATEM Mini Extreme. Es fehlen die Abnahme mit Bild und am ATEM Mini, SuperSource mit bildgenau animierten Layoutwechseln, Multiview im Werkzeug, Ton,
   eigene Seiten und die Bedienung vom Tablet – Plan mit Phasen in [PLAN-ATEM.md](PLAN-ATEM.md).
 - **ArtNet/sACN-Tester** (DMX übers Netz senden, Node-Discovery) und **DMX-Universum-Planer**
   (automatische Adressvergabe, Kollisions-Check) – verzahnt mit dem DMX-Dip-Schalter.

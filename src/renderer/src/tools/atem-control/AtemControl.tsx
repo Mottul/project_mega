@@ -1,12 +1,18 @@
 // ATEM-Steuerung im Werkzeug-Muster:
 //   Leiste „Mischer“   Adresse, Verbinden, Probebetrieb, Sperre; rechts der Status
 //   Schublade          Verbindung, Tastatur
-//   Arbeitsfläche      Seite „Mischen“; was der Mischer nicht kann, erscheint nicht
+//   Arbeitsfläche      Seiten als Reiter; was der Mischer nicht kann, erscheint nicht
 // Die Verbindung lebt im main und läuft weiter, wenn das Werkzeug zugeht.
 
 import { useEffect } from 'react'
 import { Keyboard, Link2, Lock, Plug, TriangleAlert, Unplug } from 'lucide-react'
-import { ATEM_SIM_MODELLE, ATEM_SIM_NAMEN, type AtemSimModell, type AtemStatus } from '@shared/atem'
+import {
+  ATEM_SIM_MODELLE,
+  ATEM_SIM_NAMEN,
+  type AtemSimModell,
+  type AtemStatus,
+  type AtemView
+} from '@shared/atem'
 import {
   BarDivider,
   BarToggle,
@@ -19,12 +25,18 @@ import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
+import { Reiter } from '@renderer/components/ui/reiter'
+import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { TextField } from '@renderer/components/ui/text-field'
 import { api } from '@renderer/lib/api'
 import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { toolPageClass } from '@renderer/lib/toolPage'
-import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
+import { flag, usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
+import { SeiteAux } from './SeiteAux'
+import { SeiteKeyer } from './SeiteKeyer'
+import { SeiteMakros } from './SeiteMakros'
+import { SeiteMedien } from './SeiteMedien'
 import { SeiteMischen } from './SeiteMischen'
 import { useAtem } from './useAtem'
 
@@ -34,6 +46,86 @@ const TASTEN: [string, string][] = [
   ['Leertaste', 'Cut'],
   ['Eingabe', 'Auto']
 ]
+
+const SEITEN = [
+  { id: 'mischen', label: 'Mischen' },
+  { id: 'keyer', label: 'Keyer' },
+  { id: 'makros', label: 'Makros' },
+  { id: 'medien', label: 'Medien' },
+  { id: 'aux', label: 'AUX' }
+] as const
+
+type Seite = (typeof SEITEN)[number]['id']
+
+const SEITE: Codec<Seite> = {
+  parse: (roh) => SEITEN.find((s) => s.id === roh)?.id ?? null,
+  format: (s) => s
+}
+
+/** Gewählte M/E: Größere Mischer haben höchstens vier */
+const ZIFFER: Codec<number> = {
+  parse: (roh) => (/^\d$/.test(roh) ? Number(roh) : null),
+  format: String
+}
+
+/** Was der Mischer nicht kann, erscheint nicht */
+function hatSeite(view: AtemView, seite: Seite): boolean {
+  switch (seite) {
+    case 'mischen':
+      return true
+    case 'keyer':
+      return view.dsk.length > 0 || view.mes.some((m) => m.keyer.length > 0)
+    case 'makros':
+      return view.makroPlaetze > 0
+    case 'medien':
+      return view.medien.player.length > 0
+    case 'aux':
+      return view.aux.length > 0
+  }
+}
+
+function Seiten({ view, bedienbar }: { view: AtemView; bedienbar: boolean }): JSX.Element {
+  const [wahl, setWahl] = usePersistentState<Seite>('atem:seite', 'mischen', SEITE)
+  const [meWahl, setMeWahl] = usePersistentState('atem:me', 0, ZIFFER)
+  // Kann der nächste Mischer eine gemerkte Seite oder M/E nicht, bleibt die Wahl für später stehen
+  const seite = hatSeite(view, wahl) ? wahl : 'mischen'
+  const me = Math.min(meWahl, view.mes.length - 1)
+  const mitMe = seite === 'mischen' || seite === 'keyer'
+  return (
+    <div className="space-y-4">
+      <Reiter
+        label="Seiten"
+        className="w-fit"
+        value={seite}
+        options={SEITEN.filter((s) => hatSeite(view, s.id))}
+        onChange={setWahl}
+      />
+      <fieldset disabled={!bedienbar} className="space-y-4">
+        {mitMe && view.mes.length > 1 && (
+          <Segmented
+            label="M/E"
+            className="max-w-xs"
+            value={String(me)}
+            options={view.mes.map((_, i) => ({ value: String(i), label: `M/E ${i + 1}` }))}
+            onChange={(v) => setMeWahl(Number(v))}
+          />
+        )}
+        {seite === 'mischen' && (
+          <SeiteMischen
+            view={view}
+            me={me}
+            bedienbar={bedienbar}
+            onAlleMakros={() => setWahl('makros')}
+          />
+        )}
+        {seite === 'keyer' && <SeiteKeyer view={view} me={me} />}
+        {seite === 'makros' && <SeiteMakros view={view} />}
+        {seite === 'medien' && <SeiteMedien view={view} />}
+        {seite === 'aux' && <SeiteAux view={view} />}
+      </fieldset>
+    </div>
+  )
+}
 
 function Status({ status }: { status: AtemStatus }): JSX.Element {
   switch (status.phase) {
@@ -204,7 +296,7 @@ export function AtemControl(): JSX.Element {
             </Alert>
           )}
           {view && view.mes.length > 0 ? (
-            <SeiteMischen view={view} bedienbar={bedienbar} />
+            <Seiten view={view} bedienbar={bedienbar} />
           ) : (
             <Card className="p-6 text-sm text-muted-foreground">
               {status.phase === 'verbindet'

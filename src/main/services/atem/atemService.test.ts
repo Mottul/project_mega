@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AtemCommand, AtemStatus, AtemView } from '@shared/atem'
-import type { AtemRoh, AtemRohMe } from '@shared/atemView'
+import type { AtemRoh, AtemRohMe, AtemRohQuelle } from '@shared/atemView'
 import type { AtemMeldungen, AtemVerbindung } from './atemVerbindung'
 
 /** Nachbau der echten Verbindung: Der Test entscheidet, wann der Mischer etwas meldet */
@@ -59,11 +59,27 @@ function me(p: Partial<AtemRohMe> = {}): AtemRohMe {
     programInput: 1,
     previewInput: 2,
     transitionPosition: { inTransition: false, remainingFrames: 0, handlePosition: 0 },
-    transitionProperties: { nextStyle: 0 },
+    transitionProperties: { nextStyle: 0, nextSelection: [1] },
     transitionSettings: { mix: { rate: 25 } },
+    upstreamKeyers: [],
     ...p
   }
 }
+
+const mischer = (m: AtemRohMe): AtemRoh['video'] => ({
+  mixEffects: [m],
+  downstreamKeyers: [],
+  auxilliaries: []
+})
+
+const eingang = (id: number): AtemRohQuelle => ({
+  inputId: id,
+  longName: `K${id}`,
+  shortName: `K${id}`,
+  internalPortType: 0,
+  meAvailability: 1,
+  sourceAvailability: 0
+})
 
 function roh(p: Partial<AtemRoh> = {}): AtemRoh {
   return {
@@ -72,12 +88,14 @@ function roh(p: Partial<AtemRoh> = {}): AtemRoh {
       productIdentifier: 'ATEM Mini',
       capabilities: { DVEs: 1, stingers: 0 }
     },
-    video: { mixEffects: [me()] },
-    inputs: {
-      1: { inputId: 1, longName: 'K1', shortName: 'K1', internalPortType: 0, meAvailability: 1 },
-      2: { inputId: 2, longName: 'K2', shortName: 'K2', internalPortType: 0, meAvailability: 1 }
-    },
+    video: mischer(me()),
+    inputs: { 1: eingang(1), 2: eingang(2) },
     settings: { videoMode: 12 },
+    macro: {
+      macroPlayer: { isRunning: false, isWaiting: false, macroIndex: 0 },
+      macroProperties: []
+    },
+    media: { stillPool: [], clipPool: [], players: [] },
     ...p
   }
 }
@@ -223,7 +241,7 @@ describe('Befehle', () => {
     await atemBefehl({ type: 'programm', me: 0, quelle: 2 })
     await vi.advanceTimersByTimeAsync(100)
     expect(getAtemView()?.mes[0].programm).toBe(1)
-    g.m.zustand(roh({ video: { mixEffects: [me({ programInput: 2 })] } }))
+    g.m.zustand(roh({ video: mischer(me({ programInput: 2 })) }))
     await vi.advanceTimersByTimeAsync(100)
     expect(getAtemView()?.mes[0].programm).toBe(2)
   })
@@ -265,11 +283,9 @@ describe('Hebel', () => {
     const g = await verbunden()
     const lauf = (handlePosition: number, inTransition = true): AtemRoh =>
       roh({
-        video: {
-          mixEffects: [
-            me({ transitionPosition: { inTransition, remainingFrames: 3, handlePosition } })
-          ]
-        }
+        video: mischer(
+          me({ transitionPosition: { inTransition, remainingFrames: 3, handlePosition } })
+        )
       })
     g.m.zustand(lauf(9000))
     await vi.advanceTimersByTimeAsync(100)
@@ -285,7 +301,7 @@ describe('Drosselung', () => {
     await vi.advanceTimersByTimeAsync(100)
     const vorher = ansichten.length
     for (let i = 0; i < 50; i++) {
-      g.m.zustand(roh({ video: { mixEffects: [me({ programInput: i })] } }))
+      g.m.zustand(roh({ video: mischer(me({ programInput: i })) }))
       await vi.advanceTimersByTimeAsync(4)
     }
     await vi.advanceTimersByTimeAsync(100)

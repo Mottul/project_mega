@@ -292,9 +292,10 @@ Steuert NovaStar-LED-Prozessoren (NovaPro UHD Jr & Co.) über TCP 5200 – Vorab
 
 ### ATEM-Steuerung
 
-Bedient Blackmagic-ATEM-Mischer über das Netzwerk (UDP 9910), mit Rückmeldung vom Mischer. Es gibt
-bisher die Seite „Mischen“; Keyer, SuperSource, Multiview, Makros und Ton folgen, siehe
-[PLAN-ATEM.md](PLAN-ATEM.md). Der Mischer braucht Ethernet, USB allein genügt nicht.
+Bedient Blackmagic-ATEM-Mischer über das Netzwerk (UDP 9910), mit Rückmeldung vom Mischer. Die Seiten
+Mischen, Keyer, Makros, Medien und AUX liegen auf Reitern; was der Mischer nicht kann, fehlt.
+SuperSource, Multiview und Ton folgen, siehe [PLAN-ATEM.md](PLAN-ATEM.md). Der Mischer braucht
+Ethernet, USB allein genügt nicht.
 
 - **Leiste „Mischer“:** Adresse, Verbinden/Trennen, Probebetrieb und Sperre, rechts Modell und
   Status. „Beim Start verbinden“ und das Modell des Probebetriebs stehen in der Schublade.
@@ -311,7 +312,19 @@ bisher die Seite „Mischen“; Keyer, SuperSource, Multiview, Makros und Ton fo
 - **Übergang:** Mix, Dip, Wipe und DVE, Stinger, wenn der Mischer ihn hat. Die Dauer gilt in Bildern,
   daneben stehen die Sekunden zur aktuellen Bildrate. Beim Stinger bestimmt der Clip die Länge.
 - **Fade to Black** verlangt einen zweiten Klick innerhalb von 3 Sekunden, in beide Richtungen.
-- **Sperre:** nimmt alle Knöpfe, den Hebel und die Tastatur aus der Bedienung und bleibt gemerkt.
+- **Tasten:** Key und DSK gehen direkt auf Sendung, rot, solange sie an sind. Daneben wählt „Nächster
+  Übergang“, was der Übergang mitnimmt: Bild und Keyer, mindestens eines bleibt gewählt. Darunter
+  stehen die ersten acht Makros.
+- **Seite Keyer:** Fill und Cut je Keyer, Cut nur bei Luma. Für DSKs dazu Auto, die Dauer in Bildern
+  und „Mit Übergang“. Die Art eines Upstream-Keyers wird angezeigt, geändert wird sie am Mischer.
+- **Seite Makros:** alle belegten Plätze mit Name und Beschreibung, Start, Stopp und „Weiter“ für
+  Makros, die an einer Pause warten. Angelegt werden sie am Mischer oder in ATEM Software Control.
+- **Seite Medien:** Was zeigt jeder Media-Player? Inhalt aus dem Media-Pool, bei Clips Abspielen, Zum
+  Anfang und Schleife. Hochgeladen wird in ATEM Software Control.
+- **Seite AUX:** Quelle je Ausgang, Namen und Zahl meldet der Mischer. Die Änderung wirkt sofort auf
+  das, was dort angeschlossen ist.
+- **Sperre:** nimmt auf allen Seiten Knöpfe, Felder, Hebel und Tastatur aus der Bedienung und bleibt
+  gemerkt. Seite und M/E lassen sich weiter ansehen, die M/E aber nicht umstellen.
 - **Tastatur:** 1–9 Vorschau, Umschalt + 1–9 Programm, Leertaste Cut, Eingabe Auto. Nicht in
   Textfeldern, eine gehaltene Taste zählt einmal.
 - **Probebetrieb:** ATEM Mini, ATEM Mini Extreme oder eine Constellation mit vier M/Es ohne Gerät,

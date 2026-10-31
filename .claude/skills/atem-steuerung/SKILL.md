@@ -24,6 +24,9 @@ Fenster  ◀──AtemView────   atemViewAus(roh), gedrosselt          �
 - `services/atem/atemSimulator.ts`: dieselbe Schnittstelle für den Probebetrieb.
 - `services/atem/atemService.ts`: die eine Verbindung, nacheinander gestartet (`reihe`), alte
   Meldungen fallen über `aktuell` weg.
+- `tools/atem-control/`: `AtemControl` (Leiste, Schublade, Status), `Seiten` darin hält Reiter und M/E,
+  das `fieldset` für Sperre und Verlust liegt um allen Seiten. Je Seite eine Datei `Seite*.tsx`,
+  gemeinsame Bausteine in `ui.tsx`.
 
 ## Regeln
 
@@ -37,6 +40,19 @@ Fenster  ◀──AtemView────   atemViewAus(roh), gedrosselt          �
 - **Ruhelage des Hebels** kennt der Mischer nicht, sie liegt in `atemHebel.ts`. Der Wert läuft immer
   0…10000, auch wenn der Griff nach unten fährt. Jeder fertige Übergang dreht sie, auch Auto.
 
+## Bausteine der Seiten
+
+- `SchaltKnopf`: an/aus nach Meldung, „läuft“ dazwischen, `ton="live"` (rot, geht auf Sendung) oder
+  `ton="akzent"` (Auswahl, wirkt erst beim Übergang). Kein eigener Knopf für etwas, das der Mischer meldet.
+- `QuellenWahl` und jede andere Auswahlliste: gesteuert vom gemeldeten Wert. Nach `onChange` springt sie
+  zurück, bis der Mischer antwortet, das ist gewollt. Immer `aria-label`, siehe `electron-e2e`.
+- **Neue Seite:** Eintrag in `SEITEN`, `hatSeite` nach dem, was der Mischer meldet, `Seite*.tsx`. Raster
+  nach dem Platz (`grid-cols-[repeat(auto-fill,minmax(17rem,1fr))]`), nie `sm:`, siehe
+  `review-checkliste`.
+- **Nächster Übergang** ist eine Bitmaske (`ATEM_HINTERGRUND`, `keyerBit`). Das Fenster schickt die ganze
+  Maske, nicht „Bit an“: So überholen sich zwei schnelle Klicks nicht im Dienst. Null lehnt
+  `atemCommand` ab.
+
 ## Neuer Befehl
 
 1. `AtemCommand` und Prüfung in `atemCommand` (mit Test, auch Grenzen und fremde Werte).
@@ -44,6 +60,11 @@ Fenster  ◀──AtemView────   atemViewAus(roh), gedrosselt          �
 3. `ausfuehren` im Simulator, mit Test.
 4. Liest die Seite neue Felder: `AtemRoh`, `atemViewAus`, Typ in `atem.ts`.
 5. `e2e/atemFake.mjs`: Antwort und Anfangszustand, Schritt in `e2e/atem.mjs` mit Rückmeldung.
+
+Befehle ohne `me` prüft `befehlOhneMe`: Hat ein Objekt kein Feld `me`, landet es dort, DSKs, Makros,
+Medien und AUX gelten für den ganzen Mischer. Quellen für Key und AUX prüft `quelleMit` gegen
+`verfuegbar`, nicht gegen die M/E: Eine AUX-Quelle wie das Multiview nimmt keine M/E an. Sie steht
+deshalb in `view.quellen`, die Reihen filtern mit `quelleAufMe`.
 
 Format der Kommandos steht in `node_modules/atem-connection/dist/commands/`: `serialize` für den
 Weg zum Mischer, `deserialize` für die Meldung zurück.
@@ -58,7 +79,8 @@ Weg zum Mischer, `deserialize` für die Meldung zurück.
 | Abnahme am Mischer | alles | CI hat kein Gerät |
 
 Schein-Mischer: `startAtemFake()` liefert `host` (für `api.atem.connect`), `empfangen`,
-`halteZurueck()`/`freigeben()`, `fremdesProgramm(n)`, `verstummen()`/`wieder()`, `anmeldungen`.
+`halteZurueck()`/`freigeben()`, `fremdesProgramm(n)`, `fremderDsk(i, an)`, `makroZuEnde()`,
+`verstummen()`/`wieder()`, `anmeldungen`.
 Die Pakete müssen fortlaufend nummeriert sein, die Bibliothek puffert sonst und wartet. Ohne
 Lebenszeichen alle 500 ms meldet sie nach 5 s den Verlust. Die Nutzlast des letzten Kommandos muss
 über 0 Byte sein: `_parseCommands` läuft nur `while (length > 8)`.
