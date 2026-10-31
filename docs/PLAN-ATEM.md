@@ -1,8 +1,8 @@
 # Plan: ATEM-Steuerung
 
-**Status:** Phase 0 ohne Mischer und Phase 1 sind gebaut, siehe [Stand](#stand). Zum Testen stehen ein
-ATEM Mini Extreme und ein ATEM Mini bereit, die [offenen Fragen](#offene-fragen) betreffen nur noch
-Details.
+**Status:** Phase 0 ohne Mischer und Phase 1 sind gebaut, die Seite „Mischen“ lief am ATEM Mini
+Extreme, siehe [Stand](#stand). Zum Testen stehen ein ATEM Mini Extreme und ein ATEM Mini bereit, die
+[offenen Fragen](#offene-fragen) betreffen nur noch Details.
 
 Blackmagic-ATEM-Mischer vom Laptop bedienen, später auch vom Tablet oder Handy: Programm und
 Vorschau, Übergänge, Keyer, SuperSource mit bildgenau animierten Wechseln, Multiview im Werkzeug,
@@ -34,23 +34,26 @@ Silicon) und Linux wurden in der CI gebaut und ausgeführt, die App daraus wurde
   und Rückmeldung laufen so ohne Gerät durch die echte Bibliothek. Das Intel-Paket für macOS wird
   mitgebaut, aber nicht gestartet: Der Runner hat Apple Silicon.
 
-**Phase 1: gebaut, die Abnahme am Mischer steht aus.** Dienst, Simulator, Verbinden und Seite „Mischen“
-sind fertig, E2E `atem` läuft mit Simulator und Schein-Mischer. Abweichungen vom Entwurf unten:
+**Phase 1: gebaut, am ATEM Mini Extreme grob abgenommen.** Dienst, Simulator, Verbinden und Seite
+„Mischen“ sind fertig, E2E `atem` läuft mit Simulator und Schein-Mischer. Abweichungen vom Entwurf unten:
 `atem:connect` nimmt ein Ziel (`{ host }` oder `{ simulator }`), der Hebel hat eine eigene reine Datei
 (`src/shared/atemHebel.ts`), und die Sperre sitzt in der Leiste statt in der Schublade: Sie muss in der
 Show mit einem Klick erreichbar sein, und Aktionen gehören nicht in die Schublade. `onLevels` kommt
 mit Phase 6.
 
-**Noch offen, am ATEM Mini Extreme und ATEM Mini zu prüfen:**
+**Erster Test am Gerät, 31. Oktober 2026:** Grobtest der Seite „Mischen“ am ATEM Mini Extreme, ohne
+angeschlossene Quellen und Monitore: Alles funktionierte. Die Knöpfe zeigen nur, was der Mischer meldet,
+damit sind Verbinden, Befehle und Rückmeldung am Gerät belegt. Nicht belegt ist, was man nur im Bild sieht.
+
+**Noch offen:**
 
 1. Rest von Phase 0: Verbinden aus dem Installer unter Windows und macOS, die
    [Messungen zur Animation](#animierte-wechsel), USB-Ausgang als Kamera.
-2. Verbinden, Modell und Protokoll in der Leiste, Quellen und Namen wie am Gerät.
-3. **Hebel bis zum Anschlag:** Wir senden 10000 und danach 0, wie ältere Hardware-Steuerungen. Tauschen
-   die Busse sauber, und bleibt nichts hängen? Die Null stammt aus der Erinnerung an die
-   Arduino-Bibliothek von SKAARHOJ, nicht aus einer Messung.
-4. **Ruhelage des Hebels** nach Auto, nach dem Hardware-Hebel und nach Zurückziehen.
-5. Abbruch des Netzwerkkabels und Wiederkehr; Stil, Dauer und Fade to Black auf dem Gerät.
+2. **Am Extreme mit Quellen und Monitor:** Übergänge, Hebel und Fade to Black im Bild.
+3. **Null am Ende des Hebels:** Wir senden 10000 und danach 0, wie ältere Hardware-Steuerungen. Im
+   Grobtest fiel nichts auf, ob die Null nötig ist, wurde aber nicht gemessen. Sie stammt aus der
+   Erinnerung an die Arduino-Bibliothek von SKAARHOJ.
+4. **Am ATEM Mini:** Verbinden, Quellen und Stile wie am Gerät.
 
 ## Entscheidung: eigenes Werkzeug
 
