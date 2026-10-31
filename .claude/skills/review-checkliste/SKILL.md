@@ -71,6 +71,12 @@ einen Test **mit** und **ohne** Schrägstrich.
   setzen (`viewBox` hält das Bild rund und mittig) und Spalten als `minmax(0, 1fr)` statt `1fr`.
   Prüfen mit hoher, schmaler Kachel (`e2e/osc.mjs`, Rechtecke vergleichen).
 
+- **`sm:` und `lg:` richten sich nach dem Fenster, nicht nach dem Platz.** Die Schublade nimmt davon
+  360 px. Im Raster der ATEM-Steuerung lag das Dauer-Feld dadurch über den Stil-Knöpfen, unklickbar
+  (31.10.2026, nur auf den kleinen CI-Bildschirmen von Windows und macOS rot, lokal und unter Linux
+  grün). Für Inhalte neben der Schublade `flex-wrap` mit `min-w-…`, und im E2E einmal mit
+  `page.setViewportSize({ width: 1024, height: 700 })` und `click({ trial: true })` prüfen.
+
 ## Einstellungen und gemerkte Stände
 
 - Ändert eine Option, was ein bestehender Schalter bedeutet (Beispiel: „Kennung“ blendete früher

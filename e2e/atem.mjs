@@ -124,6 +124,34 @@ try {
       }
     ],
     [
+      'Kleines Fenster mit Schublade: Übergang und Felder liegen nicht übereinander',
+      async () => {
+        // Auf dem kleinen Bildschirm der CI lag das Dauer-Feld über den Stil-Knöpfen, lokal und
+        // unter Linux (1920 × 1080) fiel das nicht auf
+        const [breite, hoehe] = await page.evaluate(() => [innerWidth, innerHeight])
+        await page.setViewportSize({ width: 1024, height: 700 })
+        try {
+          const stil = page.getByRole('group', { name: 'Übergang' })
+          const felder = ['Dauer in Bildern', 'FTB in Bildern'].map((n) => page.getByLabel(n))
+          const a = await stil.boundingBox()
+          for (const feld of felder) {
+            const b = await feld.boundingBox()
+            const getrennt =
+              a.x + a.width <= b.x ||
+              b.x + b.width <= a.x ||
+              a.y + a.height <= b.y ||
+              b.y + b.height <= a.y
+            assert.ok(getrennt, `überlappt: ${JSON.stringify({ a, b })}`)
+          }
+          for (const knopf of await stil.getByRole('button').all()) {
+            await knopf.click({ trial: true, timeout: 5000 })
+          }
+        } finally {
+          await page.setViewportSize({ width: breite, height: hoehe })
+        }
+      }
+    ],
+    [
       'Übergang: Stil und Dauer, Sekunden zur Bildrate',
       async () => {
         const stil = page.getByRole('group', { name: 'Übergang' })

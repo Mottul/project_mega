@@ -257,8 +257,10 @@ export function SeiteMischen({
               offen={offen.vorschau}
               onWahl={(q) => waehle('vorschau', q)}
             />
-            <Card className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_9rem_9rem]">
-              <Field label="Übergang" group>
+            {/* umbrechen nach dem Platz, nicht nach der Fensterbreite: Die Schublade nimmt davon
+                360 px, sonst läge das Dauer-Feld über den Stil-Knöpfen */}
+            <Card className="flex flex-wrap items-start gap-3 p-4">
+              <Field label="Übergang" group className="min-w-72 flex-1">
                 <Segmented
                   label="Übergang"
                   value={m.stil}
@@ -267,7 +269,11 @@ export function SeiteMischen({
                 />
               </Field>
               {istRatenStil(m.stil) && rate !== undefined && (
-                <Field label="Dauer in Bildern" aside={bilderInSekunden(rate, view.bildrate)}>
+                <Field
+                  label="Dauer in Bildern"
+                  aside={bilderInSekunden(rate, view.bildrate)}
+                  className="w-36"
+                >
                   <NumberField
                     aria-label="Dauer in Bildern"
                     min={ATEM_RATE_MIN}
@@ -284,7 +290,7 @@ export function SeiteMischen({
               <Field
                 label="FTB in Bildern"
                 aside={bilderInSekunden(m.ftb.rate, view.bildrate)}
-                className="sm:col-start-3"
+                className="w-36"
               >
                 <NumberField
                   aria-label="FTB in Bildern"
