@@ -590,6 +590,12 @@ Downloads laufen oder warten), Format, Zielordner und Anmeldung in der Schublade
   vorangestellter Nummer („03 - Titel“). Sehr lange Playlists: die ersten 500 Einträge.
 - **Video in einer Playlist** (`watch?v=…&list=…`): nur dieses Video ist vorgewählt, „Nur dieses
   Video laden“ startet es direkt.
+- **Dateinamen:** Titel, dazu ein zweiter Titel, wenn die Seite einen nennt (Arte: „Tracks -
+  Fcukers - gepflegte Lässigkeit aus New York“ statt nur der Sendung). Eine vorhandene Datei wird
+  nie überschrieben. Gibt es den Namen schon, entscheidet die Länge: Stimmt sie überein (±2 s), ist
+  es dasselbe Video, es wird nichts geladen und der Auftrag zeigt „Schon vorhanden“. Weicht sie ab
+  oder nennt die Seite keine, kommt der Download als „Titel [Kennung]“. Endet yt-dlp ohne Datei
+  (z. B. leere Playlist), steht dort ein Fehler statt „Fertig“.
 - **Anmeldung** für altersbeschränkte oder nur angemeldet sichtbare Videos („Sign in to confirm
   your age“): Bereich „Anmeldung“ – Cookies aus Firefox, Chrome, Edge, Brave, Opera, Vivaldi,
   Chromium, Safari (Mac) oder aus einer exportierten cookies.txt (Netscape-Format). yt-dlp liest

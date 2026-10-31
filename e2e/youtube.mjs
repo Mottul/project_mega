@@ -2,8 +2,10 @@
 // Seite): yt-dlp lädt direkte Dateiadressen über seinen allgemeinen Extraktor. Geprüft wird die
 // Auftragsliste: fertiger Download, Abbrechen mitten im Laden, höchstens zwei gleichzeitig,
 // Beenden der App mitten im Download. Dazu die Anmeldung per cookies.txt und eine Seite, die
-// Programme aussperrt wie Cloudflare (erst der zweite Versuch als Browser kommt durch). yt-dlp kommt aus MOTTULBOX_E2E_YTDLP oder aus der
-// installierten Mottulbox; ohne yt-dlp oder ffmpeg (so in der CI) werden die Schritte übersprungen.
+// Programme aussperrt wie Cloudflare (erst der zweite Versuch als Browser kommt durch), und was
+// nach „fertig“ wirklich da liegt: Dateien mit Umlaut, ein schon vergebener Name, ein Lauf ohne
+// Ergebnis. yt-dlp kommt aus MOTTULBOX_E2E_YTDLP oder aus der installierten Mottulbox; ohne yt-dlp
+// oder ffmpeg (so in der CI) werden die Schritte übersprungen.
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import {
@@ -14,12 +16,13 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync
 } from 'node:fs'
 import { createServer } from 'node:http'
 import { homedir, tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { findFfmpeg, launchApp, runSteps, Skip, sleep, waitFor } from './harness.mjs'
+import { basename, join } from 'node:path'
+import { findFfmpeg, launchApp, openRoute, runSteps, Skip, sleep, waitFor } from './harness.mjs'
 
 const exe = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp'
 const installed = {
@@ -61,6 +64,30 @@ async function run() {
   const cfSeen = { blocked: 0, browser: 0 }
   const server = createServer((req, res) => {
     const name = req.url?.split('?')[0] ?? ''
+    // leerer Feed: yt-dlp findet nichts, lädt nichts und endet trotzdem mit Code 0
+    if (name === '/leer.rss') {
+      res.writeHead(200, { 'Content-Type': 'application/rss+xml' })
+      res.end(
+        '<?xml version="1.0"?><rss version="2.0"><channel><title>Leer</title></channel></rss>'
+      )
+      return
+    }
+    // /seite/<kennung>-<sekunden>.html: Videoseite mit Titel und Länge, wie eine Mediathek
+    const seite = /^\/seite\/\w+-(\d+)\.html$/.exec(name)
+    if (seite) {
+      const video = {
+        '@context': 'https://schema.org',
+        '@type': 'VideoObject',
+        name: 'Folge',
+        contentUrl: `http://${req.headers.host}/clip.mp4`,
+        duration: `PT${seite[1]}S`
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html' })
+      res.end(
+        `<html><head><title>Folge</title><script type="application/ld+json">${JSON.stringify(video)}</script></head></html>`
+      )
+      return
+    }
     if (!name.endsWith('.mp4')) {
       res.writeHead(404).end()
       return
@@ -124,6 +151,11 @@ async function run() {
   const jobs = () => page.evaluate(() => window.api.youtube.list())
   const job = async (id) => (await jobs()).find((j) => j.id === id)
   const statusOf = async (id) => (await job(id))?.status
+  const finished = async (id, status = 'done') =>
+    assert.ok(
+      await waitFor(async () => (await statusOf(id)) === status, 60_000),
+      JSON.stringify(await job(id))
+    )
 
   /** laufende yt-dlp-Prozesse aus diesem userData */
   function ourYtdlp() {
@@ -160,6 +192,92 @@ async function run() {
             files.some((f) => f.startsWith('clip') && f.endsWith('.mp4')),
             files.join(', ')
           )
+        }
+      ],
+      [
+        'Umlaut und Doppelpunkt im Titel: die gemeldete Datei gibt es wirklich',
+        async () => {
+          // Unter Windows kam die Ausgabe von yt-dlp in der Systemkodierung an: aus „ö“ wurde „�“,
+          // der Vollbreiten-Doppelpunkt fehlte ganz – der Pfad zeigte auf nichts
+          const id = await enqueue(`${base}/Gr%C3%BC%C3%9Fe%3A%20K%C3%B6ln.mp4`, 'Grüße')
+          await finished(id)
+          const file = (await job(id)).outputFile
+          assert.ok(existsSync(file ?? ''), `Datei fehlt: ${file}`)
+          assert.match(basename(file), /^Grüße.*Köln\.mp4$/)
+          assert.match((await job(id)).title, /Köln$/)
+        }
+      ],
+      [
+        'gleicher Name, gleiche Länge: nichts geladen; andere Länge: eigener Name, alte Datei bleibt',
+        async () => {
+          const eins = await enqueue(`${base}/seite/a-4.html`, 'Folge')
+          await finished(eins)
+          const alt = (await job(eins)).outputFile
+          assert.equal(basename(alt), 'Folge.mp4')
+          const stand = statSync(alt).mtimeMs
+          // Dieselbe Länge wie die Datei: dasselbe Video, auch beim erneuten Start einer Playlist
+          const gleich = await enqueue(`${base}/seite/b-4.html`, 'Folge')
+          await finished(gleich)
+          assert.equal((await job(gleich)).outputFile, alt)
+          assert.equal((await job(gleich)).alreadyThere, true)
+          assert.equal(readdirSync(out).filter((f) => f.startsWith('Folge')).length, 1)
+          // Nach ein paar Sekunden „fertig“, und es lag nichts Neues im Ordner
+          const anders = await enqueue(`${base}/seite/c-60.html`, 'Folge')
+          await finished(anders)
+          const neu = (await job(anders)).outputFile
+          assert.equal(basename(neu ?? ''), 'Folge [c-60].mp4')
+          assert.ok(existsSync(neu ?? ''), `Datei fehlt: ${neu}`)
+          assert.equal((await job(anders)).alreadyThere, undefined)
+          assert.equal(statSync(alt).mtimeMs, stand)
+        }
+      ],
+      [
+        'gleicher Name, Länge unbekannt: eigener Name, erst danach „schon da“',
+        async () => {
+          const eins = await enqueue(`${base}/folge-1/Sendung.mp4`, 'Sendung')
+          await finished(eins)
+          const alt = (await job(eins)).outputFile
+          // direkte Dateiadressen nennen keine Länge: lieber eine Kopie als ein fehlender Download
+          const zwei = await enqueue(`${base}/folge-2/Sendung.mp4`, 'Sendung')
+          await finished(zwei)
+          const neu = (await job(zwei)).outputFile
+          assert.ok(existsSync(neu ?? ''), `Datei fehlt: ${neu}`)
+          assert.notEqual(neu, alt)
+          // Auch unter dem eindeutigen Namen da: Das ist wirklich dieses Video
+          const drei = await enqueue(`${base}/folge-2/Sendung.mp4`, 'Sendung')
+          await finished(drei)
+          assert.equal((await job(drei)).outputFile, neu)
+          assert.equal((await job(drei)).alreadyThere, true)
+        }
+      ],
+      [
+        'yt-dlp endet ohne Fehler und ohne Datei: Fehler statt „fertig“',
+        async () => {
+          const id = await enqueue(`${base}/leer.rss`, 'leer')
+          await waitFor(async () => ['done', 'error'].includes(await statusOf(id)), 60_000)
+          await finished(id, 'error')
+          assert.match((await job(id)).error, /keine Datei/)
+        }
+      ],
+      [
+        'Knopf „Im Ordner zeigen“ trifft die Datei, „Schon vorhanden“ steht am Auftrag',
+        async () => {
+          await app.evaluate(({ shell }) => {
+            globalThis.gezeigt = []
+            shell.showItemInFolder = (p) => globalThis.gezeigt.push(p)
+          })
+          await openRoute(page, '/tool/youtube-dl')
+          const knoepfe = page.getByRole('button', { name: 'Im Ordner zeigen' })
+          assert.ok(await waitFor(async () => (await knoepfe.count()) >= 4), 'Knöpfe fehlen')
+          for (const k of await knoepfe.all()) await k.click()
+          const gezeigt = await app.evaluate(() => globalThis.gezeigt)
+          assert.ok(gezeigt.length >= 4 && gezeigt.every(existsSync), gezeigt.join(', '))
+          assert.ok(
+            gezeigt.some((p) => basename(p).includes('Köln')),
+            gezeigt.join(', ')
+          )
+          assert.equal(await page.getByText('Schon vorhanden', { exact: true }).count(), 2)
+          await openRoute(page, '/')
         }
       ],
       [

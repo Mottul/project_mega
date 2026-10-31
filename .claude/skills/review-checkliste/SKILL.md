@@ -220,6 +220,26 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   Im Test **Hochformat** nehmen: Ein Querformat blieb in der schmalen Vorschau unter der
   Höhengrenze, der Test war auch ohne Korrektur grün (Gegenprobe!).
 
+## Fremde Programme (YouTube-Downloader, 31.10.2026)
+
+- **Code 0 heißt nicht: Ergebnis da.** yt-dlp überspringt einen vergebenen Dateinamen und meldet
+  Erfolg („Fertig“ nach zwei Sekunden, Datei fehlte: Arte nennt jede Folge nur „Tracks“, im Ordner
+  lag eine andere). Ebenso eine leere Playlist. „Fertig“ erst, wenn das Programm das Ergebnis
+  ausdrücklich genannt hat (`--print after_move:…`), sonst Fehler.
+- **Eine Pipe unter Windows ist nicht UTF-8.** Ohne Konsole schreibt ein Programm in der
+  Systemkodierung: `ä` kam als Byte 0xE4, in Node als „�“, `：` fehlte ganz. Kodierung erzwingen
+  (`--encoding utf-8`) und `stream.setEncoding('utf8')` statt `chunk.toString()`, sonst zerreißt
+  ein Zeichen an der Grenze zweier Stücke. Im Labor wie die App starten: `spawn` mit
+  `windowsHide`, Rohbytes ansehen.
+- **Pfade nie aus Anzeigezeilen lesen.** Sie sind für Menschen geschrieben und können von dem
+  abweichen, was auf der Platte liegt. Einen eigenen, maschinenlesbaren Weg nehmen.
+- **`shell.showItemInFolder` schweigt bei einem Pfad, den es nicht gibt** (gemessen: kein Fenster,
+  kein Fehler). Ein falscher Pfad fällt also niemandem auf; im E2E prüfen, dass die Datei existiert.
+- **Eine Sicherung kann selbst schaden: an den Wiederholungsfall denken.** Die erste Fassung lud
+  bei vergebenem Namen immer unter eindeutigem Namen – eine erneut gestartete Playlist hätte jede
+  Folge doppelt geladen, die yt-dlp vorher übersprang. Erst der Vergleich der Länge trennt
+  „dasselbe Video“ von „anderes Video, gleicher Name“.
+
 ## Tests
 
 - **Tests laden nichts aus dem Netz – auch nicht nebenbei.** Jeder E2E-Start lud wegen der
