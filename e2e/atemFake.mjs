@@ -60,6 +60,7 @@ export async function startAtemFake(opt = {}) {
   let client = null
   let nextId = 1
   let verbunden = false
+  let hellos = 0
   let stumm = false
   let zurueckhalten = false
   let zurueckgehalten = []
@@ -207,7 +208,7 @@ export async function startAtemFake(opt = {}) {
     ),
     kommando(
       'VidM',
-      bytes(4, (b) => b.writeUInt8(10, 0))
+      bytes(4, (b) => b.writeUInt8(12, 0))
     ), // 1080p50
     ...Array.from({ length: eingaenge }, (_, i) =>
       eingang(i + 1, `Kamera ${i + 1}`, `CAM${i + 1}`, 0)
@@ -301,6 +302,7 @@ export async function startAtemFake(opt = {}) {
     if (stumm || msg.length < 12) return
     const flags = msg.readUInt8(0) >> 3
     if (flags & NEUE_SITZUNG) {
+      hellos++
       client = { address: rinfo.address, port: rinfo.port }
       nextId = 1
       verbunden = false
@@ -342,6 +344,10 @@ export async function startAtemFake(opt = {}) {
     empfangen,
     get verbunden() {
       return verbunden
+    },
+    /** Wie oft sich ein Client angemeldet hat: Das Werkzeug belegt immer nur einen Platz */
+    get anmeldungen() {
+      return hellos
     },
     /** Rückmeldungen zurückhalten (langsamer Mischer) */
     halteZurueck() {

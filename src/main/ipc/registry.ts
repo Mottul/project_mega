@@ -14,6 +14,7 @@ import { resolveMediaFile } from '../services/player/mediaLibrary'
 import { resolveVgenFile } from '../services/convert/videoGenCache'
 import { resolveVgenSource } from '../services/convert/videoGenSources'
 import { getSettings, onSettingsChange, setSettings } from '../services/store'
+import { registerAtemHandlers } from './atem.handlers'
 import { registerBausteineHandlers } from './bausteine.handlers'
 import { registerBeendenHandlers } from './beenden.handlers'
 import { registerDialogHandlers } from './dialog.handlers'
@@ -256,6 +257,7 @@ export function registerIpcHandlers(): void {
   registerBeendenHandlers()
   registerOscHandlers()
   registerNovastarHandlers()
+  registerAtemHandlers()
   registerNetscanHandlers()
   registerVideoGenHandlers()
 }

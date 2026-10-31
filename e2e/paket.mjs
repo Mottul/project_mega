@@ -94,41 +94,39 @@ try {
       }
     ],
     [
-      'ATEM: Socket-Thread aus dem app.asar, echter Handshake, Befehl mit Rückmeldung',
+      'ATEM: Dienst der App, Socket-Thread aus dem app.asar, Befehl mit Rückmeldung',
       async () => {
         const mischer = await startAtemFake()
+        const status = () => page.evaluate(() => window.api.atem.status())
         try {
-          const r = await app.evaluate(async (_e, port) => {
+          // Über die App, nicht über die Bibliothek: Der Dienst lädt sie erst beim Verbinden
+          await page.evaluate((host) => window.api.atem.connect({ host }), mischer.host)
+          assert.ok(
+            await waitFor(async () => (await status()).phase === 'verbunden', 15_000),
+            JSON.stringify(await status())
+          )
+          assert.equal((await status()).modell, 'ATEM Mini Extreme')
+          const thread = await app.evaluate(() => {
             const lade = process.mainModule.require.bind(process.mainModule)
-            const { Atem } = lade('atem-connection')
             const { ThreadedClassManager } = lade('threadedclass')
-            const atem = new Atem({})
-            const fehler = []
-            atem.on('error', (m) => fehler.push(m))
-            const verbunden = new Promise((resolve) => atem.once('connected', resolve))
-            await atem.connect('127.0.0.1', port)
-            await Promise.race([verbunden, new Promise((resolve) => setTimeout(resolve, 10_000))])
-            const antwort = {
+            return {
               modus: ThreadedClassManager.getThreadMode(),
-              threads: ThreadedClassManager.getThreadCount(),
-              produkt: atem.state?.info?.productIdentifier,
-              fehler
+              threads: ThreadedClassManager.getThreadCount()
             }
-            await atem.changeProgramInput(3).catch((e) => fehler.push(String(e)))
-            await new Promise((resolve) => setTimeout(resolve, 300))
-            antwort.programm = atem.state?.video?.mixEffects?.[0]?.programInput
-            await atem.destroy()
-            return antwort
-          }, mischer.port)
-          assert.deepEqual(r, {
-            modus: 'worker_threads',
-            threads: 1,
-            produkt: 'ATEM Mini Extreme',
-            fehler: [],
-            programm: 3
           })
+          assert.deepEqual(thread, { modus: 'worker_threads', threads: 1 })
+          await page.evaluate(() => window.api.atem.command({ type: 'programm', me: 0, quelle: 3 }))
+          assert.ok(
+            await waitFor(
+              async () =>
+                (await page.evaluate(() => window.api.atem.view()))?.mes[0].programm === 3,
+              5000
+            ),
+            'Rückmeldung fehlt'
+          )
           assert.deepEqual(mischer.empfangen, [{ name: 'CPgI', me: 0, quelle: 3 }])
         } finally {
+          await page.evaluate(() => window.api.atem.disconnect())
           await mischer.close()
         }
       }

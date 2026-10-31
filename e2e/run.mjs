@@ -12,6 +12,7 @@ const all = [
   'timer',
   'player',
   'osc',
+  'atem',
   'rta',
   'video-generator',
   'projektdatei',
