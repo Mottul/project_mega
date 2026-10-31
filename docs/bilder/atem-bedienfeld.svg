@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 366" width="680" role="img" aria-labelledby="t d" font-family="Segoe UI, system-ui, sans-serif">
+  <title id="t">Entwurf der Seite Mischen</title>
+  <desc id="d">Reihen für Programm und Vorschau, rechts Cut, Auto und Hebel, darunter Keyer, Übergang und Makros.</desc>
+  <style>
+    .f { fill: #fafafa; stroke: #d4d4d8; }
+    .k { fill: #f4f4f5; stroke: #a1a1aa; }
+    .pg { fill: #e24b4a; stroke: #a32d2d; }
+    .pv { fill: #639922; stroke: #3b6d11; }
+    .a { fill: #faeeda; stroke: #ba7517; }
+    .t { fill: #18181b; font-size: 12.5px; }
+    .w { fill: #ffffff; font-size: 12.5px; font-weight: 600; }
+    .s { fill: #52525b; font-size: 11.5px; }
+    .h { fill: #52525b; font-size: 11.5px; font-weight: 600; }
+    .tab { fill: #18181b; font-size: 12.5px; font-weight: 600; }
+    .griff { fill: #a1a1aa; }
+    @media (prefers-color-scheme: dark) {
+      .f { fill: #18181b; stroke: #3f3f46; }
+      .k { fill: #27272a; stroke: #52525b; }
+      .a { fill: #633806; stroke: #ef9f27; }
+      .t, .tab { fill: #fafafa; }
+      .s, .h { fill: #d4d4d8; }
+      .griff { fill: #71717a; }
+    }
+  </style>
+
+  <rect class="f" x="4" y="4" width="672" height="358" rx="10"/>
+
+  <text class="tab" x="20" y="28">Mischen</text>
+  <text class="s" x="84" y="28">Keyer</text>
+  <text class="s" x="130" y="28">SuperSource</text>
+  <text class="s" x="212" y="28">Multiview</text>
+  <text class="s" x="278" y="28">Makros</text>
+  <text class="s" x="332" y="28">Medien</text>
+  <text class="s" x="386" y="28">Ton</text>
+  <text class="s" x="420" y="28">+</text>
+  <path d="M20 34H70" stroke="#378add" stroke-width="2"/>
+  <text class="s" x="660" y="28" text-anchor="end">Verbunden · Sperre aus</text>
+
+  <text class="h" x="20" y="58">Programm</text>
+  <g>
+    <rect class="k" x="20" y="64" width="44" height="40" rx="4"/><text class="t" x="42" y="89" text-anchor="middle">1</text>
+    <rect class="pg" x="70" y="64" width="44" height="40" rx="4"/><text class="w" x="92" y="89" text-anchor="middle">2</text>
+    <rect class="k" x="120" y="64" width="44" height="40" rx="4"/><text class="t" x="142" y="89" text-anchor="middle">3</text>
+    <rect class="k" x="170" y="64" width="44" height="40" rx="4"/><text class="t" x="192" y="89" text-anchor="middle">4</text>
+    <rect class="k" x="220" y="64" width="44" height="40" rx="4"/><text class="t" x="242" y="89" text-anchor="middle">5</text>
+    <rect class="k" x="270" y="64" width="44" height="40" rx="4"/><text class="t" x="292" y="89" text-anchor="middle">6</text>
+    <rect class="k" x="330" y="64" width="50" height="40" rx="4"/><text class="t" x="355" y="89" text-anchor="middle">Bars</text>
+    <rect class="k" x="386" y="64" width="50" height="40" rx="4"/><text class="t" x="411" y="89" text-anchor="middle">MP1</text>
+    <rect class="k" x="442" y="64" width="50" height="40" rx="4"/><text class="t" x="467" y="89" text-anchor="middle">Black</text>
+  </g>
+
+  <text class="h" x="20" y="126">Vorschau</text>
+  <g>
+    <rect class="k" x="20" y="132" width="44" height="40" rx="4"/><text class="t" x="42" y="157" text-anchor="middle">1</text>
+    <rect class="k" x="70" y="132" width="44" height="40" rx="4"/><text class="t" x="92" y="157" text-anchor="middle">2</text>
+    <rect class="k" x="120" y="132" width="44" height="40" rx="4"/><text class="t" x="142" y="157" text-anchor="middle">3</text>
+    <rect class="pv" x="170" y="132" width="44" height="40" rx="4"/><text class="w" x="192" y="157" text-anchor="middle">4</text>
+    <rect class="k" x="220" y="132" width="44" height="40" rx="4"/><text class="t" x="242" y="157" text-anchor="middle">5</text>
+    <rect class="k" x="270" y="132" width="44" height="40" rx="4"/><text class="t" x="292" y="157" text-anchor="middle">6</text>
+    <rect class="k" x="330" y="132" width="50" height="40" rx="4"/><text class="t" x="355" y="157" text-anchor="middle">Bars</text>
+    <rect class="k" x="386" y="132" width="50" height="40" rx="4"/><text class="t" x="411" y="157" text-anchor="middle">MP1</text>
+    <rect class="k" x="442" y="132" width="50" height="40" rx="4"/><text class="t" x="467" y="157" text-anchor="middle">Black</text>
+  </g>
+
+  <rect class="k" x="516" y="64" width="62" height="50" rx="4"/><text class="t" x="547" y="94" text-anchor="middle">Cut</text>
+  <rect class="a" x="516" y="122" width="62" height="50" rx="4"/><text class="t" x="547" y="152" text-anchor="middle">Auto</text>
+  <rect class="k" x="596" y="56" width="62" height="116" rx="4"/>
+  <rect class="griff" x="624" y="66" width="6" height="96" rx="3"/>
+  <rect class="griff" x="606" y="100" width="42" height="14" rx="3"/>
+  <text class="s" x="627" y="186" text-anchor="middle">Hebel</text>
+
+  <text class="h" x="20" y="206">Tasten</text>
+  <rect class="k" x="20" y="212" width="66" height="36" rx="4"/><text class="t" x="53" y="235" text-anchor="middle">Key 1</text>
+  <rect class="pg" x="92" y="212" width="66" height="36" rx="4"/><text class="w" x="125" y="235" text-anchor="middle">DSK 1</text>
+  <rect class="k" x="164" y="212" width="66" height="36" rx="4"/><text class="t" x="197" y="235" text-anchor="middle">DSK 2</text>
+
+  <text class="h" x="262" y="206">Übergang</text>
+  <rect class="a" x="262" y="212" width="54" height="36" rx="4"/><text class="t" x="289" y="235" text-anchor="middle">Mix</text>
+  <rect class="k" x="322" y="212" width="54" height="36" rx="4"/><text class="t" x="349" y="235" text-anchor="middle">Dip</text>
+  <rect class="k" x="382" y="212" width="54" height="36" rx="4"/><text class="t" x="409" y="235" text-anchor="middle">Wipe</text>
+  <rect class="k" x="442" y="212" width="54" height="36" rx="4"/><text class="t" x="469" y="235" text-anchor="middle">DVE</text>
+
+  <rect class="k" x="516" y="212" width="142" height="36" rx="4"/><text class="t" x="587" y="235" text-anchor="middle">Fade to Black</text>
+
+  <text class="h" x="20" y="274">Makros</text>
+  <rect class="k" x="20" y="280" width="110" height="36" rx="4"/><text class="t" x="75" y="303" text-anchor="middle">Interview</text>
+  <rect class="k" x="136" y="280" width="110" height="36" rx="4"/><text class="t" x="191" y="303" text-anchor="middle">Bild im Bild</text>
+  <rect class="k" x="252" y="280" width="110" height="36" rx="4"/><text class="t" x="307" y="303" text-anchor="middle">Abspann</text>
+
+  <text class="h" x="392" y="274">Ton Master</text>
+  <rect class="k" x="392" y="284" width="266" height="10" rx="3"/>
+  <rect class="pv" x="392" y="284" width="168" height="10" rx="3"/>
+  <rect class="k" x="392" y="300" width="266" height="10" rx="3"/>
+  <rect class="pv" x="392" y="300" width="148" height="10" rx="3"/>
+
+  <text class="s" x="20" y="344">Rot = Programm, Grün = Vorschau. Reihen und Knöpfe entstehen aus dem, was der Mischer meldet.</text>
+</svg>

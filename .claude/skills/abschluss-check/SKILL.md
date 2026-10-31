@@ -12,7 +12,9 @@ description: Prüfung vor dem Abschluss einer Änderung in Mottulbox – Prettie
    dann nur eine auf der Platte, Git meldet die andere dauernd als geändert). Prettier steht auf
    `endOfLine: auto`, deshalb besteht der Lauf auch unter Windows mit CRLF-Dateien. Bei Treffern nur die betroffenen Dateien
    formatieren (`npx prettier --write <Dateien>`), **nie** `npm run format` auf alles. Die
-   Git-Warnung „LF will be replaced by CRLF“ ist harmlos.
+   Git-Warnung „LF will be replaced by CRLF“ ist harmlos. Ein `docs/PLAN-*.md` nennt geplante Dateien
+   im Textblock (```` ```text ````), nicht in Backticks: `check:refs` kennt sie noch nicht. Grafiken
+   liegen als SVG in `docs/bilder/`, mit eigenen Farben für den Dunkelmodus.
 3. **Lint** (warnungsfrei): `npm run lint`.
 4. **Typen:** `npm run typecheck` und `npm run typecheck:test`.
 5. **Tests:** erst die betroffenen (`npx vitest run <Pfad>`), zum Schluss `npm test` – unter

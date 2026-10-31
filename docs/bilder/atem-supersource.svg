@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 236" width="680" role="img" aria-labelledby="t d" font-family="Segoe UI, system-ui, sans-serif">
+  <title id="t">Animierter Wechsel zwischen zwei SuperSource-Layouts</title>
+  <desc id="d">Eine Box wandert in einzelnen Schritten von Layout A nach Layout B, je Videobild ein Schritt, gespielt als Makro auf dem Mischer.</desc>
+  <style>
+    .f { fill: #f4f4f5; stroke: #a1a1aa; }
+    .a { fill: #e6f1fb; stroke: #378add; }
+    .g { fill: #378add; fill-opacity: .13; stroke: #378add; stroke-opacity: .55; }
+    .m { fill: #faeeda; stroke: #ba7517; }
+    .t { fill: #18181b; font-size: 13px; font-weight: 600; }
+    .c { fill: #18181b; font-size: 12px; font-family: Consolas, Menlo, monospace; }
+    .s { fill: #52525b; font-size: 11.5px; }
+    .l { stroke: #71717a; fill: none; }
+    @media (prefers-color-scheme: dark) {
+      .f { fill: #27272a; stroke: #52525b; }
+      .a { fill: #0c447c; stroke: #85b7eb; }
+      .g { fill: #85b7eb; stroke: #85b7eb; }
+      .m { fill: #633806; stroke: #ef9f27; }
+      .t, .c { fill: #fafafa; }
+      .s { fill: #d4d4d8; }
+      .l { stroke: #a1a1aa; }
+    }
+  </style>
+  <defs>
+    <marker id="p" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="#71717a" stroke-width="1.5"/>
+    </marker>
+  </defs>
+
+  <text class="t" x="10" y="20">SuperSource im Programmbild</text>
+  <rect class="f" x="10" y="30" width="320" height="180" rx="4"/>
+
+  <rect class="g" x="39" y="56" width="104" height="58.5" rx="2"/>
+  <rect class="g" x="63" y="66" width="96" height="54" rx="2"/>
+  <rect class="g" x="90" y="76" width="88" height="49.5" rx="2"/>
+  <rect class="g" x="120" y="86" width="84" height="47.3" rx="2"/>
+  <rect class="g" x="152" y="96" width="80" height="45" rx="2"/>
+  <rect class="g" x="182" y="104" width="76" height="42.8" rx="2"/>
+  <rect class="a" x="26" y="50" width="108" height="60.8" rx="2"/>
+  <text class="s" x="80" y="84" text-anchor="middle">Layout A</text>
+  <rect class="a" x="208" y="112" width="104" height="58.5" rx="2"/>
+  <text class="s" x="260" y="145" text-anchor="middle">Layout B</text>
+  <text class="s" x="170" y="198" text-anchor="middle">jeder Rahmen = ein Videobild</text>
+
+  <path class="l" d="M336 120H366" marker-end="url(#p)"/>
+
+  <text class="t" x="372" y="20">Makro auf dem Mischer</text>
+  <rect class="m" x="372" y="30" width="298" height="118" rx="4"/>
+  <text class="c" x="386" y="54">Box 1: x, y, Größe</text>
+  <text class="c" x="386" y="74">Box 2: x, y, Größe</text>
+  <text class="c" x="386" y="94">warte 1 Bild</text>
+  <text class="c" x="386" y="114">Box 1: x, y, Größe</text>
+  <text class="c" x="386" y="134">…</text>
+  <text class="s" x="372" y="172">25p: 25 Schritte je Sekunde</text>
+  <text class="s" x="372" y="190">50p: 50 Schritte je Sekunde</text>
+  <text class="s" x="372" y="208">Bildrate meldet der Mischer selbst</text>
+</svg>
