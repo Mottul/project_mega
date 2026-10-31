@@ -1,4 +1,4 @@
-import { app, ipcMain } from 'electron'
+import { app } from 'electron'
 import { ausgabeZiel } from '@shared/ausgabe'
 import { Channels } from '@shared/ipc-contracts'
 import type { TimerCommand, TimerNdiConfig, TimerSetup } from '@shared/types'
@@ -21,16 +21,17 @@ import {
   stopTimerRemote
 } from '../services/timer/timerRemoteServer'
 import { registerRemoteControl } from './remoteControls'
+import { handle } from './kanal'
 
 export function registerTimerHandlers(): void {
   // Zustand/Ticks an alle Fenster UND – falls aktiv – an die Handy-Clients (SSE).
   setTimerSinks(
     (state) => {
-      broadcast(Channels.timerState, state)
+      broadcast(Channels.timer.onState, state)
       pushTimerRemoteState(state)
     },
     (tick) => {
-      broadcast(Channels.timerTick, tick)
+      broadcast(Channels.timer.onTick, tick)
       pushTimerRemoteTick(tick)
     }
   )
@@ -54,28 +55,23 @@ export function registerTimerHandlers(): void {
   })
   app.once('will-quit', flush)
 
-  ipcMain.handle(Channels.timerGetState, () => getTimerState())
-  ipcMain.handle(Channels.timerCommand, (_e, cmd: TimerCommand) => applyTimerCommand(cmd))
-  ipcMain.handle(Channels.timerOpenOutput, (_e, z: unknown) => {
+  handle(Channels.timer.getState, () => getTimerState())
+  handle(Channels.timer.command, (_e, cmd: TimerCommand) => applyTimerCommand(cmd))
+  handle(Channels.timer.openOutput, (_e, z: unknown) => {
     const ziel = ausgabeZiel(z)
     if (ziel != null) openTimerOutput(ziel)
   })
-  ipcMain.handle(Channels.timerCloseOutput, () => closeTimerOutput())
+  handle(Channels.timer.closeOutput, () => closeTimerOutput())
 
   // NDI-Ausgabe (experimentell; ohne optionales Binding meldet Status "nicht verfügbar")
-  ipcMain.handle(Channels.timerNdiStart, (_e, cfg: TimerNdiConfig) => startTimerNdi(cfg))
-  ipcMain.handle(Channels.timerNdiStop, () => stopTimerNdi())
-  ipcMain.handle(Channels.timerNdiStatus, () => getTimerNdiStatus())
+  handle(Channels.timer.ndiStart, (_e, cfg: TimerNdiConfig) => startTimerNdi(cfg))
+  handle(Channels.timer.ndiStop, () => stopTimerNdi())
+  handle(Channels.timer.ndiStatus, () => getTimerNdiStatus())
 
   // Fernsteuerung (Handy/Tablet)
   registerRemoteControl({
     id: 'timer',
-    channels: {
-      status: Channels.timerRemoteStatus,
-      start: Channels.timerRemoteStart,
-      stop: Channels.timerRemoteStop,
-      changed: Channels.timerRemoteChanged
-    },
+    channels: Channels.timer,
     start: startTimerRemote,
     stop: stopTimerRemote,
     status: getTimerRemoteStatus

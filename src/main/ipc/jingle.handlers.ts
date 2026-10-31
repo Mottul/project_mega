@@ -1,4 +1,3 @@
-import { ipcMain } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import type { JingleImportResult, JingleRemoteSnapshot } from '@shared/types'
 import { cleanupJingles, importJingle, readJingleBytes } from '../services/jingle/jingleLibrary'
@@ -11,6 +10,7 @@ import {
   stopJingleRemote
 } from '../services/jingle/jingleRemoteServer'
 import { publishFrom, registerRemoteControl, sendToSource } from './remoteControls'
+import { handle } from './kanal'
 
 let wired = false
 
@@ -18,10 +18,12 @@ export function registerJingleHandlers(): void {
   if (!wired) {
     wired = true
     // Trigger/Stopp vom Handy an alle Fenster (der Jingle-Tab spielt das Audio).
-    setJingleCommandSink((cmd, source) => sendToSource(Channels.jingleRemoteCommand, cmd, source))
+    setJingleCommandSink((cmd, source) =>
+      sendToSource(Channels.jingles.onRemoteCommand, cmd, source)
+    )
   }
 
-  ipcMain.handle(Channels.jingleImport, (_e, paths: string[]) => {
+  handle(Channels.jingles.import, (_e, paths: string[]) => {
     const out: JingleImportResult[] = []
     for (const p of paths) {
       try {
@@ -34,21 +36,16 @@ export function registerJingleHandlers(): void {
     return out
   })
 
-  ipcMain.handle(Channels.jingleCleanup, (_e, keep: string[]) => cleanupJingles(keep))
-  ipcMain.handle(Channels.jingleBytes, (_e, storedName: string) => readJingleBytes(storedName))
+  handle(Channels.jingles.cleanup, (_e, keep: string[]) => cleanupJingles(keep))
+  handle(Channels.jingles.bytes, (_e, storedName: string) => readJingleBytes(storedName))
 
   // Fernsteuerung
-  ipcMain.handle(Channels.jinglePublish, (e, snap: JingleRemoteSnapshot) =>
+  handle(Channels.jingles.publish, (e, snap: JingleRemoteSnapshot) =>
     publishFrom(e.sender, snap, publishSnapshot, forgetJingleSnapshot)
   )
   registerRemoteControl({
     id: 'jingle',
-    channels: {
-      status: Channels.jingleRemoteStatus,
-      start: Channels.jingleRemoteStart,
-      stop: Channels.jingleRemoteStop,
-      changed: Channels.jingleRemoteChanged
-    },
+    channels: Channels.jingles,
     start: startJingleRemote,
     stop: stopJingleRemote,
     status: getJingleRemoteStatus

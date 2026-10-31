@@ -1,5 +1,6 @@
-// IPC-Kanalnamen + die typisierte API-Form, die preload via contextBridge
-// als window.api bereitstellt. Von main (Handler) und renderer (Aufruf) importiert.
+// Der IPC-Vertrag: EINE Tabelle aller Kanäle zwischen Renderer und main. Aus ihr entstehen die API
+// window.api (ToolboxApi, gebaut in preload/baueApi.ts) und die Typen der Gegenseite: handle/on in
+// main/ipc/kanal.ts, broadcast in services/broadcast.ts. Neuer Kanal = Eintrag hier + Handler.
 
 import type {
   AppSettings,
@@ -87,207 +88,477 @@ import type {
   YtToolStatus
 } from './types'
 
-/** Alle ipcMain.handle / ipcRenderer.invoke Kanaele + Event-Kanaele (main -> renderer). */
+/** Signatur eines Kanals; nur für die Typen, zur Laufzeit gibt es sie nicht. */
+export type KanalFn = (...args: never[]) => unknown
+
+/** Renderer fragt, main antwortet. F wie die API-Methode, nur das Ergebnis ohne Promise. */
+export interface Anfrage<F extends KanalFn> {
+  art: 'anfrage'
+  kanal: string
+  signatur?: F
+}
+
+/** Renderer meldet, ohne auf eine Antwort zu warten. F wie die API-Methode. */
+export interface Einweg<F extends KanalFn> {
+  art: 'einweg'
+  kanal: string
+  signatur?: F
+}
+
+/** main meldet an Fenster. F ist der Callback, den die API-Methode annimmt. */
+export interface Ereignis<F extends KanalFn> {
+  art: 'ereignis'
+  kanal: string
+  signatur?: F
+}
+
+export type Kanal = Anfrage<KanalFn> | Einweg<KanalFn> | Ereignis<KanalFn>
+
+const anfrage = <F extends KanalFn = () => void>(kanal: string): Anfrage<F> => ({
+  art: 'anfrage',
+  kanal
+})
+const einweg = <F extends KanalFn = () => void>(kanal: string): Einweg<F> => ({
+  art: 'einweg',
+  kanal
+})
+const ereignis = <F extends KanalFn = () => void>(kanal: string): Ereignis<F> => ({
+  art: 'ereignis',
+  kanal
+})
+
+/** Alle Kanäle, gegliedert wie window.api. */
 export const Channels = {
-  // Dialog & Shell
-  dialogSelect: 'dialog:select',
-  dialogConfirm: 'dialog:confirm',
-  dialogChoose: 'dialog:choose', // Rückfrage mit 2–4 Antworten
-  appSetAktiv: 'app:setAktiv', // Werkzeug meldet „läuft“ (Testton, Jingle) – für „Wirklich beenden?“
-  dialogNotify: 'dialog:notify',
-  shellOpenPath: 'shell:openPath',
-  shellShowItem: 'shell:showItemInFolder',
-  // Settings / App
-  settingsGet: 'settings:get',
-  settingsSet: 'settings:set',
-  settingsChanged: 'settings:changed', // Event: AppSettings (von einem anderen Fenster/main geändert)
-  appLogPath: 'app:logPath',
-  // ffmpeg
-  ffmpegProbe: 'ffmpeg:probe',
-  ffmpegStatus: 'ffmpeg:status',
-  ffmpegCheckUpdate: 'ffmpeg:checkUpdate',
-  ffmpegUseBundled: 'ffmpeg:useBundled',
-  ffmpegStatusUpdate: 'ffmpeg:statusUpdate', // Event: FfmpegToolStatus
-  // Video-Konverter (gemeinsamer Konvertierungs-Kern, früher HAP-Konverter)
-  converterCapabilities: 'converter:capabilities',
-  converterEncoders: 'converter:encoders', // geprüfte GPU-/CPU-Encoder je Familie
-  converterEnqueue: 'converter:enqueue',
-  converterList: 'converter:list',
-  converterCancel: 'converter:cancel',
-  converterCancelAll: 'converter:cancelAll',
-  converterClearFinished: 'converter:clearFinished',
-  converterUpdate: 'converter:update', // Event: ConverterJob
-  vgenThumb: 'vgen:thumb',
-  vgenPickOutput: 'vgen:pickOutput',
-  vgenEnqueue: 'vgen:enqueue',
-  vgenList: 'vgen:list',
-  vgenCancel: 'vgen:cancel',
-  vgenClearFinished: 'vgen:clearFinished',
-  vgenClearCache: 'vgen:clearCache',
-  vgenUpdate: 'vgen:update', // Event: VgenJob
-  vgenPreview: 'vgen:preview',
-  vgenPreviewCancel: 'vgen:previewCancel',
-  vgenPreviewProgress: 'vgen:previewProgress', // Event: VgenPreviewProgress
-  vgenSource: 'vgen:source',
-  // Medien-Info (ffprobe)
-  mediaInfoProbe: 'mediaInfo:probe',
-  mediaInfoRaw: 'mediaInfo:raw',
-  mediaInfoCollect: 'mediaInfo:collect',
-  // Manuals
-  manualsImport: 'manuals:import',
-  manualsList: 'manuals:list',
-  manualsSearch: 'manuals:search',
-  manualsGet: 'manuals:get',
-  manualsBytes: 'manuals:bytes',
-  manualsSearchInDoc: 'manuals:searchInDoc',
-  manualsUpdate: 'manuals:update',
-  manualsDelete: 'manuals:delete',
-  manualsImportProgress: 'manuals:importProgress', // Event: ImportProgress
-  // Testbildgenerator
-  screenList: 'screen:list',
-  patternOpen: 'pattern:open',
-  patternUpdate: 'pattern:update',
-  patternClose: 'pattern:close',
-  patternCurrent: 'pattern:current',
-  patternIsOpen: 'pattern:isOpen',
-  patternOutputChanged: 'pattern:outputChanged', // Event: boolean (Ausgabefenster offen)
-  patternRender: 'pattern:render', // Event: PatternConfig (main -> Ausgabefenster)
-  patternSavePng: 'pattern:savePng',
-  patternExportVideo: 'pattern:exportVideo',
-  patternExportColorLoop: 'pattern:exportColorLoop',
-  patternVideoProgress: 'pattern:videoProgress', // Event: PatternVideoProgress
-  // Video-Player – Bibliothek & Konvertierung
-  playerEncoders: 'player:encoders',
-  playerImport: 'player:import',
-  playerConvertList: 'player:convertList',
-  playerConvertCancel: 'player:convertCancel',
-  playerConvertClear: 'player:convertClearFinished',
-  playerConvertUpdate: 'player:convertUpdate', // Event: ConvertJob
-  playerLibraryList: 'player:libraryList',
-  playerLibraryDelete: 'player:libraryDelete',
-  playerLibraryClear: 'player:libraryClear',
-  playerReconvert: 'player:reconvert',
-  playerPickIdleMedia: 'player:pickIdleMedia',
-  playerMediaDir: 'player:mediaDir',
-  playerLibraryChanged: 'player:libraryChanged', // Event (kein Payload)
-  // Video-Player – Wiedergabe & Ausgabe
-  playerGetState: 'player:getState',
-  playerCommand: 'player:command',
-  playerReport: 'player:report', // Ausgabefenster -> main (Position/Dauer)
-  playerOpenOutput: 'player:openOutput',
-  playerCloseOutput: 'player:closeOutput',
-  playerState: 'player:state', // Event: PlayerState (main -> alle)
-  playerTick: 'player:tick', // Event: PlayerTick (main -> alle, häufig)
-  // Video-Player – Fernsteuerung (eingebetteter Webserver)
-  playerRemoteStatus: 'player:remoteStatus',
-  playerRemoteStart: 'player:remoteStart',
-  playerRemoteStop: 'player:remoteStop',
-  playerRemoteChanged: 'player:remoteChanged', // Event: RemoteStatus
-  // Stage-Timer & Uhr
-  timerGetState: 'timer:getState',
-  timerCommand: 'timer:command',
-  timerOpenOutput: 'timer:openOutput',
-  timerCloseOutput: 'timer:closeOutput',
-  timerState: 'timer:state', // Event: StageTimerState (main -> alle)
-  timerTick: 'timer:tick', // Event: StageTimerTick (main -> alle, häufig)
-  timerNdiStart: 'timer:ndiStart',
-  timerNdiStop: 'timer:ndiStop',
-  timerNdiStatus: 'timer:ndiStatus',
-  timerNdiChanged: 'timer:ndiChanged', // Event: TimerNdiStatus
-  // Fernsteuer-App (Startseite aller Fernsteuerungen)
-  remoteAppStatus: 'remoteApp:status',
-  remoteAppChanged: 'remoteApp:changed', // Event: RemoteAppStatus
-  // Stage-Timer – Fernsteuerung (eingebetteter Webserver)
-  timerRemoteStatus: 'timer:remoteStatus',
-  timerRemoteStart: 'timer:remoteStart',
-  timerRemoteStop: 'timer:remoteStop',
-  timerRemoteChanged: 'timer:remoteChanged', // Event: RemoteStatus
-  playerNdiStart: 'player:ndiStart',
-  playerNdiStop: 'player:ndiStop',
-  playerNdiStatus: 'player:ndiStatus',
-  playerNdiChanged: 'player:ndiChanged', // Event: PlayerNdiStatus
-  playerNdiAudio: 'player:ndiAudio', // Renderer (NDI-Spiegel) -> main: PCM-Blöcke
-  playerNdiTapError: 'player:ndiTapError', // Renderer (NDI-Spiegel) -> main: Audio-Tap-Fehler
-  // Fenster
-  windowOpenTool: 'window:openTool', // Tool in eigenem Fenster öffnen
-  windowFitContent: 'window:fitContent', // kleines Werkzeugfenster auf Inhaltshöhe bringen
-  // Werkzeuge
-  utilExportPdf: 'util:exportPdf', // HTML -> PDF (Save-Dialog), z.B. LED-Wall-Doku
-  utilRenderPdf: 'util:renderPdf', // HTML -> PDF-Bytes ohne Speichern (Seitenansicht)
-  utilExportHtml: 'util:exportHtml', // HTML-Datei mit eingesetzten Fotos (Save-Dialog)
-  onlinePublish: 'online:publish', // Handy-Fassung in die Online-Ablage schreiben
-  utilSaveText: 'util:saveText', // Text/JSON in Datei speichern (Save-Dialog)
-  utilOpenText: 'util:openText', // Textdatei einlesen (Open-Dialog)
-  utilLog: 'util:log', // Renderer -> main-Debug-Log (Feld-Diagnose)
-  // Projektdateien (.mottul) – ein Abschnitt je Werkzeug
-  projectsDirInfo: 'projects:dirInfo',
-  projectsOpen: 'projects:open',
-  projectsChooseTarget: 'projects:chooseTarget',
-  projectsSave: 'projects:save',
-  projectsPeek: 'projects:peek',
-  // Fotos der Projektdateien (Hashes, Anzeige über foto://)
-  fotosPick: 'fotos:pick',
-  // eigene Bausteine des Mini-Manuals (userData/Bausteine)
-  bausteineList: 'bausteine:list',
-  bausteineSave: 'bausteine:save',
-  bausteineRemove: 'bausteine:remove',
-  bausteineExport: 'bausteine:export',
-  bausteineImport: 'bausteine:import',
-  // Jingle-Player
-  jingleImport: 'jingle:import',
-  jingleCleanup: 'jingle:cleanup',
-  jingleBytes: 'jingle:bytes', // Roh-Bytes für die Waveform-Analyse
-  // Jingle-Fernsteuerung
-  jinglePublish: 'jingle:publish', // Renderer -> main: Schnappschuss der Bank
-  jingleRemoteCommand: 'jingle:remoteCommand', // main -> Renderer: Trigger/Stopp
-  jingleRemoteStatus: 'jingle:remoteStatus',
-  jingleRemoteStart: 'jingle:remoteStart',
-  jingleRemoteStop: 'jingle:remoteStop',
-  jingleRemoteChanged: 'jingle:remoteChanged', // Event: RemoteStatus
-  // OSC-Steuerung (MadMapper & Co.)
-  oscSend: 'osc:send',
-  oscSendMany: 'osc:sendMany',
-  oscStatus: 'osc:status',
-  oscConfig: 'osc:config',
-  oscConfigSet: 'osc:configSet',
-  oscFeedback: 'osc:feedback', // Event: OscFeedback (main -> renderer)
-  oscStatusChanged: 'osc:statusChanged', // Event: OscStatus
-  oscPublish: 'osc:publish', // Renderer -> main: Schnappschuss der Oberfläche
-  oscRemoteCommand: 'osc:remoteCommand', // main -> Renderer: Steuerbefehl vom Handy
-  oscRemoteStatus: 'osc:remoteStatus',
-  oscRemoteStart: 'osc:remoteStart',
-  oscRemoteStop: 'osc:remoteStop',
-  oscRemoteChanged: 'osc:remoteChanged', // Event: RemoteStatus
-  oscMonitorPublish: 'osc:monitorPublish', // Renderer -> main: aktuelles Log (für Monitor-Fenster)
-  oscMonitorLog: 'osc:monitorLog', // main -> Renderer: gespiegeltes Log (Monitor-Fenster)
-  windowOpenOscMonitor: 'window:openOscMonitor', // OSC-Monitor in eigenem Fenster öffnen
-  // NovaStar-Prozessor (TCP 5200)
-  novastarConnect: 'novastar:connect',
-  novastarDisconnect: 'novastar:disconnect',
-  novastarStatus: 'novastar:status',
-  novastarStatusChanged: 'novastar:statusChanged', // Event: NovastarStatus
-  novastarBrightness: 'novastar:brightness',
-  novastarBlackout: 'novastar:blackout',
-  novastarFreeze: 'novastar:freeze',
-  novastarPreset: 'novastar:preset',
-  novastarRaw: 'novastar:raw',
-  // Netzwerk-Scanner
-  netscanInterfaces: 'netscan:interfaces',
-  netscanStart: 'netscan:start',
-  netscanStop: 'netscan:stop',
-  netscanProgress: 'netscan:progress', // Event: NetScanProgress
-  netscanDevice: 'netscan:device', // Event: NetDevice (Upsert)
-  // YouTube-Downloader (yt-dlp)
-  ytStatus: 'yt:status',
-  ytUpdate: 'yt:update', // yt-dlp-Binary herunterladen/aktualisieren
-  ytProbe: 'yt:probe', // Adresse analysieren: einzelnes Video oder Playlist (mit Einträgen)
-  ytEnqueue: 'yt:enqueue',
-  ytList: 'yt:list',
-  ytCancel: 'yt:cancel',
-  ytClearFinished: 'yt:clearFinished',
-  ytJobUpdate: 'yt:jobUpdate', // Event: YtJob
-  ytStatusUpdate: 'yt:statusUpdate' // Event: YtToolStatus (Prüfung/Aktualisierung)
-} as const
+  selectPaths: anfrage<(options: SelectPathsOptions) => string[]>('dialog:select'),
+  /** Native Ja/Nein-Rückfrage (main-Prozess). Ersetzt window.confirm(), das
+   *  danach die Tastatureingabe in Textfeldern lahmlegt. true = bestätigt. */
+  confirm: anfrage<(options: ConfirmOptions) => boolean>('dialog:confirm'),
+  /** Native Rückfrage mit 2–4 Antworten; liefert den Index des Knopfs (Esc = cancelId). */
+  choose: anfrage<(options: ChooseOptions) => number>('dialog:choose'),
+  /**
+   * Werkzeug meldet, dass etwas läuft, das main nicht kennt (Ton im Fenster) – die Rückfrage beim
+   * Beenden nennt es. Je Fenster; ein geschlossenes Fenster zählt nicht mehr.
+   */
+  setAktiv: einweg<(key: 'testton' | 'jingle', an: boolean) => void>('app:setAktiv'),
+  /** Native Hinweis-Meldung (main-Prozess). Ersetzt window.alert() (gleicher
+   *  Tastatur-Bug). */
+  notify: anfrage<(options: NotifyOptions) => void>('dialog:notify'),
+  openPath: anfrage<(target: string) => void>('shell:openPath'),
+  showItemInFolder: anfrage<(target: string) => void>('shell:showItemInFolder'),
+  getSettings: anfrage<() => AppSettings>('settings:get'),
+  /** Nur die zu ändernden Felder schicken – auch in player/osc/… (wird feldweise
+   *  zusammengeführt); Listen werden als Ganzes ersetzt. */
+  setSettings: anfrage<(patch: SettingsPatch) => AppSettings>('settings:set'),
+  /** Einstellungen wurden anderswo geändert (anderes Fenster, Handy, main). Liefert Cleanup. */
+  onSettingsChanged: ereignis<(settings: AppSettings) => void>('settings:changed'),
+  /** Pfad zur Debug-Logdatei (zum Anzeigen/Mitschicken). */
+  getLogPath: anfrage<() => string>('app:logPath'),
+  /** Öffnet ein Tool in einem eigenen Fenster (parallele Nutzung). */
+  openToolWindow: anfrage<(id: string) => void>('window:openTool'),
+  /**
+   * Kleines Werkzeugfenster: gemessene Inhaltshöhe (Kopfleiste + Seite, CSS-px) melden – main
+   * passt die Fensterhöhe an (Schrift je System, Kompaktmodus, Breite). Andere Fenster: nichts.
+   */
+  fitToolWindow: anfrage<(height: number) => void>('window:fitContent'),
+
+  ffmpeg: {
+    probe: anfrage<(path: string) => ProbeResult>('ffmpeg:probe'),
+    /** Welches ffmpeg läuft (mitgeliefert/aktualisiert), liegt ein neuer Build bereit? */
+    status: anfrage<() => FfmpegToolStatus>('ffmpeg:status'),
+    /** Jetzt nach einem neueren Build suchen (mind. 7 Tage alt), laden, prüfen – gilt ab dem
+     *  nächsten Start. */
+    checkUpdate: anfrage<() => FfmpegToolStatus>('ffmpeg:checkUpdate'),
+    /** Ab dem nächsten Start wieder das mitgelieferte ffmpeg (falls ein Build Ärger macht). */
+    useBundled: anfrage<() => FfmpegToolStatus>('ffmpeg:useBundled'),
+    onStatus: ereignis<(status: FfmpegToolStatus) => void>('ffmpeg:statusUpdate')
+  },
+
+  converter: {
+    /** Was kann das gebündelte ffmpeg (Formate, HDR -> SDR)? */
+    capabilities: anfrage<() => ConvertCapabilities>('converter:capabilities'),
+    /** Geprüfte Encoder für H.264/H.265/ProRes (GPU-Probelauf; das erste Mal dauert's kurz). */
+    encoders: anfrage<() => ConverterEncoderStatus>('converter:encoders'),
+    enqueue: anfrage<(req: ConverterEnqueueRequest) => { jobIds: string[] }>('converter:enqueue'),
+    list: anfrage<() => ConverterJob[]>('converter:list'),
+    cancel: anfrage<(id: string) => void>('converter:cancel'),
+    cancelAll: anfrage('converter:cancelAll'),
+    clearFinished: anfrage('converter:clearFinished'),
+    /** Live-Updates einzelner Aufträge. Liefert eine Cleanup-Funktion. */
+    onUpdate: ereignis<(job: ConverterJob) => void>('converter:update')
+  },
+
+  videoGen: {
+    /** Vorschaubild (media://vgen/…) einer Datei; Videos zum Zeitpunkt timeSec; Breite 320 (Kachel)
+     *  oder 960 (Vorschau). null = nicht lesbar. */
+    thumb:
+      anfrage<(path: string, timeSec: number | null, width?: 320 | 960) => string | null>(
+        'vgen:thumb'
+      ),
+    /** Speicherdialog für das Ergebnis (merkt sich den Ordner). null = abgebrochen. */
+    pickOutput:
+      anfrage<(format: ConvertFormat, suggestedName: string) => string | null>('vgen:pickOutput'),
+    /** Projekt rechnen (wird im main feldweise geprüft); wirft bei ungültiger Eingabe. */
+    enqueue: anfrage<(req: VgenEnqueueRequest) => { jobId: string }>('vgen:enqueue'),
+    list: anfrage<() => VgenJob[]>('vgen:list'),
+    cancel: anfrage<(id: string) => void>('vgen:cancel'),
+    clearFinished: anfrage('vgen:clearFinished'),
+    /** Zwischengespeicherte Stücke löschen (der nächste Lauf rechnet alles neu). */
+    clearCache: anfrage('vgen:clearCache'),
+    /** Live-Updates einzelner Aufträge. Liefert eine Cleanup-Funktion. */
+    onUpdate: ereignis<(job: VgenJob) => void>('vgen:update'),
+    /** „Vorschau rechnen“: kleiner Probelauf um ein Element, exakt wie das Ergebnis. Eine neue
+     *  Anfrage bricht die laufende ab (die meldet dann canceled). */
+    preview: anfrage<(req: VgenPreviewRequest) => VgenPreviewOutcome>('vgen:preview'),
+    cancelPreview: anfrage('vgen:previewCancel'),
+    onPreviewProgress: ereignis<(p: VgenPreviewProgress) => void>('vgen:previewProgress'),
+    /** Abspielbare Adresse (media://vgen/src/…) einer Quelldatei für die Live-Vorschau – nur
+     *  Videos, GIFs und Musik; null = nicht erlaubt oder nicht vorhanden. */
+    source: anfrage<(path: string) => string | null>('vgen:source')
+  },
+
+  mediaInfo: {
+    /** Eckdaten einer Datei (ffprobe). Wirft NICHT bei Datei-/Formatfehlern -> ok:false. */
+    probe: anfrage<(path: string, opts?: MediaProbeOptions) => MediaInfoResult>('mediaInfo:probe'),
+    /** ffprobe-Rohausgabe (formatiertes JSON) oder null. */
+    raw: anfrage<(path: string) => string | null>('mediaInfo:raw'),
+    /** Dateien/Ordner (rekursiv) zu Mediendateien auflösen. */
+    collect: anfrage<(inputs: string[]) => MediaCollectResult>('mediaInfo:collect')
+  },
+
+  manuals: {
+    import: anfrage<(paths: string[]) => ImportSummary>('manuals:import'),
+    list: anfrage<(query?: string) => ManualMeta[]>('manuals:list'),
+    search: anfrage<(query: string) => ManualSearchHit[]>('manuals:search'),
+    /** Volltextsuche innerhalb eines geoeffneten PDFs. */
+    searchInDoc: anfrage<(manualId: number, query: string) => InDocHit[]>('manuals:searchInDoc'),
+    get: anfrage<(id: number) => ManualDetail>('manuals:get'),
+    /** Roh-Bytes des gespeicherten PDFs (fuer den In-App-Viewer). */
+    bytes: anfrage<(id: number) => Uint8Array>('manuals:bytes'),
+    update: anfrage<(id: number, patch: ManualPatch) => ManualMeta>('manuals:update'),
+    delete: anfrage<(id: number) => void>('manuals:delete'),
+    /** Fortschritt waehrend des Imports. Liefert eine Cleanup-Funktion. */
+    onImportProgress: ereignis<(p: ImportProgress) => void>('manuals:importProgress')
+  },
+
+  screen: {
+    list: anfrage<() => DisplayInfo[]>('screen:list')
+  },
+
+  patterns: {
+    /** Ausgabefenster öffnen (Vollbild auf dem Monitor oder als Fenster) bzw. dorthin wechseln. */
+    open: anfrage<(config: PatternConfig, ziel: AusgabeZiel) => void>('pattern:open'),
+    update: anfrage<(config: PatternConfig) => void>('pattern:update'),
+    close: anfrage('pattern:close'),
+    /** Aktuelle Config (das Ausgabefenster holt sie beim Start). */
+    current: anfrage<() => PatternConfig | null>('pattern:current'),
+    /** Ist das Ausgabefenster offen? (Ausgabe-Leiste, auch nach Esc im Ausgabefenster) */
+    isOpen: anfrage<() => boolean>('pattern:isOpen'),
+    onOutputChanged: ereignis<(open: boolean) => void>('pattern:outputChanged'),
+    /** Render-Anweisung an das Ausgabefenster. Liefert eine Cleanup-Funktion. */
+    onRender: ereignis<(config: PatternConfig) => void>('pattern:render'),
+    /** PNG speichern (Save-Dialog im main). Liefert den Pfad oder null. */
+    savePng:
+      anfrage<(bytes: Uint8Array, suggestedName: string) => string | null>('pattern:savePng'),
+    /** Standbild als Video-Loop exportieren (ffmpeg). Liefert den Pfad oder null. */
+    exportVideo: anfrage<(req: PatternVideoRequest) => string | null>('pattern:exportVideo'),
+    /** Pixelcheck-Loop (zyklische Vollfarben) als Video exportieren. */
+    exportColorLoop: anfrage<(req: ColorLoopRequest) => string | null>('pattern:exportColorLoop'),
+    onVideoProgress: ereignis<(p: PatternVideoProgress) => void>('pattern:videoProgress')
+  },
+
+  player: {
+    /** Verfügbare (geprüfte) Encoder + ffmpeg-Status. */
+    encoders: anfrage<() => PlayerEncoderStatus>('player:encoders'),
+    /** Medien importieren + auf Wand-Auflösung konvertieren (Queue). */
+    import: anfrage<(req: PlayerImportRequest) => { jobIds: string[] }>('player:import'),
+    convertList: anfrage<() => ConvertJob[]>('player:convertList'),
+    convertCancel: anfrage<(id: string) => void>('player:convertCancel'),
+    convertClearFinished: anfrage('player:convertClearFinished'),
+    onConvertUpdate: ereignis<(job: ConvertJob) => void>('player:convertUpdate'),
+    /** Bibliothek (alle abspielbereiten Medien). */
+    libraryList: anfrage<() => MediaItem[]>('player:libraryList'),
+    libraryDelete: anfrage<(id: string) => void>('player:libraryDelete'),
+    libraryClear: anfrage('player:libraryClear'),
+    /** Medien neu konvertieren (gleiche id), aus der ORIGINAL-Quelle. `fit`
+     *  überschreibt die Aufbereitung (sonst bleibt der gespeicherte Fit-Modus);
+     *  Blur-Stärke/Abdunkelung kommen immer aus den aktuellen Einstellungen. */
+    reconvert:
+      anfrage<
+        (
+          mediaIds: string[],
+          wall: WallResolution,
+          fit?: FitMode
+        ) => { jobIds: string[]; skipped: number }
+      >('player:reconvert'),
+    /** Datei-Dialog für ein eigenes Idle-Bild/-Video; kopiert es in den Medienordner. */
+    pickIdleMedia:
+      anfrage<() => { url: string; kind: 'image' | 'video' } | null>('player:pickIdleMedia'),
+    /** Speicherort der konvertierten Medien (userData/player-media). */
+    mediaDir: anfrage<() => string>('player:mediaDir'),
+    onLibraryChanged: ereignis('player:libraryChanged'),
+    /** Aktueller Player-Zustand. */
+    getState: anfrage<() => PlayerState>('player:getState'),
+    command: anfrage<(cmd: PlayerCommand) => void>('player:command'),
+    /** Vom Ausgabefenster: aktuelle Position/Dauer melden. */
+    report: anfrage<(positionSec: number, durationSec: number) => void>('player:report'),
+    /** Ausgabe öffnen (Vollbild auf dem Monitor oder als Fenster); das Ziel wird gemerkt. */
+    openOutput: anfrage<(ziel: AusgabeZiel) => void>('player:openOutput'),
+    closeOutput: anfrage('player:closeOutput'),
+    onState: ereignis<(state: PlayerState) => void>('player:state'),
+    onTick: ereignis<(tick: PlayerTick) => void>('player:tick'),
+    /** Status der Tablet-Fernsteuerung (Webserver). */
+    remoteStatus: anfrage<() => RemoteStatus>('player:remoteStatus'),
+    remoteStart: anfrage<(port: number) => RemoteStatus>('player:remoteStart'),
+    remoteStop: anfrage<() => RemoteStatus>('player:remoteStop'),
+    onRemoteChanged: ereignis<(status: RemoteStatus) => void>('player:remoteChanged'),
+    /** NDI-Ausgabe (experimentell): Wiedergabe als NDI-Quelle ins Netz senden. */
+    ndiStart: anfrage<(config: PlayerNdiConfig) => PlayerNdiStatus>('player:ndiStart'),
+    ndiStop: anfrage<() => PlayerNdiStatus>('player:ndiStop'),
+    ndiStatus: anfrage<() => PlayerNdiStatus>('player:ndiStatus'),
+    onNdiChanged: ereignis<(status: PlayerNdiStatus) => void>('player:ndiChanged'),
+    /** Vom NDI-Spiegelfenster: PCM-Block des Audio-Taps (fire-and-forget). */
+    ndiAudio: einweg<(chunk: NdiAudioChunk) => void>('player:ndiAudio'),
+    /** Vom NDI-Spiegelfenster: Fehler beim Aufbau des Audio-Taps melden. */
+    ndiTapError: einweg<(message: string) => void>('player:ndiTapError')
+  },
+
+  remoteApp: {
+    /** Startseite aller Fernsteuerungen: Adresse + welche Fernsteuerungen laufen. */
+    status: anfrage<() => RemoteAppStatus>('remoteApp:status'),
+    onChanged: ereignis<(status: RemoteAppStatus) => void>('remoteApp:changed')
+  },
+
+  timer: {
+    /** Aktueller Timer-Zustand (Steuer-UI und Ausgabefenster holen ihn beim Start). */
+    getState: anfrage<() => StageTimerState>('timer:getState'),
+    command: anfrage<(cmd: TimerCommand) => void>('timer:command'),
+    /** Timeranzeige öffnen (Vollbild auf dem Monitor oder als Fenster) bzw. schließen. */
+    openOutput: anfrage<(ziel: AusgabeZiel) => void>('timer:openOutput'),
+    closeOutput: anfrage('timer:closeOutput'),
+    onState: ereignis<(state: StageTimerState) => void>('timer:state'),
+    onTick: ereignis<(tick: StageTimerTick) => void>('timer:tick'),
+    /** NDI-Ausgabe (experimentell): Timer-Anzeige als NDI-Quelle ins Netz senden. */
+    ndiStart: anfrage<(config: TimerNdiConfig) => TimerNdiStatus>('timer:ndiStart'),
+    ndiStop: anfrage<() => TimerNdiStatus>('timer:ndiStop'),
+    ndiStatus: anfrage<() => TimerNdiStatus>('timer:ndiStatus'),
+    onNdiChanged: ereignis<(status: TimerNdiStatus) => void>('timer:ndiChanged'),
+    /** Fernsteuerung per Handy/Tablet (Webserver). */
+    remoteStatus: anfrage<() => RemoteStatus>('timer:remoteStatus'),
+    remoteStart: anfrage<(port: number) => RemoteStatus>('timer:remoteStart'),
+    remoteStop: anfrage<() => RemoteStatus>('timer:remoteStop'),
+    onRemoteChanged: ereignis<(status: RemoteStatus) => void>('timer:remoteChanged')
+  },
+
+  util: {
+    /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF, services/pdf).
+     *  Liefert den gewählten Pfad oder null (abgebrochen). */
+    exportPdf:
+      anfrage<
+        (html: string, suggestedName: string, page?: PdfPageOptions) => PdfExportResult | null
+      >('util:exportPdf'),
+    /** Dasselbe PDF wie exportPdf, nur ohne Speichern – für die Seitenansicht der Vorschau, die
+     *  die echten Umbrüche zeigt. Bytes wie manuals.bytes, weil pdf.js sie im Renderer braucht. */
+    renderPdf: anfrage<(html: string, page?: PdfPageOptions) => Uint8Array>('util:renderPdf'),
+    /** Eigenständige HTML-Datei speichern (Fotos als data:-URLs eingesetzt, Speichern-Dialog) –
+     *  zum Verschicken, sie lädt nichts nach. Liefert den Pfad oder null (abgebrochen). */
+    exportHtml: anfrage<(html: string, suggestedName: string) => string | null>('util:exportHtml'),
+    /** Text (z.B. JSON) über einen Speichern-Dialog in eine Datei schreiben.
+     *  Liefert den gewählten Pfad oder null (abgebrochen). Ohne filters: JSON. */
+    saveText:
+      anfrage<
+        (
+          text: string,
+          suggestedName: string,
+          filters?: { name: string; extensions: string[] }[]
+        ) => string | null
+      >('util:saveText'),
+    /** Textdatei über einen Öffnen-Dialog einlesen. Liefert den Inhalt oder null. */
+    openText: anfrage<() => string | null>('util:openText'),
+    /** Eine Zeile ins Debug-Log des main-Prozesses schreiben (Feld-Diagnose von
+     *  Renderer-Fehlern, wenn keine DevTools offen sind). */
+    log: einweg<(message: string) => void>('util:log')
+  },
+
+  /** Projektdateien: Jedes Werkzeug liest und schreibt nur seinen Abschnitt (shared/projectFile). */
+  projects: {
+    /** Standard-Speicherort (aufgelöst; der Renderer kennt den Dokumente-Ordner nicht). */
+    dirInfo: anfrage<() => ProjectsDirInfo>('projects:dirInfo'),
+    /** Öffnen: ohne `path` über den Dialog (null = abgebrochen), mit `path` aus „Zuletzt
+     *  geöffnet“. Liefert alle Abschnitte und den angefragten. */
+    open: anfrage<(section: string, path?: string) => ProjectOpenResult | null>('projects:open'),
+    /** „Speichern unter“: Dialog (fresh = im Standard-Projektordner beginnen) und Blick in die
+     *  gewählte Datei; geschrieben wird erst mit save(). null = abgebrochen. */
+    chooseTarget:
+      anfrage<(section: string, suggestedName: string, fresh: boolean) => ProjectSaveTarget | null>(
+        'projects:chooseTarget'
+      ),
+    /** Nur den eigenen Abschnitt schreiben (Konflikt über baseSha, siehe ProjectSaveRequest). */
+    save: anfrage<(request: ProjectSaveRequest) => ProjectSaveResult>('projects:save'),
+    /** Nur lesen, ohne Binden und ohne „Zuletzt geöffnet“ – einen Abschnitt derselben Datei
+     *  (die Anleitung liest die LED-Wall-Planung). null = ungültige Anfrage. */
+    peek: anfrage<(section: string, path: string) => ProjectOpenResult | null>('projects:peek')
+  },
+
+  /** Fotos für Projektdateien: liegen im main, der Renderer kennt nur Hashes (shared/fotos). */
+  fotos: {
+    /** Bilder über den Dialog einfügen (JPG/PNG, mehrere); null = abgebrochen. */
+    pick: anfrage<() => FotoImport[] | null>('fotos:pick')
+  },
+
+  /** Eigene Bausteine des Mini-Manuals: eine Datei je Baustein, später im geteilten Ordner. */
+  bausteine: {
+    list: anfrage<() => EigenerBaustein[]>('bausteine:list'),
+    /** anlegen oder ersetzen (gleiche id); main setzt Zeit, Bearbeiter und Version */
+    save: anfrage<
+      (
+        b: Pick<EigenerBaustein, 'id' | 'art' | 'titel' | 'kapitel' | 'daten'>
+      ) => EigenerBaustein | null
+    >('bausteine:save'),
+    remove: anfrage<(id: string) => boolean>('bausteine:remove'),
+    /**
+     * Zum Weitergeben in eine Datei (Speichern-Dialog im main). Nur Kennungen gehen hinüber –
+     * main schreibt, was in seiner Ablage steht. null = abgebrochen.
+     */
+    export: anfrage<(ids: string[]) => BausteinExport | null>('bausteine:export'),
+    /**
+     * Datei(en) eines Kollegen einlesen (Öffnen-Dialog im main): neu, neuere Version ersetzt,
+     * gleicher Name mit „(2)“ – nie still überschreiben. null = abgebrochen; je Datei ein Ergebnis.
+     */
+    import: anfrage<() => BausteinImport[] | null>('bausteine:import')
+  },
+
+  /** Online-Ablage der Handy-Fassung (Ordner und Adresse in den Einstellungen, App-Menü) */
+  online: {
+    /**
+     * HTML (Fotos setzt main ein) als index.html in einen Ordner der Ablage schreiben. `ordner`:
+     * der bisherige der Anleitung (gleiche Adresse, der QR-Code bleibt gültig) oder null = neu
+     * aus `name` und Zufall, nicht erratbar.
+     */
+    publish:
+      anfrage<(html: string, ordner: string | null, name: string) => OnlinePublish>(
+        'online:publish'
+      )
+  },
+
+  jingles: {
+    /** Audiodateien nach userData/jingles kopieren; liefert die sicheren Namen. */
+    import: anfrage<(paths: string[]) => JingleImportResult[]>('jingle:import'),
+    /** Nicht mehr belegte Dateien aufräumen (alles außer `keep`). */
+    cleanup: anfrage<(keep: string[]) => void>('jingle:cleanup'),
+    /** Roh-Bytes eines Jingles (für die Waveform). null, wenn nicht gefunden. */
+    bytes: anfrage<(storedName: string) => Uint8Array | null>('jingle:bytes'),
+    /** Aktuellen Bank-/Wiedergabe-Schnappschuss an den Fernsteuer-Server geben. */
+    publish: anfrage<(snapshot: JingleRemoteSnapshot) => void>('jingle:publish'),
+    /** Trigger/Stopp-Befehle vom Handy (main -> Renderer). Liefert Cleanup. */
+    onRemoteCommand: ereignis<(cmd: JingleRemoteCommand) => void>('jingle:remoteCommand'),
+    remoteStatus: anfrage<() => RemoteStatus>('jingle:remoteStatus'),
+    remoteStart: anfrage<(port: number) => RemoteStatus>('jingle:remoteStart'),
+    remoteStop: anfrage<() => RemoteStatus>('jingle:remoteStop'),
+    onRemoteChanged: ereignis<(status: RemoteStatus) => void>('jingle:remoteChanged')
+  },
+
+  osc: {
+    /** Eine OSC-Nachricht an host:outPort senden. */
+    send: anfrage<(msg: OscMessage) => void>('osc:send'),
+    /** Mehrere Nachrichten senden (z.B. X+Y eines Pads). */
+    sendMany: anfrage<(msgs: OscMessage[]) => void>('osc:sendMany'),
+    /** Aktueller Verbindungs-/Zählerstatus. */
+    status: anfrage<() => OscStatus>('osc:status'),
+    /** Aktuelle OSC-Einstellungen (Host/Ports/Feedback). */
+    config: anfrage<() => OscSettings>('osc:config'),
+    /** Einstellungen ändern (persistiert + bindet den Feedback-Socket neu). */
+    setConfig: anfrage<(patch: Partial<OscSettings>) => OscStatus>('osc:configSet'),
+    /** Eingehende OSC-Pakete (Feedback). Liefert eine Cleanup-Funktion. */
+    onFeedback: ereignis<(fb: OscFeedback) => void>('osc:feedback'),
+    /** Statusänderungen (Fehler, Feedback-Socket gebunden). Liefert Cleanup. */
+    onStatus: ereignis<(status: OscStatus) => void>('osc:statusChanged'),
+    /** Schnappschuss der Oberfläche an den Fernsteuer-Server. */
+    publish: anfrage<(snapshot: OscRemoteSnapshot) => void>('osc:publish'),
+    /** OSC-Monitor in einem eigenen Fenster öffnen. */
+    openMonitor: anfrage('window:openOscMonitor'),
+    /** Aktuelles Aktivitäts-Log an etwaige Monitor-Fenster spiegeln. */
+    publishMonitor: anfrage<(entries: OscLogEntry[]) => void>('osc:monitorPublish'),
+    /** Gespiegeltes Log empfangen (im Monitor-Fenster). Liefert Cleanup. */
+    onMonitor: ereignis<(entries: OscLogEntry[]) => void>('osc:monitorLog'),
+    /** Steuerbefehle vom Handy/Tablet. Liefert Cleanup. */
+    onRemoteCommand: ereignis<(cmd: OscRemoteCommand) => void>('osc:remoteCommand'),
+    /** Aktueller Status des Fernsteuer-Servers. */
+    remoteStatus: anfrage<() => RemoteStatus>('osc:remoteStatus'),
+    /** Fernsteuer-Server (eingebetteter Webserver) starten. */
+    remoteStart: anfrage<(port: number) => RemoteStatus>('osc:remoteStart'),
+    /** Fernsteuer-Server stoppen. */
+    remoteStop: anfrage<() => RemoteStatus>('osc:remoteStop'),
+    /** Statusänderungen des Fernsteuer-Servers. Liefert Cleanup. */
+    onRemoteChanged: ereignis<(status: RemoteStatus) => void>('osc:remoteChanged')
+  },
+
+  novastar: {
+    /** Mit einem NovaStar-Prozessor verbinden (TCP, Standard-Port 5200). */
+    connect: anfrage<(host: string, port: number) => NovastarStatus>('novastar:connect'),
+    /** Verbindung trennen. */
+    disconnect: anfrage<() => NovastarStatus>('novastar:disconnect'),
+    /** Aktueller Verbindungsstatus. */
+    status: anfrage<() => NovastarStatus>('novastar:status'),
+    /** Statusänderungen. Liefert Cleanup. */
+    onStatus: ereignis<(s: NovastarStatus) => void>('novastar:statusChanged'),
+    /** Bild-Helligkeit setzen (Prozent 0..100). */
+    brightness: anfrage<(pct: number) => void>('novastar:brightness'),
+    /** Empfangskarten schwarz schalten (echter Blackout) / zurück auf Normalbild. */
+    blackout: anfrage<(on: boolean) => void>('novastar:blackout'),
+    /** Bild einfrieren / auftauen. */
+    freeze: anfrage<(on: boolean) => void>('novastar:freeze'),
+    /** Preset/Szene 1..26 abrufen. */
+    preset: anfrage<(n: number) => void>('novastar:preset'),
+    /** Roh-Befehl als Hex senden; addChecksum ergänzt Prüfsumme automatisch. */
+    raw: anfrage<(hex: string, addChecksum: boolean) => void>('novastar:raw')
+  },
+
+  netscan: {
+    /** Scannbare lokale IPv4-Interfaces auflisten. */
+    interfaces: anfrage<() => NetInterface[]>('netscan:interfaces'),
+    /** Scan über das Subnetz des gewählten Interfaces starten. */
+    start: anfrage<(interfaceAddress: string) => NetScanProgress>('netscan:start'),
+    /** Laufenden Scan abbrechen. */
+    stop: anfrage<() => NetScanProgress>('netscan:stop'),
+    /** Fortschritt (laufend/Phase/Zähler). Liefert Cleanup. */
+    onProgress: ereignis<(p: NetScanProgress) => void>('netscan:progress'),
+    /** Gefundenes/aktualisiertes Gerät (Upsert nach IP). Liefert Cleanup. */
+    onDevice: ereignis<(d: NetDevice) => void>('netscan:device')
+  },
+
+  youtube: {
+    /** yt-dlp-Status (vorhanden? Version? ffmpeg?). */
+    status: anfrage<() => YtToolStatus>('yt:status'),
+    /** Auf die neueste Version prüfen und bei Bedarf laden. Neuer Status. */
+    updateTool: anfrage<() => YtToolStatus>('yt:update'),
+    /** Adresse analysieren: einzelnes Video oder Playlist samt Einträgen (flach). */
+    probe: anfrage<(url: string) => YtProbeResult>('yt:probe'),
+    enqueue: anfrage<(req: YtEnqueueRequest) => { jobId: string }>('yt:enqueue'),
+    list: anfrage<() => YtJob[]>('yt:list'),
+    cancel: anfrage<(id: string) => void>('yt:cancel'),
+    clearFinished: anfrage('yt:clearFinished'),
+    onJobUpdate: ereignis<(job: YtJob) => void>('yt:jobUpdate'),
+    /** Statusänderungen (Startprüfung, Aktualisierung) beobachten. */
+    onStatusUpdate: ereignis<(status: YtToolStatus) => void>('yt:statusUpdate')
+  }
+}
+
+/** Die API, die eine Kanal-Tabelle ergibt. */
+export type ApiAus<T> = {
+  [K in keyof T]: T[K] extends Anfrage<infer F>
+    ? (...args: Parameters<F>) => Promise<ReturnType<F>>
+    : T[K] extends Einweg<infer F>
+      ? F
+      : T[K] extends Ereignis<infer F>
+        ? (cb: F) => () => void
+        : ApiAus<T[K]>
+}
+
+/** Die komplette, getypte Brücke window.api. */
+export type ToolboxApi = ApiAus<typeof Channels> & {
+  /** Absoluter Pfad einer per Drag&Drop fallengelassenen Datei (Electron webUtils). */
+  pathForFile(file: File): string
+}
 
 /** Custom-Protocol, ueber das der renderer importierte PDFs laden darf. */
 export const MANUAL_PROTOCOL = 'manual'
@@ -298,406 +569,3 @@ export const MEDIA_PROTOCOL = 'media'
 
 /** Custom-Protocol fuer Jingle-Audiodateien (userData/jingles). */
 export const JINGLE_PROTOCOL = 'jingle'
-
-/** Die komplette, getypte Bruecke window.api. */
-export interface ToolboxApi {
-  selectPaths(options: SelectPathsOptions): Promise<string[]>
-  /** Native Ja/Nein-Rückfrage (main-Prozess). Ersetzt window.confirm(), das
-   *  danach die Tastatureingabe in Textfeldern lahmlegt. true = bestätigt. */
-  confirm(options: ConfirmOptions): Promise<boolean>
-  /** Native Rückfrage mit 2–4 Antworten; liefert den Index des Knopfs (Esc = cancelId). */
-  choose(options: ChooseOptions): Promise<number>
-  /**
-   * Werkzeug meldet, dass etwas läuft, das main nicht kennt (Ton im Fenster) – die Rückfrage beim
-   * Beenden nennt es. Je Fenster; ein geschlossenes Fenster zählt nicht mehr.
-   */
-  setAktiv(key: 'testton' | 'jingle', an: boolean): void
-  /** Native Hinweis-Meldung (main-Prozess). Ersetzt window.alert() (gleicher
-   *  Tastatur-Bug). */
-  notify(options: NotifyOptions): Promise<void>
-  openPath(target: string): Promise<void>
-  showItemInFolder(target: string): Promise<void>
-  getSettings(): Promise<AppSettings>
-  /** Nur die zu ändernden Felder schicken – auch in player/osc/… (wird feldweise
-   *  zusammengeführt); Listen werden als Ganzes ersetzt. */
-  setSettings(patch: SettingsPatch): Promise<AppSettings>
-  /** Einstellungen wurden anderswo geändert (anderes Fenster, Handy, main). Liefert Cleanup. */
-  onSettingsChanged(cb: (settings: AppSettings) => void): () => void
-  /** Pfad zur Debug-Logdatei (zum Anzeigen/Mitschicken). */
-  getLogPath(): Promise<string>
-  /** Absoluter Pfad einer per Drag&Drop fallengelassenen Datei (Electron webUtils). */
-  pathForFile(file: File): string
-  /** Öffnet ein Tool in einem eigenen Fenster (parallele Nutzung). */
-  openToolWindow(id: string): Promise<void>
-  /**
-   * Kleines Werkzeugfenster: gemessene Inhaltshöhe (Kopfleiste + Seite, CSS-px) melden – main
-   * passt die Fensterhöhe an (Schrift je System, Kompaktmodus, Breite). Andere Fenster: nichts.
-   */
-  fitToolWindow(height: number): Promise<void>
-
-  ffmpeg: {
-    probe(path: string): Promise<ProbeResult>
-    /** Welches ffmpeg läuft (mitgeliefert/aktualisiert), liegt ein neuer Build bereit? */
-    status(): Promise<FfmpegToolStatus>
-    /** Jetzt nach einem neueren Build suchen (mind. 7 Tage alt), laden, prüfen – gilt ab dem
-     *  nächsten Start. */
-    checkUpdate(): Promise<FfmpegToolStatus>
-    /** Ab dem nächsten Start wieder das mitgelieferte ffmpeg (falls ein Build Ärger macht). */
-    useBundled(): Promise<FfmpegToolStatus>
-    onStatus(cb: (status: FfmpegToolStatus) => void): () => void
-  }
-
-  converter: {
-    /** Was kann das gebündelte ffmpeg (Formate, HDR -> SDR)? */
-    capabilities(): Promise<ConvertCapabilities>
-    /** Geprüfte Encoder für H.264/H.265/ProRes (GPU-Probelauf; das erste Mal dauert's kurz). */
-    encoders(): Promise<ConverterEncoderStatus>
-    enqueue(req: ConverterEnqueueRequest): Promise<{ jobIds: string[] }>
-    list(): Promise<ConverterJob[]>
-    cancel(id: string): Promise<void>
-    cancelAll(): Promise<void>
-    clearFinished(): Promise<void>
-    /** Live-Updates einzelner Aufträge. Liefert eine Cleanup-Funktion. */
-    onUpdate(cb: (job: ConverterJob) => void): () => void
-  }
-
-  videoGen: {
-    /** Vorschaubild (media://vgen/…) einer Datei; Videos zum Zeitpunkt timeSec; Breite 320 (Kachel)
-     *  oder 960 (Vorschau). null = nicht lesbar. */
-    thumb(path: string, timeSec: number | null, width?: 320 | 960): Promise<string | null>
-    /** Speicherdialog für das Ergebnis (merkt sich den Ordner). null = abgebrochen. */
-    pickOutput(format: ConvertFormat, suggestedName: string): Promise<string | null>
-    /** Projekt rechnen (wird im main feldweise geprüft); wirft bei ungültiger Eingabe. */
-    enqueue(req: VgenEnqueueRequest): Promise<{ jobId: string }>
-    list(): Promise<VgenJob[]>
-    cancel(id: string): Promise<void>
-    clearFinished(): Promise<void>
-    /** Zwischengespeicherte Stücke löschen (der nächste Lauf rechnet alles neu). */
-    clearCache(): Promise<void>
-    /** Live-Updates einzelner Aufträge. Liefert eine Cleanup-Funktion. */
-    onUpdate(cb: (job: VgenJob) => void): () => void
-    /** „Vorschau rechnen“: kleiner Probelauf um ein Element, exakt wie das Ergebnis. Eine neue
-     *  Anfrage bricht die laufende ab (die meldet dann canceled). */
-    preview(req: VgenPreviewRequest): Promise<VgenPreviewOutcome>
-    cancelPreview(): Promise<void>
-    onPreviewProgress(cb: (p: VgenPreviewProgress) => void): () => void
-    /** Abspielbare Adresse (media://vgen/src/…) einer Quelldatei für die Live-Vorschau – nur
-     *  Videos, GIFs und Musik; null = nicht erlaubt oder nicht vorhanden. */
-    source(path: string): Promise<string | null>
-  }
-
-  mediaInfo: {
-    /** Eckdaten einer Datei (ffprobe). Wirft NICHT bei Datei-/Formatfehlern -> ok:false. */
-    probe(path: string, opts?: MediaProbeOptions): Promise<MediaInfoResult>
-    /** ffprobe-Rohausgabe (formatiertes JSON) oder null. */
-    raw(path: string): Promise<string | null>
-    /** Dateien/Ordner (rekursiv) zu Mediendateien auflösen. */
-    collect(inputs: string[]): Promise<MediaCollectResult>
-  }
-
-  manuals: {
-    import(paths: string[]): Promise<ImportSummary>
-    list(query?: string): Promise<ManualMeta[]>
-    search(query: string): Promise<ManualSearchHit[]>
-    /** Volltextsuche innerhalb eines geoeffneten PDFs. */
-    searchInDoc(manualId: number, query: string): Promise<InDocHit[]>
-    get(id: number): Promise<ManualDetail>
-    /** Roh-Bytes des gespeicherten PDFs (fuer den In-App-Viewer). */
-    bytes(id: number): Promise<Uint8Array>
-    update(id: number, patch: ManualPatch): Promise<ManualMeta>
-    delete(id: number): Promise<void>
-    /** Fortschritt waehrend des Imports. Liefert eine Cleanup-Funktion. */
-    onImportProgress(cb: (p: ImportProgress) => void): () => void
-  }
-
-  screen: {
-    list(): Promise<DisplayInfo[]>
-  }
-
-  patterns: {
-    /** Ausgabefenster öffnen (Vollbild auf dem Monitor oder als Fenster) bzw. dorthin wechseln. */
-    open(config: PatternConfig, ziel: AusgabeZiel): Promise<void>
-    update(config: PatternConfig): Promise<void>
-    close(): Promise<void>
-    /** Aktuelle Config (das Ausgabefenster holt sie beim Start). */
-    current(): Promise<PatternConfig | null>
-    /** Ist das Ausgabefenster offen? (Ausgabe-Leiste, auch nach Esc im Ausgabefenster) */
-    isOpen(): Promise<boolean>
-    onOutputChanged(cb: (open: boolean) => void): () => void
-    /** Render-Anweisung an das Ausgabefenster. Liefert eine Cleanup-Funktion. */
-    onRender(cb: (config: PatternConfig) => void): () => void
-    /** PNG speichern (Save-Dialog im main). Liefert den Pfad oder null. */
-    savePng(bytes: Uint8Array, suggestedName: string): Promise<string | null>
-    /** Standbild als Video-Loop exportieren (ffmpeg). Liefert den Pfad oder null. */
-    exportVideo(req: PatternVideoRequest): Promise<string | null>
-    /** Pixelcheck-Loop (zyklische Vollfarben) als Video exportieren. */
-    exportColorLoop(req: ColorLoopRequest): Promise<string | null>
-    onVideoProgress(cb: (p: PatternVideoProgress) => void): () => void
-  }
-
-  player: {
-    /** Verfügbare (geprüfte) Encoder + ffmpeg-Status. */
-    encoders(): Promise<PlayerEncoderStatus>
-    /** Medien importieren + auf Wand-Auflösung konvertieren (Queue). */
-    import(req: PlayerImportRequest): Promise<{ jobIds: string[] }>
-    convertList(): Promise<ConvertJob[]>
-    convertCancel(id: string): Promise<void>
-    convertClearFinished(): Promise<void>
-    onConvertUpdate(cb: (job: ConvertJob) => void): () => void
-    /** Bibliothek (alle abspielbereiten Medien). */
-    libraryList(): Promise<MediaItem[]>
-    libraryDelete(id: string): Promise<void>
-    libraryClear(): Promise<void>
-    /** Medien neu konvertieren (gleiche id), aus der ORIGINAL-Quelle. `fit`
-     *  überschreibt die Aufbereitung (sonst bleibt der gespeicherte Fit-Modus);
-     *  Blur-Stärke/Abdunkelung kommen immer aus den aktuellen Einstellungen. */
-    reconvert(
-      mediaIds: string[],
-      wall: WallResolution,
-      fit?: FitMode
-    ): Promise<{ jobIds: string[]; skipped: number }>
-    /** Datei-Dialog für ein eigenes Idle-Bild/-Video; kopiert es in den Medienordner. */
-    pickIdleMedia(): Promise<{ url: string; kind: 'image' | 'video' } | null>
-    /** Speicherort der konvertierten Medien (userData/player-media). */
-    mediaDir(): Promise<string>
-    onLibraryChanged(cb: () => void): () => void
-    /** Aktueller Player-Zustand. */
-    getState(): Promise<PlayerState>
-    command(cmd: PlayerCommand): Promise<void>
-    /** Vom Ausgabefenster: aktuelle Position/Dauer melden. */
-    report(positionSec: number, durationSec: number): Promise<void>
-    /** Ausgabe öffnen (Vollbild auf dem Monitor oder als Fenster); das Ziel wird gemerkt. */
-    openOutput(ziel: AusgabeZiel): Promise<void>
-    closeOutput(): Promise<void>
-    onState(cb: (state: PlayerState) => void): () => void
-    onTick(cb: (tick: PlayerTick) => void): () => void
-    /** Status der Tablet-Fernsteuerung (Webserver). */
-    remoteStatus(): Promise<RemoteStatus>
-    remoteStart(port: number): Promise<RemoteStatus>
-    remoteStop(): Promise<RemoteStatus>
-    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
-    /** NDI-Ausgabe (experimentell): Wiedergabe als NDI-Quelle ins Netz senden. */
-    ndiStart(config: PlayerNdiConfig): Promise<PlayerNdiStatus>
-    ndiStop(): Promise<PlayerNdiStatus>
-    ndiStatus(): Promise<PlayerNdiStatus>
-    onNdiChanged(cb: (status: PlayerNdiStatus) => void): () => void
-    /** Vom NDI-Spiegelfenster: PCM-Block des Audio-Taps (fire-and-forget). */
-    ndiAudio(chunk: NdiAudioChunk): void
-    /** Vom NDI-Spiegelfenster: Fehler beim Aufbau des Audio-Taps melden. */
-    ndiTapError(message: string): void
-  }
-
-  remoteApp: {
-    /** Startseite aller Fernsteuerungen: Adresse + welche Fernsteuerungen laufen. */
-    status(): Promise<RemoteAppStatus>
-    onChanged(cb: (status: RemoteAppStatus) => void): () => void
-  }
-
-  timer: {
-    /** Aktueller Timer-Zustand (Steuer-UI und Ausgabefenster holen ihn beim Start). */
-    getState(): Promise<StageTimerState>
-    command(cmd: TimerCommand): Promise<void>
-    /** Timeranzeige öffnen (Vollbild auf dem Monitor oder als Fenster) bzw. schließen. */
-    openOutput(ziel: AusgabeZiel): Promise<void>
-    closeOutput(): Promise<void>
-    onState(cb: (state: StageTimerState) => void): () => void
-    onTick(cb: (tick: StageTimerTick) => void): () => void
-    /** NDI-Ausgabe (experimentell): Timer-Anzeige als NDI-Quelle ins Netz senden. */
-    ndiStart(config: TimerNdiConfig): Promise<TimerNdiStatus>
-    ndiStop(): Promise<TimerNdiStatus>
-    ndiStatus(): Promise<TimerNdiStatus>
-    onNdiChanged(cb: (status: TimerNdiStatus) => void): () => void
-    /** Fernsteuerung per Handy/Tablet (Webserver). */
-    remoteStatus(): Promise<RemoteStatus>
-    remoteStart(port: number): Promise<RemoteStatus>
-    remoteStop(): Promise<RemoteStatus>
-    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
-  }
-
-  util: {
-    /** Fertiges HTML als PDF speichern (verstecktes Fenster + printToPDF, services/pdf).
-     *  Liefert den gewählten Pfad oder null (abgebrochen). */
-    exportPdf(
-      html: string,
-      suggestedName: string,
-      page?: PdfPageOptions
-    ): Promise<PdfExportResult | null>
-    /** Dasselbe PDF wie exportPdf, nur ohne Speichern – für die Seitenansicht der Vorschau, die
-     *  die echten Umbrüche zeigt. Bytes wie manuals.bytes, weil pdf.js sie im Renderer braucht. */
-    renderPdf(html: string, page?: PdfPageOptions): Promise<Uint8Array>
-    /** Eigenständige HTML-Datei speichern (Fotos als data:-URLs eingesetzt, Speichern-Dialog) –
-     *  zum Verschicken, sie lädt nichts nach. Liefert den Pfad oder null (abgebrochen). */
-    exportHtml(html: string, suggestedName: string): Promise<string | null>
-    /** Text (z.B. JSON) über einen Speichern-Dialog in eine Datei schreiben.
-     *  Liefert den gewählten Pfad oder null (abgebrochen). Ohne filters: JSON. */
-    saveText(
-      text: string,
-      suggestedName: string,
-      filters?: { name: string; extensions: string[] }[]
-    ): Promise<string | null>
-    /** Textdatei über einen Öffnen-Dialog einlesen. Liefert den Inhalt oder null. */
-    openText(): Promise<string | null>
-    /** Eine Zeile ins Debug-Log des main-Prozesses schreiben (Feld-Diagnose von
-     *  Renderer-Fehlern, wenn keine DevTools offen sind). */
-    log(message: string): void
-  }
-
-  /** Projektdateien: Jedes Werkzeug liest und schreibt nur seinen Abschnitt (shared/projectFile). */
-  projects: {
-    /** Standard-Speicherort (aufgelöst; der Renderer kennt den Dokumente-Ordner nicht). */
-    dirInfo(): Promise<ProjectsDirInfo>
-    /** Öffnen: ohne `path` über den Dialog (null = abgebrochen), mit `path` aus „Zuletzt
-     *  geöffnet“. Liefert alle Abschnitte und den angefragten. */
-    open(section: string, path?: string): Promise<ProjectOpenResult | null>
-    /** „Speichern unter“: Dialog (fresh = im Standard-Projektordner beginnen) und Blick in die
-     *  gewählte Datei; geschrieben wird erst mit save(). null = abgebrochen. */
-    chooseTarget(
-      section: string,
-      suggestedName: string,
-      fresh: boolean
-    ): Promise<ProjectSaveTarget | null>
-    /** Nur den eigenen Abschnitt schreiben (Konflikt über baseSha, siehe ProjectSaveRequest). */
-    save(request: ProjectSaveRequest): Promise<ProjectSaveResult>
-    /** Nur lesen, ohne Binden und ohne „Zuletzt geöffnet“ – einen Abschnitt derselben Datei
-     *  (die Anleitung liest die LED-Wall-Planung). null = ungültige Anfrage. */
-    peek(section: string, path: string): Promise<ProjectOpenResult | null>
-  }
-
-  /** Fotos für Projektdateien: liegen im main, der Renderer kennt nur Hashes (shared/fotos). */
-  fotos: {
-    /** Bilder über den Dialog einfügen (JPG/PNG, mehrere); null = abgebrochen. */
-    pick(): Promise<FotoImport[] | null>
-  }
-
-  /** Eigene Bausteine des Mini-Manuals: eine Datei je Baustein, später im geteilten Ordner. */
-  bausteine: {
-    list(): Promise<EigenerBaustein[]>
-    /** anlegen oder ersetzen (gleiche id); main setzt Zeit, Bearbeiter und Version */
-    save(
-      b: Pick<EigenerBaustein, 'id' | 'art' | 'titel' | 'kapitel' | 'daten'>
-    ): Promise<EigenerBaustein | null>
-    remove(id: string): Promise<boolean>
-    /**
-     * Zum Weitergeben in eine Datei (Speichern-Dialog im main). Nur Kennungen gehen hinüber –
-     * main schreibt, was in seiner Ablage steht. null = abgebrochen.
-     */
-    export(ids: string[]): Promise<BausteinExport | null>
-    /**
-     * Datei(en) eines Kollegen einlesen (Öffnen-Dialog im main): neu, neuere Version ersetzt,
-     * gleicher Name mit „(2)“ – nie still überschreiben. null = abgebrochen; je Datei ein Ergebnis.
-     */
-    import(): Promise<BausteinImport[] | null>
-  }
-
-  /** Online-Ablage der Handy-Fassung (Ordner und Adresse in den Einstellungen, App-Menü) */
-  online: {
-    /**
-     * HTML (Fotos setzt main ein) als index.html in einen Ordner der Ablage schreiben. `ordner`:
-     * der bisherige der Anleitung (gleiche Adresse, der QR-Code bleibt gültig) oder null = neu
-     * aus `name` und Zufall, nicht erratbar.
-     */
-    publish(html: string, ordner: string | null, name: string): Promise<OnlinePublish>
-  }
-
-  jingles: {
-    /** Audiodateien nach userData/jingles kopieren; liefert die sicheren Namen. */
-    import(paths: string[]): Promise<JingleImportResult[]>
-    /** Nicht mehr belegte Dateien aufräumen (alles außer `keep`). */
-    cleanup(keep: string[]): Promise<void>
-    /** Roh-Bytes eines Jingles (für die Waveform). null, wenn nicht gefunden. */
-    bytes(storedName: string): Promise<Uint8Array | null>
-    /** Aktuellen Bank-/Wiedergabe-Schnappschuss an den Fernsteuer-Server geben. */
-    publish(snapshot: JingleRemoteSnapshot): Promise<void>
-    /** Trigger/Stopp-Befehle vom Handy (main -> Renderer). Liefert Cleanup. */
-    onRemoteCommand(cb: (cmd: JingleRemoteCommand) => void): () => void
-    remoteStatus(): Promise<RemoteStatus>
-    remoteStart(port: number): Promise<RemoteStatus>
-    remoteStop(): Promise<RemoteStatus>
-    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
-  }
-
-  osc: {
-    /** Eine OSC-Nachricht an host:outPort senden. */
-    send(msg: OscMessage): Promise<void>
-    /** Mehrere Nachrichten senden (z.B. X+Y eines Pads). */
-    sendMany(msgs: OscMessage[]): Promise<void>
-    /** Aktueller Verbindungs-/Zählerstatus. */
-    status(): Promise<OscStatus>
-    /** Aktuelle OSC-Einstellungen (Host/Ports/Feedback). */
-    config(): Promise<OscSettings>
-    /** Einstellungen ändern (persistiert + bindet den Feedback-Socket neu). */
-    setConfig(patch: Partial<OscSettings>): Promise<OscStatus>
-    /** Eingehende OSC-Pakete (Feedback). Liefert eine Cleanup-Funktion. */
-    onFeedback(cb: (fb: OscFeedback) => void): () => void
-    /** Statusänderungen (Fehler, Feedback-Socket gebunden). Liefert Cleanup. */
-    onStatus(cb: (status: OscStatus) => void): () => void
-    /** Schnappschuss der Oberfläche an den Fernsteuer-Server. */
-    publish(snapshot: OscRemoteSnapshot): Promise<void>
-    /** OSC-Monitor in einem eigenen Fenster öffnen. */
-    openMonitor(): Promise<void>
-    /** Aktuelles Aktivitäts-Log an etwaige Monitor-Fenster spiegeln. */
-    publishMonitor(entries: OscLogEntry[]): Promise<void>
-    /** Gespiegeltes Log empfangen (im Monitor-Fenster). Liefert Cleanup. */
-    onMonitor(cb: (entries: OscLogEntry[]) => void): () => void
-    /** Steuerbefehle vom Handy/Tablet. Liefert Cleanup. */
-    onRemoteCommand(cb: (cmd: OscRemoteCommand) => void): () => void
-    /** Aktueller Status des Fernsteuer-Servers. */
-    remoteStatus(): Promise<RemoteStatus>
-    /** Fernsteuer-Server (eingebetteter Webserver) starten. */
-    remoteStart(port: number): Promise<RemoteStatus>
-    /** Fernsteuer-Server stoppen. */
-    remoteStop(): Promise<RemoteStatus>
-    /** Statusänderungen des Fernsteuer-Servers. Liefert Cleanup. */
-    onRemoteChanged(cb: (status: RemoteStatus) => void): () => void
-  }
-
-  novastar: {
-    /** Mit einem NovaStar-Prozessor verbinden (TCP, Standard-Port 5200). */
-    connect(host: string, port: number): Promise<NovastarStatus>
-    /** Verbindung trennen. */
-    disconnect(): Promise<NovastarStatus>
-    /** Aktueller Verbindungsstatus. */
-    status(): Promise<NovastarStatus>
-    /** Statusänderungen. Liefert Cleanup. */
-    onStatus(cb: (s: NovastarStatus) => void): () => void
-    /** Bild-Helligkeit setzen (Prozent 0..100). */
-    brightness(pct: number): Promise<void>
-    /** Empfangskarten schwarz schalten (echter Blackout) / zurück auf Normalbild. */
-    blackout(on: boolean): Promise<void>
-    /** Bild einfrieren / auftauen. */
-    freeze(on: boolean): Promise<void>
-    /** Preset/Szene 1..26 abrufen. */
-    preset(n: number): Promise<void>
-    /** Roh-Befehl als Hex senden; addChecksum ergänzt Prüfsumme automatisch. */
-    raw(hex: string, addChecksum: boolean): Promise<void>
-  }
-
-  netscan: {
-    /** Scannbare lokale IPv4-Interfaces auflisten. */
-    interfaces(): Promise<NetInterface[]>
-    /** Scan über das Subnetz des gewählten Interfaces starten. */
-    start(interfaceAddress: string): Promise<NetScanProgress>
-    /** Laufenden Scan abbrechen. */
-    stop(): Promise<NetScanProgress>
-    /** Fortschritt (laufend/Phase/Zähler). Liefert Cleanup. */
-    onProgress(cb: (p: NetScanProgress) => void): () => void
-    /** Gefundenes/aktualisiertes Gerät (Upsert nach IP). Liefert Cleanup. */
-    onDevice(cb: (d: NetDevice) => void): () => void
-  }
-
-  youtube: {
-    /** yt-dlp-Status (vorhanden? Version? ffmpeg?). */
-    status(): Promise<YtToolStatus>
-    /** Auf die neueste Version prüfen und bei Bedarf laden. Neuer Status. */
-    updateTool(): Promise<YtToolStatus>
-    /** Adresse analysieren: einzelnes Video oder Playlist samt Einträgen (flach). */
-    probe(url: string): Promise<YtProbeResult>
-    enqueue(req: YtEnqueueRequest): Promise<{ jobId: string }>
-    list(): Promise<YtJob[]>
-    cancel(id: string): Promise<void>
-    clearFinished(): Promise<void>
-    onJobUpdate(cb: (job: YtJob) => void): () => void
-    /** Statusänderungen (Startprüfung, Aktualisierung) beobachten. */
-    onStatusUpdate(cb: (status: YtToolStatus) => void): () => void
-  }
-}

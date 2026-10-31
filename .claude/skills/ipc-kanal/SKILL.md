@@ -1,27 +1,44 @@
 ---
 name: ipc-kanal
-description: Neue IPC-Fläche in Mottulbox anlegen (Channel + ToolboxApi-Methode + Preload-Mapping + Handler, optional Event an den Renderer). Verwenden, sobald ein Werkzeug etwas vom main-Prozess braucht – Dateien, ffmpeg, Dialoge, Dienste – oder main dem Renderer etwas melden soll.
+description: Neue IPC-Fläche in Mottulbox anlegen (Eintrag im Vertrag + Handler, optional Event an den Renderer). Verwenden, sobald ein Werkzeug etwas vom main-Prozess braucht – Dateien, ffmpeg, Dialoge, Dienste – oder main dem Renderer etwas melden soll.
 ---
 
 # Neue IPC-Fläche anlegen
 
-Vier Stellen gehören immer zusammen (Git-Historie: `types.ts`, `ipc-contracts.ts` und
-`preload/index.ts` werden fast bei jeder Funktion gemeinsam geändert). `ToolboxApi` zwingt den
-Preload per Typ zur Vollständigkeit – `npm run typecheck` zeigt vergessene Stellen.
+Zwei Stellen, dazu die Domain-Typen: Der Vertrag ist die einzige Quelle, `window.api` entsteht
+daraus (`src/preload/baueApi.ts`), den Preload fasst niemand an. Der Compiler prüft den Handler
+gegen den Vertrag; ein Test meldet Kanäle ohne Gegenstelle im main.
 
 1. **Typen** in `src/shared/types.ts` (Anfrage, Antwort, Event-Nutzlast).
-2. **Vertrag** in `src/shared/ipc-contracts.ts`:
-   - `Channels`: Schema `<bereich><Aktion>: '<bereich>:<aktion>'`, z. B.
-     `converterEnqueue: 'converter:enqueue'`. Events mit Kommentar `// Event: Typ`.
-   - `ToolboxApi`: Methode im Namensraum des Bereichs (`converter: { … }`) mit kurzem
-     Kommentar zum Warum. Events als `onXyz(cb): () => void` (Rückgabe = Abmelden).
-3. **Preload** `src/preload/index.ts`: Aufruf `ipcRenderer.invoke(Channels.x, …)`; Events
-   über `subscribe(Channels.x, (v) => cb(v as never))` (räumt Listener auf).
-4. **Handler** in `src/main/ipc/<bereich>.handlers.ts`: `ipcMain.handle(Channels.x, (_e, arg) => …)`.
-   Neue Datei → `registerXHandlers()` in `src/main/ipc/registry.ts` importieren und aufrufen.
-   - Events: `broadcast(Channels.x, payload)` (`services/broadcast`, alle Fenster) bzw.
-     `broadcastExcept` (ohne auslösendes Fenster). Dienste melden über einen Sink, z. B.
-     `converterJobs.setSink((job) => broadcast(Channels.converterUpdate, job))`.
+2. **Vertrag:** ein Eintrag in `Channels` (`src/shared/ipc-contracts.ts`), im Abschnitt des Bereichs
+   und mit kurzem Kommentar zum Warum. Der Pfad ist auch der Name in `window.api`:
+
+   ```ts
+   converter: {
+     /** … */
+     enqueue: anfrage<(req: ConverterEnqueueRequest) => { jobIds: string[] }>('converter:enqueue'),
+     cancelAll: anfrage('converter:cancelAll'), // ohne Typ: () => void
+     onUpdate: ereignis<(job: ConverterJob) => void>('converter:update')
+   },
+   util: { log: einweg<(message: string) => void>('util:log') }
+   ```
+
+   - `anfrage`: Antwort kommt. Signatur **ohne** Promise, das ergänzt die API.
+   - `ereignis`: main meldet. Name immer `onXyz`; der Typ ist der Callback, die API liefert das
+     Abmelden.
+   - `einweg`: ohne Antwort, nur für Häufiges oder was nie werfen darf (PCM-Blöcke, Log).
+   - Der Kanalname (`bereich:aktion`) muss eindeutig sein – der Test prüft es.
+3. **Handler** in `src/main/ipc/<bereich>.handlers.ts`: `handle(Channels.converter.enqueue, (_e, req) => …)`
+   bzw. `on(…)` für Einweg, beide aus `ipc/kanal.ts`; `ipcMain` direkt sperrt ESLint.
+   Parameter und Ergebnis kommen aus dem Vertrag, nicht wiederholen. Prüft der Handler selbst,
+   nimmt er den Parameter als `unknown` an. Neue Datei → `registerXHandlers()` in
+   `src/main/ipc/registry.ts` importieren und aufrufen.
+   - Events: `broadcast(Channels.x.onY, payload)` (`services/broadcast`, alle Fenster),
+     `broadcastExcept` (ohne auslösendes Fenster) oder `sendeAn(e.sender, …)` (nur der Anfrager).
+     Nie `webContents.send` direkt: Das prüft die Nutzlast nicht. Dienste melden über einen Sink,
+     z. B. `converterJobs.setSink((job) => broadcast(Channels.converter.onUpdate, job))`.
+   - Fernsteuerung: vier gleich benannte Einträge (`remoteStatus`, `remoteStart`, `remoteStop`,
+     `onRemoteChanged`) und `registerRemoteControl({ channels: Channels.<bereich>, … })`.
 
 ## Regeln
 

@@ -1,7 +1,7 @@
 // Projektdateien (.mottul): Projektordner, Öffnen, Ziel für „Speichern unter“, Abschnitt speichern.
 // Dünne Hülle um services/projects; geprüft wird dort (Pfade, Abschnitt, Version, Größe).
 
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow } from 'electron'
 import { join } from 'node:path'
 import { Channels } from '@shared/ipc-contracts'
 import {
@@ -20,13 +20,14 @@ import {
 } from '../services/projects/projectFiles'
 import { ensureProjectsDir, projectsDirInfo } from '../services/projects/projectsDir'
 import { getSettings } from '../services/store'
+import { handle } from './kanal'
 
 const FILTERS = [{ name: 'Mottulbox-Projekt', extensions: [PROJECT_EXT] }]
 
 export function registerProjectsHandlers(): void {
-  ipcMain.handle(Channels.projectsDirInfo, () => projectsDirInfo())
+  handle(Channels.projects.dirInfo, () => projectsDirInfo())
 
-  ipcMain.handle(Channels.projectsOpen, async (e, section: unknown, path?: unknown) => {
+  handle(Channels.projects.open, async (e, section: unknown, path?: unknown) => {
     if (!isProjectSectionKey(section)) return null
     if (path !== undefined) {
       // nur aus „Zuletzt geöffnet“ – kein beliebiger Pfad vom Renderer
@@ -44,8 +45,8 @@ export function registerProjectsHandlers(): void {
     return chosen ? openProject(chosen, section) : null
   })
 
-  ipcMain.handle(
-    Channels.projectsChooseTarget,
+  handle(
+    Channels.projects.chooseTarget,
     async (e, section: unknown, suggestedName: unknown, fresh: unknown) => {
       if (!isProjectSectionKey(section)) return null
       const name = projectFileName(typeof suggestedName === 'string' ? suggestedName : '')
@@ -64,10 +65,10 @@ export function registerProjectsHandlers(): void {
     }
   )
 
-  ipcMain.handle(Channels.projectsSave, (_e, request: ProjectSaveRequest) => saveSection(request))
+  handle(Channels.projects.save, (_e, request: ProjectSaveRequest) => saveSection(request))
 
   // nur lesen (kein Binden): z. B. die LED-Wall-Planung der Datei, an die die Anleitung gebunden ist
-  ipcMain.handle(Channels.projectsPeek, (_e, section: unknown, path: unknown) => {
+  handle(Channels.projects.peek, (_e, section: unknown, path: unknown) => {
     if (!isProjectSectionKey(section) || !isProjectPath(path)) return null
     return peekProject(path, section)
   })

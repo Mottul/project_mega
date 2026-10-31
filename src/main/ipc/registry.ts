@@ -1,4 +1,4 @@
-import { ipcMain, protocol } from 'electron'
+import { protocol } from 'electron'
 import { createReadStream } from 'node:fs'
 import { readFile, stat } from 'node:fs/promises'
 import { extname } from 'node:path'
@@ -33,6 +33,7 @@ import { registerUtilHandlers } from './util.handlers'
 import { registerVideoGenHandlers } from './videoGen.handlers'
 import { registerWindowHandlers } from './window.handlers'
 import { registerYoutubeHandlers } from './youtube.handlers'
+import { handle } from './kanal'
 
 /** Bedient das custom `manual://`-Protocol (PDF-Bytes der Bibliothek). */
 export function registerManualProtocol(): void {
@@ -224,19 +225,19 @@ export function registerJingleProtocol(): void {
 
 let handlersRegistered = false
 
-/** Registriert alle ipcMain.handle-Kanaele -- genau einmal. */
+/** Registriert alle Kanäle -- genau einmal. */
 export function registerIpcHandlers(): void {
   if (handlersRegistered) return
   handlersRegistered = true
 
-  ipcMain.handle(Channels.settingsGet, () => getSettings())
-  ipcMain.handle(Channels.settingsSet, (e, patch: SettingsPatch) => setSettings(patch, e.sender.id))
+  handle(Channels.getSettings, () => getSettings())
+  handle(Channels.setSettings, (e, patch: SettingsPatch) => setSettings(patch, e.sender.id))
   // Änderungen an alle übrigen Fenster melden: wer Listen (Favoriten, Playlists, Presets)
   // im eigenen Zustand hält, übernimmt sie – statt sie später mit altem Stand zu überschreiben.
-  onSettingsChange((s, origin) => broadcastExcept(origin, Channels.settingsChanged, s))
-  ipcMain.handle(Channels.appLogPath, () => logFilePath())
+  onSettingsChange((s, origin) => broadcastExcept(origin, Channels.onSettingsChanged, s))
+  handle(Channels.getLogPath, () => logFilePath())
   // Live-Job-Updates an ALLE Fenster (ein Video-Konverter im Zweitfenster bekommt dieselben)
-  converterJobs.setSink((job) => broadcast(Channels.converterUpdate, job))
+  converterJobs.setSink((job) => broadcast(Channels.converter.onUpdate, job))
 
   registerDialogHandlers()
   registerFfmpegHandlers()

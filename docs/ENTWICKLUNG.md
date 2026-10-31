@@ -109,7 +109,7 @@ src/
 │       ├── jingle/ · osc/    # Jingle-Bibliothek · OSC – je mit Fernsteuerung
 │       ├── pattern/          # Testbild-Ausgabefenster und Video-Export
 │       └── manuals/ · novastar/ · netscan/ · ytdlp/   # Dienste einzelner Werkzeuge
-├── preload/index.ts          # contextBridge → window.api (typisiert)
+├── preload/                  # contextBridge → window.api, gebaut aus dem IPC-Vertrag
 ├── shared/                   # IPC-Vertrag, Domain-Typen, Konvertierungs-Plan, Video-Generator-Plan, Medien-Endungen, Marke, Werkzeug-Fenster
 └── renderer/src/
     ├── launcher/             # Startbildschirm, Favoriten-Kategorien, ToolHost (Fehlergrenze je Werkzeug)
@@ -124,10 +124,12 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
 
 ### Grundmuster
 
-- **IPC-Vertrag:** `src/shared/ipc-contracts.ts` definiert `Channels` und `ToolboxApi` als einzige
-  Quelle, `src/shared/types.ts` alle Domain-Typen. Neue IPC-Fläche = Channel +
-  `ToolboxApi`-Methode + Preload-Mapping + Handler in `src/main/ipc/*.handlers.ts` (registriert in
-  `registry.ts`).
+- **IPC-Vertrag:** `Channels` in `src/shared/ipc-contracts.ts` ist die einzige Quelle: Kanalname,
+  Art (Anfrage, Einweg, Ereignis) und Signatur je Eintrag. Daraus entstehen `ToolboxApi`, der
+  Preload (`preload/baueApi.ts`) und die Typen von `handle`/`on` (`main/ipc/kanal.ts`) und
+  `broadcast`; `src/shared/types.ts` hält alle Domain-Typen. Neue IPC-Fläche = Eintrag in `Channels`
+  + Handler in `src/main/ipc/*.handlers.ts` (registriert in `registry.ts`). Ein Handler, der nicht
+  zum Vertrag passt, baut nicht; ein Test meldet Kanäle ohne Gegenstelle im main.
 - **Renderer nur über `api`** (`@renderer/lib/api`), nie direkt `ipcRenderer`.
 - **Der Hauptprozess ist autoritativ** für alles, was fensterübergreifend laufen muss: Player- und
   Timer-Zustand ticken im main; Ausgabefenster (`#/output`, `#/player-output`, `#/timer-output`,

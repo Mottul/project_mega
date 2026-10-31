@@ -1,13 +1,14 @@
 // Eigenständige HTML-Dateien (Handy-Fassung des Mini-Manuals): speichern über den Dialog oder in
 // die Online-Ablage. Fotos setzt main ein (services/html) – über IPC gehen nur Hashes im HTML.
 
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow } from 'electron'
 import { Channels } from '@shared/ipc-contracts'
 import { showSaveDialog } from '../services/fileDialogs'
 import { writeFileAtomicAsync } from '../services/fsAtomic'
 import { HTML_MAX_BYTES, inlineFotos } from '../services/html/inlineFotos'
 import { veroeffentlichen } from '../services/html/onlineAblage'
 import { logLine } from '../services/log'
+import { handle } from './kanal'
 
 /** HTML vom Renderer (Fotos noch als Hash) – größer ist es nie */
 const HTML_IN_MAX = 20 * 1024 * 1024
@@ -16,7 +17,7 @@ const text = (v: unknown, max: number): string | null =>
   typeof v === 'string' && v.length <= max ? v : null
 
 export function registerHtmlHandlers(): void {
-  ipcMain.handle(Channels.utilExportHtml, async (e, html: unknown, suggestedName: unknown) => {
+  handle(Channels.util.exportHtml, async (e, html: unknown, suggestedName: unknown) => {
     const h = text(html, HTML_IN_MAX)
     if (h === null) throw new Error('HTML-Export: HTML fehlt oder ist zu groß')
     const res = await showSaveDialog(BrowserWindow.fromWebContents(e.sender), {
@@ -33,12 +34,9 @@ export function registerHtmlHandlers(): void {
     return res.filePath
   })
 
-  ipcMain.handle(
-    Channels.onlinePublish,
-    async (_e, html: unknown, ordner: unknown, name: unknown) => {
-      const h = text(html, HTML_IN_MAX)
-      if (h === null) return { ok: false, reason: 'fehler' }
-      return veroeffentlichen(h, text(ordner, 80), text(name, 200) ?? '')
-    }
-  )
+  handle(Channels.online.publish, async (_e, html: unknown, ordner: unknown, name: unknown) => {
+    const h = text(html, HTML_IN_MAX)
+    if (h === null) return { ok: false, reason: 'fehler' } as const
+    return veroeffentlichen(h, text(ordner, 80), text(name, 200) ?? '')
+  })
 }

@@ -375,7 +375,7 @@ Der gebündelte Windows-Build vom 1. Juni 2026 kennt `-/filter_complex` ebenfall
 - `src/main/ipc/videoGen.handlers.ts`: Projekt feldweise prüfen (Allowlist der Übergänge,
   Grenzen für Dauern/Größen/Elementzahl), Speicherdialog, Fortschritts-Events (Muster
   `pattern.handlers.ts`). Registrierung in `ipc/registry.ts`, Sink wie `converterJobs.setSink`.
-- **IPC** (CLAUDE.md: Channel + `ToolboxApi`-Methode + preload + Handler): `vgenThumb`,
+- **IPC** (CLAUDE.md: Eintrag im Vertrag + Handler): `vgenThumb`,
   `vgenPickOutput`, `vgenEnqueue`, `vgenList`, `vgenCancel`, `vgenClearFinished`, Event
   `vgenUpdate`; Phase 2 `vgenPreview`.
 - **Vorschaubilder/Probeläufe** beliebiger Quellen: `media://` liefert heute nur Dateien aus

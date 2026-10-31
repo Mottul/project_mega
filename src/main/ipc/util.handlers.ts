@@ -1,13 +1,14 @@
 // Kleine Helfer ohne eigenes Werkzeug: Log, Text speichern/öffnen und HTML -> PDF in die vom
 // Nutzer gewählte Datei (z.B. LED-Wall-Projektdoku; Druck in services/pdf/htmlToPdf.ts).
 
-import { BrowserWindow, ipcMain } from 'electron'
+import { BrowserWindow } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { Channels } from '@shared/ipc-contracts'
 import type { PdfPageOptions } from '@shared/types'
 import { showOpenDialog, showSaveDialog } from '../services/fileDialogs'
 import { logLine } from '../services/log'
 import { htmlToPdf } from '../services/pdf/htmlToPdf'
+import { handle, on } from './kanal'
 
 /** Seitenangaben vom Renderer feldweise übernehmen; Unbekanntes fällt auf A4 hoch zurück. */
 function pageOptions(raw: unknown): PdfPageOptions {
@@ -22,13 +23,13 @@ function pageOptions(raw: unknown): PdfPageOptions {
 
 export function registerUtilHandlers(): void {
   // Renderer-seitige Fehler ins gemeinsame Debug-Log spiegeln (Einweg).
-  ipcMain.on(Channels.utilLog, (_e, message: unknown) => {
+  on(Channels.util.log, (_e, message: unknown) => {
     logLine(typeof message === 'string' ? message : String(message))
   })
 
   // Beliebigen Text (z.B. JSON, CSV) über einen Speichern-Dialog schreiben.
-  ipcMain.handle(
-    Channels.utilSaveText,
+  handle(
+    Channels.util.saveText,
     async (
       e,
       text: string,
@@ -55,7 +56,7 @@ export function registerUtilHandlers(): void {
   )
 
   // Textdatei über einen Öffnen-Dialog einlesen.
-  ipcMain.handle(Channels.utilOpenText, async (e) => {
+  handle(Channels.util.openText, async (e) => {
     const parent = BrowserWindow.fromWebContents(e.sender)
     const opts = {
       title: 'Öffnen',
@@ -70,28 +71,25 @@ export function registerUtilHandlers(): void {
     return readFile(res.filePaths[0], 'utf8')
   })
 
-  ipcMain.handle(
-    Channels.utilExportPdf,
-    async (e, html: string, suggestedName: string, page: unknown) => {
-      if (typeof html !== 'string') throw new Error('PDF-Export: HTML fehlt')
-      const parent = BrowserWindow.fromWebContents(e.sender)
-      const opts = {
-        title: 'Als PDF speichern',
-        defaultPath: suggestedName,
-        filters: [{ name: 'PDF', extensions: ['pdf'] }]
-      }
-      const res = await showSaveDialog(parent, opts)
-      if (res.canceled || !res.filePath) return null
-
-      const { pdf, pages, scale } = await htmlToPdf(html, pageOptions(page))
-      await writeFile(res.filePath, pdf)
-      logLine('[pdf] exportiert ->', res.filePath, `${pdf.byteLength} bytes, ${pages} Seiten`)
-      return { path: res.filePath, pages, scale }
+  handle(Channels.util.exportPdf, async (e, html: string, suggestedName: string, page: unknown) => {
+    if (typeof html !== 'string') throw new Error('PDF-Export: HTML fehlt')
+    const parent = BrowserWindow.fromWebContents(e.sender)
+    const opts = {
+      title: 'Als PDF speichern',
+      defaultPath: suggestedName,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }]
     }
-  )
+    const res = await showSaveDialog(parent, opts)
+    if (res.canceled || !res.filePath) return null
+
+    const { pdf, pages, scale } = await htmlToPdf(html, pageOptions(page))
+    await writeFile(res.filePath, pdf)
+    logLine('[pdf] exportiert ->', res.filePath, `${pdf.byteLength} bytes, ${pages} Seiten`)
+    return { path: res.filePath, pages, scale }
+  })
 
   // derselbe Druck ohne Dialog und ohne Datei – die Vorschau zeigt die Seiten mit pdf.js
-  ipcMain.handle(Channels.utilRenderPdf, async (_e, html: unknown, page: unknown) => {
+  handle(Channels.util.renderPdf, async (_e, html: unknown, page: unknown) => {
     if (typeof html !== 'string') throw new Error('PDF-Vorschau: HTML fehlt')
     const { pdf } = await htmlToPdf(html, pageOptions(page))
     return new Uint8Array(pdf)

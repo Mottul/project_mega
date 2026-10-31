@@ -3,6 +3,7 @@
 
 import { BrowserWindow, screen } from 'electron'
 import { createOutputWindow } from '../windows/outputWindow'
+import { sendeAn } from '../broadcast'
 import { Channels } from '@shared/ipc-contracts'
 import type { AusgabeZiel, DisplayInfo, PatternConfig } from '@shared/types'
 
@@ -65,7 +66,9 @@ export function openPattern(config: PatternConfig, ziel: AusgabeZiel): void {
     outputSink(false)
   })
   w.webContents.on('did-finish-load', () => {
-    if (!w.isDestroyed()) w.webContents.send(Channels.patternRender, currentConfig)
+    if (currentConfig && !w.isDestroyed()) {
+      sendeAn(w.webContents, Channels.patterns.onRender, currentConfig)
+    }
   })
 
   outputSink(true)
@@ -73,7 +76,7 @@ export function openPattern(config: PatternConfig, ziel: AusgabeZiel): void {
 
 export function updatePattern(config: PatternConfig): void {
   currentConfig = config
-  if (win && !win.isDestroyed()) win.webContents.send(Channels.patternRender, config)
+  if (win && !win.isDestroyed()) sendeAn(win.webContents, Channels.patterns.onRender, config)
 }
 
 /** Fenster schließen, ohne zu melden (beim Monitorwechsel folgt sofort das neue). */

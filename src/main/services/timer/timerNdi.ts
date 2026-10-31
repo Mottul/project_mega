@@ -16,7 +16,7 @@ let config: TimerNdiConfig = { ...DEFAULT_TIMER_NDI }
 
 const ndi = new OffscreenNdiSender('[timer-ndi]', () => {
   const status = getTimerNdiStatus()
-  broadcast(Channels.timerNdiChanged, status)
+  broadcast(Channels.timer.onNdiChanged, status)
   setTimerNdiActive(status.running)
 })
 

@@ -44,9 +44,10 @@ export default tseslint.config(
   {
     // Im main-Prozess nie synchron auf einen Prozess warten: Solange er läuft, nehmen die Fenster
     // keine Klicks an und jede IPC-Anfrage hängt (yt-dlp --version: 1,5–2 s kurz nach dem Start).
-    // Tests und Labor-Skripte dürfen.
+    // Tests und Labor-Skripte dürfen. Kanäle nur über ipc/kanal.ts: Sonst prüft niemand den Handler
+    // gegen den Vertrag.
     files: ['src/main/**/*.ts'],
-    ignores: ['**/*.test.ts'],
+    ignores: ['**/*.test.ts', 'src/main/ipc/kanal.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -54,7 +55,12 @@ export default tseslint.config(
           name,
           importNames: ['spawnSync', 'execSync', 'execFileSync'],
           message: 'Blockiert den main-Prozess – asynchron starten (Version: binaryVersion()).'
-        }))
+        })),
+        {
+          name: 'electron',
+          importNames: ['ipcMain'],
+          message: 'Kanäle über handle()/on() aus ipc/kanal.ts anmelden (typisiert per Vertrag).'
+        }
       ]
     }
   },

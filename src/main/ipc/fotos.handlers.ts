@@ -1,7 +1,7 @@
 // Fotos für Projektdateien einfügen (Dialog mit gemerktem Ordner) und über foto:// anzeigen.
 // Dünne Hülle um services/fotos/fotoStore.ts.
 
-import { BrowserWindow, ipcMain, protocol } from 'electron'
+import { BrowserWindow, protocol } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { Channels } from '@shared/ipc-contracts'
 import { FOTO_PROTOCOL } from '@shared/fotos'
@@ -9,12 +9,13 @@ import type { FotoImport } from '@shared/types'
 import { showOpenDialog } from '../services/fileDialogs'
 import { findFoto, importFotoFile } from '../services/fotos/fotoStore'
 import { logLine } from '../services/log'
+import { handle } from './kanal'
 
 /** höchstens so viele Bilder je Dialog – jedes wird dekodiert und neu kodiert */
 const MAX_PICK = 50
 
 export function registerFotosHandlers(): void {
-  ipcMain.handle(Channels.fotosPick, async (e): Promise<FotoImport[] | null> => {
+  handle(Channels.fotos.pick, async (e): Promise<FotoImport[] | null> => {
     const res = await showOpenDialog(
       BrowserWindow.fromWebContents(e.sender),
       {
