@@ -145,6 +145,10 @@ Für SuperSource-Boxen gibt es keinen Befehl zum Überblenden, jede Animation is
 Positionen. **Die Recheneinheit ist deshalb das Videobild, nicht die Zeit.** Die Bildrate kommt aus
 `settings.videoMode`, also von 23,98 bis 59,94, bei Halbbild-Modi je Vollbild ein Schritt.
 
+**Die Dauer gilt in Bildern**, wie alle Übergangsraten am ATEM, und so speichert sie auch das Layout.
+Dasselbe Layout läuft bei 50p also halb so lang wie bei 25p. Die Seite zeigt daneben die Sekunden zur
+aktuellen Bildrate, damit das auffällt, wenn ein Projekt auf einem anderen Mischer läuft.
+
 Eine reine Funktion rechnet aus Start, Ziel, Bildzahl und Kurve alle Werte je Bild. Jeder Wert
 entsteht direkt aus Start und Ziel statt aufaddiert: Rundungsfehler laufen nicht auf, der letzte
 Schritt ist exakt das Ziel. Es gehen nur geänderte Felder hinaus (der Befehl hat dafür eine Maske).
@@ -336,14 +340,11 @@ Kamerasteuerung, automatisches Umschalten nach Tonpegel.
    Phase 0 lässt sich nicht abschließen. Für Phase 3 und 4 braucht er eine SuperSource. Das Modell
    entscheidet auch, ob Fairlight oder klassischer Ton zuerst kommt.
 2. **Welcher Bildgrabber ist da?** Der Mischer braucht einen freien Multiview-Ausgang.
-3. **Dauer in Bildern oder Sekunden?** In Bildern wie alle Übergangsraten am ATEM (dann läuft dasselbe
-   Layout bei 50p halb so lang wie bei 25p) oder in Sekunden, umgerechnet auf die Bildrate?
-   Vorschlag: Eingabe in Bildern, Sekunden stehen daneben.
-4. **Darf die Animation einen Makro-Platz belegen?** Vorschlag: ja, ein freier von hinten.
-5. **Wofür zuerst?** Für den Laptop neben dem Mischer oder als Tablet-Bedienung? Beim Tablet rückt
+3. **Darf die Animation einen Makro-Platz belegen?** Vorschlag: ja, ein freier von hinten.
+4. **Wofür zuerst?** Für den Laptop neben dem Mischer oder als Tablet-Bedienung? Beim Tablet rückt
    Phase 8 samt PIN nach vorn.
-6. **Sperre:** Genügt ein Schalter, oder soll Entsperren eine eigene Bestätigung verlangen?
-7. **Fade to Black mit zweitem Klick:** gewünscht oder im Ernstfall zu langsam?
+5. **Sperre:** Genügt ein Schalter, oder soll Entsperren eine eigene Bestätigung verlangen?
+6. **Fade to Black mit zweitem Klick:** gewünscht oder im Ernstfall zu langsam?
 
 ## Quellen
 
