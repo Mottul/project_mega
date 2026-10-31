@@ -1,7 +1,7 @@
 # Plan: ATEM-Steuerung
 
-**Status:** Entwurf vom 31. Oktober 2026, noch nichts gebaut. Vor Phase 1 sind die
-[offenen Fragen](#offene-fragen) zu klären, vor allem welcher Mischer zum Testen da ist.
+**Status:** Entwurf vom 31. Oktober 2026, noch nichts gebaut. Zum Testen stehen ein ATEM Mini Extreme
+und ein ATEM Mini bereit, die [offenen Fragen](#offene-fragen) betreffen nur noch Details.
 
 Blackmagic-ATEM-Mischer vom Laptop bedienen, später auch vom Tablet oder Handy: Programm und
 Vorschau, Übergänge, Keyer, SuperSource mit bildgenau animierten Wechseln, Multiview im Werkzeug,
@@ -182,18 +182,20 @@ Bild verträgt der Mischer? Gemessen wird an einer Aufnahme des Programmbilds, B
 
 ## Multiview im Werkzeug
 
-![Das Bild kommt über einen USB-Bildgrabber, Fenster und Tally über das Netz](bilder/atem-multiview.svg)
+![Das Bild kommt über den USB-Ausgang, Fenster und Tally über das Netz](bilder/atem-multiview.svg)
 
 **Über das Steuerprotokoll kommt kein Bild.** Die Bibliothek kennt nur die Einstellungen des
-Multiview (Aufteilung, Quelle je Fenster), Live-Video überträgt sie nicht. Das Bild muss über den
-Multiview-Ausgang des Mischers hereinkommen:
+Multiview (Aufteilung, Quelle je Fenster), Live-Video überträgt sie nicht. Das Bild kommt über den
+USB-Ausgang: Der ATEM Mini Extreme gibt dort wahlweise das Multiview, jeden Eingang oder einen anderen
+Feed aus, und der Rechner sieht ihn als Kamera, auch in der Kamera-App von Windows. Ein Bildgrabber
+ist dafür nicht nötig.
 
 | Weg | Bewertung |
 | --- | --- |
-| **HDMI/SDI über USB-Bildgrabber** (gewählt) | Geht mit jedem Modell und ohne Treiber, das Gerät erscheint wie eine Kamera |
-| USB-Ausgang des ATEM Mini | Liefert laut Produktseiten das Programmbild. Umweg aus dem Forum: Multiview per HDMI zurück in einen Eingang, das kostet aber diesen Eingang. Nur Notlösung |
+| **USB-Ausgang des Mischers** (gewählt) | ATEM Mini Extreme: Multiview oder jeder andere Feed, ohne Zusatzgerät |
+| HDMI/SDI über USB-Bildgrabber | Für Modelle, die am USB-Ausgang nur das Programmbild liefern. Im Werkzeug derselbe Weg, nur ein anderes Kamera-Gerät |
 | NDI | Keine ATEM-Quelle dafür gefunden, es bräuchte einen Konverter. Empfang kann das NDI-Binding (`receive`), die Bilder müssten aber aus main zum Fenster. Später |
-| Ohne Bildquelle | Gleiche Fenster mit Namen und Tally, ohne Bild. Das funktioniert immer und ist der Rückfall |
+| Ohne Bildquelle | Gleiche Fenster mit Namen und Tally, ohne Bild. Das ist der Rückfall, wenn der USB-Ausgang belegt ist |
 
 Das Bild läuft direkt im Fenster per `getUserMedia` in ein `video`-Element, nichts davon geht durch
 main. Darüber liegt ein Raster aus dem Mischer-Zustand: Die Aufteilung ist eine Maske je Viertel
@@ -201,7 +203,19 @@ main. Darüber liegt ein Raster aus dem Mischer-Zustand: Die Aufteilung ist eine
 
 - **Bedienen:** Klick auf ein Fenster setzt die Vorschau, Doppelklick schaltet. Rahmen in Rot und
   Grün zeigt das Werkzeug selbst, sie folgen dem Mischer.
-- **Auswahl:** Gerät und Auflösung in der Schublade, gemerkt je Rechner.
+- **Modelle:** Die Seite erscheint nur, wenn der Mischer ein Multiview meldet (`info.multiviewer`),
+  am ATEM Mini also nicht.
+- **Auswahl:** Gerät und Auflösung in der Schublade, gemerkt je Rechner. Ein Gerät mit „ATEM“ oder
+  „Blackmagic“ im Namen ist vorgewählt. Ist es schon belegt, etwa durch die Kamera-App oder OBS, sagt
+  das Werkzeug das klar.
+- **USB-Ausgang umschalten:** Das Werkzeug kann den Feed selbst wählen, auch um einen Eingang groß zu
+  prüfen. Die Bibliothek kennt dafür `SourceAvailability.WebcamOut` je Quelle und das Multiview als
+  eigenen Quellentyp (`InternalPortType.MultiViewer`); keine Nummer muss fest im Code stehen.
+  Geschaltet wird vermutlich per `setAuxSource`, welcher Bus das ist, zeigt Phase 0 am Extreme.
+- **Vorsicht beim Umschalten:** Hängt am USB-Ausgang zugleich Zoom oder OBS, sehen die den neuen Feed
+  ebenfalls. Darum verlangt das Umschalten eine Bestätigung, die aktuelle Quelle steht immer sichtbar da.
+- **Netzwerk bleibt nötig:** Die Bibliothek spricht nur UDP. Für die Steuerung braucht der Mischer also
+  Ethernet, auch wenn das Bild über USB kommt.
 - **Eigenes Fenster:** Multiview auf einem zweiten Monitor über `createOutputWindow()`.
 - **Nicht vorgesehen:** Multiview aufs Handy. Das bräuchte eine eigene Bildkodierung.
 
@@ -274,7 +288,8 @@ und als Abschnitt `atem` der Projektdatei (Skill `projektdatei`), damit sie mit 
 - **Pegel:** `levelChanged` kommt häufig. Im Hauptprozess zusammenfassen und auf etwa 15 je Sekunde
   begrenzen, Zeichnen wie beim RTA per `requestAnimationFrame` über Refs, nie über React.
 - **Zwei Ton-Welten:** Klassische Mischer und Fairlight haben verschiedene Befehle und Felder. Die
-  Ansicht vereinheitlicht beide, damit die Seite nur eine Form kennt.
+  Ansicht vereinheitlicht beide, damit die Seite nur eine Form kennt. Die ATEM-Mini-Reihe nutzt
+  Fairlight, klassischen Ton prüft vorerst nur der Simulator.
 - **Mehrere M/Es:** Größere Modelle haben bis zu vier. Die Seite braucht von Anfang an eine Auswahl,
   sonst muss der Zustand später überall umgebaut werden.
 - **Beenden:** Eine offene Verbindung zählt nicht als „läuft noch“, ein Stream oder eine Aufzeichnung
@@ -292,12 +307,12 @@ und als Abschnitt `atem` der Projektdatei (Skill `projektdatei`), damit sie mit 
 
 | Phase | Inhalt | Fertig, wenn |
 | --- | --- | --- |
-| **0 Probe** | Bibliothek in Electron einbinden, Paket auf allen drei Systemen bauen, Thread und freetype im Installer prüfen, Anbindung am echten Mischer, [Messungen zur Animation](#animierte-wechsel), Bildgrabber im Fenster | Installer verbindet sich auf Windows und macOS, der Weg der Animation steht fest. Sonst Entscheidung: `disableMultithreaded`, Abhängigkeit ersetzen oder eigener, kleiner Protokoll-Client |
+| **0 Probe** | Bibliothek in Electron einbinden, Paket auf allen drei Systemen bauen, Thread und freetype im Installer prüfen, Anbindung am echten Mischer, [Messungen zur Animation](#animierte-wechsel), USB-Ausgang des Extreme als Kamera im Fenster samt Bus und Verzögerung | Installer verbindet sich auf Windows und macOS, der Weg der Animation steht fest. Sonst Entscheidung: `disableMultithreaded`, Abhängigkeit ersetzen oder eigener, kleiner Protokoll-Client |
 | **1 Mischen** | Dienst, Simulator, Verbinden, Seite „Mischen“: Programm, Vorschau, Cut, Auto, Fade to Black, Übergangsart und -dauer, Hebel, Sperre, Tastatur | Eine Show lässt sich fahren; E2E mit Simulator; Abnahme am Mischer |
 | **2 Mehr Show** | Keyer, DSK, Makros (Liste, Start, Stopp), Media-Player, AUX | Abnahme am Mischer |
 | **3 SuperSource** | Seite mit Boxen, Quellen, Beschnitt, Art und Layouts, Projektdatei | Layout anlegen, abrufen, in anderem Projekt laden; Abnahme am Mischer |
 | **4 Animation** | Schritte je Bild, Kurven, Makro und direktes Senden, Abbruch | Wechsel läuft bei 25p und 50p ohne Sprung und endet exakt im Ziel, belegt an einer Aufnahme |
-| **5 Multiview** | Bildgrabber wählen, Bild mit Raster, Tally, Klick schaltet, eigenes Fenster, Ansicht ohne Bild | Bild steht im Werkzeug, Fenster treffen bei jeder Aufteilung; Abnahme am Mischer |
+| **5 Multiview** | Kamera-Gerät wählen, USB-Ausgang umschalten, Bild mit Raster, Tally, Klick schaltet, eigenes Fenster, Ansicht ohne Bild | Bild steht im Werkzeug, Fenster treffen bei jeder Aufteilung; Abnahme am Mischer |
 | **6 Ton** | Master und Eingänge, Pegel, Stream und Aufzeichnung | Beide Ton-Welten laufen, mindestens im Simulator |
 | **7 Seiten** | Eigene Seiten auf dem Raster der OSC-Steuerung, Projektdatei | Seite anlegen, speichern, in anderem Projekt laden |
 | **8 Handy** | PIN für Fernsteuerungen (eigene Vorarbeit), Steuerseite, Fernsteuer-App | Tablet schaltet, ohne PIN geht nichts |
@@ -329,22 +344,19 @@ Kamerasteuerung, automatisches Umschalten nach Tonpegel.
   fremde Änderung erscheint, Sperre wirkt, Verbindungsverlust wird angezeigt, Layout animiert und endet
   im Ziel, Multiview mit der Test-Kamera von Chromium (`--use-fake-device-for-media-stream`). Der
   Simulator spielt dafür auch Makros mit Pausen in Echtzeit ab.
-- **Abnahme am Mischer** je Phase, von Hand: Die CI hat kein Gerät.
+- **Abnahme am Mischer** je Phase, von Hand: am ATEM Mini Extreme alles, am ATEM Mini, dass Seiten
+  ohne Fähigkeit fehlen und der Rest läuft. Die CI hat kein Gerät.
 - **Doku:** nach der Umsetzung in `docs/WERKZEUGE.md`, README-Überblick, `docs/FERNSTEUERUNG.md`,
   `docs/SICHERHEIT.md`; dieser Plan wird dann gelöscht. Neuer Skill `atem-steuerung`, sobald sich
   Muster gezeigt haben.
 
 ## Offene Fragen
 
-1. **Welcher Mischer steht zum Testen bereit?** Ohne Gerät endet jede Phase beim Simulator, und
-   Phase 0 lässt sich nicht abschließen. Für Phase 3 und 4 braucht er eine SuperSource. Das Modell
-   entscheidet auch, ob Fairlight oder klassischer Ton zuerst kommt.
-2. **Welcher Bildgrabber ist da?** Der Mischer braucht einen freien Multiview-Ausgang.
-3. **Darf die Animation einen Makro-Platz belegen?** Vorschlag: ja, ein freier von hinten.
-4. **Wofür zuerst?** Für den Laptop neben dem Mischer oder als Tablet-Bedienung? Beim Tablet rückt
+1. **Darf die Animation einen Makro-Platz belegen?** Vorschlag: ja, ein freier von hinten.
+2. **Wofür zuerst?** Für den Laptop neben dem Mischer oder als Tablet-Bedienung? Beim Tablet rückt
    Phase 8 samt PIN nach vorn.
-5. **Sperre:** Genügt ein Schalter, oder soll Entsperren eine eigene Bestätigung verlangen?
-6. **Fade to Black mit zweitem Klick:** gewünscht oder im Ernstfall zu langsam?
+3. **Sperre:** Genügt ein Schalter, oder soll Entsperren eine eigene Bestätigung verlangen?
+4. **Fade to Black mit zweitem Klick:** gewünscht oder im Ernstfall zu langsam?
 
 ## Quellen
 

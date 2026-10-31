@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 216" width="680" role="img" aria-labelledby="t d" font-family="Segoe UI, system-ui, sans-serif">
   <title id="t">Zwei Wege zum Multiview im Werkzeug</title>
-  <desc id="d">Das Bild kommt über HDMI oder SDI und einen USB-Bildgrabber, Fenster und Tally kommen über das Netz vom Mischer.</desc>
+  <desc id="d">Das Bild kommt über den USB-Ausgang des Mischers als Kamera, Fenster und Tally kommen über das Netz.</desc>
   <style>
     .k { fill: #f4f4f5; stroke: #a1a1aa; }
     .h { fill: #e6f1fb; stroke: #378add; }
@@ -27,15 +27,14 @@
 
   <rect class="g" x="10" y="44" width="116" height="120" rx="6"/>
   <text class="t" x="68" y="100" text-anchor="middle">ATEM-Mischer</text>
-  <text class="s" x="68" y="118" text-anchor="middle">Multiview-Ausgang</text>
+  <text class="s" x="68" y="118" text-anchor="middle">USB und Netzwerk</text>
 
   <path class="l" d="M126 66H208" marker-end="url(#p)"/>
-  <text class="s" x="166" y="58" text-anchor="middle">Bild: HDMI/SDI</text>
+  <text class="s" x="166" y="58" text-anchor="middle">Bild: USB</text>
   <rect class="k" x="210" y="40" width="120" height="52" rx="6"/>
-  <text class="t" x="270" y="62" text-anchor="middle">Bildgrabber</text>
-  <text class="s" x="270" y="79" text-anchor="middle">USB, ohne Treiber</text>
+  <text class="t" x="270" y="62" text-anchor="middle">Kamera-Gerät</text>
+  <text class="s" x="270" y="79" text-anchor="middle">ohne Zusatzgerät</text>
   <path class="l" d="M330 66H376" marker-end="url(#p)"/>
-  <text class="s" x="352" y="58" text-anchor="middle">USB</text>
 
   <path class="l" d="M126 146H208" marker-end="url(#p)"/>
   <text class="s" x="166" y="138" text-anchor="middle">Daten: UDP</text>
