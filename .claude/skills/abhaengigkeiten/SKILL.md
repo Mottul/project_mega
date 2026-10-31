@@ -32,6 +32,13 @@ npm audit --omit=dev                  # Laufzeit: muss ohne Befund bleiben
 
 - Install-Skripte laufen nie (`.npmrc`: `ignore-scripts=true`). Nach einem Electron-Update fehlt
   deshalb die Binary, bis `npm run dev`/`e2e` (oder `npm run electron:bin`) sie holt.
+- **Neues natives Paket mit Binaries je System** (`@julusian/freetype2`, Oktober 2026): Es landet samt
+  aller Systeme und C-Quellen im Paket. In `electron-builder.yml` wie bei better-sqlite3 nur das
+  Binary der Zielplattform mitnehmen (`${platform}-${arch}`), in `asarUnpack` eintragen, danach
+  `e2e/paket.mjs` mit einer Gegenprobe (Ordner in `app.asar.unpacked` weg, Lauf wird rot). Es zählt
+  der Weg der App, nicht das Laden im Test: Die App lädt `atem-connection` per `import()`.
+- **`npm install` nennt die Lücken des ganzen Baums.** Erst `npm audit --omit=dev` ansehen, bevor man
+  sie dem neuen Paket zuschreibt.
 - **Neues Paket mit Install-Skript?** Prüfen, ob es ohne läuft (`npm ci` hat es nie ausgeführt).
   Pakete mit `binding.gyp` lösen bei `npm ci` einen node-gyp-Bau aus, auch mit
   `"gypfile": false` – deshalb die Einstellung (CI-Fehler mit better-sqlite3 13 unter Windows).

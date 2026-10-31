@@ -10,8 +10,9 @@ Maintainer-Tokens, bösartige Install-Skripte, Typosquatting) ist das Projekt be
 aufgesetzt:
 
 - **`package-lock.json` ist eingecheckt** – mit sha512-Integrity je Paket.
-- **Nur zwei Laufzeit-Abhängigkeiten:** `better-sqlite3` und `pdfjs-dist` – beide exakt gepinnt
-  und mit Abstand nachgezogen (siehe [Updates einspielen](#updates-einspielen)). Alles andere ist
+- **Nur drei Laufzeit-Abhängigkeiten:** `better-sqlite3`, `pdfjs-dist` und `atem-connection` (MIT,
+  aus dem Sofie-Projekt des NRK, bringt 24 Unterpakete mit) – alle exakt gepinnt und mit Abstand
+  nachgezogen (siehe [Updates einspielen](#updates-einspielen)). Alles andere ist
   Build- bzw. Testwerkzeug, etwa `playwright-core` für die E2E-Läufe: eigene Abhängigkeiten hat es
   keine, Browser lädt es nicht, und die Version (1.63.0) war beim Einspielen über eine Woche alt.
 - **`.npmrc`:** `ignore-scripts=true` (keine Install-Skripte, siehe [Installation](#installation)),
@@ -19,7 +20,9 @@ aufgesetzt:
 - **Schlanker Install-Baum:** `electron-builder` ist keine Abhängigkeit, sondern wird beim
   Paketieren per `npx` geholt. So bleibt die `node-gyp`/`tar`/`app-builder`-Kette aus `npm ci`
   heraus. Das native Modul `better-sqlite3` bringt seit Version 13 fertige N-API-Binaries im Paket
-  mit – ohne Install-Skript, ohne `prebuild-install`, ohne node-gyp.
+  mit – ohne Install-Skript, ohne `prebuild-install`, ohne node-gyp. Ebenso `@julusian/freetype2`
+  (kommt mit `atem-connection`): Sein Install-Skript läuft wegen `ignore-scripts` nie und wird nicht
+  gebraucht, die Binaries liegen im Paket.
 - **Externe Programme aus offiziellen Quellen:** ffmpeg (BtbN, evermeet.cx) und die
   Electron-Binary per HTTPS beim Einrichten; die Electron-Binary wird gegen die SHA-256-Summe aus
   `electron/checksums.json` geprüft (kommt mit dem npm-Paket, also über die Integrity der
@@ -94,11 +97,15 @@ durchgehen – beim Schritt 42 → 44 z. B. starten Datei-Dialoge ohne Startpfad
 Prüfen mit `npm audit` (alles) bzw. `npm audit --omit=dev` (nur Laufzeit-Abhängigkeiten – Electron
 selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
 
-**Stand 29. Oktober 2026** – nach den Updates auf Electron 44.9.3, electron-vite 6.0.0 und den
+**Stand 31. Oktober 2026** – nach den Updates auf Electron 44.9.3, electron-vite 6.0.0 und den
 Unterabhängigkeiten `undici` 7.30.1 (lädt Electron bei der Installation), `zod` 4.6.7 (ESLint-Regeln)
 und `postcss-selector-parser` 6.1.5 (Tailwind):
 
-- `npm audit --omit=dev` und `npm audit`: **keine Lücken**.
+- `npm audit --omit=dev`: **keine Lücken**, auch mit `atem-connection`.
+- `npm audit`: 12 mittlere Meldungen, alle dieselbe Lücke in `minimatch`
+  ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)), die über ESLint und
+  `typescript-eslint` hereinkommt. Nur Werkzeug zum Prüfen des eigenen Codes, nichts davon liegt in
+  der App.
 - Electron 44.9.3 enthält die Sperre der kompromittierten eMudhra-Zwischenzertifikate
   ([GHSA-jr5w-w6x2-84p9](https://github.com/advisories/GHSA-jr5w-w6x2-84p9), ab 44.9.1) – vorher
   hätte ein Angreifer im selben Netz mit einem solchen Zertifikat einen HTTPS-Server der App
@@ -127,6 +134,12 @@ und `postcss-selector-parser` 6.1.5 (Tailwind):
   `--use-fake-ui-for-media-stream`, das die Regel umginge). Die Regeln werfen nie: Vor Oktober
   2026 warf `isAppPage` bei kaputter %-Kodierung (`file:///C:/x%E0.html`), und der Wächter ließ die
   Navigation samt App-API durch – jetzt per Unit- und E2E-Test abgedeckt.
+- **ATEM-Steuerung:** Ein Mischer prüft keine Anmeldung, wer ihn im Netz erreicht, kann schalten.
+  Die App ändert daran nichts, sie öffnet dafür aber keinen Dienst: Sie baut nur eine ausgehende
+  UDP-Verbindung auf, im eigenen Thread. Adresse und Befehle prüft der Hauptprozess, auch die aus dem
+  eigenen Fenster: Durch kommen nur bekannte Befehle mit vorhandener M/E, vorhandener Quelle und
+  Werten in den Grenzen des Geräts (`atemCommand`, `src/shared/atem.ts`). Eine Fernsteuerung vom
+  Handy gibt es erst nach dem PIN aus der [Roadmap](ROADMAP.md).
 - **Shell-Aufrufe:** „Ordner öffnen“ (`shell.openPath` startet Dateien mit ihrem Programm) nur
   für vorhandene lokale Ordner; „Im Ordner zeigen“ nur mit absolutem Pfad (Netzwerkpfade erlaubt,
   es startet nichts).
