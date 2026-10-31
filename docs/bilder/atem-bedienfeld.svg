@@ -27,11 +27,12 @@
 
   <text class="tab" x="20" y="28">Mischen</text>
   <text class="s" x="84" y="28">Keyer</text>
-  <text class="s" x="130" y="28">Makros</text>
-  <text class="s" x="184" y="28">Medien</text>
-  <text class="s" x="238" y="28">Ton</text>
-  <text class="s" x="272" y="28">Meine Seite</text>
-  <text class="s" x="348" y="28">+</text>
+  <text class="s" x="130" y="28">SuperSource</text>
+  <text class="s" x="212" y="28">Multiview</text>
+  <text class="s" x="278" y="28">Makros</text>
+  <text class="s" x="332" y="28">Medien</text>
+  <text class="s" x="386" y="28">Ton</text>
+  <text class="s" x="420" y="28">+</text>
   <path d="M20 34H70" stroke="#378add" stroke-width="2"/>
   <text class="s" x="660" y="28" text-anchor="end">Verbunden · Sperre aus</text>
 
