@@ -494,7 +494,8 @@ function JobRow({ job }: { job: YtJob }): JSX.Element {
         <span className="min-w-0 flex-1 truncate text-sm" title={job.title ?? job.url}>
           {job.title ?? job.url}
         </span>
-        {done && <Badge tone="success">Fertig</Badge>}
+        {done && !job.alreadyThere && <Badge tone="success">Fertig</Badge>}
+        {done && job.alreadyThere && <Badge tone="neutral">Schon vorhanden</Badge>}
         {failed && <Badge tone="danger">Fehler</Badge>}
         {canceled && <Badge tone="neutral">Abgebrochen</Badge>}
         {job.status === 'queued' && <Badge tone="neutral">Wartet</Badge>}

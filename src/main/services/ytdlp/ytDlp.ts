@@ -32,19 +32,24 @@ import type {
 } from '@shared/types'
 import { binaryVersion } from '../binaryVersion'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
+import { probeMediaInfo } from '../ffmpeg/mediaInfo'
 import { JobList } from '../jobs/jobList'
 import { getSettings } from '../store'
 import { logLine } from '../log'
 import {
+  alreadyDownloaded,
   authArgs,
   buildDownloadArgs,
   buildProbeArgs,
   explainYtError,
+  finishedFile,
   needsImpersonation,
   normalizeUrl,
   parseProbeJson,
+  sameLength,
   sanitizeRequest,
-  ytErrorText
+  ytErrorText,
+  type YtFinishedFile
 } from './ytRequest'
 
 const LATEST_URL = 'https://github.com/yt-dlp/yt-dlp/releases/latest'
@@ -350,6 +355,21 @@ function auth(impersonate: boolean): { args: string[]; cookies: YtCookieSource }
   return { args: authArgs(yt, { impersonate, fileOk }), cookies: yt.cookies }
 }
 
+/** Ergebnis eines yt-dlp-Laufs: Code, Ende von stderr, fertige Datei, Datei gab es schon */
+interface YtAttempt {
+  code: number | null
+  errTail: string
+  file: YtFinishedFile | null
+  existed: boolean
+}
+
+/** Ist die vorhandene Datei das Video, das yt-dlp gerade überspringen wollte? */
+async function isSameVideo(file: YtFinishedFile | null): Promise<boolean> {
+  if (!file) return false
+  const probe = await probeMediaInfo(file.path)
+  return sameLength(file.durationSec, probe.ok ? probe.info.durationSec : null)
+}
+
 // Downloads laufen in der Spur „download“ der gemeinsamen Warteschlange (zwei gleichzeitig);
 // Abbrechen löst das Signal aus, das yt-dlp samt ffmpeg beendet. Läuft einer, wird die Binary
 // nicht ersetzt (running()).
@@ -402,18 +422,49 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
       return
     }
     this.update(job, { status: 'running' })
-    let res = await this.attempt(job, found.bin, req, first.args, signal)
+    const load = (extra: string[], withId = false): Promise<YtAttempt> => {
+      const args = buildDownloadArgs(req, ffmpegBinPath('ffmpeg'), extra, withId)
+      return this.attempt(job, found.bin, args, signal)
+    }
+    let extra = first.args
+    let res = await load(extra)
     let impersonated = false
     if (res.code !== 0 && !this.isCanceled(job) && needsImpersonation(res.errTail)) {
       // Seite sperrt Programme aus (Cloudflare): einmal so tun, als sei es ein Browser
       logLine('[yt-dlp] Seite blockt automatische Abrufe – zweiter Versuch als Browser:', job.url)
       impersonated = true
-      res = await this.attempt(job, found.bin, req, auth(true).args, signal)
+      extra = auth(true).args
+      res = await load(extra)
+    }
+    if (res.code === 0 && res.existed && !(await isSameVideo(res.file))) {
+      // Der Name gehört einem anderen Video (Folgen derselben Sendung): unter eindeutigem Namen
+      // laden, die vorhandene Datei bleibt. Gibt es auch den, ist es wirklich dieses Video.
+      logLine('[yt-dlp] Name schon vergeben – lädt mit Kennung im Namen:', job.url)
+      res = await load(extra, true)
     }
     // abgebrochen, oder 'error' beim Start (Fehlertext steht schon)
     if (this.isCanceled(job) || job.status === 'error') return
+    if (res.code === 0 && res.file) {
+      const path = res.file.path
+      const name = path.split(/[/\\]/).pop() ?? path
+      this.update(job, {
+        status: 'done',
+        progress: 1,
+        speed: null,
+        eta: null,
+        outputFile: path,
+        title: name.replace(/\.[^.]+$/, ''),
+        ...(res.existed ? { alreadyThere: true } : {})
+      })
+      return
+    }
     if (res.code === 0) {
-      this.update(job, { status: 'done', progress: 1, speed: null, eta: null })
+      // z. B. eine leere Playlist: Für yt-dlp kein Fehler, „fertig“ wäre hier aber falsch
+      logLine('[yt-dlp] Ende ohne Datei:', job.url)
+      this.update(job, {
+        status: 'error',
+        error: 'yt-dlp hat keine Datei geliefert – unter dieser Adresse gibt es nichts zu laden.'
+      })
       return
     }
     logLine('[yt-dlp] Fehler', job.url, '->', ytErrorText(res.errTail) ?? `Code ${res.code}`)
@@ -425,34 +476,36 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
     })
   }
 
-  /** Ein yt-dlp-Lauf; Abbrechen beendet ihn samt ffmpeg. Liefert Code und Ende von stderr. */
+  /** Ein yt-dlp-Lauf; Abbrechen beendet ihn samt ffmpeg. */
   private attempt(
     job: YtJob,
     bin: string,
-    req: YtEnqueueRequest,
-    extra: string[],
+    args: string[],
     signal: AbortSignal
-  ): Promise<{ code: number | null; errTail: string }> {
+  ): Promise<YtAttempt> {
     return new Promise((resolve) => {
       // ein schon ausgelöstes Signal meldet kein 'abort' mehr – dann gar nicht erst starten
       if (signal.aborted) {
-        resolve({ code: null, errTail: '' })
+        resolve({ code: null, errTail: '', file: null, existed: false })
         return
       }
-      const proc = spawn(bin, buildDownloadArgs(req, ffmpegBinPath('ffmpeg'), extra), {
-        windowsHide: true
-      })
+      const proc = spawn(bin, args, { windowsHide: true })
       const onAbort = (): void => killTree(proc)
       signal.addEventListener('abort', onAbort, { once: true })
+      // setEncoding hält Zeichen zusammen, die auf zwei Stücke der Pipe verteilt ankommen
+      proc.stdout.setEncoding('utf8')
+      proc.stderr.setEncoding('utf8')
       let outBuf = ''
       let errTail = ''
+      let file: YtFinishedFile | null = null
+      let existed = false
       let settled = false
       // nach 'error' (z. B. Start gescheitert) kann noch 'close' kommen: nur einmal melden
       const finish = (code: number | null): void => {
         if (settled) return
         settled = true
         signal.removeEventListener('abort', onAbort)
-        resolve({ code, errTail })
+        resolve({ code, errTail, file, existed })
       }
 
       const handleLine = (line: string): void => {
@@ -465,25 +518,24 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
             this.update(job, { progress: p, speed, eta })
           }
         }
-        const dest =
-          /\[download\] Destination:\s+(.+)/.exec(line) ??
-          /Merging formats into "(.+)"/.exec(line) ??
-          /\[ExtractAudio\] Destination:\s+(.+)/.exec(line)
+        file = finishedFile(line) ?? file
+        if (alreadyDownloaded(line)) existed = true
+        // ohne Titel aus der Analyse (einzelnes Video einer Playlist): Name zeigen, sobald er steht
+        const dest = !job.title && /\[download\] Destination:\s+(.+)/.exec(line)
         if (dest) {
-          const file = dest[1].trim().replace(/"$/, '')
-          const name = file.split(/[/\\]/).pop() ?? file
-          this.update(job, { outputFile: file, title: name.replace(/\.[^.]+$/, '') })
+          const name = dest[1].trim().split(/[/\\]/).pop() ?? dest[1]
+          this.update(job, { title: name.replace(/\.[^.]+$/, '') })
         }
       }
 
-      proc.stdout.on('data', (chunk: Buffer) => {
-        outBuf += chunk.toString()
+      proc.stdout.on('data', (chunk: string) => {
+        outBuf += chunk
         const lines = outBuf.split('\n')
         outBuf = lines.pop() ?? ''
         for (const l of lines) handleLine(l)
       })
-      proc.stderr.on('data', (chunk: Buffer) => {
-        errTail = (errTail + chunk.toString()).slice(-2000)
+      proc.stderr.on('data', (chunk: string) => {
+        errTail = (errTail + chunk).slice(-2000)
       })
       proc.on('error', (err) => {
         this.fail(job, err)
@@ -541,6 +593,7 @@ function probeOnce(
 ): Promise<{ code: number | null; stdout: string; errTail: string }> {
   return new Promise((resolve, reject) => {
     const proc = spawn(bin, buildProbeArgs(url, extra), { windowsHide: true })
+    proc.stderr.setEncoding('utf8')
     const chunks: Buffer[] = []
     let size = 0
     let errTail = ''
@@ -563,8 +616,8 @@ function probeOnce(
         finish(() => reject(new Error('Antwort von yt-dlp zu groß')))
       } else chunks.push(c)
     })
-    proc.stderr.on('data', (c: Buffer) => {
-      errTail = (errTail + c.toString()).slice(-4000)
+    proc.stderr.on('data', (c: string) => {
+      errTail = (errTail + c).slice(-4000)
     })
     proc.on('error', (err) => finish(() => reject(err)))
     proc.on('close', (code) =>

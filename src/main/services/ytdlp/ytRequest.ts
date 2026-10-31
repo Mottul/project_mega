@@ -14,6 +14,16 @@ import type {
 /** So viele Einträge analysiert die Playlist-Erkennung höchstens (Kanäle haben Tausende). */
 export const PROBE_LIMIT = 500
 
+/** Unter Windows schreibt yt-dlp in eine Pipe sonst in der Systemkodierung: Aus „ä“ wird „�“, was
+ *  sie nicht kennt (der Vollbreiten-„：“ aus Dateinamen), fällt ganz weg. */
+const UTF8 = ['--encoding', 'utf-8']
+
+/** Zeilenanfang, unter dem yt-dlp nach dem letzten Schritt Länge und fertige Datei nennt */
+const FILE_LINE = 'MOTTULBOX-DATEI '
+
+/** So weit dürfen die Längen abweichen: yt-dlp nennt die der Seite, die Datei misst sich genauer */
+const SAME_LENGTH_SEC = 2
+
 /** Nur http(s)-Adressen; Leerraum außen weg. Wirft mit lesbarer Meldung. */
 export function normalizeUrl(raw: string): string {
   const text = typeof raw === 'string' ? raw.trim() : ''
@@ -43,9 +53,15 @@ export function safeFolderName(name: string): string {
   return s || 'Playlist'
 }
 
+export interface YtFinishedFile {
+  path: string
+  durationSec: number | null
+}
+
 /** Argumente für die flache Analyse: Playlist-Einträge ohne die Videos selbst abzurufen. */
 export function buildProbeArgs(url: string, extra: string[] = [], limit = PROBE_LIMIT): string[] {
   return [
+    ...UTF8,
     '--flat-playlist',
     '--dump-single-json',
     '--no-warnings',
@@ -58,14 +74,27 @@ export function buildProbeArgs(url: string, extra: string[] = [], limit = PROBE_
 }
 
 /** Argumente für einen Download. Verzeichnis über -P (kein Ausgabe-Template: ein „%“ im
- *  Pfad bliebe sonst nicht erhalten), Dateiname über -o; Playlists optional im Unterordner. */
+ *  Pfad bliebe sonst nicht erhalten), Dateiname über -o; Playlists optional im Unterordner.
+ *  Der Name trägt den zweiten Titel mit: Arte nennt jede Folge nur nach der Sendung („Tracks“),
+ *  der Beitrag steht dort. `withId` macht ihn eindeutig (siehe YtManager.run). */
 export function buildDownloadArgs(
   req: YtEnqueueRequest,
   ffmpeg: string,
-  extra: string[] = []
+  extra: string[] = [],
+  withId = false
 ): string[] {
   const dir = req.subfolder ? join(req.outputDir, safeFolderName(req.subfolder)) : req.outputDir
-  const args = ['--newline', '--no-playlist', '--ffmpeg-location', ffmpeg]
+  const args = [
+    '--newline',
+    '--no-playlist',
+    ...UTF8,
+    // der Pfad der fertigen Datei; --print allein schaltete den Fortschritt ab
+    '--print',
+    `after_move:${FILE_LINE}%(duration)s %(filepath)s`,
+    '--no-quiet',
+    '--ffmpeg-location',
+    ffmpeg
+  ]
   if (req.format === 'video') {
     const cap = req.maxHeight
     args.push('-f', cap ? `bv*[height<=${cap}]+ba/b[height<=${cap}]/b` : 'bv*+ba/b')
@@ -75,9 +104,30 @@ export function buildDownloadArgs(
   }
   const n = req.number
   const prefix = n ? `${String(n.index).padStart(n.digits, '0')} - ` : ''
-  args.push('-P', dir, '-o', `${prefix}%(title)s.%(ext)s`)
+  const id = withId ? ' [%(id)s]' : ''
+  args.push('-P', dir, '-o', `${prefix}%(title)s%(alt_title& - {}|)s${id}.%(ext)s`)
   args.push(...extra, '--', req.url)
   return args
+}
+
+/** Die fertige Datei samt Länge laut yt-dlp, wenn die Ausgabezeile sie nennt */
+export function finishedFile(line: string): YtFinishedFile | null {
+  if (!line.startsWith(FILE_LINE)) return null
+  const m = /^(\S+) (.+)$/.exec(line.slice(FILE_LINE.length).trim())
+  if (!m) return null
+  const sec = Number(m[1]) // „NA“, wenn die Seite keine Länge nennt
+  return { path: m[2], durationSec: Number.isFinite(sec) ? sec : null }
+}
+
+/** Datei dieses Namens gibt es schon: yt-dlp lädt dann nichts und endet trotzdem mit Code 0. */
+export function alreadyDownloaded(line: string): boolean {
+  return /^\[download\] .+ has already been downloaded\s*$/.test(line)
+}
+
+/** Dasselbe Video? Der Name sagt das nicht (Folgen einer Sendung), die Länge fast immer.
+ *  Unbekannt zählt als verschieden: lieber eine Kopie als ein fehlender Download. */
+export function sameLength(a: number | null, b: number | null): boolean {
+  return a !== null && b !== null && Math.abs(a - b) <= SAME_LENGTH_SEC
 }
 
 /* -------------------- Anmeldung, Browser-Nachahmung, Fehler -------------------- */
@@ -261,10 +311,12 @@ export function parseProbeJson(json: unknown, requestedUrl: string): YtProbeResu
   const j = json as Record<string, unknown>
   const isList = j._type === 'playlist' || j._type === 'multi_video' || Array.isArray(j.entries)
   if (!isList) {
+    const title = str(j.title)
+    const alt = str(j.alt_title)
     return {
       kind: 'video',
       url: httpUrl(j.webpage_url) ?? requestedUrl,
-      title: str(j.title),
+      title: title && alt ? `${title} - ${alt}` : title, // wie der Dateiname
       durationSec: num(j.duration)
     }
   }

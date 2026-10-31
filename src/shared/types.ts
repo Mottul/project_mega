@@ -1344,6 +1344,8 @@ export interface YtJob {
   eta: string | null
   outputDir: string
   outputFile: string | null
+  /** Nichts geladen: Dieses Video lag schon im Zielordner. */
+  alreadyThere?: boolean
   error?: string
   createdAt: number
 }
