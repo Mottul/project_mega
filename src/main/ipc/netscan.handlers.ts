@@ -1,5 +1,6 @@
 import { Channels } from '@shared/ipc-contracts'
 import { broadcast } from '../services/broadcast'
+import { readInterfaceNames } from '../services/netscan/netNames'
 import { listInterfaces } from '../services/netscan/netUtil'
 import { setNetscanSinks, startScan, stopScan } from '../services/netscan/netscanService'
 import { handle } from './kanal'
@@ -16,6 +17,7 @@ export function registerNetscanHandlers(): void {
   }
 
   handle(Channels.netscan.interfaces, () => listInterfaces())
+  handle(Channels.netscan.interfaceNames, () => readInterfaceNames())
   handle(Channels.netscan.start, (_e, address: string) => startScan(address))
   handle(Channels.netscan.stop, () => stopScan())
 }

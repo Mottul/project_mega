@@ -243,6 +243,22 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   Folge doppelt geladen, die yt-dlp vorher übersprang. Erst der Vergleich der Länge trennt
   „dasselbe Video“ von „anderes Video, gleicher Name“.
 
+## Netzwerk (Scanner, 1.11.2026)
+
+- **Eine Deckelung für den Aufwand ist kein Filter fürs Ergebnis.** `hostRange` kürzt ein /16 aufs
+  /24 um die eigene Adresse, und dieselben Grenzen verwarfen auch ARP und mDNS. Ein ATEM ohne DHCP
+  (169.254.36.88 neben 169.254.164.96) fehlte im Scanner, obwohl `arp -a` ihn zeigte. „Gehört
+  dazu“ entscheidet das echte Netz (`inSubnet`), und was der Sweep nicht erfasst hat, wird gezielt
+  nachgeprüft (`probeExtra`).
+- **Mehrere Adapter können im selben Netz liegen.** Kabel zum Mischer und Loopback-Adapter hatten
+  beide 169.254.x.x/16 mit gleicher Metrik: Ohne Bindung entscheidet die Route, und `addMembership`
+  ohne Adresse nimmt den bevorzugten Adapter, meist das WLAN. Absender festlegen: `localAddress`
+  (TCP), `bind(0, adresse)` (UDP), `addMembership(gruppe, adresse)` + `setMulticastInterface`, unter
+  Windows `arp -a -N adresse`. Gemessen: über Ethernet antwortet der Mischer, über Loopback nicht.
+- **Langsame Systembefehle nicht vor die Anzeige hängen.** PowerShell braucht unter Windows 2–3 s
+  bis zur ersten Ausgabe. Was nur Komfort ist (Adapter-Namen), bekommt einen eigenen Kanal und kommt
+  nach; die Liste selbst bleibt sofort da. Ausgabe per `[Console]::OutputEncoding` auf UTF-8 setzen.
+
 ## Tests
 
 - **Tests laden nichts aus dem Netz – auch nicht nebenbei.** Jeder E2E-Start lud wegen der

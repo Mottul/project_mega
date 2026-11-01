@@ -48,6 +48,7 @@ import type {
   MediaItem,
   NetDevice,
   NetInterface,
+  NetInterfaceNames,
   NetScanProgress,
   OscFeedback,
   OscLogEntry,
@@ -534,6 +535,8 @@ export const Channels = {
   netscan: {
     /** Scannbare lokale IPv4-Interfaces auflisten. */
     interfaces: anfrage<() => NetInterface[]>('netscan:interfaces'),
+    /** Sprechende Namen dazu; eigener Kanal, weil das Lesen unter Windows Sekunden dauert. */
+    interfaceNames: anfrage<() => NetInterfaceNames>('netscan:interfaceNames'),
     /** Scan über das Subnetz des gewählten Interfaces starten. */
     start: anfrage<(interfaceAddress: string) => NetScanProgress>('netscan:start'),
     /** Laufenden Scan abbrechen. */

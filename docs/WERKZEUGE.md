@@ -338,8 +338,16 @@ Findet Geräte im lokalen Netz und zeigt IP, Hersteller (aus der MAC-Adresse) un
 Gerätetyp. Adapter, „Scannen“/„Stopp“ und der Fortschritt stehen in der Leiste „Scan“
 (bernstein, solange er läuft); Einstellungen braucht der Scanner keine.
 
+- **Adapter:** Die Auswahl nennt das Netz, z. B. „WLAN – FRITZ!Box 7530“, und ohne erkannten
+  Netznamen das Gerät dahinter, z. B. „Ethernet 2 – Microsoft Loopbackadapter“. Die Namen kommen
+  kurz nach dem Öffnen nach (Windows: Netzprofile und Adapter, macOS: Hardware-Anschlüsse, Linux:
+  NetworkManager). Der ganze Scan läuft über den gewählten Adapter.
 - **Erkennung:** TCP-Sweep über typische AV-Ports (NovaStar 5200, RTSP/ONVIF, PJLink,
   HTTP/SSH/RDP …), ATEM per UDP-Handshake, Bonjour/mDNS-Namen.
+- **Große Netze:** Über 1024 Adressen tastet der Sweep nur das /24 um die eigene Adresse ab. Das
+  betrifft auch Geräte ohne DHCP: Sie geben sich selbst eine Adresse irgendwo in 169.254.x.x (/16).
+  Was die ARP-Tabelle des Adapters oder Bonjour im selben Netz kennt, wird trotzdem gefunden und
+  gezielt abgetastet, auch ein ATEM am direkten Kabel.
 - Gerätetyp und Symbol lassen sich überschreiben (an der MAC gemerkt), eigene Bezeichnungen
   vergeben.
 - Web-Oberfläche eines Geräts öffnen, seine IP an die NovaStar-Steuerung bzw. die

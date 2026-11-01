@@ -39,6 +39,9 @@ Fenster  ◀──AtemView────   atemViewAus(roh), gedrosselt          �
   erst nach Bestätigung und 33 ms), Ansicht höchstens alle 40 ms.
 - **Ruhelage des Hebels** kennt der Mischer nicht, sie liegt in `atemHebel.ts`. Der Wert läuft immer
   0…10000, auch wenn der Griff nach unten fährt. Jeder fertige Übergang dreht sie, auch Auto.
+- **Direktes Kabel ohne DHCP:** Mischer und Rechner geben sich Link-Local-Adressen irgendwo in
+  169.254.x.x/16. Der Netzwerk-Scanner findet ihn dann über ARP und mDNS (`_blackmagic._tcp`), nicht
+  über den Sweep; Beispiel und Regeln in `review-checkliste`, Abschnitt Netzwerk.
 
 ## Bausteine der Seiten
 

@@ -23,7 +23,8 @@ const SERVICE_TYPES = [
   '_ipp._tcp.local',
   '_printer._tcp.local',
   '_axis-video._tcp.local',
-  '_pdl-datastream._tcp.local'
+  '_pdl-datastream._tcp.local',
+  '_blackmagic._tcp.local'
 ]
 
 type MdnsData =
@@ -137,9 +138,12 @@ function sendQuery(sock: ReturnType<typeof createSocket>, name: string): void {
   }
 }
 
-/** Startet einen mDNS-Browse. `onUpdate(ip, info)` wird für Hostnamen und
- *  Dienste aufgerufen (mehrfach möglich). Liefert eine Stopp-Funktion. */
-export function browseMdns(onUpdate: (ip: string, info: MdnsInfo) => void): () => void {
+/** Startet einen mDNS-Browse über den Adapter `localAddress`. `onUpdate(ip, info)` wird für
+ *  Hostnamen und Dienste aufgerufen (mehrfach möglich). Liefert eine Stopp-Funktion. */
+export function browseMdns(
+  localAddress: string,
+  onUpdate: (ip: string, info: MdnsInfo) => void
+): () => void {
   const aByName = new Map<string, string>() // Name -> IP (A-Record)
   const srvByInstance = new Map<string, { target: string; port: number }>()
   const ptrs: { service: string; instance: string }[] = []
@@ -194,7 +198,10 @@ export function browseMdns(onUpdate: (ip: string, info: MdnsInfo) => void): () =
   try {
     s.bind(MDNS_PORT, () => {
       try {
-        s.addMembership(MDNS_ADDR)
+        // Ohne Angabe nimmt das System seinen bevorzugten Adapter – meist das WLAN, nicht das
+        // Kabel zum Mischer.
+        s.addMembership(MDNS_ADDR, localAddress)
+        s.setMulticastInterface(localAddress)
         s.setMulticastTTL(255)
       } catch {
         /* ohne Multicast-Beitritt gibt es eben keine mDNS-Treffer */

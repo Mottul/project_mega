@@ -38,7 +38,14 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import type { NetDevice, NetDeviceType, NetInterface, NetScanProgress } from '@shared/types'
+import type {
+  NetDevice,
+  NetDeviceType,
+  NetInterface,
+  NetInterfaceName,
+  NetInterfaceNames,
+  NetScanProgress
+} from '@shared/types'
 import { Badge, type BadgeTone } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
 import { ToolBar, ToolShell } from '@renderer/components/ToolShell'
@@ -111,6 +118,12 @@ const TYPE_ORDER: NetDeviceType[] = [
 const ipToSortKey = (ip: string): number =>
   ip.split('.').reduce((n, o) => n * 256 + (Number(o) || 0), 0)
 
+/** „WLAN – FRITZ!Box 7530“: das Netz, ohne erkannten Netznamen das Gerät dahinter. */
+function ifaceName(i: NetInterface, name: NetInterfaceName | undefined): string {
+  const detail = name?.network ?? name?.adapter
+  return detail ? `${i.label} – ${detail}` : i.label
+}
+
 const PHASE_LABEL: Record<NetScanProgress['phase'], string> = {
   idle: 'bereit',
   sweep: 'suche Geräte …',
@@ -133,6 +146,7 @@ export function NetScan(): JSX.Element {
   } | null>(null)
 
   const [interfaces, setInterfaces] = useState<NetInterface[]>([])
+  const [names, setNames] = useState<NetInterfaceNames>({})
   const [iface, setIface] = useState<string>('')
   const [progress, setProgress] = useState<NetScanProgress>({
     running: false,
@@ -152,6 +166,7 @@ export function NetScan(): JSX.Element {
       setInterfaces(list)
       setIface((cur) => cur || list[0]?.address || '')
     })
+    void api.netscan.interfaceNames().then(setNames)
     const offProgress = api.netscan.onProgress(setProgress)
     const offDevice = api.netscan.onDevice((d) => {
       mapRef.current.set(d.ip, d)
@@ -257,12 +272,12 @@ export function NetScan(): JSX.Element {
             title="Netzwerk-Adapter – gescannt wird sein Subnetz"
             onChange={(e) => setIface(e.target.value)}
             disabled={progress.running || interfaces.length === 0}
-            className="max-w-[22rem]"
+            className="max-w-[34rem]"
           >
             {interfaces.length === 0 && <option value="">kein Adapter gefunden</option>}
             {interfaces.map((i) => (
               <option key={i.address} value={i.address}>
-                {i.label} · {i.address} · {i.hosts} Hosts
+                {ifaceName(i, names[i.label])} · {i.address}
               </option>
             ))}
           </Select>
@@ -284,7 +299,7 @@ export function NetScan(): JSX.Element {
           </Button>
           <InfoTip
             label="Erklärung zum Scan"
-            text="Sucht Geräte im lokalen Netz per aktivem Scan (typische AV-Ports), erkennt den Hersteller über die MAC-Adresse und liest Bonjour/mDNS-Namen. Nur im eigenen Netzwerk verwenden."
+            text="Sucht Geräte im lokalen Netz per aktivem Scan (typische AV-Ports), erkennt den Hersteller über die MAC-Adresse und liest Bonjour/mDNS-Namen. Große Netze – auch 169.254.x.x ohne DHCP – tastet er nur rund um die eigene Adresse ab; Geräte außerhalb findet er über die ARP-Tabelle und Bonjour. Nur im eigenen Netzwerk verwenden."
           />
         </ToolBar>
       }
