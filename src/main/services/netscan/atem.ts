@@ -12,8 +12,8 @@ const HELLO = Buffer.from([
   0x00, 0x00, 0x00, 0x00
 ])
 
-/** Antwortet unter `ip` ein ATEM auf UDP 9910? */
-export function probeAtem(ip: string, timeoutMs = 700): Promise<boolean> {
+/** Antwortet unter `ip` ein ATEM auf UDP 9910? Gefragt wird über den Adapter `localAddress`. */
+export function probeAtem(ip: string, localAddress: string, timeoutMs = 700): Promise<boolean> {
   return new Promise((resolve) => {
     let done = false
     const sock = createSocket('udp4')
@@ -33,8 +33,15 @@ export function probeAtem(ip: string, timeoutMs = 700): Promise<boolean> {
       if (rinfo.address === ip) finish(true)
     })
     sock.on('error', () => finish(false))
+    const send = (): void => {
+      try {
+        sock.send(HELLO, ATEM_PORT, ip)
+      } catch {
+        finish(false)
+      }
+    }
     try {
-      sock.send(HELLO, ATEM_PORT, ip)
+      sock.bind(0, localAddress, send)
     } catch {
       finish(false)
     }

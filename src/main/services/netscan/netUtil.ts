@@ -80,6 +80,19 @@ export function hostRange(
   return { start: (net + 1) >>> 0, end: (bcast - 1) >>> 0, count }
 }
 
+/** Liegt `ip` als Host im Netz von address/netmask? Anders als hostRange ungedeckelt: In einem
+ *  großen Netz sitzt ein Gerät oft außerhalb des abgetasteten /24, gehört aber trotzdem dazu.
+ *  Netz- und Broadcast-Adresse zählen nicht (die stehen auch in der ARP-Tabelle). */
+export function inSubnet(ip: string, address: string, netmask: string): boolean {
+  const n = ipToInt(ip)
+  const self = ipToInt(address)
+  const mask = ipToInt(netmask)
+  if (n < 0 || self < 0 || mask < 0) return false
+  const net = (self & mask) >>> 0
+  const bcast = (net | (~mask >>> 0)) >>> 0
+  return n > net && n < bcast
+}
+
 /** Alle Host-IPs eines Bereichs als Strings. */
 export function rangeIps(start: number, end: number): string[] {
   const out: string[] = []

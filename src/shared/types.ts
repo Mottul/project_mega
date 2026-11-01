@@ -1427,6 +1427,7 @@ export interface NovastarStatus {
 // Findet Geräte im lokalen Netz (LED-Prozessoren, Video-Mischer/ATEM, PTZ-
 // Kameras, Projektoren …). Aktiver Scan: TCP-Ports + ARP (Hersteller über MAC)
 // + Bonjour/mDNS-Namen. Alles abhängigkeitsfrei im main-Prozess.
+// Adapter-Namen liest netNames.ts über Systembefehle (reine Anzeige).
 
 export type NetDeviceType =
   | 'novastar' // LED-Prozessor (Port 5200)
@@ -1468,6 +1469,15 @@ export interface NetInterface {
   label: string // Interface-Name (z.B. en0/eth0)
   hosts: number // Anzahl scannbarer Hosts im Subnetz (gedeckelt)
 }
+
+/** Sprechende Namen eines Adapters (best effort, je nach System fehlt einer oder beide). */
+export interface NetInterfaceName {
+  adapter: string | null // Gerät, z.B. „Intel(R) Wireless-AC 9560“
+  network: string | null // Netz, z.B. der WLAN-Name
+}
+
+/** Schlüssel: NetInterface.label */
+export type NetInterfaceNames = Record<string, NetInterfaceName>
 
 export type NetScanPhase = 'idle' | 'sweep' | 'resolve' | 'done'
 

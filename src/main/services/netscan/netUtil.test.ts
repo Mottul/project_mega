@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hostRange, intToIp, ipToInt, normalizeMac, rangeIps } from './netUtil'
+import { hostRange, inSubnet, intToIp, ipToInt, normalizeMac, rangeIps } from './netUtil'
 
 describe('netUtil – IP-Arithmetik', () => {
   it('ipToInt/intToIp sind zueinander invers', () => {
@@ -51,6 +51,25 @@ describe('netUtil – hostRange', () => {
     const r = hostRange('192.168.1.5', '255.255.255.255')
     expect(r!.count).toBe(1)
     expect(intToIp(r!.start)).toBe('192.168.1.5')
+  })
+})
+
+describe('netUtil – inSubnet', () => {
+  it('kennt das ganze Netz, nicht nur das abgetastete /24', () => {
+    // Echter Fall: ATEM ohne DHCP, Link-Local-/16 – hostRange kürzt auf 169.254.164.x.
+    expect(inSubnet('169.254.36.88', '169.254.164.96', '255.255.0.0')).toBe(true)
+  })
+  it('lehnt fremde Netze, Multicast und Broadcast ab', () => {
+    expect(inSubnet('192.168.178.1', '169.254.164.96', '255.255.0.0')).toBe(false)
+    expect(inSubnet('224.0.0.251', '169.254.164.96', '255.255.0.0')).toBe(false)
+    expect(inSubnet('169.254.255.255', '169.254.164.96', '255.255.0.0')).toBe(false)
+    expect(inSubnet('169.254.0.0', '169.254.164.96', '255.255.0.0')).toBe(false)
+  })
+  it('hat in /32 keine fremden Hosts', () => {
+    expect(inSubnet('10.0.0.2', '10.0.0.1', '255.255.255.255')).toBe(false)
+  })
+  it('lehnt Ungültiges ab', () => {
+    expect(inSubnet('kein.ip', '10.0.0.1', '255.0.0.0')).toBe(false)
   })
 })
 

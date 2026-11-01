@@ -443,6 +443,13 @@ try {
           assert.equal(await bar().getAttribute('data-kind'), kind, id)
           assert.equal(await settingsBtn().count(), hasDrawer ? 1 : 0, id)
         }
+        // Adapter-Namen: ohne Befehl (Linux ohne nmcli) leer, aber nie ein Fehler; unter Windows
+        // sieht nur dieser Lauf, ob die PowerShell-Abfrage wirklich durchgeht
+        const namen = await page.evaluate(() => window.api.netscan.interfaceNames())
+        assert.equal(typeof namen, 'object')
+        if (process.platform === 'win32') {
+          assert.ok(Object.keys(namen).length > 0, 'keine Adapter-Namen')
+        }
         // NovaStar ohne Verbindung: nicht live, Blackout & Co. gesperrt
         await tool('novastar')
         assert.equal(await barActive(), false)

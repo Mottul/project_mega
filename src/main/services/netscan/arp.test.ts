@@ -18,6 +18,16 @@ describe('arp – parseArpOutput (arp -a, plattformübergreifend)', () => {
     const out = '  192.168.1.40          00-00-00-00-00-00     unvollständig'
     expect(parseArpOutput(out).has('192.168.1.40')).toBe(false)
   })
+  it('nimmt die Kopfzeile eines Windows-Adapters nicht als Eintrag', () => {
+    const out = [
+      'Schnittstelle: 169.254.164.96 --- 0xd',
+      '  Internetadresse       Physische Adresse     Typ',
+      '  169.254.36.88         7c-2e-0d-16-29-1c     dynamisch'
+    ].join('\r\n')
+    const m = parseArpOutput(out)
+    expect(m.has('169.254.164.96')).toBe(false)
+    expect(m.get('169.254.36.88')).toBe('7c:2e:0d:16:29:1c')
+  })
   it('verarbeitet mehrere Zeilen', () => {
     const out = [
       '? (10.0.0.2) at 11:22:33:44:55:66 on en0',

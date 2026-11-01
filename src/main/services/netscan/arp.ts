@@ -46,8 +46,9 @@ function execText(cmd: string): Promise<string> {
 }
 
 /** IP -> MAC der aktuellen ARP-Tabelle. Auf Linux zuerst /proc/net/arp
- *  (zuverlässig, ohne net-tools), sonst `arp -a`. */
-export async function readArpTable(): Promise<Map<string, string>> {
+ *  (zuverlässig, ohne net-tools), sonst `arp -a`. Windows liest nur den Adapter `localAddress`:
+ *  Mehrere Adapter können im selben Netz liegen (Link-Local), die Tabelle hält sie auseinander. */
+export async function readArpTable(localAddress: string): Promise<Map<string, string>> {
   if (process.platform === 'linux') {
     try {
       const txt = await readFile('/proc/net/arp', 'utf8')
@@ -57,7 +58,7 @@ export async function readArpTable(): Promise<Map<string, string>> {
       /* Fallback auf arp -a */
     }
   }
-  const cmd = process.platform === 'win32' ? 'arp -a' : 'arp -a -n'
+  const cmd = process.platform === 'win32' ? `arp -a -N ${localAddress}` : 'arp -a -n'
   const out = await execText(cmd).catch(() => '')
   return parseArpOutput(out)
 }
