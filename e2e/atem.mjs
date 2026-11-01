@@ -20,6 +20,7 @@ const knopf = (bus, id) => page.getByTestId(`atem-${bus}-${id}`)
 const bar = () => page.getByTestId('tool-bar')
 const aufTrennen = () => bar().getByRole('button', { name: 'Trennen' })
 const hebel = () => page.getByTestId('atem-hebel')
+const hebelWert = async () => Number(await hebel().getAttribute('aria-valuenow'))
 const empfangen = (name) => mischer.empfangen.filter((c) => c.name === name)
 
 async function zeigt(bus, id, zustand = 'an') {
@@ -121,9 +122,9 @@ try {
         await page.getByTestId('atem-cut').click()
         await zeigt('programm', 3)
         await zeigt('vorschau', 1)
-        // 2 s statt 0,5 s: Der Klick allein dauert auf dem macOS-Runner spürbar
+        // 2 s statt 1 s: Der Klick allein dauert auf dem macOS-Runner spürbar
         await page.evaluate(() =>
-          window.api.atem.command({ type: 'rate', me: 0, stil: 'mix', bilder: 100 })
+          window.api.atem.command({ type: 'rate', me: 0, stil: 'mix', rate: 50 })
         )
         await page.getByTestId('atem-auto').click()
         assert.ok(
@@ -144,7 +145,7 @@ try {
           )
         )
         await page.evaluate(() =>
-          window.api.atem.command({ type: 'rate', me: 0, stil: 'mix', bilder: 25 })
+          window.api.atem.command({ type: 'rate', me: 0, stil: 'mix', rate: 25 })
         )
       }
     ],
@@ -188,9 +189,17 @@ try {
               'true'
           )
         )
-        await page.getByLabel('Dauer in Bildern').fill('50')
-        await page.getByLabel('Dauer in Bildern').press('Tab')
-        // Extreme im Probebetrieb: 1080p50, 50 Bilder sind 1 s
+        const dauer = page.getByLabel('Dauer in Bildern')
+        // Extreme im Probebetrieb: 1080p50, 25 je Sekunde am Zähler sind 50 echte Bilder
+        assert.equal(await dauer.inputValue(), '50')
+        assert.match(await page.textContent('fieldset'), /1,00 s/)
+        await dauer.fill('100')
+        await dauer.press('Tab')
+        assert.ok(await waitFor(async () => /2,00 s/.test(await page.textContent('fieldset'))))
+        // Der Mischer zählt in Schritten von zwei Bildern: Ungerades rundet das Feld selbst
+        await dauer.fill('49')
+        await dauer.press('Tab')
+        assert.equal(await dauer.inputValue(), '50')
         assert.ok(await waitFor(async () => /1,00 s/.test(await page.textContent('fieldset'))))
         await stil.getByRole('button', { name: 'Mix' }).click()
       }
@@ -249,6 +258,92 @@ try {
         await zurueck.los()
         await zeigt('programm', 1)
         assert.equal(await hebel().getAttribute('data-oben'), obenStart)
+      }
+    ],
+    [
+      'Hebel: am Ende ohne Absetzen zurück, jede Richtung ein eigener Übergang',
+      async () => {
+        const oben = await hebel().getAttribute('data-oben')
+        const zug = await ziehe(1.1, 25)
+        await zeigt('programm', 3)
+        assert.ok(
+          await waitFor(async () => (await hebel().getAttribute('data-oben')) !== oben),
+          'Ruhelage nicht gedreht'
+        )
+        // Zittern am Ende schiebt nichts an
+        await zug.nach(0.87, 3)
+        await sleep(150)
+        assert.equal(await hebelWert(), 0)
+        // Griff unten geblieben: zurück bis zur Mitte, das Bild steht noch
+        await zug.nach(0.5, 10)
+        assert.ok(await waitFor(async () => (await hebelWert()) > 3000), 'zurück läuft nicht')
+        assert.equal(await knopf('programm', 3).getAttribute('data-zustand'), 'an')
+        // Der Griff bleibt unter der Maus: ein Stück weiter nach Hause, dann ganz durch
+        await zug.nach(1.1, 10)
+        assert.ok(await waitFor(async () => (await hebelWert()) === 0))
+        await zug.nach(-0.1, 25)
+        await zeigt('programm', 1)
+        assert.ok(
+          await waitFor(async () => (await hebel().getAttribute('data-oben')) === oben),
+          'Ruhelage nach dem Rückweg nicht gedreht'
+        )
+        await zug.nach(1.1, 25)
+        await zeigt('programm', 3)
+        await zug.nach(-0.1, 25)
+        await zeigt('programm', 1)
+        await zug.los()
+      }
+    ],
+    [
+      'Hebel mit Schwung: Ein Sprung ans Ende dreht die Ruhelage, zurück geht es trotzdem',
+      async () => {
+        const oben = await hebel().getAttribute('data-oben')
+        const zug = await ziehe(1.1, 1)
+        await zeigt('programm', 3)
+        assert.ok(
+          await waitFor(async () => (await hebel().getAttribute('data-oben')) !== oben),
+          'Ruhelage nicht gedreht'
+        )
+        await zug.nach(-0.1, 1)
+        await zeigt('programm', 1)
+        await zug.los()
+      }
+    ],
+    [
+      'Hebel verfehlt: Nichts wird markiert, der nächste Griff bleibt nicht hängen',
+      async () => {
+        await page.evaluate(() => {
+          window.__hebelAbbruch = 0
+          document.addEventListener('pointercancel', () => window.__hebelAbbruch++, true)
+        })
+        await hebel().scrollIntoViewIfNeeded()
+        const box = await hebel().boundingBox()
+        const auto = await page.getByTestId('atem-auto').boundingBox()
+        await page.mouse.move(box.x - 12, box.y + 80)
+        await page.mouse.down()
+        await page.mouse.move(auto.x + 10, auto.y - 30, { steps: 10 })
+        await page.mouse.up()
+        assert.equal(await page.evaluate(() => getSelection().toString()), '')
+
+        const zug = await ziehe(0.7)
+        assert.ok(await waitFor(async () => (await hebelWert()) > 5000), 'Griff hängt')
+        await zug.nach(-0.1, 8)
+        await zug.los()
+        assert.ok(await waitFor(async () => (await hebelWert()) === 0))
+        assert.equal(await page.evaluate(() => window.__hebelAbbruch), 0)
+      }
+    ],
+    [
+      'Hebel in einer Textauswahl: Gezogen wird der Griff, nicht der Text',
+      async () => {
+        await page.evaluate(() => getSelection().selectAllChildren(document.body))
+        assert.notEqual(await page.evaluate(() => getSelection().toString()), '')
+        const zug = await ziehe(0.7)
+        assert.ok(await waitFor(async () => (await hebelWert()) > 5000), 'Griff hängt')
+        await zug.nach(-0.1, 8)
+        await zug.los()
+        assert.ok(await waitFor(async () => (await hebelWert()) === 0))
+        assert.equal(await page.evaluate(() => window.__hebelAbbruch), 0)
       }
     ],
     [
@@ -402,6 +497,9 @@ try {
         assert.equal(await page.getByTestId('atem-usk-taste-0').count(), 1)
         assert.equal(await page.getByTestId('atem-usk-taste-1').count(), 0)
         assert.equal(await page.getByTestId('atem-dsk-taste-1').count(), 0)
+        // 1080p25: Hier zählt der Mischer jedes Bild, anders als bei 50p
+        assert.equal(await page.getByLabel('Dauer in Bildern').inputValue(), '25')
+        assert.match(await page.textContent('fieldset'), /1,00 s/)
       }
     ],
     [
@@ -524,8 +622,9 @@ try {
         assert.equal(empfangen('DCut').length, 1)
         assert.equal(empfangen('DAut').length, 1)
         assert.deepEqual(empfangen('CTTp').at(-1), { name: 'CTTp', stil: 1 })
-        assert.deepEqual(empfangen('CTDp').at(-1), { name: 'CTDp', rate: 60 })
-        assert.deepEqual(empfangen('FtbC').at(-1), { name: 'FtbC', rate: 40 })
+        // Der Schein-Mischer läuft mit 1080p50: Im Feld stehen echte Bilder, zum Mischer geht die Hälfte
+        assert.deepEqual(empfangen('CTDp').at(-1), { name: 'CTDp', rate: 30 })
+        assert.deepEqual(empfangen('FtbC').at(-1), { name: 'FtbC', rate: 20 })
         assert.equal(empfangen('FtbA').length, 2)
       }
     ],
@@ -540,6 +639,22 @@ try {
           .slice(vorher)
           .map((c) => c.wert)
         assert.ok(werte.length >= 2, JSON.stringify(werte))
+        assert.deepEqual(werte.slice(-2), [10000, 0])
+      }
+    ],
+    [
+      'Hebel am echten Weg: ohne Absetzen hin und zurück, der Mischer schaltet beide Male',
+      async () => {
+        const vorher = empfangen('CTPs').length
+        const zug = await ziehe(1.1, 40)
+        await zeigt('programm', 7)
+        await zug.nach(-0.1, 40)
+        await zeigt('programm', 4)
+        await zug.los()
+        const werte = empfangen('CTPs')
+          .slice(vorher)
+          .map((c) => c.wert)
+        assert.equal(werte.filter((w) => w === 10000).length, 2, JSON.stringify(werte))
         assert.deepEqual(werte.slice(-2), [10000, 0])
       }
     ],
@@ -585,7 +700,7 @@ try {
         assert.deepEqual(empfangen('CKeC').at(-1), { name: 'CKeC', keyer: 2, quelle: 5 })
         assert.deepEqual(empfangen('CDsF').at(-1), { name: 'CDsF', keyer: 1, quelle: 6 })
         assert.deepEqual(empfangen('CDsC').at(-1), { name: 'CDsC', keyer: 1, quelle: 7 })
-        assert.deepEqual(empfangen('CDsR').at(-1), { name: 'CDsR', keyer: 1, rate: 40 })
+        assert.deepEqual(empfangen('CDsR').at(-1), { name: 'CDsR', keyer: 1, rate: 20 })
         assert.deepEqual(empfangen('CDsT').at(-1), { name: 'CDsT', keyer: 1, an: true })
         assert.deepEqual(empfangen('DDsA').at(-1), { name: 'DDsA', keyer: 1 })
         await reiter('Mischen')
@@ -648,7 +763,7 @@ try {
           await window.api.atem.command({ type: 'programm', me: 5, quelle: 1 })
           await window.api.atem.command({ type: 'macroRun', me: 0, index: 1 })
           await window.api.atem.command({ type: 'hebel', me: 0, wert: 20000 })
-          await window.api.atem.command({ type: 'rate', me: 0, stil: 'mix', bilder: 9999 })
+          await window.api.atem.command({ type: 'rate', me: 0, stil: 'mix', rate: 9999 })
           await window.api.atem.command('cut')
           await window.api.atem.command({ type: 'makroStart', index: 1 })
           await window.api.atem.command({ type: 'uskOnAir', me: 0, keyer: 9, an: true })

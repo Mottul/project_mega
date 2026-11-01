@@ -41,19 +41,19 @@ async function anGeraet(a: Atem, c: AtemCommand): Promise<void> {
     case 'ftb':
       return a.fadeToBlack(c.me)
     case 'ftbRate':
-      return a.setFadeToBlackRate(c.bilder, c.me)
+      return a.setFadeToBlackRate(c.rate, c.me)
     case 'stil':
       return a.setTransitionStyle({ nextStyle: STIL_NACH_NUMMER.indexOf(c.stil) }, c.me)
     case 'rate':
       switch (c.stil) {
         case 'mix':
-          return a.setMixTransitionSettings({ rate: c.bilder }, c.me)
+          return a.setMixTransitionSettings({ rate: c.rate }, c.me)
         case 'dip':
-          return a.setDipTransitionSettings({ rate: c.bilder }, c.me)
+          return a.setDipTransitionSettings({ rate: c.rate }, c.me)
         case 'wipe':
-          return a.setWipeTransitionSettings({ rate: c.bilder }, c.me)
+          return a.setWipeTransitionSettings({ rate: c.rate }, c.me)
         case 'dve':
-          return a.setDVETransitionSettings({ rate: c.bilder }, c.me)
+          return a.setDVETransitionSettings({ rate: c.rate }, c.me)
       }
       return
     case 'hebel':
@@ -78,7 +78,7 @@ async function anGeraet(a: Atem, c: AtemCommand): Promise<void> {
     case 'dskAuto':
       return a.autoDownstreamKey(c.keyer)
     case 'dskRate':
-      return a.setDownstreamKeyRate(c.bilder, c.keyer)
+      return a.setDownstreamKeyRate(c.rate, c.keyer)
     case 'dskQuelle':
       return c.art === 'fill'
         ? a.setDownstreamKeyFillSource(c.quelle, c.keyer)

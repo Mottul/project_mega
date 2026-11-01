@@ -2,9 +2,7 @@
 // Quellen und Dauer. Die Tasten zum Schalten stehen auch auf der Seite „Mischen“.
 
 import {
-  ATEM_RATE_MAX,
-  ATEM_RATE_MIN,
-  bilderInSekunden,
+  bilderJeSchritt,
   keyerBit,
   QUELLE_FUER_KEY,
   type AtemDsk,
@@ -17,8 +15,7 @@ import {
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Field } from '@renderer/components/ui/field'
-import { NumberField } from '@renderer/components/ui/number-field'
-import { naechsterUmschalten, QuellenWahl, SchaltKnopf, Titel } from './ui'
+import { DauerFeld, naechsterUmschalten, QuellenWahl, SchaltKnopf, Titel } from './ui'
 import { senden } from './useAtem'
 
 const ART_NAMEN: Record<AtemKeyArt, string> = {
@@ -120,7 +117,7 @@ function DskKarte({
           onClick={() => senden({ type: 'dskAuto', keyer: i })}
         >
           Auto
-          {k.laeuft && <span className="tabular-nums">{k.restBilder}</span>}
+          {k.laeuft && <span className="tabular-nums">{k.rest * bilderJeSchritt(bildrate)}</span>}
         </Button>
         <SchaltKnopf
           ton="akzent"
@@ -132,15 +129,13 @@ function DskKarte({
           Mit Übergang
         </SchaltKnopf>
       </div>
-      <Field label="Dauer in Bildern" aside={bilderInSekunden(k.rate, bildrate)}>
-        <NumberField
-          aria-label={`${name} Dauer in Bildern`}
-          min={ATEM_RATE_MIN}
-          max={ATEM_RATE_MAX}
-          value={k.rate}
-          onCommit={(bilder) => senden({ type: 'dskRate', keyer: i, bilder })}
-        />
-      </Field>
+      <DauerFeld
+        label="Dauer in Bildern"
+        ariaLabel={`${name} Dauer in Bildern`}
+        rate={k.rate}
+        bildrate={bildrate}
+        onRate={(rate) => senden({ type: 'dskRate', keyer: i, rate })}
+      />
       <Field label="Fill">
         <QuellenWahl
           label={`${name} Fill`}

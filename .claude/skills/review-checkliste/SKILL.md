@@ -180,6 +180,16 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
 - **Exit-Hooks aus Bibliotheken:** Sie beenden bei SIGTERM gern hart per `process.exit` und übergehen
   Rückfrage und Aufräumen. Nur entfernen genügt nicht, dann gilt das Standardverhalten des Systems
   statt Electrons: eigener Listener mit `app.quit()` (`atemVerbindung.ts`).
+- **Ziehflächen brauchen `select-none`, auch drumherum.** Der Hebel hatte `touch-none`, aber kein
+  `select-none`, und wer ihn knapp verfehlte, markierte „Cut“ und „Auto“ (ATEM, 1.11.2026). Lag er dann
+  in dieser Auswahl, zog Chromium den Text: `dragstart`, `pointercancel`, Verbotszeichen, der Griff
+  stand. Sah aus wie ein Fehler am Hebel und trat „ab und zu“ auf. Bedienflächen ganz `select-none`,
+  und beim Drücken eine vorhandene Auswahl löschen (Strg+A). Gegen so etwas hilft kein Blick in den
+  Code: Bei „hängt ab und zu“ `pointercancel` und `dragstart` im Capture mitschreiben.
+- **Ein Name ist keine Einheit.** `remainingFrames` und „Dauer in Bildern“ klangen nach Videobildern,
+  der ATEM zählt ab 50p aber in Schritten von zwei Bildern. Aus Modus und Dauer gerechnet stand „1 s“
+  neben einem Übergang von 2 s, und der Plan rechnete mit dem Gegenteil. Was ein Gerät zählt, am Gerät
+  messen, und im Code nach dem nennen, was der Wert ist (`rate`, nicht `bilder`).
 - **Eine Taste an genau einer Stelle auswerten.** Testbild und Timer schlossen bei Esc doppelt
   (before-input-event im main UND keydown im Renderer) – harmlos, solange ein Druck genügte. Mit
   „zweimal Esc“ hätte so schon ein Druck geschlossen. Tasten der Ausgabefenster nur im main

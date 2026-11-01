@@ -4,11 +4,17 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import {
   ATEM_HINTERGRUND,
+  ATEM_RATE_MAX,
+  ATEM_RATE_MIN,
+  bilderInSekunden,
+  bilderJeSchritt,
   type AtemMakro,
   type AtemMakroPlayer,
   type AtemMe,
   type AtemQuelle
 } from '@shared/atem'
+import { Field } from '@renderer/components/ui/field'
+import { NumberField } from '@renderer/components/ui/number-field'
 import { Select } from '@renderer/components/ui/select'
 import { cn } from '@renderer/lib/utils'
 import { senden } from './useAtem'
@@ -110,6 +116,40 @@ export function QuellenWahl({
         </option>
       ))}
     </Select>
+  )
+}
+
+/**
+ * Eine Dauer in echten Bildern mit den Sekunden daneben. `rate` ist der Wert des Mischers, nur hier
+ * wird umgerechnet, siehe `bilderJeSchritt`. Bei 50p gibt es deshalb nur gerade Bilderzahlen.
+ */
+export function DauerFeld({
+  label,
+  ariaLabel = label,
+  rate,
+  bildrate,
+  className,
+  onRate
+}: {
+  label: string
+  ariaLabel?: string
+  rate: number
+  bildrate: number | null
+  className?: string
+  onRate: (rate: number) => void
+}): JSX.Element {
+  const je = bilderJeSchritt(bildrate)
+  return (
+    <Field label={label} aside={bilderInSekunden(rate * je, bildrate)} className={className}>
+      <NumberField
+        aria-label={ariaLabel}
+        min={ATEM_RATE_MIN * je}
+        max={ATEM_RATE_MAX * je}
+        step={je}
+        value={rate * je}
+        onCommit={(bilder) => onRate(bilder / je)}
+      />
+    </Field>
   )
 }
 

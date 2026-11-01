@@ -6,6 +6,8 @@ interface NumberFieldProps {
   onCommit: (value: number) => void
   min?: number
   max?: number
+  /** Nur Vielfache davon, gerundet beim Verlassen; `min` und `max` liegen selbst auf dem Raster */
+  step?: number
   className?: string
   placeholder?: string
   'aria-label'?: string
@@ -20,6 +22,7 @@ export function NumberField({
   onCommit,
   min,
   max,
+  step = 1,
   className,
   placeholder,
   'aria-label': ariaLabel
@@ -38,7 +41,7 @@ export function NumberField({
     }
     if (min !== undefined) v = Math.max(min, v)
     if (max !== undefined) v = Math.min(max, v)
-    v = Math.round(v)
+    v = Math.round(v / step) * step
     setText(String(v))
     onCommit(v)
   }

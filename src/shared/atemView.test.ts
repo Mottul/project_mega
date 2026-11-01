@@ -134,7 +134,7 @@ describe('atemViewAus', () => {
       raten: { mix: 25, dip: 30, wipe: 35 },
       hebel: 4000,
       uebergang: true,
-      restBilder: 7,
+      rest: 7,
       ftb: { schwarz: true, laeuft: false, rate: 12 },
       naechster: 5
     })
@@ -174,8 +174,8 @@ describe('atemViewAus', () => {
     )
     expect(v.mes[0].keyer).toEqual([{ onAir: true, art: 'dve', fill: 3, cut: 4 }])
     expect(v.dsk).toEqual([
-      { onAir: true, laeuft: true, restBilder: 3, tie: true, rate: 12, fill: 5, cut: 6 },
-      { onAir: false, laeuft: false, restBilder: 0, tie: false, rate: 0, fill: 0, cut: 0 }
+      { onAir: true, laeuft: true, rest: 3, tie: true, rate: 12, fill: 5, cut: 6 },
+      { onAir: false, laeuft: false, rest: 0, tie: false, rate: 0, fill: 0, cut: 0 }
     ])
   })
 
