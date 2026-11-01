@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { griffAusWert, HEBEL_START, hebelFolgen, wertAusGriff } from './atemHebel'
+import {
+  griffAusWert,
+  hebelAmEnde,
+  HEBEL_START,
+  hebelFolgen,
+  hebelZiehen,
+  wertAusGriff,
+  type HebelZug
+} from './atemHebel'
 
 /** Folge von Meldungen des Mischers: [läuft, Wert] */
 function folge(meldungen: [boolean, number][], start = HEBEL_START): typeof HEBEL_START {
@@ -35,6 +43,115 @@ describe('hebelFolgen', () => {
 
   it('bleibt stehen, solange nichts läuft (ein Cut geht nicht über den Hebel)', () => {
     expect(folge([[false, 0]])).toEqual(HEBEL_START)
+  })
+})
+
+describe('hebelAmEnde', () => {
+  it('dreht auch, wenn die Meldungen keinen hohen Wert zeigen (Griff schwungvoll ans Ende)', () => {
+    const s = hebelAmEnde(folge([[true, 3000]]))
+    expect(hebelFolgen(s, false, 0).oben).toBe(true)
+  })
+
+  it('dreht auch aus der Ruhelage: Ein einziger Sprung meldet gar keinen Übergang', () => {
+    expect(hebelFolgen(hebelAmEnde(HEBEL_START), false, 0).oben).toBe(true)
+  })
+
+  it('lässt sich von einer alten Meldung nicht aufhalten', () => {
+    const s = folge(
+      [
+        [true, 3000],
+        [false, 0]
+      ],
+      hebelAmEnde(folge([[true, 2000]]))
+    )
+    expect(s.oben).toBe(true)
+  })
+
+  it('dreht nur einmal, auch wenn die Null danach noch eine Meldung auslöst', () => {
+    const s = folge(
+      [
+        [false, 0],
+        [false, 0]
+      ],
+      hebelAmEnde(HEBEL_START)
+    )
+    expect(s.oben).toBe(true)
+  })
+})
+
+describe('hebelZiehen', () => {
+  const start: HebelZug = { oben: false, wert: 0, fertig: false }
+
+  /** Griff-Lagen nacheinander, mit gemeldeter Ruhelage: was geht hinaus? */
+  function zug(lagen: [griff: number, oben: boolean][], z = start): [HebelZug, number[]] {
+    const raus: number[] = []
+    let jetzt = z
+    for (const [griff, oben] of lagen) {
+      const schritt = hebelZiehen(jetzt, griff, oben)
+      jetzt = schritt.zug
+      if (schritt.senden !== null) raus.push(schritt.senden)
+    }
+    return [jetzt, raus]
+  }
+
+  it('sendet jeden neuen Wert, einen gleichen nicht', () => {
+    const [z, raus] = zug([
+      [0.2, false],
+      [0.2, false],
+      [0.5, false]
+    ])
+    expect(raus).toEqual([2000, 5000])
+    expect(z.fertig).toBe(false)
+  })
+
+  it('sendet am Ende nichts mehr, solange der Mischer das Ende nicht gemeldet hat', () => {
+    const [z, raus] = zug([
+      [1, false],
+      [0.5, false],
+      [0, false]
+    ])
+    expect(raus).toEqual([10000])
+    expect(z.fertig).toBe(true)
+  })
+
+  it('zieht nach der Meldung ohne Absetzen zurück: nächster Übergang ab der neuen Ruhelage', () => {
+    const [z, raus] = zug([
+      [1, false],
+      [0.75, true],
+      [0.25, true]
+    ])
+    expect(raus).toEqual([10000, 2500, 7500])
+    expect(z).toEqual({ oben: true, wert: 7500, fertig: false })
+  })
+
+  it('schiebt beim Zittern am Ende nichts an', () => {
+    const [z, raus] = zug([
+      [1, false],
+      [1, true],
+      [0.98, true]
+    ])
+    expect(raus).toEqual([10000])
+    expect(z.fertig).toBe(true)
+  })
+
+  it('läuft hin und zurück beliebig oft, jede Richtung ein eigener Übergang', () => {
+    const [z, raus] = zug([
+      [1, false],
+      [0.5, true],
+      [0, true],
+      [0.5, false],
+      [1, false]
+    ])
+    expect(raus).toEqual([10000, 5000, 10000, 5000, 10000])
+    expect(z.fertig).toBe(true)
+  })
+
+  it('verliert nichts, wenn der Griff in einem Sprung am anderen Ende ankommt', () => {
+    const [, raus] = zug([
+      [1, false],
+      [0, true]
+    ])
+    expect(raus).toEqual([10000, 10000])
   })
 })
 

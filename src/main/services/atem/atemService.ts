@@ -5,6 +5,7 @@
 
 import {
   ATEM_GETRENNT,
+  ATEM_HEBEL_MAX,
   atemCommand,
   atemZiel,
   type AtemCommand,
@@ -13,7 +14,7 @@ import {
   type AtemZiel
 } from '@shared/atem'
 import { atemViewAus, protokollText, type AtemRoh } from '@shared/atemView'
-import { HEBEL_START, hebelFolgen, type HebelSpur } from '@shared/atemHebel'
+import { HEBEL_START, hebelAmEnde, hebelFolgen, type HebelSpur } from '@shared/atemHebel'
 import { logLine } from '../log'
 import { simulierteVerbindung } from './atemSimulator'
 import { echteVerbindung, type AtemMeldungen, type AtemVerbindung } from './atemVerbindung'
@@ -200,6 +201,7 @@ async function hebelSenden(v: AtemVerbindung, me: number): Promise<void> {
       const wert = hebelWunsch.get(me)
       if (wert === undefined || verbindung !== v) break
       hebelWunsch.delete(me)
+      if (wert >= ATEM_HEBEL_MAX) spuren[me] = hebelAmEnde(spuren[me] ?? HEBEL_START)
       const pause = new Promise((resolve) => setTimeout(resolve, HEBEL_MS))
       await Promise.all([v.befehl({ type: 'hebel', me, wert }), pause])
     }

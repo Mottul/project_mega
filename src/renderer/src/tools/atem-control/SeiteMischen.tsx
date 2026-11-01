@@ -313,8 +313,10 @@ export function SeiteMischen({
 
   const rate = istRatenStil(m.stil) ? m.raten[m.stil] : undefined
 
+  // Keine Textauswahl: Wer den Hebel knapp verfehlt und zieht, markierte sonst „Cut“ und „Auto“, und
+  // der nächste Griff zöge diesen Text statt des Hebels
   return (
-    <div ref={flaeche} className="space-y-4">
+    <div ref={flaeche} className="select-none space-y-4">
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1 space-y-4">
           <Reihe

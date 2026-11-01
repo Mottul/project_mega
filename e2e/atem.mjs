@@ -20,6 +20,7 @@ const knopf = (bus, id) => page.getByTestId(`atem-${bus}-${id}`)
 const bar = () => page.getByTestId('tool-bar')
 const aufTrennen = () => bar().getByRole('button', { name: 'Trennen' })
 const hebel = () => page.getByTestId('atem-hebel')
+const hebelWert = async () => Number(await hebel().getAttribute('aria-valuenow'))
 const empfangen = (name) => mischer.empfangen.filter((c) => c.name === name)
 
 async function zeigt(bus, id, zustand = 'an') {
@@ -249,6 +250,92 @@ try {
         await zurueck.los()
         await zeigt('programm', 1)
         assert.equal(await hebel().getAttribute('data-oben'), obenStart)
+      }
+    ],
+    [
+      'Hebel: am Ende ohne Absetzen zurück, jede Richtung ein eigener Übergang',
+      async () => {
+        const oben = await hebel().getAttribute('data-oben')
+        const zug = await ziehe(1.1, 25)
+        await zeigt('programm', 3)
+        assert.ok(
+          await waitFor(async () => (await hebel().getAttribute('data-oben')) !== oben),
+          'Ruhelage nicht gedreht'
+        )
+        // Zittern am Ende schiebt nichts an
+        await zug.nach(0.87, 3)
+        await sleep(150)
+        assert.equal(await hebelWert(), 0)
+        // Griff unten geblieben: zurück bis zur Mitte, das Bild steht noch
+        await zug.nach(0.5, 10)
+        assert.ok(await waitFor(async () => (await hebelWert()) > 3000), 'zurück läuft nicht')
+        assert.equal(await knopf('programm', 3).getAttribute('data-zustand'), 'an')
+        // Der Griff bleibt unter der Maus: ein Stück weiter nach Hause, dann ganz durch
+        await zug.nach(1.1, 10)
+        assert.ok(await waitFor(async () => (await hebelWert()) === 0))
+        await zug.nach(-0.1, 25)
+        await zeigt('programm', 1)
+        assert.ok(
+          await waitFor(async () => (await hebel().getAttribute('data-oben')) === oben),
+          'Ruhelage nach dem Rückweg nicht gedreht'
+        )
+        await zug.nach(1.1, 25)
+        await zeigt('programm', 3)
+        await zug.nach(-0.1, 25)
+        await zeigt('programm', 1)
+        await zug.los()
+      }
+    ],
+    [
+      'Hebel mit Schwung: Ein Sprung ans Ende dreht die Ruhelage, zurück geht es trotzdem',
+      async () => {
+        const oben = await hebel().getAttribute('data-oben')
+        const zug = await ziehe(1.1, 1)
+        await zeigt('programm', 3)
+        assert.ok(
+          await waitFor(async () => (await hebel().getAttribute('data-oben')) !== oben),
+          'Ruhelage nicht gedreht'
+        )
+        await zug.nach(-0.1, 1)
+        await zeigt('programm', 1)
+        await zug.los()
+      }
+    ],
+    [
+      'Hebel verfehlt: Nichts wird markiert, der nächste Griff bleibt nicht hängen',
+      async () => {
+        await page.evaluate(() => {
+          window.__hebelAbbruch = 0
+          document.addEventListener('pointercancel', () => window.__hebelAbbruch++, true)
+        })
+        await hebel().scrollIntoViewIfNeeded()
+        const box = await hebel().boundingBox()
+        const auto = await page.getByTestId('atem-auto').boundingBox()
+        await page.mouse.move(box.x - 12, box.y + 80)
+        await page.mouse.down()
+        await page.mouse.move(auto.x + 10, auto.y - 30, { steps: 10 })
+        await page.mouse.up()
+        assert.equal(await page.evaluate(() => getSelection().toString()), '')
+
+        const zug = await ziehe(0.7)
+        assert.ok(await waitFor(async () => (await hebelWert()) > 5000), 'Griff hängt')
+        await zug.nach(-0.1, 8)
+        await zug.los()
+        assert.ok(await waitFor(async () => (await hebelWert()) === 0))
+        assert.equal(await page.evaluate(() => window.__hebelAbbruch), 0)
+      }
+    ],
+    [
+      'Hebel in einer Textauswahl: Gezogen wird der Griff, nicht der Text',
+      async () => {
+        await page.evaluate(() => getSelection().selectAllChildren(document.body))
+        assert.notEqual(await page.evaluate(() => getSelection().toString()), '')
+        const zug = await ziehe(0.7)
+        assert.ok(await waitFor(async () => (await hebelWert()) > 5000), 'Griff hängt')
+        await zug.nach(-0.1, 8)
+        await zug.los()
+        assert.ok(await waitFor(async () => (await hebelWert()) === 0))
+        assert.equal(await page.evaluate(() => window.__hebelAbbruch), 0)
       }
     ],
     [
@@ -540,6 +627,22 @@ try {
           .slice(vorher)
           .map((c) => c.wert)
         assert.ok(werte.length >= 2, JSON.stringify(werte))
+        assert.deepEqual(werte.slice(-2), [10000, 0])
+      }
+    ],
+    [
+      'Hebel am echten Weg: ohne Absetzen hin und zurück, der Mischer schaltet beide Male',
+      async () => {
+        const vorher = empfangen('CTPs').length
+        const zug = await ziehe(1.1, 40)
+        await zeigt('programm', 7)
+        await zug.nach(-0.1, 40)
+        await zeigt('programm', 4)
+        await zug.los()
+        const werte = empfangen('CTPs')
+          .slice(vorher)
+          .map((c) => c.wert)
+        assert.equal(werte.filter((w) => w === 10000).length, 2, JSON.stringify(werte))
         assert.deepEqual(werte.slice(-2), [10000, 0])
       }
     ],

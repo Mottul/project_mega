@@ -1,10 +1,11 @@
 // Übergangshebel: zeigt, was der Mischer meldet, nur beim Ziehen folgt der Griff der Maus. Die
-// Richtung und die Ruhelage rechnet atemHebel.ts. Wer ziehen will, muss den Griff nicht treffen:
-// Es zählt die Bewegung ab dem Drücken, ein Klick lässt den Hebel deshalb nicht springen.
+// Richtung, die Ruhelage und das Zurückziehen rechnet atemHebel.ts. Wer ziehen will, muss den Griff
+// nicht treffen: Es zählt die Bewegung ab dem Drücken, ein Klick lässt den Hebel deshalb nicht
+// springen.
 
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { ATEM_HEBEL_MAX } from '@shared/atem'
-import { griffAusWert, wertAusGriff } from '@shared/atemHebel'
+import { griffAusWert, hebelZiehen, wertAusGriff, type HebelZug } from '@shared/atemHebel'
 import { cn } from '@renderer/lib/utils'
 
 const HOEHE = 200
@@ -12,12 +13,9 @@ const GRIFF = 32
 /** Pfeiltasten: ein Schritt in Griff-Lage */
 const SCHRITT = 0.02
 
-interface Zug {
+interface Zug extends HebelZug {
   y: number
   griff: number
-  oben: boolean
-  /** Ende erreicht: bis zum Loslassen geht nichts mehr hinaus */
-  fertig: boolean
 }
 
 export function Hebel({
@@ -32,21 +30,16 @@ export function Hebel({
   onWert: (wert: number) => void
 }): JSX.Element {
   const zug = useRef<Zug | null>(null)
-  const zuletzt = useRef(wert)
   const [gezogen, setGezogen] = useState<number | null>(null)
   const griff = gezogen ?? griffAusWert(wert, oben)
 
-  function senden(neu: number): void {
-    if (neu === zuletzt.current) return
-    zuletzt.current = neu
-    onWert(neu)
-  }
-
   function down(e: PointerEvent<HTMLDivElement>): void {
     if (!bedienbar) return
+    // Liegt der Hebel in einer Textauswahl (Strg+A), zöge Chromium den Text: dragstart, dann
+    // pointercancel. Der Griff bliebe nach ein, zwei Werten mit dem Verbotszeichen stehen.
+    getSelection()?.removeAllRanges()
     e.currentTarget.setPointerCapture(e.pointerId)
-    zug.current = { y: e.clientY, griff, oben, fertig: false }
-    zuletzt.current = wert
+    zug.current = { y: e.clientY, griff, oben, wert, fertig: false }
     setGezogen(griff)
   }
 
@@ -55,10 +48,9 @@ export function Hebel({
     if (!z) return
     const g = Math.min(1, Math.max(0, z.griff + (z.y - e.clientY) / (HOEHE - GRIFF)))
     setGezogen(g)
-    if (z.fertig) return
-    const neu = wertAusGriff(g, z.oben)
-    senden(neu)
-    if (neu >= ATEM_HEBEL_MAX) z.fertig = true
+    const schritt = hebelZiehen(z, g, oben)
+    zug.current = { ...z, ...schritt.zug }
+    if (schritt.senden !== null) onWert(schritt.senden)
   }
 
   function up(): void {

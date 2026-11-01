@@ -277,6 +277,8 @@ describe('Hebel', () => {
     g.bestaetigungen[0]()
     await vi.advanceTimersByTimeAsync(0)
     expect(g.befehle.map((c) => (c.type === 'hebel' ? c.wert : 0))).toEqual([1000, 4000])
+    g.bestaetigungen[1]()
+    await vi.advanceTimersByTimeAsync(40)
   })
 
   it('merkt sich die Ruhelage: Nach einem fertigen Übergang steht sie am anderen Ende', async () => {
@@ -289,6 +291,22 @@ describe('Hebel', () => {
       })
     g.m.zustand(lauf(9000))
     await vi.advanceTimersByTimeAsync(100)
+    g.m.zustand(lauf(0, false))
+    await vi.advanceTimersByTimeAsync(100)
+    expect(getAtemView()?.mes[0].hebelOben).toBe(true)
+  })
+
+  it('dreht die Ruhelage auch, wenn der Griff schwungvoll ans Ende springt', async () => {
+    const g = await verbunden()
+    const lauf = (handlePosition: number, inTransition = true): AtemRoh =>
+      roh({
+        video: mischer(
+          me({ transitionPosition: { inTransition, remainingFrames: 3, handlePosition } })
+        )
+      })
+    g.m.zustand(lauf(3000))
+    await vi.advanceTimersByTimeAsync(100)
+    void atemBefehl({ type: 'hebel', me: 0, wert: 10000 })
     g.m.zustand(lauf(0, false))
     await vi.advanceTimersByTimeAsync(100)
     expect(getAtemView()?.mes[0].hebelOben).toBe(true)
