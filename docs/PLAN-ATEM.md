@@ -133,6 +133,21 @@ laufen zu lassen. Die letzte Adresse liegt in `settings.json`, „Beim Start ver
 Die Zahl gleichzeitiger Steuerungen ist begrenzt. Im Blackmagic-Forum ist von fünf die Rede, eine
 offizielle Angabe habe ich nicht gefunden. Mottulbox belegt immer genau einen Platz.
 
+**Steuerung über USB: verworfen** (31. Oktober 2026). Gesteuert wird nur über das Netzwerk, ein Kabel
+direkt vom Laptop zum Mischer genügt. Das Gerät kann USB-Steuerung, und das Protokoll ist nachgebaut
+([OpenSwitcher](https://docs.openswitcher.org/usbtransport.html)): eine eigene Schnittstelle mit
+denselben Befehlen wie über UDP. Dagegen spricht der Aufwand:
+
+- `atem-connection` kann kein USB. Wir bräuchten einen eigenen Transport und ein neues natives Modul für
+  alle drei Systeme.
+- Das Protokoll hat mit Firmware 8.6 gewechselt, ein Teil der Bytes ist ungeklärt.
+- Unter Windows verlangt libusb vermutlich WinUSB auf dieser Schnittstelle, das könnte mit der
+  Blackmagic-Software kollidieren. Geprüft ist das nicht.
+- Das offizielle SDK setzt nach allem, was zu finden war, die installierte ATEM Software Control voraus.
+
+Neu bewerten nur, wenn Windows dort von selbst WinUSB nimmt und ein Einsatz ohne Netzwerkkabel wirklich
+gebraucht wird. Das Bild über USB ist davon nicht betroffen, siehe [Multiview](#multiview-im-werkzeug).
+
 ### Simulator
 
 Ein `AtemSimulator` im Hauptprozess mit derselben Schnittstelle wie die echte Verbindung: Er führt
@@ -261,7 +276,7 @@ main. Darüber liegt ein Raster aus dem Mischer-Zustand: Die Aufteilung ist eine
 - **Vorsicht beim Umschalten:** Hängt am USB-Ausgang zugleich Zoom oder OBS, sehen die den neuen Feed
   ebenfalls. Darum verlangt das Umschalten eine Bestätigung, die aktuelle Quelle steht immer sichtbar da.
 - **Netzwerk bleibt nötig:** Die Bibliothek spricht nur UDP. Für die Steuerung braucht der Mischer also
-  Ethernet, auch wenn das Bild über USB kommt.
+  Ethernet, auch wenn das Bild über USB kommt, siehe [Verbindung](#verbindung).
 - **Eigenes Fenster:** Multiview auf einem zweiten Monitor über `createOutputWindow()`.
 - **Nicht vorgesehen:** Multiview aufs Handy. Das bräuchte eine eigene Bildkodierung.
 
@@ -417,3 +432,6 @@ Kamerasteuerung, automatisches Umschalten nach Tonpegel.
   [Verbindungsgrenze](https://forum.blackmagicdesign.com/viewtopic.php?p=777096),
   [Multiview als NDI](https://forum.blackmagicdesign.com/viewtopic.php?p=1022835),
   [Animations-Makros](https://forum.blackmagicdesign.com/viewtopic.php?p=1023346)
+- [OpenSwitcher: USB-Protokoll](https://docs.openswitcher.org/usbtransport.html),
+  [pyatem](https://pypi.org/project/pyatem/), [atem-streamlia](https://github.com/tomblchr/atem-streamlia)
+  (Weg über das SDK), [libusb und Windows-Treiber](https://docs.inivation.com/hardware/hardware-advanced-usage/usb-drivers.html)
