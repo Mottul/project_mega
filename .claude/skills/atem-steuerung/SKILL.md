@@ -38,7 +38,18 @@ Fenster  ◀──AtemView────   atemViewAus(roh), gedrosselt          �
 - **Hohe Raten nie als Warteschlange:** Hebel über `hebelSenden` (immer der neueste Wert, nächster
   erst nach Bestätigung und 33 ms), Ansicht höchstens alle 40 ms.
 - **Ruhelage des Hebels** kennt der Mischer nicht, sie liegt in `atemHebel.ts`. Der Wert läuft immer
-  0…10000, auch wenn der Griff nach unten fährt. Jeder fertige Übergang dreht sie, auch Auto.
+  0…10000, auch wenn der Griff nach unten fährt. Jeder fertige Übergang dreht sie, auch Auto. Das Ende
+  merkt sich der Dienst beim Senden (`hebelAmEnde`): Die gedrosselte Ansicht sieht bei einem Sprung ans
+  Ende keinen hohen Wert, die Ruhelage bliebe stehen und der Griff am falschen Ende.
+- **Zurückziehen ohne Absetzen:** `hebelZiehen` hält den Griff am Ende an, bis die gemeldete Ruhelage
+  gedreht hat, und wartet auf 3 % Rückweg. Erst dann beginnt der nächste Übergang. Der Griff folgt der
+  Maus dabei weiter.
+- **Textauswahl:** Die Seite „Mischen“ ist `select-none`, der Hebel löscht beim Drücken jede Auswahl.
+  Liegt er in einer, zieht Chromium den Text: `dragstart`, `pointercancel`, Verbotszeichen. Das sah
+  aus wie ein hängender Hebel mit gewähltem Auto-Knopf (markierter Text darüber).
+- **Dauern zählt der Mischer nicht in Bildern:** Ab 50p ist ein Schritt von `rate` und `rest` zwei Bilder
+  (`bilderJeSchritt`). In `AtemView` und `AtemCommand` steht immer sein Wert, echte Bilder gibt es nur in
+  `DauerFeld` und an den Restzählern. Der Probebetrieb läuft im selben Takt.
 - **Direktes Kabel ohne DHCP:** Mischer und Rechner geben sich Link-Local-Adressen irgendwo in
   169.254.x.x/16. Der Netzwerk-Scanner findet ihn dann über ARP und mDNS (`_blackmagic._tcp`), nicht
   über den Sweep; Beispiel und Regeln in `review-checkliste`, Abschnitt Netzwerk.
@@ -91,6 +102,24 @@ Lebenszeichen alle 500 ms meldet sie nach 5 s den Verlust. Die Nutzlast des letz
 Im Test nach jedem Schalten auf die Rückmeldung warten, auch vor dem nächsten Feld: Das Feld „Dauer in
 Bildern“ gehört zum gemeldeten Stil. Wer nach dem Klick auf „Dip“ sofort tippt, ändert noch die
 Mix-Dauer (rot im vollen Lauf, allein grün).
+
+## Messen am Gerät
+
+Was nur das Gerät weiß, wird gemessen, nicht geraten: Die Bibliothek nennt `remainingFrames`, das sind
+ab 50p aber keine Videobilder. Ein kleines Skript im Scratch-Ordner, `createRequire` mit der
+`package.json` des Projekts, `new Atem({})`, `connect`, dann `stateChanged` mitschreiben. **Lauschen
+ändert nichts und geht jederzeit; schalten nur nach Absprache**, das Bild kann auf Sendung sein. Direkt
+nach `connected` liegt in `a.state` der ganze Stand.
+
+Gemessen am ATEM Mini Extreme, 1080p50, Auto-Mix mit Dauer 50:
+
+| Was | Wert |
+| --- | --- |
+| Dauer | 1981 ms |
+| Hebel-Meldungen (`TrPs`) | alle 20 ms, je Bild eine |
+| `handlePosition` | 100, 200 … 9900, Schritte von 100 = je Videobild, das Ende (10000) wird nie gemeldet |
+| `remainingFrames` | 49, 49, 48, 48 … also 25 je Sekunde; ruhend steht dort die eingestellte Dauer |
+| Letzte Meldung | `inTransition` false, Hebel 0 |
 
 ## Paket und Bibliothek
 

@@ -75,7 +75,7 @@ describe('Probebetrieb', () => {
 
   it('fährt Auto Bild für Bild und endet nach der eingestellten Dauer', async () => {
     const s = aufbau() // 1080p25
-    await s.befehl({ type: 'rate', me: 0, stil: 'mix', bilder: 10 })
+    await s.befehl({ type: 'rate', me: 0, stil: 'mix', rate: 10 })
     await s.befehl({ type: 'auto', me: 0 })
     const me = (): AtemRoh['video']['mixEffects'][0] => s.stand().video.mixEffects[0]
     vi.advanceTimersByTime(40 * 5)
@@ -89,6 +89,17 @@ describe('Probebetrieb', () => {
     expect(me()?.transitionPosition.inTransition).toBe(false)
     expect(me()?.transitionPosition.handlePosition).toBe(0)
     expect(me()?.programInput).toBe(2)
+  })
+
+  it('läuft bei 50p wie das Gerät: Dauer 50 dauert 2 s, nicht 1 s', async () => {
+    const s = aufbau('mini-extreme') // 1080p50
+    await s.befehl({ type: 'rate', me: 0, stil: 'mix', rate: 50 })
+    await s.befehl({ type: 'auto', me: 0 })
+    const me = (): AtemRoh['video']['mixEffects'][0] => s.stand().video.mixEffects[0]
+    vi.advanceTimersByTime(1900)
+    expect(me()?.transitionPosition.inTransition).toBe(true)
+    vi.advanceTimersByTime(200)
+    expect(me()?.transitionPosition.inTransition).toBe(false)
   })
 
   it('folgt dem Hebel: Mitte läuft, Ende tauscht, zurück ändert nichts', async () => {
@@ -106,7 +117,7 @@ describe('Probebetrieb', () => {
 
   it('fährt Auto von der Stelle des Hebels zu Ende', async () => {
     const s = aufbau()
-    await s.befehl({ type: 'rate', me: 0, stil: 'mix', bilder: 10 })
+    await s.befehl({ type: 'rate', me: 0, stil: 'mix', rate: 10 })
     await s.befehl({ type: 'hebel', me: 0, wert: 5000 })
     await s.befehl({ type: 'auto', me: 0 })
     vi.advanceTimersByTime(40 * 5)
@@ -116,7 +127,7 @@ describe('Probebetrieb', () => {
   it('blendet Fade to Black über die eingestellte Dauer, beim zweiten Mal zurück', async () => {
     const s = aufbau()
     const ftb = (): AtemRoh['video']['mixEffects'][0] => s.stand().video.mixEffects[0]
-    await s.befehl({ type: 'ftbRate', me: 0, bilder: 5 })
+    await s.befehl({ type: 'ftbRate', me: 0, rate: 5 })
     await s.befehl({ type: 'ftb', me: 0 })
     expect(ftb()?.fadeToBlack).toMatchObject({ inTransition: true, remainingFrames: 5 })
     vi.advanceTimersByTime(40 * 5)
@@ -157,11 +168,11 @@ describe('Probebetrieb', () => {
   it('blendet einen DSK über seine Dauer und nimmt verknüpfte beim Übergang mit', async () => {
     const s = aufbau('mini-extreme')
     const dsk = (): ReturnType<typeof atemViewAus>['dsk'] => atemViewAus(s.stand(), []).dsk
-    await s.befehl({ type: 'dskRate', keyer: 0, bilder: 5 })
+    await s.befehl({ type: 'dskRate', keyer: 0, rate: 5 })
     await s.befehl({ type: 'dskAuto', keyer: 0 })
-    expect(dsk()[0]).toMatchObject({ laeuft: true, restBilder: 5, onAir: false })
-    vi.advanceTimersByTime(20 * 5)
-    expect(dsk()[0]).toMatchObject({ laeuft: false, restBilder: 0, onAir: true })
+    expect(dsk()[0]).toMatchObject({ laeuft: true, rest: 5, onAir: false })
+    vi.advanceTimersByTime(40 * 5)
+    expect(dsk()[0]).toMatchObject({ laeuft: false, rest: 0, onAir: true })
 
     await s.befehl({ type: 'dskTie', keyer: 1, an: true })
     await s.befehl({ type: 'cut', me: 0 })

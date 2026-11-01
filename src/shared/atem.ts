@@ -9,7 +9,7 @@ export type AtemStil = (typeof ATEM_STILE)[number]
 export const ATEM_RATEN_STILE = ['mix', 'dip', 'wipe', 'dve'] as const
 export type AtemRatenStil = (typeof ATEM_RATEN_STILE)[number]
 
-/** Die Grenzen des Geräts: Eine Übergangsdauer liegt zwischen 1 und 250 Bildern */
+/** Die Grenzen des Geräts: Eine Dauer liegt zwischen 1 und 250, siehe `bilderJeSchritt` */
 export const ATEM_RATE_MIN = 1
 export const ATEM_RATE_MAX = 250
 /** Der Hebel läuft von 0 bis 10000, am Ende ist der Übergang fertig */
@@ -97,7 +97,7 @@ export interface AtemUsk {
 export interface AtemDsk {
   onAir: boolean
   laeuft: boolean
-  restBilder: number
+  rest: number
   /** Geht mit dem nächsten Übergang mit */
   tie: boolean
   rate: number
@@ -150,7 +150,7 @@ export interface AtemAux {
 export interface AtemFtb {
   schwarz: boolean
   laeuft: boolean
-  restBilder: number
+  rest: number
   rate: number
 }
 
@@ -159,12 +159,12 @@ export interface AtemMe {
   vorschau: number
   /** Stil des nächsten Übergangs */
   stil: AtemStil
-  /** Dauer in Bildern je Stil, soweit gemeldet */
+  /** Dauer je Stil, soweit gemeldet, in der Zählung des Mischers (`bilderJeSchritt`) */
   raten: Partial<Record<AtemRatenStil, number>>
   /** 0…ATEM_HEBEL_MAX, in Richtung des laufenden Übergangs */
   hebel: number
   uebergang: boolean
-  restBilder: number
+  rest: number
   /** Ruhelage des Hebels auf dem Bildschirm: oben oder unten (siehe atemHebel.ts) */
   hebelOben: boolean
   ftb: AtemFtb
@@ -179,7 +179,7 @@ export interface AtemView {
   mes: AtemMe[]
   /** Was der Mischer kann; anderes erscheint nicht */
   stile: AtemStil[]
-  /** Vollbilder je Sekunde, nur für die Anzeige der Dauer in Sekunden */
+  /** Vollbilder je Sekunde, nur für die Anzeige einer Dauer in Bildern und Sekunden */
   bildrate: number | null
   dsk: AtemDsk[]
   /** Belegte Makros */
@@ -194,16 +194,16 @@ export interface AtemView {
 export type AtemCommand =
   | { type: 'programm' | 'vorschau'; me: number; quelle: number }
   | { type: 'cut' | 'auto' | 'ftb'; me: number }
-  | { type: 'ftbRate'; me: number; bilder: number }
+  | { type: 'ftbRate'; me: number; rate: number }
   | { type: 'stil'; me: number; stil: AtemStil }
-  | { type: 'rate'; me: number; stil: AtemRatenStil; bilder: number }
+  | { type: 'rate'; me: number; stil: AtemRatenStil; rate: number }
   | { type: 'hebel'; me: number; wert: number }
   | { type: 'uskOnAir'; me: number; keyer: number; an: boolean }
   | { type: 'uskQuelle'; me: number; keyer: number; art: AtemKeyQuelle; quelle: number }
   | { type: 'naechster'; me: number; maske: number }
   | { type: 'dskOnAir' | 'dskTie'; keyer: number; an: boolean }
   | { type: 'dskAuto'; keyer: number }
-  | { type: 'dskRate'; keyer: number; bilder: number }
+  | { type: 'dskRate'; keyer: number; rate: number }
   | { type: 'dskQuelle'; keyer: number; art: AtemKeyQuelle; quelle: number }
   | { type: 'makroStart'; index: number }
   | { type: 'makroStopp' | 'makroWeiter' }
@@ -248,7 +248,7 @@ function befehlOhneMe(c: Record<string, unknown>, view: AtemView): AtemCommand |
     case 'dskAuto':
       return dsk !== null ? { type, keyer: dsk } : null
     case 'dskRate':
-      return dsk !== null && bilderOk(c.bilder) ? { type, keyer: dsk, bilder: c.bilder } : null
+      return dsk !== null && rateOk(c.rate) ? { type, keyer: dsk, rate: c.rate } : null
     case 'dskQuelle': {
       const art = einerVon(KEY_QUELLEN, c.art)
       const quelle = quelleMit(view, c.quelle, QUELLE_FUER_KEY)
@@ -320,15 +320,15 @@ export function atemCommand(roh: unknown, view: AtemView): AtemCommand | null {
     case 'ftb':
       return { type, me }
     case 'ftbRate':
-      return bilderOk(c.bilder) ? { type, me, bilder: c.bilder } : null
+      return rateOk(c.rate) ? { type, me, rate: c.rate } : null
     case 'stil': {
       const stil = einerVon(view.stile, c.stil)
       return stil ? { type, me, stil } : null
     }
     case 'rate': {
       const stil = einerVon(ATEM_RATEN_STILE, c.stil)
-      if (!stil || !view.stile.includes(stil) || !bilderOk(c.bilder)) return null
-      return { type, me, stil, bilder: c.bilder }
+      if (!stil || !view.stile.includes(stil) || !rateOk(c.rate)) return null
+      return { type, me, stil, rate: c.rate }
     }
     case 'hebel':
       return istGanz(c.wert) && c.wert >= 0 && c.wert <= ATEM_HEBEL_MAX
@@ -339,7 +339,7 @@ export function atemCommand(roh: unknown, view: AtemView): AtemCommand | null {
   }
 }
 
-function bilderOk(v: unknown): v is number {
+function rateOk(v: unknown): v is number {
   return istGanz(v) && v >= ATEM_RATE_MIN && v <= ATEM_RATE_MAX
 }
 
@@ -372,7 +372,18 @@ export function hostUndPort(host: string): { adresse: string; port: number | und
     : { adresse: host.slice(0, i), port: Number(host.slice(i + 1)) }
 }
 
-/** Dauer für die Anzeige: Am ATEM gelten Bilder, die Sekunden hängen von der Bildrate ab */
+/**
+ * Bilder je Zählschritt einer Dauer. `rate` und `rest` zählt der Mischer nicht in Bildern des
+ * Videoformats: Ab 50 Bildern je Sekunde läuft sein Zähler mit der halben Bildrate. Gemessen am ATEM
+ * Mini Extreme bei 1080p50 (1. November 2026): Mix mit Dauer 50 läuft 100 Videobilder und 2 s, der
+ * Rest fällt um 25 je Sekunde. 59,94p und 60p sowie FTB, DSK, Dip, Wipe und DVE sind daraus
+ * übertragen, nicht gemessen.
+ */
+export function bilderJeSchritt(bildrate: number | null): number {
+  return bildrate !== null && bildrate >= 50 ? 2 : 1
+}
+
+/** Echte Bilder für die Anzeige in Sekunden */
 export function bilderInSekunden(bilder: number, bildrate: number | null): string | null {
   if (!bildrate) return null
   return `${(bilder / bildrate).toFixed(2).replace('.', ',')} s`

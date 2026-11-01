@@ -51,6 +51,14 @@ in keine geplante Seite. Die Seite „Mischen“ zeigt neben „Tasten“ auch �
 ein Key nur hart auf Sendung. Die Art eines Upstream-Keyers wird nur angezeigt: Luma, Chroma und Muster
 haben eigene Einstellungen, die erst mit einer Seite dafür Sinn ergeben.
 
+**Test am ATEM Mini Extreme, 1. November 2026:** Der Hebel lief am Gerät, dabei fielen drei Fehler auf.
+Er rastete am Ende ein, er blieb hängen, sobald er in einer Textauswahl lag, und 50 Bilder bei 50p
+dauerten 2 s statt der angezeigten 1 s. Behoben ist alles im Probebetrieb und am Schein-Mischer, die
+Abnahme am Gerät steht aus. Gemessen wurde ein Auto-Mix mit Dauer 50 bei 1080p50:
+1981 ms, 100 Hebel-Meldungen im Abstand von 20 ms, der Rest fällt um 25 je Sekunde. Dauern zählt der
+Mischer ab 50p also in Schritten von zwei Bildern (`bilderJeSchritt`). Die Bedienung steht noch zur
+Besprechung an.
+
 **Noch offen:**
 
 1. Rest von Phase 0: Verbinden aus dem Installer unter Windows und macOS, die
@@ -64,6 +72,9 @@ haben eigene Einstellungen, die erst mit einer Seite dafür Sinn ergeben.
    mit Pause. Standbilder im Media-Player. Zeigt die Liste bei den AUX-Bussen nur, was der jeweilige Bus
    annimmt? Die Bibliothek nennt vier AUX-Bits, welches zu welchem Bus gehört, ist nicht belegt. Ist
    einer der Busse der USB-Ausgang, gilt die Vorsicht aus [Multiview](#multiview-im-werkzeug).
+6. **Zählung der Dauer:** Gemessen ist nur der Mix bei 1080p50. FTB, DSK, Dip, Wipe und DVE sowie 59,94p
+   und 60p sind daraus übertragen. Zeigt eines davon die falschen Sekunden, gehört das in
+   `bilderJeSchritt`.
 
 ## Entscheidung: eigenes Werkzeug
 
@@ -206,9 +217,12 @@ Für SuperSource-Boxen gibt es keinen Befehl zum Überblenden, jede Animation is
 Positionen. **Die Recheneinheit ist deshalb das Videobild, nicht die Zeit.** Die Bildrate kommt aus
 `settings.videoMode`, also von 23,98 bis 59,94, bei Halbbild-Modi je Vollbild ein Schritt.
 
-**Die Dauer gilt in Bildern**, wie alle Übergangsraten am ATEM, und so speichert sie auch das Layout.
-Dasselbe Layout läuft bei 50p also halb so lang wie bei 25p. Die Seite zeigt daneben die Sekunden zur
-aktuellen Bildrate, damit das auffällt, wenn ein Projekt auf einem anderen Mischer läuft.
+**Die Dauer speichert das Layout in Bildern.** Die Seite zeigt daneben die Sekunden zur aktuellen
+Bildrate, damit es auffällt, wenn ein Projekt auf einem anderen Mischer läuft. Übergangsdauern des
+Mischers zählen ab 50p in Schritten von zwei Bildern (gemessen, siehe [Stand](#stand)): Dieselbe Dauer
+läuft dort also so lang wie bei 25p. Ob Makro-Pausen genauso zählen, ist offen, siehe die Messung unten.
+Davon hängt ab, ob die Pause von 1 Bild bei 50p 20 oder 40 ms dauert und ob eine Animation dort jedes
+Bild treffen kann.
 
 Eine reine Funktion rechnet aus Start, Ziel, Bildzahl und Kurve alle Werte je Bild. Jeder Wert
 entsteht direkt aus Start und Ziel statt aufaddiert: Rundungsfehler laufen nicht auf, der letzte
@@ -235,7 +249,8 @@ Hochladen ist besser als Aufzeichnen, denn eine Aufzeichnung nähme alles mit, w
 am Mischer geschieht. Das Datenformat ist nicht dokumentiert und wird aus `downloadMacro` einer
 Testaufnahme abgeleitet. Klappt das nicht, bleibt `macroStartRecord` mit `macroInsertTimedWait`.
 
-**Messung in Phase 0**, alles Annahmen, bis sie am Gerät belegt sind: Wirken mehrere Box-Befehle
+**Messung in Phase 0**, alles Annahmen, bis sie am Gerät belegt sind: Wie lang ist eine Makro-Pause von
+1 Bild bei 25p und 50p? Wirken mehrere Box-Befehle
 zwischen zwei Pausen im selben Bild? Wie viele Schritte fasst ein Makro? MixEffect warnt, dass lange
 Übergänge beim Aufzeichnen abbrechen. Wie lange dauert das Hochladen? Wie viele direkte Befehle je
 Bild verträgt der Mischer? Gemessen wird an einer Aufnahme des Programmbilds, Bild für Bild mit ffmpeg

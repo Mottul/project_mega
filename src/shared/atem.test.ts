@@ -3,6 +3,7 @@ import {
   atemCommand,
   atemZiel,
   bilderInSekunden,
+  bilderJeSchritt,
   hostUndPort,
   type AtemMe,
   type AtemView
@@ -15,9 +16,9 @@ const me: AtemMe = {
   raten: { mix: 25 },
   hebel: 0,
   uebergang: false,
-  restBilder: 0,
+  rest: 0,
   hebelOben: false,
-  ftb: { schwarz: false, laeuft: false, restBilder: 0, rate: 25 },
+  ftb: { schwarz: false, laeuft: false, rest: 0, rate: 25 },
   keyer: [
     { onAir: false, art: 'luma', fill: 1, cut: 1 },
     { onAir: false, art: 'dve', fill: 1, cut: 1 }
@@ -35,7 +36,7 @@ const view: AtemView = {
   mes: [me, me],
   stile: ['mix', 'dip', 'wipe'],
   bildrate: 50,
-  dsk: [{ onAir: false, laeuft: false, restBilder: 0, tie: false, rate: 25, fill: 1, cut: 1 }],
+  dsk: [{ onAir: false, laeuft: false, rest: 0, tie: false, rate: 25, fill: 1, cut: 1 }],
   makros: [{ index: 4, name: 'Abspann', beschreibung: '' }],
   makroPlaetze: 100,
   makroPlayer: { laeuft: false, wartet: false, index: 0 },
@@ -83,18 +84,18 @@ describe('atemCommand', () => {
 
   it('kennt nur Stile, die der Mischer kann', () => {
     expect(atemCommand({ type: 'stil', me: 0, stil: 'dve' }, view)).toBeNull()
-    expect(atemCommand({ type: 'rate', me: 0, stil: 'dve', bilder: 25 }, view)).toBeNull()
+    expect(atemCommand({ type: 'rate', me: 0, stil: 'dve', rate: 25 }, view)).toBeNull()
     // Der Stinger hat keine einfache Dauer
     const mitSting: AtemView = { ...view, stile: [...view.stile, 'sting'] }
     expect(atemCommand({ type: 'stil', me: 0, stil: 'sting' }, mitSting)).not.toBeNull()
-    expect(atemCommand({ type: 'rate', me: 0, stil: 'sting', bilder: 25 }, mitSting)).toBeNull()
+    expect(atemCommand({ type: 'rate', me: 0, stil: 'sting', rate: 25 }, mitSting)).toBeNull()
   })
 
   it('hält Dauer und Hebel in den Grenzen des Geräts', () => {
-    expect(atemCommand({ type: 'rate', me: 0, stil: 'mix', bilder: 0 }, view)).toBeNull()
-    expect(atemCommand({ type: 'rate', me: 0, stil: 'mix', bilder: 251 }, view)).toBeNull()
-    expect(atemCommand({ type: 'rate', me: 0, stil: 'mix', bilder: 250 }, view)).not.toBeNull()
-    expect(atemCommand({ type: 'ftbRate', me: 0, bilder: 1.5 }, view)).toBeNull()
+    expect(atemCommand({ type: 'rate', me: 0, stil: 'mix', rate: 0 }, view)).toBeNull()
+    expect(atemCommand({ type: 'rate', me: 0, stil: 'mix', rate: 251 }, view)).toBeNull()
+    expect(atemCommand({ type: 'rate', me: 0, stil: 'mix', rate: 250 }, view)).not.toBeNull()
+    expect(atemCommand({ type: 'ftbRate', me: 0, rate: 1.5 }, view)).toBeNull()
     expect(atemCommand({ type: 'hebel', me: 0, wert: 10001 }, view)).toBeNull()
     expect(atemCommand({ type: 'hebel', me: 0, wert: -1 }, view)).toBeNull()
   })
@@ -150,8 +151,8 @@ describe('atemCommand: Keyer', () => {
     expect(atemCommand({ type: 'dskTie', keyer: 0, an: 1 }, view)).toBeNull()
     expect(atemCommand({ type: 'dskAuto', keyer: 0 }, view)).toEqual({ type: 'dskAuto', keyer: 0 })
     expect(atemCommand({ type: 'dskAuto', keyer: 9 }, view)).toBeNull()
-    expect(atemCommand({ type: 'dskRate', keyer: 0, bilder: 250 }, view)).not.toBeNull()
-    expect(atemCommand({ type: 'dskRate', keyer: 0, bilder: 251 }, view)).toBeNull()
+    expect(atemCommand({ type: 'dskRate', keyer: 0, rate: 250 }, view)).not.toBeNull()
+    expect(atemCommand({ type: 'dskRate', keyer: 0, rate: 251 }, view)).toBeNull()
   })
 })
 
@@ -236,6 +237,20 @@ describe('hostUndPort', () => {
   it('trennt den Port ab', () => {
     expect(hostUndPort('1.2.3.4:9000')).toEqual({ adresse: '1.2.3.4', port: 9000 })
     expect(hostUndPort('1.2.3.4')).toEqual({ adresse: '1.2.3.4', port: undefined })
+  })
+})
+
+describe('bilderJeSchritt', () => {
+  it('zählt ab 50 Bildern je Sekunde in Schritten von zwei Bildern', () => {
+    expect([50, 59.94, 60].map(bilderJeSchritt)).toEqual([2, 2, 2])
+  })
+
+  it('zählt darunter jedes Bild, auch ohne bekannte Bildrate', () => {
+    expect([23.98, 24, 25, 29.97, 30, null].map(bilderJeSchritt)).toEqual([1, 1, 1, 1, 1, 1])
+  })
+
+  it('passt zur Messung am ATEM Mini Extreme: Dauer 50 bei 1080p50 sind 2 s', () => {
+    expect(bilderInSekunden(50 * bilderJeSchritt(50), 50)).toBe('2,00 s')
   })
 })
 

@@ -165,7 +165,7 @@ function ftb(me: AtemRohMe): AtemFtb {
   return {
     schwarz: f?.isFullyBlack ?? false,
     laeuft: f?.inTransition ?? false,
-    restBilder: f?.remainingFrames ?? 0,
+    rest: f?.remainingFrames ?? 0,
     rate: f?.rate ?? 0
   }
 }
@@ -187,7 +187,7 @@ function dsk(roh: AtemRoh): AtemDsk[] {
     .map((k) => ({
       onAir: k.onAir,
       laeuft: k.inTransition,
-      restBilder: k.remainingFrames,
+      rest: k.remainingFrames,
       tie: k.properties?.tie ?? false,
       rate: k.properties?.rate ?? 0,
       fill: k.sources?.fillSource ?? 0,
@@ -245,7 +245,7 @@ function meView(me: AtemRohMe, hebelOben: boolean): AtemMe {
     raten: raten(me),
     hebel: me.transitionPosition.handlePosition,
     uebergang: me.transitionPosition.inTransition,
-    restBilder: me.transitionPosition.remainingFrames,
+    rest: me.transitionPosition.remainingFrames,
     hebelOben,
     ftb: ftb(me),
     keyer: keyer(me),

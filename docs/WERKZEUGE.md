@@ -307,10 +307,13 @@ Ethernet, USB allein genügt nicht.
 - **Die Knöpfe zeigen den Mischer:** Ein Knopf leuchtet erst, wenn der Mischer es gemeldet hat, bis
   dahin pulsiert er. Änderungen am Hardware-Panel oder in ATEM Software Control erscheinen ebenso.
 - **Cut, Auto, Hebel:** Der Hebel bleibt wie ein echter Griff nach dem Übergang am Ende stehen und
-  fährt beim nächsten von dort zurück, auch wenn Auto oder das Panel geschaltet haben. Beim Ziehen
+  fährt beim nächsten von dort zurück, auch wenn Auto oder das Panel geschaltet haben. Am Ende lässt
+  er sich ohne Absetzen gleich wieder zurückziehen, das ist dann der nächste Übergang. Beim Ziehen
   gehen rund 30 Werte je Sekunde hinaus, immer der neueste.
-- **Übergang:** Mix, Dip, Wipe und DVE, Stinger, wenn der Mischer ihn hat. Die Dauer gilt in Bildern,
-  daneben stehen die Sekunden zur aktuellen Bildrate. Beim Stinger bestimmt der Clip die Länge.
+- **Übergang:** Mix, Dip, Wipe und DVE, Stinger, wenn der Mischer ihn hat. Die Dauer gilt in echten
+  Bildern des Videoformats, daneben stehen die Sekunden. Ab 50p zählt der Mischer in Schritten von
+  zwei Bildern, dort gibt es nur gerade Zahlen: 50 Bilder bei 50p sind 1 Sekunde. Beim Stinger
+  bestimmt der Clip die Länge.
 - **Fade to Black** verlangt einen zweiten Klick innerhalb von 3 Sekunden, in beide Richtungen.
 - **Tasten:** Key und DSK gehen direkt auf Sendung, rot, solange sie an sind. Daneben wählt „Nächster
   Übergang“, was der Übergang mitnimmt: Bild und Keyer, mindestens eines bleibt gewählt. Darunter

@@ -7,6 +7,7 @@ import {
   ATEM_HEBEL_MAX,
   ATEM_HINTERGRUND,
   ATEM_SIM_NAMEN,
+  bilderJeSchritt,
   keyerBit,
   QUELLE_FUER_AUX,
   QUELLE_FUER_KEY,
@@ -310,8 +311,9 @@ export function simulierteVerbindung(modell: AtemSimModell, m: AtemMeldungen): A
 
   function taktStarten(): void {
     if (takt) return
+    // Ein Schritt je Zählwert, wie am Gerät: Bei 50p läuft der Zähler mit 25 je Sekunde
     const fps = bildrateAusModus(d.modus) ?? 25
-    takt = setInterval(bild, 1000 / fps)
+    takt = setInterval(bild, (1000 * bilderJeSchritt(fps)) / fps)
   }
 
   function taktHalten(): void {
@@ -360,7 +362,7 @@ export function simulierteVerbindung(modell: AtemSimModell, m: AtemMeldungen): A
         break
       }
       case 'ftbRate':
-        if (me.fadeToBlack) me.fadeToBlack = { ...me.fadeToBlack, rate: c.bilder }
+        if (me.fadeToBlack) me.fadeToBlack = { ...me.fadeToBlack, rate: c.rate }
         break
       case 'stil':
         me.transitionProperties = {
@@ -378,10 +380,10 @@ export function simulierteVerbindung(modell: AtemSimModell, m: AtemMeldungen): A
       }
       case 'rate': {
         const s = me.transitionSettings
-        if (c.stil === 'mix') s.mix = { rate: c.bilder }
-        else if (c.stil === 'dip') s.dip = { rate: c.bilder }
-        else if (c.stil === 'wipe') s.wipe = { rate: c.bilder }
-        else s.DVE = { rate: c.bilder }
+        if (c.stil === 'mix') s.mix = { rate: c.rate }
+        else if (c.stil === 'dip') s.dip = { rate: c.rate }
+        else if (c.stil === 'wipe') s.wipe = { rate: c.rate }
+        else s.DVE = { rate: c.rate }
         break
       }
       case 'hebel':
@@ -424,7 +426,7 @@ export function simulierteVerbindung(modell: AtemSimModell, m: AtemMeldungen): A
       }
       case 'dskRate': {
         const k = dsks[c.keyer]
-        k.properties = { tie: k.properties?.tie ?? false, rate: c.bilder }
+        k.properties = { tie: k.properties?.tie ?? false, rate: c.rate }
         break
       }
       case 'dskAuto': {

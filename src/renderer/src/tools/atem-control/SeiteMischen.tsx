@@ -7,9 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ATEM_HINTERGRUND,
   ATEM_RATEN_STILE,
-  ATEM_RATE_MAX,
-  ATEM_RATE_MIN,
-  bilderInSekunden,
+  bilderJeSchritt,
   keyerBit,
   quelleAufMe,
   type AtemFtb,
@@ -22,13 +20,13 @@ import {
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Field } from '@renderer/components/ui/field'
-import { NumberField } from '@renderer/components/ui/number-field'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { cn } from '@renderer/lib/utils'
 import { Hebel } from './Hebel'
 import { MakroSteuerung } from './SeiteMakros'
 import { tasteGiltFuerMischer, tasteZuAktion } from './tastatur'
 import {
+  DauerFeld,
   istHintergrund,
   LAEUFT_MS,
   MakroKnopf,
@@ -134,7 +132,16 @@ function Reihe({
 }
 
 /** Fade to Black verlangt einen zweiten Klick: Eine Fehlbedienung ginge sofort auf Sendung */
-function FtbKnopf({ ftb, onAusloesen }: { ftb: AtemFtb; onAusloesen: () => void }): JSX.Element {
+function FtbKnopf({
+  ftb,
+  je,
+  onAusloesen
+}: {
+  ftb: AtemFtb
+  /** Bilder je Zählschritt des Mischers */
+  je: number
+  onAusloesen: () => void
+}): JSX.Element {
   const [scharf, setScharf] = useState(false)
 
   useEffect(() => {
@@ -161,7 +168,7 @@ function FtbKnopf({ ftb, onAusloesen }: { ftb: AtemFtb; onAusloesen: () => void 
       }}
     >
       {scharf ? 'Noch einmal' : 'FTB'}
-      {ftb.laeuft && <span className="tabular-nums">{ftb.restBilder}</span>}
+      {ftb.laeuft && <span className="tabular-nums">{ftb.rest * je}</span>}
     </Button>
   )
 }
@@ -312,6 +319,7 @@ export function SeiteMischen({
   }, [])
 
   const rate = istRatenStil(m.stil) ? m.raten[m.stil] : undefined
+  const je = bilderJeSchritt(view.bildrate)
 
   // Keine Textauswahl: Wer den Hebel knapp verfehlt und zieht, markierte sonst „Cut“ und „Auto“, und
   // der nächste Griff zöge diesen Text statt des Hebels
@@ -352,37 +360,25 @@ export function SeiteMischen({
               />
             </Field>
             {istRatenStil(m.stil) && rate !== undefined && (
-              <Field
+              <DauerFeld
                 label="Dauer in Bildern"
-                aside={bilderInSekunden(rate, view.bildrate)}
+                rate={rate}
+                bildrate={view.bildrate}
                 className="w-36"
-              >
-                <NumberField
-                  aria-label="Dauer in Bildern"
-                  min={ATEM_RATE_MIN}
-                  max={ATEM_RATE_MAX}
-                  value={rate}
-                  onCommit={(bilder) => {
-                    if (istRatenStil(m.stil)) {
-                      senden({ type: 'rate', me, stil: m.stil, bilder })
-                    }
-                  }}
-                />
-              </Field>
-            )}
-            <Field
-              label="FTB in Bildern"
-              aside={bilderInSekunden(m.ftb.rate, view.bildrate)}
-              className="w-36"
-            >
-              <NumberField
-                aria-label="FTB in Bildern"
-                min={ATEM_RATE_MIN}
-                max={ATEM_RATE_MAX}
-                value={m.ftb.rate}
-                onCommit={(bilder) => senden({ type: 'ftbRate', me, bilder })}
+                onRate={(neu) => {
+                  if (istRatenStil(m.stil)) {
+                    senden({ type: 'rate', me, stil: m.stil, rate: neu })
+                  }
+                }}
               />
-            </Field>
+            )}
+            <DauerFeld
+              label="FTB in Bildern"
+              rate={m.ftb.rate}
+              bildrate={view.bildrate}
+              className="w-36"
+              onRate={(neu) => senden({ type: 'ftbRate', me, rate: neu })}
+            />
           </Card>
         </div>
         <div className="flex w-36 shrink-0 flex-col items-center gap-2">
@@ -405,8 +401,8 @@ export function SeiteMischen({
             onClick={() => senden({ type: 'auto', me })}
           >
             Auto
-            {m.uebergang && m.restBilder > 0 && (
-              <span className="text-xs tabular-nums">{m.restBilder}</span>
+            {m.uebergang && m.rest > 0 && (
+              <span className="text-xs tabular-nums">{m.rest * je}</span>
             )}
           </Button>
           <Hebel
@@ -415,7 +411,7 @@ export function SeiteMischen({
             bedienbar={bedienbar}
             onWert={(wert) => senden({ type: 'hebel', me, wert })}
           />
-          <FtbKnopf ftb={m.ftb} onAusloesen={() => senden({ type: 'ftb', me })} />
+          <FtbKnopf ftb={m.ftb} je={je} onAusloesen={() => senden({ type: 'ftb', me })} />
         </div>
       </div>
     </div>
