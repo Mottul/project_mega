@@ -25,8 +25,9 @@ Fenster  ◀──AtemView────   atemViewAus(roh), gedrosselt          �
 - `services/atem/atemService.ts`: die eine Verbindung, nacheinander gestartet (`reihe`), alte
   Meldungen fallen über `aktuell` weg.
 - `tools/atem-control/`: `AtemControl` (Leiste, Schublade, Status), `Seiten` darin hält Reiter und M/E,
-  das `fieldset` für Sperre und Verlust liegt um allen Seiten. Je Seite eine Datei `Seite*.tsx`,
-  gemeinsame Bausteine in `ui.tsx`.
+  das `fieldset` für Sperre und Verlust liegt um Seite und Spalte. Links die Seite (`Seite*.tsx`,
+  scrollt), rechts auf jeder Seite `UebergangSpalte` (Stil, Dauer, Cut, Auto, Hebel, FTB; volle Höhe,
+  der Hebel nimmt den Rest). Gemeinsame Bausteine in `ui.tsx`. Die Tastatur hängt an `SeiteMischen`.
 
 ## Regeln
 
@@ -44,7 +45,8 @@ Fenster  ◀──AtemView────   atemViewAus(roh), gedrosselt          �
 - **Zurückziehen ohne Absetzen:** `hebelZiehen` hält den Griff am Ende an, bis die gemeldete Ruhelage
   gedreht hat, und wartet auf 3 % Rückweg. Erst dann beginnt der nächste Übergang. Der Griff folgt der
   Maus dabei weiter.
-- **Textauswahl:** Die Seite „Mischen“ ist `select-none`, der Hebel löscht beim Drücken jede Auswahl.
+- **Textauswahl:** Seite und Spalte sind `select-none` (am `fieldset`), der Hebel löscht beim Drücken
+  jede Auswahl.
   Liegt er in einer, zieht Chromium den Text: `dragstart`, `pointercancel`, Verbotszeichen. Das sah
   aus wie ein hängender Hebel mit gewähltem Auto-Knopf (markierter Text darüber).
 - **Dauern zählt der Mischer nicht in Bildern:** Ab 50p ist ein Schritt von `rate` und `rest` zwei Bilder
@@ -56,8 +58,29 @@ Fenster  ◀──AtemView────   atemViewAus(roh), gedrosselt          �
 
 ## Bausteine der Seiten
 
-- `SchaltKnopf`: an/aus nach Meldung, „läuft“ dazwischen, `ton="live"` (rot, geht auf Sendung) oder
-  `ton="akzent"` (Auswahl, wirkt erst beim Übergang). Kein eigener Knopf für etwas, das der Mischer meldet.
+**Jede Art Bedienelement sieht überall gleich aus** (mit dem Nutzer festgelegt, 2.11.2026: „die
+Optionen sind nicht klar als solche erkennbar“). Neues fügt sich ein, statt eine fünfte Art zu erfinden:
+
+| Art | Aussehen | Baustein | Beispiele |
+| --- | --- | --- | --- |
+| Löst sofort aus | massiv, `AKTION` (`bg-foreground`) | eigener `button` mit `KNOPF` + `AKTION` | Cut, Auto, Makro, DSK-Auto, Griff des Hebels |
+| Auf Sendung | Rot, `ton="live"` | `SchaltKnopf` | Keyer und DSK „Auf Sendung“, Programm |
+| Vorschau | Grün | nur die Vorschau-Reihe | |
+| Wirkt beim Übergang | Gelb, `ton="gewaehlt"` / `Wahl` | `SchaltKnopf`, `Wahl` | Stil, Dauer-Schnellwahl, „Mit Übergang“ |
+| Sonst an | hell umrandet, `ton="an"` | `SchaltKnopf` | Clip spielt, Schleife |
+
+Gelb ist `warning`, **nie die Akzentfarbe**: Die ist wählbar (auch Grün = Vorschau) und ab Werk fast
+dasselbe Gelb, deshalb ist auch der Griff des Hebels massiv. Ein- und Ausgeschaltetes steht als
+Text im Knopf („An“/„Aus“, „Ja“/„Nein“), mit `label` für Vorlesewerkzeuge.
+
+- `SchaltKnopf`: an/aus nach Meldung, „läuft“ dazwischen. Kein eigener Knopf für etwas, das der Mischer
+  meldet.
+- `Bereich`: Karte mit Überschrift für einen Teil einer Seite (Quellen, Keyer, Makros).
+- `DauerFeld`: Dauer in echten Bildern mit Sekunden und Einheit im Feld, siehe Regeln oben.
+- **Keyer-Streifen** (`SeiteMischen`): einzige Stelle, an der Keyer geschaltet werden. Die Seite „Keyer“
+  richtet nur ein und zeigt `AufSendung` als Marke.
+- **Quellen in den Reihen:** `atemViewAus` sortiert (Eingänge, dann MP, SuperSource, Farben, Schwarz,
+  Balken, Wunsch des Nutzers), die Reihen lassen `schluessel` (Key-Signal der MP) weg.
 - `QuellenWahl` und jede andere Auswahlliste: gesteuert vom gemeldeten Wert. Nach `onChange` springt sie
   zurück, bis der Mischer antwortet, das ist gewollt. Immer `aria-label`, siehe `electron-e2e`.
 - **Neue Seite:** Eintrag in `SEITEN`, `hatSeite` nach dem, was der Mischer meldet, `Seite*.tsx`. Raster
