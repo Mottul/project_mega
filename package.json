@@ -68,9 +68,9 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
-    "typescript-eslint": "8.71.2",
+    "typescript-eslint": "8.72.0",
     "vite": "7.3.7",
     "vitest": "4.1.12",
-    "zustand": "5.0.15"
+    "zustand": "5.0.16"
   }
 }
