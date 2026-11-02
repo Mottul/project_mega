@@ -56,8 +56,9 @@ Er rastete am Ende ein, er blieb hängen, sobald er in einer Textauswahl lag, un
 dauerten 2 s statt der angezeigten 1 s. Behoben ist alles im Probebetrieb und am Schein-Mischer, die
 Abnahme am Gerät steht aus. Gemessen wurde ein Auto-Mix mit Dauer 50 bei 1080p50:
 1981 ms, 100 Hebel-Meldungen im Abstand von 20 ms, der Rest fällt um 25 je Sekunde. Dauern zählt der
-Mischer ab 50p also in Schritten von zwei Bildern (`bilderJeSchritt`). Die Bedienung steht noch zur
-Besprechung an.
+Mischer ab 50p also in Schritten von zwei Bildern (`bilderJeSchritt`). Die Bedienung fand der Nutzer
+„nicht durchdacht, die Optionen nicht als solche erkennbar“; sie ist danach mit ihm neu aufgebaut
+worden, siehe [Oberfläche](#oberfläche).
 
 **Noch offen:**
 
@@ -174,7 +175,24 @@ Er prüft nicht das Protokoll. Dafür bleibt der Abnahmetest am echten Mischer j
 
 ## Oberfläche
 
-![Entwurf der Seite „Mischen“ mit Programm, Vorschau, Hebel, Keyern und Makros](bilder/atem-bedienfeld.svg)
+![Erster Entwurf der Seite „Mischen“ mit Programm, Vorschau, Hebel, Keyern und Makros](bilder/atem-bedienfeld.svg)
+
+Die Grafik zeigt den ersten Entwurf. **Gebaut ist seit dem 2. November 2026 ein Pult**, mit dem Nutzer
+besprochen und von ihm freigegeben:
+
+- **Links die Seite, rechts die Spalte „Übergang“** (Stil, Schnellwahl und Feld für die Dauer, Dauer
+  für FTB, Cut, Auto, Hebel, FTB). Die Spalte steht auf jeder Seite, wie der Hebel am Pult. Der Hebel
+  nimmt den Platz, der übrig ist, links scrollt die Seite.
+- **Keyer-Streifen statt „Tasten“ und „Nächster Übergang“:** Je Keyer eine Spalte, Zeilen „Auf
+  Sendung“, „Mit Übergang“ und für DSKs „Auto“. Vorher standen die Keys zweimal nebeneinander, der
+  Unterschied war nicht zu sehen. Geschaltet wird nur hier, die Seite „Keyer“ richtet nur ein.
+- **Quellen:** Eingänge groß, darunter MP, SuperSource, Farben, Schwarz, Balken (Wunsch des Nutzers).
+  Das Key-Signal der Media-Player fehlt in den Reihen.
+- **Feste Bedeutungen:** massiv löst aus, Rot ist auf Sendung, Grün Vorschau, Gelb wirkt beim
+  Übergang. Gelb ist `warning`, nicht die Akzentfarbe: Die lässt sich auf Grün stellen und sähe dann
+  aus wie die Vorschau. Der Griff des Hebels ist massiv, nicht im Akzent: Der ist ab Werk fast Gelb.
+- **Schublade anfangs zu,** FTB behält den zweiten Klick, die Tastatur gilt auf „Mischen“.
+- **Noch nicht gemacht:** Bänke für große Mischer (Reihen brechen um), größere Reiter für Touch.
 
 Nach dem Werkzeug-Muster (`ToolShell`, `ToolBar`, Schublade):
 
@@ -191,8 +209,9 @@ Nach dem Werkzeug-Muster (`ToolShell`, `ToolBar`, Schublade):
 - **Tastatur:** 1–9 Vorschau, Umschalt + 1–9 Programm, Leertaste Cut, Eingabe Auto. Nur aktiv, wenn
   kein Textfeld den Fokus hat.
 
-Farben über Tokens: `destructive` für Programm, `success` für Vorschau, die Akzentfarbe für die
-Auswahl. Das passt zur Regel „Rot ist live“. Hart kodiert wird nichts, auch nicht im Hebel.
+Farben über Tokens: `destructive` für Programm, `success` für Vorschau, `warning` für die Auswahl
+zum Übergang (siehe oben, nicht die Akzentfarbe). Das passt zur Regel „Rot ist live“. Hart kodiert
+wird nichts, auch nicht im Hebel.
 
 ## SuperSource
 

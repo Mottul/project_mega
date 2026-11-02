@@ -60,7 +60,7 @@ function PlayerKarte({
       {p.art === 'clip' && (
         <div className="flex flex-wrap gap-2">
           <SchaltKnopf
-            ton="akzent"
+            ton="an"
             an={p.spielt}
             testId={`atem-clip-spielen-${i}`}
             onClick={() => senden({ type: 'clipSpielen', player: i, an: !p.spielt })}
@@ -76,7 +76,7 @@ function PlayerKarte({
             Zum Anfang
           </Button>
           <SchaltKnopf
-            ton="akzent"
+            ton="an"
             an={p.schleife}
             testId={`atem-clip-schleife-${i}`}
             onClick={() => senden({ type: 'clipSchleife', player: i, an: !p.schleife })}

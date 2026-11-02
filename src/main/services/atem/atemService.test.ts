@@ -281,6 +281,19 @@ describe('Hebel', () => {
     await vi.advanceTimersByTimeAsync(40)
   })
 
+  it('bleibt bedienbar, wenn beim Trennen ein Hebelwert hängt', async () => {
+    const alt = await verbunden()
+    alt.haltend = true
+    void atemBefehl({ type: 'hebel', me: 0, wert: 1000 })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(alt.befehle).toHaveLength(1)
+    // Die Bestätigung kommt nie: Die Bibliothek bricht beim Trennen nichts ab
+    const neu = await verbunden()
+    void atemBefehl({ type: 'hebel', me: 0, wert: 2000 })
+    await vi.advanceTimersByTimeAsync(40)
+    expect(neu.befehle).toEqual([{ type: 'hebel', me: 0, wert: 2000 }])
+  })
+
   it('merkt sich die Ruhelage: Nach einem fertigen Übergang steht sie am anderen Ende', async () => {
     const g = await verbunden()
     const lauf = (handlePosition: number, inTransition = true): AtemRoh =>

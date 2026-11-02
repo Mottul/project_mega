@@ -186,6 +186,15 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   stand. Sah aus wie ein Fehler am Hebel und trat „ab und zu“ auf. Bedienflächen ganz `select-none`,
   und beim Drücken eine vorhandene Auswahl löschen (Strg+A). Gegen so etwas hilft kein Blick in den
   Code: Bei „hängt ab und zu“ `pointercancel` und `dragstart` im Capture mitschreiben.
+- **Gepufferte Felder für Werte, die ein Gerät zurückmeldet, zeigen nach der Eingabe den Stand des
+  Geräts** (`NumberField` mit `zeigtMeldung`). `useDraft` übernimmt einen Wert nur, wenn er sich
+  ändert; fallen zwei Änderungen in eine gedrosselte Meldung und endet sie beim alten Wert, blieb die
+  Eingabe stehen, obwohl das Gerät anderes fuhr (ATEM, 2.11.2026, nur in der langsamen Windows-CI).
+  Nachstellen mit zurückgehaltenen Antworten (`halteZurueck()` am Schein-Mischer).
+- **Bedeutungsfarben nie aus der Akzentfarbe.** Die ATEM-Steuerung zeigte „gewählt für den Übergang“
+  im Akzent. Der ist wählbar, Grün sähe aus wie die Vorschau, und ab Werk ist er fast dasselbe Gelb,
+  das sonst „gewählt“ heißt (2.11.2026). Was eine Bedeutung trägt (live, Vorschau, gewählt, Warnung),
+  kommt aus festen Tokens; der Akzent bleibt Schmuck und Fokus.
 - **Ein Name ist keine Einheit.** `remainingFrames` und „Dauer in Bildern“ klangen nach Videobildern,
   der ATEM zählt ab 50p aber in Schritten von zwei Bildern. Aus Modus und Dauer gerechnet stand „1 s“
   neben einem Übergang von 2 s, und der Plan rechnete mit dem Gegenteil. Was ein Gerät zählt, am Gerät

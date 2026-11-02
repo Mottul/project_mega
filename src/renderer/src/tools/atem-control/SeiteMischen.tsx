@@ -1,63 +1,45 @@
-// Seite „Mischen“: Programm und Vorschau, Keyer-Tasten, Makros, Cut, Auto, Hebel, Fade to Black,
-// Übergangsart und -dauer.
-// Ein Knopf leuchtet erst, wenn der Mischer es gemeldet hat; bis dahin zeigt er „läuft“, damit der
-// Klick spürbar bleibt. Reihen, Stile und M/Es kommen aus dem, was der Mischer meldet.
+// Seite „Mischen“: was auf Sendung geht und was als Nächstes kommt: Quellen, Keyer, Makros.
+// Übergang, Cut, Auto, Hebel und Fade to Black stehen in der Spalte daneben (UebergangSpalte), die
+// auf jeder Seite bleibt. Ein Knopf leuchtet erst, wenn der Mischer es gemeldet hat; bis dahin zeigt
+// er „läuft“, damit der Klick spürbar bleibt. Reihen, Keyer und M/Es kommen aus dem, was der Mischer
+// meldet.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ATEM_HINTERGRUND,
-  ATEM_RATEN_STILE,
   bilderJeSchritt,
   keyerBit,
   quelleAufMe,
-  type AtemFtb,
   type AtemMe,
   type AtemQuelle,
-  type AtemRatenStil,
-  type AtemStil,
   type AtemView
 } from '@shared/atem'
 import { Button } from '@renderer/components/ui/button'
-import { Card } from '@renderer/components/ui/card'
-import { Field } from '@renderer/components/ui/field'
-import { Segmented } from '@renderer/components/ui/segmented'
 import { cn } from '@renderer/lib/utils'
-import { Hebel } from './Hebel'
 import { MakroSteuerung } from './SeiteMakros'
 import { tasteGiltFuerMischer, tasteZuAktion } from './tastatur'
 import {
-  DauerFeld,
+  AKTION,
+  AUS,
+  Bereich,
   istHintergrund,
+  KNOPF,
   LAEUFT_MS,
   MakroKnopf,
   naechsterUmschalten,
   SchaltKnopf,
-  Titel
+  WARTET
 } from './ui'
 import { senden } from './useAtem'
 
 /** So viele Makros passen in die Reihe, der Rest liegt auf der Seite „Makros“ */
 const MAKROS_IN_REIHE = 8
-/** So lange wartet Fade to Black auf den zweiten Klick */
-const SCHARF_MS = 3000
-
-const STIL_NAMEN: Record<AtemStil, string> = {
-  mix: 'Mix',
-  dip: 'Dip',
-  wipe: 'Wipe',
-  dve: 'DVE',
-  sting: 'Stinger'
-}
 
 type Bus = 'programm' | 'vorschau'
 
 const AN: Record<Bus, string> = {
   programm: 'border-destructive bg-destructive text-destructive-foreground',
   vorschau: 'border-success bg-success text-background'
-}
-
-function istRatenStil(s: AtemStil): s is AtemRatenStil {
-  return (ATEM_RATEN_STILE as readonly string[]).includes(s)
 }
 
 function QuellenKnopf({
@@ -82,9 +64,11 @@ function QuellenKnopf({
       data-zustand={an ? 'an' : laeuft ? 'laeuft' : 'aus'}
       onClick={onClick}
       className={cn(
-        'h-12 min-w-[4.25rem] rounded-md border px-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 disabled:pointer-events-none disabled:opacity-50',
-        an ? AN[bus] : 'border-border bg-muted/40 hover:bg-muted',
-        laeuft && !an && 'animate-pulse ring-2 ring-inset ring-primary'
+        KNOPF,
+        // Eingänge groß, Schwarz, Farben und Media-Player kleiner darunter
+        quelle.extern ? 'h-12 min-w-[3.75rem] px-2' : 'h-10 min-w-[3.25rem] px-1.5 text-xs',
+        an ? AN[bus] : AUS,
+        laeuft && !an && WARTET
       )}
     >
       {quelle.kurz}
@@ -120,74 +104,80 @@ function Reihe({
           onClick={() => onWahl(q.id)}
         />
       ))
+  const intern = gruppe(false)
   return (
-    <section aria-label={titel} className="space-y-1.5">
-      <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{titel}</h2>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-        <div className="flex flex-wrap gap-1.5">{gruppe(true)}</div>
-        <div className="flex flex-wrap gap-1.5">{gruppe(false)}</div>
-      </div>
+    <section aria-label={titel} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3 gap-y-1.5">
+      <h3
+        className={cn(
+          'flex h-12 items-center text-sm font-semibold',
+          bus === 'programm' ? 'text-danger' : 'text-success'
+        )}
+      >
+        {titel}
+      </h3>
+      <div className="flex flex-wrap gap-1.5">{gruppe(true)}</div>
+      {intern.length > 0 && <div className="col-start-2 flex flex-wrap gap-1.5">{intern}</div>}
     </section>
   )
 }
 
-/** Fade to Black verlangt einen zweiten Klick: Eine Fehlbedienung ginge sofort auf Sendung */
-function FtbKnopf({
-  ftb,
-  je,
-  onAusloesen
-}: {
-  ftb: AtemFtb
-  /** Bilder je Zählschritt des Mischers */
-  je: number
-  onAusloesen: () => void
-}): JSX.Element {
-  const [scharf, setScharf] = useState(false)
-
-  useEffect(() => {
-    if (!scharf) return
-    const t = setTimeout(() => setScharf(false), SCHARF_MS)
-    return () => clearTimeout(t)
-  }, [scharf])
-
+function Kopf({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <Button
-      variant={ftb.schwarz ? 'destructive' : 'outline'}
-      data-testid="atem-ftb"
-      data-scharf={scharf}
-      data-schwarz={ftb.schwarz}
-      title="Fade to Black: zweimal klicken"
-      className={cn(
-        'h-14 w-full flex-col gap-0 text-xs font-bold',
-        ftb.schwarz && !scharf && 'animate-pulse',
-        scharf && 'border-warning text-warning'
-      )}
-      onClick={() => {
-        setScharf(!scharf)
-        if (scharf) onAusloesen()
-      }}
-    >
-      {scharf ? 'Noch einmal' : 'FTB'}
-      {ftb.laeuft && <span className="tabular-nums">{ftb.rest * je}</span>}
-    </Button>
+    <span className="truncate text-center text-xs font-medium text-muted-foreground">
+      {children}
+    </span>
   )
 }
 
-/** Was auf Sendung geht: Keyer der M/E und die DSKs, die der ganze Mischer teilt */
-function Tasten({ view, me, m }: { view: AtemView; me: number; m: AtemMe }): JSX.Element | null {
+function Zeile({ children }: { children: ReactNode }): JSX.Element {
+  return <span className="text-xs font-semibold">{children}</span>
+}
+
+/**
+ * Keyer als Streifen: je Keyer eine Spalte, darin „Auf Sendung“ (rot, sofort) und „Mit Übergang“
+ * (gelb, beim nächsten Übergang). Früher standen die Keys zweimal nebeneinander („Tasten“ und
+ * „Nächster Übergang“), der Unterschied war nicht zu sehen. DSKs gelten für den ganzen Mischer und
+ * blenden mit „Auto“ über ihre eigene Dauer.
+ */
+function KeyerStreifen({
+  view,
+  me,
+  m
+}: {
+  view: AtemView
+  me: number
+  m: AtemMe
+}): JSX.Element | null {
   if (m.keyer.length === 0 && view.dsk.length === 0) return null
+  const je = bilderJeSchritt(view.bildrate)
+  const spalten = 1 + m.keyer.length + view.dsk.length
   return (
-    <section aria-label="Tasten" className="space-y-1.5">
-      <Titel>Tasten</Titel>
-      <div className="flex flex-wrap gap-1.5">
+    <Bereich titel="Keyer">
+      <div
+        className="grid items-center gap-1.5"
+        style={{ gridTemplateColumns: `6.5rem repeat(${spalten}, minmax(3.5rem, 1fr))` }}
+      >
+        <span />
+        <Kopf>Bild</Kopf>
+        {m.keyer.map((_, i) => (
+          <Kopf key={i}>Key {i + 1}</Kopf>
+        ))}
+        {view.dsk.map((_, i) => (
+          <Kopf key={i}>DSK {i + 1}</Kopf>
+        ))}
+
+        <Zeile>Auf Sendung</Zeile>
+        <span />
         {m.keyer.map((k, i) => (
           <SchaltKnopf
             key={i}
             an={k.onAir}
             testId={`atem-usk-taste-${i}`}
+            label={`Key ${i + 1} auf Sendung`}
+            className="min-w-0"
             onClick={() => senden({ type: 'uskOnAir', me, keyer: i, an: !k.onAir })}
           >
-            Key {i + 1}
+            {k.onAir ? 'An' : 'Aus'}
           </SchaltKnopf>
         ))}
         {view.dsk.map((k, i) => (
@@ -195,52 +185,93 @@ function Tasten({ view, me, m }: { view: AtemView; me: number; m: AtemMe }): JSX
             key={i}
             an={k.onAir}
             testId={`atem-dsk-taste-${i}`}
+            label={`DSK ${i + 1} auf Sendung`}
+            className="min-w-0"
             onClick={() => senden({ type: 'dskOnAir', keyer: i, an: !k.onAir })}
           >
-            DSK {i + 1}
+            {k.onAir ? 'An' : 'Aus'}
           </SchaltKnopf>
         ))}
-      </div>
-    </section>
-  )
-}
 
-/** Was der nächste Übergang mitnimmt; Auswahl, keine Sendung: Deshalb Akzentfarbe */
-function NaechsterUebergang({ me, m }: { me: number; m: AtemMe }): JSX.Element | null {
-  if (m.keyer.length === 0) return null
-  return (
-    <section aria-label="Nächster Übergang" className="space-y-1.5">
-      <Titel>Nächster Übergang</Titel>
-      <div className="flex flex-wrap gap-1.5">
+        <Zeile>Mit Übergang</Zeile>
         <SchaltKnopf
-          ton="akzent"
+          ton="gewaehlt"
           an={istHintergrund(m)}
           testId="atem-naechster-hintergrund"
+          label="Bild mit Übergang"
+          className="min-w-0"
           onClick={() => naechsterUmschalten(me, m, ATEM_HINTERGRUND)}
         >
-          Bild
+          {istHintergrund(m) ? 'Ja' : 'Nein'}
         </SchaltKnopf>
-        {m.keyer.map((_, i) => (
+        {m.keyer.map((_, i) => {
+          const an = (m.naechster & keyerBit(i)) !== 0
+          return (
+            <SchaltKnopf
+              key={i}
+              ton="gewaehlt"
+              an={an}
+              testId={`atem-naechster-${i}`}
+              label={`Key ${i + 1} mit Übergang`}
+              className="min-w-0"
+              onClick={() => naechsterUmschalten(me, m, keyerBit(i))}
+            >
+              {an ? 'Ja' : 'Nein'}
+            </SchaltKnopf>
+          )
+        })}
+        {view.dsk.map((k, i) => (
           <SchaltKnopf
             key={i}
-            ton="akzent"
-            an={(m.naechster & keyerBit(i)) !== 0}
-            testId={`atem-naechster-${i}`}
-            onClick={() => naechsterUmschalten(me, m, keyerBit(i))}
+            ton="gewaehlt"
+            an={k.tie}
+            testId={`atem-dsk-tie-${i}`}
+            label={`DSK ${i + 1} mit Übergang`}
+            className="min-w-0"
+            onClick={() => senden({ type: 'dskTie', keyer: i, an: !k.tie })}
           >
-            Key {i + 1}
+            {k.tie ? 'Ja' : 'Nein'}
           </SchaltKnopf>
         ))}
+
+        {view.dsk.length > 0 && (
+          <>
+            <Zeile>Auto</Zeile>
+            <span />
+            {m.keyer.map((_, i) => (
+              <span key={i} />
+            ))}
+            {view.dsk.map((k, i) => (
+              <button
+                key={i}
+                type="button"
+                data-testid={`atem-dsk-auto-${i}`}
+                data-laeuft={k.laeuft}
+                aria-label={`DSK ${i + 1} Auto`}
+                title="Blendet über die Dauer des DSK ein oder aus (Seite Keyer)"
+                className={cn(
+                  KNOPF,
+                  AKTION,
+                  'flex h-10 items-center justify-center gap-1.5',
+                  k.laeuft && 'ring-2 ring-inset ring-primary'
+                )}
+                onClick={() => senden({ type: 'dskAuto', keyer: i })}
+              >
+                Auto
+                {k.laeuft && <span className="text-xs tabular-nums">{k.rest * je}</span>}
+              </button>
+            ))}
+          </>
+        )}
       </div>
-    </section>
+    </Bereich>
   )
 }
 
 function Makros({ view, onAlle }: { view: AtemView; onAlle: () => void }): JSX.Element | null {
   if (view.makros.length === 0) return null
   return (
-    <section aria-label="Makros" className="space-y-1.5">
-      <Titel>Makros</Titel>
+    <Bereich titel="Makros">
       <div className="flex flex-wrap items-center gap-1.5">
         {view.makros.slice(0, MAKROS_IN_REIHE).map((m) => (
           <MakroKnopf key={m.index} makro={m} player={view.makroPlayer} />
@@ -252,7 +283,7 @@ function Makros({ view, onAlle }: { view: AtemView; onAlle: () => void }): JSX.E
         )}
         <MakroSteuerung player={view.makroPlayer} />
       </div>
-    </section>
+    </Bereich>
   )
 }
 
@@ -271,7 +302,8 @@ export function SeiteMischen({
   const flaeche = useRef<HTMLDivElement>(null)
 
   const m = view.mes[me]
-  const quellen = view.quellen.filter((q) => quelleAufMe(q, me))
+  // Das Key-Signal eines Media-Players zeigt kein Bild: Es bleibt Quelle für Keyer, nicht für Sendung
+  const quellen = view.quellen.filter((q) => quelleAufMe(q, me) && !q.schluessel)
 
   // Die andere M/E hat ihren eigenen Stand: Was hier noch lief, gilt dort nicht
   useEffect(() => setOffen({}), [me])
@@ -318,102 +350,29 @@ export function SeiteMischen({
     return () => window.removeEventListener('keydown', hoeren)
   }, [])
 
-  const rate = istRatenStil(m.stil) ? m.raten[m.stil] : undefined
-  const je = bilderJeSchritt(view.bildrate)
-
-  // Keine Textauswahl: Wer den Hebel knapp verfehlt und zieht, markierte sonst „Cut“ und „Auto“, und
-  // der nächste Griff zöge diesen Text statt des Hebels
   return (
-    <div ref={flaeche} className="select-none space-y-4">
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="min-w-0 flex-1 space-y-4">
-          <Reihe
-            bus="programm"
-            titel="Programm"
-            quellen={quellen}
-            aktiv={m.programm}
-            offen={offen.programm}
-            onWahl={(q) => waehle('programm', q)}
-          />
-          <Reihe
-            bus="vorschau"
-            titel="Vorschau"
-            quellen={quellen}
-            aktiv={m.vorschau}
-            offen={offen.vorschau}
-            onWahl={(q) => waehle('vorschau', q)}
-          />
-          <div className="flex flex-wrap gap-x-8 gap-y-4">
-            <Tasten view={view} me={me} m={m} />
-            <NaechsterUebergang me={me} m={m} />
-          </div>
-          <Makros view={view} onAlle={onAlleMakros} />
-          {/* umbrechen nach dem Platz, nicht nach der Fensterbreite: Die Schublade nimmt davon
-                360 px, sonst läge das Dauer-Feld über den Stil-Knöpfen */}
-          <Card className="flex flex-wrap items-start gap-3 p-4">
-            <Field label="Übergang" group className="min-w-72 flex-1">
-              <Segmented
-                label="Übergang"
-                value={m.stil}
-                options={view.stile.map((s) => ({ value: s, label: STIL_NAMEN[s] }))}
-                onChange={(stil) => senden({ type: 'stil', me, stil })}
-              />
-            </Field>
-            {istRatenStil(m.stil) && rate !== undefined && (
-              <DauerFeld
-                label="Dauer in Bildern"
-                rate={rate}
-                bildrate={view.bildrate}
-                className="w-36"
-                onRate={(neu) => {
-                  if (istRatenStil(m.stil)) {
-                    senden({ type: 'rate', me, stil: m.stil, rate: neu })
-                  }
-                }}
-              />
-            )}
-            <DauerFeld
-              label="FTB in Bildern"
-              rate={m.ftb.rate}
-              bildrate={view.bildrate}
-              className="w-36"
-              onRate={(neu) => senden({ type: 'ftbRate', me, rate: neu })}
-            />
-          </Card>
-        </div>
-        <div className="flex w-36 shrink-0 flex-col items-center gap-2">
-          <Button
-            data-testid="atem-cut"
-            variant="secondary"
-            className="h-14 w-full text-base font-bold"
-            onClick={() => senden({ type: 'cut', me })}
-          >
-            Cut
-          </Button>
-          <Button
-            data-testid="atem-auto"
-            data-laeuft={m.uebergang}
-            variant="secondary"
-            className={cn(
-              'h-14 w-full flex-col gap-0 text-base font-bold',
-              m.uebergang && 'ring-2 ring-inset ring-primary'
-            )}
-            onClick={() => senden({ type: 'auto', me })}
-          >
-            Auto
-            {m.uebergang && m.rest > 0 && (
-              <span className="text-xs tabular-nums">{m.rest * je}</span>
-            )}
-          </Button>
-          <Hebel
-            wert={m.hebel}
-            oben={m.hebelOben}
-            bedienbar={bedienbar}
-            onWert={(wert) => senden({ type: 'hebel', me, wert })}
-          />
-          <FtbKnopf ftb={m.ftb} je={je} onAusloesen={() => senden({ type: 'ftb', me })} />
-        </div>
-      </div>
+    <div ref={flaeche} className="space-y-3">
+      <Bereich titel="Quellen">
+        <Reihe
+          bus="programm"
+          titel="Programm"
+          quellen={quellen}
+          aktiv={m.programm}
+          offen={offen.programm}
+          onWahl={(q) => waehle('programm', q)}
+        />
+        <div className="border-t border-border" />
+        <Reihe
+          bus="vorschau"
+          titel="Vorschau"
+          quellen={quellen}
+          aktiv={m.vorschau}
+          offen={offen.vorschau}
+          onWahl={(q) => waehle('vorschau', q)}
+        />
+      </Bereich>
+      <KeyerStreifen view={view} me={me} m={m} />
+      <Makros view={view} onAlle={onAlleMakros} />
     </div>
   )
 }
