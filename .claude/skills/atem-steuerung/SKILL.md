@@ -76,7 +76,11 @@ Text im Knopf („An“/„Aus“, „Ja“/„Nein“), mit `label` für Vorles
 - `SchaltKnopf`: an/aus nach Meldung, „läuft“ dazwischen. Kein eigener Knopf für etwas, das der Mischer
   meldet.
 - `Bereich`: Karte mit Überschrift für einen Teil einer Seite (Quellen, Keyer, Makros).
-- `DauerFeld`: Dauer in echten Bildern mit Sekunden und Einheit im Feld, siehe Regeln oben.
+- `DauerFeld`: Dauer in echten Bildern mit Sekunden und Einheit im Feld, siehe Regeln oben. Es nutzt
+  `NumberField` mit `zeigtMeldung`: Nach der Eingabe steht wieder der gemeldete Wert im Feld, bis der
+  Mischer den neuen meldet, wie bei den Auswahllisten. Ohne das blieb in der Windows-CI die Eingabe
+  stehen: Eingabe und Schnellwahl fielen in ein Fenster der Ansicht (40 ms), der gemeldete Wert sah
+  unverändert aus, und `useDraft` übernimmt nur Änderungen.
 - **Keyer-Streifen** (`SeiteMischen`): einzige Stelle, an der Keyer geschaltet werden. Die Seite „Keyer“
   richtet nur ein und zeigt `AufSendung` als Marke.
 - **Quellen in den Reihen:** `atemViewAus` sortiert (Eingänge, dann MP, SuperSource, Farben, Schwarz,

@@ -239,6 +239,7 @@ export function DauerFeld({
           min={ATEM_RATE_MIN * je}
           max={ATEM_RATE_MAX * je}
           step={je}
+          zeigtMeldung
           value={rate * je}
           onCommit={(bilder) => onRate(bilder / je)}
         />

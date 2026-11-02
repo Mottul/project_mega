@@ -210,17 +210,20 @@ try {
           )
         )
         const dauer = page.getByLabel('Dauer in Bildern')
+        // Nur die Beschriftung dieses Felds: „1,00 s“ steht auch neben der FTB-Dauer
+        const sekunden = () => dauer.locator('xpath=ancestor::label[1]').textContent()
         // Extreme im Probebetrieb: 1080p50, 25 je Sekunde am Zähler sind 50 echte Bilder
         assert.equal(await dauer.inputValue(), '50')
-        assert.match(await page.textContent('fieldset'), /1,00 s/)
+        assert.match(await sekunden(), /1,00 s/)
         await dauer.fill('100')
         await dauer.press('Tab')
-        assert.ok(await waitFor(async () => /2,00 s/.test(await page.textContent('fieldset'))))
-        // Der Mischer zählt in Schritten von zwei Bildern: Ungerades rundet das Feld selbst
+        assert.ok(await waitFor(async () => /2,00 s/.test(await sekunden())))
+        // Der Mischer zählt in Schritten von zwei Bildern: Ungerades rundet das Feld selbst. Es zeigt
+        // aber erst den gemeldeten Stand, also warten
         await dauer.fill('49')
         await dauer.press('Tab')
-        assert.equal(await dauer.inputValue(), '50')
-        assert.ok(await waitFor(async () => /1,00 s/.test(await page.textContent('fieldset'))))
+        assert.ok(await waitFor(async () => (await dauer.inputValue()) === '50'))
+        assert.ok(await waitFor(async () => /1,00 s/.test(await sekunden())))
         // Schnellwahl für den Finger: Sekunden, gewählt ist, was der Mischer meldet
         const schnell = page.getByRole('group', { name: 'Dauer in Sekunden' })
         await schnell.getByRole('button', { name: '2 s' }).click()
@@ -750,6 +753,35 @@ try {
         assert.deepEqual(empfangen('CTDp').at(-1), { name: 'CTDp', rate: 30 })
         assert.deepEqual(empfangen('FtbC').at(-1), { name: 'FtbC', rate: 20 })
         assert.equal(empfangen('FtbA').length, 2)
+      }
+    ],
+    [
+      'Dauer zeigt den Mischer, auch wenn zwei Änderungen in einer Meldung ankommen',
+      async () => {
+        // In der Windows-CI fielen die Meldung zur Eingabe und die zur Schnellwahl in dasselbe
+        // Fenster der Ansicht: Der gemeldete Wert sah unverändert aus, im Feld blieb die Eingabe
+        const dauer = page.getByLabel('Dauer in Bildern')
+        const schnell = page.getByRole('group', { name: 'Dauer in Sekunden' })
+        const raten = () => empfangen('CTDp').map((c) => c.rate)
+        await schnell.getByRole('button', { name: '1 s' }).click()
+        assert.ok(await waitFor(async () => (await dauer.inputValue()) === '50'))
+        mischer.halteZurueck()
+        // freigeben auch bei einem Fehler: Sonst wartet der Schein-Mischer, und alles danach wird rot
+        try {
+          await dauer.fill('80')
+          await dauer.press('Tab')
+          // Bis der Mischer antwortet, steht im Feld sein Stand, nicht die Eingabe
+          assert.equal(await dauer.inputValue(), '50')
+          await schnell.getByRole('button', { name: '1 s' }).click()
+          assert.ok(
+            await waitFor(() => raten().slice(-2).join() === '40,25'),
+            JSON.stringify(raten())
+          )
+        } finally {
+          mischer.freigeben()
+        }
+        await sleep(300)
+        assert.equal(await dauer.inputValue(), '50')
       }
     ],
     [

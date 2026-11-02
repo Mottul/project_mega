@@ -8,6 +8,12 @@ interface NumberFieldProps {
   max?: number
   /** Nur Vielfache davon, gerundet beim Verlassen; `min` und `max` liegen selbst auf dem Raster */
   step?: number
+  /**
+   * Der Wert kommt von einem Gerät zurück (ATEM): Nach der Eingabe zeigt das Feld wieder den
+   * gemeldeten Stand, bis das Gerät den neuen meldet. Sonst bliebe die Eingabe stehen, sobald die
+   * Meldung den alten Wert bestätigt, etwa wenn zwei Änderungen in einer Meldung zusammenfallen.
+   */
+  zeigtMeldung?: boolean
   className?: string
   placeholder?: string
   'aria-label'?: string
@@ -23,6 +29,7 @@ export function NumberField({
   min,
   max,
   step = 1,
+  zeigtMeldung = false,
   className,
   placeholder,
   'aria-label': ariaLabel
@@ -42,7 +49,7 @@ export function NumberField({
     if (min !== undefined) v = Math.max(min, v)
     if (max !== undefined) v = Math.min(max, v)
     v = Math.round(v / step) * step
-    setText(String(v))
+    setText(String(zeigtMeldung ? value : v))
     onCommit(v)
   }
 
