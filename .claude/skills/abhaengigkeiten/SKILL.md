@@ -48,7 +48,8 @@ npm audit --omit=dev                  # Laufzeit: muss ohne Befund bleiben
 ## Neue Electron-Hauptversion
 
 Electron pflegt nur die drei neuesten Hauptversionen (etwa alle 8 Wochen eine neue). Dependabot
-schickt sie als eigenen PR.
+schickt sie als eigenen PR. Grüne CI allein reicht dafür nicht (45.0.0 kam so ohne diese
+Prüfung auf `main`): erst die Schritte hier, dann mergen.
 
 1. **Breaking Changes lesen** – für jede übersprungene Version:
    `gh api "repos/electron/electron/contents/docs/breaking-changes.md?ref=v<version>" --jq .content | base64 -d`.
@@ -56,13 +57,35 @@ schickt sie als eigenen PR.
    ohne Startpfad in „Downloads“ (→ `services/fileDialogs.ts`), `NativeImage.toBitmap()` rechnet
    nach sRGB um (NDI-Sender; gemessen 4,1–4,6 statt 3,8 ms je 1080p-Bild), `clipboard` im Renderer
    entfernt, macOS ab 13, kein 32-Bit-Windows mehr, Ausgabefenster sind `fullscreen` (abgerundete
-   Ecken unter Linux egal).
+   Ecken unter Linux egal). Aus 44 → 45: Der Preload in der Sandbox hat kein `Buffer`,
+   `setImmediate` und `require('events'|'url'|'timers')` mehr – im gebauten Preload (index.js unter
+   out/preload) darf nur `require("electron")` stehen; Bildschirmaufnahme fragt als `display-capture` (die
+   Allowlist in `windowPolicy.ts` lehnt sie ab); Datei-Deskriptoren aus dem `app.asar` taugen nur
+   noch für `fs` (die App öffnet per `open()` nur Nutzerdateien).
 2. **Sicherheits-Backports vergleichen:** Release-Notes der Zielversion und der bisherigen
    Patch-Linie (`gh api repos/electron/electron/releases/tags/v<version>`) – die gewählte Version
-   darf keine Korrektur verlieren, die die alte Linie schon hat.
-3. **Native Module:** better-sqlite3 nutzt die N-API (Binaries im Paket, kein Rebuild). Das
-   optionale NDI-Binding (`vendor/grandiose`) ist an die Electron-ABI gebunden: `npm run ndi:setup`
-   erkennt die Abweichung und baut neu (braucht C++-Werkzeuge, siehe `docs/NDI.md`).
+   darf keine Korrektur verlieren, die die alte Linie schon hat. Die neue Hauptversion listet
+   weniger Cherry-Picks, weil ihr Chromium vieles schon enthält (44.9.3: 67, 45.0.0: 29). Je Hash
+   aus dem Backport-PR der alten Linie prüfen:
+   - Patch-Datei im Tag: `gh api "repos/electron/electron/contents/patches/<chromium|v8|angle|pdfium>?ref=v<version>" --jq '.[].name'`
+     (Name `cherry-pick-<hash>.patch`);
+   - sonst im Chromium-Meilenstein: `Cr-Commit-Position` des Commits
+     (`https://chromium.googlesource.com/chromium/src/+/<hash>?format=JSON`, erste 4 Zeichen
+     abschneiden) unter der Abzweig-Position (`https://chromiumdash.appspot.com/fetch_milestones?mstone=<N>`,
+     `chromium_main_branch_position`), oder der Titel im Log des Zweigs (`+log/refs/tags/<version>`,
+     ANGLE/PDFium `refs/heads/chromium/<branch>`, V8 `refs/branch-heads/<v8_branch>`).
+
+   Was übrig bleibt, gegen die App bewerten und in `docs/SICHERHEIT.md` festhalten (45.0.0: vier,
+   alle ohne Bezug zur App).
+3. **Native Module und Node:** better-sqlite3 und `@julusian/freetype2` nutzen die N-API (Binaries
+   im Paket, kein Rebuild). Das optionale NDI-Binding (`vendor/grandiose`) ebenso: Ein Build für
+   44.5.1 lud unter 45.0.0; `npm run ndi:setup` baut nach einem Upgrade trotzdem neu (merkt sich
+   die Version, braucht C++-Werkzeuge, `docs/NDI.md`). Laden lässt sich alles ohne App im
+   Electron-Prozess: `ELECTRON_RUN_AS_NODE=1 node_modules/electron/dist/electron.exe <skript>.cjs`
+   (Skript im Scratchpad: `new (require('better-sqlite3'))(':memory:')`, `require('@julusian/freetype2')`,
+   `require('<pfad>/grandiose.node').version()`; `process.versions` nennt Node und ABI).
+   Node-Vorgabe: `engine-strict` prüft jedes Paket im Baum, die Untergrenze in `engines` ist also
+   die höchste aller Pakete, nicht die von Electron (45: Electron 22.12, `pdfjs-dist`/ESLint 22.13).
 4. **Prüfen:** `/abschluss-check` inkl. `npm run e2e` (alle Skripte). Zusätzlich das fertige Paket:
    `npm_config_before=<Datum> npx --yes electron-builder@26 --dir`, dann
    `dist/<os>-unpacked` mit eigenem `--user-data-dir` starten und Datenbank-Aufrufe testen
@@ -71,7 +94,9 @@ schickt sie als eigenen PR.
    echten Installer und startet jede gepackte App einmal, `e2e/paket.mjs`).
 5. **Doku:** Version in `README.md` (Technik) und `docs/ENTWICKLUNG.md` (Node-Vorgabe),
    Systemvoraussetzungen in `docs/INSTALL.md`, „Stand der bekannten Lücken“ in
-   `docs/SICHERHEIT.md`, `docs/ROADMAP.md` (Bereits erledigt).
+   `docs/SICHERHEIT.md`, `docs/ROADMAP.md` (Bereits erledigt). Ändert sich die Node-Vorgabe:
+   `engines` in `package.json` und `package-lock.json`, README (Entwicklung) und der Kommentar zu
+   `@types/node` in `.github/dependabot.yml`.
 6. **Ausliefern:** Ohne `electron-updater` erreicht ein Electron-Upgrade (Sicherheits-Patches in
    Chromium) die Anwender erst mit einem neuen Release – nach dem Merge dem Nutzer eins vorschlagen
    (Version erhöhen, Tag `v*`; `docs/ENTWICKLUNG.md`, „Release veröffentlichen“).

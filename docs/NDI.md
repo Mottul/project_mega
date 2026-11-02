@@ -35,10 +35,11 @@ Das Skript arbeitet die Schritte ausdrücklich und kontrolliert ab:
 1. klont den sende-fähigen Fork `rse/grandiose` nach `vendor/grandiose`,
 2. installiert dessen Laufzeit-Abhängigkeiten ohne Install-Skripte,
 3. lädt das NDI-SDK und prüft das Ergebnis (der Upstream-Downloader meldet Fehler sonst nicht),
-4. kompiliert gegen die Electron-ABI der App.
+4. kompiliert gegen die Electron-Header der App.
 
-Danach die App neu starten. Nach einem Electron-Upgrade genügt ein erneuter Lauf – die
-ABI-Abweichung wird erkannt und automatisch neu gebaut.
+Danach die App neu starten. Nach einem Electron-Upgrade baut ein erneuter Lauf neu (das Skript
+merkt sich die Electron-Version). Zwingend ist das nicht: grandiose nutzt die stabile N-API, ein
+älteres Kompilat lädt weiter (unter Windows geprüft: Build für 44.5.1 unter Electron 45.0.0).
 
 **Paketierung:** `npm run package` nimmt nur die Laufzeitdateien mit (Binary, NDI-Runtime-DLL,
 `index.js`/`package.json`, Lizenz) – nicht SDK, `.git` oder Build-Reste. Die DLL liegt neben dem

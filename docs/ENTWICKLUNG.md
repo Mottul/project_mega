@@ -14,8 +14,10 @@ Die Installation für Anwender steht in [INSTALL.md](INSTALL.md).
 
 ## Voraussetzungen
 
-- **Node.js ≥ 22.12** und npm (von Electron 44 vorgegeben). `engine-strict=true` in `.npmrc`
-  bricht den Install mit zu altem Node gleich mit klarer Meldung ab statt später kryptisch.
+- **Node.js ≥ 22.13** und npm (Electron 45 verlangt 22.12, `pdfjs-dist` 6 und ESLint 10 22.13).
+  `engine-strict=true` in `.npmrc` bricht den Install mit zu altem Node gleich mit klarer Meldung
+  ab statt später kryptisch – und prüft dabei jedes Paket, die Untergrenze ist also die höchste
+  aller `engines`. Die App selbst läuft auf dem Node in Electron (45: Node 24.22).
 - **Kein C++-Compiler nötig.** Die nativen Module (`better-sqlite3` seit Version 13,
   `@julusian/freetype2` aus `atem-connection`) nutzen die stabile N-API: Die fertigen Binaries
   (Windows, macOS, Linux; x64 und arm64) liegen im npm-Paket und laufen unter jeder Electron- und

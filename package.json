@@ -8,7 +8,7 @@
   "license": "MIT",
   "main": "./out/main/index.js",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "dev": "node scripts/fetch-electron-bin.mjs && node scripts/download-ffmpeg.mjs --max-age 7 && electron-vite dev",

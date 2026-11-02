@@ -21,7 +21,7 @@ passende Paket laden (ohne Anmeldung). Einen Zwischenstand seit dem letzten Rele
 [NDI.md](NDI.md).
 
 Ältere Systeme (32-Bit-Windows, macOS 12 und älter) unterstützt die zugrunde liegende
-Electron-Version 44 nicht mehr.
+Electron-Version 45 nicht mehr.
 
 ---
 
