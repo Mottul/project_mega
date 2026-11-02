@@ -85,7 +85,10 @@ CI hält Dependabot aktuell. Gemergt wird erst nach grüner CI, von Hand.
 **Electron-Hauptversionen:** Electron pflegt nur die drei neuesten (etwa alle 8 Wochen eine neue).
 Vor dem Umstieg die [Breaking Changes](https://www.electronjs.org/docs/latest/breaking-changes)
 durchgehen – beim Schritt 42 → 44 z. B. starten Datei-Dialoge ohne Startpfad im Downloads-Ordner
-(deshalb `services/fileDialogs.ts`), und macOS braucht ab 44 mindestens Version 13.
+(deshalb `services/fileDialogs.ts`), und macOS braucht ab 44 mindestens Version 13; ab 45 hat
+der Preload in der Sandbox kein `Buffer` und `setImmediate` mehr (unserer braucht beides nicht).
+Ein Dependabot-PR für eine Hauptversion wird deshalb erst nach dieser Prüfung gemergt, nicht schon
+nach grüner CI (Ablauf im Skill `abhaengigkeiten`).
 
 > **npm 10 und vitest:** Updates von vitest brechen mit „Cannot read properties of null (reading
 > 'edgesOut')“ ab – ein npm-Fehler beim Auflösen von vitests optionalen Peer-Abhängigkeiten.
@@ -97,19 +100,23 @@ durchgehen – beim Schritt 42 → 44 z. B. starten Datei-Dialoge ohne Startpfad
 Prüfen mit `npm audit` (alles) bzw. `npm audit --omit=dev` (nur Laufzeit-Abhängigkeiten – Electron
 selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
 
-**Stand 31. Oktober 2026** – nach den Updates auf Electron 44.9.3, electron-vite 6.0.0 und den
-Unterabhängigkeiten `undici` 7.30.1 (lädt Electron bei der Installation), `zod` 4.6.7 (ESLint-Regeln)
-und `postcss-selector-parser` 6.1.5 (Tailwind):
+**Stand 2. November 2026** – nach den Updates auf Electron 45.0.0 (Chromium 156, Node 24.22),
+`typescript-eslint` 8.72.0 und `zustand` 5.0.16:
 
 - `npm audit --omit=dev`: **keine Lücken**, auch mit `atem-connection`.
 - `npm audit`: 12 mittlere Meldungen, alle dieselbe Lücke in `minimatch`
   ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)), die über ESLint und
   `typescript-eslint` hereinkommt. Nur Werkzeug zum Prüfen des eigenen Codes, nichts davon liegt in
   der App.
-- Electron 44.9.3 enthält die Sperre der kompromittierten eMudhra-Zwischenzertifikate
-  ([GHSA-jr5w-w6x2-84p9](https://github.com/advisories/GHSA-jr5w-w6x2-84p9), ab 44.9.1) – vorher
-  hätte ein Angreifer im selben Netz mit einem solchen Zertifikat einen HTTPS-Server der App
-  vortäuschen können (ffmpeg-/yt-dlp-Aktualisierung) – und die Chromium-/V8-Korrekturen aus 44.9.3.
+- Electron 45.0.0 enthält die Sperre der kompromittierten eMudhra-Zwischenzertifikate
+  ([GHSA-jr5w-w6x2-84p9](https://github.com/advisories/GHSA-jr5w-w6x2-84p9), ab 45.0.0-beta.6
+  bzw. 44.9.1) – vorher hätte ein Angreifer im selben Netz mit einem solchen Zertifikat einen
+  HTTPS-Server der App vortäuschen können (ffmpeg-/yt-dlp-Aktualisierung).
+- Von den Chromium-/V8-Korrekturen, die 44.9.3 nachgerüstet hatte, stecken 63 von 67 in 45.0.0
+  (als eigener Patch oder schon in Chromium 156). Vier sind in keiner 45er-Version nachweisbar
+  (auch 45.2.1 nicht): Service Worker, iframes (Top-Layer), `content-visibility` und
+  PDFium-Formulare. Die App nutzt nichts davon – ihre Fenster zeigen nur die eigene Seite, ohne
+  Service Worker und iframes, PDFs liest sie mit pdfjs statt dem PDF-Plugin von Chromium.
 
 ## Die App
 

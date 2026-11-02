@@ -86,7 +86,7 @@ Alles im Detail: [docs/WERKZEUGE.md](docs/WERKZEUGE.md)
 Schritte und die Warnungen bei unsignierten Paketen stehen in [docs/INSTALL.md](docs/INSTALL.md).
 ffmpeg ist im Paket enthalten.
 
-**Entwicklung** (Node.js ≥ 22.12, kein C++-Compiler nötig):
+**Entwicklung** (Node.js ≥ 22.13, kein C++-Compiler nötig):
 
 ```bash
 npm ci              # Abhängigkeiten exakt aus dem Lockfile, ohne Install-Skripte
@@ -111,5 +111,5 @@ Weiter in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 
 ## Technik
 
-Electron 44, React 18 und TypeScript (electron-vite), Tailwind CSS, zustand, react-router 7,
+Electron 45, React 18 und TypeScript (electron-vite), Tailwind CSS, zustand, react-router 7,
 `better-sqlite3` (FTS5), `pdfjs-dist`, `atem-connection`, gebündeltes ffmpeg mit HAP.

@@ -143,7 +143,7 @@ Damit nichts doppelt geplant wird:
 - **Kein Datenverlust zwischen Fenstern:** `settings.json` nimmt Teiländerungen (feldweise
   zusammengeführt, atomar geschrieben) und meldet Änderungen an alle Fenster; Werkzeug-Stände
   gleichen sich zwischen Fenstern ab (eigene, noch ungespeicherte Eingaben gewinnen).
-- **Upgrades:** Electron 40 → 42 → 44 (Datei-Dialoge merken sich ihren Ordner selbst),
+- **Upgrades:** Electron 40 → 42 → 44 → 45 (Datei-Dialoge merken sich ihren Ordner selbst),
   better-sqlite3 12 → 13 (N-API: kein Rebuild mehr je Electron-Version), pdfjs-dist 4 → 6,
   react-router 6 → 7; Stand 9. Oktober 2026 `npm audit --omit=dev` ohne Befund. Dependabot hält
   die Abhängigkeiten seitdem mit 7 Tagen Abstand aktuell, die Electron-Binary wird gegen ihre
