@@ -1,11 +1,24 @@
 // ATEM-Steuerung im Werkzeug-Muster:
 //   Leiste „Mischer“   Adresse, Verbinden, Probebetrieb, Sperre; rechts der Status
-//   Schublade          Verbindung, Tastatur
-//   Arbeitsfläche      Seiten als Reiter; was der Mischer nicht kann, erscheint nicht
+//   Schublade          Verbindung, Tastatur; anfangs zu, sie nimmt dem Bedienfeld 360 px
+//   Arbeitsfläche      Seiten als Reiter links, rechts die Übergangsspalte auf jeder Seite;
+//                      was der Mischer nicht kann, erscheint nicht
 // Die Verbindung lebt im main und läuft weiter, wenn das Werkzeug zugeht.
 
 import { useEffect } from 'react'
-import { Keyboard, Link2, Lock, Plug, TriangleAlert, Unplug } from 'lucide-react'
+import {
+  Cable,
+  Image,
+  Keyboard,
+  Layers,
+  Link2,
+  ListChecks,
+  Lock,
+  Plug,
+  SlidersVertical,
+  TriangleAlert,
+  Unplug
+} from 'lucide-react'
 import {
   ATEM_SIM_MODELLE,
   ATEM_SIM_NAMEN,
@@ -31,13 +44,13 @@ import { Select } from '@renderer/components/ui/select'
 import { TextField } from '@renderer/components/ui/text-field'
 import { api } from '@renderer/lib/api'
 import { updateSettings, useSettings } from '@renderer/lib/settings'
-import { toolPageClass } from '@renderer/lib/toolPage'
 import { flag, usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
 import { SeiteAux } from './SeiteAux'
 import { SeiteKeyer } from './SeiteKeyer'
 import { SeiteMakros } from './SeiteMakros'
 import { SeiteMedien } from './SeiteMedien'
 import { SeiteMischen } from './SeiteMischen'
+import { UebergangSpalte } from './UebergangSpalte'
 import { useAtem } from './useAtem'
 
 const TASTEN: [string, string][] = [
@@ -48,11 +61,11 @@ const TASTEN: [string, string][] = [
 ]
 
 const SEITEN = [
-  { id: 'mischen', label: 'Mischen' },
-  { id: 'keyer', label: 'Keyer' },
-  { id: 'makros', label: 'Makros' },
-  { id: 'medien', label: 'Medien' },
-  { id: 'aux', label: 'AUX' }
+  { id: 'mischen', label: 'Mischen', icon: SlidersVertical },
+  { id: 'keyer', label: 'Keyer', icon: Layers },
+  { id: 'makros', label: 'Makros', icon: ListChecks },
+  { id: 'medien', label: 'Medien', icon: Image },
+  { id: 'aux', label: 'AUX', icon: Cable }
 ] as const
 
 type Seite = (typeof SEITEN)[number]['id']
@@ -90,38 +103,50 @@ function Seiten({ view, bedienbar }: { view: AtemView; bedienbar: boolean }): JS
   // Kann der nächste Mischer eine gemerkte Seite oder M/E nicht, bleibt die Wahl für später stehen
   const seite = hatSeite(view, wahl) ? wahl : 'mischen'
   const me = Math.min(meWahl, view.mes.length - 1)
-  const mitMe = seite === 'mischen' || seite === 'keyer'
   return (
-    <div className="space-y-4">
-      <Reiter
-        label="Seiten"
-        className="w-fit"
-        value={seite}
-        options={SEITEN.filter((s) => hatSeite(view, s.id))}
-        onChange={setWahl}
-      />
-      <fieldset disabled={!bedienbar} className="space-y-4">
-        {mitMe && view.mes.length > 1 && (
-          <Segmented
-            label="M/E"
-            className="max-w-xs"
-            value={String(me)}
-            options={view.mes.map((_, i) => ({ value: String(i), label: `M/E ${i + 1}` }))}
-            onChange={(v) => setMeWahl(Number(v))}
-          />
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <Reiter
+          label="Seiten"
+          className="w-fit"
+          value={seite}
+          options={SEITEN.filter((s) => hatSeite(view, s.id))}
+          onChange={setWahl}
+        />
+        {/* Die Spalte rechts gehört zur gewählten M/E, deshalb gilt die Auswahl für jede Seite */}
+        {view.mes.length > 1 && (
+          <fieldset disabled={!bedienbar} className="min-w-0">
+            <Segmented
+              label="M/E"
+              className="w-80 max-w-full"
+              value={String(me)}
+              options={view.mes.map((_, i) => ({ value: String(i), label: `M/E ${i + 1}` }))}
+              onChange={(v) => setMeWahl(Number(v))}
+            />
+          </fieldset>
         )}
-        {seite === 'mischen' && (
-          <SeiteMischen
-            view={view}
-            me={me}
-            bedienbar={bedienbar}
-            onAlleMakros={() => setWahl('makros')}
-          />
-        )}
-        {seite === 'keyer' && <SeiteKeyer view={view} me={me} />}
-        {seite === 'makros' && <SeiteMakros view={view} />}
-        {seite === 'medien' && <SeiteMedien view={view} />}
-        {seite === 'aux' && <SeiteAux view={view} />}
+      </div>
+      {/* Links scrollt die Seite, rechts bleibt die Spalte stehen. Keine Textauswahl: Wer den Hebel
+          knapp verfehlt und zieht, markierte sonst Knöpfe, und der nächste Griff zöge den Text */}
+      <fieldset
+        disabled={!bedienbar}
+        className="grid min-h-0 min-w-0 flex-1 select-none grid-cols-[minmax(0,1fr)_17rem] gap-4"
+      >
+        <div className="min-h-0 overflow-y-auto pr-1">
+          {seite === 'mischen' && (
+            <SeiteMischen
+              view={view}
+              me={me}
+              bedienbar={bedienbar}
+              onAlleMakros={() => setWahl('makros')}
+            />
+          )}
+          {seite === 'keyer' && <SeiteKeyer view={view} me={me} />}
+          {seite === 'makros' && <SeiteMakros view={view} />}
+          {seite === 'medien' && <SeiteMedien view={view} />}
+          {seite === 'aux' && <SeiteAux view={view} />}
+        </div>
+        <UebergangSpalte view={view} me={me} bedienbar={bedienbar} />
       </fieldset>
     </div>
   )
@@ -189,6 +214,7 @@ export function AtemControl(): JSX.Element {
   return (
     <ToolShell
       id="atem-control"
+      asideOpen={false}
       bar={
         <ToolBar label="Mischer" status={<Status status={status} />}>
           <TextField
@@ -277,7 +303,8 @@ export function AtemControl(): JSX.Element {
         </>
       }
       main={
-        <div className={toolPageClass('full')}>
+        // volle Höhe: Die Übergangsspalte wächst mit dem Fenster, und mit ihr der Hebel
+        <div className="flex h-full min-h-0 flex-col gap-3 p-4">
           {status.phase === 'verloren' && (
             <Alert tone="danger" icon={TriangleAlert} title="Verbindung verloren">
               Die Knöpfe sind gesperrt, bis der Mischer wieder antwortet. Das Bild zeigt den letzten

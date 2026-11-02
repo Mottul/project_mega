@@ -21,7 +21,18 @@ import {
 
 /** Interner Quellentyp des Mischers, Werte wie `InternalPortType` der Bibliothek */
 const PORT_EXTERN = 0
+const PORT_SCHWARZ = 1
+const PORT_BALKEN = 2
+const PORT_FARBE = 3
+const PORT_MEDIA = 4
+const PORT_MEDIA_KEY = 5
+const PORT_SUPERSOURCE = 6
 const PORT_EXTERN_DIREKT = 7
+/**
+ * Interne Quellen hinter den Eingängen, so wie sie in den Reihen stehen sollen (Wunsch des Nutzers,
+ * 2.11.2026): Media-Player, SuperSource, Farben, Schwarz, Farbbalken. Alles andere danach.
+ */
+const INTERN_REIHENFOLGE = [PORT_MEDIA, PORT_SUPERSOURCE, PORT_FARBE, PORT_SCHWARZ, PORT_BALKEN]
 /** Kennung des ersten AUX-Busses unter den Quellen: Dort steht sein Name */
 const AUX_ERSTE_KENNUNG = 8001
 /** `MediaSourceType.Clip` der Bibliothek */
@@ -128,6 +139,11 @@ export function bildrateAusModus(modus: number): number | null {
 const istExtern = (q: AtemRohQuelle): boolean =>
   q.internalPortType === PORT_EXTERN || q.internalPortType === PORT_EXTERN_DIREKT
 
+function rang(typ: number): number {
+  const i = INTERN_REIHENFOLGE.indexOf(typ)
+  return i >= 0 ? i : INTERN_REIHENFOLGE.length + typ
+}
+
 function quellen(roh: AtemRoh): AtemQuelle[] {
   return Object.values(roh.inputs)
     .filter(
@@ -137,7 +153,7 @@ function quellen(roh: AtemRoh): AtemQuelle[] {
     .sort(
       (a, b) =>
         Number(istExtern(b)) - Number(istExtern(a)) ||
-        a.internalPortType - b.internalPortType ||
+        rang(a.internalPortType) - rang(b.internalPortType) ||
         a.inputId - b.inputId
     )
     .map((q) => ({
@@ -145,6 +161,7 @@ function quellen(roh: AtemRoh): AtemQuelle[] {
       kurz: q.shortName,
       lang: q.longName,
       extern: istExtern(q),
+      schluessel: q.internalPortType === PORT_MEDIA_KEY,
       meMaske: q.meAvailability,
       verfuegbar: q.sourceAvailability
     }))

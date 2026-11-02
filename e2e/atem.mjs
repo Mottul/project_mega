@@ -58,9 +58,13 @@ async function waehlt(label, wert) {
   assert.ok(await waitFor(async () => (await feld.inputValue()) === wert), `${label} bleibt`)
 }
 
+/** Höhe des Griffs in px, wie in Hebel.tsx */
+const GRIFF_PX = 44
+
 /**
  * Hebel mit der Maus ziehen, `bis` als Weg ab der Ruhelage: 0 Ruhelage, 1 anderes Ende. Die
- * Ruhelage wechselt nach jedem fertigen Übergang, auch nach Auto.
+ * Ruhelage wechselt nach jedem fertigen Übergang, auch nach Auto. Die Höhe folgt dem Fenster:
+ * `vomEnde(px)` stellt die Maus so viele Pixel vor das Ende, an dem der Griff anschlägt.
  */
 async function ziehe(bis, schritte = 12) {
   await hebel().scrollIntoViewIfNeeded()
@@ -69,11 +73,25 @@ async function ziehe(bis, schritte = 12) {
   const oben = (await hebel().getAttribute('data-oben')) === 'true'
   const x = box.x + box.width / 2
   const y = (weg) => box.y + box.height * (oben ? weg : 1 - weg)
+  const richtung = oben ? 1 : -1
+  // Weg des Griffs: Spur ohne Rahmen (je 1 px) minus Griff
+  const ende = y(0.05) + richtung * (box.height - 2 - GRIFF_PX)
   await page.mouse.move(x, y(0.05))
   await page.mouse.down()
   const nach = (weg, s) => page.mouse.move(x, y(weg), { steps: s })
+  const vomEnde = (px, s = 3) => page.mouse.move(x, ende - richtung * px, { steps: s })
   await nach(bis, schritte)
-  return { nach, los: () => page.mouse.up() }
+  return { nach, vomEnde, los: () => page.mouse.up() }
+}
+
+/** Die Schublade ist anfangs zu: Wer etwas darin braucht, öffnet sie */
+async function schublade() {
+  const drawer = page.getByTestId('settings-drawer')
+  if (!(await drawer.count())) {
+    await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+  }
+  await drawer.waitFor()
+  return drawer
 }
 
 /** Ein Modell des Probebetriebs starten, eine laufende Verbindung vorher trennen */
@@ -82,7 +100,7 @@ async function probebetrieb(modell) {
     await aufTrennen().click()
     await bar().getByRole('button', { name: 'Probebetrieb' }).waitFor()
   }
-  await page.getByTestId('settings-drawer').locator('select').selectOption(modell)
+  await (await schublade()).locator('select').selectOption(modell)
   await bar().getByRole('button', { name: 'Probebetrieb' }).click()
   await knopf('programm', 1).waitFor()
 }
@@ -97,6 +115,8 @@ try {
         assert.match(await bar().textContent(), /getrennt/)
         assert.equal(await bar().getByRole('button', { name: 'Verbinden' }).isDisabled(), true)
         assert.equal(await knopf('programm', 1).count(), 0)
+        // Bedienfeld: Die Schublade ist anfangs zu, sie nähme den Knöpfen 360 px
+        assert.equal(await page.getByTestId('settings-drawer').count(), 0)
       }
     ],
     [
@@ -201,7 +221,90 @@ try {
         await dauer.press('Tab')
         assert.equal(await dauer.inputValue(), '50')
         assert.ok(await waitFor(async () => /1,00 s/.test(await page.textContent('fieldset'))))
+        // Schnellwahl für den Finger: Sekunden, gewählt ist, was der Mischer meldet
+        const schnell = page.getByRole('group', { name: 'Dauer in Sekunden' })
+        await schnell.getByRole('button', { name: '2 s' }).click()
+        assert.ok(await waitFor(async () => (await dauer.inputValue()) === '100'))
+        assert.equal(
+          await schnell.getByRole('button', { name: '2 s' }).getAttribute('aria-pressed'),
+          'true'
+        )
+        await schnell.getByRole('button', { name: '1 s' }).click()
+        assert.ok(await waitFor(async () => (await dauer.inputValue()) === '50'))
         await stil.getByRole('button', { name: 'Mix' }).click()
+      }
+    ],
+    [
+      'Quellen: Eingänge groß, dahinter MP, SuperSource, Farben, Schwarz, Balken; kein Key-Signal',
+      async () => {
+        const reihe = await page
+          .getByRole('region', { name: 'Programm' })
+          .locator('[data-testid^="atem-programm-"]')
+          .evaluateAll((k) => k.map((e) => Number(e.dataset.testid.split('-').pop())))
+        assert.deepEqual(
+          reihe,
+          [1, 2, 3, 4, 5, 6, 7, 8, 3010, 3020, 6000, 2001, 2002, 0, 1000],
+          JSON.stringify(reihe)
+        )
+        const hoehe = (id) => knopf('programm', id).evaluate((e) => e.offsetHeight)
+        assert.ok((await hoehe(1)) > (await hoehe(3010)), 'Eingänge nicht größer')
+      }
+    ],
+    [
+      '„Gewählt“ ist Gelb, nicht die Akzentfarbe; Programm rot, auf Sendung rot',
+      async () => {
+        const farbe = (loc) => loc.evaluate((e) => getComputedStyle(e).backgroundColor)
+        const gelb = await page.evaluate(() => {
+          const d = document.createElement('div')
+          d.className = 'bg-warning'
+          document.body.append(d)
+          const c = getComputedStyle(d).backgroundColor
+          d.remove()
+          return c
+        })
+        const stil = page.getByRole('group', { name: 'Übergang' })
+        // Knöpfe blenden ihre Farbe kurz über (transition-colors): auf den Endwert warten
+        for (const k of [
+          page.getByTestId('atem-naechster-hintergrund'),
+          stil.getByRole('button', { name: 'Mix' })
+        ]) {
+          assert.ok(
+            await waitFor(async () => (await farbe(k)) === gelb, 3000, 50),
+            `${await farbe(k)} statt ${gelb}`
+          )
+        }
+        assert.notEqual(await farbe(knopf('programm', 1)), gelb)
+      }
+    ],
+    [
+      'Übergangsspalte steht auf jeder Seite: Cut auf der Seite Makros, Hebel wächst mit dem Fenster',
+      async () => {
+        const [breite, hoehe] = await page.evaluate(() => [innerWidth, innerHeight])
+        try {
+          await page.setViewportSize({ width: 1440, height: 900 })
+          await reiter('Makros')
+          assert.equal(await page.getByTestId('atem-hebel').count(), 1)
+          await page.getByTestId('atem-cut').click()
+          await reiter('Mischen')
+          await zeigt('programm', 3)
+          await page.getByTestId('atem-cut').click()
+          await zeigt('programm', 1)
+          const gross = (await hebel().boundingBox()).height
+          const ftb = await page.getByTestId('atem-ftb').boundingBox()
+          assert.ok(ftb.y + ftb.height <= 900, `FTB unter dem Fensterrand: ${JSON.stringify(ftb)}`)
+          await page.setViewportSize({ width: 1024, height: 700 })
+          assert.ok(
+            await waitFor(async () => (await hebel().boundingBox()).height < gross),
+            'Hebel bleibt gleich hoch'
+          )
+          assert.ok((await hebel().boundingBox()).height >= 199, 'Hebel unter 200 px')
+          assert.ok(
+            (await page.getByTestId('atem-ftb').evaluate((e) => e.offsetHeight)) >= 44,
+            'FTB gestaucht'
+          )
+        } finally {
+          await page.setViewportSize({ width: breite, height: hoehe })
+        }
       }
     ],
     [
@@ -227,7 +330,12 @@ try {
       async () => {
         await zeigt('programm', 1)
         const griff = page.getByTestId('atem-hebel-griff')
-        const lage = async () => Number.parseFloat(await griff.evaluate((e) => e.style.top))
+        // Abstand des Griffs zum oberen und unteren Rand der Spur
+        const lage = async () => {
+          const h = await hebel().boundingBox()
+          const g = await griff.boundingBox()
+          return { oben: g.y - h.y, unten: h.y + h.height - g.y - g.height }
+        }
 
         const halb = await ziehe(0.5)
         const obenStart = await hebel().getAttribute('data-oben')
@@ -249,9 +357,12 @@ try {
           await waitFor(async () => (await hebel().getAttribute('data-oben')) !== obenStart),
           'Ruhelage nicht gedreht'
         )
-        // Griff steht jetzt am anderen Ende: oben heißt top 0, unten die Spur minus Griff
-        const erwartet = obenStart === 'true' ? 168 : 0
-        assert.ok(Math.abs((await lage()) - erwartet) < 2, `Griff steht bei ${await lage()}`)
+        // Griff steht jetzt am anderen Ende (Rahmen 1 px)
+        const l = await lage()
+        assert.ok(
+          (obenStart === 'true' ? l.unten : l.oben) < 3,
+          `Griff steht bei ${JSON.stringify(l)}`
+        )
 
         // Zurück geht es wieder von 0 bis zum Ende
         const zurueck = await ziehe(1.1, 25)
@@ -271,7 +382,7 @@ try {
           'Ruhelage nicht gedreht'
         )
         // Zittern am Ende schiebt nichts an
-        await zug.nach(0.87, 3)
+        await zug.vomEnde(3)
         await sleep(150)
         assert.equal(await hebelWert(), 0)
         // Griff unten geblieben: zurück bis zur Mitte, das Bild steht noch
@@ -450,32 +561,43 @@ try {
       }
     ],
     [
-      'Seite Keyer: Quellen, Auto mit Dauer, Verknüpfung, und die Sperre gilt auch hier',
+      'Seite Keyer richtet ein, geschaltet wird im Streifen auf Mischen; die Sperre gilt überall',
       async () => {
         await reiter('Keyer')
+        // Hier wird nichts geschaltet, nur gezeigt, was auf Sendung ist
+        assert.equal(await page.locator('[data-testid^="atem-usk-taste-"]').count(), 0)
+        assert.equal(await page.locator('[data-testid^="atem-dsk-auto-"]').count(), 0)
+        assert.equal(await page.getByText('Auf Sendung', { exact: true }).count(), 0)
         await waehlt('Key 2 Fill', '3')
         await waehlt('Key 2 Cut', '4')
         await waehlt('DSK 1 Fill', '5')
         await page.getByLabel('DSK 1 Dauer in Bildern').fill('50')
         await page.getByLabel('DSK 1 Dauer in Bildern').press('Tab')
+
+        await reiter('Mischen')
         const dsk = page.getByTestId('atem-dsk-auto-0')
         await dsk.click()
         assert.ok(
           await waitFor(async () => (await dsk.getAttribute('data-laeuft')) === 'true', 5000, 20),
           'Auto läuft nicht'
         )
-        await schaltet('atem-dsk-0')
-        await page.getByTestId('atem-dsk-0').click()
-        await schaltet('atem-dsk-0', 'aus')
+        await schaltet('atem-dsk-taste-0')
+        await reiter('Keyer')
+        await page.getByText('Auf Sendung', { exact: true }).waitFor()
+        await reiter('Mischen')
+        await page.getByTestId('atem-dsk-taste-0').click()
+        await schaltet('atem-dsk-taste-0', 'aus')
         await page.getByTestId('atem-dsk-tie-0').click()
         await schaltet('atem-dsk-tie-0')
         await page.getByTestId('atem-dsk-tie-0').click()
         await schaltet('atem-dsk-tie-0', 'aus')
 
+        await reiter('Keyer')
         await bar().getByRole('button', { name: 'Sperre' }).click()
         await page.getByText('Gesperrt').first().waitFor()
         assert.equal(await page.getByLabel('Key 2 Fill', { exact: true }).isDisabled(), true)
-        assert.equal(await page.getByTestId('atem-usk-0').isDisabled(), true)
+        // Die Übergangsspalte steht auch hier, und auch sie ist gesperrt
+        assert.equal(await page.getByTestId('atem-cut').isDisabled(), true)
         await bar().getByRole('button', { name: 'Sperre' }).click()
         await reiter('Medien')
         assert.equal(await page.getByRole('group', { name: 'Media-Player 1 Art' }).count(), 0)
@@ -494,6 +616,8 @@ try {
         assert.equal(await knopf('programm', 4).count(), 1)
         assert.equal(await knopf('programm', 5).count(), 0)
         assert.equal(await page.getByRole('group', { name: 'M/E' }).count(), 0)
+        // Keyer-Streifen nach dem Modell: Bild, ein Key, ein DSK
+        assert.equal(await page.locator('[data-testid^="atem-naechster-"]').count(), 2)
         assert.equal(await page.getByTestId('atem-usk-taste-0').count(), 1)
         assert.equal(await page.getByTestId('atem-usk-taste-1').count(), 0)
         assert.equal(await page.getByTestId('atem-dsk-taste-1').count(), 0)
@@ -692,10 +816,11 @@ try {
         await waehlt('DSK 2 Cut', '7')
         await page.getByLabel('DSK 2 Dauer in Bildern').fill('40')
         await page.getByLabel('DSK 2 Dauer in Bildern').press('Tab')
+        await reiter('Mischen')
         await page.getByTestId('atem-dsk-tie-1').click()
         await schaltet('atem-dsk-tie-1')
         await page.getByTestId('atem-dsk-auto-1').click()
-        await schaltet('atem-dsk-1')
+        await schaltet('atem-dsk-taste-1')
         assert.deepEqual(empfangen('CKeF').at(-1), { name: 'CKeF', keyer: 2, quelle: 4 })
         assert.deepEqual(empfangen('CKeC').at(-1), { name: 'CKeC', keyer: 2, quelle: 5 })
         assert.deepEqual(empfangen('CDsF').at(-1), { name: 'CDsF', keyer: 1, quelle: 6 })
@@ -703,7 +828,6 @@ try {
         assert.deepEqual(empfangen('CDsR').at(-1), { name: 'CDsR', keyer: 1, rate: 20 })
         assert.deepEqual(empfangen('CDsT').at(-1), { name: 'CDsT', keyer: 1, an: true })
         assert.deepEqual(empfangen('DDsA').at(-1), { name: 'DDsA', keyer: 1 })
-        await reiter('Mischen')
       }
     ],
     [

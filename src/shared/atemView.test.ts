@@ -83,8 +83,30 @@ describe('atemViewAus', () => {
       []
     )
     // Der AUX-Bus darf das Multiview zeigen, was nirgends taugt, fällt weg
-    expect(v.quellen.map((q) => q.id)).toEqual([1, 2, 0, 1000, 3010, 9001])
+    expect(v.quellen.map((q) => q.id)).toEqual([1, 2, 3010, 0, 1000, 9001])
     expect(v.quellen.map((q) => q.extern)).toEqual([true, true, false, false, false, false])
+  })
+
+  it('reiht interne Quellen wie gewünscht: MP, SuperSource, Farben, Schwarz, Balken', () => {
+    const v = atemViewAus(
+      roh({
+        inputs: {
+          0: quelle(0, InternalPortType.Black),
+          1000: quelle(1000, InternalPortType.ColorBars),
+          2001: quelle(2001, InternalPortType.ColorGenerator),
+          2002: quelle(2002, InternalPortType.ColorGenerator),
+          3010: quelle(3010, InternalPortType.MediaPlayerFill),
+          3011: quelle(3011, InternalPortType.MediaPlayerKey),
+          3020: quelle(3020, InternalPortType.MediaPlayerFill),
+          6000: quelle(6000, InternalPortType.SuperSource),
+          1: quelle(1, InternalPortType.External)
+        }
+      }),
+      []
+    )
+    expect(v.quellen.map((q) => q.id)).toEqual([1, 3010, 3020, 6000, 2001, 2002, 0, 1000, 3011])
+    // Das Key-Signal bleibt Quelle für Keyer, auf Sendung zeigt es kein Bild
+    expect(v.quellen.filter((q) => q.schluessel).map((q) => q.id)).toEqual([3011])
   })
 
   it('kennt mehrere M/Es und je M/E die eigene Ruhelage des Hebels', () => {

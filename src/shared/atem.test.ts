@@ -28,10 +28,42 @@ const me: AtemMe = {
 
 const view: AtemView = {
   quellen: [
-    { id: 1, kurz: 'CAM1', lang: 'Kamera 1', extern: true, meMaske: 0b11, verfuegbar: 0xff },
-    { id: 2, kurz: 'CAM2', lang: 'Kamera 2', extern: true, meMaske: 0b01, verfuegbar: 0xff },
-    { id: 3, kurz: 'CAM3', lang: 'Kamera 3', extern: true, meMaske: 0b10, verfuegbar: 0 },
-    { id: 9001, kurz: 'MV', lang: 'Multiview', extern: false, meMaske: 0, verfuegbar: 1 }
+    {
+      id: 1,
+      kurz: 'CAM1',
+      lang: 'Kamera 1',
+      extern: true,
+      schluessel: false,
+      meMaske: 0b11,
+      verfuegbar: 0xff
+    },
+    {
+      id: 2,
+      kurz: 'CAM2',
+      lang: 'Kamera 2',
+      extern: true,
+      schluessel: false,
+      meMaske: 0b01,
+      verfuegbar: 0xff
+    },
+    {
+      id: 3,
+      kurz: 'CAM3',
+      lang: 'Kamera 3',
+      extern: true,
+      schluessel: false,
+      meMaske: 0b10,
+      verfuegbar: 0
+    },
+    {
+      id: 9001,
+      kurz: 'MV',
+      lang: 'Multiview',
+      extern: false,
+      schluessel: false,
+      meMaske: 0,
+      verfuegbar: 1
+    }
   ],
   mes: [me, me],
   stile: ['mix', 'dip', 'wipe'],

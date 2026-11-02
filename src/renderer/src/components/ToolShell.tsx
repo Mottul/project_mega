@@ -33,7 +33,8 @@ export function ToolShell({
   bar,
   main,
   aside,
-  asideWidth = 360
+  asideWidth = 360,
+  asideOpen = true
 }: {
   /** eindeutige Tool-Kennung – Namensraum für gemerkte Panel-Zustände */
   id: string
@@ -44,10 +45,12 @@ export function ToolShell({
   aside?: ReactNode
   /** Breite der Schublade in px */
   asideWidth?: number
+  /** Schublade offen, solange der Nutzer nichts anderes gewählt hat (Bedienfelder: zu) */
+  asideOpen?: boolean
 }): JSX.Element {
   const { settingsSlot, toolName } = useContext(ToolChromeContext)
   // Früher hieß der Zustand „Panel eingeklappt“ – wer es zu hatte, findet es wieder zu.
-  const [wasOpen] = useState(() => !readStored(`shell:${id}:aside`, false, flag))
+  const [wasOpen] = useState(() => !readStored(`shell:${id}:aside`, !asideOpen, flag))
   const [open, setOpen] = usePersistentState(`shell:${id}:drawer`, wasOpen, flag)
   const [pinned, setPinned] = usePersistentState(`shell:${id}:pin`, true, flag)
   const hasAside = aside != null

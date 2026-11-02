@@ -64,6 +64,8 @@ export interface AtemQuelle {
   lang: string
   /** Echter Eingang (nicht Schwarz, Farbbalken, Media-Player …) */
   extern: boolean
+  /** Key-Signal eines Media-Players: taugt als Cut eines Keyers, nicht als Bild auf Sendung */
+  schluessel: boolean
   /** Bitmaske: Auf welchen M/Es ist die Quelle wählbar? */
   meMaske: number
   /** Bitmaske: Wofür taugt sie sonst, siehe QUELLE_FUER_KEY und QUELLE_FUER_AUX */
@@ -381,6 +383,13 @@ export function hostUndPort(host: string): { adresse: string; port: number | und
  */
 export function bilderJeSchritt(bildrate: number | null): number {
   return bildrate !== null && bildrate >= 50 ? 2 : 1
+}
+
+/** Dauer in der Zählung des Mischers zu einer Zeit in Sekunden; ohne Bildrate keine */
+export function rateAusSekunden(sekunden: number, bildrate: number | null): number | null {
+  if (!bildrate) return null
+  const rate = Math.round((sekunden * bildrate) / bilderJeSchritt(bildrate))
+  return Math.min(ATEM_RATE_MAX, Math.max(ATEM_RATE_MIN, rate))
 }
 
 /** Echte Bilder für die Anzeige in Sekunden */

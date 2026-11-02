@@ -41,7 +41,12 @@ let antwortTimer: ReturnType<typeof setTimeout> | null = null
 /** Start und Stopp nacheinander: Nie zwei Verbindungen zugleich, auch nicht bei schnellem Wechsel */
 let reihe: Promise<unknown> = Promise.resolve()
 const hebelWunsch = new Map<number, number>()
-const hebelLaeuft = new Set<number>()
+/**
+ * Welche Verbindung je M/E gerade Hebelwerte schickt. Je Verbindung, nicht nur je M/E: Beim Trennen
+ * bricht die Bibliothek offene Befehle nicht ab, eine hängende Schleife sperrte den Hebel sonst auch
+ * für die nächste Verbindung.
+ */
+const hebelLaeuft = new Map<number, AtemVerbindung>()
 
 export function setAtemSinks(sinks: {
   status: (s: AtemStatus) => void
@@ -194,8 +199,8 @@ export function atemTrennen(): Promise<AtemStatus> {
 }
 
 async function hebelSenden(v: AtemVerbindung, me: number): Promise<void> {
-  if (hebelLaeuft.has(me)) return
-  hebelLaeuft.add(me)
+  if (hebelLaeuft.get(me) === v) return
+  hebelLaeuft.set(me, v)
   try {
     for (;;) {
       const wert = hebelWunsch.get(me)
@@ -206,7 +211,7 @@ async function hebelSenden(v: AtemVerbindung, me: number): Promise<void> {
       await Promise.all([v.befehl({ type: 'hebel', me, wert }), pause])
     }
   } finally {
-    hebelLaeuft.delete(me)
+    if (hebelLaeuft.get(me) === v) hebelLaeuft.delete(me)
   }
 }
 
