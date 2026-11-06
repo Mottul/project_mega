@@ -890,7 +890,9 @@ DMX-Dip-Schalter, Stromlast, Audio-Delay, RTA, Rigging-Last und Timecode – gib
 eigenständige Web-App ohne die übrige Mottulbox: https://mottul.github.io/project_mega/ im
 Browser öffnen, über „Installieren“ bzw.
 „Zum Home-Bildschirm“ als App ablegen, danach läuft sie **offline**. Dieselben Rechner wie am
-Desktop (gleicher Code). Der Knopf **„Darstellung“** oben rechts stellt wie das App-Menü der
+Desktop (gleicher Code). Mit dem **Stern** heftet man Rechner als **Favoriten** oben an; „Ordnen“
+stellt ihre Reihenfolge mit Pfeilen ein, die übrigen folgen darunter wie in der App (das Handy
+merkt sich beides, neue Rechner erscheinen von selbst unten). Der Knopf **„Darstellung“** oben rechts stellt wie das App-Menü der
 Mottulbox Design (Dunkel, Hell, wie das Gerät) und Akzentfarbe ein; das Handy merkt sich beides.
 Eine neue Version meldet sich mit „Neu laden“, sonst greift sie beim nächsten Start – das kommt nur
 vor, wenn sich an den Rechnern selbst, an gemeinsamen Bedienelementen oder an den Farben etwas
