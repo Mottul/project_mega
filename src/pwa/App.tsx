@@ -34,7 +34,7 @@ import { useServiceWorker } from './useServiceWorker'
 import { LookMenu } from './LookMenu'
 import { usePwaLook } from './useLook'
 
-const TITLE = 'Mottulbox Rechner'
+const TITLE = 'MottulBox'
 
 export function App(): JSX.Element {
   const look = usePwaLook()

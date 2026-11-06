@@ -24,8 +24,8 @@ const MANIFEST_FILE = 'manifest.webmanifest'
 function manifest(): string {
   return JSON.stringify(
     {
-      name: 'Mottulbox Rechner',
-      short_name: 'Rechner',
+      name: 'MottulBox',
+      short_name: 'MottulBox',
       description:
         'Die Rechner der Mottulbox fürs Handy: Kreis, Projektion, Objektiv, Lumen, DMX, Strom, Audio-Delay, Rigging und Timecode – offline.',
       lang: 'de',
