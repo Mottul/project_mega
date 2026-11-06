@@ -1,12 +1,33 @@
 // Rechner-PWA: Startseite mit allen Rechnern und je Rechner eine Seite mit Kopfzeile. Die
-// Rechner selbst sind dieselben Komponenten wie in der Desktop-App (tools/<id>).
+// Rechner selbst sind dieselben Komponenten wie in der Desktop-App (tools/<id>). Favoriten
+// (Stern) stehen oben in eigener Reihenfolge, siehe favorites.ts.
 import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { HashRouter, Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
-import { ArrowLeft, Download, Loader2, RefreshCw } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowUpDown,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Loader2,
+  RefreshCw,
+  Star
+} from 'lucide-react'
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
 import { MottulboxLogo } from '@renderer/components/MottulboxLogo'
 import { Button, buttonVariants } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { usePersistentState } from '@renderer/lib/usePersistentState'
+import { cn } from '@renderer/lib/utils'
+import type { ToolModule } from '@renderer/tools/types'
+import {
+  FAVORITES_KEY,
+  favoritesCodec,
+  moveFavorite,
+  splitFavorites,
+  toggleFavorite
+} from './favorites'
 import { findPwaTool, PWA_TOOLS } from './tools'
 import { useInstallPrompt } from './useInstallPrompt'
 import { useServiceWorker } from './useServiceWorker'
@@ -58,6 +79,15 @@ function Home({ lookButton }: { lookButton: ReactNode }): JSX.Element {
   useEffect(() => {
     document.title = TITLE
   }, [])
+  const [favIds, setFavIds] = usePersistentState(FAVORITES_KEY, [], favoritesCodec)
+  const { favorites, rest } = splitFavorites(PWA_TOOLS, favIds)
+  const [arranging, setArranging] = useState(false)
+  // Gemerkte IDs ohne Rechner (umbenannt/entfernt) beim nächsten Ändern gleich mit aufräumen
+  const known = favorites.map((t) => t.id)
+  const toggle = (id: string): void => setFavIds(toggleFavorite(known, id))
+  const move = (id: string, dir: -1 | 1): void => setFavIds(moveFavorite(known, id, dir))
+  // Nach dem Abheften bis auf einen bleibt nichts zu ordnen
+  if (arranging && favorites.length < 2) setArranging(false)
   return (
     <>
       <Header>
@@ -67,37 +97,182 @@ function Home({ lookButton }: { lookButton: ReactNode }): JSX.Element {
       </Header>
       <Scroll>
         <div className="pwa-safe-x mx-auto max-w-5xl space-y-4 py-4">
-          <nav
-            aria-label="Rechner"
-            className="grid grid-cols-[repeat(auto-fill,minmax(min(18rem,100%),1fr))] gap-3"
-          >
-            {PWA_TOOLS.map((t) => {
-              const Icon = t.icon
-              return (
-                <Link
-                  key={t.id}
-                  to={`/${t.id}`}
-                  className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
-                >
-                  <Card className="flex h-full items-start gap-3 p-4 transition-colors hover:border-primary/40 active:bg-muted/40">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/[0.12] text-primary">
-                      <Icon className="size-5" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-medium">{t.name}</span>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {t.description}
-                      </span>
-                    </span>
-                  </Card>
-                </Link>
-              )
-            })}
-          </nav>
+          {favorites.length > 0 ? (
+            <>
+              <section className="space-y-2" aria-label="Favoriten">
+                <div className="flex items-center gap-2">
+                  <SectionHeading>Favoriten</SectionHeading>
+                  {favorites.length > 1 && (
+                    <Button
+                      size="sm"
+                      variant={arranging ? 'default' : 'ghost'}
+                      aria-pressed={arranging}
+                      onClick={() => setArranging((a) => !a)}
+                    >
+                      {arranging ? (
+                        <Check className="size-4" />
+                      ) : (
+                        <ArrowUpDown className="size-4" />
+                      )}
+                      {arranging ? 'Fertig' : 'Ordnen'}
+                    </Button>
+                  )}
+                </div>
+                <ToolGrid label="Favoriten">
+                  {favorites.map((t, i) => (
+                    <ToolCard
+                      key={t.id}
+                      tool={t}
+                      favorite
+                      onToggleFavorite={() => toggle(t.id)}
+                      arrange={
+                        arranging
+                          ? {
+                              first: i === 0,
+                              last: i === favorites.length - 1,
+                              move: (dir) => move(t.id, dir)
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
+                </ToolGrid>
+              </section>
+              {rest.length > 0 && (
+                <section className="space-y-2" aria-label="Weitere Rechner">
+                  <SectionHeading>Weitere Rechner</SectionHeading>
+                  <ToolGrid label="Weitere Rechner">
+                    {rest.map((t) => (
+                      <ToolCard key={t.id} tool={t} onToggleFavorite={() => toggle(t.id)} />
+                    ))}
+                  </ToolGrid>
+                </section>
+              )}
+            </>
+          ) : (
+            <ToolGrid label="Rechner">
+              {rest.map((t) => (
+                <ToolCard key={t.id} tool={t} onToggleFavorite={() => toggle(t.id)} />
+              ))}
+            </ToolGrid>
+          )}
+          {favorites.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Tipp: Mit dem Stern heftest du Rechner oben an und kannst sie dort ordnen.
+            </p>
+          )}
           <InstallHint />
         </div>
       </Scroll>
     </>
+  )
+}
+
+function SectionHeading({ children }: { children: string }): JSX.Element {
+  return (
+    <h2 className="flex-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+      {children}
+    </h2>
+  )
+}
+
+function ToolGrid({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+  return (
+    <nav
+      aria-label={label}
+      className="grid grid-cols-[repeat(auto-fill,minmax(min(18rem,100%),1fr))] gap-3"
+    >
+      {children}
+    </nav>
+  )
+}
+
+interface Arrange {
+  first: boolean
+  last: boolean
+  move: (dir: -1 | 1) => void
+}
+
+/**
+ * Karte eines Rechners. Der Stern liegt neben dem Link, nicht darin (kein Knopf im Link); beim
+ * Ordnen ersetzen Pfeile den Stern und die Karte öffnet nichts – sonst startete ein knapp
+ * daneben getippter Pfeil auf dem Handy den Rechner.
+ */
+function ToolCard({
+  tool,
+  favorite = false,
+  onToggleFavorite,
+  arrange
+}: {
+  tool: ToolModule
+  favorite?: boolean
+  onToggleFavorite: () => void
+  arrange?: Arrange
+}): JSX.Element {
+  const Icon = tool.icon
+  const body = (
+    <>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/[0.12] text-primary">
+        <Icon className="size-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block font-medium">{tool.name}</span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">{tool.description}</span>
+      </span>
+    </>
+  )
+  return (
+    <Card
+      className={cn(
+        'flex h-full items-stretch transition-colors',
+        arrange ? 'border-primary/40' : 'hover:border-primary/40'
+      )}
+    >
+      {arrange ? (
+        <div className="flex min-w-0 flex-1 items-start gap-3 p-4">{body}</div>
+      ) : (
+        <Link
+          to={`/${tool.id}`}
+          className="flex min-w-0 flex-1 items-start gap-3 rounded-l-lg p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:bg-muted/40"
+        >
+          {body}
+        </Link>
+      )}
+      {arrange ? (
+        <div className="flex shrink-0 flex-col justify-center gap-1 pr-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`${tool.name} nach oben`}
+            disabled={arrange.first}
+            onClick={() => arrange.move(-1)}
+          >
+            <ChevronUp className="size-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`${tool.name} nach unten`}
+            disabled={arrange.last}
+            onClick={() => arrange.move(1)}
+          >
+            <ChevronDown className="size-5" />
+          </Button>
+        </div>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn('m-1.5 shrink-0', favorite ? 'text-primary' : 'text-muted-foreground')}
+          aria-label={favorite ? `${tool.name} abheften` : `${tool.name} oben anheften`}
+          aria-pressed={favorite}
+          title={favorite ? 'Aus den Favoriten nehmen' : 'Zu den Favoriten (oben anheften)'}
+          onClick={onToggleFavorite}
+        >
+          <Star className={cn('size-5', favorite && 'fill-current')} />
+        </Button>
+      )}
+    </Card>
   )
 }
 
