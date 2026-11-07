@@ -166,6 +166,23 @@ export function authArgs(
   return args
 }
 
+/** Seit dieser Version braucht yt-dlp für YouTube eine JavaScript-Laufzeit und kennt dafür
+ *  `--js-runtimes`; ein älteres (vom PATH) bräche an der unbekannten Option jeden Aufruf ab. */
+const JS_RUNTIMES_SINCE = '2025.11.12'
+
+/**
+ * JavaScript-Laufzeit für yt-dlp: YouTube stellt Prüfaufgaben (Signatur, „n“), die yt-dlp nur in
+ * JavaScript löst. Ohne Laufzeit fehlen Zugänge – ein altersbeschränktes Video scheiterte trotz
+ * Cookies und Konto mit „age-restricted“. Von sich aus sucht yt-dlp nur Deno; Electron bringt Node
+ * mit: `nodePath` ist die App selbst, gestartet mit ELECTRON_RUN_AS_NODE (siehe ytDlp.ts).
+ */
+export function jsRuntimeArgs(version: string | null, nodePath: string): string[] {
+  const v = /^\d{4}\.\d{2}\.\d{2}/.exec(version?.trim() ?? '')?.[0]
+  // gleich breite Datumsangaben: der Textvergleich ist der Versionsvergleich
+  if (!v || v < JS_RUNTIMES_SINCE || !nodePath) return []
+  return ['--js-runtimes', `node:${nodePath}`]
+}
+
 /** Sperrt die Seite Programme aus (Cloudflare)? Dann einmal mit Browser-Nachahmung versuchen. */
 export function needsImpersonation(stderr: string): boolean {
   return /Cloudflare anti-bot challenge|generic:impersonate/i.test(stderr)
@@ -205,10 +222,24 @@ export function explainYtError(
       ? 'Anmeldung nötig (Altersfreigabe oder Bot-Prüfung): Unter „Anmeldung“ den Browser wählen, der bei YouTube angemeldet ist.'
       : 'Die Seite verlangt trotz Cookies eine Anmeldung – im gewählten Browser anmelden (bei Altersfreigabe mit einem volljährigen Konto) und erneut versuchen.'
   }
+  const last = ytErrorText(t) ?? ''
+  // Scheitert die Prüfaufgabe, steht die Ursache nur in einer Warnung davor; am Ende meldet
+  // YouTube „age-restricted“ oder es fehlt jedes Format
+  if (
+    /(signature|n challenge) solving failed|no supported javascript runtime/i.test(t) &&
+    /age-restricted|format is not available|no video formats/i.test(last)
+  ) {
+    return 'YouTube verlangt eine Prüfaufgabe in JavaScript, die yt-dlp nicht lösen konnte. Im App-Menü yt-dlp aktualisieren (ein yt-dlp vom System kann zu alt sein) und erneut versuchen.'
+  }
+  if (/age-restricted|age-verification/i.test(last)) {
+    return ctx.cookies === 'none'
+      ? 'Altersbeschränktes Video: Unter „Anmeldung“ den Browser wählen, der bei YouTube angemeldet ist.'
+      : 'Altersbeschränktes Video, das YouTube diesem Konto nicht freigibt: Im Google-Konto das Alter bestätigen und erneut versuchen.'
+  }
   if (ctx.impersonated && /HTTP Error 403/i.test(t)) {
     return 'Die Seite verweigert den Abruf (HTTP 403), auch mit Browser-Nachahmung.'
   }
-  return ytErrorText(t)
+  return last || null
 }
 
 /** Anfrage aus dem Renderer prüfen und auf erlaubte Werte bringen (wirft bei Unsinn). */

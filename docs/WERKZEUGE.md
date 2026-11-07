@@ -638,11 +638,17 @@ Downloads laufen oder warten), Format, Zielordner und Anmeldung in der Schublade
   sie bei jedem Abruf selbst; dort bei YouTube angemeldet sein. Unter Windows sperren Chrome und
   Edge ihre Cookies für andere Programme – dort Firefox oder eine cookies.txt nutzen, den Browser
   beim Laden am besten schließen.
+- **JavaScript-Laufzeit für YouTube:** YouTube stellt Prüfaufgaben, die yt-dlp nur in JavaScript
+  löst; ohne Laufzeit scheiterten altersbeschränkte Videos trotz Cookies („age-restricted“). Die App
+  gibt yt-dlp ihr eingebautes Node mit (nichts zu installieren; erst ab yt-dlp 2025.11.12, ein
+  älteres vom System bekommt es nicht). Verlangt YouTube trotzdem eine Altersbestätigung, im
+  Google-Konto das Alter bestätigen.
 - **Seiten, die Programme aussperren** (Cloudflare-Schutz, HTTP 403): Prüfen und Laden werden
   automatisch ein zweites Mal als Browser versucht (Browser-Nachahmung von yt-dlp). Gegen eine
   echte Rätselseite hilft auch das nicht – dann im Browser laden.
-- **Fehler verständlich:** Anmeldung nötig, Cookies gesperrt oder verschlüsselt, kein Profil
-  gefunden, Seite blockt – jeweils mit dem nächsten Schritt statt der englischen yt-dlp-Zeile.
+- **Fehler verständlich:** Anmeldung nötig, altersbeschränkt, Prüfaufgabe gescheitert, Cookies
+  gesperrt oder verschlüsselt, kein Profil gefunden, Seite blockt – jeweils mit dem nächsten Schritt
+  statt der englischen yt-dlp-Zeile.
 - yt-dlp lädt die App selbst als eigenständiges Programm (Prüfsumme wird verglichen) und prüft
   beim Start auf neue Versionen. Version, diese Prüfung und **Jetzt prüfen** stehen wie bei ffmpeg
   im Menü „Mottulbox“; fehlt yt-dlp, bietet der Downloader das Herunterladen direkt an.

@@ -219,5 +219,11 @@ selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
   cookies.txt (absolut, muss existieren) mit; die Einstellung liest der main bei jedem Aufruf aus
   settings.json, nie aus der Anfrage des Renderers. yt-dlp schreibt eine cookies.txt beim Laden
   aktualisiert zurück.
+- **JavaScript-Laufzeit für yt-dlp:** Für YouTubes Prüfaufgaben startet yt-dlp die App selbst als
+  Node (`--js-runtimes node:<App>`, Umgebung `ELECTRON_RUN_AS_NODE=1` nur für den yt-dlp-Prozess;
+  App-Code und Fenster laufen dabei nicht). yt-dlp startet sie mit `--permission` (Node-Rechtemodell:
+  kein Dateisystem, keine Kindprozesse) und gibt das Lösungsskript über stdin; es stammt aus dem
+  yt-dlp-Paket selbst, die App lädt keine Skripte nach (kein `--remote-components`). Voraussetzung:
+  die Electron-Fuse `RunAsNode` bleibt an.
 - **Robust bei Fehlern:** Fehlergrenze je Werkzeug, globale Fehler-Handler mit Debug-Log und
   Wiederherstellung korrupter `settings.json`/`library.db` (Kopie sichern, neu anlegen, melden).
