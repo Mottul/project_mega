@@ -86,6 +86,11 @@ Prüfung auf `main`): erst die Schritte hier, dann mergen.
    `require('<pfad>/grandiose.node').version()`; `process.versions` nennt Node und ABI).
    Node-Vorgabe: `engine-strict` prüft jedes Paket im Baum, die Untergrenze in `engines` ist also
    die höchste aller Pakete, nicht die von Electron (45: Electron 22.12, `pdfjs-dist`/ESLint 22.13).
+   **Die App ist yt-dlps JavaScript-Laufzeit** (`--js-runtimes node:<App>`, `ELECTRON_RUN_AS_NODE=1`
+   nur im Kindprozess, `spawnYtDlp`): yt-dlp startet sie mit `--permission`. Nach dem Upgrade
+   `ELECTRON_RUN_AS_NODE=1 node_modules/electron/dist/electron.exe --permission -e "console.log(process.version)"`
+   prüfen. Die Fuse `RunAsNode` nie abschalten (`@electron/fuses`, `electronFuses` in
+   `electron-builder.yml`) – sonst scheitern altersbeschränkte YouTube-Videos wieder („age-restricted“).
 4. **Prüfen:** `/abschluss-check` inkl. `npm run e2e` (alle Skripte). Zusätzlich das fertige Paket:
    `npm_config_before=<Datum> npx --yes electron-builder@26 --dir`, dann
    `dist/<os>-unpacked` mit eigenem `--user-data-dir` starten und Datenbank-Aufrufe testen

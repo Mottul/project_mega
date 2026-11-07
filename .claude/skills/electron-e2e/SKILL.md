@@ -217,6 +217,18 @@ der nächste Schritt auf dem macOS-Runner noch Attribute des vorigen Werkzeugs.
   öffnet ein eigenes Fenster und springt zurück zu `/`. Für „irgendein Werkzeug öffnen“ ein großes
   nehmen (Rauchtest: `/tool/media-info`).
 - `ELECTRON_RUN_AS_NODE` aus der Umgebung entfernt der Harness (sonst startet Electron als Node).
+  Die App setzt die Variable selbst, aber nur für yt-dlp (`spawnYtDlp` in
+  `services/ytdlp/ytDlp.ts`): yt-dlp startet die App als JavaScript-Laufzeit für YouTube.
+- **`e2e/youtube.mjs` lädt nur über den allgemeinen Extraktor** (lokaler Server): YouTube selbst,
+  Browser-Cookies und die JavaScript-Laufzeit prüft es nicht. Für einen echten Abruf ein
+  Einmal-Skript im Scratchpad: eigenes `userData` mit kopiertem `yt-dlp.exe` und
+  `{ ytdlpAutoUpdate: false, youtube: { cookies: 'firefox', cookiesFile: '' } }` in der
+  `settings.json`, `launchApp({ userData, executablePath })`, dann
+  `page.evaluate((u) => window.api.youtube.probe(u), adresse)` – liefert Titel und Länge oder die
+  erklärte Fehlermeldung. Gegenprobe ohne Laufzeit: `yt-dlp -v --simulate`, Zeile `JS runtimes:`.
+- **Packen, während die App des Nutzers läuft:** Startet sie aus `dist/win-unpacked`, sperrt sie
+  den Ordner (EBUSY beim Packen). Nie beenden – in einen anderen Ordner packen:
+  `npx --yes electron-builder@26 --dir -c.directories.output=<ordner im Scratchpad>`.
 - **Frischer Benutzerordner ohne Downloads:** `launchApp()` legt eine `settings.json` mit
   `ytdlpAutoUpdate: false` an. Die yt-dlp-Prüfung beim Start lud sonst yt-dlp aus dem Netz und
   startete es; schloss ein kurzes Skript die App mittendrin, blieb `yt-dlp.exe` unter Windows
