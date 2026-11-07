@@ -261,6 +261,12 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   bei vergebenem Namen immer unter eindeutigem Namen – eine erneut gestartete Playlist hätte jede
   Folge doppelt geladen, die yt-dlp vorher übersprang. Erst der Vergleich der Länge trennt
   „dasselbe Video“ von „anderes Video, gleicher Name“.
+- **Die letzte Fehlerzeile nennt oft nicht die Ursache** (7.11.2026). Mit Firefox-Cookies kam
+  „age-restricted“, Cookies und Konto stimmten aber. `yt-dlp -v` zeigte `JS runtimes: none`:
+  Seit 2025.11 löst yt-dlp YouTubes Prüfaufgaben nur mit einer JavaScript-Laufzeit, ohne sie fiel
+  der Zugang weg, der das Video geliefert hätte. Fremde Fehler mit `-v` nachstellen und die
+  Warnungen davor lesen; ein selbst aktualisiertes Programm ändert seine Voraussetzungen. Electron
+  bringt Node mit (`process.execPath` + `ELECTRON_RUN_AS_NODE=1` nur im Kindprozess).
 
 ## Netzwerk (Scanner, 1.11.2026)
 

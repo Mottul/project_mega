@@ -43,6 +43,7 @@ import {
   buildProbeArgs,
   explainYtError,
   finishedFile,
+  jsRuntimeArgs,
   needsImpersonation,
   normalizeUrl,
   parseProbeJson,
@@ -104,14 +105,37 @@ export function parseChecksums(text: string): Map<string, string> {
   return map
 }
 
+interface FoundBinary {
+  bin: string
+  location: 'managed' | 'path'
+  version: string
+}
+
 /** Bevorzugt die selbst verwaltete Binary, sonst PATH. */
-async function locateBinary(): Promise<{ bin: string; location: 'managed' | 'path' } | null> {
+async function locateBinary(): Promise<FoundBinary | null> {
   const managed = managedBinary()
-  if (existsSync(managed) && (await versionOf(managed))) {
-    return { bin: managed, location: 'managed' }
-  }
-  if (await versionOf('yt-dlp')) return { bin: 'yt-dlp', location: 'path' }
+  const own = existsSync(managed) ? await versionOf(managed) : null
+  if (own) return { bin: managed, location: 'managed', version: own }
+  const onPath = await versionOf('yt-dlp')
+  if (onPath) return { bin: 'yt-dlp', location: 'path', version: onPath }
   return null
+}
+
+/** Laufzeit-Argumente für diese Binary: die App selbst als Node (siehe jsRuntimeArgs) */
+function jsRuntime(found: FoundBinary): string[] {
+  return jsRuntimeArgs(found.version, process.execPath)
+}
+
+/**
+ * yt-dlp starten. ELECTRON_RUN_AS_NODE lässt die App, wenn yt-dlp sie als JavaScript-Laufzeit
+ * aufruft, als schlichtes Node laufen (ohne Fenster, ohne App-Code); yt-dlp startet sie dabei mit
+ * `--permission` (ohne Datei- und Prozesszugriff). ffmpeg kümmert die Variable nicht.
+ */
+function spawnYtDlp(bin: string, args: string[]): ChildProcessWithoutNullStreams {
+  return spawn(bin, args, {
+    windowsHide: true,
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
+  })
 }
 
 // asynchron und zwischengespeichert (binaryVersion.ts); ein bloßer Name auf dem PATH ist unter
@@ -246,7 +270,7 @@ export function setStatusSink(sink: (status: YtToolStatus) => void): void {
 
 export async function getStatus(): Promise<YtToolStatus> {
   const found = await locateBinary()
-  const version = found ? await versionOf(found.bin) : null
+  const version = found?.version ?? null
   // Zustand erst NACH dem Warten lesen: Die erste Versionsabfrage dauert, inzwischen kann die
   // Prüfung fertig sein
   return {
@@ -286,7 +310,7 @@ export async function ensureUpToDate(): Promise<YtToolStatus> {
     const tag = await fetchLatestTag()
     state.latest = tag
     const found = await locateBinary()
-    if (found?.location !== 'path' && (!found || (await versionOf(found.bin)) !== tag)) {
+    if (found?.location !== 'path' && found?.version !== tag) {
       // Waehrend eines laufenden Downloads laesst sich die Binary unter Windows
       // nicht ersetzen -- dann beim naechsten Start bzw. per Knopf erneut.
       if (ytManager.running()) throw new Error('Download läuft — Aktualisierung später möglich')
@@ -422,8 +446,9 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
       return
     }
     this.update(job, { status: 'running' })
+    const js = jsRuntime(found)
     const load = (extra: string[], withId = false): Promise<YtAttempt> => {
-      const args = buildDownloadArgs(req, ffmpegBinPath('ffmpeg'), extra, withId)
+      const args = buildDownloadArgs(req, ffmpegBinPath('ffmpeg'), [...js, ...extra], withId)
       return this.attempt(job, found.bin, args, signal)
     }
     let extra = first.args
@@ -489,7 +514,7 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
         resolve({ code: null, errTail: '', file: null, existed: false })
         return
       }
-      const proc = spawn(bin, args, { windowsHide: true })
+      const proc = spawnYtDlp(bin, args)
       const onAbort = (): void => killTree(proc)
       signal.addEventListener('abort', onAbort, { once: true })
       // setEncoding hält Zeichen zusammen, die auf zwei Stücke der Pipe verteilt ankommen
@@ -535,7 +560,8 @@ class YtManager extends JobList<YtJob, YtEnqueueRequest> {
         for (const l of lines) handleLine(l)
       })
       proc.stderr.on('data', (chunk: string) => {
-        errTail = (errTail + chunk).slice(-2000)
+        // reicht zurück bis zu den Warnungen vor dem Fehler (dort steht oft die Ursache)
+        errTail = (errTail + chunk).slice(-4000)
       })
       proc.on('error', (err) => {
         this.fail(job, err)
@@ -563,12 +589,13 @@ export async function probeUrl(rawUrl: string): Promise<YtProbeResult> {
   const found = await locateBinary()
   if (!found) throw new Error('yt-dlp nicht gefunden – zuerst herunterladen.')
   const first = auth(false)
-  let res = await probeOnce(found.bin, url, first.args)
+  const js = jsRuntime(found)
+  let res = await probeOnce(found.bin, url, [...js, ...first.args])
   let impersonated = false
   if (res.code !== 0 && needsImpersonation(res.errTail)) {
     logLine('[yt-dlp] Seite blockt automatische Abrufe – Analyse als Browser:', url)
     impersonated = true
-    res = await probeOnce(found.bin, url, auth(true).args)
+    res = await probeOnce(found.bin, url, [...js, ...auth(true).args])
   }
   if (res.code !== 0) {
     logLine('[yt-dlp] Analyse fehlgeschlagen', url, '->', ytErrorText(res.errTail) ?? res.code)
@@ -592,7 +619,7 @@ function probeOnce(
   extra: string[]
 ): Promise<{ code: number | null; stdout: string; errTail: string }> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(bin, buildProbeArgs(url, extra), { windowsHide: true })
+    const proc = spawnYtDlp(bin, buildProbeArgs(url, extra))
     proc.stderr.setEncoding('utf8')
     const chunks: Buffer[] = []
     let size = 0

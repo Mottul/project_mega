@@ -8,6 +8,7 @@ import {
   buildProbeArgs,
   explainYtError,
   finishedFile,
+  jsRuntimeArgs,
   needsImpersonation,
   normalizeUrl,
   numberDigits,
@@ -354,5 +355,56 @@ describe('Anmeldung und Seitenschutz', () => {
     ).toMatch(/keine Cookies gefunden/)
     // Unbekanntes bleibt die Zeile von yt-dlp
     expect(explainYtError('ERROR: Video unavailable', ctx)).toBe('Video unavailable')
+  })
+
+  // so am 7.11.2026 mit Firefox-Cookies und angemeldetem, aber nicht altersbestätigtem Konto
+  const AGE_RESTRICTED =
+    'ERROR: [youtube] -Qq1MLVwmfs: Sorry, this content is age-restricted. This video is age-restricted and only available on YouTube'
+  const NO_JS =
+    'WARNING: [youtube] -Qq1MLVwmfs: Signature solving failed: Some formats may be missing. Ensure you have a supported JavaScript runtime and challenge solver script distribution installed.\n' +
+    'WARNING: [youtube] -Qq1MLVwmfs: n challenge solving failed: Some formats may be missing.\n'
+
+  it('Altersbeschränkt: ohne Cookies zur Anmeldung, mit Cookies zur Altersbestätigung', () => {
+    expect(explainYtError(AGE_RESTRICTED, { cookies: 'none', impersonated: false })).toMatch(
+      /^Altersbeschränktes Video: Unter „Anmeldung“/
+    )
+    expect(explainYtError(AGE_RESTRICTED, { cookies: 'firefox', impersonated: false })).toMatch(
+      /Alter bestätigen/
+    )
+  })
+
+  it('Gescheiterte Prüfaufgabe ist die Ursache, nicht das Konto', () => {
+    const ctx = { cookies: 'firefox' as const, impersonated: false }
+    expect(explainYtError(NO_JS + AGE_RESTRICTED, ctx)).toMatch(/Prüfaufgabe in JavaScript/)
+    expect(
+      explainYtError(NO_JS + 'ERROR: [youtube] x: Requested format is not available.', ctx)
+    ).toMatch(/Prüfaufgabe/)
+    // die Warnung allein erklärt keinen fremden Fehler
+    expect(explainYtError(NO_JS + 'ERROR: unable to write data: No space left', ctx)).toBe(
+      'unable to write data: No space left'
+    )
+  })
+})
+
+describe('JavaScript-Laufzeit', () => {
+  const app = 'C:\\Programme\\Mottulbox\\Mottulbox.exe'
+
+  it('gibt yt-dlp die App als Node mit', () => {
+    expect(jsRuntimeArgs('2026.10.26', app)).toEqual(['--js-runtimes', `node:${app}`])
+    expect(jsRuntimeArgs('2025.11.12', app)).toHaveLength(2)
+    expect(jsRuntimeArgs('2025.12.08.233142', app)).toHaveLength(2) // Nightly mit vierter Zahl
+  })
+
+  it('nicht für Versionen, die die Option nicht kennen, oder ohne Pfad', () => {
+    expect(jsRuntimeArgs('2025.10.22', app)).toEqual([])
+    expect(jsRuntimeArgs('2024.12.23', app)).toEqual([])
+    expect(jsRuntimeArgs('unbekannt', app)).toEqual([])
+    expect(jsRuntimeArgs(null, app)).toEqual([])
+    expect(jsRuntimeArgs('2026.10.26', '')).toEqual([])
+  })
+
+  it('steht wie die Anmeldung vor dem „--“ der Adresse', () => {
+    const extra = [...jsRuntimeArgs('2026.10.26', app), '--cookies-from-browser', 'firefox']
+    expect(buildDownloadArgs(BASE, 'ffmpeg', extra).slice(-6)).toEqual([...extra, '--', BASE.url])
   })
 })
