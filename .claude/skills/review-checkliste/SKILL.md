@@ -252,7 +252,11 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   Systemkodierung: `ä` kam als Byte 0xE4, in Node als „�“, `：` fehlte ganz. Kodierung erzwingen
   (`--encoding utf-8`) und `stream.setEncoding('utf8')` statt `chunk.toString()`, sonst zerreißt
   ein Zeichen an der Grenze zweier Stücke. Im Labor wie die App starten: `spawn` mit
-  `windowsHide`, Rohbytes ansehen.
+  `windowsHide`, Rohbytes ansehen. **Lesen nie bei einem Dekodierfehler beenden:** Hört der
+  Leser auf, ist die Pipe zu, und das Programm scheitert beim nächsten Schreiben – yt-dlp unter
+  Windows mit „Unable to download video: [Errno 22] Invalid argument“, noch vor dem ersten
+  Fortschritt. Gesehen im MottulVideoLoader (Rust, `lines()` endete am Byte 0xA0 eines
+  ARTE-Titels, 7.11.2026); die Mottulbox war durch `--encoding utf-8` und `setEncoding` sicher.
 - **Pfade nie aus Anzeigezeilen lesen.** Sie sind für Menschen geschrieben und können von dem
   abweichen, was auf der Platte liegt. Einen eigenen, maschinenlesbaren Weg nehmen.
 - **`shell.showItemInFolder` schweigt bei einem Pfad, den es nicht gibt** (gemessen: kein Fenster,
