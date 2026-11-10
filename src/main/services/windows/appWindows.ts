@@ -10,7 +10,8 @@ import { APP_NAME } from '@shared/brand'
 import { TOOL_WINDOW, type ToolWindowSize, type WindowBounds } from '@shared/toolWindows'
 import { appIconPath } from './appIcon'
 import { logLine } from '../log'
-import { devServerUrl, type AppPages } from './windowPolicy'
+import { getSettings } from '../store'
+import { devServerUrl, opensDevTools, type AppPages } from './windowPolicy'
 
 const indexFile = join(__dirname, '../renderer/index.html')
 const devUrl = devServerUrl(app.isPackaged, process.env['ELECTRON_RENDERER_URL'])
@@ -46,6 +47,13 @@ export function secureWebPreferences(
 export function loadRoute(win: BrowserWindow, hash: string): void {
   const onLoadErr = (e: unknown): void =>
     logLine('[window] Laden fehlgeschlagen:', e instanceof Error ? e.message : String(e))
+  // Zoom immer 100 %: Die App hat keinen Seitenzoom (kleiner geht über „Kompakt“), und eine
+  // Ausgabe muss pixelgenau bleiben. Chromium merkt sich den Zoom aber je Seite im Benutzerordner
+  // und für alle Fenster gemeinsam – wer ihn früher mit Strg+Minus des Standardmenüs verstellt
+  // hat, bekäme ihn ohne Menü nie mehr zurück (gemessen: 0,8 blieb über den Neustart).
+  win.webContents.once('did-finish-load', () => {
+    if (!win.isDestroyed()) win.webContents.setZoomFactor(1)
+  })
   if (devUrl) win.loadURL(devUrl + (hash ? `#${hash}` : '')).catch(onLoadErr)
   else win.loadFile(indexFile, hash ? { hash } : undefined).catch(onLoadErr)
 }
@@ -105,12 +113,10 @@ export function createWindow(
   // steuert den Zoom selbst (sonst zoomt/scrollt die ganze App ungewollt).
   win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
 
-  // F12 / Strg+Shift+I oeffnet die DevTools (auch im gepackten App -> Diagnose)
+  // F12 / Strg+Shift+I öffnet die DevTools (auch in der gepackten App -> Diagnose), nur nicht,
+  // solange die Kundenansicht gilt (windowPolicy.opensDevTools)
   win.webContents.on('before-input-event', (_e, input) => {
-    if (input.type !== 'keyDown') return
-    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
-      win.webContents.toggleDevTools()
-    }
+    if (opensDevTools(input, getSettings().kioskToolId !== null)) win.webContents.toggleDevTools()
   })
 
   loadRoute(win, opts.hash ?? '')

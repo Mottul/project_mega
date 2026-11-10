@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 31. Oktober 2026
+**Stand:** 10. November 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -96,7 +96,7 @@ Mini-Manual (siehe [WERKZEUGE.md](WERKZEUGE.md#übergaben-zwischen-werkzeugen)).
 ### Sicherheit
 
 - **PIN/Token für die Fernsteuerungen** (optional): Sie sind ohne Passwort; Befehle werden
-  geprüft, Uploads begrenzt – wer im selben Netz ist, kann aber steuern.
+  geprüft, Uploads begrenzt, Websites abgewiesen – wer im selben Netz ist, kann aber steuern.
 - **CSP ohne `'unsafe-inline'`** für Skripte im Produktiv-Build; braucht eine eigene Dev-CSP, weil
   der Vite-Dev-Server eine Inline-Präambel lädt. (`'unsafe-eval'` ist bereits entfernt.)
 
@@ -137,6 +137,10 @@ Damit nichts doppelt geplant wird:
 
 - **Show-Härtung:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, In-App-Hinweise statt
   stiller Fehler, Wiederherstellung von `settings.json`/`library.db`, versionierte Stores.
+  Seit November 2026: kein Standardmenü von Electron mehr (Strg+W schloss eine Ausgabe am
+  „zweimal Esc“ vorbei, Strg+R lud neu, Strg+Minus zoomte), Zoom fest auf 100 %, kein
+  Energiesparen, solange etwas läuft (Bildschirm bleibt an, solange eine Ausgabe offen ist), nur
+  eine Mottulbox je Benutzerordner, Fernsteuerungen weisen fremde Websites ab.
 - **Eine Persistenz-Regel:** Einstellungen in `settings.json` (jetzt auch Downloader-Zielordner,
   NDI und Timer-Ablauf, den der main selbst speichert), Arbeitsdaten im Werkzeug-Store,
   Bedien-Kleinigkeiten über `usePersistentState` – keine eigenen localStorage-Parser mehr.

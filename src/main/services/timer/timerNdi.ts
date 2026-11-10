@@ -30,6 +30,9 @@ export function getTimerNdiStatus(): TimerNdiStatus {
   }
 }
 
+/** Sendet NDI gerade? Anders als der Status lädt das nicht das NDI-Modul (`available`). */
+export const isTimerNdiRunning = (): boolean => ndi.running
+
 export async function startTimerNdi(cfg: TimerNdiConfig): Promise<TimerNdiStatus> {
   if (!ndi.available) return getTimerNdiStatus()
   config = clampNdiSize(cfg, DEFAULT_TIMER_NDI)

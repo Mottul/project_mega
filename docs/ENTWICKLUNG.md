@@ -58,6 +58,15 @@ npm run dev         # App mit Hot Reload
 - **Keine Install-Skripte:** `.npmrc` setzt `ignore-scripts=true` (siehe
   [SICHERHEIT.md](SICHERHEIT.md#installation)). Damit laufen auch keine `pre`-/`post`-Skripte –
   was vor einem Befehl passieren soll, steht direkt in seinem Skript.
+- **Eine Mottulbox je Benutzerordner:** `npm run dev` und `npm start` arbeiten im selben
+  Benutzerordner wie die installierte App (`%APPDATA%\Mottulbox` usw.). Läuft die schon, beendet
+  sich der zweite Start sofort („Mottulbox läuft bereits“ in der Konsole) und holt ihr Fenster
+  nach vorn – die installierte App also vorher beenden. Die E2E-Läufe haben je einen eigenen
+  Ordner (`--user-data-dir`) und laufen daneben.
+- **Kein Programm-Menü:** Die App entfernt Electrons Standardmenü (`appMenuTemplate` in
+  `services/windows/windowPolicy.ts`), damit dessen Tastenkürzel keine Ausgabe schließen oder neu
+  laden. Strg+R gibt es deshalb auch beim Entwickeln nicht – der Renderer lädt über Vite von
+  selbst nach, sonst in den DevTools (F12) neu laden.
 
 ## NPM-Skripte
 

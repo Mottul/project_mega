@@ -121,3 +121,64 @@ export function shellTarget(target: unknown, opts: { network: boolean }): string
 export function isWebUrl(url: string): boolean {
   return /^https?:\/\//i.test(url)
 }
+
+/** Rollen, die das Anwendungsmenü haben darf – keine schließt, lädt neu, zoomt oder blendet aus */
+type MenuRolle = 'about' | 'quit' | 'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'selectAll'
+export type MenuEintrag = { role: MenuRolle; label: string } | { type: 'separator' }
+export interface MenuGruppe {
+  label: string
+  submenu: MenuEintrag[]
+}
+
+/**
+ * Anwendungsmenü. Electron hängt ab Werk ein englisches Menü an jedes Fenster (File, Edit, View,
+ * Window), dessen Tastenkürzel auch bei ausgeblendeter Menüleiste gelten – gemessen am
+ * 10.11.2026: Strg+W schloss ein Ausgabefenster sofort, am „zweimal Esc“ vorbei; Strg+R lud das
+ * Fenster neu (Jingles und Testton brachen ab); Strg+Minus zoomte die Ausgabe; F11 nahm ihr das
+ * Vollbild. Deshalb unter Windows und Linux gar kein Menü (null): Kopieren und Einfügen in
+ * Textfeldern kann Chromium dort selbst, beendet wird über das Fenster.
+ * macOS braucht eines – ohne „Bearbeiten“ gäbe es in Textfeldern kein Cmd+C/V, ohne das
+ * App-Menü kein Cmd+Q (fragt wie jedes Beenden nach, wenn etwas läuft). Mehr nicht: Auch
+ * „Ausblenden“ (Cmd+H) und „Im Dock ablegen“ (Cmd+M) nähmen eine Ausgabe vom Bildschirm.
+ */
+export function appMenuTemplate(platform: NodeJS.Platform, appName: string): MenuGruppe[] | null {
+  if (platform !== 'darwin') return null
+  return [
+    {
+      label: appName,
+      submenu: [
+        { role: 'about', label: `Über ${appName}` },
+        { type: 'separator' },
+        { role: 'quit', label: `${appName} beenden` }
+      ]
+    },
+    {
+      label: 'Bearbeiten',
+      submenu: [
+        { role: 'undo', label: 'Widerrufen' },
+        { role: 'redo', label: 'Wiederholen' },
+        { type: 'separator' },
+        { role: 'cut', label: 'Ausschneiden' },
+        { role: 'copy', label: 'Kopieren' },
+        { role: 'paste', label: 'Einsetzen' },
+        { role: 'selectAll', label: 'Alles auswählen' }
+      ]
+    }
+  ]
+}
+
+/**
+ * Öffnet dieser Tastendruck die DevTools? F12 oder Strg+Shift+I – auch in der fertigen App, zur
+ * Diagnose. Nicht in der Kundenansicht: Dort sitzt jemand am Rechner, der nichts verstellen
+ * soll; über die DevTools käme er an jede Einstellung und aus der Sperre heraus. Wer sie
+ * braucht, verlässt die Kundenansicht vorher (Strg+Shift+K).
+ */
+export function opensDevTools(
+  input: { type: string; key: string; control?: boolean; shift?: boolean },
+  kundenansicht: boolean
+): boolean {
+  if (input.type !== 'keyDown' || kundenansicht) return false
+  return (
+    input.key === 'F12' || (!!input.control && !!input.shift && input.key.toLowerCase() === 'i')
+  )
+}

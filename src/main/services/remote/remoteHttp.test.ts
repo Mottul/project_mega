@@ -1,4 +1,4 @@
-import { createServer } from 'node:http'
+import { createServer, request } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -7,7 +7,85 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', isPackaged: false }
 }))
 
-const { createSnapshotServer, safeHandler } = await import('./remoteHttp')
+const { createSnapshotServer, nurEigeneHerkunft, safeHandler } = await import('./remoteHttp')
+
+describe('nurEigeneHerkunft – der Wächter vor jedem Fernsteuer-Server', () => {
+  /** Server mit Wächter; `befehle` zählt, was beim Handler ankommt */
+  async function mitWaechter(
+    lauf: (
+      frage: (
+        kopf: Record<string, string>,
+        method?: string
+      ) => Promise<{ status: number; text: string }>,
+      port: number
+    ) => Promise<void>
+  ): Promise<number> {
+    let befehle = 0
+    const http = createServer(
+      nurEigeneHerkunft('test', (_req, res) => {
+        befehle++
+        res.writeHead(200)
+        res.end('ok')
+      })
+    )
+    await new Promise<void>((r) => http.listen(0, '127.0.0.1', r))
+    const port = (http.address() as AddressInfo).port
+    // http.request statt fetch: fetch übergeht eine gesetzte Host-Kopfzeile
+    const frage = (
+      kopf: Record<string, string>,
+      method = 'POST'
+    ): Promise<{ status: number; text: string }> =>
+      new Promise((resolve, reject) => {
+        const req = request(
+          { host: '127.0.0.1', port, path: '/api/command', method, headers: kopf },
+          (res) => {
+            let text = ''
+            res.setEncoding('utf8')
+            res.on('data', (d: string) => (text += d))
+            res.on('end', () => resolve({ status: res.statusCode ?? 0, text }))
+          }
+        )
+        req.on('error', reject)
+        req.setTimeout(5_000, () => req.destroy(new Error('Zeitlimit')))
+        req.end(method === 'POST' ? '{"type":"x"}' : undefined)
+      })
+    try {
+      await lauf(frage, port)
+    } finally {
+      await new Promise((r) => http.close(r))
+    }
+    return befehle
+  }
+
+  it('weist fremde Websites mit 403 ab, bevor der Handler den Befehl sieht', async () => {
+    const befehle = await mitWaechter(async (frage) => {
+      for (const origin of ['http://boese.example', 'null', 'http://127.0.0.1:1']) {
+        const r = await frage({ Origin: origin })
+        expect(r.status, origin).toBe(403)
+        expect(r.text).toContain('fremden Website')
+      }
+    })
+    expect(befehle).toBe(0)
+  })
+
+  it('weist einen fremden Namen ab – auch beim Lesen – und sagt, welche Adresse geht', async () => {
+    const befehle = await mitWaechter(async (frage, port) => {
+      const r = await frage({ Host: `boese.example:${port}` }, 'GET')
+      expect(r.status).toBe(403)
+      expect(r.text).toContain('QR-Code')
+    })
+    expect(befehle).toBe(0)
+  })
+
+  it('lässt die eigene Seite und Programme ohne Origin durch', async () => {
+    const befehle = await mitWaechter(async (frage, port) => {
+      expect((await frage({ Origin: `http://127.0.0.1:${port}` })).status).toBe(200)
+      expect((await frage({})).status).toBe(200)
+      expect((await frage({}, 'GET')).status).toBe(200)
+    })
+    expect(befehle).toBe(3)
+  })
+})
 
 describe('safeHandler', () => {
   it('beantwortet eine Anfrage mit 500, wenn der Handler wirft – statt sie hängen zu lassen', async () => {

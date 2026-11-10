@@ -7,6 +7,7 @@ const all = [
   'smoke',
   'layout',
   'security',
+  'haertung',
   'testpattern',
   'testton',
   'timer',
