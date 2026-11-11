@@ -63,6 +63,15 @@ Siehe `/fernsteuerung-seite`: relative Pfade (Schrägstrich-Variante umleiten), 
 Watchdog gegen halboffene Verbindungen, Zeitzone des Rechners, ES5. Jede neue Route bekommt
 einen Test **mit** und **ohne** Schrägstrich.
 
+- **„Im selben Netz“ schließt Websites ein, die dort in einem Browser offen sind.** Die
+  Fernsteuerungen nahmen einen blinden POST jeder fremden Seite an (10.11.2026, in der gebauten
+  App gemessen: 200 statt 403). Jeder Server läuft deshalb über `createRemoteHost` und damit durch
+  `nurEigeneHerkunft()` (`Origin` ≠ `Host` → fremde Seite, fremder Name im `Host` → DNS-Rebinding;
+  Regeln in `remoteHerkunft.ts`). Folgen für neue Routen: Zustand ändern nur per **POST** (ein GET
+  trägt kein `Origin`, der Wächter sähe eine fremde Seite dort nicht), kein eigener
+  `createServer`, kein `Access-Control-Allow-Origin`. Anfragen ohne `Origin` (Companion, curl)
+  bleiben erlaubt – das ist Absicht, kein Loch.
+
 ## Raster und SVG (Oktober 2026)
 
 - **SVG mit `viewBox` nie `height:100%; width:auto` in eine Rasterzelle.** Die Breite folgt dann
@@ -216,6 +225,41 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   synchron.
 - **macOS beendet die App mit dem letzten Fenster nicht** – Tests, die auf das Ende warten,
   dort anders prüfen (Fensterzahl).
+
+## Was Electron und das System von selbst tun (10. November 2026)
+
+Vier Funde aus einer Durchsicht der ganzen App, alle in der gebauten App nachgestellt, bevor
+etwas geändert wurde (`e2e/haertung.mjs` war gegen den alten Stand in 9 von 10 Schritten rot).
+Gemeinsam ist ihnen: Der eigene Code war richtig, die Vorgabe darunter nicht.
+
+- **Electron hängt ein Standardmenü an jedes Fenster, und seine Tastenkürzel gelten auch
+  unsichtbar** (`autoHideMenuBar` blendet nur die Leiste aus). Strg+W schloss ein Ausgabefenster
+  am „zweimal Esc“ vorbei, Strg+R lud das Hauptfenster neu (Jingles und Testton brachen ab),
+  Strg+Minus zoomte, F11 nahm das Vollbild, „View“ führte in der Kundenansicht zu den DevTools.
+  Heute `Menu.setApplicationMenu(null)`, macOS mit eigener Vorlage (`appMenuTemplate` in
+  `windowPolicy.ts`). Eine neue Rolle dort nur, wenn sie kein Fenster schließt, lädt, zoomt oder
+  ausblendet – auch Cmd+H und Cmd+M nähmen eine Ausgabe vom Schirm. Tastenkürzel der App laufen
+  über `before-input-event` (main) oder `keydown` (Renderer), nie über Menü-Rollen.
+- **Chromium merkt sich den Zoom im Benutzerordner – je Seite, für alle Fenster gemeinsam.**
+  Gemessen: `setZoomFactor(0.8)` im Hauptfenster zoomte auch die Timer-Ausgabe und galt nach dem
+  Neustart weiter. `loadRoute` setzt ihn deshalb bei jedem Laden auf 1. Wer etwas entfernt, womit
+  der Nutzer einen Zustand verstellen konnte, setzt den gemerkten Zustand mit zurück – sonst
+  bleibt er für immer stehen.
+- **Nichts hält den Rechner wach, nur weil die App etwas zeigt.** Chromium tut das allein für ein
+  laufendes Video; Timer, Testbild, pausierter Player und jeder Auftrag liefen in den Standby.
+  `energie/wachhalten.ts` fragt den Stand aus `beenden/laufend.ts` alle drei Sekunden ab: Was die
+  Rückfrage beim Beenden nennt, hält den Rechner wach, eine Ausgabe auch den Bildschirm
+  (`wachBedarf.ts`). Etwas Neues, das läuft, gehört also in `LaufendStand` – dann fragt das
+  Beenden danach UND der Rechner bleibt wach.
+- **Wer einen Stand im Takt abfragt, liest nach, was die Abfrage auslöst.** `getTimerNdiStatus()`
+  und `getPlayerNdiStatus()` laden über `available` das NDI-Modul; im Takt gefragt, wäre es bei
+  jedem Start geladen worden. Dafür gibt es `isTimerNdiRunning()`/`isPlayerNdiRunning()`.
+- **Zwei Prozesse auf einem Benutzerordner** überschreiben einander `settings.json` (jeder hält
+  sie im eigenen Zwischenspeicher). `requestSingleInstanceLock()` in `main/index.ts`; die zweite
+  Instanz endet mit `app.exit(0)`, nicht `quit()` – das liefe durch die `before-quit`-Schritte
+  und fasste dabei Einstellungen und Datenbank der laufenden App an. Die Sperre legt den
+  Benutzerordner an: Was auf „Ordner fehlt noch“ prüft (`migrateUserData`), läuft davor.
+  Nebenwirkung: `npm run dev` startet nicht neben der installierten App (gleicher Ordner).
 
 ## Bilder, PDF und fremdes HTML (Phase 1 Mini-Manual, 16. Oktober 2026)
 

@@ -13,6 +13,8 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 |---|---|
 | `smoke.mjs` | Start, Kachelhöhen, Suche, Werkzeug öffnen, Programmbrücke, Datei-Dialoge merken sich den Ordner, keine Konsolenfehler |
 | `layout.mjs` | Werkzeug-Muster: Kopfleiste, Leiste/Schublade von LED-Wall, NovaStar, Netzwerk-Scanner (auch Adapter-Namen: unter Windows muss die PowerShell-Abfrage etwas liefern), YouTube-Downloader und Packliste, yt-dlp im App-Menü, App-Menü (13 Akzentfarben), Schublade (anheften/lösen/schließen, je Werkzeug gemerkt), ⓘ, Ausgabe-Leiste live/aus (Esc und Schließen von außen), Monitorwechsel von Testbild- und Player-Ausgabe, Auftrags-Leiste, LED-Wall (Projekt-Leiste, Reiter, Draufsicht nur mit Curving, Kette zeichnen), kleine Werkzeuge im eigenen Fenster (Kachel, Umleitung, eines je Werkzeug, Breite/Lage gemerkt, Höhe folgt dem Inhalt ohne Sprung, zweispaltig, 320 px ohne Querscrollen, Kompaktmodus live, gehen mit dem Hauptfenster); Packliste: langer Blocktitel breiter als die frühere Grenze von 240 px, Farbe über die Auswahl am Tupfen (Rand des Blocks), Bereich „PDF“ in der Schublade |
+| `security.mjs` | Fenster-Wächter und Shell-Kanäle: Navigation zu Webseite oder fremder Datei bleibt in der App (auch mit kaputter %-Kodierung), `window.open` öffnet nichts, das Ausgabefenster ist genauso bewacht, Berechtigungen (Kamera, Standort, Benachrichtigungen verweigert; Mikrofon nur im RTA-Fenster), Namen der Audio-Ausgabegeräte, „Ordner öffnen“ nur für lokale Ordner, „Im Ordner zeigen“ nur mit absolutem Pfad (`shell` per `app.evaluate` ersetzt) |
+| `haertung.mjs` | Show-Härtung: kein Standardmenü von Electron (macOS nur Beenden und Bearbeiten), Strg+W/Strg+R/Strg+Minus/F11 ändern an Ausgabe- und Hauptfenster nichts (Marke in der Seite gegen Neuladen, Zoom, Vollbild), F12 öffnet die DevTools – in der Kundenansicht nicht, Wachhalten (Ausgabe → „Bildschirm bleibt an“, laufender Timer → „Rechner bleibt wach“, danach frei; `powerSaveBlocker.isStarted` und die letzte `[wach]`-Zeile im Protokoll), Fernsteuerung weist fremden `Origin` und fremden `Host` mit 403 ab (eigene Seite und Anfragen ohne `Origin` gehen durch), zweiter Start im selben Benutzerordner beendet sich und holt das Hauptfenster vor, ein verstellter Zoom ist nach dem Neustart wieder 100 %. Eigener Benutzerordner, startet die App dreimal |
 | `testpattern.mjs` | 2-px-Rasterlinien pixelgenau (Raster und Mapping-Testbild) |
 | `testton.mjs` | Testton gemessen: Analysator vor dem Ausgang (`AudioNode.prototype.connect` umgelenkt, je Kanal einer) – Einblenden und Pegel −18 dBFS, Deckel −6 dBFS, 1 kHz, alle Signale unter dem Pegel, Kanal „Links“, Kennungs-Pausen je Kanal, AV-Sync-Piep zur vollen Sekunde (gemessen etwa −55 ms = Ausgabelatenz), Blitz in der Vorschau, Ton endet beim Verlassen. Ohne laufende Audioausgabe übersprungen |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
@@ -58,9 +60,33 @@ deshalb erst warten, bis die alte Leiste weg ist (`getByTestId('tool-bar').waitF
 'detached' })` nach `openRoute(page, '/')`, Muster `tool()` in `e2e/layout.mjs`) – sonst liest
 der nächste Schritt auf dem macOS-Runner noch Attribute des vorigen Werkzeugs.
 
+**Ein neues Skript zuerst gegen den unveränderten Build laufen lassen** (Skript schreiben, `node
+e2e/<name>.mjs` vor der Änderung am Code): Es muss dort rot sein, und zwar aus dem Grund, den der
+Schritt nennt. `haertung.mjs` war so in 9 von 10 Schritten rot – und zeigte nebenbei, dass
+Strg+R das Hauptfenster wirklich neu lud, was vorher nur aus dem Menü abgelesen war. Ein
+Schritt, der schon vorher grün ist, prüft nichts.
+
 ## Was sich bewährt hat (jeweils schon in Skripten gelöst)
 
 - **Zustand über die Brücke setzen** statt klicken: `page.evaluate(() => window.api.…)`.
+- **Tastenkürzel wie vom Betriebssystem:** `w.webContents.sendInputEvent({ type: 'keyDown',
+  keyCode, modifiers: ['control'] })` (danach `keyUp`) löst unter Windows und Linux auch
+  Menü-Kürzel aus – so fiel auf, dass Strg+W eine Ausgabe schloss. Unter macOS laufen
+  Menü-Kürzel über das System und kommen so nicht an; dort prüft `haertung.mjs` die Rollen aus
+  `Menu.getApplicationMenu()`. Ob eine Seite **neu geladen** wurde, zeigt eine Marke in der Seite
+  (`window.__marke = 1`, danach wieder lesen). Immer mit Gegenprobe, dass der Tastendruck
+  überhaupt ankommt (F12 öffnet die DevTools, erst dann „in der Kundenansicht nicht“).
+- **Protokollzeilen: die letzte lesen, nicht irgendeine.** Ein früherer Schritt hatte „[wach]
+  Bildschirm bleibt an“ schon geschrieben; der Test fand die alte Zeile sofort und zählte die
+  Sperren, bevor der Abgleich im main (alle 3 s) gelaufen war. `wachZeile()` in
+  `e2e/haertung.mjs` nimmt die letzte Zeile mit der Kennung.
+- **Zweite Instanz:** `spawn(require('electron'), ['--user-data-dir=<derselbe>', root])` und auf
+  `'exit'` warten (Code 0); in der laufenden App vorher per `app.evaluate` `second-instance`
+  zählen. Zwei Apps auf demselben Benutzerordner gibt es seit der Einzelinstanz-Sperre nicht
+  mehr: `launchApp({ userData })` für einen Neustart erst nach `ctx.close()`.
+- **Kopfzeilen frei setzen** (fremder `Origin`, fremder `Host` an einer Fernsteuerung): mit
+  `http.request` aus `node:http`. Nodes `fetch` setzt `Origin`, übergeht aber einen gesetzten
+  `Host` (gemessen) – die Anfrage käme mit der echten Adresse an.
 - **Vorbedingung prüfen, wenn ein Test auf laufende Arbeit angewiesen ist:** Testdaten so lang
   wählen, dass die Arbeit auch auf einem schnellen Rechner noch läuft, und das vor dem Schritt
   ausdrücklich feststellen (`api.converter.list()` = `running`). `shutdown.mjs` hatte 60 s Video:

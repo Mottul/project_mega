@@ -1,7 +1,7 @@
-import { app, BrowserWindow, protocol } from 'electron'
+import { app, BrowserWindow, Menu, protocol } from 'electron'
 import { existsSync, renameSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { PREVIOUS_APP_NAMES } from '@shared/brand'
+import { APP_NAME, PREVIOUS_APP_NAMES } from '@shared/brand'
 import { FOTO_PROTOCOL } from '@shared/fotos'
 import { JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import { registerFotoProtocol } from './ipc/fotos.handlers'
@@ -13,6 +13,7 @@ import {
 } from './ipc/registry'
 import { createWindow } from './services/windows/appWindows'
 import { installWindowGuards } from './services/windows/windowGuards'
+import { appMenuTemplate } from './services/windows/windowPolicy'
 import { closePattern, patternWindow } from './services/pattern/patternWindow'
 import { closePlayerOutput, playerOutputWindow } from './services/player/playerWindow'
 import { closeSmallToolWindows, smallToolWindowList } from './services/windows/smallToolWindows'
@@ -23,6 +24,7 @@ import {
   wacheBeimSchliessen
 } from './services/beenden/rueckfrage'
 import { killAllFfmpeg } from './services/convert/runFfmpeg'
+import { beendeWachhalten, starteWachhalten } from './services/energie/wachhalten'
 import { initFfmpegUpdates } from './services/ffmpeg/ffmpegUpdate'
 import { logLine } from './services/log'
 import { hasRunningWork, stopAllWork } from './services/shutdown'
@@ -102,6 +104,20 @@ function migrateUserData(): void {
   }
 }
 
+// Nur eine Mottulbox je Benutzerordner. Ein zweiter Start (Doppelklick, während die App schon
+// läuft) arbeitete sonst auf denselben Daten: Beide Prozesse hielten settings.json im eigenen
+// Zwischenspeicher und überschrieben einander die Einstellungen, die Fernsteuer-Ports
+// kollidierten. Die Übernahme des alten Benutzerordners läuft davor – die Sperre legt den neuen
+// an, und einen vorhandenen fasst die Übernahme nicht mehr an.
+migrateUserData()
+const ersteInstanz = app.requestSingleInstanceLock()
+if (!ersteInstanz) {
+  // exit statt quit: quit() liefe durch die before-quit-Schritte weiter unten (Rückfrage, was
+  // noch läuft) und fasste dabei Datenbank und Einstellungen der laufenden App an.
+  console.log('Mottulbox läuft bereits – das vorhandene Fenster kommt nach vorn.')
+  app.exit(0)
+}
+
 // Das Hauptfenster nimmt beim Schließen die Vollbild-Ausgaben (Testbild/Player/Timer) mit;
 // Zusatzfenster (z.B. parallel geöffnete große Werkzeuge) lassen sie weiterlaufen. Die kleinen
 // Werkzeuge gehen mit: Ihre Fenster haben keinen Weg zurück zum Startbildschirm.
@@ -119,9 +135,28 @@ function createMainWindow(): void {
   })
 }
 
+// Wer die App noch einmal startet, will sie sehen: Hauptfenster nach vorn, auch aus der
+// Taskleiste. Gibt es keines mehr (nur noch ein Werkzeugfenster offen), entsteht ein neues.
+app.on('second-instance', () => {
+  logLine('[start] zweiter Start – Hauptfenster nach vorn')
+  if (!app.isReady()) return
+  if (!mainWin || mainWin.isDestroyed()) {
+    createMainWindow()
+    return
+  }
+  if (mainWin.isMinimized()) mainWin.restore()
+  mainWin.show()
+  mainWin.focus()
+})
+
 app.whenReady().then(() => {
-  migrateUserData() // vor jedem Zugriff auf DB/Settings
+  // die zweite Instanz beendet sich gerade (siehe oben) und richtet nichts mehr ein
+  if (!ersteInstanz) return
   logLine('--- Start ---', `packaged=${app.isPackaged}`)
+  // Kein Standardmenü von Electron: Seine Tastenkürzel schlossen, zoomten und luden auch
+  // Ausgabefenster neu (windowPolicy.appMenuTemplate). macOS bekommt ein kleines eigenes.
+  const menu = appMenuTemplate(process.platform, APP_NAME)
+  Menu.setApplicationMenu(menu && Menu.buildFromTemplate(menu))
   // vor jedem ffmpeg-Aufruf: bereitliegenden Build aktivieren, tägliche Prüfung planen
   initFfmpegUpdates()
   logLine('appPath=', app.getAppPath())
@@ -134,6 +169,7 @@ app.whenReady().then(() => {
   registerFotoProtocol()
   registerIpcHandlers()
   createMainWindow()
+  starteWachhalten() // kein Energiesparen, solange etwas läuft (Ausgaben, Aufträge, NDI …)
   checkOnStartup() // yt-dlp im Hintergrund prüfen, sobald das Fenster steht
 
   app.on('activate', () => {
@@ -209,6 +245,7 @@ app.on('before-quit', (e) => {
 app.on('will-quit', () => {
   // letztes Netz: was jetzt noch an ffmpeg läuft, überlebte sonst die App
   killAllFfmpeg()
+  beendeWachhalten()
   stopRemote()
   stopJingleRemote()
   stopOscRemote()

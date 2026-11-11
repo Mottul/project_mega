@@ -36,7 +36,11 @@ Jedes Werkzeug ist gleich aufgebaut:
   auf dem Bildschirm der App, halb so groß wie der Monitor (zum Testen an einem Bildschirm oder
   für die Fensteraufnahme in OBS). „Monitor wechseln“ legt eine laufende Ausgabe um. Jedes
   Ausgabefenster steht in der Taskleiste. **Zweimal Esc** (innerhalb einer Sekunde) schließt es –
-  ein versehentlicher Tastendruck nimmt das Bild nicht weg. Der Knopf „✕ Schließen“ und der
+  ein versehentlicher Tastendruck nimmt das Bild nicht weg. Andere Tastenkürzel wirken dort
+  nicht: Die App hat kein Programm-Menü (unter macOS nur „Beenden“ und „Bearbeiten“) – Strg+W
+  schließt kein Fenster, Strg+R lädt nichts neu, F11 nimmt kein Vollbild weg, Strg+Minus zoomt
+  nicht. Der Zoom steht in jedem Fenster fest auf 100 %; kleiner geht über die Anzeige
+  „Kompakt“. Der Knopf „✕ Schließen“ und der
   Mauszeiger erscheinen nur, wenn die Maus bewegt wird, und verschwinden nach 3 s wieder – auf
   Bühnenmonitor, LED-Wand und im NDI-Bild steht nichts davon.
 - **Drucken / PDF** (LED-Wall, Packliste, Mini-Manual) ist überall derselbe Knopf in der Leiste. Er
@@ -85,7 +89,8 @@ Jedes Werkzeug ist gleich aufgebaut:
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,
   Medien-Info und Video-Konverter die Sprünge in andere Werkzeuge, der Video-Konverter auch die
-  Encoder-Wahl). **Strg+Shift+K** verlässt die Kundenansicht und hebt den Autostart auf.
+  Encoder-Wahl). **Strg+Shift+K** verlässt die Kundenansicht und hebt den Autostart auf. Die
+  Entwicklerwerkzeuge (F12) öffnen sich in der Kundenansicht nicht.
 - **Darstellung** (Menü „Mottulbox“ bzw. „App-Einstellungen“ am Startbildschirm): Design Dunkel
   (Standard), Hell oder wie das System; 13 Akzentfarben (Gold, Bernstein, Türkis, Blau, Violett,
   Pink, Grün, Limette, Cyan, Indigo, Orchidee, Rosé, Silber); eine kompakte Anzeige setzt die
@@ -96,6 +101,16 @@ Jedes Werkzeug ist gleich aufgebaut:
   (auch die Bühnen-Anzeige des Timers), Testton und spielende Jingles. Gefragt wird beim
   Schließen des letzten Fensters (das Hauptfenster nimmt Ausgaben und kleine Werkzeuge mit) und
   bei Cmd+Q; beim Herunterfahren oder Abmelden des Rechners nie. „Abbrechen“ lässt alles laufen.
+- **Kein Energiesparen, solange etwas läuft:** Was die Rückfrage beim Beenden nennen würde, hält
+  auch den Rechner wach – laufende Aufträge (eine Konvertierung über Nacht), ein laufender Timer,
+  NDI, Ton, verbundene Geräte der Fernsteuerungen. Ist eine Ausgabe von Video-Player, Stage-Timer
+  oder Testbild offen, bleibt zusätzlich der Bildschirm an (kein Abschalten, kein
+  Bildschirmschoner) – auch bei pausiertem Player. Läuft nichts mehr, gelten nach wenigen Sekunden
+  wieder die Energie-Einstellungen des Systems. Den Deckel des Laptops zu schließen oder den
+  Standby von Hand zu wählen, hält das nicht auf.
+- **Nur einmal gestartet:** Ein zweiter Start (Doppelklick, während die Mottulbox schon läuft)
+  öffnet keine zweite App, sondern holt das Hauptfenster der laufenden nach vorn – auch aus der
+  Taskleiste. Zwei Programme auf denselben Einstellungen überschrieben sie sich sonst gegenseitig.
 - **Robust in der Show:** Ein abstürzendes Werkzeug bleibt in seinem Bereich (Fehlergrenze), die
   App läuft weiter. Stille Fehler werden als Hinweis sichtbar (z. B. defekte Jingle-Datei,
   verlorenes Audiogerät). `settings.json` wird atomar gespeichert; eine beschädigte

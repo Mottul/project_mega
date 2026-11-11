@@ -43,9 +43,23 @@ Adressen). Die Preload-API der Fernsteuerung braucht dafür `remoteStatus`, `rem
    Anfrage begrenzen (`readBody`).
 7. **Mehrere offene Fenster:** Befehle gehen nur an das Fenster, dessen Stand das Handy zeigt –
    nichts doppelt ausführen.
+8. **Nur Geräte im Netz steuern, keine Websites:** Jeder Server entsteht über `createRemoteHost`
+   – dort prüft `nurEigeneHerkunft()` jede Anfrage (`remoteHerkunft.ts`: `Origin` muss zum `Host`
+   passen, der `Host` ein Name des eigenen Netzes sein; sonst 403). Für eine Seite heißt das:
+   - Zustand ändern nur per **POST** (`api/command`, `api/upload`). Ein GET trägt kein `Origin`,
+     der Wächter erkennt eine fremde Seite dort nicht.
+   - Die Seite spricht nur ihre eigene Herkunft an (relative Pfade, Regel 1). Ein anderer Port
+     desselben Rechners ist schon eine fremde Herkunft und bekommt 403 – deshalb bindet die
+     Fernsteuer-App die Handler unter `/<id>/` ein, statt auf deren Ports zu zeigen.
+   - Kein eigener `createServer`, kein `Access-Control-Allow-Origin`.
+   - Anfragen ohne `Origin` (Companion, curl, Skripte) gehen weiter durch: Das ist die
+     Schnittstelle für eigene Programme.
 
 ## Prüfen
 
 Unit-Tests wie `timerRemoteServer.test.ts` (Routen, Redirect, `api/time`, keine absoluten
 `/api/`-Pfade). Die Seite selbst mit `/electron-e2e` im „fremden Browser“ prüfen
-(`e2e/timer.mjs`: Verbindungsabbruch, Zeitzone, toter Strom). Doku: `docs/FERNSTEUERUNG.md`.
+(`e2e/timer.mjs`: Verbindungsabbruch, Zeitzone, toter Strom). Herkunft: `remoteHerkunft.test.ts`
+(Regeln), `remoteHttp.test.ts` (Wächter über echtes HTTP) und `e2e/haertung.mjs` (fremder
+`Origin` und fremder `Host` gegen die laufende App – mit `http.request`: Nodes `fetch` übergeht
+eine gesetzte `Host`-Kopfzeile, gemessen). Doku: `docs/FERNSTEUERUNG.md`, `docs/SICHERHEIT.md`.

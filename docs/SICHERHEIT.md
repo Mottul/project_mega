@@ -209,6 +209,24 @@ selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
   den Steuerseiten escaped. Wirft ein Handler (etwa bei kaputter %-Kodierung in einer
   Medien-Adresse), antwortet der Server mit einem Fehler und läuft weiter (`safeHandler` in
   `remoteHttp.ts`), statt die Anfrage hängen zu lassen.
+- **Fernsteuerung nur für Geräte im Netz, nicht für Websites:** „Wer im selben Netz ist, kann
+  steuern“ galt vor November 2026 auch für jede Website, die auf einem Gerät in diesem Netz offen
+  war – ihr Browser steht ja im Netz. Jede Anfrage läuft deshalb zuerst durch einen Wächter
+  (`nurEigeneHerkunft` in `remoteHttp.ts`, Regeln rein und getestet in `remoteHerkunft.ts`, in
+  der echten App per E2E `haertung`), eine Stelle für alle Fernsteuer-Server und die
+  Fernsteuer-App:
+  - Nennt der Browser als Herkunft (`Origin`) eine andere Adresse als die angesprochene (`Host`),
+    kommt die Anfrage von einer fremden Seite: 403, bevor ein Befehl gelesen oder ein Upload
+    angenommen wird. Die eigenen Steuerseiten liefert der Server selbst aus, bei ihnen stimmen
+    beide überein. Programme ohne Browser (Companion, curl, Skripte) schicken kein `Origin` und
+    steuern wie bisher. Zustand ändern dürfen nur POST-Routen – ein GET trägt kein `Origin`.
+  - Spricht die Anfrage den Rechner unter einem Namen an, unter dem er im eigenen Netz nicht
+    erreichbar ist (DNS-Rebinding: Der Name einer fremden Seite zeigt nach dem Laden auf den
+    Rechner), wird auch das Lesen abgewiesen. Durch gehen IP-Adressen (so steht es im QR-Code),
+    `localhost`, einfache Namen ohne Punkt, `.local` und der eigene Rechnername mit jeder Endung
+    (`regie-pc.fritz.box`). **Grenze:** Wer den Rechnernamen kennt, kann einen passenden Namen
+    anlegen – das hält Seiten auf, die blind suchen, keinen gezielten Angriff. Dagegen und gegen
+    Fremde im selben Netz hilft erst die PIN aus der [Roadmap](ROADMAP.md#sicherheit).
 - **Uploads vom Handy** (Video-Player): höchstens 8 GB je Datei, danach müssen 2 GB frei bleiben –
   geprüft vorab und beim Schreiben, denn die Größenangabe kann fehlen oder falsch sein.
   Abgebrochene oder abgewiesene Uploads hinterlassen keine Dateien.
@@ -225,5 +243,15 @@ selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
   kein Dateisystem, keine Kindprozesse) und gibt das Lösungsskript über stdin; es stammt aus dem
   yt-dlp-Paket selbst, die App lädt keine Skripte nach (kein `--remote-components`). Voraussetzung:
   die Electron-Fuse `RunAsNode` bleibt an.
+- **Kein Programm-Menü, keine DevTools in der Kundenansicht:** Electrons Standardmenü ist
+  entfernt (macOS: nur „Beenden“ und „Bearbeiten“). Seine Tastenkürzel galten auch unsichtbar –
+  über „View“ kam man in der Kundenansicht an Neuladen und DevTools und damit an jede
+  Einstellung. F12 und Strg+Shift+I öffnen die DevTools weiter zur Diagnose, aber nicht, solange
+  die Kundenansicht gilt (`opensDevTools` in `windowPolicy.ts`). Die Kundenansicht bleibt eine
+  Bediensperre, keine Sicherheitsgrenze: Wer am Rechner sitzt, kann die App beenden.
+- **Eine Instanz je Benutzerordner** (`requestSingleInstanceLock` in `main/index.ts`): Ein zweiter
+  Start beendet sich, bevor er Einstellungen oder Datenbank anfasst, und holt das Fenster der
+  laufenden App nach vorn. Vorher hielten zwei Prozesse `settings.json` je im eigenen
+  Zwischenspeicher und überschrieben einander.
 - **Robust bei Fehlern:** Fehlergrenze je Werkzeug, globale Fehler-Handler mit Debug-Log und
   Wiederherstellung korrupter `settings.json`/`library.db` (Kopie sichern, neu anlegen, melden).

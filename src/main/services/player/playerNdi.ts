@@ -37,6 +37,9 @@ export function getPlayerNdiStatus(): PlayerNdiStatus {
   }
 }
 
+/** Sendet NDI gerade? Anders als der Status lädt das nicht das NDI-Modul (`available`). */
+export const isPlayerNdiRunning = (): boolean => ndi.running
+
 let audioIpcWired = false
 function wireAudioIpc(): void {
   if (audioIpcWired) return

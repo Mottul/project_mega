@@ -53,11 +53,15 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      (`primary`, `border` …; Rot ist „live“).
      Seiten oder Ansichten eines Werkzeugs: `Reiter` aus `components/ui/reiter`.
      Tastenkürzel für das ganze Werkzeug: rein prüfen (Muster `atem-control/tastatur.ts`), nie in
-     Textfeldern, den Fokus nach Mausklicks abgeben (Skill `review-checkliste`, Fenster).
+     Textfeldern, den Fokus nach Mausklicks abgeben (Skill `review-checkliste`, Fenster). Die App
+     hat kein Programm-Menü (Electrons Standardmenü ist entfernt, seine Kürzel schlossen
+     Ausgaben) – Kürzel also immer selbst auswerten, nie über Menü-Rollen.
      Läuft etwas nur im Fenster (Ton wie Testton und Jingle), mit `useAktivMelden(key, an)`
-     (`@renderer/lib/aktivMelden`) melden – sonst nennt die Rückfrage beim Beenden es nicht;
+     (`@renderer/lib/aktivMelden`) melden – sonst nennt die Rückfrage beim Beenden es nicht, und
+     der Rechner schläft dabei ein (das Wachhalten liest dieselbe Liste, `energie/wachBedarf.ts`);
      neue Kennung in `RENDERER_AKTIV` (`main/services/beenden/laufendText.ts`). Was main kennt
-     (Ausgabefenster, Aufträge, Fernsteuerung), sammelt `laufend.ts` selbst.
+     (Ausgabefenster, Aufträge, Fernsteuerung), sammelt `laufend.ts` selbst – ein neuer Dienst im
+     main, der läuft, bekommt dort ein Feld in `LaufendStand`.
      Fertige Dateien an den Player: `inDenPlayer(path)` aus `@renderer/lib/inDenPlayer`.
      Listen mit Reihenfolge: `useSortable` + `Griff` aus `components/ui/sortable` (Ziehen nur
      am Griff, damit Text in den Feldern markierbar bleibt), umsortiert über Kennungen

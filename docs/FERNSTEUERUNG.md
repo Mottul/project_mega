@@ -80,3 +80,13 @@ Stand das Handy zeigt – nichts wird doppelt abgespielt.
 - Ohne Passwort kann jeder im selben Netz steuern – in fremden Netzen nur bei Bedarf einschalten
   (siehe [SICHERHEIT.md](SICHERHEIT.md)). Die Befehle werden dabei Feld für Feld geprüft;
   Desktop-Einstellungen wie das Idle-Bild lassen sich vom Handy nicht ändern.
+- **Websites steuern nicht mit:** Eine fremde Seite, die auf einem Gerät im Netz offen ist, kann
+  der Fernsteuerung nichts schicken (Antwort 403). Erreichbar ist die Fernsteuerung über die
+  IP-Adresse aus dem QR-Code oder den Namen des Rechners (`regie-pc`, `regie-pc.local`,
+  `regie-pc.fritz.box`). Ein anderer Name, der nur auf den Rechner zeigt (eigener DNS-Eintrag,
+  Reverse-Proxy), wird abgewiesen – dann die IP-Adresse nehmen.
+- **Steuern aus eigenen Programmen** (Companion, Stream Deck, Skripte) geht wie bisher: ein
+  POST an `api/command` ohne `Origin`-Kopfzeile.
+- **Der Rechner bleibt wach**, solange ein Gerät verbunden ist – ein Handy als Jingle-Fernbedienung
+  soll auch nach einer halben Stunde Pause noch auslösen. Verlässt ein Gerät das WLAN, ohne die
+  Seite zu schließen, gilt es noch einige Minuten als verbunden.

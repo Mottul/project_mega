@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  appMenuTemplate,
   appRoute,
   devServerUrl,
   isAppPage,
   isWebUrl,
+  opensDevTools,
   permissionAllowed,
   shellTarget
 } from './windowPolicy'
@@ -166,5 +168,72 @@ describe('isWebUrl', () => {
     expect(isWebUrl('file:///C:/x.exe')).toBe(false)
     expect(isWebUrl('javascript:alert(1)')).toBe(false)
     expect(isWebUrl('ms-settings:')).toBe(false)
+  })
+})
+
+describe('appMenuTemplate – kein Standardmenü von Electron', () => {
+  it('Windows und Linux: gar kein Menü, also auch keine Tastenkürzel', () => {
+    expect(appMenuTemplate('win32', 'Mottulbox')).toBeNull()
+    expect(appMenuTemplate('linux', 'Mottulbox')).toBeNull()
+  })
+
+  it('macOS: Beenden und Bearbeiten – ohne die gäbe es kein Cmd+Q und kein Cmd+C/V', () => {
+    const menu = appMenuTemplate('darwin', 'Mottulbox')
+    expect(menu?.map((g) => g.label)).toEqual(['Mottulbox', 'Bearbeiten'])
+    const rollen = (menu ?? [])
+      .flatMap((g) => g.submenu)
+      .flatMap((e) => ('role' in e ? e.role : []))
+    expect(rollen).toEqual(['about', 'quit', 'undo', 'redo', 'cut', 'copy', 'paste', 'selectAll'])
+  })
+
+  it('macOS: nichts, was ein Fenster schließt, neu lädt, zoomt, ausblendet oder das Vollbild nimmt', () => {
+    const rollen = (appMenuTemplate('darwin', 'Mottulbox') ?? [])
+      .flatMap((g) => g.submenu)
+      .flatMap((e) => ('role' in e ? [e.role.toLowerCase()] : []))
+    for (const heikel of [
+      'close',
+      'reload',
+      'forcereload',
+      'toggledevtools',
+      'resetzoom',
+      'zoomin',
+      'zoomout',
+      'togglefullscreen',
+      'hide',
+      'hideothers',
+      'minimize'
+    ]) {
+      expect(rollen, heikel).not.toContain(heikel)
+    }
+  })
+
+  it('macOS: Einträge heißen deutsch und nennen die App', () => {
+    const eintraege = (appMenuTemplate('darwin', 'Mottulbox') ?? []).flatMap((g) => g.submenu)
+    const namen = eintraege.flatMap((e) => ('label' in e ? [e.label] : []))
+    expect(namen).toContain('Mottulbox beenden')
+    expect(namen).toContain('Einsetzen')
+  })
+})
+
+describe('opensDevTools', () => {
+  const f12 = { type: 'keyDown', key: 'F12' }
+  const strgShiftI = { type: 'keyDown', key: 'I', control: true, shift: true }
+
+  it('F12 und Strg+Shift+I öffnen sie – zur Diagnose auch in der fertigen App', () => {
+    expect(opensDevTools(f12, false)).toBe(true)
+    expect(opensDevTools(strgShiftI, false)).toBe(true)
+    expect(opensDevTools({ ...strgShiftI, key: 'i' }, false)).toBe(true)
+  })
+
+  it('nicht in der Kundenansicht', () => {
+    expect(opensDevTools(f12, true)).toBe(false)
+    expect(opensDevTools(strgShiftI, true)).toBe(false)
+  })
+
+  it('nur beim Drücken, nur mit beiden Zusatztasten', () => {
+    expect(opensDevTools({ type: 'keyUp', key: 'F12' }, false)).toBe(false)
+    expect(opensDevTools({ type: 'keyDown', key: 'I', control: true }, false)).toBe(false)
+    expect(opensDevTools({ type: 'keyDown', key: 'I', shift: true }, false)).toBe(false)
+    expect(opensDevTools({ type: 'keyDown', key: 'F11' }, false)).toBe(false)
   })
 })

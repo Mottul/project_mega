@@ -15,11 +15,15 @@
 // Jeder Server beantwortet zusätzlich Manifest/Icons (remotePwa). Die Steuerseiten
 // sprechen ihre API RELATIV an (api/…), damit dieselbe Seite auch unter der
 // Fernsteuer-App (/<id>/…, remoteApp) funktioniert.
+//
+// „Im lokalen Netz“ heißt: Geräte dort, nicht Websites, die auf ihnen offen sind. Jede Anfrage
+// läuft deshalb zuerst durch nurEigeneHerkunft() (Regeln in remoteHerkunft.ts).
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
-import { networkInterfaces } from 'node:os'
+import { hostname, networkInterfaces } from 'node:os'
 import type { RemoteStatus } from '@shared/types'
 import { logLine } from '../log'
+import { pruefeHerkunft, type Herkunft } from './remoteHerkunft'
 import { servePwaAsset } from './remotePwa'
 
 /** 169.254.x.x = automatische Link-Local-Adresse (APIPA): wird vergeben, wenn
@@ -95,6 +99,43 @@ export function safeHandler(logTag: string, handle: RemoteHandler): RemoteHandle
   }
 }
 
+const ABWEISUNG: Record<Exclude<Herkunft, 'ok'>, string> = {
+  'fremde-seite': 'Abgewiesen: Die Anfrage kommt von einer fremden Website.',
+  'fremder-name':
+    'Unter diesem Namen ist die Fernsteuerung der Mottulbox nicht erreichbar. ' +
+    'Bitte die Adresse aus dem QR-Code (IP-Adresse) oder den Namen des Rechners verwenden.'
+}
+/** Schon gemeldete Abweisungen: je Herkunft eine Zeile im Protokoll, nicht je Anfrage */
+const abgewiesen = new Set<string>()
+
+/**
+ * Lässt nur Anfragen durch, die aus dem eigenen Netz stammen: nicht von einer fremden Website
+ * (`Origin`) und nicht über einen fremden Namen (`Host`) – Regeln und Begründung in
+ * remoteHerkunft.ts. Alles andere bekommt 403, bevor ein Befehl gelesen oder ein Upload
+ * angenommen wird. Gilt für jeden Fernsteuer-Server (createRemoteHost) und damit auch für die
+ * Fernsteuer-App, die deren Handler einbindet.
+ */
+export function nurEigeneHerkunft(logTag: string, handle: RemoteHandler): RemoteHandler {
+  return (req, res) => {
+    const { host, origin } = req.headers
+    const urteil = pruefeHerkunft({ host, origin }, hostname())
+    if (urteil === 'ok') return handle(req, res)
+    // Kopfzeilen sind fremde Eingaben: gekürzt ins Protokoll, und nur die ersten paar Herkünfte
+    const von = `${urteil}: Origin ${String(origin).slice(0, 80)}, Host ${String(host).slice(0, 80)}`
+    if (!abgewiesen.has(von) && abgewiesen.size < 20) {
+      abgewiesen.add(von)
+      logLine(`[${logTag}] Anfrage abgewiesen –`, von)
+    }
+    // Verbindung schließen: Der Rest der Anfrage (ein Upload) wird nicht mehr gelesen.
+    res.writeHead(403, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      Connection: 'close'
+    })
+    res.end(ABWEISUNG[urteil])
+  }
+}
+
 export interface RemoteHost {
   readonly clients: Set<ServerResponse>
   isRunning(): boolean
@@ -151,6 +192,10 @@ export function createRemoteHost(logTag: string, defaultPort = 0): RemoteHost {
     res.write(`data: ${JSON.stringify({ type: 'state', payload: initial() })}\n\n`)
     clients.add(res)
     req.on('close', () => clients.delete(res))
+    // Ein Handy, das ohne Abmelden aus dem WLAN geht, bliebe sonst als „verbunden“ stehen, bis
+    // wieder etwas zu senden ist – es stünde weiter in „Wirklich beenden?“ und hielte den Rechner
+    // wach (energie/wachBedarf.ts). Mit Keepalive merkt das System die tote Verbindung selbst.
+    req.socket.setKeepAlive(true, 30_000)
   }
 
   function start(port: number, handle: RemoteHandler): Promise<RemoteStatus> {
@@ -158,9 +203,12 @@ export function createRemoteHost(logTag: string, defaultPort = 0): RemoteHost {
       stop()
       currentPort = Math.max(1, Math.min(65535, Math.round(port)))
       const s = createServer(
-        safeHandler(logTag, (req, res) => {
-          if (!servePwaAsset(req, res)) handle(req, res)
-        })
+        safeHandler(
+          logTag,
+          nurEigeneHerkunft(logTag, (req, res) => {
+            if (!servePwaAsset(req, res)) handle(req, res)
+          })
+        )
       )
       s.on('error', (err) => {
         server = null
