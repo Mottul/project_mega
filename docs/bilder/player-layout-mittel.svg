@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 392" width="680" role="img" aria-labelledby="t d" font-family="Segoe UI, system-ui, sans-serif">
+  <title id="t">Video-Player, mittleres Fenster: zwei Spalten</title>
+  <desc id="d">Mit angehefteter Schublade oder in einem kleinen Fenster stehen links Playlist und Bibliothek übereinander, rechts die Bühne über die ganze Höhe. Die Seite scrollt weiterhin nicht.</desc>
+  <style>
+    .f { fill: #fafafa; stroke: #d4d4d8; }
+    .k { fill: #ffffff; stroke: #d4d4d8; }
+    .d { fill: #f4f4f5; stroke: #d4d4d8; }
+    .z { fill: #f4f4f5; stroke: none; }
+    .v { fill: #18181b; stroke: #3f3f46; }
+    .a { fill: #faeeda; stroke: #ba7517; }
+    .af { fill: #ba7517; }
+    .t { fill: #18181b; font-size: 12px; }
+    .b { fill: #18181b; font-size: 12px; font-weight: 600; }
+    .g { fill: #18181b; font-size: 20px; font-weight: 600; }
+    .s { fill: #52525b; font-size: 11px; }
+    .w { fill: #e4e4e7; font-size: 11px; }
+    .m { fill: #71717a; font-size: 10.5px; font-style: italic; }
+    .l { stroke: #d4d4d8; stroke-width: 1; }
+    @media (prefers-color-scheme: dark) {
+      .f { fill: #18181b; stroke: #3f3f46; }
+      .k { fill: #1f1f23; stroke: #3f3f46; }
+      .d { fill: #111113; stroke: #3f3f46; }
+      .z { fill: #27272a; }
+      .v { fill: #09090b; stroke: #52525b; }
+      .a { fill: #633806; stroke: #ef9f27; }
+      .af { fill: #ef9f27; }
+      .t, .b, .g { fill: #fafafa; }
+      .s { fill: #d4d4d8; }
+      .m { fill: #a1a1aa; }
+      .l { stroke: #3f3f46; }
+    }
+  </style>
+
+  <rect class="f" x="4" y="4" width="672" height="384" rx="10"/>
+
+  <text class="b" x="18" y="24">Mottulbox</text>
+  <text class="s" x="92" y="24">Start</text>
+  <text class="b" x="130" y="24">Video-Player</text>
+  <text class="s" x="216" y="24">Einstellungen</text>
+  <path class="l" d="M4 34H676"/>
+  <text class="b" x="18" y="52" style="font-size:10.5px">AUSGABE</text>
+  <rect class="z" x="76" y="40" width="130" height="18" rx="4"/><text class="s" x="84" y="53">Monitor 2 – 1920×1080</text>
+  <rect class="a" x="212" y="40" width="92" height="18" rx="4"/><text class="t" x="258" y="53" text-anchor="middle" style="font-size:11px">Vollbild starten</text>
+  <text class="s" x="662" y="53" text-anchor="end">Keynote Vorspann · 0:02 / 0:06</text>
+  <path class="l" d="M4 64H676"/>
+
+  <rect class="d" x="4" y="64" width="176" height="324"/>
+  <text class="b" x="16" y="86">Einstellungen</text>
+  <text class="s" x="16" y="102">Video-Player · angeheftet</text>
+  <rect class="k" x="14" y="114" width="156" height="34" rx="6"/><text class="t" x="24" y="135">Wand · 1920 × 1080</text>
+  <rect class="k" x="14" y="154" width="156" height="34" rx="6"/><text class="t" x="24" y="175">Bild einpassen</text>
+  <rect class="a" x="14" y="194" width="156" height="50" rx="6"/><text class="b" x="24" y="213">Wiedergabe</text><text class="t" x="24" y="230" style="font-size:11px">Überblenden 0,5 s · Bilder 10 s</text>
+  <rect class="k" x="14" y="250" width="156" height="34" rx="6"/><text class="t" x="24" y="271">Import</text>
+  <rect class="k" x="14" y="290" width="156" height="34" rx="6"/><text class="t" x="24" y="311">NDI</text>
+  <text class="m" x="16" y="372">neu: Übergang und Standzeit</text>
+
+  <rect class="k" x="190" y="74" width="212" height="164" rx="8"/>
+  <text class="b" x="202" y="94">Playlist</text><text class="s" x="252" y="94">14 · 2:05</text>
+  <text class="s" x="392" y="94" text-anchor="end">Speichern · ⋯</text>
+  <rect class="z" x="202" y="102" width="52" height="18" rx="9"/><text class="s" x="228" y="115" text-anchor="middle">Gala 14</text>
+  <rect class="z" x="260" y="102" width="54" height="18" rx="9"/><text class="s" x="287" y="115" text-anchor="middle">Pause 3</text>
+  <text class="s" x="206" y="144">2</text><text class="t" x="222" y="144">Sponsor Bank</text><text class="s" x="390" y="144" text-anchor="end">0:05</text>
+  <rect class="a" x="198" y="152" width="196" height="24" rx="4"/>
+  <path class="af" d="M206 158l8 6-8 6z"/><text class="b" x="222" y="168">Keynote Vorspann</text><text class="t" x="390" y="168" text-anchor="end" style="font-size:11px">0:06</text>
+  <text class="s" x="206" y="192">4</text><text class="t" x="222" y="192">Pausenloop</text>
+  <rect class="z" x="290" y="180" width="48" height="16" rx="8"/><text class="s" x="314" y="192" text-anchor="middle" style="font-size:10px">Danach</text>
+  <text class="s" x="390" y="192" text-anchor="end">0:07</text>
+  <text class="s" x="206" y="216">5</text><text class="t" x="222" y="216">Award Stinger</text><text class="s" x="390" y="216" text-anchor="end">0:08</text>
+
+  <rect class="k" x="190" y="248" width="212" height="130" rx="8"/>
+  <text class="b" x="202" y="268">Bibliothek</text><text class="s" x="268" y="268">14</text>
+  <text class="s" x="392" y="268" text-anchor="end">Importieren · ⋯</text>
+  <rect class="v" x="202" y="278" width="58" height="33" rx="4"/><rect class="v" x="266" y="278" width="58" height="33" rx="4"/><rect class="v" x="330" y="278" width="58" height="33" rx="4"/>
+  <rect class="v" x="202" y="318" width="58" height="33" rx="4"/><rect class="v" x="266" y="318" width="58" height="33" rx="4"/><rect class="v" x="330" y="318" width="58" height="33" rx="4"/>
+  <text class="m" x="392" y="370" text-anchor="end">beide Listen scrollen in sich</text>
+
+  <rect class="k" x="412" y="74" width="254" height="304" rx="8"/>
+  <rect class="v" x="424" y="86" width="230" height="129" rx="4"/>
+  <text class="w" x="539" y="154" text-anchor="middle">Vorschau im Seitenverhältnis der Wand</text>
+  <text class="b" x="424" y="238">Keynote Vorspann</text>
+  <text class="s" x="424" y="254">1920×1080 · Letterbox</text>
+  <text class="g" x="654" y="242" text-anchor="end">−0:04</text>
+  <text class="s" x="654" y="256" text-anchor="end">0:02 / 0:06</text>
+  <rect class="z" x="424" y="268" width="230" height="5" rx="2.5"/><rect class="af" x="424" y="268" width="78" height="5" rx="2.5"/>
+  <text class="s" x="424" y="308">Stumm</text>
+  <path class="t" d="M490 296v16M490 304l12-8v16z"/>
+  <circle class="af" cx="520" cy="304" r="15"/>
+  <path d="M515 297v14M525 297v14" stroke="#18181b" stroke-width="3"/>
+  <path class="t" d="M550 296v16M550 304l-12-8v16z"/>
+  <text class="s" x="654" y="308" text-anchor="end">Loop · Zufall · ⓘ</text>
+  <path class="l" d="M412 328H666"/>
+  <text class="s" x="424" y="348">Danach: Pausenloop</text>
+</svg>
