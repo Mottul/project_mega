@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 10. November 2026
+**Stand:** 12. November 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -24,6 +24,12 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
    noch `electron-updater` (siehe [Große Umbauten](#große-umbauten)). Danach NDI im Installer
    (die Lizenz erlaubt die Weitergabe mit Auflagen, die die App noch nicht erfüllt – siehe
    [NDI.md](NDI.md)).
+3. **Befunde der Durchsicht vom November 2026:** alle offenen Punkte als einzeln umsetzbare
+   Pakete in [PLAN-DURCHSICHT.md](PLAN-DURCHSICHT.md) – kleine Fehler im Code, Bedienung und
+   Design, Rückgängig in den Editoren, Aufräumen, Sicherung, neue Werkzeuge, Skills. Das
+   wichtigste Vorhaben daraus ist der **Video-Player ohne Scrollen** (gemessen: bei 1366 × 768
+   ist die Seite doppelt so hoch wie das Fenster) mit einem Gerüst, das auch Stage-Timer,
+   Testbild und Video-Generator nutzen können: [PLAN-ARBEITSFLAECHE.md](PLAN-ARBEITSFLAECHE.md).
 
 ## Funktionen
 
