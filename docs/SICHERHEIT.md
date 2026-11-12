@@ -100,15 +100,19 @@ nach grüner CI (Ablauf im Skill `abhaengigkeiten`).
 Prüfen mit `npm audit` (alles) bzw. `npm audit --omit=dev` (nur Laufzeit-Abhängigkeiten – Electron
 selbst zählt dort nicht mit, obwohl es die Laufzeit der App ist).
 
-**Stand 2. November 2026** – nach den Updates auf Electron 45.0.0 (Chromium 156, Node 24.22),
-`typescript-eslint` 8.72.0 und `zustand` 5.0.16:
+**Stand 12. November 2026** – nach dem Dependabot-Update vom 11. November: Electron 45.2.1
+(Chromium 156.0.8078, Node 24.22.1), `pdfjs-dist` 6.5.438, `react-router-dom` 7.18.5 und
+ESLint 10.14.0:
 
 - `npm audit --omit=dev`: **keine Lücken**, auch mit `atem-connection`.
-- `npm audit`: 12 mittlere Meldungen, alle dieselbe Lücke in `minimatch`
-  ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)), die über ESLint und
-  `typescript-eslint` hereinkommt. Nur Werkzeug zum Prüfen des eigenen Codes, nichts davon liegt in
-  der App.
-- Electron 45.0.0 enthält die Sperre der kompromittierten eMudhra-Zwischenzertifikate
+- `npm audit`: 10 mittlere Meldungen (Anfang November waren es 12), alle dieselbe Lücke in
+  `minimatch` ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249),
+  installiert 10.2.6, behoben ab 11.0.1), die über ESLint und `typescript-eslint` hereinkommt –
+  npm zählt jedes Paket mit, das davon abhängt. Nur Werkzeug zum Prüfen des eigenen Codes, nichts
+  davon liegt in der App. Diese Zahl nennt auch `npm ci` am Ende; sie ist kein Anlass für
+  `npm audit fix --force` – das stufte ESLint auf 9.39.5 und `typescript-eslint` auf 8.36.0
+  zurück. Die Korrektur kommt mit einem ESLint-Update über Dependabot.
+- Electron 45 enthält die Sperre der kompromittierten eMudhra-Zwischenzertifikate
   ([GHSA-jr5w-w6x2-84p9](https://github.com/advisories/GHSA-jr5w-w6x2-84p9), ab 45.0.0-beta.6
   bzw. 44.9.1) – vorher hätte ein Angreifer im selben Netz mit einem solchen Zertifikat einen
   HTTPS-Server der App vortäuschen können (ffmpeg-/yt-dlp-Aktualisierung).
