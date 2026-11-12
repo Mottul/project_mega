@@ -8,14 +8,7 @@
 // Sicherheit: Bindet ans LAN (0.0.0.0) OHNE Authentifizierung – als bewusst
 // einschaltbare Komfortfunktion fürs lokale Netz. Standardmäßig AUS.
 
-import {
-  createReadStream,
-  createWriteStream,
-  mkdirSync,
-  rmSync,
-  statSync,
-  statfsSync
-} from 'node:fs'
+import { createWriteStream, mkdirSync, rmSync, statfsSync } from 'node:fs'
 import { type IncomingMessage, type ServerResponse } from 'node:http'
 import { extname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -24,6 +17,7 @@ import type { PlayerState, PlayerTick, RemoteStatus } from '@shared/types'
 import { logLine } from '../log'
 import { getSettings } from '../store'
 import { createRemoteHost, readBody, sendJsonRaw } from '../remote/remoteHttp'
+import { sendFile } from '../serveFile'
 import { ALLOWED_MEDIA_EXT, convertManager } from './convertManager'
 import { listMedia, resolveMediaFile } from './mediaLibrary'
 import { applyCommand, getPlayerState } from './playerState'
@@ -246,31 +240,8 @@ function serveMedia(req: IncomingMessage, res: ServerResponse, name: string): vo
     res.end('not found')
     return
   }
-  const total = statSync(abs).size
-  const type = mediaType(abs)
-  const range = req.headers.range
-  if (range) {
-    const m = /bytes=(\d*)-(\d*)/.exec(range)
-    let start = m && m[1] ? parseInt(m[1], 10) : 0
-    let end = m && m[2] ? parseInt(m[2], 10) : total - 1
-    if (!Number.isFinite(start) || start < 0) start = 0
-    if (!Number.isFinite(end) || end >= total) end = total - 1
-    if (start > end) {
-      res.writeHead(416, { 'Content-Range': `bytes */${total}` })
-      res.end()
-      return
-    }
-    res.writeHead(206, {
-      'Content-Type': type,
-      'Content-Length': end - start + 1,
-      'Content-Range': `bytes ${start}-${end}/${total}`,
-      'Accept-Ranges': 'bytes'
-    })
-    createReadStream(abs, { start, end }).pipe(res)
-    return
-  }
-  res.writeHead(200, { 'Content-Type': type, 'Content-Length': total, 'Accept-Ranges': 'bytes' })
-  createReadStream(abs).pipe(res)
+  // ganz oder als Bereich; schließt die Datei auch, wenn das Handy mitten im Abruf abbricht
+  sendFile(req, res, abs, mediaType(abs))
 }
 
 /** Request-Handler (auch von der Fernsteuer-App unter /player/ genutzt). */
