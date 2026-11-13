@@ -2,75 +2,19 @@
 // Analysator (je Kanal), so lassen sich Pegel, Frequenz, die Pausen der Kanal-Kennung und der
 // Zeitpunkt des AV-Sync-Piepes gegenüber der vollen Sekunde prüfen. Dazu der Blitz in der
 // Vorschau und dass der Ton beim Verlassen des Werkzeugs endet.
-// Ohne laufende Audioausgabe (manche CI-Rechner) werden die Messschritte übersprungen.
+// Die CI-Rechner unter Linux und Windows haben kein Audiogerät: Chromium meldet das mit einem
+// Fehler gleich beim Start und rechnet dann auf einem Ersatzgerät – gemessen wird trotzdem. Läuft
+// der Kontext gar nicht, werden die Messschritte übersprungen.
 
 import assert from 'node:assert/strict'
 import { launchApp, openRoute, runSteps, Skip, sleep, waitFor } from './harness.mjs'
+import { installToneTap, onsets, silentRuns, toneTap } from './toneTap.mjs'
 
 const ctx = await launchApp()
 const { page } = ctx
 
-/** Analysator vor jedem Ausgang (AudioDestinationNode), je Kanal einer */
-async function installTap() {
-  await page.evaluate(() => {
-    if (window.__tone) return
-    const taps = []
-    window.__tone = taps
-    const connect = AudioNode.prototype.connect
-    AudioNode.prototype.connect = function (dest, ...rest) {
-      const result = connect.call(this, dest, ...rest)
-      if (dest instanceof AudioDestinationNode) {
-        const c = this.context
-        const split = c.createChannelSplitter(2)
-        const l = c.createAnalyser()
-        const r = c.createAnalyser()
-        connect.call(this, split)
-        connect.call(split, l, 0)
-        connect.call(split, r, 1)
-        taps.push({ ctx: c, l, r })
-      }
-      return result
-    }
-    const peakOf = (a, size) => {
-      a.fftSize = size
-      const buf = new Float32Array(a.fftSize)
-      a.getFloatTimeDomainData(buf)
-      return buf.reduce((m, v) => Math.max(m, Math.abs(v)), 0)
-    }
-    window.__toneTap = {
-      state: () => taps.at(-1)?.ctx.state ?? 'none',
-      peak: (size = 2048) => {
-        const t = taps.at(-1)
-        return { l: peakOf(t.l, size), r: peakOf(t.r, size) }
-      },
-      freq: () => {
-        const t = taps.at(-1)
-        t.l.fftSize = 16384
-        const bins = new Float32Array(t.l.frequencyBinCount)
-        t.l.getFloatFrequencyData(bins)
-        let best = 0
-        for (let i = 1; i < bins.length; i++) if (bins[i] > bins[best]) best = i
-        return (best * t.ctx.sampleRate) / t.l.fftSize
-      },
-      /** Peaks je Kanal über `ms` Millisekunden, alle `step` ms: [Date.now(), l, r] */
-      record: (ms, step, size) =>
-        new Promise((resolve) => {
-          const out = []
-          const t0 = Date.now()
-          const id = setInterval(() => {
-            const p = window.__toneTap.peak(size)
-            out.push([Date.now(), p.l, p.r])
-            if (Date.now() - t0 >= ms) {
-              clearInterval(id)
-              resolve(out)
-            }
-          }, step)
-        })
-    }
-  })
-}
-
-const tap = (fn, ...args) => page.evaluate(([f, a]) => window.__toneTap[f](...a), [fn, args])
+const installTap = () => installToneTap(page)
+const tap = (fn, ...args) => toneTap(page, fn, ...args)
 const toneButton = () => page.getByRole('button', { name: 'Ton', exact: true })
 const toneSection = () => page.getByRole('button', { name: /^Testton/ })
 const signalSelect = () =>
@@ -78,17 +22,6 @@ const signalSelect = () =>
     .getByTestId('settings-drawer')
     .locator('select')
     .filter({ has: page.locator('option[value="ident"]') })
-
-/** Läufe von Stille (< 0,01) in einer Aufnahme zählen */
-function silentRuns(samples) {
-  let runs = 0
-  let quiet = false
-  for (const v of samples) {
-    if (v < 0.01 && !quiet) runs++
-    quiet = v < 0.01
-  }
-  return runs
-}
 
 let audio = true
 let toneContexts = 0
@@ -197,6 +130,77 @@ try {
       }
     ],
     [
+      'Metronom: Tempo im Betrieb wechseln – im Takt weiter, kein Neubeginn',
+      async () => {
+        needAudio()
+        await signalSelect().selectOption('metronome')
+        const tempo = page.getByLabel('Tempo (BPM)')
+        await tempo.fill('120')
+        await tempo.press('Enter')
+        await sleep(700)
+        // zehnmal wechseln, während aufgezeichnet wird: 200 BPM (0,3 s) und 120 BPM (0,5 s)
+        const recording = tap('record', 4300, 4, 2048)
+        for (let i = 0; i < 10; i++) {
+          await sleep(300)
+          await tempo.fill(i % 2 ? '120' : '200')
+          await tempo.press('Enter')
+        }
+        const clicks = onsets(await recording, { high: 0.03, low: 0.005 })
+        const gaps = clicks.slice(1).map((t, i) => t - clicks[i])
+        assert.ok(clicks.length >= 8, `${clicks.length} Klicks`)
+        // Bis zu 0,4 s voraus Eingeplantes kommt noch im alten Abstand, danach der neue – jeder
+        // Abstand ist also einer der beiden. Ein Neubeginn (Klick gleich nach dem Wechsel, leise
+        // im Überblenden) ergäbe andere.
+        const off = gaps.filter((g) => Math.abs(g - 300) > 45 && Math.abs(g - 500) > 45)
+        assert.deepEqual(off, [], `Abstände: ${gaps.join(', ')} ms`)
+        await tempo.fill('120')
+        await tempo.press('Enter')
+      }
+    ],
+    [
+      'Polaritätspuls: hängt die Seite, holt der Takt Verpasstes nicht übereinander nach',
+      async () => {
+        needAudio()
+        await signalSelect().selectOption('polarity')
+        await sleep(800)
+        // 1,6 s blockiert: Drei Pulse fallen in die Zeit; sie zugleich nachzuholen ergäbe die
+        // dreifache Spitze – am Pegel-Deckel vorbei. Gemessen wird 0,7 s lang: Darin liegt
+        // mindestens ein neuer Puls (alle 0,5 s); Stille hieße, der Takt liefe nicht weiter.
+        const max = await tap('hang', 1600, 700)
+        const level = 10 ** (-18 / 20)
+        assert.ok(
+          max > level * 0.5 && max <= level * 1.1,
+          `Spitze ${max.toFixed(3)}, Pegel ${level.toFixed(3)}`
+        )
+      }
+    ],
+    [
+      'Gegenphase: je Kanal der Pegel, die Summe still',
+      async () => {
+        needAudio()
+        await signalSelect().selectOption('sine')
+        const channels = page.locator('select', { has: page.locator('option[value="alternate"]') })
+        const level = 10 ** (-18 / 20)
+        const expectPeaks = async (sum, what) => {
+          let last = {}
+          const ok = await waitFor(async () => {
+            last = await tap('peak')
+            return (
+              Math.abs(last.l - level) < 0.01 &&
+              Math.abs(last.r - level) < 0.01 &&
+              Math.abs(last.m - sum) < 0.01
+            )
+          }, 4000)
+          assert.ok(ok, `${what}: ${JSON.stringify(last)}`)
+        }
+        await expectPeaks(level, 'beide')
+        await channels.selectOption('antiphase')
+        await expectPeaks(0, 'gegenphasig')
+        await channels.selectOption('both')
+        await expectPeaks(level, 'wieder beide')
+      }
+    ],
+    [
       'Kanal-Kennung: links eine Pause, rechts zwei je 4 s',
       async () => {
         needAudio()
@@ -222,20 +226,13 @@ try {
         assert.ok(await waitFor(async () => (await patternSelect.inputValue()) === 'avsync', 3000))
         await sleep(1200)
         const rec = await tap('record', 3200, 4, 256)
-        // mit Hysterese: ein Messfenster, das die 1-ms-Flanke nur halb erfasst, liegt zwischen
-        // den Schwellen und darf den Piep weder verschlucken noch doppelt zählen
-        const onsets = []
-        let loud = true // erst nach einer leisen Messung zählen
-        for (const [t, v] of rec) {
-          if (!loud && v > 0.05) {
-            onsets.push(t)
-            loud = true
-          } else if (loud && v < 0.01) loud = false
-        }
-        assert.ok(onsets.length >= 2, `${onsets.length} Piepe`)
+        // mit Hysterese (onsets): ein Messfenster, das die 1-ms-Flanke nur halb erfasst, liegt
+        // zwischen den Schwellen und darf den Piep weder verschlucken noch doppelt zählen
+        const beeps = onsets(rec)
+        assert.ok(beeps.length >= 2, `${beeps.length} Piepe`)
         // Abstand zur nächsten vollen Sekunde; der Analysator sieht den Ton um die Ausgabelatenz
         // früher, als er aus dem Gerät kommt – deshalb eher etwas vor der Sekunde
-        const offsets = onsets.map((t) => t - Math.round(t / 1000) * 1000)
+        const offsets = beeps.map((t) => t - Math.round(t / 1000) * 1000)
         console.log(`    Piep gegenüber der vollen Sekunde: ${offsets.join(', ')} ms`)
         assert.ok(
           offsets.every((o) => o > -150 && o < 40),

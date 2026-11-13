@@ -21,7 +21,7 @@ TODO/FIXME und die zehn größten Dateien. Die Suche ist grob (Text, nicht Typsy
 Treffer ansehen, bevor er geht.
 
 - **„NIRGENDS benutzt“** → löschen.
-- **„nur in Tests“** → Hilfsfunktion in den Test ziehen (so `rmsDb` aus `tone/plan.ts`), außer der
+- **„nur in Tests“** → Hilfsfunktion in den Test ziehen (so `rmsDb` aus `_tone/plan.ts`), außer der
   Test prüft genau diese Funktion.
 - **„nur in der eigenen Datei“** (über 200, meist Typen und für Tests exportierte Helfer) → lassen;
   das `export` zu entfernen ist viel Änderung ohne Nutzen.

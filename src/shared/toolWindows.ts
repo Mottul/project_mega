@@ -48,16 +48,18 @@ const ONE_COLUMN = 520
 const TWO_COLUMNS = 880
 
 /**
- * Breite je kleinem Werkzeug; die Höhe misst das Fenster selbst (fitHeight). `measures`: misst
- * laufend (RTA) – sein Fenster wird im Hintergrund nicht gedrosselt, sonst stünde die Messung
- * still, sobald es verdeckt ist (Leq, Max).
+ * Breite je kleinem Werkzeug; die Höhe misst das Fenster selbst (fitHeight). `background`: läuft
+ * weiter, auch wenn sein Fenster verdeckt ist (RTA misst, Testtongenerator spielt) – das Fenster
+ * wird im Hintergrund nicht gedrosselt, sonst stünde die Messung still (Leq, Max) und der
+ * Planungstakt des Tons käme nur noch einmal je Sekunde (Metronom, Pulse).
  */
-export const SMALL_TOOLS: Readonly<Record<string, { width: number; measures?: boolean }>> = {
+export const SMALL_TOOLS: Readonly<Record<string, { width: number; background?: boolean }>> = {
   'circle-calc': { width: ONE_COLUMN },
   'dmx-address': { width: ONE_COLUMN },
   'throw-ratio': { width: ONE_COLUMN },
   'audio-delay': { width: ONE_COLUMN },
-  rta: { width: TWO_COLUMNS, measures: true },
+  rta: { width: TWO_COLUMNS, background: true },
+  'tone-generator': { width: ONE_COLUMN, background: true },
   'projector-lumen': { width: ONE_COLUMN },
   timecode: { width: ONE_COLUMN },
   'power-load': { width: TWO_COLUMNS },
@@ -68,9 +70,9 @@ export const SMALL_TOOLS: Readonly<Record<string, { width: number; measures?: bo
 /** Kennzeichen in der Route (`/tool/<id>?fenster=1`): Das Werkzeug läuft in seinem eigenen Fenster. */
 export const OWN_WINDOW_PARAM = 'fenster'
 
-/** Misst das kleine Werkzeug laufend (Fenster ohne Hintergrund-Drosselung)? */
-export function measuresInBackground(id: string): boolean {
-  return isSmallTool(id) && SMALL_TOOLS[id].measures === true
+/** Läuft das kleine Werkzeug auch verdeckt weiter (Fenster ohne Hintergrund-Drosselung)? */
+export function runsInBackground(id: string): boolean {
+  return isSmallTool(id) && SMALL_TOOLS[id].background === true
 }
 
 export function isSmallTool(id: string): boolean {

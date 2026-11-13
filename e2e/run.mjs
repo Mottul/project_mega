@@ -10,6 +10,7 @@ const all = [
   'haertung',
   'testpattern',
   'testton',
+  'tone-generator',
   'timer',
   'player',
   'player-layout',

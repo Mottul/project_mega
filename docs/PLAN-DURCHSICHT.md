@@ -103,7 +103,7 @@ Empfohlen von oben nach unten: erst der Player, dann die kleinen Punkte, die man
 | **E3** | Lint mit Typwissen, E2E-Skripte linten | M | – |
 | **E4** | Werkzeug-Stände als Dateien statt Local Storage | L | eigener Plan nötig |
 | **E5** | ffmpeg mit niedriger Priorität, solange eine Ausgabe läuft | M | erst messen |
-| **E6** | Kleinkram: Beispiele-Ordner, Zahl der Werkzeuge in der Doku | S | Entscheidung |
+| **E6** | Kleinkram: Beispiele-Ordner, Prüfung der Werkzeug-Zahl in der Doku | S | Entscheidung |
 | **F1** | Sicherung und Umzug auf einen anderen Rechner | L | eigener Plan nötig |
 | **F2** | Show-Datei: OSC, Jingle, Timer, Packliste in der `.mottul` | M je Werkzeug | – |
 | **F3** | Stage-Timer: Schnellstart, bis Uhrzeit, Ablauf einfügen | S–M | – |
@@ -112,7 +112,7 @@ Empfohlen von oben nach unten: erst der Player, dann die kleinen Punkte, die man
 | **G** | Neue Werkzeuge (Steckbriefe) | je L | je eigener Plan |
 | **H1** | Veraltete Skill-Beschreibungen | S | – |
 | **H2** | Lange Skills teilen | M | – |
-| **H3** | Fehlende Skills | S je Skill | – |
+| **H3** | Fehlende Skills (`rechner-pwa` gibt es seit 13.11.) | S je Skill | – |
 | **H4** | Versionierte Claude-Einstellungen, Prettier-Hook | S | – |
 
 ## B – Bedienung und Design, kleine Pakete
@@ -445,9 +445,10 @@ nicht per Import aus `beenden/laufend.ts` (Kreis in den Importen).
 - **Ordner `Beispiele/`** (liegt unversioniert im Projekt, `npm run format:check` scheitert
   lokal daran): in `.gitignore` und `.prettierignore` eintragen – oder einchecken und
   formatieren. Entscheidung bei Matthias.
-- **Zahl der Werkzeuge:** `README.md` und `docs/WERKZEUGE.md` nennen 23, die Registry hat 26.
-  Zahlen berichtigen und `scripts/check-doc-refs.mjs` um eine Prüfung ergänzen: Die Zahl vor
-  „Werkzeuge“ in beiden Dateien gleicht der Zahl der Einträge in `tools/registry.ts`.
+- **Zahl der Werkzeuge:** Seit dem Testtongenerator (13. November 2026) nennen `README.md` und
+  `docs/WERKZEUGE.md` die richtige Zahl (27). Offen: `scripts/check-doc-refs.mjs` um eine
+  Prüfung ergänzen – die Zahl vor „Werkzeuge“ in beiden Dateien gleicht der Zahl der Einträge
+  in `tools/registry.ts`, sonst läuft sie beim nächsten Werkzeug wieder auseinander.
 - **Liegengebliebener Worktree** `.claude/worktrees/wonderful-taussig-0eac94` (1,8 GB, Branch
   `electron-45-pruefung`, Stand ist in main): nur auf ausdrücklichen Wunsch entfernen.
 
@@ -552,8 +553,6 @@ Je Skill ein kleiner Pull Request, am besten dann, wenn das Thema das nächste M
 
 - **`release`** – Version erhöhen, Tag, Ablauf „Installer bauen“, Text des Release, was danach
   zu prüfen ist (mit F5).
-- **`rechner-pwa`** – was ein Rechner nicht darf (`api`, Einstellungen), Tailwind-Quellen in
-  `src/pwa/build/sources.ts`, Service Worker und Versionen, Veröffentlichen.
 - **`oberflaeche`** – Änderungen an bestehenden Werkzeugen: Tokens, `Alert` und `STATUS`,
   `Select`, Kontrast im hellen Design, Leerzustände, die Arbeitsfläche aus Teil C.
 - **`ausgabe-ndi`** – Ausgabefenster und NDI-Sender: Starten und Stoppen mit Zähler, was ein

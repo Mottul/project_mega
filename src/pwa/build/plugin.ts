@@ -27,7 +27,7 @@ function manifest(): string {
       name: 'MottulBox',
       short_name: 'MottulBox',
       description:
-        'Die Rechner der Mottulbox fürs Handy: Kreis, Projektion, Objektiv, Lumen, DMX, Strom, Audio-Delay, Rigging und Timecode – offline.',
+        'Die Rechner der Mottulbox fürs Handy: Kreis, Projektion, Objektiv, Lumen, DMX, Strom, Audio-Delay, RTA, Testtongenerator, Rigging und Timecode – offline.',
       lang: 'de',
       start_url: './',
       scope: './',

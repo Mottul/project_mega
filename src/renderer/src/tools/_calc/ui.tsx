@@ -1,17 +1,23 @@
-// Gemeinsame Bausteine der Rechner-Tools: schlankes, einheitliches Formular-Layout
-// (Label links, Eingabe rechts mit Einheit), hervorgehobene Ergebnis-Zeilen und
-// Zahl-Helfer. Bewusst dezimalfähig (NumberField rundet auf ganze Zahlen -> hier
-// nicht nutzbar). Ergebnisse tragen den Akzent; bei verknüpften Feldern zeigt die
-// Akzentfarbe live, welche Werte gerade BERECHNET werden.
+// Gemeinsame Bausteine der kleinen Werkzeuge (Rechner, RTA, Testtongenerator): schlankes,
+// einheitliches Formular-Layout (Beschriftung links, Bedienelement rechts), hervorgehobene
+// Ergebnis-Zeilen und Zahl-Helfer. Bewusst dezimalfähig (NumberField rundet auf ganze Zahlen ->
+// für freies Rechnen nicht nutzbar). Ergebnisse tragen den Akzent; bei verknüpften Feldern zeigt
+// die Akzentfarbe live, welche Werte gerade BERECHNET werden.
 //
-// Die Rechner laufen in eigenen, schmalen Fenstern (shared/toolWindows), deshalb:
+// Die kleinen Werkzeuge laufen in eigenen, schmalen Fenstern (shared/toolWindows) und am Handy
+// (Rechner-PWA), deshalb:
 // - Hintergrund und Formeln hinter dem ⓘ (`hint`), sichtbar bleibt eine kurze Zeile je Karte.
 // - Unter ~330 px rückt die Beschriftung über das Feld (flex-wrap), ab ~770 px stehen zwei
 //   Karten nebeneinander (auto-fit-Raster) – ohne Medienabfragen, die Fensterbreite entscheidet.
+// - Auswahl: bis vier kurze Möglichkeiten als Knopfgruppe (`ChoiceField`, ein Tipp, alles
+//   sichtbar), sonst als Liste (`SelectField`).
 import { Children, createContext, useContext, useId, useState, type ReactNode } from 'react'
+import { Square, type LucideIcon } from 'lucide-react'
+import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
+import { Segmented } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { cn } from '@renderer/lib/utils'
 
@@ -69,19 +75,20 @@ export function SectionCard({
 /**
  * Beschriftung einer Zeile. Das ⓘ steht NEBEN dem <label> (wie bei `Field`): Läge es darin,
  * wäre es das erste beschriftbare Element, und ein Klick auf die Beschriftung löste das ⓘ aus.
+ * Ohne `htmlFor` (Knopfgruppe) bloßer Text: Ein <label> gälte sonst für den ersten Knopf.
  */
 function RowLabel({
   htmlFor,
   label,
   hint
 }: {
-  htmlFor: string
+  htmlFor?: string
   label: string
   hint?: string
 }): JSX.Element {
   return (
     <span className="flex w-40 shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-      <label htmlFor={htmlFor}>{label}</label>
+      {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span>{label}</span>}
       {hint && <InfoTip text={hint} label={`Erklärung zu „${label}“`} />}
     </span>
   )
@@ -90,6 +97,33 @@ function RowLabel({
 /** Zeile mit Beschriftung links und Feld rechts; zu schmal -> Beschriftung darüber. */
 const rowClass = 'flex flex-wrap items-center gap-x-3 gap-y-1.5'
 const fieldBox = 'relative min-w-[8rem] flex-1'
+
+/**
+ * Eine Zeile mit beliebigem Bedienelement – die Grundform von NumField, SelectField,
+ * ChoiceField und RangeField. `htmlFor` verbindet die Beschriftung mit einem Feld. `fit`: Das
+ * Element schrumpft nicht unter seine eigene Breite (Knopfgruppe) und rückt, wo der Platz neben
+ * der Beschriftung fehlt, darunter.
+ */
+export function FieldRow({
+  label,
+  hint,
+  htmlFor,
+  fit,
+  children
+}: {
+  label: string
+  hint?: string
+  htmlFor?: string
+  fit?: boolean
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <div className={rowClass}>
+      <RowLabel htmlFor={htmlFor} label={label} hint={hint} />
+      <div className={cn(fieldBox, fit && 'min-w-fit')}>{children}</div>
+    </div>
+  )
+}
 
 interface LinkedFieldProps {
   value: string
@@ -152,31 +186,33 @@ export function NumField({
 }): JSX.Element {
   const id = useId()
   return (
-    <div className={rowClass}>
-      <RowLabel htmlFor={id} label={label} hint={hint} />
-      <div className={fieldBox}>
-        <Input
-          id={id}
-          inputMode="decimal"
-          value={value}
-          placeholder={placeholder}
-          readOnly={readOnly}
-          title={derived ? 'berechneter Wert – zum Eingeben einfach anklicken' : undefined}
-          onFocus={onFocus}
-          onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-          className={cn(
-            unit && 'pr-12',
-            readOnly && 'cursor-default bg-muted/30',
-            derived && 'border-primary/40 bg-primary/[0.07] font-semibold text-primary'
-          )}
-        />
-        {unit && (
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-            {unit}
-          </span>
+    <FieldRow label={label} hint={hint} htmlFor={id}>
+      <Input
+        id={id}
+        inputMode="decimal"
+        value={value}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        title={derived ? 'berechneter Wert – zum Eingeben einfach anklicken' : undefined}
+        onFocus={onFocus}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+        className={cn(
+          unit && 'pr-12',
+          readOnly && 'cursor-default bg-muted/30',
+          derived && 'border-primary/40 bg-primary/[0.07] font-semibold text-primary'
         )}
-      </div>
-    </div>
+      />
+      {unit && <FieldUnit>{unit}</FieldUnit>}
+    </FieldRow>
+  )
+}
+
+/** Einheit rechts im Feld (das Feld braucht dafür `pr-12`) */
+export function FieldUnit({ children }: { children: ReactNode }): JSX.Element {
+  return (
+    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+      {children}
+    </span>
   )
 }
 
@@ -195,14 +231,216 @@ export function SelectField({
 }): JSX.Element {
   const id = useId()
   return (
-    <div className={rowClass}>
-      <RowLabel htmlFor={id} label={label} hint={hint} />
-      <div className={fieldBox}>
-        <Select id={id} className="w-full" value={value} onChange={(e) => onChange(e.target.value)}>
-          {children}
-        </Select>
+    <FieldRow label={label} hint={hint} htmlFor={id}>
+      <Select id={id} className="w-full" value={value} onChange={(e) => onChange(e.target.value)}>
+        {children}
+      </Select>
+    </FieldRow>
+  )
+}
+
+/**
+ * Auswahl aus wenigen kurzen Möglichkeiten als Knopfgruppe: ein Tipp, alles sichtbar (statt
+ * einer Liste mit zwei Tipps). `wrap`: Die Knöpfe brechen in gleich breiten Spalten um – für
+ * mehr als vier, die man im Betrieb oft umschaltet.
+ */
+export function ChoiceField<T extends string>({
+  label,
+  hint,
+  value,
+  options,
+  onChange,
+  wrap,
+  disabled
+}: {
+  label: string
+  hint?: string
+  value: T
+  options: { value: T; label: string }[]
+  onChange: (v: T) => void
+  wrap?: boolean
+  disabled?: boolean
+}): JSX.Element {
+  return (
+    <FieldRow label={label} hint={hint} fit={!wrap}>
+      <Segmented
+        label={label}
+        value={value}
+        options={options}
+        onChange={onChange}
+        wrap={wrap}
+        disabled={disabled}
+      />
+    </FieldRow>
+  )
+}
+
+/** Schieber in der Akzentfarbe, mit genug Höhe für den Finger */
+export function Slider({
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  label,
+  id,
+  className
+}: {
+  value: number
+  min: number
+  max: number
+  step?: number
+  onChange: (v: number) => void
+  /** Name für Vorlesewerkzeuge (z. B. „Pegel in dBFS“) */
+  label: string
+  id?: string
+  className?: string
+}): JSX.Element {
+  return (
+    <input
+      type="range"
+      id={id}
+      aria-label={label}
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className={cn('h-8 w-full cursor-pointer accent-[hsl(var(--primary))]', className)}
+    />
+  )
+}
+
+/** Zeile mit Schieber und dem Wert als Text daneben; `children` darunter (z. B. Schnellwahl) */
+export function RangeField({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  display,
+  ariaLabel,
+  children
+}: {
+  label: string
+  hint?: string
+  value: number
+  min: number
+  max: number
+  step?: number
+  onChange: (v: number) => void
+  /** angezeigter Wert, z. B. „−18 dBFS“ */
+  display: string
+  /** Name des Schiebers, sonst die Beschriftung */
+  ariaLabel?: string
+  children?: ReactNode
+}): JSX.Element {
+  const id = useId()
+  return (
+    <FieldRow label={label} hint={hint} htmlFor={id}>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-3">
+          <Slider
+            id={id}
+            label={ariaLabel ?? label}
+            value={value}
+            min={min}
+            max={max}
+            step={step}
+            onChange={onChange}
+            className="min-w-0 flex-1"
+          />
+          <span className="w-20 shrink-0 text-right text-sm font-medium tabular-nums">
+            {display}
+          </span>
+        </div>
+        {children}
       </div>
+    </FieldRow>
+  )
+}
+
+/** Schnellwahl: kleine Knöpfe, die einen Wert setzen; der gerade gewählte ist gedrückt */
+export function QuickPick<T extends string | number>({
+  label,
+  value,
+  options,
+  onPick
+}: {
+  /** Name der Gruppe für Vorlesewerkzeuge */
+  label: string
+  value: T
+  options: { value: T; label: string }[]
+  onPick: (v: T) => void
+}): JSX.Element {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5">
+      {options.map((o) => (
+        <Button
+          key={String(o.value)}
+          size="sm"
+          variant={value === o.value ? 'secondary' : 'outline'}
+          aria-pressed={value === o.value}
+          onClick={() => onPick(o.value)}
+          className="tabular-nums [@media(pointer:coarse)]:h-9"
+        >
+          {o.label}
+        </Button>
+      ))}
     </div>
+  )
+}
+
+/**
+ * Start und Stopp für kleine Werkzeuge, die laufen (RTA misst, Testton spielt): Start im Akzent
+ * mit Symbol; läuft es, eine rote Fläche „Stopp“ mit gefülltem Quadrat (Rot = live, und ein
+ * leeres Quadrat sähe aus wie eine Checkbox). `big` für die Hauptaktion am Handy.
+ */
+export function RunButton({
+  running,
+  starting = false,
+  onStart,
+  onStop,
+  startLabel,
+  startIcon: StartIcon,
+  disabled,
+  big,
+  className
+}: {
+  running: boolean
+  starting?: boolean
+  onStart: () => void
+  onStop: () => void
+  startLabel: string
+  startIcon: LucideIcon
+  disabled?: boolean
+  big?: boolean
+  className?: string
+}): JSX.Element {
+  const size = big ? 'h-12 min-w-[10rem] px-6 text-base [&_svg]:size-5' : undefined
+  if (running) {
+    return (
+      <Button
+        size={big ? 'default' : 'sm'}
+        variant="destructive"
+        onClick={onStop}
+        className={cn(size, className)}
+      >
+        <Square className="size-4 fill-current" /> Stopp
+      </Button>
+    )
+  }
+  return (
+    <Button
+      size={big ? 'default' : 'sm'}
+      onClick={onStart}
+      disabled={starting || disabled}
+      className={cn(size, className)}
+    >
+      <StartIcon className="size-4" /> {starting ? 'Startet…' : startLabel}
+    </Button>
   )
 }
 

@@ -16,7 +16,9 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `security.mjs` | Fenster-Wächter und Shell-Kanäle: Navigation zu Webseite oder fremder Datei bleibt in der App (auch mit kaputter %-Kodierung), `window.open` öffnet nichts, das Ausgabefenster ist genauso bewacht, Berechtigungen (Kamera, Standort, Benachrichtigungen verweigert; Mikrofon nur im RTA-Fenster), Namen der Audio-Ausgabegeräte, „Ordner öffnen“ nur für lokale Ordner, „Im Ordner zeigen“ nur mit absolutem Pfad (`shell` per `app.evaluate` ersetzt) |
 | `haertung.mjs` | Show-Härtung: kein Standardmenü von Electron (macOS nur Beenden und Bearbeiten), Strg+W/Strg+R/Strg+Minus/F11 ändern an Ausgabe- und Hauptfenster nichts (Marke in der Seite gegen Neuladen, Zoom, Vollbild), F12 öffnet die DevTools – in der Kundenansicht nicht, Wachhalten (Ausgabe → „Bildschirm bleibt an“, laufender Timer → „Rechner bleibt wach“, danach frei; `powerSaveBlocker.isStarted` und die letzte `[wach]`-Zeile im Protokoll), Fernsteuerung weist fremden `Origin` und fremden `Host` mit 403 ab (eigene Seite und Anfragen ohne `Origin` gehen durch), zweiter Start im selben Benutzerordner beendet sich und holt das Hauptfenster vor, ein verstellter Zoom ist nach dem Neustart wieder 100 %. Eigener Benutzerordner, startet die App dreimal |
 | `testpattern.mjs` | 2-px-Rasterlinien pixelgenau (Raster und Mapping-Testbild) |
-| `testton.mjs` | Testton gemessen: Analysator vor dem Ausgang (`AudioNode.prototype.connect` umgelenkt, je Kanal einer) – Einblenden und Pegel −18 dBFS, Deckel −6 dBFS, 1 kHz, alle Signale unter dem Pegel, Kanal „Links“, Kennungs-Pausen je Kanal, AV-Sync-Piep zur vollen Sekunde (gemessen etwa −55 ms = Ausgabelatenz), Blitz in der Vorschau, Ton endet beim Verlassen. Ohne laufende Audioausgabe übersprungen |
+| `testton.mjs` | Testton im Testbildgenerator gemessen (Analysator aus `toneTap.mjs`) – Einblenden und Pegel −18 dBFS, Deckel −6 dBFS, 1 kHz, alle Signale unter dem Pegel, Kanal „Links“, Metronom: zehn Tempowechsel im Betrieb, jeder Abstand ist der alte oder der neue (kein Neubeginn), Polaritätspuls nach 1,6 s blockierter Seite ohne gestapelte Pulse, Gegenphase (Summe still), Kennungs-Pausen je Kanal, AV-Sync-Piep zur vollen Sekunde (gemessen etwa −55 ms = Ausgabelatenz), Blitz in der Vorschau, Ton endet beim Verlassen. Ohne laufende Audioausgabe übersprungen |
+| `tone-generator.mjs` | Testtongenerator (kleines Fenster): Start/„Stopp“, Pegel per Schnellwahl und Schieber (Deckel −6 dBFS), Frequenz per Schnellwahl und logarithmischem Schieber (Mitte 632 Hz), alle sieben Signale, Kanäle „Links“ und Gegenphase, Kennung sperrt die Kanäle, Metronom (120 BPM im Takt, zwanzigmal „Schneller“ ohne Doppelklick, Schlag-Anzeige `data-beat`), „Tippen“ per `mouse.down/up` (Playwrights `click` braucht zu lange für den Takt), Leertaste (nicht im Zahlenfeld), minimiertes Fenster hält den Takt, „Wirklich beenden?“ nennt „Testton läuft“, gemerkter Stand nach Schließen. Ohne Audioausgabe übersprungen |
+| `toneTap.mjs` | kein Skript: Analysator vor jedem Ausgang (links, rechts, Summe), `record`, `hang` (Seite blockieren, danach Spitze messen), `onsets` mit Hysterese – für `testton.mjs` und `tone-generator.mjs` |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
 | `player-layout.mjs` | Video-Player ohne Scrollen (docs/PLAN-ARBEITSFLAECHE.md): 14 Medien per lavfi (Wand 1280 × 720, schneller Import), drei gespeicherte Playlists; bei 1024 × 600, 1366 × 768 (auch mit angehefteter Schublade) und 1920 × 1080 scrollen weder `tool-content`, `tool-main` noch `arbeitsflaeche`, kein Feld (`[data-pane]`) schneidet ab, `data-stufe` stimmt; Vorschau, Play/Pause und die ersten fünf Zeilen der Playlist liegen im Fenster UND im sichtbaren Teil der Liste; Listen scrollen in sich; Vorschau höchstens 60 % der Höhe; bei 700 × 600 eine Spalte, Bühne vor Playlist vor Bibliothek; ein Wechsel der Stufe baut das `<video>` nicht neu auf (Marke am Element). Seit P3 die Bühne: Restzeit `−m:ss` (`restzeit`), ⓘ „Tastenkürzel“ statt der Zeile, „Danach“ (`danach`; `goto`, Loop „Eines“, Ende), „Stumm“ (`ton`) per Ton-Knopf, Übergang und Standzeit im Bereich „Wiedergabe“ der Schublade, Vorschau 3840 × 1080 über die Felder „Breite“/„Höhe“ der Schublade, Knopf „FPS“ über dem Video klickbar. Braucht ffmpeg |
@@ -151,12 +153,24 @@ Schritt, der schon vorher grün ist, prüft nichts.
   ihre Konfiguration nur beim Öffnen: erst `/`, dann die Zielroute.
 - **Gesteuerte Checkboxen:** `.check()` scheitert, wenn der Zustand erst nach dem Speichern
   umspringt – `click()` und dann mit `waitFor` auf das Ergebnis warten.
-- **Ton messen statt hören:** vor dem Start per `page.evaluate` `AudioNode.prototype.connect`
-  umlenken – jede Verbindung zum `AudioDestinationNode` bekommt zusätzlich Splitter und
-  Analysatoren (je Kanal); Spitzen per `getFloatTimeDomainData`, Frequenz per FFT, Verläufe per
-  `setInterval` in der Seite (Beispiel `e2e/testton.mjs`). Der Analysator sieht den Ton um die
-  Ausgabelatenz früher, als er aus dem Gerät kommt. Messfenster so legen, dass beide Grenzen
-  sicher im Ton liegen, nicht in einer Pause.
+- **Ton messen statt hören:** `installToneTap(page)` aus `e2e/toneTap.mjs` vor dem Start – jede
+  Verbindung zum `AudioDestinationNode` bekommt zusätzlich Analysatoren (links, rechts, Summe;
+  die Summe ist gegenphasig still); Spitzen per `getFloatTimeDomainData`, Frequenz per FFT,
+  Verläufe per `setInterval` in der Seite. Bei einem kleinen Werkzeug in dessen Fenster
+  einbauen, nicht im Hauptfenster. Der Analysator sieht den Ton um die Ausgabelatenz früher, als
+  er aus dem Gerät kommt. Messfenster so legen, dass beide Grenzen sicher im Ton liegen, nicht
+  in einer Pause. **Kurze Klicks mit 2048 Samples aufnehmen:** Der Ton wird in Blöcken von etwa
+  10 ms gerechnet, ein Fenster von 256 Samples sieht nur einen Teil jedes Blocks und erwischte
+  jeden zweiten Metronom-Klick erst abgeklungen (0,026 statt 0,071) – das sah aus wie „nur jeder
+  zweite Schlag“, gespielt hatte die Engine alle. Im Zweifel `AudioScheduledSourceNode.prototype.start`
+  umlenken und mitschreiben, was wirklich eingeplant wird (`AudioBufferSourceNode` hat ein
+  eigenes `start`).
+- **Die CI-Rechner unter Linux und Windows haben kein Audiogerät** (macOS schon): Chromium
+  feuert dort gleich nach dem Anlegen `error` am `AudioContext`, hält ihn an und rechnet nach
+  `resume()` auf einem Ersatzgerät weiter – der Analysator misst trotzdem. Lokal mit Gerät kommt
+  dieser Fehler nie: Ein Ton-Test, der lokal grün und in der CI rot ist, zuerst daraufhin
+  ansehen. Nachstellen lässt er sich mit einer Unterklasse von `AudioContext`, die nach dem
+  Anlegen `error` sendet und `suspend()` ruft (letzter Schritt in `e2e/tone-generator.mjs`).
 - **Zeichenflächen haben Fenstergröße:** vor Pixelprüfungen `page.setViewportSize(…)`, gelesen
   wird mit `getImageData`.
 - **Fernsteuer-Seiten** in `openBrowserWindow` öffnen (unsichtbares Electron-Fenster ohne

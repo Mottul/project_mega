@@ -1,10 +1,11 @@
 // Testton im Testbild-Werkzeug: Schalter „Ton“ in der Ausgabe-Leiste, Einstellungen in der
-// Schublade. Gespielt wird in diesem Fenster (engine.ts) auf dem gewählten Ausgabegerät; die
-// Einstellungen liegen in settings.json (wie Geräte und Ausgaben der übrigen Werkzeuge).
+// Schublade. Gespielt wird in diesem Fenster über den gemeinsamen Ton-Kern (tools/_tone, den auch
+// der Testtongenerator nutzt) auf dem gewählten Ausgabegerät; die Einstellungen liegen in
+// settings.json (wie Geräte und Ausgaben der übrigen Werkzeuge), Meldungen kommen als Toast.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AudioLines } from 'lucide-react'
-import { type PatternToneSettings, type ToneSignal } from '@shared/types'
+import { type PatternToneSettings, type ToneSignal } from '@shared/testton'
 import { BarToggle, PanelSection } from '@renderer/components/ToolShell'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
@@ -14,11 +15,11 @@ import { NumberField } from '@renderer/components/ui/number-field'
 import { Select } from '@renderer/components/ui/select'
 import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { toast } from '@renderer/lib/toast'
-import { useAktivMelden } from '@renderer/lib/aktivMelden'
-import { ToneEngine } from './engine'
 import {
+  CHANNEL_HINT,
   CHANNEL_OPTIONS,
   FREQ_PRESETS,
+  SIGNAL_HINTS,
   SIGNAL_OPTIONS,
   TONE_LEVEL_MAX,
   TONE_LEVEL_MIN,
@@ -27,27 +28,13 @@ import {
   normalizeTone,
   toneSummary,
   usesChannelChoice
-} from './plan'
-
-const SIGNAL_HINTS: Record<ToneSignal, string> = {
-  sine: 'Dauerton. 1 kHz bei −18 dBFS ist der übliche Bezugspegel (EBU R 68).',
-  sweep:
-    'Gleitender Sinus von 20 Hz bis 20 kHz (logarithmisch), danach 0,5 s Pause – findet Resonanzen, Klirren und Lücken im Frequenzgang.',
-  pink: 'Gleiche Energie je Oktave – zum Einmessen von Lautsprechern und für den Analyzer (RTA).',
-  white: 'Gleiche Energie je Frequenz, klingt hell – für Messungen mit FFT.',
-  metronome: 'Klick im Tempo, die Eins auf Wunsch höher.',
-  ident:
-    '1 kHz auf beiden Kanälen; links setzt der Ton einmal aus, rechts zweimal je 4 s (angelehnt an GLITS der BBC) – vertauschte Kanäle hört man sofort.',
-  polarity:
-    'Positiver Puls alle 0,5 s für Polaritätsprüfer. Am Lautsprecher bewegt sich die Membran dabei nach vorn.',
-  avsync:
-    'Piept zu jeder vollen Sekunde, wenn das Testbild „AV-Sync“ blitzt. Ein Messgerät oder eine Zeitlupen-Aufnahme vor der Wand zeigt den Abstand – die Verzögerung des Bildwegs.'
-}
+} from '../_tone/plan'
+import { useToneEngine } from '../_tone/useToneEngine'
 
 export interface TestTone {
   settings: PatternToneSettings
   playing: boolean
-  toggle: () => Promise<void>
+  toggle: () => void
   patch: (p: Partial<PatternToneSettings>) => void
   /** sofort hörbar, aber noch nicht gespeichert (Schieber beim Ziehen) */
   preview: (p: Partial<PatternToneSettings>) => void
@@ -59,66 +46,25 @@ export function useTestTone(): TestTone {
   // Zwischenstände beim Ziehen: hörbar, aber erst beim Loslassen in settings.json
   const [live, setLive] = useState<Partial<PatternToneSettings>>({})
   const settings = useMemo(() => normalizeTone({ ...stored, ...live }), [stored, live])
-  const [playing, setPlaying] = useState(false)
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
-  const engine = useRef<ToneEngine | null>(null)
-  useAktivMelden('testton', playing)
-
-  // Ausgabegeräte auflisten (Labels brauchen u. U. eine Audio-Berechtigung)
-  useEffect(() => {
-    const load = (): void => {
-      void navigator.mediaDevices
-        .enumerateDevices()
-        .then((d) => setDevices(d.filter((x) => x.kind === 'audiooutput')))
-        .catch(() => setDevices([]))
-    }
-    load()
-    navigator.mediaDevices.addEventListener('devicechange', load)
-    return () => navigator.mediaDevices.removeEventListener('devicechange', load)
-  }, [])
-
-  // Werkzeug verlassen = Ton aus (nie unbemerkt weiterlaufen lassen)
-  useEffect(
-    () => () => {
-      engine.current?.stop()
-      engine.current = null
-    },
-    []
-  )
-
-  useEffect(() => {
-    if (playing) engine.current?.update(settings)
-  }, [playing, settings])
-
-  async function toggle(): Promise<void> {
-    const running = engine.current
-    if (running) {
-      running.stop()
-      engine.current = null
-      setPlaying(false)
-      return
-    }
-    const e = new ToneEngine((m) => toast.warning(m))
-    engine.current = e
-    setPlaying(true)
-    try {
-      await e.start(settings)
-    } catch (err) {
-      e.stop()
-      if (engine.current === e) {
-        engine.current = null
-        setPlaying(false)
-      }
-      toast.error('Testton konnte nicht starten', err instanceof Error ? err.message : undefined)
-    }
-  }
+  const tone = useToneEngine(settings, {
+    onWarning: (m) => toast.warning(m),
+    onError: (m) => toast.error('Testton konnte nicht starten', m),
+    onEnded: (m) => toast.warning(m)
+  })
 
   function patch(p: Partial<PatternToneSettings>): void {
     updateSettings({ patternTone: p })
     setLive({})
   }
 
-  return { settings, playing, toggle, patch, preview: setLive, devices }
+  return {
+    settings,
+    playing: tone.playing,
+    toggle: tone.toggle,
+    patch,
+    preview: setLive,
+    devices: tone.devices
+  }
 }
 
 /** Schalter in der Ausgabe-Leiste */
@@ -127,7 +73,7 @@ export function ToneToggle({ tone }: { tone: TestTone }): JSX.Element {
     <BarToggle
       on={tone.playing}
       title={`Testton ein/aus: ${toneSummary(tone.settings)}`}
-      onClick={() => void tone.toggle()}
+      onClick={() => tone.toggle()}
     >
       Ton
     </BarToggle>
@@ -276,14 +222,7 @@ export function ToneSection({
         />
       </Field>
 
-      <Field
-        label="Kanäle"
-        hint={
-          usesChannelChoice(s.signal)
-            ? 'Abwechselnd: jede Sekunde der andere Kanal.'
-            : 'Die Kanal-Kennung nutzt immer beide Kanäle.'
-        }
-      >
+      <Field label="Kanäle" hint={CHANNEL_HINT}>
         <Select
           value={usesChannelChoice(s.signal) ? s.channels : 'both'}
           disabled={!usesChannelChoice(s.signal)}

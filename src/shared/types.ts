@@ -3,6 +3,7 @@
 
 import type { AtemSimModell } from './atem'
 import { APP_NAME } from './brand'
+import { DEFAULT_PATTERN_TONE, type PatternToneSettings } from './testton'
 
 export type ToolCategoryId = 'playback' | 'control' | 'visual' | 'media' | 'rigging' | 'calc'
 
@@ -664,46 +665,13 @@ export const DEFAULT_PATTERN_CONFIG: PatternConfig = {
   mappingGridAccent: false
 }
 
-/** Testton des Testbild-Werkzeugs: läuft im Werkzeug-Fenster (WebAudio) auf dem gewählten
- *  Ausgabegerät; AV-Sync piept im Takt des Blitz-Testbilds (gemeinsame Wanduhr). */
-export type ToneSignal =
-  'sine' | 'sweep' | 'pink' | 'white' | 'metronome' | 'ident' | 'polarity' | 'avsync'
-
-/** Kanäle: beide gleich, nur einer, oder sekündlich abwechselnd */
-export type ToneChannels = 'both' | 'left' | 'right' | 'alternate'
-
-export interface PatternToneSettings {
-  signal: ToneSignal
-  /** Sinus in Hz (20–20.000) */
-  frequency: number
-  /** Spitzenpegel in dBFS, gedeckelt (−60 bis −6) */
-  levelDb: number
-  channels: ToneChannels
-  /** Dauer eines Sweeps 20 Hz → 20 kHz in Sekunden */
-  sweepSeconds: number
-  /** Metronom */
-  bpm: number
-  beatsPerBar: number
-  /** Eins betonen (höherer Klick) */
-  accent: boolean
-  /** AV-Sync: Ton gegenüber dem Blitz verschieben (ms, + = später), zum Eichen */
-  syncOffsetMs: number
-  /** Ausgabegerät (leer = Standardgerät) */
-  deviceId: string
-}
-
-export const DEFAULT_PATTERN_TONE: PatternToneSettings = {
-  signal: 'sine',
-  frequency: 1000,
-  levelDb: -18,
-  channels: 'both',
-  sweepSeconds: 10,
-  bpm: 120,
-  beatsPerBar: 4,
-  accent: true,
-  syncOffsetMs: 0,
-  deviceId: ''
-}
+/** Testton (Testbildgenerator und Testtongenerator) – in eigener Datei, siehe testton.ts */
+export {
+  DEFAULT_PATTERN_TONE,
+  type PatternToneSettings,
+  type ToneChannels,
+  type ToneSignal
+} from './testton'
 
 export interface ColorLoopRequest {
   width: number

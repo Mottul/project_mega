@@ -5,13 +5,14 @@
 // Gemessen wird pro Bild über Refs (ohne React); die Zahlen gehen ~5× je Sekunde in den Zustand.
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
-import { AlertTriangle, Mic, Pause, Play, RotateCcw, Snowflake, Square } from 'lucide-react'
+import { AlertTriangle, Mic, Pause, Play, RotateCcw, Snowflake } from 'lucide-react'
 import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { cn } from '@renderer/lib/utils'
-import { CalcPage, fmt, Readout, ReadoutGrid } from '../_calc/ui'
+import { useWakeLock } from '@renderer/lib/useWakeLock'
+import { CalcPage, fmt, Readout, ReadoutGrid, RunButton } from '../_calc/ui'
 import { RtaProcessor } from './analysis'
 import {
   bandPowers,
@@ -214,23 +215,7 @@ export function Rta(): JSX.Element {
   }, [refreshInputs])
 
   /* ---- Bildschirm wach halten, solange gemessen wird (Handy) ---- */
-  useEffect(() => {
-    if (!running || !('wakeLock' in navigator)) return
-    let lock: { release: () => Promise<void> } | null = null
-    const take = (): void => {
-      if (document.visibilityState !== 'visible') return
-      void navigator.wakeLock
-        .request('screen')
-        .then((l) => (lock = l))
-        .catch(() => {})
-    }
-    take()
-    document.addEventListener('visibilitychange', take)
-    return () => {
-      document.removeEventListener('visibilitychange', take)
-      void lock?.release().catch(() => {})
-    }
-  }, [running])
+  useWakeLock(running)
 
   /* ---- Start und Stopp ---- */
   // Starts zählen: Nur der neueste beendet „Startet…“; ein Gerätewechsel während des Starts
@@ -538,19 +523,15 @@ export function Rta(): JSX.Element {
     <Card className="space-y-3 p-3 sm:p-4">
       {/* Leiste: Start und Ansicht */}
       <div className="flex flex-wrap items-center gap-2">
-        {running ? (
-          <Button size="sm" variant="destructive" onClick={stop}>
-            <Square className="size-4" /> Stopp
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            onClick={() => void start()}
-            disabled={starting || Boolean(unsupported)}
-          >
-            <Mic className="size-4" /> {starting ? 'Startet…' : 'Messen'}
-          </Button>
-        )}
+        <RunButton
+          running={running}
+          starting={starting}
+          onStart={() => void start()}
+          onStop={stop}
+          startLabel="Messen"
+          startIcon={Mic}
+          disabled={Boolean(unsupported)}
+        />
         <Segmented
           label="Ansicht"
           value={p.view}

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   fitHeight,
   isSmallTool,
-  measuresInBackground,
+  runsInBackground,
   restoreBounds,
   toolWindowSize,
   TOOL_WINDOW
@@ -26,11 +26,12 @@ describe('toolWindowSize', () => {
     expect(isSmallTool('toString')).toBe(false)
   })
 
-  it('nur Messwerkzeuge laufen im Hintergrund ungedrosselt (RTA)', () => {
-    expect(measuresInBackground('rta')).toBe(true)
-    expect(measuresInBackground('timecode')).toBe(false)
-    expect(measuresInBackground('video-player')).toBe(false)
-    expect(measuresInBackground('toString')).toBe(false)
+  it('nur RTA und Testtongenerator laufen im Hintergrund ungedrosselt', () => {
+    expect(runsInBackground('rta')).toBe(true)
+    expect(runsInBackground('tone-generator')).toBe(true)
+    expect(runsInBackground('timecode')).toBe(false)
+    expect(runsInBackground('video-player')).toBe(false)
+    expect(runsInBackground('toString')).toBe(false)
   })
 })
 

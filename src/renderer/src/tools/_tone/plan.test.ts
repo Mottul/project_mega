@@ -1,20 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_PATTERN_TONE } from '@shared/types'
+import { DEFAULT_PATTERN_TONE, type PatternToneSettings } from '@shared/testton'
 import {
   alternateSide,
+  channelText,
   dbToGain,
   formatDb,
   formatHz,
   identGaps,
-  metronomeBeats,
+  isImpulse,
   noiseSamples,
   normalizeTone,
+  planMetronome,
   polarityPulse,
+  retimeMetronome,
+  startMetronome,
   sweepStarts,
   syncBeeps,
   syncFlashOn,
   ticks,
-  toneSummary
+  toneSummary,
+  toneWhat,
+  type MetroState
 } from './plan'
 
 /** Effektivwert eines Puffers in dB (bezogen auf 1 = Vollaussteuerung) */
@@ -46,6 +52,24 @@ describe('Testton: Einstellungen', () => {
     const odd = { signal: 'laser', channels: 'mitte', levelDb: NaN, accent: 'ja' } as never
     expect(normalizeTone(odd)).toEqual(DEFAULT_PATTERN_TONE)
     expect(normalizeTone(null)).toEqual(DEFAULT_PATTERN_TONE)
+    expect(normalizeTone({ channels: 'antiphase' }).channels).toBe('antiphase')
+  })
+
+  it('Kurzbeschreibung: was gespielt wird, Kanäle als Zusatz', () => {
+    const t = (p: Partial<PatternToneSettings>): PatternToneSettings => ({
+      ...DEFAULT_PATTERN_TONE,
+      ...p
+    })
+    expect(toneWhat(t({}))).toBe('Sinus 1 kHz')
+    expect(toneWhat(t({ signal: 'metronome', bpm: 96 }))).toBe('Metronom 96 BPM')
+    expect(toneWhat(t({ signal: 'ident' }))).toBe('Kanal-Kennung (1 kHz)')
+    expect(channelText(t({}))).toBe('')
+    expect(channelText(t({ channels: 'left' }))).toBe('nur links')
+    expect(channelText(t({ channels: 'antiphase' }))).toBe('gegenphasig')
+    // die Kennung legt ihre Kanäle selbst fest
+    expect(channelText(t({ signal: 'ident', channels: 'left' }))).toBe('')
+    expect(isImpulse('metronome') && isImpulse('polarity')).toBe(true)
+    expect(isImpulse('sine') || isImpulse('pink')).toBe(false)
   })
 
   it('Anzeige: Hz/kHz mit Komma, dBFS mit echtem Minus', () => {
@@ -63,17 +87,59 @@ describe('Testton: Einstellungen', () => {
 })
 
 describe('Testton: Zeitpläne', () => {
-  it('Metronom: Schläge im Fenster, die Eins je Takt', () => {
+  it('Metronom: Schläge bis vor dem Horizont, die Eins je Takt', () => {
     // 120 BPM = alle 0,5 s; 3/4-Takt
-    expect(metronomeBeats(120, 3, 0, 2)).toEqual([
+    const { beats, state } = planMetronome(startMetronome(0), 120, 3, 0, 2)
+    expect(beats).toEqual([
       { at: 0, beat: 0 },
       { at: 0.5, beat: 1 },
       { at: 1, beat: 2 },
       { at: 1.5, beat: 0 }
     ])
-    // Fenstergrenzen: Anfang enthalten, Ende nicht – nichts doppelt beim nächsten Fenster
-    expect(metronomeBeats(120, 4, 0.5, 1).map((b) => b.at)).toEqual([0.5])
-    expect(metronomeBeats(120, 4, 1, 1.5).map((b) => b.at)).toEqual([1])
+    expect(state).toEqual({ next: 2, inBar: 1, last: 1.5 })
+  })
+
+  it('Metronom: aufeinanderfolgende Planungen – keine Lücke, kein Schlag doppelt', () => {
+    let s: MetroState = startMetronome(0)
+    const all: number[] = []
+    for (const to of [0.4, 0.5, 0.9, 1.0, 1.4]) {
+      const r = planMetronome(s, 120, 4, 0, to)
+      all.push(...r.beats.map((b) => b.at))
+      s = r.state
+    }
+    expect(all).toEqual([0, 0.5, 1])
+  })
+
+  it('Metronom: neues Tempo im Betrieb – der nächste Schlag im neuen Abstand', () => {
+    // bis 0,9 s geplant: Schläge bei 0 und 0,5; dann auf 60 BPM -> nächster bei 1,5 – als
+    // dritter Schlag des Takts, nicht wieder als Eins
+    const { state } = planMetronome(startMetronome(0), 120, 4, 0, 0.9)
+    expect(state.last).toBe(0.5)
+    const slower = retimeMetronome(state, 60, 0.6)
+    expect(slower.next).toBe(1.5)
+    expect(planMetronome(slower, 60, 4, 0.6, 2.6).beats).toEqual([
+      { at: 1.5, beat: 2 },
+      { at: 2.5, beat: 3 }
+    ])
+    // läge der nächste Schlag schon in der Vergangenheit, kommt er sofort
+    expect(retimeMetronome(state, 240, 0.9).next).toBe(0.9)
+    // vor dem ersten Schlag ändert ein Tempowechsel nichts
+    expect(retimeMetronome(startMetronome(0.02), 60, 0)).toEqual(startMetronome(0.02))
+  })
+
+  it('Metronom: Verpasstes entfällt, das Raster bleibt; kleinerer Takt beginnt bei der Eins', () => {
+    // Takt kam 1,1 s zu spät: 0,5 / 1,0 / 1,5 fallen weg, weiter bei 2,0 als vierter Schlag
+    const late = planMetronome({ next: 0.5, inBar: 0, last: 0 }, 120, 4, 1.6, 2.4)
+    expect(late.beats).toEqual([{ at: 2, beat: 3 }])
+    expect(late.state).toEqual({ next: 2.5, inBar: 0, last: 2 })
+    // genau auf der Grenze zählt der Schlag noch
+    expect(planMetronome({ next: 1.5, inBar: 2, last: 1 }, 120, 4, 1.5, 1.6).beats).toEqual([
+      { at: 1.5, beat: 2 }
+    ])
+    // von 4/4 auf 3/4, während der vierte Schlag als Nächstes käme: dann die Eins
+    expect(planMetronome({ next: 3, inBar: 3, last: 2.5 }, 120, 3, 0, 3.1).beats).toEqual([
+      { at: 3, beat: 0 }
+    ])
   })
 
   it('Sweep: Durchläufe mit Pause, Kanalwechsel und Pulse im Takt', () => {

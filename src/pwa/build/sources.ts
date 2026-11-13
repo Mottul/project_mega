@@ -18,6 +18,7 @@ export function pwaSources(root: string, calcIds: string[]): string[] {
   return [
     `${base}/src/pwa`,
     `${ui}/tools/_calc`,
+    `${ui}/tools/_tone`,
     ...calcIds.map((id) => `${ui}/tools/${id}`),
     `${ui}/tools/types.ts`,
     `${ui}/components/ui`,

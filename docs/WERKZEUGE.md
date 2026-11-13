@@ -1,6 +1,6 @@
 # Werkzeuge
 
-Alle 23 Werkzeuge im Detail, gegliedert wie auf dem Startbildschirm. Die Handy-Fernsteuerung hat
+Alle 27 Werkzeuge im Detail, gegliedert wie auf dem Startbildschirm. Die Handy-Fernsteuerung hat
 eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
 
 - [Startbildschirm & Bedienung](#startbildschirm--bedienung)
@@ -14,7 +14,8 @@ eine eigene Seite: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
   Manuals-Bibliothek, YouTube-Downloader
 - [Strom, Rigging & Aufbau](#strom-rigging--aufbau) – Packliste, Mini-Manual, Stromlast &
   Absicherung, Rigging-Last
-- [Rechner](#rechner) – Kreisrechner, Audio-Delay & SPL, RTA (Echtzeit-Analysator), Timecode-Rechner
+- [Rechner](#rechner) – Kreisrechner, Audio-Delay & SPL, RTA (Echtzeit-Analysator),
+  Testtongenerator, Timecode-Rechner
 - [Übergaben zwischen Werkzeugen](#übergaben-zwischen-werkzeugen)
 - [Wo die Daten liegen](#wo-die-daten-liegen)
 
@@ -73,7 +74,8 @@ Jedes Werkzeug ist gleich aufgebaut:
   und Jingles gleichzeitig. Ist ein Werkzeug in mehreren Fenstern offen, zeigen alle denselben
   Stand; Änderungen kommen nach spätestens einer halben Sekunde in den anderen Fenstern an.
 - **Kleine Werkzeuge** (Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay,
-  RTA, Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last; an der Kachel ein
+  RTA, Testtongenerator, Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv,
+  Rigging-Last; an der Kachel ein
   kleines Fenster-Zeichen) öffnen sich **immer in einem eigenen, passend kleinen Fenster**, nie im
   Hauptfenster – das bleibt für die großen Werkzeuge frei. Je Werkzeug gibt es höchstens ein
   Fenster; ein zweiter Klick holt es nach vorn. **Die Höhe folgt dem Inhalt** (auch im
@@ -271,16 +273,22 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
 - **Bewegte Muster:** Pixelcheck-Loop, Scroll, Timecode, AV-Sync (siehe Testton).
 - **Vollbild-Ausgabe** auf wählbarem Monitor, pixelgenau und live (oder als Fenster).
 - **Testton** – „Ton“ in der Ausgabe-Leiste, eingestellt im Bereich „Testton“ der Schublade,
-  gespielt auf dem gewählten Ausgabegerät:
-  - Sinus mit freier Frequenz (Schnellwahl 100 Hz, 1 kHz, 10 kHz), Sweep 20 Hz – 20 kHz
-    (logarithmisch, Dauer einstellbar), rosa und weißes Rauschen, Metronom (Tempo, Schläge je
-    Takt, betonte Eins), Polaritätspuls für Polaritätsprüfer.
+  gespielt auf dem gewählten Ausgabegerät. Dieselben Signale (ohne AV-Sync) gibt es als eigenes
+  kleines Werkzeug, auch am Handy: [Testtongenerator](#testtongenerator).
+  - Sinus mit freier Frequenz (Schnellwahl 50 Hz, 100 Hz, 440 Hz, 1 kHz, 10 kHz), Sweep 20 Hz –
+    20 kHz (logarithmisch, Dauer einstellbar), rosa und weißes Rauschen, Metronom (Tempo,
+    Schläge je Takt, betonte Eins; ein neues Tempo gilt ab dem nächsten Schlag, ohne neu bei der
+    Eins anzufangen), Polaritätspuls für Polaritätsprüfer.
   - Kanal-Kennung: 1 kHz auf beiden Kanälen, links setzt er einmal aus, rechts zweimal je 4 s
     (angelehnt an GLITS der BBC) – vertauschte Kanäle hört man sofort. Alle übrigen Signale
-    wahlweise auf beiden Kanälen, nur links, nur rechts oder sekündlich abwechselnd.
-  - Pegel als Spitzenpegel in dBFS, Vorgabe −18 dBFS; gedeckelt bei −6 dBFS und beim Start
-    über 0,5 s eingeblendet, ein Signalwechsel wird übergeblendet – schont Ohren und Hochtöner.
-    Rauschen hat seine Spitzen begrenzt: der Effektivwert liegt 12 dB unter dem Pegel.
+    wahlweise auf beiden Kanälen, nur links, nur rechts, sekündlich abwechselnd oder
+    **gegenphasig** (rechts mit gedrehter Polarität: mittig vor einem richtig verkabelten Paar
+    klingt es dünn und ortlos – klingt es schon bei „Beide“ so, ist ein Lautsprecher verpolt).
+  - Pegel als Spitzenpegel in dBFS, Vorgabe −18 dBFS; gedeckelt bei −6 dBFS. Dauertöne werden
+    beim Start über 0,5 s eingeblendet, Metronom und Polaritätspuls beginnen gleich mit dem
+    ersten Schlag; ein Signalwechsel wird übergeblendet – schont Ohren und Hochtöner. Rauschen
+    hat seine Spitzen begrenzt: der Effektivwert liegt 12 dB unter dem Pegel. Hängt das Fenster
+    kurz, holt der Ton verpasste Klicks und Pulse nicht nach (sie klängen sonst übereinander).
   - **AV-Sync:** Das Testbild „AV-Sync“ blitzt zu jeder vollen Sekunde weiß, im selben Moment
     piept der Ton. Ein Messgerät oder ein Zeitlupen-Video vor der Wand zeigt die Verzögerung des
     Bildwegs (LED-Prozessor, Beamer). Die Ausgabelatenz des Rechners ist im Ton schon
@@ -932,10 +940,46 @@ Messmikrofon), am Handy in der Web-App.
   Feedback reicht das, für Messungen ein Messmikrofon nehmen. Am Handy bleibt der Bildschirm
   während der Messung an.
 
+### Testtongenerator
+
+Testsignale fürs Einmessen, Kanäle prüfen und Proben – im eigenen kleinen Fenster und am Handy
+(dieselben Signale wie der Testton des Testbildgenerators, ohne AV-Sync).
+
+- **Oben „Ausgabe“:** großer Knopf **Ton starten** (läuft der Ton: rote Fläche „Stopp“) und daneben,
+  was gespielt wird; darunter Pegel, Kanäle und – am Rechner – das Ausgabegerät. Was man im
+  Betrieb greift, steht damit immer an derselben Stelle; die Felder des gewählten Signals
+  wechseln weiter unten.
+- **Pegel** als Spitzenpegel in dBFS, Schieber von −60 bis −6 dBFS (gedeckelt) und Schnellwahl
+  −20 (SMPTE RP 155), −18 (EBU R 68) und −12 dBFS. Dauertöne werden beim Start eingeblendet.
+- **Kanäle:** beide, links, rechts, im Wechsel (sekündlich) oder **gegenphasig** – zum Finden
+  verpolter Lautsprecher; die Kanal-Kennung nutzt immer beide.
+- **Signal** per Knopf, auch während der Ton läuft (übergeblendet): **Sinus** mit Feld,
+  logarithmischem Schieber (20 Hz bis 20 kHz) und Schnellwahl 50 Hz, 100 Hz, 440 Hz, 1 kHz,
+  10 kHz; **Sweep** (Dauer je Durchlauf); **rosa** und **weißes Rauschen**; **Metronom**;
+  **Kennung** (vertauschte Kanäle); **Polarität** (Puls für Polaritätsprüfer). Was ein Signal
+  kann, steht hinter dem ⓘ der Karte.
+- **Metronom:** Tempo 30 bis 300 BPM mit „−“/„+“ oder **Tippen** (Mittel der letzten Tipps,
+  nach 2 s Pause neu), Schläge je Takt, betonte Eins. Ein neues Tempo gilt ab dem nächsten
+  Schlag, ohne neu bei der Eins anzufangen. Punkte zeigen den klingenden Schlag, die Eins ist
+  größer – genau zum Ton, nicht zum Bild.
+- **Leertaste** startet und stoppt (nicht beim Schreiben in einem Feld).
+- **Läuft weiter, auch verdeckt:** Das Fenster wird im Hintergrund nicht gedrosselt, das
+  Metronom bleibt im Takt. „Wirklich beenden?“ nennt den laufenden Ton, und der Rechner schläft
+  dabei nicht ein. Fenster schließen beendet den Ton; Signal, Pegel und Einstellungen bleiben
+  gemerkt – gestartet wird nie von selbst.
+- **Ausgabegerät weg:** Fällt es während des Tons aus (Interface abgezogen), endet der Ton, und
+  ein Hinweis sagt es. Findet der Rechner schon beim Start keins, läuft der Ton mit dem Hinweis
+  „Kein Ausgabegerät bereit“ – zu hören ist dann nichts.
+- **Am Handy:** Der Ton kommt aus dem, was das Handy gerade nutzt (Lautsprecher, Kopfhörer,
+  USB-Adapter ins Pult, Bluetooth); ein Ausgabegerät lässt sich dort nicht wählen. Das iPhone
+  spielt auch im Stumm-Modus (ab iOS 17). Solange der Ton läuft, bleibt der Bildschirm an.
+  Wechselt man die App, sperrt den Bildschirm oder kommt ein Anruf, hält das Handy den Ton an –
+  der Knopf springt dann auf „Ton starten“ zurück, und ein Hinweis sagt es.
+
 ### Rechner fürs Handy (PWA)
 
-Alle zehn kleinen Werkzeuge – Kreis, Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen,
-DMX-Dip-Schalter, Stromlast, Audio-Delay, RTA, Rigging-Last und Timecode – gibt es zusätzlich als
+Alle elf kleinen Werkzeuge – Kreis, Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen,
+DMX-Dip-Schalter, Stromlast, Audio-Delay, RTA, Testtongenerator, Rigging-Last und Timecode – gibt es zusätzlich als
 eigenständige Web-App „MottulBox“ ohne die übrige Mottulbox: https://mottul.github.io/project_mega/ im
 Browser öffnen, über „Installieren“ bzw.
 „Zum Home-Bildschirm“ als App ablegen, danach läuft sie **offline**. Dieselben Rechner wie am

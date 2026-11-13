@@ -4,6 +4,7 @@ import { App } from './App'
 import { applyTheme, storedThemeMode } from './lib/theme'
 import { applyAccent, storedAccent } from './lib/accent'
 import { applyDensity, storedDensity } from './lib/density'
+import { setAktivMelder } from './lib/aktivMelden'
 import { setStorageErrorHandler } from './lib/persistStorage'
 import { toast } from './lib/toast'
 import './assets/main.css'
@@ -47,6 +48,11 @@ setStorageErrorHandler((name, err) => {
   )
   toMainLog(`Speichern fehlgeschlagen (${name})`, err)
 })
+
+// Ton, der nur im Fenster läuft (Testton, Jingles), an main melden: Die Rückfrage beim Beenden
+// nennt ihn, und der Rechner schläft nicht ein. Von außen gesetzt, weil dieselben Werkzeuge auch
+// in der Rechner-PWA laufen – ohne Programmbrücke (lib/aktivMelden).
+setAktivMelder((key, an) => window.api?.setAktiv(key, an))
 
 // Fehlt die Preload-Brücke, kann keine Funktion arbeiten -> klare Meldung statt
 // weißem Fenster / kryptischer Fehler bei der ersten api-Nutzung.

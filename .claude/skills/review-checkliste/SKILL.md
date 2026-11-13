@@ -40,7 +40,7 @@ Zusätzlich gilt der allgemeine `/code-review`.
   Erstellte wieder abbauen (`services/ndi/ndiSender.ts`, Regressionstest `e2e/ndi.mjs`). Ebenso
   beim Testton: Ein React-Effekt rief `update()`, während `start()` noch auf das Gerät
   wartete – zwei Stimmen spielten gleichzeitig (doppelter Pegel). Während des Starts nur den
-  Stand merken, `start()` baut danach mit dem neuesten (`tone/engine.ts`, `e2e/testton.mjs`).
+  Stand merken, `start()` baut danach mit dem neuesten (`_tone/engine.ts`, `e2e/testton.mjs`).
   Und beim RTA: Wer das Werkzeug verlässt oder den Eingang wechselt, während die Freigabe noch
   läuft, ließ das Mikrofon offen – Zähler in `rta/engine.ts`, Gegenprobe in `e2e/rta.mjs`
   (offene Spuren über ein umgelenktes `getUserMedia` zählen).
@@ -293,6 +293,31 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   synchron.
 - **macOS beendet die App mit dem letzten Fenster nicht** – Tests, die auf das Ende warten,
   dort anders prüfen (Fensterzahl).
+
+## Ton im Fenster (Testton, 13. November 2026)
+
+- **Vorausplanen heißt nicht nachholen.** Der Testton plant Klicks und Pulse alle 100 ms bis
+  0,4 s voraus. Hing die Seite, startete der nächste Takt alle verpassten Ereignisse zugleich:
+  nach 1,6 s zwei Polaritätspulse übereinander, Spitze 0,252 statt 0,126 – am Pegel-Deckel
+  vorbei (im alten Stand gemessen, `e2e/testton.mjs`). Was beim Planen schon vorbei ist,
+  entfällt; das Raster bleibt (`planMetronome` in `_tone/plan.ts`, `beep` in `_tone/engine.ts`).
+- **Was man im Betrieb ändert, darf den Ablauf nicht neu starten.** Jede Tempo-Änderung baute
+  die Stimme des Metronoms neu, es begann wieder bei der Eins – mit „schneller/langsamer“-Knöpfen
+  stottert das (aus dem Code). Fortlaufend planen: der nächste Schlag im neuen Abstand nach dem
+  zuletzt eingeplanten, schon Eingeplantes bleibt. E2E: Jeder Abstand ist der alte oder der neue.
+- **Overlays am `<body>` beim Scrollen mitlaufen lassen, nicht schließen.** Das ⓘ schloss beim
+  Scrollen – ein Klick auf ein ⓘ weiter unten scrollt es aber erst ins Bild, und die gerade
+  geöffnete Blase ging wieder zu (`e2e/layout.mjs`). Schließen beim Tippen daneben
+  (`pointerdown`, capture): Auf dem Handy kommt dabei oft kein `blur`.
+- **Wer nach Mausklicks den Fokus wegräumt (Tastenkürzel), lässt Elemente aus, die beim
+  Fokusverlust schließen** – das ⓘ trägt dafür `data-infotip`.
+- **Ein `error` am `AudioContext` heißt nicht immer „Gerät weg“.** Chromium meldet einen Rechner
+  ohne Audioausgabe mit `error` gleich nach dem Anlegen, hält den Kontext an und rechnet nach
+  `resume()` auf einem Ersatzgerät weiter. Der Testton wertete jedes `error` als Abbruch: lokal
+  grün, auf den CI-Rechnern unter Linux und Windows (ohne Audiogerät) stoppte jeder Start sofort
+  (PR 223). Heute bis 1 s nach dem Anlaufen Hinweis und wieder anwerfen, danach Ton aus
+  (`deviceError` in `_tone/engine.ts`). Neue Ereignisse am Kontext auch ohne Audiogerät
+  durchdenken.
 
 ## Was Electron und das System von selbst tun (10. November 2026)
 

@@ -20,8 +20,8 @@ import {
 import { PATTERN_OPTIONS, SOLID_OPTIONS, moduleCells, renderToCanvas } from './patterns'
 import { PatternPreview } from './PatternPreview'
 import { MappingSettings } from './MappingSettings'
-import { ToneSection, ToneToggle, useTestTone } from './tone/TestTone'
-import { toneSummary } from './tone/plan'
+import { ToneSection, ToneToggle, useTestTone } from './TestTone'
+import { toneSummary } from '../_tone/plan'
 
 const RES_PRESETS = [
   { label: '1280 × 720', w: 1280, h: 720 },

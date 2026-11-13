@@ -69,7 +69,7 @@ export function createWindow(
     bounds?: WindowBounds | null
     useContentSize?: boolean
     deferShow?: boolean
-    /** false: im Hintergrund nicht drosseln (misst laufend, z. B. der RTA) */
+    /** false: im Hintergrund nicht drosseln (RTA misst, Testtongenerator spielt) */
     backgroundThrottling?: boolean
   } = {}
 ): BrowserWindow {
