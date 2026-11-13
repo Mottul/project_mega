@@ -251,6 +251,32 @@ try {
       ]
     }),
     [
+      'Wechsel der Stufe baut die laufende Wiedergabe nicht neu auf (breit → mittel → schmal → breit)',
+      async () => {
+        await fenster(1366, 768)
+        const markieren = () =>
+          page.evaluate(() => {
+            const v = document.querySelector('[data-testid="vorschau"] video')
+            if (!v) return false
+            v.__marke = 1
+            return true
+          })
+        const nochDa = () =>
+          page.evaluate(
+            () => document.querySelector('[data-testid="vorschau"] video')?.__marke === 1
+          )
+        assert.ok(await markieren(), 'kein <video> in der Vorschau')
+        for (const [w, h, offen] of [
+          [1366, 768, true],
+          [700, 600, false],
+          [1366, 768, false]
+        ]) {
+          await fenster(w, h, offen)
+          assert.ok(await nochDa(), `nach ${w} × ${h} ist die Engine neu aufgebaut`)
+        }
+      }
+    ],
+    [
       '1024 × 600: Playlist und Bibliothek scrollen in sich',
       async () => {
         await fenster(1024, 600)

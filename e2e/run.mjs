@@ -12,6 +12,7 @@ const all = [
   'testton',
   'timer',
   'player',
+  'player-layout',
   'osc',
   'atem',
   'rta',

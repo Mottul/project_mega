@@ -1,6 +1,7 @@
-// Bibliothek des Video-Players: Import (Dateien, Ordner, Hineinziehen), Konvertier-Liste,
-// Hinweis auf Medien in anderer Wand-Auflösung und die Medien als große/kleine Kacheln oder
-// Liste. Ziehen oder Doppelklick legt ein Medium in die Playlist.
+// Bibliothek des Video-Players – ein Feld der Arbeitsfläche (components/WorkArea.tsx): Import
+// (Dateien, Ordner, Hineinziehen), Konvertier-Liste, Hinweis auf Medien in anderer
+// Wand-Auflösung und die Medien als große/kleine Kacheln oder Liste. Ziehen oder Doppelklick
+// legt ein Medium in die Playlist. Der Inhalt scrollt im Feld, nicht die Seite.
 
 import { useState, type DragEvent, type HTMLAttributes } from 'react'
 import {
@@ -18,8 +19,8 @@ import {
   RefreshCw,
   Trash2
 } from 'lucide-react'
+import { Pane } from '@renderer/components/WorkArea'
 import { Button } from '@renderer/components/ui/button'
-import { Card } from '@renderer/components/ui/card'
 import { api } from '@renderer/lib/api'
 import { MEDIA_EXTENSIONS } from '@shared/mediaExtensions'
 import type { FitMode, MediaItem } from '@shared/types'
@@ -37,8 +38,7 @@ export function Library({
   fit,
   wallW,
   wallH,
-  onReload,
-  className
+  onReload
 }: {
   library: MediaItem[]
   fit: FitMode
@@ -46,7 +46,6 @@ export function Library({
   wallH: number
   /** Bibliothek neu laden (ein Import ist fertig) */
   onReload: () => void
-  className: string
 }): JSX.Element {
   const [dragOver, setDragOver] = useState(false)
   const [view, setView] = useState<ViewMode>('large')
@@ -118,10 +117,13 @@ export function Library({
   }
 
   return (
-    <Card className={`flex min-w-0 flex-col p-5 ${className}`}>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="font-medium">Bibliothek</h2>
-        <div className="flex items-center gap-1">
+    <Pane
+      area="bibliothek"
+      testId="feld-bibliothek"
+      title="Bibliothek"
+      count={library.length > 0 ? library.length : undefined}
+      actions={
+        <>
           <div className="mr-1 flex rounded-md border border-border">
             {viewButtons.map((b) => (
               <button
@@ -140,9 +142,52 @@ export function Library({
           <Button variant="secondary" size="sm" onClick={() => void importFolder()}>
             <FolderOpen className="size-4" /> Ordner
           </Button>
-        </div>
-      </div>
-
+        </>
+      }
+      footer={
+        <>
+          {library.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void cmd({ type: 'add', mediaIds: library.map((m) => m.id) })}
+            >
+              <ListPlus className="size-4" /> Alle zur Playlist
+            </Button>
+          )}
+          <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void openMediaDir()}
+            title="Speicherort der konvertierten Medien"
+          >
+            <FolderOpen className="size-4" /> Ordner
+          </Button>
+          {library.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-danger hover:text-danger/80"
+              onClick={() => {
+                void api
+                  .confirm({
+                    message: 'Gesamte Bibliothek löschen?',
+                    detail: 'Die konvertierten Dateien werden entfernt.',
+                    confirmLabel: 'Leeren',
+                    danger: true
+                  })
+                  .then((ok) => {
+                    if (ok) void api.player.libraryClear()
+                  })
+              }}
+            >
+              <Eraser className="size-4" /> Leeren
+            </Button>
+          )}
+        </>
+      }
+    >
       <ConvertQueue onDone={onReload} />
 
       {staleItems.length > 0 && (
@@ -182,7 +227,7 @@ export function Library({
             </span>
           </p>
         ) : view === 'list' ? (
-          <div className="max-h-[460px] space-y-1 overflow-auto pr-1">
+          <div className="space-y-1">
             {library.map((m) => (
               <div
                 key={m.id}
@@ -231,7 +276,7 @@ export function Library({
           </div>
         ) : (
           <div
-            className={`grid max-h-[460px] gap-2 overflow-auto pr-1 ${
+            className={`grid gap-2 ${
               view === 'small' ? 'grid-cols-3 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3'
             }`}
           >
@@ -291,48 +336,6 @@ export function Library({
           </div>
         )}
       </div>
-
-      <div className="mt-3 flex items-center gap-2">
-        {library.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void cmd({ type: 'add', mediaIds: library.map((m) => m.id) })}
-          >
-            <ListPlus className="size-4" /> Alle zur Playlist
-          </Button>
-        )}
-        <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void openMediaDir()}
-          title="Speicherort der konvertierten Medien"
-        >
-          <FolderOpen className="size-4" /> Ordner
-        </Button>
-        {library.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-danger hover:text-danger/80"
-            onClick={() => {
-              void api
-                .confirm({
-                  message: 'Gesamte Bibliothek löschen?',
-                  detail: 'Die konvertierten Dateien werden entfernt.',
-                  confirmLabel: 'Leeren',
-                  danger: true
-                })
-                .then((ok) => {
-                  if (ok) void api.player.libraryClear()
-                })
-            }}
-          >
-            <Eraser className="size-4" /> Leeren
-          </Button>
-        )}
-      </div>
-    </Card>
+    </Pane>
   )
 }

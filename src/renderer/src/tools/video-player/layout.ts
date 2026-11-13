@@ -11,8 +11,8 @@ export type PlayerFeld = 'bibliothek' | 'playlist' | 'buehne'
 /**
  * Drei Felder – Bibliothek (Material), Playlist (Abfolge), Bühne (was läuft):
  * - breit: nebeneinander; die Bühne bekommt 40 % der Breite, mindestens 420, höchstens 960 px
- * - mittel: links Playlist über Bibliothek (3 : 2 – die Playlist braucht in der Show mehr
- *   Zeilen als die Bibliothek), rechts die Bühne über die ganze Höhe
+ * - mittel: links Playlist über Bibliothek (5 : 3 – die Playlist braucht in der Show mehr
+ *   Zeilen als die Bibliothek: bei 1024 × 600 gerade fünf), rechts die Bühne über die ganze Höhe
  * - schmal: untereinander, Bühne zuerst; die Arbeitsfläche scrollt
  * Die Reihenfolge im DOM bleibt immer gleich, nur die Bereiche wandern: Sonst baute React beim
  * Wechsel der Stufe (Schublade auf, Fenster schmaler) die Wiedergabe-Engine neu auf, und das
@@ -26,7 +26,7 @@ export const PLAYER_RASTER: Record<Stufe, Raster<PlayerFeld>> = {
   },
   mittel: {
     columns: 'minmax(300px, 1fr) minmax(380px, 1.2fr)',
-    rows: 'minmax(0, 3fr) minmax(0, 2fr)',
+    rows: 'minmax(0, 5fr) minmax(0, 3fr)',
     areas: [
       ['playlist', 'buehne'],
       ['bibliothek', 'buehne']

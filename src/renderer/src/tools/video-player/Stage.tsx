@@ -1,6 +1,12 @@
-// Wiedergabe-Karte des Video-Players: gespeicherte Playlists, Vorschau (aktive Engine oder
-// Spiegel der Ausgabe), Position, Transport, Loop/Zufall/Lautstärke/Übergang, Bild-Standzeit und
-// die Playlist. Alle Befehle gehen an den main (autoritativ, spiegelt in alle Fenster).
+// Bühne des Video-Players – das Feld „was läuft“ der Arbeitsfläche (components/WorkArea.tsx):
+// Vorschau (aktive Engine oder Spiegel der Ausgabe), Titel, Position, Transport,
+// Loop/Zufall/Lautstärke/Übergang und Bild-Standzeit. Alle Befehle gehen an den main
+// (autoritativ, spiegelt in alle Fenster).
+//
+// Die Vorschau ist so breit wie das Feld und 16:9 hoch – fehlt die Höhe, schrumpft ihr Rahmen
+// (bis 120 px), und der Kasten darin passt sich ein (Container-Einheiten, keine Messung). Vorher
+// wuchs sie nur mit der Breite und schob Transport und Playlist unter den Rand. Die Knöpfe
+// stehen immer direkt darunter; freier Platz bleibt unten im Feld.
 
 import {
   Clock,
@@ -17,31 +23,25 @@ import {
   Volume2,
   VolumeX
 } from 'lucide-react'
+import { Pane } from '@renderer/components/WorkArea'
 import { Badge } from '@renderer/components/ui/badge'
 import { Button } from '@renderer/components/ui/button'
-import { Card } from '@renderer/components/ui/card'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
-import type { LoopMode, PlayerState, SavedPlaylist, TransitionMode } from '@shared/types'
+import { cn } from '@renderer/lib/utils'
+import type { LoopMode, PlayerState, TransitionMode } from '@shared/types'
 import { fmtTime } from './format'
 import { PlaybackEngine } from './PlaybackEngine'
-import { Playlist, PlaylistTabs } from './Playlist'
 import type { Playback } from './usePlayback'
 
-export function PlaybackPanel({
+export function Stage({
   pstate,
-  playback,
-  saved,
-  onSaveSaved,
-  className
+  playback
 }: {
   pstate: PlayerState
   playback: Playback
-  saved: SavedPlaylist[]
-  onSaveSaved: (next: SavedPlaylist[]) => Promise<void>
-  className: string
 }): JSX.Element {
   const { current, position, duration, seekable } = playback
   const cmd = api.player.command
@@ -66,55 +66,57 @@ export function PlaybackPanel({
     pstate.loop === 'one' ? <Repeat1 className="size-4" /> : <Repeat className="size-4" />
 
   return (
-    <Card className={`flex min-w-0 flex-col p-5 ${className}`}>
-      <div className="mb-3">
-        <h2 className="font-medium">Wiedergabe</h2>
-      </div>
-
-      <PlaylistTabs saved={saved} playlist={pstate.playlist} onSave={onSaveSaved} />
-
+    <Pane area="buehne" label="Bühne" testId="feld-buehne" scroll={false} kappen={false}>
       {/* Vorschau / Monitorhinweis. Bei offenem Ausgabefenster schaltet ein
-      Klick zwischen bewegtem Spiegel und Standbild um. */}
-      <div
-        onClick={() => {
-          if (pstate.outputOpen) togglePreviewLive()
-        }}
-        title={pstate.outputOpen ? 'Klick: Live-Vorschau ein/aus' : undefined}
-        className={`relative mb-2 aspect-video w-full overflow-hidden rounded-md border border-border bg-black ${
-          pstate.outputOpen ? 'cursor-pointer' : ''
-        }`}
-      >
-        {!pstate.outputOpen || previewLive ? (
-          // Kein Ausgabefenster -> aktive Engine (treibt die Wiedergabe);
-          // Ausgabefenster offen + Live an -> passiver Spiegel des Wandbilds.
-          // key erzwingt sauberen Remount beim Wechsel aktiv <-> Spiegel.
-          <PlaybackEngine
-            key={pstate.outputOpen ? 'mirror' : 'live'}
-            objectFit="contain"
-            passive={pstate.outputOpen}
-            showFps={showFps}
-          />
-        ) : (
-          <>
-            {current?.thumbUrl ? (
-              <img
-                src={current.thumbUrl}
-                alt=""
-                className="h-full w-full object-contain opacity-60"
-              />
-            ) : null}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Badge tone="info">Wiedergabe läuft auf dem Monitor</Badge>
-            </div>
-          </>
-        )}
-        {pstate.outputOpen && (
-          <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white/90">
-            {previewLive ? 'Live · Klick = Standbild' : 'Standbild · Klick = Live'}
-          </span>
-        )}
+      Klick zwischen bewegtem Spiegel und Standbild um. Der Rahmen ist 16:9 und darf schrumpfen
+      (flex-shrink, höchstens bis 120 px); der Kasten darin ist so groß, wie Breite und Höhe des
+      Rahmens für 16:9 erlauben (container-type: size). Gleicher Baum in jeder Stufe der
+      Arbeitsfläche – sonst lüde die Engine beim Wechsel neu. */}
+      <div className="mb-2 flex aspect-video min-h-[120px] w-full shrink items-center justify-center [container-type:size]">
+        <div
+          data-testid="vorschau"
+          onClick={() => {
+            if (pstate.outputOpen) togglePreviewLive()
+          }}
+          title={pstate.outputOpen ? 'Klick: Live-Vorschau ein/aus' : undefined}
+          style={{ width: 'min(100cqw, calc(100cqh * 16 / 9))' }}
+          className={cn(
+            'relative aspect-video overflow-hidden rounded-md border border-border bg-black',
+            pstate.outputOpen && 'cursor-pointer'
+          )}
+        >
+          {!pstate.outputOpen || previewLive ? (
+            // Kein Ausgabefenster -> aktive Engine (treibt die Wiedergabe);
+            // Ausgabefenster offen + Live an -> passiver Spiegel des Wandbilds.
+            // key erzwingt sauberen Remount beim Wechsel aktiv <-> Spiegel.
+            <PlaybackEngine
+              key={pstate.outputOpen ? 'mirror' : 'live'}
+              objectFit="contain"
+              passive={pstate.outputOpen}
+              showFps={showFps}
+            />
+          ) : (
+            <>
+              {current?.thumbUrl ? (
+                <img
+                  src={current.thumbUrl}
+                  alt=""
+                  className="h-full w-full object-contain opacity-60"
+                />
+              ) : null}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Badge tone="info">Wiedergabe läuft auf dem Monitor</Badge>
+              </div>
+            </>
+          )}
+          {pstate.outputOpen && (
+            <span className="pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white/90">
+              {previewLive ? 'Live · Klick = Standbild' : 'Standbild · Klick = Live'}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex shrink-0 items-center gap-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{current?.title ?? 'Nichts ausgewählt'}</p>
           <p className="truncate text-xs text-muted-foreground">
@@ -146,7 +148,7 @@ export function PlaybackPanel({
       </div>
 
       {/* Seek */}
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex shrink-0 items-center gap-2">
         <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">
           {fmtTime(position)}
         </span>
@@ -165,7 +167,7 @@ export function PlaybackPanel({
       </div>
 
       {/* Transport */}
-      <div className="mb-3 flex items-center justify-center gap-2">
+      <div className="mb-3 flex shrink-0 items-center justify-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -194,12 +196,12 @@ export function PlaybackPanel({
       </div>
 
       {/* Tastatur-Kürzel (aktiv, wenn kein Textfeld fokussiert ist) */}
-      <p className="mb-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mb-3 shrink-0 text-center text-[11px] leading-relaxed text-muted-foreground">
         Leertaste Play/Pause · ←/→ 5 s · J/L 10 s · P/N Titel · ↑/↓ Lautstärke · M Stumm
       </p>
 
       {/* Modi */}
-      <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center justify-center gap-2">
         <Button
           variant={pstate.loop !== 'none' ? 'secondary' : 'ghost'}
           size="sm"
@@ -282,7 +284,7 @@ export function PlaybackPanel({
         )}
       </div>
 
-      <div className="mb-3 flex items-center justify-center">
+      <div className="flex shrink-0 items-center justify-center">
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="size-3.5" /> Bild-Standzeit
           <NumberField
@@ -295,8 +297,6 @@ export function PlaybackPanel({
           s
         </label>
       </div>
-
-      <Playlist pstate={pstate} />
-    </Card>
+    </Pane>
   )
 }
