@@ -118,6 +118,30 @@ nachgestellt, bevor etwas geändert wurde):
   (31.10.2026, nur auf den kleinen CI-Bildschirmen von Windows und macOS rot, lokal und unter Linux
   grün). Für Inhalte neben der Schublade `flex-wrap` mit `min-w-…`, und im E2E einmal mit
   `page.setViewportSize({ width: 1024, height: 700 })` und `click({ trial: true })` prüfen.
+  Für ganze Anordnungen gibt es dafür `WorkArea` (Stufe aus dem gemessenen Platz).
+
+Aus dem Umbau des Video-Players auf die Arbeitsfläche (P1/P2, 13.11.2026):
+
+- **Ein Wechsel der Anordnung darf den React-Baum nicht ändern.** Rendert eine Stufe andere
+  Hüllen oder eine andere Reihenfolge, baut React beim Öffnen der Schublade die Kinder neu auf –
+  im Player die Wiedergabe-Engine, deren Video dann neu lädt. Die Felder stehen deshalb immer in
+  derselben Reihenfolge; die Anordnung kommt aus `grid-template-areas`. Geprüft wird das mit
+  einer Marke am Element (`video.__marke = 1`), Stufe wechseln, Marke noch da
+  (`e2e/player-layout.mjs`).
+- **`container-type: size` braucht eine Größe, die nicht vom Inhalt kommt.** Das Element zählt
+  seinen Inhalt dann nicht mit – mit Höhe `auto` hat es die Höhe 0. Größe aus dem Seitenverhältnis
+  (`aspect-video` und `w-full`) oder aus dem umgebenden Flex/Raster geben.
+- **Freie Höhe nicht mit `flex-1` an die Vorschau geben, wenn darunter Knöpfe stehen.** Dann
+  schwebt die Vorschau in großen Fenstern mitten im Feld, und die Knöpfe kleben am unteren Rand
+  (1920 × 1080, im Bild gesehen – der Messtest war grün). Besser: Rahmen mit Seitenverhältnis, der
+  nur schrumpft (`flex-shrink`, `min-h-…`), der Kasten darin per Container-Einheiten
+  (`width: min(100cqw, calc(100cqh * 16 / 9))`); freier Platz bleibt unten.
+- **Ein Test, der am alten Stand absichtlich scheitert, ist kein eigener Pull Request.** Er
+  machte die CI rot. Test und Umbau in einen Pull Request, als zwei Commits; das Skript erst mit
+  dem Umbau in `e2e/run.mjs` eintragen.
+- **Messen, dann bauen – und nachrechnen, bevor man Verhältnisse festlegt.** Geplant war links
+  11 : 9 (Playlist zu Bibliothek); nachgerechnet hätte die Playlist bei 1024 × 600 nur vier statt
+  fünf Zeilen gezeigt. Erst mit 5 : 3 und kompakteren Zeilen passte es.
 
 ## Einstellungen und gemerkte Stände
 

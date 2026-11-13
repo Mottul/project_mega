@@ -21,6 +21,16 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Ausgabe (Monitor, NDI, Handy …), `label="Ausgabe"`, `active` = gerade live (rot), Schalter als
      `BarToggle`, rechts `status` (was läuft). Sonst `kind="job"` mit dem Auftrag (Ziel, Start;
      bernstein, solange er läuft). Weder noch: `bar` weglassen.
+   - **`main` mit mehreren Bereichen, die in der Show gleichzeitig zu sehen sein müssen**
+     (Liste, Vorschau, Transport): `WorkArea` mit `Pane`s aus `components/WorkArea.tsx`, Vorbild
+     Video-Player. Je Stufe (`breit`, `mittel`, `schmal` – aus dem gemessenen Platz, nicht aus
+     dem Fenster) ein Raster wie `PLAYER_RASTER` in `video-player/layout.ts`. Die Felder stehen
+     in jeder Stufe in derselben Reihenfolge, nur ihre Bereiche wechseln – sonst baut React beim
+     Öffnen der Schublade alles neu auf. Listen scrollen im Feld (`Pane`, `scroll`), die Seite
+     nie; ein Feld, das so hoch wie sein Inhalt sein soll, bekommt `kappen={false}`. Abnahme nach
+     `e2e/player-layout.mjs` (kein Scrollen bei 1024 × 600, 1366 × 768 auch mit angehefteter
+     Schublade, 1920 × 1080; Wichtiges im Bild; schmal eine Spalte). Werkzeuge, die man wie ein
+     Dokument liest (Listen, Formulare), scrollen weiter als Seite.
    - **Bild-Ausgabe auf einen Monitor** (wie Testbild, Player, Timer): in der Leiste
      `useOutputTarget()` + `OutputControls` (`components/OutputControl.tsx`: Monitore und „Als
      Fenster“, Starten/Beenden, „Monitor wechseln“), im main `createOutputWindow()`

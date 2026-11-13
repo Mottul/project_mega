@@ -130,6 +130,15 @@ Jedes Werkzeug ist gleich aufgebaut:
 
 Playlist-Player für LED-Wände und Beamer.
 
+- **Aufbau:** drei Felder – Bibliothek, Playlist und Bühne (Vorschau, Titel, Transport). Bei
+  genug Platz stehen sie nebeneinander; mit angehefteter Schublade oder in einem kleineren
+  Fenster steht links die Playlist über der Bibliothek, rechts die Bühne; ganz schmal
+  untereinander, die Bühne zuerst. Die Listen scrollen in sich, die Seite nicht: Vorschau,
+  Transport und die Playlist sind gleichzeitig im Bild (ab 1024 × 600, dort mit fünf Einträgen).
+  Die Vorschau ist so breit wie die Bühne und wird kleiner, wenn die Höhe fehlt. Wechselt der
+  Aufbau (Schublade auf, Fenster schmaler), läuft die Vorschau ohne Unterbrechung weiter. Der
+  Kopf der Playlist nennt Anzahl und Gesamtdauer (Bilder mit ihrer Standzeit); gespeicherte
+  Playlists stehen in einer Zeile darunter, bei vielen waagrecht scrollbar.
 - **Auf die Wand eingebacken:** Medien werden beim Import auf die Wand-Auflösung gerechnet –
   Blur-Fill, schwarze Ränder oder Strecken – und als H.264/MP4 abgelegt, das Chromium
   hardwarebeschleunigt abspielt. GPU-Encoder (NVENC, QSV, AMF, VideoToolbox) werden erkannt und

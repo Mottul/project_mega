@@ -27,9 +27,10 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 3. **Befunde der Durchsicht vom November 2026:** alle offenen Punkte als einzeln umsetzbare
    Pakete in [PLAN-DURCHSICHT.md](PLAN-DURCHSICHT.md) – Bedienung und Design, Rückgängig in
    den Editoren, Aufräumen, Sicherung, neue Werkzeuge, Skills. Das
-   wichtigste Vorhaben daraus ist der **Video-Player ohne Scrollen** (gemessen: bei 1366 × 768
-   ist die Seite doppelt so hoch wie das Fenster) mit einem Gerüst, das auch Stage-Timer,
-   Testbild und Video-Generator nutzen können: [PLAN-ARBEITSFLAECHE.md](PLAN-ARBEITSFLAECHE.md).
+   wichtigste Vorhaben daraus ist der **Video-Player ohne Scrollen** mit einem Gerüst, das auch
+   Stage-Timer, Testbild und Video-Generator nutzen können: [PLAN-ARBEITSFLAECHE.md](PLAN-ARBEITSFLAECHE.md).
+   Die drei Felder stehen seit November 2026 (die Seite scrollt nicht mehr); offen sind Bühne,
+   Playlist und Bibliothek im Einzelnen (P3 bis P6).
 
 ## Funktionen
 
