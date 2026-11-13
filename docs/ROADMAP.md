@@ -3,7 +3,7 @@
 Was ansteht – Funktionen und Technik. Erledigtes wandert raus: Was die Werkzeuge heute können,
 beschreibt [WERKZEUGE.md](WERKZEUGE.md), die Geschichte steht im Git-Log.
 
-**Stand:** 12. November 2026
+**Stand:** 13. November 2026
 
 - [Als Nächstes](#als-nächstes)
 - [Funktionen](#funktionen) – [bestehende Werkzeuge](#bestehende-werkzeuge-ausbauen),
@@ -65,6 +65,10 @@ Empfohlene Reihenfolge für die Technik; Funktionen nach Show-Bedarf.
 
 ### Neue Werkzeuge
 
+- **Testtongenerator** als kleines Werkzeug, auch in der Handy-PWA: Sinus, Sweep, Rauschen,
+  Metronom, Kanal-Kennung und Polaritätspuls auf dem Ton-Kern des Testbildgenerators. Dazu die
+  kleinen Werkzeuge angleichen (gemeinsame Bausteine, Eingaben am Handy, getestete
+  Rechenkerne) – Schritte in [PLAN-TESTTON.md](PLAN-TESTTON.md).
 - **ATEM-Steuerung, weitere Phasen:** Mischen, Keyer, Makros, Medien und AUX stehen, die Seite
   „Mischen“ lief am ATEM Mini Extreme. Es fehlen die Abnahme mit Bild und am ATEM Mini, SuperSource mit bildgenau animierten Layoutwechseln, Multiview im Werkzeug, Ton,
   eigene Seiten und die Bedienung vom Tablet – Plan mit Phasen in [PLAN-ATEM.md](PLAN-ATEM.md).
