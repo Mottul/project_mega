@@ -1,9 +1,11 @@
 // Anordnung des Video-Players – rein und getestet (layout.test.ts): die Raster je Stufe der
-// Arbeitsfläche (components/workAreaRaster.ts), die Gesamtdauer der Playlist und stabile
-// Schlüssel für ihre Zeilen. Entwurf und Messungen: docs/PLAN-ARBEITSFLAECHE.md.
+// Arbeitsfläche (components/workAreaRaster.ts), die Gesamtdauer der Playlist, stabile
+// Schlüssel für ihre Zeilen und „Danach“ der Bühne. Entwurf und Messungen:
+// docs/PLAN-ARBEITSFLAECHE.md.
 
 import type { Raster, Stufe } from '@renderer/components/workAreaRaster'
-import type { MediaItem } from '@shared/types'
+import { nextIndex } from '@shared/player'
+import type { MediaItem, PlayerState } from '@shared/types'
 
 /** Namen der drei Felder (CSS grid-template-areas) */
 export type PlayerFeld = 'bibliothek' | 'playlist' | 'buehne'
@@ -57,4 +59,17 @@ export function zeilenSchluessel(playlist: Pick<MediaItem, 'id'>[]): string[] {
     gesehen.set(m.id, n)
     return `${m.id}#${n}`
   })
+}
+
+/**
+ * Titel dessen, was nach dem laufenden Eintrag kommt („Danach: …“ in der Bühne): aus
+ * `nextIndex` wie im main, also auch bei Zufall (vorab gewürfelt) und Loop „Eines“ (derselbe
+ * Titel); „Ende“, wenn danach nichts mehr kommt. `null`, solange nichts läuft.
+ */
+export function danach(
+  state: Pick<PlayerState, 'playlist' | 'index' | 'loop' | 'shuffle' | 'shuffleNext'>
+): string | null {
+  if (state.playlist.length === 0 || state.index < 0) return null
+  const i = nextIndex(state)
+  return i < 0 ? 'Ende' : state.playlist[i].title
 }

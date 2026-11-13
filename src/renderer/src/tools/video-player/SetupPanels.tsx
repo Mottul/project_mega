@@ -1,8 +1,9 @@
 // Schublade des Video-Players: Wand-Auflösung, Bild einpassen (Fit, Blur), Import (Encoder,
-// Parallelität, Lautheit) und Idle-Bild. Die Werte hält VideoPlayer (aus settings.json, auch von
-// anderen Fenstern und dem Handy geändert); hier nur Anzeige und Änderungen.
+// Parallelität, Lautheit), Wiedergabe (Übergang, Bild-Standzeit) und Idle-Bild. Die Werte hält
+// VideoPlayer (aus settings.json, auch von anderen Fenstern und dem Handy geändert) bzw. der
+// Wiedergabezustand im main; hier nur Anzeige und Änderungen.
 
-import { Clock, Gauge, Image as ImageIcon, Ratio } from 'lucide-react'
+import { Blend, Clock, Gauge, Image as ImageIcon, Ratio } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
@@ -18,9 +19,11 @@ import type {
   PatternId,
   PlayerEncoderStatus,
   PlayerState,
-  SettingsPatch
+  SettingsPatch,
+  TransitionMode
 } from '@shared/types'
 import { PATTERN_OPTIONS } from '../test-patterns/patterns'
+import { fmtSekunden } from './format'
 
 /** Nur die geänderten Felder – main führt sie feldweise zusammen. */
 export type PersistPlayer = (patch: NonNullable<SettingsPatch['player']>) => Promise<void>
@@ -35,6 +38,11 @@ const FIT_OPTIONS: { value: FitMode; label: string; short: string }[] = [
     short: 'Unverändert'
   }
 ]
+
+/** Kurzname der Einpass-Art für Anzeigen (Bühne, Zusammenfassung) – nie die interne Kennung */
+export function fitKurz(mode: FitMode): string {
+  return FIT_OPTIONS.find((o) => o.value === mode)?.short ?? mode
+}
 
 const RES_PRESETS = [
   { label: '1280 × 720', w: 1280, h: 720 },
@@ -341,6 +349,70 @@ export function ImportSection({
           Vorhandene neu einbacken
         </Button>
       )}
+    </PanelSection>
+  )
+}
+
+/**
+ * Übergang zwischen den Medien und Standzeit der Bilder. Gilt sofort für die laufende Wiedergabe
+ * (Befehl an den main, der sie in settings.json merkt); am Handy stehen beide weiter auf der
+ * Steuerseite. Auch in der Kundenansicht da – es ist Bedienung, keine Technik.
+ */
+export function WiedergabeSection({ pstate }: { pstate: PlayerState }): JSX.Element {
+  const cmd = api.player.command
+  const ueberblenden = pstate.transition === 'crossfade'
+  return (
+    <PanelSection
+      id="wiedergabe"
+      title="Wiedergabe"
+      icon={Blend}
+      summary={`${ueberblenden ? `Überblenden ${fmtSekunden(pstate.transitionMs)} s` : 'Schnitt'} · Bilder ${pstate.imageDurationSec} s`}
+    >
+      <Field
+        label="Übergang"
+        hint="Wie ein Medium ins nächste wechselt. Schnitt: sofort. Überblenden: das nächste blendet über das laufende – beide sind so lange übereinander zu sehen, wie die Überblendung dauert."
+      >
+        <Select
+          value={pstate.transition}
+          onChange={(e) =>
+            void cmd({ type: 'setTransition', transition: e.target.value as TransitionMode })
+          }
+        >
+          <option value="cut">Schnitt (Cut)</option>
+          <option value="crossfade">Überblenden (Overlap)</option>
+        </Select>
+      </Field>
+      {ueberblenden && (
+        <Field label="Dauer der Überblendung">
+          <span className="flex items-center gap-2">
+            <NumberField
+              value={pstate.transitionMs}
+              min={100}
+              max={5000}
+              className="w-24"
+              onCommit={(v) =>
+                void cmd({ type: 'setTransition', transition: 'crossfade', transitionMs: v })
+              }
+            />
+            <span className="text-sm text-muted-foreground">ms</span>
+          </span>
+        </Field>
+      )}
+      <Field
+        label="Bild-Standzeit"
+        hint="So lange steht ein Bild, bevor das nächste Medium kommt. Zählt auch für die Gesamtdauer im Kopf der Playlist."
+      >
+        <span className="flex items-center gap-2">
+          <NumberField
+            value={pstate.imageDurationSec}
+            min={1}
+            max={3600}
+            className="w-24"
+            onCommit={(v) => void cmd({ type: 'setImageDuration', seconds: v })}
+          />
+          <span className="text-sm text-muted-foreground">s</span>
+        </span>
+      </Field>
     </PanelSection>
   )
 }

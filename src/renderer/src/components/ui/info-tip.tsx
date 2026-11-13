@@ -1,7 +1,7 @@
 // Kurze Erklärung hinter einem ⓘ statt eines Absatzes unter jeder Option – so bleiben die
 // Einstellungen ruhig. Hover oder Fokus zeigt die Blase, ein Klick hält sie offen.
 // Die Blase hängt am <body> (fixed): Im scrollenden Einstellungs-Panel würde sie sonst
-// abgeschnitten.
+// abgeschnitten. Zeilenumbrüche im Text bleiben stehen (Listen wie die Tastenkürzel des Players).
 import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@renderer/lib/utils'
@@ -67,7 +67,7 @@ export function InfoTip({
         createPortal(
           <span
             role="tooltip"
-            className="pointer-events-none fixed z-[100] rounded-md border border-border bg-card p-2.5 text-xs font-normal leading-relaxed text-foreground shadow-lg"
+            className="pointer-events-none fixed z-[100] whitespace-pre-line rounded-md border border-border bg-card p-2.5 text-xs font-normal leading-relaxed text-foreground shadow-lg"
             style={{ left: pos.left, top: pos.top, width: WIDTH }}
           >
             {text}
