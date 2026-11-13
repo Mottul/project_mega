@@ -130,18 +130,29 @@ Aus dem Umbau des Video-Players auf die Arbeitsfläche (P1/P2, 13.11.2026):
   (`e2e/player-layout.mjs`).
 - **`container-type: size` braucht eine Größe, die nicht vom Inhalt kommt.** Das Element zählt
   seinen Inhalt dann nicht mit – mit Höhe `auto` hat es die Höhe 0. Größe aus dem Seitenverhältnis
-  (`aspect-video` und `w-full`) oder aus dem umgebenden Flex/Raster geben.
+  (`aspect-ratio` und `w-full`) oder aus dem umgebenden Flex/Raster geben.
 - **Freie Höhe nicht mit `flex-1` an die Vorschau geben, wenn darunter Knöpfe stehen.** Dann
   schwebt die Vorschau in großen Fenstern mitten im Feld, und die Knöpfe kleben am unteren Rand
   (1920 × 1080, im Bild gesehen – der Messtest war grün). Besser: Rahmen mit Seitenverhältnis, der
   nur schrumpft (`flex-shrink`, `min-h-…`), der Kasten darin per Container-Einheiten
-  (`width: min(100cqw, calc(100cqh * 16 / 9))`); freier Platz bleibt unten.
+  (`width: min(100cqw, calc(100cqh * w / h))` mit dem Verhältnis der Wand); freier Platz bleibt
+  unten.
 - **Ein Test, der am alten Stand absichtlich scheitert, ist kein eigener Pull Request.** Er
   machte die CI rot. Test und Umbau in einen Pull Request, als zwei Commits; das Skript erst mit
   dem Umbau in `e2e/run.mjs` eintragen.
 - **Messen, dann bauen – und nachrechnen, bevor man Verhältnisse festlegt.** Geplant war links
   11 : 9 (Playlist zu Bibliothek); nachgerechnet hätte die Playlist bei 1024 × 600 nur vier statt
   fünf Zeilen gezeigt. Erst mit 5 : 3 und kompakteren Zeilen passte es.
+
+Aus der Bühne des Video-Players (P3, 13.11.2026):
+
+- **Knöpfe über der Wiedergabe-Engine brauchen `z-20`.** Ihre Video-Ebenen tragen `z-index` bis 10
+  ohne eigenen Stapelkontext; ein Knopf ohne `z-index` liegt darunter – unsichtbar beim
+  Darüberfahren und nicht klickbar. Im Messtest unauffällig, im Bild gesehen; seither klickt das
+  E2E den Knopf „FPS“ (Playwright scheitert, wenn etwas darüber liegt).
+- **`pstate.wall` ist nicht die Wand aus den Einstellungen.** Der main zieht es erst nach, wenn
+  das Ausgabefenster aufgeht. Für Anzeigen im Fenster (Seitenverhältnis der Vorschau) die
+  Wand-Auflösung aus den Einstellungen nehmen (`wallW`/`wallH` in `VideoPlayer.tsx`).
 
 ## Einstellungen und gemerkte Stände
 

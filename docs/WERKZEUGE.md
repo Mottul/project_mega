@@ -135,10 +135,21 @@ Playlist-Player für LED-Wände und Beamer.
   Fenster steht links die Playlist über der Bibliothek, rechts die Bühne; ganz schmal
   untereinander, die Bühne zuerst. Die Listen scrollen in sich, die Seite nicht: Vorschau,
   Transport und die Playlist sind gleichzeitig im Bild (ab 1024 × 600, dort mit fünf Einträgen).
-  Die Vorschau ist so breit wie die Bühne und wird kleiner, wenn die Höhe fehlt. Wechselt der
-  Aufbau (Schublade auf, Fenster schmaler), läuft die Vorschau ohne Unterbrechung weiter. Der
-  Kopf der Playlist nennt Anzahl und Gesamtdauer (Bilder mit ihrer Standzeit); gespeicherte
-  Playlists stehen in einer Zeile darunter, bei vielen waagrecht scrollbar.
+  Die Vorschau hat das Seitenverhältnis der Wand (bei 3840 × 1080 ein breiter Streifen, bei
+  1080 × 1920 hochkant), ist so breit wie die Bühne und wird kleiner, wenn die Höhe fehlt.
+  Wechselt der Aufbau (Schublade auf, Fenster schmaler), läuft die Vorschau ohne Unterbrechung
+  weiter. Der Kopf der Playlist nennt Anzahl und Gesamtdauer (Bilder mit ihrer Standzeit);
+  gespeicherte Playlists stehen in einer Zeile darunter, bei vielen waagrecht scrollbar.
+- **Bühne:** unter der Vorschau der Titel mit Maßen und Einpass-Art, rechts daneben groß die
+  **Restzeit** („−0:48“; bei Bildern die restliche Standzeit, grau, solange pausiert). Darunter
+  Suchleiste und Transport: links der Ton – **„Stumm“** steht in Warnfarbe da, solange stumm
+  geschaltet ist (der Player startet stumm) –, in der Mitte Zurück, Play/Pause, Weiter, rechts
+  Loop (Alle, Eines, Aus) und Zufall als Symbole (an = Akzentfarbe, der Name im Tooltip) und ein
+  ⓘ mit den Tastenkürzeln. In einer schmalen Bühne stehen Ton und Modi in einer zweiten Zeile.
+  Ganz unten **„Danach: …“** mit dem nächsten Titel – auch bei Zufall (der nächste ist vorab
+  gewürfelt), mit Loop „Eines“ derselbe, am Ende ohne Loop „Ende“. FPS-Anzeige und (bei offenem
+  Ausgabefenster) Live-Vorschau sind kleine Knöpfe oben links in der Vorschau, sichtbar beim
+  Darüberfahren oder mit der Tastatur.
 - **Auf die Wand eingebacken:** Medien werden beim Import auf die Wand-Auflösung gerechnet –
   Blur-Fill, schwarze Ränder oder Strecken – und als H.264/MP4 abgelegt, das Chromium
   hardwarebeschleunigt abspielt. GPU-Encoder (NVENC, QSV, AMF, VideoToolbox) werden erkannt und
@@ -173,10 +184,14 @@ Playlist-Player für LED-Wände und Beamer.
   gewählte Wand) steht in der Schublade unter „Wand“.
 - **Vollbild-Ausgabe** mit doppelt gepuffertem Player: nahtlose Übergänge, wahlweise Schnitt oder
   echtes Überblenden (das alte Video läuft weiter, Ton blendet mit). Shuffle ist lückenlos – das
-  nächste Zufallsmedium wird vorab geladen.
+  nächste Zufallsmedium wird vorab geladen. Übergang, Dauer der Überblendung und Bild-Standzeit
+  stehen in der Schublade unter „Wiedergabe“ (auch in der Kundenansicht; am Handy auf der
+  Steuerseite).
 - **Bedienung:** Play/Pause, Skip, Seek, Loop, Shuffle, Stumm; Playlist per Drag & Drop,
   gespeicherte Playlists als Tabs (Löschen nur nach Rückfrage; die Medien bleiben in der
-  Bibliothek).
+  Bibliothek). Tastenkürzel, solange kein Eingabefeld den Fokus hat: Leertaste oder K
+  Play/Pause, ←/→ 5 s, J/L 10 s, Pos1 an den Anfang, P/N voriger/nächster Titel, ↑/↓
+  Lautstärke, M Stumm.
 - **Bibliothek** mit Thumbnails, Import per Drag & Drop, Listen- und Kachelansicht;
   Neu-Konvertierung aller Medien bei Auflösungswechsel.
 - **In-App-Vorschau**, die auch ohne Ausgabefenster abspielt – praktisch ohne zweiten Bildschirm.
