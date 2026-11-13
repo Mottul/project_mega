@@ -165,6 +165,12 @@ Schritt, der schon vorher grün ist, prüft nichts.
   zweite Schlag“, gespielt hatte die Engine alle. Im Zweifel `AudioScheduledSourceNode.prototype.start`
   umlenken und mitschreiben, was wirklich eingeplant wird (`AudioBufferSourceNode` hat ein
   eigenes `start`).
+- **Die CI-Rechner unter Linux und Windows haben kein Audiogerät** (macOS schon): Chromium
+  feuert dort gleich nach dem Anlegen `error` am `AudioContext`, hält ihn an und rechnet nach
+  `resume()` auf einem Ersatzgerät weiter – der Analysator misst trotzdem. Lokal mit Gerät kommt
+  dieser Fehler nie: Ein Ton-Test, der lokal grün und in der CI rot ist, zuerst daraufhin
+  ansehen. Nachstellen lässt er sich mit einer Unterklasse von `AudioContext`, die nach dem
+  Anlegen `error` sendet und `suspend()` ruft (letzter Schritt in `e2e/tone-generator.mjs`).
 - **Zeichenflächen haben Fenstergröße:** vor Pixelprüfungen `page.setViewportSize(…)`, gelesen
   wird mit `getImageData`.
 - **Fernsteuer-Seiten** in `openBrowserWindow` öffnen (unsichtbares Electron-Fenster ohne

@@ -2,7 +2,9 @@
 // Analysator (je Kanal), so lassen sich Pegel, Frequenz, die Pausen der Kanal-Kennung und der
 // Zeitpunkt des AV-Sync-Piepes gegenüber der vollen Sekunde prüfen. Dazu der Blitz in der
 // Vorschau und dass der Ton beim Verlassen des Werkzeugs endet.
-// Ohne laufende Audioausgabe (manche CI-Rechner) werden die Messschritte übersprungen.
+// Die CI-Rechner unter Linux und Windows haben kein Audiogerät: Chromium meldet das mit einem
+// Fehler gleich beim Start und rechnet dann auf einem Ersatzgerät – gemessen wird trotzdem. Läuft
+// der Kontext gar nicht, werden die Messschritte übersprungen.
 
 import assert from 'node:assert/strict'
 import { launchApp, openRoute, runSteps, Skip, sleep, waitFor } from './harness.mjs'
@@ -162,10 +164,14 @@ try {
         await signalSelect().selectOption('polarity')
         await sleep(800)
         // 1,6 s blockiert: Drei Pulse fallen in die Zeit; sie zugleich nachzuholen ergäbe die
-        // dreifache Spitze – am Pegel-Deckel vorbei
-        const max = await tap('hang', 1600, 300)
+        // dreifache Spitze – am Pegel-Deckel vorbei. Gemessen wird 0,7 s lang: Darin liegt
+        // mindestens ein neuer Puls (alle 0,5 s); Stille hieße, der Takt liefe nicht weiter.
+        const max = await tap('hang', 1600, 700)
         const level = 10 ** (-18 / 20)
-        assert.ok(max <= level * 1.1, `Spitze ${max.toFixed(3)}, Pegel ${level.toFixed(3)}`)
+        assert.ok(
+          max > level * 0.5 && max <= level * 1.1,
+          `Spitze ${max.toFixed(3)}, Pegel ${level.toFixed(3)}`
+        )
       }
     ],
     [

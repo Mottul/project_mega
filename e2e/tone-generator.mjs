@@ -1,9 +1,12 @@
 // Testtongenerator (kleines Werkzeug, läuft auch in der Handy-PWA) in der echten App, gemessen
 // statt angenommen – Analysator vor dem Ausgang (e2e/toneTap.mjs): Start und Stopp, Pegel und
 // Deckel, alle Signale, Kanäle und Gegenphase, Metronom (Tempo im Betrieb, „Tippen“,
-// Schlag-Anzeige), Leertaste, verdecktes Fenster, „Wirklich beenden?“ und der gemerkte Stand.
+// Schlag-Anzeige), Leertaste, verdecktes Fenster, „Wirklich beenden?“, der gemerkte Stand und
+// ein fehlendes oder ausfallendes Ausgabegerät.
 // Fenster, Höhe und 320 px Breite prüft e2e/layout.mjs (SMALL).
-// Ohne laufende Audioausgabe (manche CI-Rechner) werden die Messschritte übersprungen.
+// Die CI-Rechner unter Linux und Windows haben kein Audiogerät: Chromium meldet das mit einem
+// Fehler gleich beim Start und rechnet dann auf einem Ersatzgerät – gemessen wird trotzdem. Läuft
+// der Kontext gar nicht, werden die Messschritte übersprungen.
 
 import assert from 'node:assert/strict'
 import { launchApp, runSteps, Skip, sleep, waitFor } from './harness.mjs'
@@ -295,6 +298,45 @@ try {
         assert.equal(await signal('Rosa').getAttribute('aria-pressed'), 'true')
         await w.getByText('−12 dBFS', { exact: true }).first().waitFor()
         assert.match(await w.getByTestId('tone-summary').innerText(), /Rosa Rauschen/)
+      }
+    ],
+    [
+      'Ausgabegerät fehlt beim Start: Hinweis, der Ton läuft; fällt es im Betrieb aus: Ton aus',
+      async () => {
+        needAudio()
+        // So meldet Chromium einen Rechner ohne Audioausgabe (wie die CI-Rechner): Fehler gleich
+        // nach dem Anlegen, danach angehalten (HandleRenderError in audio_context.cc)
+        await w.evaluate(() => {
+          const Echt = window.AudioContext
+          window.__echtesAudioContext = Echt
+          window.AudioContext = class extends Echt {
+            constructor(...args) {
+              super(...args)
+              setTimeout(() => {
+                this.dispatchEvent(new Event('error'))
+                void this.suspend()
+              }, 0)
+            }
+          }
+        })
+        try {
+          await signal('Sinus').click()
+          await w.getByRole('button', { name: '−18 dBFS' }).click()
+          await startButton().click()
+          await w.getByText(/^Kein Ausgabegerät bereit/).waitFor({ timeout: 5000 })
+          await stopButton().waitFor()
+          await expectPeaks({ l: LEVEL, r: LEVEL }, 'nach dem Fehler beim Start')
+          // später derselbe Fehler: Gerät weg – der Ton ist aus, der Hinweis sagt es
+          await sleep(1200)
+          await w.evaluate(() => window.__tone.at(-1).ctx.dispatchEvent(new Event('error')))
+          await startButton().waitFor({ timeout: 3000 })
+          await w.getByText(/^Der Ton wurde unterbrochen/).waitFor()
+        } finally {
+          await w.evaluate(() => {
+            window.AudioContext = window.__echtesAudioContext
+          })
+          if (await stopButton().count()) await stopButton().click()
+        }
       }
     ]
   ])

@@ -51,6 +51,9 @@ nicht brauchen. Aufbau und Veröffentlichen: `docs/ENTWICKLUNG.md`, Abschnitt �
   `'auto'`, sonst bekommt der RTA kein Mikrofon. Erledigt der Kern.
 - **App gewechselt, gesperrt, Anruf:** iOS hält den Kontext an. Nie still „läuft“ zeigen – der
   Kern meldet `onEnded`, das Werkzeug zeigt einen Hinweis und den Startknopf.
+- **`error` am Kontext:** Gleich nach dem Start heißt er „kein Ausgabegerät“ (Chromium rechnet
+  dann auf einem Ersatzgerät; der Kern wirft ihn wieder an und meldet `onWarning`), im Betrieb
+  „Gerät weg“ (`onEnded`, Ton aus). Erledigt der Kern (`deviceError`).
 - **Bildschirm wach:** `useWakeLock(läuft)` (nur HTTPS; im installierten iPhone-Webapp erst ab
   iOS 18.4 zuverlässig).
 - **Mikrofon** nur über HTTPS; ohne HTTPS (PWA im LAN per `pwa:preview`) gibt es weder

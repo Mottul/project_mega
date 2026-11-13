@@ -311,6 +311,13 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   (`pointerdown`, capture): Auf dem Handy kommt dabei oft kein `blur`.
 - **Wer nach Mausklicks den Fokus wegräumt (Tastenkürzel), lässt Elemente aus, die beim
   Fokusverlust schließen** – das ⓘ trägt dafür `data-infotip`.
+- **Ein `error` am `AudioContext` heißt nicht immer „Gerät weg“.** Chromium meldet einen Rechner
+  ohne Audioausgabe mit `error` gleich nach dem Anlegen, hält den Kontext an und rechnet nach
+  `resume()` auf einem Ersatzgerät weiter. Der Testton wertete jedes `error` als Abbruch: lokal
+  grün, auf den CI-Rechnern unter Linux und Windows (ohne Audiogerät) stoppte jeder Start sofort
+  (PR 223). Heute bis 1 s nach dem Anlaufen Hinweis und wieder anwerfen, danach Ton aus
+  (`deviceError` in `_tone/engine.ts`). Neue Ereignisse am Kontext auch ohne Audiogerät
+  durchdenken.
 
 ## Was Electron und das System von selbst tun (10. November 2026)
 

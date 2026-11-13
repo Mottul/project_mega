@@ -55,6 +55,16 @@ const LATE = 0.005
 const KEEP_BEATS = 8
 /** So lange wartet start() höchstens darauf, dass der Browser den Ton freigibt (ms) */
 const UNLOCK_WAIT_MS = 1500
+/**
+ * So lange nach dem Anlaufen heißt ein Fehler des Kontexts „kein Ausgabegerät bereit“ (ms):
+ * Chromium meldet einen Rechner ohne Audioausgabe (auch die CI-Rechner unter Linux und Windows)
+ * mit einem Fehler gleich nach dem Anlegen, hält den Kontext an und rechnet nach resume() auf
+ * einem Ersatzgerät weiter. Später heißt derselbe Fehler: Gerät weg – dann ist der Ton aus.
+ */
+const START_GRACE_MS = 1000
+
+const NO_DEVICE =
+  'Kein Ausgabegerät bereit – der Ton läuft, ist aber womöglich nicht zu hören. Gerät prüfen und neu starten.'
 
 type SinkContext = AudioContext & { setSinkId?: (id: string) => Promise<void> }
 type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
@@ -176,6 +186,8 @@ function unlock(ctx: AudioContext): void {
   }
 }
 
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
 /** Auf einen laufenden Kontext warten, höchstens `ms` lang */
 function untilRunning(ctx: AudioContext, ms: number): Promise<boolean> {
   if (ctx.state === 'running') return Promise.resolve(true)
@@ -203,7 +215,11 @@ export class ToneEngine {
   private pulse: AudioBuffer | null = null
   /** Lief der Kontext schon? Erst danach heißt „angehalten“: von außen beendet. */
   private wasRunning = false
-  /** laufende Gerätewechsel – solange zählt ein kurzer Halt nicht als Abbruch */
+  /** seit wann (performance.now()) – für START_GRACE_MS */
+  private runningSince = 0
+  /** „Kein Ausgabegerät bereit“ schon gemeldet (einmal je Start) */
+  private warnedNoDevice = false
+  /** laufende Gerätewechsel und Wiederanläufe – solange zählt ein kurzer Halt nicht als Abbruch */
   private switching = 0
 
   constructor(private readonly events: ToneEngineEvents = {}) {}
@@ -226,13 +242,14 @@ export class ToneEngine {
     this.ctx = ctx
     this.settings = settings
     this.wasRunning = false
+    this.warnedNoDevice = false
     // Am Handy gibt der Browser den Ton nur in der Bedienung selbst frei: resume() und der stille
     // Puffer deshalb sofort, vor dem ersten await (danach gälte der Tipp nicht mehr)
     const resumed = ctx.resume().catch(() => {})
     unlock(ctx)
     ctx.addEventListener('statechange', () => this.stateChanged(ctx))
-    // Chromium meldet so ein Ausgabegerät, das ausfällt
-    ctx.addEventListener('error', () => this.ended(ctx))
+    // Chromium meldet so ein Ausgabegerät, das fehlt oder ausfällt
+    ctx.addEventListener('error', () => this.deviceError(ctx))
     const master = ctx.createGain()
     master.gain.value = 0
     master.connect(ctx.destination)
@@ -249,6 +266,7 @@ export class ToneEngine {
     }
     if (this.ctx !== ctx) return
     this.wasRunning = true
+    this.runningSince = performance.now()
     // während des Wartens geändert (update() merkt sich nur den Stand): mit dem neuesten bauen
     const latest = this.settings ?? settings
     if (latest.deviceId !== settings.deviceId) void this.applyDevice(ctx, latest.deviceId)
@@ -333,6 +351,35 @@ export class ToneEngine {
   private stateChanged(ctx: AudioContext): void {
     if (this.ctx !== ctx || !this.wasRunning || this.switching > 0) return
     if (ctx.state !== 'running') this.ended(ctx)
+  }
+
+  /**
+   * Fehler des Ausgabegeräts. Gleich beim Start (bis START_GRACE_MS nach dem Anlaufen): kein Gerät
+   * bereit – Chromium hält den Kontext erst nach diesem Ereignis an und rechnet nach resume() auf
+   * einem Ersatzgerät weiter, also wieder anwerfen und Bescheid sagen. Später: Gerät weg, Ton aus.
+   */
+  private deviceError(ctx: AudioContext): void {
+    if (this.ctx !== ctx) return
+    if (this.wasRunning && performance.now() - this.runningSince > START_GRACE_MS) {
+      this.ended(ctx)
+      return
+    }
+    if (!this.warnedNoDevice) {
+      this.warnedNoDevice = true
+      this.events.onWarning?.(NO_DEVICE)
+    }
+    // solange zählt das Anhalten nicht als Abbruch (stateChanged); danach prüfen, ob er wieder läuft
+    this.switching++
+    setTimeout(() => {
+      const again =
+        this.ctx === ctx
+          ? Promise.race([ctx.resume().catch(() => {}), wait(UNLOCK_WAIT_MS)])
+          : Promise.resolve()
+      void again.then(() => {
+        this.switching--
+        if (this.switching === 0) this.stateChanged(ctx)
+      })
+    }, 0)
   }
 
   private ended(ctx: AudioContext): void {

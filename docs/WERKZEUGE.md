@@ -967,6 +967,9 @@ Testsignale fürs Einmessen, Kanäle prüfen und Proben – im eigenen kleinen F
   Metronom bleibt im Takt. „Wirklich beenden?“ nennt den laufenden Ton, und der Rechner schläft
   dabei nicht ein. Fenster schließen beendet den Ton; Signal, Pegel und Einstellungen bleiben
   gemerkt – gestartet wird nie von selbst.
+- **Ausgabegerät weg:** Fällt es während des Tons aus (Interface abgezogen), endet der Ton, und
+  ein Hinweis sagt es. Findet der Rechner schon beim Start keins, läuft der Ton mit dem Hinweis
+  „Kein Ausgabegerät bereit“ – zu hören ist dann nichts.
 - **Am Handy:** Der Ton kommt aus dem, was das Handy gerade nutzt (Lautsprecher, Kopfhörer,
   USB-Adapter ins Pult, Bluetooth); ein Ausgabegerät lässt sich dort nicht wählen. Das iPhone
   spielt auch im Stumm-Modus (ab iOS 17). Solange der Ton läuft, bleibt der Bildschirm an.
