@@ -4,6 +4,8 @@ import { App } from './App'
 import { applyTheme, storedThemeMode } from './lib/theme'
 import { applyAccent, storedAccent } from './lib/accent'
 import { applyDensity, storedDensity } from './lib/density'
+import { setStorageErrorHandler } from './lib/persistStorage'
+import { toast } from './lib/toast'
 import './assets/main.css'
 
 // Gespeichertes Theme SYNCHRON vor dem ersten Rendern setzen -> kein Flackern.
@@ -33,6 +35,18 @@ function toMainLog(prefix: string, value: unknown): void {
 }
 window.addEventListener('error', (e) => toMainLog('error', e.error ?? e.message))
 window.addEventListener('unhandledrejection', (e) => toMainLog('unhandledrejection', e.reason))
+
+// Ließ sich der Stand eines Werkzeugs nicht speichern (Speicher voll, Profil beschädigt), wäre
+// die Arbeit nach dem nächsten Start still weg. Sagen, solange man sie noch als Datei sichern
+// kann – der Stand selbst bleibt in diesem Fenster vorgemerkt (lib/persistStorage).
+setStorageErrorHandler((name, err) => {
+  toast.error(
+    'Speichern fehlgeschlagen',
+    `Änderungen in diesem Werkzeug bleiben nur, bis die App schließt (${name}). ` +
+      'Wichtiges jetzt als Datei sichern.'
+  )
+  toMainLog(`Speichern fehlgeschlagen (${name})`, err)
+})
 
 // Fehlt die Preload-Brücke, kann keine Funktion arbeiten -> klare Meldung statt
 // weißem Fenster / kryptischer Fehler bei der ersten api-Nutzung.
