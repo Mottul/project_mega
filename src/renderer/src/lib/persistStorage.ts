@@ -11,6 +11,11 @@
 // Mehrere Fenster teilen sich localStorage. syncAcrossWindows() hält einen Store
 // deshalb fensterübergreifend aktuell – sonst überschriebe ein Fenster mit altem
 // Stand beim nächsten Speichern, was ein anderes inzwischen geändert hat.
+//
+// Scheitert das Schreiben (Speicher voll, Profil beschädigt), bleibt der Stand vorgemerkt und
+// geht beim nächsten Versuch wieder mit; gemeldet wird es über setStorageErrorHandler(). Vorher
+// schluckte flush() den Fehler UND vergaß den Stand – die Arbeit war nach dem nächsten Start
+// weg, ohne jeden Hinweis.
 
 import type { PersistStorage, StorageValue } from 'zustand/middleware'
 
@@ -19,6 +24,23 @@ export interface DebouncedStorage<S> extends PersistStorage<S> {
   hasPending: (name: string) => boolean
   /** Ausstehendes sofort schreiben (z. B. bevor ein anderes Fenster es lesen soll). */
   flush: () => void
+}
+
+/** Bekommt den Namen des Stores, dessen Stand sich nicht speichern ließ, und den Fehler. */
+export type StorageErrorHandler = (name: string, error: unknown) => void
+
+let errorHandler: StorageErrorHandler | null = null
+/** Stores, deren Ausfall schon gemeldet ist – bis das Schreiben wieder klappt */
+const reported = new Set<string>()
+
+/**
+ * Melder für gescheitertes Speichern, einmal beim Start der App gesetzt (main.tsx: Toast und
+ * Protokoll). Bewusst von außen: Diese Datei gehört auch zur Rechner-PWA und darf weder Toasts
+ * noch die App-Brücke hereinziehen – ohne Melder bleibt es dort still. Gemeldet wird einmal je
+ * Ausfall und Store, nicht bei jedem Tastendruck.
+ */
+export function setStorageErrorHandler(fn: StorageErrorHandler | null): void {
+  errorHandler = fn
 }
 
 export function debouncedStorage<S>(delay = 400): DebouncedStorage<S> {
@@ -33,11 +55,21 @@ export function debouncedStorage<S>(delay = 400): DebouncedStorage<S> {
     for (const [name, value] of pending) {
       try {
         localStorage.setItem(name, JSON.stringify(value))
-      } catch {
-        // localStorage voll/nicht verfügbar -> ignorieren
+        // nur was wirklich geschrieben ist, gilt als erledigt
+        pending.delete(name)
+        reported.delete(name)
+      } catch (err) {
+        // Bleibt vorgemerkt: Der nächste Versuch (nächste Änderung, Schließen des Fensters)
+        // nimmt den Stand wieder mit, und getItem() liefert ihn weiter.
+        if (reported.has(name)) continue
+        reported.add(name)
+        try {
+          errorHandler?.(name, err)
+        } catch {
+          // ein Fehler im Melder darf die übrigen Stores nicht am Schreiben hindern
+        }
       }
     }
-    pending.clear()
   }
 
   // Ausstehende Schreibvorgänge beim Verlassen/Schließen sichern.

@@ -2,7 +2,9 @@
 
 Am 10. November 2026 wurde die ganze App durchgesehen – Code, Design, Bedienung, Nutzen, neue
 Werkzeuge, Skills. Vier Show-Risiken sind seitdem behoben (kein Standardmenü von Electron, kein
-Energiesparen, solange etwas läuft, Einzelinstanz, Fernsteuerung weist Websites ab). Dieses
+Energiesparen, solange etwas läuft, Einzelinstanz, Fernsteuerung weist Websites ab), dazu drei
+kleine Fehler im Code (Medien ausliefern, Umlaute in Befehlen vom Handy, gescheitertes
+Speichern der Werkzeug-Stände). Dieses
 Dokument hält **alle übrigen Punkte** als Pakete fest, die sich einzeln in Auftrag geben und
 umsetzen lassen – auch von einem anderen Modell, das die Durchsicht nicht kennt.
 
@@ -11,7 +13,6 @@ Matthias; die [Entscheidungen](#entscheidungen-die-bei-dir-liegen) am Ende sind 
 
 - [So wird ein Paket umgesetzt](#so-wird-ein-paket-umgesetzt)
 - [Übersicht und Reihenfolge](#übersicht-und-reihenfolge)
-- [A – Fehler im Code](#a--fehler-im-code)
 - [B – Bedienung und Design, kleine Pakete](#b--bedienung-und-design-kleine-pakete)
 - [C – Video-Player und Arbeitsfläche](#c--video-player-und-arbeitsfläche)
 - [D – Rückgängig](#d--rückgängig)
@@ -56,7 +57,7 @@ Regeln, die für jedes Paket gelten:
 - Größen: **S** bis etwa zwei Stunden, **M** ein halber bis ganzer Tag, **L** mehrere Tage und
   ein eigener Plan (`docs/PLAN-<THEMA>.md`), bevor Code entsteht.
 
-Stolpersteine aus der Arbeit an den ersten vier Punkten:
+Stolpersteine aus der bisherigen Arbeit:
 
 - Die Arbeitskopie hat unter Windows CRLF. Dateien mit dem Edit-Werkzeug ändern, nicht per
   Skript neu schreiben; danach `npx prettier --write <dateien>` nur auf die geänderten.
@@ -71,17 +72,17 @@ Stolpersteine aus der Arbeit an den ersten vier Punkten:
   im Hauptfenster zurück zum Start (Skill `electron-e2e`).
 - `npm run dev` startet nicht neben der installierten Mottulbox (Einzelinstanz, gleicher
   Benutzerordner). Die E2E-Läufe haben eigene Ordner.
+- Testausgaben mit Ersatzzeichen (U+FFFD, die Raute mit Fragezeichen) nicht in Code, Kommentare
+  oder Doku übernehmen: Sie sehen danach aus wie ein Kodierfehler der Datei. Vor dem Commit mit
+  `git grep` nach dem Zeichen suchen (bekannt und gewollt: je eines in `youtube.mjs`,
+  `ytRequest.ts` und im Skill `review-checkliste`, alle zur Ausgabe von yt-dlp).
 
 ## Übersicht und Reihenfolge
 
-Empfohlen von oben nach unten: erst die Fehler, dann der Player, dann die kleinen Punkte, die
-man täglich merkt.
+Empfohlen von oben nach unten: erst der Player, dann die kleinen Punkte, die man täglich merkt.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **A1** | Medien ausliefern: Datei schließen, ein Range-Leser | S | – |
-| **A2** | Fernsteuerung: Umlaute an der Chunk-Grenze | S | – |
-| **A3** | Speichern der Werkzeug-Stände meldet Fehler | S | – |
 | **C** | Video-Player ohne Scrollen, sechs Schritte | M–L | eigener Plan liegt vor |
 | **B1** | Suche: Enter öffnet den ersten Treffer | S | – |
 | **B2** | Strg+K: Werkzeug wechseln von überall | M | B1 |
@@ -100,7 +101,7 @@ man täglich merkt.
 | **E1** | Große Komponenten teilen | M je Datei | – |
 | **E2** | `shared/types.ts` nach Bereichen teilen | M | – |
 | **E3** | Lint mit Typwissen, E2E-Skripte linten | M | – |
-| **E4** | Werkzeug-Stände als Dateien statt Local Storage | L | A3, eigener Plan nötig |
+| **E4** | Werkzeug-Stände als Dateien statt Local Storage | L | eigener Plan nötig |
 | **E5** | ffmpeg mit niedriger Priorität, solange eine Ausgabe läuft | M | erst messen |
 | **E6** | Kleinkram: Beispiele-Ordner, Zahl der Werkzeuge in der Doku | S | Entscheidung |
 | **F1** | Sicherung und Umzug auf einen anderen Rechner | L | eigener Plan nötig |
@@ -113,81 +114,6 @@ man täglich merkt.
 | **H2** | Lange Skills teilen | M | – |
 | **H3** | Fehlende Skills | S je Skill | – |
 | **H4** | Versionierte Claude-Einstellungen, Prettier-Hook | S | – |
-
-## A – Fehler im Code
-
-Drei kleine, echte Fehler. Alle aus dem Code gelesen, keiner in der App nachgestellt – der
-Test in Schritt 3 ist hier die Gegenprobe.
-
-### A1 – Medien ausliefern: Datei schließen, ein Range-Leser
-
-**Heute:** Drei Stellen liefern Dateien mit `Range` aus und rechnen Anfang und Ende je selbst:
-`registerMediaProtocol()` und `registerJingleProtocol()` in `ipc/registry.ts` und `serveMedia()`
-in `player/remoteServer.ts`. Nur die erste versteht `bytes=-500` (die letzten 500 Bytes); die
-anderen beiden lesen daraus „von 0 bis 500“. `serveMedia()` schickt die Datei außerdem mit
-`createReadStream(…).pipe(res)`: Bricht das Handy den Abruf ab (beim Spulen im Video ständig),
-endet `pipe`, aber der Lesestrom bleibt offen – die Datei bleibt bis zum Beenden der App
-geöffnet.
-
-**So:**
-
-```text
-neu:  src/shared/range.ts        parseRange(header, total) -> { start, end } | 'unerfuellbar' | null
-      src/shared/range.test.ts
-```
-
-- `parseRange` rein und getestet: ohne Kopfzeile `null`; `bytes=0-99`, `bytes=100-`,
-  `bytes=-500`, Ende hinter der Datei (wird gekappt), Anfang hinter der Datei und Anfang nach
-  Ende (`'unerfuellbar'` → 416), Unsinn (`bytes=a-b` → wie ohne Kopfzeile).
-- Alle drei Stellen nutzen ihn; Statuscodes und Kopfzeilen bleiben, wie sie sind.
-- In `serveMedia()` `pipeline(strom, res, …)` aus `node:stream` statt `pipe` – es zerstört den
-  Lesestrom, wenn die Antwort vorzeitig endet. Ein Abbruch durch das Handy ist kein Fehler fürs
-  Protokoll (`ERR_STREAM_PREMATURE_CLOSE` nicht loggen).
-
-**Abnahme:** Unit-Tests für `parseRange`. Für das Schließen ein Test neben
-`player/remoteUpload.test.ts`: Server mit `serveMedia` auf Port 0, Abruf einer großen Datei
-beginnen, die Verbindung nach den ersten Bytes zerstören – der Lesestrom muss danach
-`destroyed` sein. Dafür den Strom prüfbar machen (z. B. liefert die Funktion ihn zurück). Am
-heutigen Stand ist der Test rot.
-
-**Skills:** `fernsteuerung-seite`, `review-checkliste`. **Nicht tun:** die Protokolle auf
-andere Kopfzeilen umstellen, `statSync` durch etwas anderes ersetzen.
-
-### A2 – Fernsteuerung: Umlaute an der Chunk-Grenze
-
-**Heute:** `readBody()` in `remoteHttp.ts` hängt jeden Datenblock mit `data += c` an. Dabei wird
-jeder Block einzeln als UTF-8 gelesen; liegt ein Umlaut (zwei Bytes) genau auf der Grenze
-zweier Blöcke, werden daraus zwei Ersatzzeichen. Kurze Befehle kommen in einem Block an, lange
-(eine gespeicherte Playlist mit vielen Titeln) nicht immer.
-
-**So:** `req.setEncoding('utf8')` vor dem ersten `data` – Node setzt geteilte Zeichen dann
-selbst zusammen. Die Obergrenze bleibt.
-
-**Abnahme:** Test in `remoteHttp.test.ts`: Anfrage mit `http.request`, den Körper `{"t":"ü"}`
-als zwei `write()`-Aufrufe schicken, die das „ü“ zwischen seinen beiden Bytes teilen (Buffer
-zerschneiden, zwischen den Teilen kurz warten) – der gelesene Text enthält „ü“. Heute rot.
-
-### A3 – Speichern der Werkzeug-Stände meldet Fehler
-
-**Heute:** `debouncedStorage()` in `persistStorage.ts` schreibt die Stände der Werkzeuge
-(OSC-Projekte, Packlisten, Anleitungen …) verzögert in den `localStorage`. Scheitert das
-Schreiben (Speicher voll, Profil beschädigt), schluckt `flush()` den Fehler – und vergisst den
-Stand: Die Arbeit ist nach dem nächsten Start weg, ohne Hinweis.
-
-**So:**
-
-- In `flush()` nur entfernen, was wirklich geschrieben wurde; Gescheitertes bleibt vorgemerkt
-  und wird beim nächsten Schreiben wieder versucht.
-- Ein Fehler wird gemeldet – einmal je Sitzung und Store, nicht bei jedem Tastendruck. Die
-  Meldung kommt nicht aus `persistStorage.ts` selbst (die Datei gehört auch zur Rechner-PWA,
-  Regel in `CLAUDE.md`), sondern über einen Melder, den die App beim Start setzt:
-  `setStorageErrorHandler(fn)`. In `src/renderer/src/main.tsx` meldet er per `toast.error`
-  („Speichern fehlgeschlagen“, darunter der Name des Stores und der Hinweis, die Arbeit als
-  Datei zu sichern) und schreibt ins Protokoll.
-
-**Abnahme:** `persistStorage.test.ts` erweitern: `localStorage.setItem` wirft – der Melder wird
-genau einmal gerufen, der Stand bleibt vorgemerkt, ein späterer erfolgreicher Versuch schreibt
-ihn. Danach `npm run pwa:build` (die PWA darf nichts Neues hereinziehen).
 
 ## B – Bedienung und Design, kleine Pakete
 
@@ -497,7 +423,9 @@ angelegt, dieser nicht – und er ist für alle Werkzeuge zusammen begrenzt.
 vom main (atomar wie `settings.json`, mit Sicherung des vorigen Stands), der Renderer spricht
 über einen Kanal statt über `localStorage`; Umzug der vorhandenen Stände beim ersten Start. Zu
 klären: Abgleich zwischen Fenstern (heute über das `storage`-Ereignis), die Rechner-PWA (hat
-keinen main), Tests. A3 und F1 nehmen dem Thema vorher den Druck.
+keinen main), Tests. Etwas Druck nimmt schon heraus, dass ein gescheitertes Speichern seit
+November 2026 gemeldet wird und der Stand bis zum Schließen erhalten bleibt
+(`setStorageErrorHandler` in `persistStorage.ts`); F1 nimmt weiteren.
 
 ### E5 – ffmpeg mit niedriger Priorität, solange eine Ausgabe läuft
 
@@ -646,7 +574,8 @@ Einmal-Freigaben aufräumen.
 
 ## Entscheidungen, die bei dir liegen
 
-1. **Reihenfolge:** A → C → B wie empfohlen, oder zuerst etwas anderes?
+1. **Reihenfolge:** erst der Player (C), dann die kleinen Pakete aus B wie empfohlen – oder
+   zuerst etwas anderes?
 2. **Verbundene Geräte wach halten?** Eine offene Verbindung zu ATEM, NovaStar oder OSC hält
    den Rechner heute nicht wach (sie steht auch nicht in „Wirklich beenden?“). Wenn ja: ein
    Feld mehr in `LaufendStand` (`services/beenden/`), dann fragt das Beenden danach und der

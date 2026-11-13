@@ -485,8 +485,9 @@ Projektdateien kommen von Kollegen oder per Mail – fremde Eingaben:
   normalisieren).
 - Fotos bleiben im main, der Renderer zeigt sie über ein eigenes Protokoll (Eintrag in `img-src`
   der App-CSP und in SICHERHEIT, Skill `ipc-kanal`). Über IPC laufen nur Hashes, keine
-  MB-Strings. **Nie Fotos in einen persistierten Store:** `debouncedStorage` verschluckt
-  „Speicher voll“ still. **Umgesetzt (16.10.2026)** mit einer Abweichung: statt eines
+  MB-Strings. **Nie Fotos in einen persistierten Store:** `debouncedStorage` verschluckte
+  „Speicher voll“ damals still (seit November 2026 meldet er es, knapp bleibt der Platz
+  trotzdem). **Umgesetzt (16.10.2026)** mit einer Abweichung: statt eines
   Arbeitsordners je Datei ein gemeinsamer Foto-Speicher `userData/Projektfotos/<sha256>.<jpg|png>`
   (`src/main/services/fotos/fotoStore.ts`) – gleiche Fotos liegen einmal da, und ein Werkzeug ohne
   gebundene Datei behält seine Fotos über einen Neustart. Einfügen über `api.fotos.pick()`

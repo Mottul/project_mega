@@ -4,7 +4,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { debouncedStorage, flushStore, syncAcrossWindows } from './persistStorage'
+import {
+  debouncedStorage,
+  flushStore,
+  setStorageErrorHandler,
+  syncAcrossWindows
+} from './persistStorage'
 
 class MemoryStorage {
   private map = new Map<string, string>()
@@ -66,6 +71,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.useRealTimers()
+  setStorageErrorHandler(null)
 })
 
 describe('Stores fensterübergreifend abgleichen', () => {
@@ -119,5 +125,99 @@ describe('Stores fensterübergreifend abgleichen', () => {
     expect(ls.getItem(NAME)).toBeNull()
     flushStore(store)
     expect(stored()).toEqual(['sofort'])
+  })
+})
+
+describe('Speichern scheitert (Speicher voll oder Profil beschädigt)', () => {
+  /** localStorage, der auf Wunsch jedes Schreiben abweist */
+  function vollerSpeicher(): { voll: boolean } {
+    const zustand = { voll: true }
+    const echt = ls.setItem.bind(ls)
+    ls.setItem = (k: string, v: string): void => {
+      if (zustand.voll) throw new Error('QuotaExceededError')
+      echt(k, v)
+    }
+    return zustand
+  }
+
+  it('behält den Stand und schreibt ihn, sobald es wieder geht – statt ihn zu vergessen', async () => {
+    vi.useFakeTimers()
+    const store = makeStore()
+    const speicher = vollerSpeicher()
+    store.getState().add('eins')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(ls.getItem(NAME)).toBeNull()
+    // Platz ist wieder da: der nächste Versuch schreibt, auch ohne neue Änderung
+    speicher.voll = false
+    flushStore(store)
+    expect(stored()).toEqual(['eins'])
+  })
+
+  it('meldet den Ausfall einmal – nicht bei jedem Tastendruck – und nach einem Erfolg wieder', async () => {
+    vi.useFakeTimers()
+    const meldungen: [string, string][] = []
+    setStorageErrorHandler((name, err) => meldungen.push([name, String(err)]))
+    const store = makeStore()
+    const speicher = vollerSpeicher()
+    store.getState().add('eins')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(meldungen).toEqual([[NAME, 'Error: QuotaExceededError']])
+    // weitertippen, der Speicher bleibt voll: keine zweite Meldung, der Stand wächst trotzdem
+    store.getState().add('zwei')
+    await vi.advanceTimersByTimeAsync(500)
+    store.getState().add('drei')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(meldungen).toHaveLength(1)
+    expect(store.getState().items).toEqual(['eins', 'zwei', 'drei'])
+    // wieder Platz: alles kommt an
+    speicher.voll = false
+    store.getState().add('vier')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(stored()).toEqual(['eins', 'zwei', 'drei', 'vier'])
+    // ein neuer Ausfall danach wird wieder gemeldet
+    speicher.voll = true
+    store.getState().add('fünf')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(meldungen).toHaveLength(2)
+  })
+
+  it('ein eigener, ungeschriebener Stand gewinnt weiter gegen ein anderes Fenster', async () => {
+    vi.useFakeTimers()
+    const store = makeStore()
+    const speicher = vollerSpeicher()
+    store.getState().add('nur hier')
+    await vi.advanceTimersByTimeAsync(500)
+    // das andere Fenster schreibt in denselben Speicher – dessen Schreiben klappt
+    speicher.voll = false
+    otherWindowWrites(['fremd'])
+    speicher.voll = true
+    await vi.advanceTimersByTimeAsync(0)
+    expect(store.getState().items).toEqual(['nur hier'])
+  })
+
+  it('ein Melder, der selbst wirft, hält das Speichern nicht auf', async () => {
+    vi.useFakeTimers()
+    setStorageErrorHandler(() => {
+      throw new Error('Toast kaputt')
+    })
+    const store = makeStore()
+    const speicher = vollerSpeicher()
+    store.getState().add('eins')
+    await vi.advanceTimersByTimeAsync(500)
+    speicher.voll = false
+    flushStore(store)
+    expect(stored()).toEqual(['eins'])
+  })
+
+  it('ohne Melder (Rechner-PWA) bleibt es still, der Stand aber erhalten', async () => {
+    vi.useFakeTimers()
+    setStorageErrorHandler(null)
+    const store = makeStore()
+    const speicher = vollerSpeicher()
+    store.getState().add('eins')
+    await vi.advanceTimersByTimeAsync(500)
+    speicher.voll = false
+    flushStore(store)
+    expect(stored()).toEqual(['eins'])
   })
 })

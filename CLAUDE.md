@@ -30,7 +30,7 @@ Services + IPC-Handler), `src/preload` (contextBridge-API), `src/renderer`
 (React SPA mit HashRouter). Aliase: `@shared`, `@renderer`. Dienste im main je Bereich in
 `src/main/services/<bereich>/` (`windows`, `remote`, `ndi`, `player`, `timer`, `convert`, `projects`, `atem` …); lose
 Dateien dort nur fürs ganze Programm (`store`, `db`, `log`, `broadcast`, `fileDialogs`, `fsAtomic`,
-`shutdown`, `binaryVersion`, `reachableDir`).
+`shutdown`, `binaryVersion`, `reachableDir`, `serveFile`).
 Im main nie synchron auf einen Prozess warten (`spawnSync`/`execSync`, ESLint sperrt es): Das hält
 Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersion.ts`; ebenso kein
 `statSync` auf Nutzerordner (Netzlaufwerk), sondern `isDirReachable()` mit Zeitlimit.
@@ -92,7 +92,9 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   `RemoteToggle` und `RemoteSection` aus `components/RemoteControl.tsx`. Befehle vom Handy sind fremde
   Eingaben: feldweise prüfen (Allowlist, Werte begrenzen – Muster `player/remoteCommand.ts`).
   Server nur über `createRemoteHost` (weist fremde Websites ab: `Origin`/`Host`,
-  `remote/remoteHerkunft.ts`), Zustand ändern nur per POST.
+  `remote/remoteHerkunft.ts`), Zustand ändern nur per POST. Dateien ausliefern – auch über die
+  eigenen Protokolle `media:`/`jingle:` – nur über `services/serveFile.ts` (Bereich per
+  `shared/range.ts`, schließt die Datei, wenn der Empfänger abbricht).
 - **Konvertierung:** EIN Kern für Video-Konverter (Tool-id `hap-converter`) und Player-Import;
   der Video-Generator nutzt ihn mit (Zeitachse/Filter rein in `shared/videoGenPlan.ts`), der
   Testbild-Export nur `runFfmpeg()` und die Farbkennung. Analyse per `probeMediaInfo` (Cache), alle Entscheidungen in

@@ -1,8 +1,6 @@
 import { protocol } from 'electron'
-import { createReadStream } from 'node:fs'
-import { readFile, stat } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
-import { Readable } from 'node:stream'
 import { Channels, JINGLE_PROTOCOL, MANUAL_PROTOCOL, MEDIA_PROTOCOL } from '@shared/ipc-contracts'
 import type { SettingsPatch } from '@shared/types'
 import { broadcast, broadcastExcept } from '../services/broadcast'
@@ -13,6 +11,7 @@ import { resolveManualFile } from '../services/manuals/manualsService'
 import { resolveMediaFile } from '../services/player/mediaLibrary'
 import { resolveVgenFile } from '../services/convert/videoGenCache'
 import { resolveVgenSource } from '../services/convert/videoGenSources'
+import { fileResponse } from '../services/serveFile'
 import { getSettings, onSettingsChange, setSettings } from '../services/store'
 import { registerAtemHandlers } from './atem.handlers'
 import { registerBausteineHandlers } from './bausteine.handlers'
@@ -110,57 +109,10 @@ export function registerMediaProtocol(): void {
             : resolveVgenFile(url.pathname)
       if (!abs) return new Response('Not found', { status: 404 })
 
-      const total = (await stat(abs)).size
-      const ct = mediaContentType(abs)
-      const range = request.headers.get('Range')
-
-      if (range) {
-        const m = /bytes=(\d*)-(\d*)/.exec(range)
-        let start: number
-        let end: number
-        if (m && m[1] === '' && m[2] !== '') {
-          // Suffix-Range "bytes=-N" -> die letzten N Bytes
-          const n = parseInt(m[2], 10)
-          start = Math.max(0, total - n)
-          end = total - 1
-        } else {
-          start = m && m[1] ? parseInt(m[1], 10) : 0
-          end = m && m[2] ? parseInt(m[2], 10) : total - 1
-        }
-        if (!Number.isFinite(start) || start < 0) start = 0
-        if (!Number.isFinite(end) || end >= total) end = total - 1
-        if (start > end || start >= total) {
-          return new Response('Range Not Satisfiable', {
-            status: 416,
-            headers: { 'Content-Range': `bytes */${total}` }
-          })
-        }
-        const stream = Readable.toWeb(createReadStream(abs, { start, end })) as ReadableStream
-        return new Response(stream, {
-          status: 206,
-          headers: {
-            'Content-Type': ct,
-            'Content-Length': String(end - start + 1),
-            'Content-Range': `bytes ${start}-${end}/${total}`,
-            'Accept-Ranges': 'bytes',
-            // CORS: media:// ist aus Sicht der Fenster (file://) cross-origin.
-            // Ohne diesen Header liefert ein cross-origin <video> in WebAudio
-            // (MediaElementSource, NDI-Audio-Tap) lautlos NUR STILLE.
-            'Access-Control-Allow-Origin': '*'
-          }
-        })
-      }
-
-      const stream = Readable.toWeb(createReadStream(abs)) as ReadableStream
-      return new Response(stream, {
-        status: 200,
-        headers: {
-          'Content-Type': ct,
-          'Content-Length': String(total),
-          'Accept-Ranges': 'bytes',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
+      // mit CORS-Freigabe: media:// ist aus Sicht der Fenster (file://) eine fremde Herkunft.
+      // Ohne sie liefert ein <video> in WebAudio (MediaElementSource, Ton der NDI-Ausgabe)
+      // lautlos NUR STILLE. `await`, damit ein Lesefehler unten im catch landet.
+      return await fileResponse(request, abs, mediaContentType(abs), true)
     } catch (err) {
       logLine(
         '[media://] FEHLER url=',
@@ -181,37 +133,7 @@ export function registerJingleProtocol(): void {
       const abs = resolveJingleFile(url.pathname)
       if (!abs) return new Response('Not found', { status: 404 })
 
-      const total = (await stat(abs)).size
-      const ct = jingleContentType(abs)
-      const range = request.headers.get('Range')
-      if (range) {
-        const m = /bytes=(\d*)-(\d*)/.exec(range)
-        let start = m && m[1] ? parseInt(m[1], 10) : 0
-        let end = m && m[2] ? parseInt(m[2], 10) : total - 1
-        if (!Number.isFinite(start) || start < 0) start = 0
-        if (!Number.isFinite(end) || end >= total) end = total - 1
-        if (start > end || start >= total) {
-          return new Response('Range Not Satisfiable', {
-            status: 416,
-            headers: { 'Content-Range': `bytes */${total}` }
-          })
-        }
-        const stream = Readable.toWeb(createReadStream(abs, { start, end })) as ReadableStream
-        return new Response(stream, {
-          status: 206,
-          headers: {
-            'Content-Type': ct,
-            'Content-Length': String(end - start + 1),
-            'Content-Range': `bytes ${start}-${end}/${total}`,
-            'Accept-Ranges': 'bytes'
-          }
-        })
-      }
-      const stream = Readable.toWeb(createReadStream(abs)) as ReadableStream
-      return new Response(stream, {
-        status: 200,
-        headers: { 'Content-Type': ct, 'Content-Length': String(total), 'Accept-Ranges': 'bytes' }
-      })
+      return await fileResponse(request, abs, jingleContentType(abs))
     } catch (err) {
       logLine(
         '[jingle://] FEHLER url=',

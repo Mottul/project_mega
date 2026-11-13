@@ -96,7 +96,8 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
 - **Rückfragen sperren nur das eigene Fenster:** Jede Aktion hält zu Beginn Daten und Bindung
   fest (`snapshot`), schreibt genau diese und bricht nach einer Rückfrage ab, wenn ein anderes
   Fenster inzwischen etwas geändert hat (`changedMeanwhile`). Zurücksetzen erst nach Erfolg.
-- **Fotos nie in einen persistierten Store** (`debouncedStorage` verschluckt „Speicher voll“) –
+- **Fotos nie in einen persistierten Store** (der localStorage ist knapp; ist er voll, lebt der
+  Stand nur noch bis zum Schließen, die App meldet „Speichern fehlgeschlagen“) –
   sie liegen im main unter ihrem sha256 (`services/fotos/fotoStore.ts`, `userData/Projektfotos`),
   im Werkzeug steht nur der Hash. Einfügen: `api.fotos.pick()` (verkleinert auf 2000 px, nach
   EXIF aufgerichtet, ohne Metadaten); anzeigen: `<img src={fotoUrl(hash)}>` (`shared/fotos.ts`,

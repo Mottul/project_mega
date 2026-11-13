@@ -7,7 +7,63 @@ vi.mock('electron', () => ({
   app: { getPath: () => '/tmp', isPackaged: false }
 }))
 
-const { createSnapshotServer, nurEigeneHerkunft, safeHandler } = await import('./remoteHttp')
+const { createSnapshotServer, nurEigeneHerkunft, readBody, safeHandler } =
+  await import('./remoteHttp')
+
+describe('readBody – Befehl vom Handy lesen', () => {
+  /** Schickt `teile` als einzelne Blöcke (ohne Content-Length) und liefert, was readBody liest */
+  async function lies(teile: Buffer[], maxBytes?: number): Promise<string> {
+    let gelesen = ''
+    const http = createServer((req, res) => {
+      void readBody(req, maxBytes).then((body) => {
+        gelesen = body
+        res.end('ok')
+      })
+    })
+    await new Promise<void>((r) => http.listen(0, '127.0.0.1', r))
+    const port = (http.address() as AddressInfo).port
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const req = request(
+          { host: '127.0.0.1', port, path: '/api/command', method: 'POST' },
+          (res) => {
+            res.resume()
+            res.on('end', resolve)
+          }
+        )
+        req.on('error', reject)
+        // jeder Teil mit Abstand: so kommen sie beim Server sicher als eigene Blöcke an
+        teile.forEach((teil, i) => {
+          setTimeout(() => (i === teile.length - 1 ? req.end(teil) : req.write(teil)), i * 30)
+        })
+      })
+    } finally {
+      await new Promise((r) => http.close(r))
+    }
+    return gelesen
+  }
+
+  it('setzt einen Umlaut wieder zusammen, der auf der Grenze zweier Blöcke liegt', async () => {
+    const ganz = Buffer.from('{"type":"message","text":"Bühne frei"}', 'utf8')
+    // „ü“ sind zwei Bytes (C3 BC) – mitten hindurch teilen
+    const schnitt = ganz.indexOf(0xc3) + 1
+    expect(ganz[schnitt]).toBe(0xbc)
+    const text = await lies([ganz.subarray(0, schnitt), ganz.subarray(schnitt)])
+    expect(text).toBe('{"type":"message","text":"Bühne frei"}')
+  })
+
+  it('auch ein Zeichen aus vier Bytes, über drei Blöcke verteilt', async () => {
+    const ganz = Buffer.from('a🎬b', 'utf8')
+    const text = await lies([ganz.subarray(0, 2), ganz.subarray(2, 4), ganz.subarray(4)])
+    expect(text).toBe('a🎬b')
+  })
+
+  it('kappt an der Obergrenze, statt beliebig viel anzunehmen', async () => {
+    const text = await lies([Buffer.from('x'.repeat(500)), Buffer.from('y'.repeat(500))], 600)
+    expect(text).toHaveLength(600)
+    expect(text.endsWith('y')).toBe(true)
+  })
+})
 
 describe('nurEigeneHerkunft – der Wächter vor jedem Fernsteuer-Server', () => {
   /** Server mit Wächter; `befehle` zählt, was beim Handler ankommt */

@@ -67,7 +67,11 @@ export function sendJsonRaw(res: ServerResponse, json: string): void {
 export function readBody(req: IncomingMessage, maxBytes = 100_000): Promise<string> {
   return new Promise((resolve) => {
     let data = ''
-    req.on('data', (c) => {
+    // Als UTF-8 lesen lassen, nicht jeden Block einzeln in Text wandeln: Ein Umlaut besteht aus
+    // zwei Bytes, und lagen sie in zwei Blöcken, wurden aus dem „ü“ in „Bühne“ zwei
+    // Ersatzzeichen (im Test nachgestellt). So setzt Node geteilte Zeichen selbst zusammen.
+    req.setEncoding('utf8')
+    req.on('data', (c: string) => {
       data += c
       if (data.length > maxBytes) data = data.slice(0, maxBytes)
     })

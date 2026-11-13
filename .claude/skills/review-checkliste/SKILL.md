@@ -72,6 +72,39 @@ einen Test **mit** und **ohne** Schrägstrich.
   `createServer`, kein `Access-Control-Allow-Origin`. Anfragen ohne `Origin` (Companion, curl)
   bleiben erlaubt – das ist Absicht, kein Loch.
 
+Drei Fehler aus der Durchsicht vom November 2026 (Pakete A1–A3, je am alten Stand im Test
+nachgestellt, bevor etwas geändert wurde):
+
+- **`strom.pipe(res)` lässt den Lesestrom offen, wenn der Empfänger abbricht.** Die Medien der
+  Player-Fernsteuerung gingen so hinaus; ein `<video>`, das springt, kappt die Verbindung
+  ständig – die Datei blieb bis zum Beenden der App geöffnet (unter Windows: nicht löschbar,
+  nicht neu einzubacken). `pipeline()` aus `node:stream` zerstört ihn. Dateien nur über
+  `services/serveFile.ts` ausliefern; ein Abbruch (`ERR_STREAM_PREMATURE_CLOSE`) ist kein
+  Fehler fürs Protokoll. Nachstellen: große Datei, nach dem ersten Block `req.destroy()`, dann
+  `strom.destroyed` prüfen (`serveFile.test.ts`).
+- **Eine Berechnung an drei Stellen läuft auseinander.** Den Byte-Bereich (`Range`) rechneten
+  `media:`, `jingle:` und die Fernsteuerung je selbst; nur eine verstand `bytes=-500` (die
+  letzten 500 Bytes), die anderen lieferten die ersten 501. Heute `parseRange()` in
+  `shared/range.ts`. Ebenso bei der dritten Kopie eines HTTP-Details: einen Baustein ziehen.
+- **Text aus einem Strom nie blockweise mit `+=` zusammensetzen.** Jeder Block wird einzeln als
+  UTF-8 gelesen; ein Umlaut auf der Grenze zweier Blöcke wird zu zwei Ersatzzeichen (U+FFFD,
+  die Raute mit Fragezeichen). `req.setEncoding('utf8')` vor dem ersten `data` –
+  Node setzt geteilte Zeichen dann selbst zusammen. Nachstellen: den Körper als zwei `write()`
+  mitten durch ein Zeichen schicken (`remoteHttp.test.ts`).
+
+## Speichern im Renderer (November 2026)
+
+- **Ein gescheitertes Speichern darf den Stand nicht vergessen.** `debouncedStorage` fing den
+  Fehler von `localStorage.setItem` (Speicher voll) ab und leerte danach trotzdem die
+  Vormerkliste – die Arbeit war nach dem nächsten Start still weg. Nur entfernen, was wirklich
+  geschrieben ist; Gescheitertes bleibt vorgemerkt und geht beim nächsten Versuch mit.
+- **Melden ja, aber einmal und von außen.** Ein Fehler beim Speichern kommt bei jedem
+  Tastendruck wieder – gemeldet wird einmal je Ausfall und Store, nach einem Erfolg erst wieder
+  beim nächsten Ausfall. Module, die auch in der Rechner-PWA laufen (`persistStorage.ts`),
+  ziehen weder Toasts noch `api` herein: Die App setzt beim Start einen Melder
+  (`setStorageErrorHandler` in `main.tsx`), die PWA keinen. Ein Melder, der selbst wirft, darf
+  die übrigen Stores nicht am Schreiben hindern.
+
 ## Raster und SVG (Oktober 2026)
 
 - **SVG mit `viewBox` nie `height:100%; width:auto` in eine Rasterzelle.** Die Breite folgt dann
