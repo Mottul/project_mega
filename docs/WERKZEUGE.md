@@ -115,6 +115,10 @@ Jedes Werkzeug ist gleich aufgebaut:
   App läuft weiter. Stille Fehler werden als Hinweis sichtbar (z. B. defekte Jingle-Datei,
   verlorenes Audiogerät). `settings.json` wird atomar gespeichert; eine beschädigte
   `settings.json` oder `library.db` wird gesichert und neu angelegt statt still zurückgesetzt.
+  Lässt sich der Stand eines Werkzeugs nicht speichern (OSC-Projekte, Packlisten, Anleitungen
+  ohne Datei – etwa weil der Speicher voll ist), meldet die App „Speichern fehlgeschlagen“: Die
+  Änderungen bleiben dann nur bis zum Schließen erhalten, Wichtiges sollte man als Datei sichern.
+  Die App versucht es bei jeder weiteren Änderung erneut.
 - **Datei-Dialoge** starten im zuletzt benutzten Ordner – getrennt für Dateien öffnen, Ordner
   wählen und Speichern, auch nach einem Neustart. Ein Speichern-Vorschlag behält dabei seinen
   Dateinamen. Ist der Ordner nicht mehr da (Stick abgezogen), startet der Dialog wie ohne Vorgabe

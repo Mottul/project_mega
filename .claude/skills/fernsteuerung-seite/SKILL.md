@@ -40,7 +40,10 @@ Adressen). Die Preload-API der Fernsteuerung braucht dafür `remoteStatus`, `rem
    nicht mit der Zone des Geräts.
 6. **Befehle vom Handy sind fremde Eingaben:** feldweise prüfen (Allowlist, Werte begrenzen),
    Muster `parseTimerCommand` in `timerRemoteServer.ts` und `player/remoteCommand.ts`; Größe der
-   Anfrage begrenzen (`readBody`).
+   Anfrage begrenzen (`readBody` – liest als UTF-8, Umlaute auf einer Blockgrenze bleiben ganz).
+   **Dateien** (Medien, Vorschaubilder) nur mit `sendFile()` aus `services/serveFile.ts`
+   ausliefern: versteht `Range` samt `bytes=-N` (`shared/range.ts`) und schließt die Datei,
+   wenn das Handy mitten im Abruf abbricht – mit `pipe()` blieb sie offen.
 7. **Mehrere offene Fenster:** Befehle gehen nur an das Fenster, dessen Stand das Handy zeigt –
    nichts doppelt ausführen.
 8. **Nur Geräte im Netz steuern, keine Websites:** Jeder Server entsteht über `createRemoteHost`
