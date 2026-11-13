@@ -1,36 +1,50 @@
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 
-/** Umschalter aus mehreren Knöpfen (Text und/oder Symbol). */
+/**
+ * Umschalter aus mehreren Knöpfen (Text und/oder Symbol). `wrap`: Die Knöpfe brechen in gleich
+ * breiten Spalten um, statt überzulaufen (viele Möglichkeiten in einem schmalen Fenster oder am
+ * Handy). Bei grobem Zeiger (Finger) sind die Knöpfe höher.
+ */
 export function Segmented<T extends string>({
   label,
   value,
   options,
   onChange,
+  wrap = false,
+  disabled = false,
   className
 }: {
   label: string
   value: T
   options: { value: T; label: string; Icon?: LucideIcon; iconOnly?: boolean }[]
   onChange: (v: T) => void
+  wrap?: boolean
+  disabled?: boolean
   className?: string
 }): JSX.Element {
   return (
     <div
       role="group"
       aria-label={label}
-      className={cn('flex rounded-md border border-border bg-muted/30 p-0.5', className)}
+      className={cn(
+        'rounded-md border border-border bg-muted/30 p-0.5',
+        wrap ? 'grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-0.5' : 'flex',
+        disabled && 'opacity-50',
+        className
+      )}
     >
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
+          disabled={disabled}
           aria-pressed={value === o.value}
           title={o.label}
           aria-label={o.iconOnly ? o.label : undefined}
           onClick={() => onChange(o.value)}
           className={cn(
-            'flex flex-1 items-center justify-center gap-1.5 rounded px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70',
+            'flex flex-1 items-center justify-center gap-1.5 rounded px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 disabled:cursor-not-allowed [@media(pointer:coarse)]:py-2.5',
             value === o.value
               ? 'bg-card text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground'

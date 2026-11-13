@@ -20,6 +20,7 @@ import { stageTimerTool } from './stage-timer'
 import { testPatternsTool } from './test-patterns'
 import { throwRatioTool } from './throw-ratio'
 import { rtaTool } from './rta'
+import { toneGeneratorTool } from './tone-generator'
 import { timecodeTool } from './timecode'
 import { videoGeneratorTool } from './video-generator'
 import { videoPlayerTool } from './video-player'
@@ -52,6 +53,7 @@ export const tools: ToolModule[] = [
   powerLoadTool,
   audioDelayTool,
   rtaTool,
+  toneGeneratorTool,
   riggingTool,
   timecodeTool
 ]

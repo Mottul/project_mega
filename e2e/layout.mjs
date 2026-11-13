@@ -41,7 +41,8 @@ const SMALL = [
   'power-load',
   'camera-lens',
   'rigging',
-  'rta'
+  'rta',
+  'tone-generator'
 ]
 const TWO_COLUMNS = ['power-load', 'camera-lens', 'rigging', 'rta']
 
@@ -217,13 +218,21 @@ try {
       }
     ],
     [
-      'ⓘ zeigt die Erklärung statt eines Absatzes',
+      'ⓘ zeigt die Erklärung statt eines Absatzes; ein Klick daneben schließt sie',
       async () => {
         await tool('video-player')
-        await page.getByRole('button', { name: 'Erklärung zu „Gleichzeitige Importe“' }).click()
-        await page.getByRole('tooltip').filter({ hasText: 'Während der Show lieber 1' }).waitFor({
-          timeout: 5_000
-        })
+        const info = page.getByRole('button', { name: 'Erklärung zu „Gleichzeitige Importe“' })
+        const tip = page.getByRole('tooltip').filter({ hasText: 'Während der Show lieber 1' })
+        await info.click()
+        await tip.waitFor({ timeout: 5_000 })
+        // daneben: am Handy kommt dabei oft kein blur – die Blase blieb sonst stehen
+        await page.getByRole('heading', { level: 1 }).click()
+        await tip.waitFor({ state: 'detached', timeout: 5_000 })
+        // ein Tipp öffnet, ein zweiter auf dasselbe ⓘ schließt (Finger: ohne Darüberfahren)
+        await info.dispatchEvent('click')
+        await tip.waitFor({ timeout: 5_000 })
+        await info.dispatchEvent('click')
+        await tip.waitFor({ state: 'detached', timeout: 5_000 })
       }
     ],
     [

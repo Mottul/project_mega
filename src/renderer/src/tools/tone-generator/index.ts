@@ -1,0 +1,52 @@
+import { lazy } from 'react'
+import { AudioWaveform } from 'lucide-react'
+import type { ToolModule } from '../types'
+
+export const toneGeneratorTool: ToolModule = {
+  id: 'tone-generator',
+  name: 'Testtongenerator',
+  description: 'Sinus, Rauschen, Sweep, Metronom und Kanaltests – auch am Handy.',
+  icon: AudioWaveform,
+  category: 'calc',
+  keywords: [
+    'testton',
+    'ton',
+    'tone',
+    'tongenerator',
+    'signalgenerator',
+    'generator',
+    'sinus',
+    'sine',
+    'pegelton',
+    'bezugspegel',
+    '1 khz',
+    'rosa rauschen',
+    'pink noise',
+    'weißes rauschen',
+    'weisses rauschen',
+    'white noise',
+    'rauschen',
+    'sweep',
+    'gleitsinus',
+    'metronom',
+    'metronome',
+    'klick',
+    'click',
+    'bpm',
+    'tempo',
+    'tap',
+    'kanal',
+    'links',
+    'rechts',
+    'polarität',
+    'polaritaet',
+    'phase',
+    'gegenphase',
+    'verpolt',
+    'glits',
+    'einmessen',
+    'pa',
+    'lautsprecher'
+  ],
+  component: lazy(() => import('./ToneGenerator').then((m) => ({ default: m.ToneGenerator })))
+}

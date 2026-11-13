@@ -4,7 +4,7 @@
 
 import type { PatternConfig, PatternId, SolidColor } from '@shared/types'
 import { drawMappingCard } from './mappingCard'
-import { syncFlashOn } from './tone/plan'
+import { syncFlashOn } from '../_tone/plan'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -465,7 +465,7 @@ export function drawPattern(
 
 /**
  * AV-Sync: schwarz, zu jeder vollen Sekunde der Wanduhr ein weißer Vollbild-Blitz – im selben
- * Moment piept der Testton (tone/engine.ts). Ein Messgerät oder eine Zeitlupen-Aufnahme vor der
+ * Moment piept der Testton (_tone/engine.ts). Ein Messgerät oder eine Zeitlupen-Aufnahme vor der
  * Wand zeigt den Abstand zwischen Blitz und Piep: die Verzögerung des Bildwegs.
  */
 function drawAvSync(ctx: Ctx, w: number, h: number, timeMs: number): void {

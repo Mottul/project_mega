@@ -8,6 +8,8 @@ describe('Tailwind-Quellen der Rechner-PWA', () => {
     expect(src).toContain('/p/src/pwa')
     expect(src).toContain('/p/src/renderer/src/tools/timecode')
     expect(src).toContain('/p/src/renderer/src/tools/_calc')
+    // Ton-Kern des Testtongenerators (gemeinsam mit dem Testbildgenerator)
+    expect(src).toContain('/p/src/renderer/src/tools/_tone')
     expect(src).not.toContain('/p/src/renderer/src')
     expect(inSources('/p/src/renderer/src/tools/led-wall/LedWall.tsx', src)).toBe(false)
     expect(inSources('/p/src/renderer/src/components/ToolShell.tsx', src)).toBe(false)

@@ -13,6 +13,7 @@ import { riggingTool } from '@renderer/tools/rigging'
 import { rtaTool } from '@renderer/tools/rta'
 import { throwRatioTool } from '@renderer/tools/throw-ratio'
 import { timecodeTool } from '@renderer/tools/timecode'
+import { toneGeneratorTool } from '@renderer/tools/tone-generator'
 import type { ToolModule } from '@renderer/tools/types'
 
 /** Reihenfolge = Startseite der PWA (wie in der Desktop-Registry) */
@@ -25,6 +26,7 @@ export const PWA_TOOLS: ToolModule[] = [
   powerLoadTool,
   audioDelayTool,
   rtaTool,
+  toneGeneratorTool,
   riggingTool,
   timecodeTool
 ]
