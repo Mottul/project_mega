@@ -6,10 +6,11 @@ man heute scrollen muss, um Transport und Playlist zu sehen. Dieser Plan beschre
 Layout so genau, dass es sich Schritt für Schritt umsetzen lässt, und zieht daraus ein Muster,
 das danach Stage-Timer, Testbild und Video-Generator übernehmen können.
 
-**Stand 13. November 2026:** P1 und P2 sind umgesetzt – die drei Felder stehen, die Seite
-scrollt nicht mehr, `e2e/player-layout.mjs` prüft es bei vier Fenstergrößen. Offen sind P3 bis
-P6 (Bühne, Playlist, Bibliothek, Doku); was dabei schon miterledigt wurde, steht bei
-[Umsetzung](#umsetzung-in-schritten).
+**Stand 13. November 2026:** P1 bis P3 sind umgesetzt – die drei Felder stehen, die Seite
+scrollt nicht mehr, die Bühne zeigt Restzeit, „Danach“ und „Stumm“; `e2e/player-layout.mjs`
+prüft es bei vier Fenstergrößen. Offen sind P4 bis P6 (Playlist, Bibliothek, Doku); was dabei
+schon miterledigt wurde, steht bei [Umsetzung](#umsetzung-in-schritten). Die offenen Fragen
+sind entschieden ([Entscheidungen](#entscheidungen)).
 
 - [Anlass: gemessen](#anlass-gemessen)
 - [Ziele](#ziele)
@@ -19,7 +20,7 @@ P6 (Bühne, Playlist, Bibliothek, Doku); was dabei schon miterledigt wurde, steh
 - [Umsetzung in Schritten](#umsetzung-in-schritten)
 - [Abnahme](#abnahme)
 - [Auf andere Werkzeuge übertragen](#auf-andere-werkzeuge-übertragen)
-- [Offene Fragen](#offene-fragen)
+- [Entscheidungen](#entscheidungen)
 - [Nicht tun](#nicht-tun)
 
 ## Anlass: gemessen
@@ -127,29 +128,38 @@ Außenabstand und Lücken 12 px (`p-3`, `gap-3`) statt heute 24 px. Jedes Feld h
 
 ### Bühne
 
-Von oben nach unten, das Feld hat keinen eigenen Kopf:
+**In P3 umgesetzt** (`Stage.tsx`). Von oben nach unten, das Feld hat keinen eigenen Kopf:
 
-1. **Vorschau – in P2 umgesetzt, aber noch fest 16 : 9:** Der Rahmen ist so breit wie das Feld
-   und 16 : 9 hoch; fehlt die Höhe, schrumpft er (`flex-shrink`, höchstens bis 120 px), und der
-   Kasten darin passt sich per Container-Einheiten ein (`container-type: size`,
-   `width: min(100cqw, calc(100cqh * 16 / 9))`). So stehen die Knöpfe immer direkt unter der
-   Vorschau, freier Platz bleibt unten im Feld. Geplant war ein Rahmen mit `flex-1` – dann
-   schwebte die Vorschau bei 1920 × 1080 mitten im Feld, und die Knöpfe klebten am unteren Rand.
-   **Offen (P3):** das Seitenverhältnis der Wand (`pstate.wall`) statt 16 : 9 – an beiden
-   Stellen in `Stage.tsx`, beim Rahmen (`aspect-video`) und in der Formel; „Live-Vorschau“ und
-   „FPS“ als kleine Knöpfe oben rechts in der Vorschau, sichtbar beim Darüberfahren und bei
-   Tastaturfokus.
-2. **Jetzt-Zeile:** links Titel (`text-sm font-medium truncate`) und darunter Maße und
-   Einpass-Art; rechts groß die **Restzeit** (`text-2xl tabular-nums`, „−0:48“), darunter klein
-   „0:12 / 1:00“. Bei Bildern zählt die Standzeit herunter. Ohne Titel: „Nichts ausgewählt“.
-3. **Suchleiste** wie heute.
+1. **Vorschau im Seitenverhältnis der Wand:** Der Rahmen ist so breit wie das Feld und so hoch,
+   wie das Verhältnis verlangt; fehlt die Höhe, schrumpft er (`flex-shrink`, höchstens bis
+   120 px), und nie ist er höher als 60vh (sonst füllte eine Hochkant-Wand in der schmalen Stufe
+   den Bildschirm). Der Kasten darin passt sich per Container-Einheiten ein (`container-type:
+   size`, `width: min(100cqw, calc(100cqh * w / h))`). So stehen die Knöpfe immer direkt unter
+   der Vorschau, freier Platz bleibt unten im Feld. Geplant war ein Rahmen mit `flex-1` – dann
+   schwebte die Vorschau bei 1920 × 1080 mitten im Feld. Das Verhältnis kommt aus der
+   Wand-Auflösung der Einstellungen (`wallW`/`wallH` in `VideoPlayer.tsx`), **nicht aus
+   `pstate.wall`**: Das zieht der main erst nach, wenn das Ausgabefenster aufgeht.
+   „FPS“ und „Live-Vorschau“ sind kleine Knöpfe **oben links** in der Vorschau (oben rechts
+   steht die FPS-Zahl der Engine), sichtbar beim Darüberfahren und bei Tastaturfokus; mit
+   `z-20`, weil die Ebenen der Engine `z-index` bis 10 tragen – ohne lagen die Knöpfe unsichtbar
+   darunter. Der Klick geht nicht zur Vorschau durch (die schaltet sonst Live/Standbild um).
+2. **Jetzt-Zeile:** links Titel und darunter Maße und Einpass-Art (deutscher Kurzname aus
+   `fitKurz` in `SetupPanels.tsx` – vorher stand die interne Kennung wie „bars“ da); rechts groß
+   die **Restzeit** (`fmtRest` in `format.ts`: aufgerundet wie ein Countdown, grau, solange
+   pausiert; bei Bildern die restliche Standzeit). Die geplante kleine Zeile „0:12 / 1:00“
+   darunter entfiel: Position und Länge stehen schon an der Suchleiste. Ohne Titel: „Nichts
+   ausgewählt“.
+3. **Suchleiste** wie vorher.
 4. **Transport:** in der Mitte Zurück, Play/Pause (groß), Weiter. Links Ton: Stumm-Knopf,
-   Regler, Prozent – ist stumm geschaltet, steht dort **„Stumm“ in `warning`** statt „0 %“.
-   Rechts Loop, Zufall und ein ⓘ (`InfoTip`) mit den Tastenkürzeln, die heute als Zeile unter
-   dem Transport stehen. Ist die Spalte schmaler als 460 px, stehen Ton und Modi in einer
-   zweiten Zeile darunter.
-5. **„Danach: …“** (klein, gedämpft): Titel des nächsten Eintrags aus `nextIndex(pstate)`; bei
-   −1 „Danach: Ende“. Gilt auch bei Zufall, weil der main den nächsten Index vorab würfelt.
+   Regler und **„Stumm“ in `warning`** statt eines Prozentwerts. Rechts Loop und Zufall als
+   **Symbole** (an = Akzentfarbe, der Name im Tooltip – mit Text passten die drei Gruppen bei
+   460 px nicht in eine Zeile) und ein ⓘ (`InfoTip`, jetzt mit Zeilenumbrüchen) mit den
+   Tastenkürzeln. Ist der Block schmaler als 460 px (`useElementWidth`), stehen Ton und Modi in
+   einer zweiten Zeile darunter; die Bereiche wandern per `grid-template-areas`, die Reihenfolge
+   im DOM bleibt.
+5. **„Danach: …“** (klein, gedämpft): `danach()` in `layout.ts` aus `nextIndex(pstate)` – der
+   nächste Titel, bei Loop „Eines“ derselbe, am Ende ohne Loop „Ende“; ohne laufenden Eintrag
+   nichts. Gilt auch bei Zufall, weil der main den nächsten Index vorab würfelt.
 
 ### Playlist
 
@@ -192,11 +202,12 @@ Von oben nach unten, das Feld hat keinen eigenen Kopf:
 
 ### Schublade
 
-Neuer Bereich **„Wiedergabe“** in `SetupPanels.tsx`, nach „Bild einpassen“: Übergang (Schnitt
-oder Überblenden), Dauer der Überblendung (nur bei Überblenden), Bild-Standzeit. Zusammenfassung
-„Schnitt · Bilder 10 s“ bzw. „Überblenden 0,5 s · Bilder 10 s“. Die Befehle bleiben dieselben
-(`setTransition`, `setImageDuration`), es ändert sich nur der Ort. Der Bereich ist auch in der
-Kundenansicht da.
+**In P3 umgesetzt:** Bereich **„Wiedergabe“** (`WiedergabeSection` in `SetupPanels.tsx`) mit
+Übergang (Schnitt oder Überblenden), Dauer der Überblendung (nur bei Überblenden, in ms) und
+Bild-Standzeit (s). Zusammenfassung „Schnitt · Bilder 10 s“ bzw. „Überblenden 0,5 s · Bilder
+10 s“. Die Befehle bleiben dieselben (`setTransition`, `setImageDuration`), es ändert sich nur
+der Ort. Er steht nach „Import“ und vor „Idle-Bild“ (geplant war nach „Bild einpassen“ – so
+bleiben die beiden Bereiche für den Import beisammen) und ist auch in der Kundenansicht da.
 
 ## Bausteine
 
@@ -206,7 +217,8 @@ Gebaut in P1 und P2 (alles im Renderer):
 | ----- | ------ |
 | `components/workAreaRaster.ts` | rein, getestet: `Stufe`, `Grenzen`, `GRENZEN` (1180 / 760 / 420 px), `stufe(breite, hoehe, g)`, der Typ `Raster<F>` (`columns`, `rows`, `areas` je Zeile) und `rasterStil(r)` für den Inline-Stil |
 | `components/WorkArea.tsx` | `WorkArea`, `Pane`, `useStufe()` |
-| `video-player/layout.ts` | rein, getestet: `PLAYER_RASTER` (Raster je Stufe), `gesamtdauer()`, `zeilenSchluessel()` |
+| `video-player/layout.ts` | rein, getestet: `PLAYER_RASTER` (Raster je Stufe), `gesamtdauer()`, `zeilenSchluessel()`, `danach()` (P3) |
+| `video-player/format.ts` | rein, getestet: `fmtTime`, `fmtRest` (Restzeit), `fmtSekunden` (ms als „0,5“) |
 | `video-player/Stage.tsx` | die Bühne (umbenannt aus der Karte „Wiedergabe“) |
 | `e2e/player-layout.mjs` | die Abnahme, eingetragen in `e2e/run.mjs` |
 
@@ -258,16 +270,19 @@ sie zuerst gegen den Stand davor laufen.
   hinaus gleich miterledigt, weil die Abnahme es bei 1024 × 600 sonst nicht schaffte: die
   Vorschau schrumpft mit der Höhe (aus P3, noch fest 16 : 9), Anzahl und Gesamtdauer im Kopf,
   gespeicherte Playlists in einer Zeile und Schlüssel je Vorkommen (aus P4).
+- **P3** (eigener Pull Request) – die Bühne wie unter [Bühne](#bühne) beschrieben, Übergang und
+  Bild-Standzeit in der Schublade. Das E2E bekam sechs Schritte dazu: Gegen den Stand davor
+  scheiterten die fünf der Bühne; der sechste (Knopf „FPS“ in der Vorschau, über dem Video
+  klickbar) scheitert an einer Bühne ohne `z-20` – so war die erste Fassung.
 
 | Schritt | Inhalt | Größe |
 | ------- | ------ | ----- |
-| **P3** | Bühne: Vorschau im Seitenverhältnis der Wand (siehe [Bühne](#bühne), Punkt 1), Jetzt-Zeile mit Restzeit, „Danach“, „Stumm“ sichtbar, Tastenkürzel hinter ⓘ, „Live-Vorschau“ und „FPS“ in die Vorschau. Übergang und Bild-Standzeit in die Schublade (Bereich „Wiedergabe“). | mittel |
 | **P4** | Playlist: Miniaturen, „Danach“, laufender Eintrag bleibt sichtbar, Sortieren mit Griff, „Speichern“ und „Leeren“ in den Kopf, „Leeren“ mit Rückfrage. | mittel |
 | **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen mit Rückfrage, Menü-Baustein. Heute bricht der Kopf bei 1366 px Breite in zwei Zeilen um (Ansicht, Dateien, Ordner) – mit „Importieren“ und „⋯“ passt er wieder in eine. | mittel |
 | **P6** | Doku: Abschnitt Video-Player in `WERKZEUGE.md` vervollständigen, dieses Dokument dorthin überführen und löschen; das Muster `WorkArea` steht schon im Skill `neues-werkzeug`, die Lehren in `review-checkliste`. | klein |
 
-P3–P5 sind unabhängig voneinander und können in jeder Reihenfolge folgen; vorher die
-[offenen Fragen](#offene-fragen) klären.
+P4 und P5 sind unabhängig voneinander und können in jeder Reihenfolge folgen; die Fragen dazu
+sind [entschieden](#entscheidungen).
 
 ## Abnahme
 
@@ -275,10 +290,11 @@ P3–P5 sind unabhängig voneinander und können in jeder Reihenfolge folgen; vo
 Playlist, drei gespeicherte Playlists; Wand 1280 × 720, damit der Import schnell geht). Maße
 liest `page.evaluate` aus der Seite; Kennungen `tool-content`, `tool-main`, `arbeitsflaeche`
 (mit `data-stufe`), `feld-bibliothek`/`feld-playlist`/`feld-buehne`, `vorschau`,
-`playlist-liste`. **Seit P2 im Skript:** 1 bis 4 und 8, dazu „Wechsel der Stufe baut die
-laufende Wiedergabe nicht neu auf“ (Marke am `<video>`, Schublade auf, schmal, wieder breit).
-**Kommen mit ihren Schritten dazu:** 5, 7 und 10 mit P3, 6 und „Leeren fragt“ aus 9 mit P4,
-„Löschen fragt“ aus 9 mit P5. Jede Prüfung bei zugeklappter Schublade, sofern nichts anderes
+`playlist-liste`, in der Bühne `restzeit`, `ton`, `danach`. **Seit P2 im Skript:** 1 bis 4 und
+8, dazu „Wechsel der Stufe baut die laufende Wiedergabe nicht neu auf“ (Marke am `<video>`,
+Schublade auf, schmal, wieder breit). **Seit P3:** 5, 7 und 10, dazu Restzeit und ⓘ statt der
+Zeile mit den Tastenkürzeln sowie Übergang und Standzeit in der Schublade. **Kommen mit ihren
+Schritten dazu:** 6 und „Leeren fragt“ aus 9 mit P4, „Löschen fragt“ aus 9 mit P5. Jede Prüfung bei zugeklappter Schublade, sofern nichts anderes
 dasteht:
 
 1. **Kein Scrollen der Seite** bei 1024 × 600, 1366 × 768 und 1920 × 1080: Die Arbeitsfläche
@@ -330,18 +346,24 @@ Dokumente, die man von oben nach unten liest – sie scrollen als Seite und blei
 LED-Wall-Konfigurator hat sein eigenes Gerüst und braucht keinen Umbau; ob er später `Pane`
 übernimmt, entscheidet sich, wenn der Baustein sich bewährt hat.
 
-## Offene Fragen
+## Entscheidungen
 
-Vor P3 bis P5 zu klären – die Vorgabe in Klammern gilt, wenn nichts anderes entschieden wird:
+Am 13. November 2026 entschieden – überall die Vorgabe des Plans:
 
-1. **Übergang und Bild-Standzeit in die Schublade?** (ja) Am Handy bleiben sie auf der
-   Steuerseite. Wer sie am Rechner oft live umstellt, will sie in der Bühne behalten.
-2. **Löschen mit Rückfrage oder mit „Rückgängig“?** (Rückfrage) „Rückgängig“ ist angenehmer,
-   braucht aber einen Papierkorb im main, der die Datei erst später entfernt.
-3. **Reihenfolge der Felder:** Bibliothek · Playlist · Bühne (Vorgabe) oder die Bühne in der
-   Mitte? Für die Vorgabe spricht das Ziehen zwischen benachbarten Feldern.
-4. **Stumm ab Werk** bleibt? (ja – dieser Plan ändert nur die Sichtbarkeit.)
-5. **Ansicht der Bibliothek** im Menü „⋯“ (Vorgabe) oder weiter als drei Knöpfe im Kopf?
+1. **Übergang und Bild-Standzeit in die Schublade:** ja (in P3 umgesetzt). Am Handy bleiben sie
+   auf der Steuerseite.
+2. **Löschen mit Rückfrage**, nicht mit „Rückgängig“ (P4: „Playlist leeren …“, P5: Medium
+   löschen). „Rückgängig“ lässt sich später nachrüsten, die Rückfrage steht dem nicht im Weg:
+   für die Playlist klein (das Fenster merkt sich die Kennungen vor dem Leeren und schickt sie
+   per `replace` zurück; dazu braucht `toast` einen Knopf), für die Bibliothek mittel – heute
+   löscht `deleteMedia` Datei, Miniatur und Datenbank-Zeile sofort; nötig wäre ein Papierkorb im
+   main (Dateien verschieben, Zeile merken, nach Ablauf oder beim Beenden endgültig löschen,
+   `conv_key` beim erneuten Import beachten), und die Playlist-Plätze, die `dropMediaFromPlaylist`
+   entfernt, müssten mit zurück. Das allgemeine Rückgängig aus Paket D deckt den Player nicht ab,
+   weil sein Zustand im main lebt.
+3. **Reihenfolge der Felder:** Bibliothek · Playlist · Bühne (wie umgesetzt).
+4. **Stumm ab Werk** bleibt; P3 macht es nur sichtbar.
+5. **Ansicht der Bibliothek** wandert ins Menü „⋯“ (P5).
 
 ## Nicht tun
 

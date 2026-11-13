@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MediaItem } from '@shared/types'
-import { gesamtdauer, PLAYER_RASTER, zeilenSchluessel } from './layout'
+import { danach, gesamtdauer, PLAYER_RASTER, zeilenSchluessel } from './layout'
 
 const medium = (id: string, durationSec: number | null): MediaItem => ({
   id,
@@ -70,5 +70,42 @@ describe('PLAYER_RASTER', () => {
       expect(r.areas.every((z) => z.length === spalten)).toBe(true)
       expect(r.rows.trim().split(/\s+(?![^(]*\))/).length).toBe(r.areas.length)
     }
+  })
+})
+
+describe('danach', () => {
+  const liste = ['a', 'b', 'c'].map((id) => medium(id, 5))
+  const stand = (
+    index: number,
+    weiter: Partial<{ loop: 'all' | 'one' | 'none'; shuffle: boolean; shuffleNext: number }> = {}
+  ) => ({
+    playlist: liste,
+    index,
+    loop: 'all' as const,
+    shuffle: false,
+    shuffleNext: -1,
+    ...weiter
+  })
+
+  it('nennt den nächsten Eintrag', () => {
+    expect(danach(stand(0))).toBe('b')
+  })
+
+  it('Loop „Eines“: derselbe Titel', () => {
+    expect(danach(stand(1, { loop: 'one' }))).toBe('b')
+  })
+
+  it('am Ende: mit Loop „Alle“ wieder der erste, ohne Loop „Ende“', () => {
+    expect(danach(stand(2))).toBe('a')
+    expect(danach(stand(2, { loop: 'none' }))).toBe('Ende')
+  })
+
+  it('Zufall: der vorab gewürfelte Eintrag', () => {
+    expect(danach(stand(0, { shuffle: true, shuffleNext: 2 }))).toBe('c')
+  })
+
+  it('nichts, solange nichts läuft', () => {
+    expect(danach(stand(-1))).toBeNull()
+    expect(danach({ ...stand(0), playlist: [] })).toBeNull()
   })
 })

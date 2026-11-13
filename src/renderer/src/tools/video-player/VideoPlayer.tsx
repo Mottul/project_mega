@@ -31,7 +31,13 @@ import { PLAYER_RASTER } from './layout'
 import { Library } from './Library'
 import { NdiSection, usePlayerNdi } from './NdiPanel'
 import { PlaylistFeld } from './Playlist'
-import { FitSection, IdleSection, ImportSection, WallSection } from './SetupPanels'
+import {
+  FitSection,
+  IdleSection,
+  ImportSection,
+  WallSection,
+  WiedergabeSection
+} from './SetupPanels'
 import { Stage } from './Stage'
 import { usePlayback } from './usePlayback'
 
@@ -228,6 +234,7 @@ export function VideoPlayer(): JSX.Element {
               wallH={wallH}
             />
           )}
+          <WiedergabeSection pstate={pstate} />
           {!locked && <IdleSection pstate={pstate} />}
           <NdiSection wallW={wallW} wallH={wallH} status={ndi.status} />
           <RemoteSection
@@ -259,7 +266,7 @@ export function VideoPlayer(): JSX.Element {
                 onReload={loadLibrary}
               />
               <PlaylistFeld pstate={pstate} saved={saved} onSaveSaved={persistSaved} />
-              <Stage pstate={pstate} playback={playback} />
+              <Stage pstate={pstate} playback={playback} wand={{ width: wallW, height: wallH }} />
             </WorkArea>
           </div>
         </div>

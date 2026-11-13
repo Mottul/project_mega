@@ -4,9 +4,11 @@
 // aus dem Plan. Gegen den Stand vor dem Umbau war die Seite bei 1366 × 768 doppelt so hoch wie
 // das Fenster (1323 statt 666 px).
 //
-// Die übrigen Prüfungen der Abnahme kommen mit ihren Schritten dazu: Seitenverhältnis der Wand,
-// „Danach“ und „Stumm“ mit P3, laufender Eintrag sichtbar und „Leeren“ fragt mit P4, Löschen
-// fragt mit P5. Braucht das gebündelte ffmpeg (Import); ohne wird übersprungen.
+// Seit P3 auch die Bühne: Restzeit, „Danach“, „Stumm“, Tastenkürzel hinter dem ⓘ, Knopf „FPS“
+// über dem Video, Übergang und Bild-Standzeit in der Schublade, Vorschau im Seitenverhältnis der
+// Wand. Mit ihren Schritten kommen noch dazu: laufender Eintrag sichtbar und „Leeren“ fragt (P4),
+// Löschen fragt (P5).
+// Braucht das gebündelte ffmpeg (Import); ohne wird übersprungen.
 
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
@@ -174,6 +176,19 @@ function allesImBild(m) {
   })
 }
 
+/** Text eines Elements der Bühne (leer, wenn es fehlt) */
+const buehne = (testId) =>
+  page.evaluate(
+    (id) =>
+      document.querySelector(`[data-testid="feld-buehne"] [data-testid="${id}"]`)?.textContent ??
+      '',
+    testId
+  )
+/** Titel der Playlist im main (Reihenfolge wie angezeigt) */
+const titel = () =>
+  page.evaluate(async () => (await window.api.player.getState()).playlist.map((m) => m.title))
+const befehl = (cmd) => page.evaluate((c) => window.api.player.command(c), cmd)
+
 const FENSTER = [
   [1024, 600, false, 'mittel'],
   [1366, 768, false, 'breit'],
@@ -273,6 +288,158 @@ try {
         ]) {
           await fenster(w, h, offen)
           assert.ok(await nochDa(), `nach ${w} × ${h} ist die Engine neu aufgebaut`)
+        }
+      }
+    ],
+    [
+      'Bühne: Restzeit groß, Tastenkürzel hinter dem ⓘ statt als Zeile',
+      async () => {
+        await fenster(1366, 768)
+        assert.match(await buehne('restzeit'), /^−\d+:\d\d$/, 'Restzeit fehlt oder falsch')
+        const tip = page.getByTestId('feld-buehne').getByRole('button', { name: 'Tastenkürzel' })
+        assert.equal(await tip.count(), 1, 'kein ⓘ für die Tastenkürzel')
+        const zeile = await page
+          .getByTestId('feld-buehne')
+          .getByText('Leertaste Play/Pause')
+          .count()
+        assert.equal(zeile, 0, 'Tastenkürzel stehen noch als Zeile in der Bühne')
+      }
+    ],
+    [
+      'Bühne: „Danach“ nennt den nächsten Titel, mit Loop „Eines“ den laufenden, am Ende „Ende“',
+      async () => {
+        const t = await titel()
+        try {
+          await befehl({ type: 'goto', index: 2 })
+          assert.ok(
+            await waitFor(async () => (await buehne('danach')) === `Danach: ${t[3]}`, 5_000),
+            `Danach: „${await buehne('danach')}“, erwartet „${t[3]}“`
+          )
+          await befehl({ type: 'setLoop', loop: 'one' })
+          assert.ok(
+            await waitFor(async () => (await buehne('danach')) === `Danach: ${t[2]}`, 5_000),
+            `Loop Eines: „${await buehne('danach')}“`
+          )
+          await befehl({ type: 'setLoop', loop: 'none' })
+          await befehl({ type: 'goto', index: t.length - 1 })
+          assert.ok(
+            await waitFor(async () => (await buehne('danach')) === 'Danach: Ende', 5_000),
+            `am Ende: „${await buehne('danach')}“`
+          )
+        } finally {
+          await befehl({ type: 'setLoop', loop: 'all' })
+          await befehl({ type: 'goto', index: 2 })
+        }
+      }
+    ],
+    [
+      'Bühne: „Stumm“ steht da, solange stumm geschaltet ist (frisches Profil)',
+      async () => {
+        assert.equal(await buehne('ton'), 'Stumm')
+        await page
+          .getByTestId('feld-buehne')
+          .getByRole('button', { name: 'Ton einschalten' })
+          .click()
+        assert.ok(
+          await waitFor(async () => (await buehne('ton')) !== 'Stumm', 5_000),
+          'bleibt Stumm'
+        )
+        await page.getByTestId('feld-buehne').getByRole('button', { name: 'Stummschalten' }).click()
+        assert.ok(await waitFor(async () => (await buehne('ton')) === 'Stumm', 5_000))
+      }
+    ],
+    [
+      'Vorschau: Knopf „FPS“ in der Vorschau, erst beim Darüberfahren sichtbar, über dem Video',
+      async () => {
+        await fenster(1366, 768)
+        const vorschau = page.getByTestId('vorschau')
+        const knopf = vorschau.getByRole('button', { name: 'FPS' })
+        const deckkraft = () =>
+          knopf.evaluate((el) => getComputedStyle(el.parentElement).opacity, undefined, {
+            timeout: 5_000
+          })
+        await page.mouse.move(5, 5)
+        assert.ok(
+          await waitFor(async () => (await deckkraft()) === '0', 2_000),
+          'ohne Maus sichtbar'
+        )
+        await vorschau.hover()
+        assert.ok(await waitFor(async () => (await deckkraft()) === '1', 2_000), 'erscheint nicht')
+        // Die Video-Ebenen der Engine tragen z-index bis 10 – ein Knopf darunter wäre unsichtbar
+        // und nicht klickbar; click() scheitert dann („intercepts pointer events“).
+        await knopf.click({ timeout: 5_000 })
+        assert.equal(await knopf.getAttribute('aria-pressed'), 'true')
+        await knopf.click({ timeout: 5_000 })
+        assert.equal(await knopf.getAttribute('aria-pressed'), 'false')
+      }
+    ],
+    [
+      'Übergang und Bild-Standzeit stehen in der Schublade („Wiedergabe“), nicht mehr in der Bühne',
+      async () => {
+        const feld = page.getByTestId('feld-buehne')
+        assert.equal(
+          await feld.getByText('Bild-Standzeit').count(),
+          0,
+          'Standzeit noch in der Bühne'
+        )
+        assert.equal(await feld.locator('select').count(), 0, 'Übergang noch in der Bühne')
+        await fenster(1366, 768, true)
+        const lade = page.getByTestId('settings-drawer')
+        try {
+          const bereich = lade.getByRole('button', { name: /^Wiedergabe/ })
+          assert.equal(await bereich.count(), 1, 'kein Bereich „Wiedergabe“')
+          assert.match((await bereich.textContent()) ?? '', /Schnitt · Bilder 10 s/)
+          await lade.getByRole('combobox', { name: 'Übergang' }).selectOption('crossfade')
+          assert.ok(
+            await waitFor(
+              async () =>
+                (await page.evaluate(() => window.api.player.getState())).transition ===
+                'crossfade',
+              5_000
+            ),
+            'Übergang kommt nicht im main an'
+          )
+          assert.match((await bereich.textContent()) ?? '', /Überblenden 0,5 s · Bilder 10 s/)
+        } finally {
+          await befehl({ type: 'setTransition', transition: 'cut' })
+          await fenster(1366, 768)
+        }
+      }
+    ],
+    [
+      'Vorschau im Seitenverhältnis der Wand: 3840 × 1080 über die Schublade gestellt',
+      async () => {
+        await fenster(1366, 768, true)
+        const lade = page.getByTestId('settings-drawer')
+        const setze = async (name, wert) => {
+          const f = lade.getByRole('textbox', { name, exact: true })
+          await f.fill(String(wert))
+          await f.press('Tab')
+        }
+        try {
+          await setze('Breite', 3840)
+          await setze('Höhe', 1080)
+          await fenster(1366, 768)
+          const verh = async () => {
+            const v = (await mass()).vorschau
+            return v ? v.right - v.left : 0
+          }
+          assert.ok(
+            await waitFor(async () => {
+              const m = await mass()
+              const breite = m.vorschau.right - m.vorschau.left
+              return breite / m.vorschau.height > 3.4 && breite / m.vorschau.height < 3.7
+            }, 5_000),
+            `Vorschau ${JSON.stringify((await mass()).vorschau)} (Breite ${await verh()})`
+          )
+          keinScrollen(await mass())
+        } finally {
+          await page.evaluate(
+            (w) => window.api.setSettings({ player: { wallWidth: w.width, wallHeight: w.height } }),
+            WAND
+          )
+          await playerNeu()
+          await fenster(1366, 768)
         }
       }
     ],

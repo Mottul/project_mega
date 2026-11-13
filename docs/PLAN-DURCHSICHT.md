@@ -83,7 +83,7 @@ Empfohlen von oben nach unten: erst der Player, dann die kleinen Punkte, die man
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **C** | Video-Player: Bühne, Playlist, Bibliothek (P3–P6; P1 und P2 erledigt) | M je Schritt | eigener Plan liegt vor |
+| **C** | Video-Player: Playlist, Bibliothek, Doku (P4–P6; P1 bis P3 erledigt) | M je Schritt | eigener Plan liegt vor |
 | **B1** | Suche: Enter öffnet den ersten Treffer | S | – |
 | **B2** | Strg+K: Werkzeug wechseln von überall | M | B1 |
 | **B3** | Netzwerk-Scanner: sinnvoller Adapter vorgewählt | S | – |
@@ -342,9 +342,10 @@ Ausgabe-Leiste eine dunklere Farbe als der Knopf „Vollbild starten“. Die PWA
 
 Das wichtigste Vorhaben, ausgearbeitet in [PLAN-ARBEITSFLAECHE.md](PLAN-ARBEITSFLAECHE.md):
 gemessener Anlass, Entwurf mit Zeichnungen, Platzregeln, sechs Schritte P1 bis P6 mit Abnahme.
-**P1 und P2 sind erledigt** (13. November 2026): Die drei Felder stehen, die Seite scrollt nicht
-mehr. Ein Auftrag lautet dort „Setze Schritt P3 aus docs/PLAN-ARBEITSFLAECHE.md um“. Vor P3 die
-[offenen Fragen](PLAN-ARBEITSFLAECHE.md#offene-fragen) klären.
+**P1 bis P3 sind erledigt** (13. November 2026): Die drei Felder stehen, die Seite scrollt nicht
+mehr, die Bühne zeigt Restzeit, „Danach“ und „Stumm“. Ein Auftrag lautet dort „Setze Schritt P4
+aus docs/PLAN-ARBEITSFLAECHE.md um“. Die Fragen zum Player sind
+[entschieden](PLAN-ARBEITSFLAECHE.md#entscheidungen).
 
 ## D – Rückgängig
 
@@ -583,6 +584,6 @@ Einmal-Freigaben aufräumen.
    Rechner bleibt wach.
 3. **Ordner `Beispiele/`:** ignorieren oder einchecken (E6)?
 4. **Worktree `wonderful-taussig-0eac94`** (1,8 GB) löschen?
-5. **Player:** die fünf [offenen Fragen](PLAN-ARBEITSFLAECHE.md#offene-fragen) im Plan der
-   Arbeitsfläche.
+5. **Player:** am 13. November 2026 entschieden, siehe
+   [Entscheidungen](PLAN-ARBEITSFLAECHE.md#entscheidungen) im Plan der Arbeitsfläche.
 6. **Welche neuen Werkzeuge** aus Teil G überhaupt – und welches zuerst?
