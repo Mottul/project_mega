@@ -50,12 +50,20 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      wären, `TWO_COLUMNS` (stehen dann nebeneinander). Bausteine aus `tools/_calc/ui`:
      `CalcPage` (`note` nur für Sicherheitshinweise), `SectionCard` mit EINER kurzen `desc`-Zeile,
      Formeln/Hintergrund/Beispiel als `hint` (ⓘ) an Karte, Feld oder Ergebnis – keine Absätze;
-     `NumField`/`SelectField`, Ergebnisse als `Readout` (mehrere in `ReadoutGrid` = Kacheln,
-     zweite Einheit per `sub`), Warnungen als `CalcAlert`; Felder, die sich gegenseitig berechnen,
-     über `useLinkedFields` (nie eigene bind-Funktionen). Zahlen mit Komma (`trimNum`, `fmt`),
-     keine hart kodierten Farben (auch nicht im SVG: `fill-primary`). Die id in `SMALL` (und ggf.
-     `TWO_COLUMNS`) in `e2e/layout.mjs` aufnehmen – geprüft werden Höhe, 320 px ohne
-     Querscrollen und Kompaktmodus.
+     Zeilen aus `FieldRow` (Beschriftung links, beliebiges Element rechts): `NumField`,
+     `SelectField`, `ChoiceField` (Knopfgruppe – bis vier kurze Möglichkeiten immer so statt
+     einer Liste; `wrap` für mehr, die man im Betrieb oft umschaltet), `RangeField` (Schieber mit
+     Wert, darunter z. B. `QuickPick` als Schnellwahl); Ergebnisse als `Readout` (mehrere in
+     `ReadoutGrid` = Kacheln, zweite Einheit per `sub`), Warnungen als `Alert`; Felder, die sich
+     gegenseitig berechnen, über `useLinkedFields` (nie eigene bind-Funktionen). Ein Feld, das an
+     einen Store gebunden ist, als `NumberField` in einem `FieldRow` (übernimmt erst bei Enter oder
+     Verlassen; `NumField` begrenzte schon beim Tippen). Läuft das Werkzeug (misst, spielt):
+     `RunButton` für Start und Stopp, `useWakeLock(läuft)` hält den Handy-Bildschirm an, und in
+     `SMALL_TOOLS` `background: true` (Fenster ohne Hintergrund-Drosselung). Zahlen mit Komma
+     (`trimNum`, `fmt`), keine hart kodierten Farben (auch nicht im SVG: `fill-primary`). Die id
+     in `SMALL` (und ggf. `TWO_COLUMNS`) in `e2e/layout.mjs` aufnehmen – geprüft werden Höhe,
+     320 px ohne Querscrollen und Kompaktmodus. Es läuft auch in der Handy-PWA: Skill
+     `rechner-pwa` (kein `api`, keine Einstellungen, keine Toasts; Ton und Tastaturen am Handy).
    - Bausteine aus `components/ui`, Eingabefelder mit Puffer (`useDraft`, `TextField`,
      `NumberField`; für Inhalte, die leer sein dürfen und eine Vorschau live mitziehen sollen,
      `TextArea`/`LiveInput` aus `components/ui/textarea`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten
@@ -69,7 +77,10 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Läuft etwas nur im Fenster (Ton wie Testton und Jingle), mit `useAktivMelden(key, an)`
      (`@renderer/lib/aktivMelden`) melden – sonst nennt die Rückfrage beim Beenden es nicht, und
      der Rechner schläft dabei ein (das Wachhalten liest dieselbe Liste, `energie/wachBedarf.ts`);
-     neue Kennung in `RENDERER_AKTIV` (`main/services/beenden/laufendText.ts`). Was main kennt
+     neue Kennung in `RENDERER_AKTIV` (`main/services/beenden/laufendText.ts`) und im Typ
+     `AktivKennung`. Der Hook braucht kein `api`: Den Weg nach main setzt `main.tsx`
+     (`setAktivMelder`), in der PWA bleibt er still. Ton erzeugen nur über den Kern in
+     `tools/_tone` (`useToneEngine`), nie eine zweite Engine. Was main kennt
      (Ausgabefenster, Aufträge, Fernsteuerung), sammelt `laufend.ts` selbst – ein neuer Dienst im
      main, der läuft, bekommt dort ein Feld in `LaufendStand`.
      Fertige Dateien an den Player: `inDenPlayer(path)` aus `@renderer/lib/inDenPlayer`.
@@ -113,8 +124,8 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Warnung/Gefahr – die sind wie viele Akzentfarben gelb bzw. rot (das Spektrogramm war
      sonst einfarbig). Messen per Timer, Zeichnen per `requestAnimationFrame` (über Refs, React
      nur ~5× je Sekunde): Verdeckte und minimierte Fenster bekommen keine Bilder, im Bildtakt
-     stünde die Messung dann still. Ein Werkzeug, das laufend misst, bekommt in `SMALL_TOOLS`
-     `measures: true` (Fenster ohne Hintergrund-Drosselung).
+     stünde die Messung dann still. Ein Werkzeug, das laufend misst oder spielt, bekommt in
+     `SMALL_TOOLS` `background: true` (Fenster ohne Hintergrund-Drosselung).
 7. **Optional:** Aktivitätsanzeige auf dem Startbildschirm in `launcher/useToolActivity.ts`;
    Kundenansicht über `useKiosk()` (`launcher/kiosk.tsx`), wenn Teile ausgeblendet werden müssen.
 8. **Doku:** Abschnitt in `docs/WERKZEUGE.md` (passende Kategorie), Eintrag im README-Überblick,

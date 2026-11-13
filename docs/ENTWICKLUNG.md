@@ -159,9 +159,18 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   die Höhe (`fitHeight`: Mindestmaß bis Bildschirmhöhe) und zeigt das Fenster erst dann – ohne
   Meldung nach 1,5 s trotzdem, mit Eintrag im Debug-Log. Die erste Messung läuft synchron:
   Im versteckten Fenster sind `requestAnimationFrame` und `ResizeObserver` gedrosselt.
-  Schließt das Hauptfenster, gehen sie mit. Die Rechner bauen auf `tools/_calc/ui` (Karten im
-  auto-fit-Raster, Felder mit Umbruch unter ~330 px, Ergebnis-Kacheln, `hint` = ⓘ, verknüpfte
-  Felder per `useLinkedFields`).
+  Schließt das Hauptfenster, gehen sie mit. Was auch verdeckt weiterlaufen muss (RTA misst,
+  Testtongenerator spielt), trägt in `SMALL_TOOLS` `background: true`: Sein Fenster wird im
+  Hintergrund nicht gedrosselt (`runsInBackground`). Die kleinen Werkzeuge bauen auf
+  `tools/_calc/ui` (Karten im auto-fit-Raster, Zeilen per `FieldRow` mit Umbruch unter ~330 px,
+  Ergebnis-Kacheln, `hint` = ⓘ, verknüpfte Felder per `useLinkedFields`; Auswahl bis vier kurze
+  Möglichkeiten als Knopfgruppe `ChoiceField`, sonst `SelectField`; `RangeField`, `QuickPick`,
+  `RunButton` für Start und Stopp).
+- **Testton:** ein Kern in `tools/_tone/` (Engine, Zeitpläne, Hook `useToneEngine`) für den
+  Testbildgenerator und den Testtongenerator, in der App wie in der Rechner-PWA – neue Signale
+  dort, nicht je Werkzeug. Typen und Vorgabe in `src/shared/testton.ts`. Der Kern kommt ohne
+  `api` aus: „Testton läuft“ meldet `useAktivMelden` über einen Melder, den die App in
+  `main.tsx` setzt (`setAktivMelder`); in der PWA bleibt er still.
 - **Darstellung in jedem Fenster:** `useAppearanceSync` an der App-Wurzel wendet Design,
   Akzent und Dichte aus `settings.json` an und folgt Änderungen aus anderen Fenstern – auch in
   Fenstern ohne App-Menü (kleine Werkzeuge). Die Vollbild-Ausgaben bleiben außen vor.
@@ -255,7 +264,9 @@ Ein neuer **Rechner** (kleines Werkzeug in `SMALL_TOOLS`) gehört auch in die Re
 `api` noch Einstellungen nutzen. Braucht ein Werkzeug eine Browser-Berechtigung (der RTA das
 Mikrofon), bekommt es sie in der App nur über die Allowlist in
 `main/services/windows/windowPolicy.ts` – je Route und so eng wie möglich (RTA: nur Ton); im
-Browser der PWA fragt das Handy selbst (nur über HTTPS).
+Browser der PWA fragt das Handy selbst (nur über HTTPS). Meldungen stehen dort als `Alert` in
+der Seite – die PWA hat keine Toasts. Was am Handy dazukommt (Ton nur aus einer Bedienung,
+Stummschalter, Tastaturen der Felder, Abnahme am Gerät), sammelt der Skill `rechner-pwa`.
 
 ## Konventionen
 
@@ -365,9 +376,11 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
   `public/icons/` (aus `build/icon.png` erzeugt, s. u.). Build: `vite.pwa.config.ts` (normales
   Vite, `base: './'` – läuft in jedem Unterordner), Ausgabe `out-pwa/`.
 - **Ohne Electron:** `src/pwa/build/plugin.ts` bricht den Build ab, sobald ein Rechner (auch über
-  Umwege) `lib/api`, `lib/settings` oder `electron` hereinzieht.
+  Umwege) `lib/api`, `lib/settings` oder `electron` hereinzieht. Was die App von außen
+  einhängt (Melder für „läuft“ in `lib/aktivMelden`, Melder für gescheitertes Speichern in
+  `lib/persistStorage`), bleibt in der PWA still.
 - **Eigenes CSS:** Tailwind nimmt die Klassen der PWA nur aus ihren Quellen
-  (`src/pwa/build/sources.ts`: PWA, Rechner, `_calc`, `components/ui`, `lib` …, ohne Tests),
+  (`src/pwa/build/sources.ts`: PWA, Rechner, `_calc`, `_tone`, `components/ui`, `lib` …, ohne Tests),
   nicht aus dem ganzen Renderer – sonst änderte jede neue Klasse in irgendeinem Werkzeug das PWA-CSS, und die
   Handys meldeten eine neue Version. Bindet die PWA eine Renderer-Datei außerhalb der Liste ein,
   bricht der Build mit ihrem Namen ab: dann in `sources.ts` eintragen.

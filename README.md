@@ -1,6 +1,6 @@
 # Mottulbox
 
-Desktop-App für Veranstaltungstechnik (Windows, macOS, Linux): 23 AV-Werkzeuge unter einem Dach –
+Desktop-App für Veranstaltungstechnik (Windows, macOS, Linux): 27 AV-Werkzeuge unter einem Dach –
 vom Video-Player für LED-Wände über Jingles, Stage-Timer und OSC-Pult bis zu Rechnern für Strom,
 Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Downloader.
 
@@ -75,8 +75,11 @@ Rigging und Projektion. Läuft offline – Internet braucht nur der YouTube-Down
 - **RTA (Echtzeit-Analysator)** übers Mikrofon: Terzen bis 1/12 Oktave, Pegel in dB(A/C) mit
   Leq, Referenzkurven mit Differenz, Kalibrierung samt Messmikrofon-Korrektur, Spektrogramm und
   Feedback-Finder.
-- **Fürs Handy:** Alle zehn Rechner (auch der RTA) gibt es zusätzlich als eigenständige, offline-fähige Web-App
-  (PWA) – ohne den Rest der Mottulbox: https://mottul.github.io/project_mega/
+- **Testtongenerator** – Sinus, Sweep, rosa und weißes Rauschen, Metronom (mit „Tippen“),
+  Kanal-Kennung, Polaritätspuls und Gegenphase; Pegel gedeckelt, am Handy auch im Stumm-Modus.
+- **Fürs Handy:** Alle elf kleinen Werkzeuge (auch RTA und Testtongenerator) gibt es zusätzlich
+  als eigenständige, offline-fähige Web-App (PWA) – ohne den Rest der Mottulbox:
+  https://mottul.github.io/project_mega/
 
 Alles im Detail: [docs/WERKZEUGE.md](docs/WERKZEUGE.md)
 

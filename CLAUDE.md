@@ -55,20 +55,27 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   `Pane`s (`components/WorkArea.tsx`, Vorbild Video-Player mit Raster in `video-player/layout.ts`)
   – die Seite scrollt dann nie, nur Felder; die Felder in jeder Stufe in derselben Reihenfolge.
   Kleine Werkzeuge (Rechner) öffnen sich immer im eigenen, kleinen Fenster: Eintrag mit Breite in
-  `SMALL_TOOLS` (`shared/toolWindows.ts`), die Höhe folgt dem Inhalt; Bausteine aus
-  `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ, Zahlen mit Komma, verknüpfte Felder per
-  `useLinkedFields`). Fenster: `main/services/windows/appWindows.ts` (`createWindow`),
-  `smallToolWindows.ts` (kleine Werkzeuge), Hauptfenster in `main/index.ts`.
+  `SMALL_TOOLS` (`shared/toolWindows.ts`; läuft es auch verdeckt weiter, `background: true`), die
+  Höhe folgt dem Inhalt; Bausteine aus `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ,
+  Zahlen mit Komma, verknüpfte Felder per `useLinkedFields`, Auswahl bis vier kurze
+  Möglichkeiten als Knopfgruppe `ChoiceField`, Start/Stopp per `RunButton`). Fenster:
+  `main/services/windows/appWindows.ts` (`createWindow`), `smallToolWindows.ts` (kleine
+  Werkzeuge), Hauptfenster in `main/index.ts`.
 - **Rechner-PWA** (`src/pwa/`, `vite.pwa.config.ts`): die kleinen Werkzeuge zusätzlich als
   Web-App fürs Handy, gleiche Module ohne Electron (Liste `src/pwa/tools.ts` = `SMALL_TOOLS`).
-  Rechner dürfen daher weder `api` noch Einstellungen nutzen – der PWA-Build bricht sonst ab.
-  Ihr CSS nimmt Tailwind-Klassen nur aus `src/pwa/build/sources.ts` (neue Abhängigkeit dort
-  eintragen, der Build meldet sie).
+  Rechner dürfen daher weder `api` noch Einstellungen noch Toasts nutzen – der PWA-Build bricht
+  sonst ab; Meldungen als `Alert` in der Seite. Ihr CSS nimmt Tailwind-Klassen nur aus
+  `src/pwa/build/sources.ts` (neue Abhängigkeit dort eintragen, der Build meldet sie). Handy
+  (Ton, Tastaturen, Abnahme am Gerät): Skill `rechner-pwa`.
+- **Testton:** EIN Kern in `tools/_tone/` (Engine, Zeitpläne, `useToneEngine`) für
+  Testbildgenerator und Testtongenerator, in App und PWA – neue Signale dort, nicht je Werkzeug;
+  Typen in `shared/testton.ts`. Ton läuft nur im Fenster: `useAktivMelden` meldet ihn (Rückfrage
+  beim Beenden, Wachhalten) über einen Melder, den `main.tsx` setzt – ohne `api`.
 - **Tools** liegen unter `src/renderer/src/tools/<id>/` und registrieren sich
   über `index.ts` (`ToolModule`) in `tools/registry.ts`; Kategorien/Labels in
   `tools/types.ts`. Lazy geladen über den Launcher (`/tool/:id`).
 - **Zustand:** zustand-Stores je Tool; persistierte Stores (OSC, Jingle, LED-Wall, Packliste,
-  Mini-Manual, Netzwerk-Scanner, Medien-Info, Video-Konverter) nutzen `debouncedStorage()` aus
+  Mini-Manual, Netzwerk-Scanner, Medien-Info, Video-Konverter, RTA, Testtongenerator) nutzen `debouncedStorage()` aus
   `@renderer/lib/persistStorage` (NIE die synchrone Default-Storage – Tipp-Lag), tragen
   eine `version` (migrierbar) und rufen `syncAcrossWindows(store)` (Fenster-Abgleich).
 - **Eingabefelder mit Puffer:** immer `useDraft()` aus `@renderer/lib/useDraft`
@@ -152,6 +159,6 @@ Umsetzung lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überfü
 Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
 `abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,
 `review-checkliste`, `abhaengigkeiten`, `aufraeumen`, `projektdatei`, `anleitung-inhalte`,
-`kabelverlauf`, `atem-steuerung`).
+`kabelverlauf`, `atem-steuerung`, `rechner-pwa`).
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/ROADMAP.md` streichen. Markdown ist von Prettier ausgenommen.
