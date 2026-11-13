@@ -34,11 +34,18 @@ async function openTool() {
   return win
 }
 
-/** Fenster des Werkzeugs im main: eine BrowserWindow-Methode aufrufen (minimize, close …) */
+/**
+ * Fenster des Werkzeugs im main: eine BrowserWindow-Methode aufrufen (minimize, close …). Ein
+ * Fenster, das gerade schließt, ist noch in der Liste, sein Inhalt aber schon weg – getURL()
+ * würfe dann „Object has been destroyed“ (Windows-CI, 13.11.2026).
+ */
 const toolWin = (method) =>
   app.evaluate(({ BrowserWindow }, m) => {
     const win = BrowserWindow.getAllWindows().find(
-      (v) => !v.isDestroyed() && v.webContents.getURL().includes('#/tool/tone-generator?')
+      (v) =>
+        !v.isDestroyed() &&
+        !v.webContents.isDestroyed() &&
+        v.webContents.getURL().includes('#/tool/tone-generator?')
     )
     if (!win) return null
     return win[m]() ?? true
