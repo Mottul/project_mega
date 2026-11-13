@@ -11,14 +11,19 @@
 //   Karten nebeneinander (auto-fit-Raster) – ohne Medienabfragen, die Fensterbreite entscheidet.
 // - Auswahl: bis vier kurze Möglichkeiten als Knopfgruppe (`ChoiceField`, ein Tipp, alles
 //   sichtbar), sonst als Liste (`SelectField`).
+// - Bedienfelder in ganzer Breite (Testtongenerator): `FieldBlock` – Beschriftung darüber, der
+//   Wert rechts daneben; so stehen Knopfgruppen, Schieber und Schnellwahl bündig untereinander.
+// - Selten Gebrauchtes (Einstellungen des RTA) in `FoldCard`: zugeklappt nur eine Zeile mit der
+//   Kurzfassung – beim ersten Öffnen erschlägt die Seite nicht.
 import { Children, createContext, useContext, useId, useState, type ReactNode } from 'react'
-import { Square, type LucideIcon } from 'lucide-react'
+import { ChevronDown, Square, type LucideIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
-import { Segmented } from '@renderer/components/ui/segmented'
+import { Segmented, segmentButtonClass, segmentGroupClass } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
+import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 import { cn } from '@renderer/lib/utils'
 
 /**
@@ -73,6 +78,72 @@ export function SectionCard({
 }
 
 /**
+ * Karte, die sich auf- und zuklappen lässt: zugeklappt nur der Titel und rechts die Kurzfassung
+ * der Werte (`summary`), aufgeklappt wie `SectionCard`. Der Zustand wird je `id` gemerkt
+ * (Bedien-Kleinigkeit). Der Titel ist eine Überschrift mit einem Knopf darin – so finden
+ * Vorlesewerkzeuge die Karten wie die übrigen; das ⓘ steht im Inhalt, ein Knopf im Knopf geht nicht.
+ */
+export function FoldCard({
+  id,
+  title,
+  summary,
+  desc,
+  hint,
+  defaultOpen = false,
+  children
+}: {
+  /** Schlüssel für den gemerkten Zustand, z. B. „rta:anzeige“ */
+  id: string
+  title: string
+  /** Kurzfassung, bleibt auch zugeklappt sichtbar */
+  summary?: ReactNode
+  desc?: string
+  hint?: string
+  defaultOpen?: boolean
+  children: ReactNode
+}): JSX.Element {
+  const [open, setOpen] = usePersistentState(`panel:${id}`, defaultOpen, flag)
+  const bodyId = useId()
+  return (
+    <Card className="overflow-hidden">
+      <h2>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={open ? bodyId : undefined}
+          onClick={() => setOpen((o) => !o)}
+          className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70 sm:px-5"
+        >
+          <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+            {title}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-right text-xs text-muted-foreground">
+            {summary}
+          </span>
+          <ChevronDown
+            className={cn(
+              'size-4 shrink-0 text-muted-foreground transition-transform',
+              !open && '-rotate-90'
+            )}
+          />
+        </button>
+      </h2>
+      {open && (
+        <div id={bodyId} className="px-4 pb-4 sm:px-5 sm:pb-5">
+          {(desc || hint) && (
+            <div className="flex items-start gap-2">
+              {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+              {hint && <InfoTip text={hint} label={`Erklärung zu „${title}“`} />}
+            </div>
+          )}
+          <div className={cn('space-y-3', (desc || hint) && 'mt-4')}>{children}</div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+/**
  * Beschriftung einer Zeile. Das ⓘ steht NEBEN dem <label> (wie bei `Field`): Läge es darin,
  * wäre es das erste beschriftbare Element, und ein Klick auf die Beschriftung löste das ⓘ aus.
  * Ohne `htmlFor` (Knopfgruppe) bloßer Text: Ein <label> gälte sonst für den ersten Knopf.
@@ -80,14 +151,18 @@ export function SectionCard({
 function RowLabel({
   htmlFor,
   label,
-  hint
+  hint,
+  className = 'w-40'
 }: {
   htmlFor?: string
   label: string
   hint?: string
+  className?: string
 }): JSX.Element {
   return (
-    <span className="flex w-40 shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+    <span
+      className={cn('flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground', className)}
+    >
       {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span>{label}</span>}
       {hint && <InfoTip text={hint} label={`Erklärung zu „${label}“`} />}
     </span>
@@ -121,6 +196,39 @@ export function FieldRow({
     <div className={rowClass}>
       <RowLabel htmlFor={htmlFor} label={label} hint={hint} />
       <div className={cn(fieldBox, fit && 'min-w-fit')}>{children}</div>
+    </div>
+  )
+}
+
+/**
+ * Beschriftung über dem Bedienelement, rechts in ihrer Zeile der Wert (`value`: Text oder ein
+ * kleines Feld) – für Bedienfelder in ganzer Breite. Neben einer Beschriftung links bliebe am
+ * Handy zu wenig Platz: Knopfgruppen stünden einspaltig, Zahlenknöpfe ragten heraus.
+ */
+export function FieldBlock({
+  label,
+  hint,
+  htmlFor,
+  value,
+  children
+}: {
+  label: string
+  hint?: string
+  htmlFor?: string
+  value?: ReactNode
+  children: ReactNode
+}): JSX.Element {
+  return (
+    <div className="space-y-1">
+      <div className="flex min-h-5 items-center justify-between gap-3">
+        <RowLabel htmlFor={htmlFor} label={label} hint={hint} className="min-w-0" />
+        {value != null && (
+          <div className="flex min-w-0 items-center justify-end text-sm font-medium tabular-nums">
+            {value}
+          </div>
+        )}
+      </div>
+      {children}
     </div>
   )
 }
@@ -362,19 +470,45 @@ export function RangeField({
   )
 }
 
-/** Schnellwahl: kleine Knöpfe, die einen Wert setzen; der gerade gewählte ist gedrückt */
+/**
+ * Schnellwahl: kleine Knöpfe, die einen Wert setzen; der gerade gewählte ist gedrückt. `fill`:
+ * eine Reihe über die ganze Breite, gleich breit und im Aussehen einer Knopfgruppe – passt zu
+ * `Segmented` darüber oder darunter.
+ */
 export function QuickPick<T extends string | number>({
   label,
   value,
   options,
-  onPick
+  onPick,
+  fill
 }: {
   /** Name der Gruppe für Vorlesewerkzeuge */
   label: string
   value: T
   options: { value: T; label: string }[]
   onPick: (v: T) => void
+  fill?: boolean
 }): JSX.Element {
+  if (fill) {
+    return (
+      <div role="group" aria-label={label} className={cn(segmentGroupClass, 'flex gap-0.5')}>
+        {options.map((o) => (
+          <button
+            key={String(o.value)}
+            type="button"
+            aria-pressed={value === o.value}
+            onClick={() => onPick(o.value)}
+            className={cn(
+              segmentButtonClass(value === o.value),
+              'min-w-0 flex-1 px-1 tabular-nums'
+            )}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    )
+  }
   return (
     <div role="group" aria-label={label} className="flex flex-wrap gap-1.5">
       {options.map((o) => (
