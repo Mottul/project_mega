@@ -19,6 +19,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `testton.mjs` | Testton gemessen: Analysator vor dem Ausgang (`AudioNode.prototype.connect` umgelenkt, je Kanal einer) – Einblenden und Pegel −18 dBFS, Deckel −6 dBFS, 1 kHz, alle Signale unter dem Pegel, Kanal „Links“, Kennungs-Pausen je Kanal, AV-Sync-Piep zur vollen Sekunde (gemessen etwa −55 ms = Ausgabelatenz), Blitz in der Vorschau, Ton endet beim Verlassen. Ohne laufende Audioausgabe übersprungen |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
+| `player-layout.mjs` | Video-Player ohne Scrollen (docs/PLAN-ARBEITSFLAECHE.md): 14 Medien per lavfi (Wand 1280 × 720, schneller Import), drei gespeicherte Playlists; bei 1024 × 600, 1366 × 768 (auch mit angehefteter Schublade) und 1920 × 1080 scrollen weder `tool-content`, `tool-main` noch `arbeitsflaeche`, kein Feld (`[data-pane]`) schneidet ab, `data-stufe` stimmt; Vorschau, Play/Pause und die ersten fünf Zeilen der Playlist liegen im Fenster UND im sichtbaren Teil der Liste; Listen scrollen in sich; Vorschau höchstens 60 % der Höhe; bei 700 × 600 eine Spalte, Bühne vor Playlist vor Bibliothek; ein Wechsel der Stufe baut das `<video>` nicht neu auf (Marke am Element). Braucht ffmpeg |
 | `rta.mjs` | RTA mit eingespeistem Mikrofon (Fake-Gerät liest eine WAV, Signale per lavfi): Sinus 1 kHz −20 dBFS – Pegel, Terz und Nachbarn über die Fadenkreuz-Ablesung, Feedback-Finder (H5), Kalibrieren auf 94 dB, Referenz/Differenz 0 dB, Wasserfall (Linie unter der Spitze, Ablesung) und Zeitachse per Pixel, Stopp; rosa Rauschen – Terzen 63 Hz … 4 kHz flach, kein Feedback. Freigabe über die echte Berechtigungsregel |
 | `osc.mjs` | OSC-Steuerung gegen einen lokalen UDP-Empfänger: leeres Set, Kacheln aller Arten über „+ Widget“, Learn, Bank (Hinzufügen-Knopf je Modus; hohe Potis bleiben in ihrer Kachel – App und Handy-Seite per Rechteck-Vergleich), Schalter im Live-Modus, Befehle vom Handy (`api/command`), Feedback per UDP an den Feedback-Port, Monitor; Zustand über `api/state` der Handy-Fernsteuerung |
 | `ffmpeg-update.mjs` | ffmpeg-Aktualisierung der fertigen App gegen einen lokalen Schein-Release-Server (`MOTTULBOX_FFMPEG_RELEASES_URL`): 7-Tage-Regel, Prüfsumme, Aktivierung nach Neustart (`launchApp({ userData })`), zurück zum mitgelieferten |
@@ -69,6 +70,16 @@ Schritt, der schon vorher grün ist, prüft nichts.
 ## Was sich bewährt hat (jeweils schon in Skripten gelöst)
 
 - **Zustand über die Brücke setzen** statt klicken: `page.evaluate(() => window.api.…)`.
+- **Anordnung prüfen:** `page.setViewportSize` je Fenstergröße, Schublade über den Knopf
+  „Einstellungen“ (`exact: true`) auf- oder zuklappen und anheften, dann kurz warten (Raster und
+  `ResizeObserver` ziehen nach). „Scrollt nicht“ heißt `scrollHeight <= clientHeight + 1` für
+  jeden Scroll-Bereich (`tool-content`, `tool-main`, `arbeitsflaeche`) und jedes Feld
+  (`[data-pane]` – sonst schneidet ein Feld still ab). „Im Bild“ heißt: im Fenster UND im
+  sichtbaren Rechteck der Liste, die es umgibt – eine Zeile unter dem Rand der Liste kann noch im
+  Fenster liegen. Bilder dazu mit `page.screenshot` ansehen: Ein grüner Messtest zeigte nicht,
+  dass die Vorschau bei 1920 × 1080 mitten im Feld schwebte. Muster `e2e/player-layout.mjs`.
+- **Neu aufgebaut oder nicht?** Eine Marke an das Element hängen (`el.__marke = 1`), das
+  Auslösende tun (Schublade auf, Fenster schmaler), dann prüfen, ob die Marke noch da ist.
 - **Tastenkürzel wie vom Betriebssystem:** `w.webContents.sendInputEvent({ type: 'keyDown',
   keyCode, modifiers: ['control'] })` (danach `keyUp`) löst unter Windows und Linux auch
   Menü-Kürzel aus – so fiel auf, dass Strg+W eine Ausgabe schloss. Unter macOS laufen

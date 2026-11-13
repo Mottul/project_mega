@@ -81,7 +81,7 @@ nennen.
 ## 6. Große Komponenten teilen
 
 Vorbilder (13. Oktober 2026): `VideoPlayer.tsx` (1.765 → 291 Zeilen: `Library`, `ConvertQueue`,
-`PlaybackPanel`, `Playlist`, `SetupPanels`, `NdiPanel`, `usePlayback`, `format`) und `OscControl.tsx`
+`PlaybackPanel` – heute `Stage` –, `Playlist`, `SetupPanels`, `NdiPanel`, `usePlayback`, `format`) und `OscControl.tsx`
 (3.276 → 387 Zeilen: Bedienelemente, Kachel, Fläche, Editor, Panels, Kopfzeile, fünf Hooks).
 
 **Oberste Ebene per Werkzeug, nicht von Hand:**
@@ -111,7 +111,7 @@ Importe der neuen Dateien; ein Lauf von `teilen.mjs` danach räumt die Quelle au
   viele Felder auf einmal – nicht zerreißen).
 - **Zustand, den nur ein Teil braucht, zieht samt Laden und Abo mit** (Konvertier-Aufträge in
   `ConvertQueue`, Ansicht und Drag-Zustand in `Library`, gemerkte Vorschau-Schalter in
-  `PlaybackPanel`). Ein Rückruf nach oben (`onDone`) über eine Ref, damit das Abo nicht bei
+  `Stage`). Ein Rückruf nach oben (`onDone`) über eine Ref, damit das Abo nicht bei
   jedem Rendern neu bindet.
 - **Logik ohne Oberfläche als Hook** (`usePlayback`: Tick, Ziehen am Regler, Tastatur) – Leiste
   und Karte lesen dieselbe Position, der Hook liefert sie beiden.

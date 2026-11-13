@@ -51,6 +51,9 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   live – oder `kind="job"` für den Auftrag) und `aside` (Schublade links aus `PanelSection`s mit
   `summary`; Felder per `Field`/`Checkbox` mit `hint` = ⓘ). Aktionen nie in die Schublade;
   App-weites (Design, Akzent, ffmpeg, yt-dlp) ins App-Menü `components/app/AppMenu.tsx`.
+  Mehrere Bereiche, die in der Show gleichzeitig sichtbar sein müssen: `main` als `WorkArea` aus
+  `Pane`s (`components/WorkArea.tsx`, Vorbild Video-Player mit Raster in `video-player/layout.ts`)
+  – die Seite scrollt dann nie, nur Felder; die Felder in jeder Stufe in derselben Reihenfolge.
   Kleine Werkzeuge (Rechner) öffnen sich immer im eigenen, kleinen Fenster: Eintrag mit Breite in
   `SMALL_TOOLS` (`shared/toolWindows.ts`), die Höhe folgt dem Inhalt; Bausteine aus
   `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ, Zahlen mit Komma, verknüpfte Felder per

@@ -83,7 +83,7 @@ Empfohlen von oben nach unten: erst der Player, dann die kleinen Punkte, die man
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **C** | Video-Player ohne Scrollen, sechs Schritte | M–L | eigener Plan liegt vor |
+| **C** | Video-Player: Bühne, Playlist, Bibliothek (P3–P6; P1 und P2 erledigt) | M je Schritt | eigener Plan liegt vor |
 | **B1** | Suche: Enter öffnet den ersten Treffer | S | – |
 | **B2** | Strg+K: Werkzeug wechseln von überall | M | B1 |
 | **B3** | Netzwerk-Scanner: sinnvoller Adapter vorgewählt | S | – |
@@ -342,7 +342,8 @@ Ausgabe-Leiste eine dunklere Farbe als der Knopf „Vollbild starten“. Die PWA
 
 Das wichtigste Vorhaben, ausgearbeitet in [PLAN-ARBEITSFLAECHE.md](PLAN-ARBEITSFLAECHE.md):
 gemessener Anlass, Entwurf mit Zeichnungen, Platzregeln, sechs Schritte P1 bis P6 mit Abnahme.
-Ein Auftrag lautet dort „Setze Schritt P2 aus docs/PLAN-ARBEITSFLAECHE.md um“. Vor P3 die
+**P1 und P2 sind erledigt** (13. November 2026): Die drei Felder stehen, die Seite scrollt nicht
+mehr. Ein Auftrag lautet dort „Setze Schritt P3 aus docs/PLAN-ARBEITSFLAECHE.md um“. Vor P3 die
 [offenen Fragen](PLAN-ARBEITSFLAECHE.md#offene-fragen) klären.
 
 ## D – Rückgängig

@@ -6,6 +6,11 @@ man heute scrollen muss, um Transport und Playlist zu sehen. Dieser Plan beschre
 Layout so genau, dass es sich Schritt für Schritt umsetzen lässt, und zieht daraus ein Muster,
 das danach Stage-Timer, Testbild und Video-Generator übernehmen können.
 
+**Stand 13. November 2026:** P1 und P2 sind umgesetzt – die drei Felder stehen, die Seite
+scrollt nicht mehr, `e2e/player-layout.mjs` prüft es bei vier Fenstergrößen. Offen sind P3 bis
+P6 (Bühne, Playlist, Bibliothek, Doku); was dabei schon miterledigt wurde, steht bei
+[Umsetzung](#umsetzung-in-schritten).
+
 - [Anlass: gemessen](#anlass-gemessen)
 - [Ziele](#ziele)
 - [Entwurf](#entwurf) – [Felder](#die-drei-felder), [Platzregeln](#platzregeln),
@@ -34,7 +39,8 @@ Warum das so ist (alles in `src/renderer/src/tools/video-player/`):
 - **Die Seite wächst statt der Listen.** `VideoPlayer.tsx` legt zwei Karten nebeneinander
   (`flex gap-6`, ab 900 px Breite), ohne Höhe; die Arbeitsfläche von `ToolShell.tsx` scrollt als
   Ganzes.
-- **Die Vorschau wächst mit der Breite** (`aspect-video w-full` in `PlaybackPanel.tsx`): Je
+- **Die Vorschau wächst mit der Breite** (`aspect-video w-full` in der damaligen Karte
+  „Wiedergabe“, heute `Stage.tsx`): Je
   größer das Fenster, desto mehr Platz nimmt sie der Playlist – deshalb scrollt selbst Full HD.
 - **Die Playlist steht ganz unten** in der Karte „Wiedergabe“, unter Vorschau, Titel,
   Suchleiste, Transport, Tastenkürzel-Zeile, Modi und Bild-Standzeit. Wer zur Playlist scrollt,
@@ -91,20 +97,25 @@ Fenster – so stimmt es auch mit angehefteter Schublade und im eigenen Fenster.
 | Stufe    | Bedingung                          | Aufbau                                                              |
 | -------- | ---------------------------------- | ------------------------------------------------------------------- |
 | `breit`  | Breite ≥ 1180 px, Höhe ≥ 420 px    | drei Spalten: Bibliothek · Playlist · Bühne                         |
-| `mittel` | Breite 760–1179 px, Höhe ≥ 420 px  | zwei Spalten: links Playlist über Bibliothek (11 : 9), rechts Bühne |
+| `mittel` | Breite 760–1179 px, Höhe ≥ 420 px  | zwei Spalten: links Playlist über Bibliothek (5 : 3), rechts Bühne  |
 | `schmal` | Breite < 760 px oder Höhe < 420 px | eine Spalte, die Seite scrollt: Bühne, Playlist, Bibliothek         |
 
-Spalten als CSS-Raster, damit nichts von Hand gerechnet wird:
+Spalten als CSS-Raster, damit nichts von Hand gerechnet wird (umgesetzt als `PLAYER_RASTER` in
+`video-player/layout.ts`):
 
 ```text
 breit:   grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr) clamp(420px, 40%, 960px)
 mittel:  grid-template-columns: minmax(300px, 1fr) minmax(380px, 1.2fr)
-         linke Spalte: grid-template-rows: minmax(0, 11fr) minmax(0, 9fr)
-schmal:  flex-col, Listen höchstens 50vh hoch
+         linke Spalte: grid-template-rows: minmax(0, 5fr) minmax(0, 3fr)
+schmal:  eine Spalte (auto auto auto), Listenfelder höchstens 60vh hoch
 ```
 
+Die linke Spalte von `mittel` war mit 11 : 9 geplant. Nachgerechnet hätte die Playlist bei
+1024 × 600 dann nur vier Zeilen gezeigt; mit 5 : 3 und etwas kompakteren Zeilen (`py-1`) sind es
+fünf, und die Bibliothek zeigt immer noch eine Reihe Kacheln.
+
 Außenabstand und Lücken 12 px (`p-3`, `gap-3`) statt heute 24 px. Jedes Feld hat `min-h-0` und
-`min-w-0`, sein Inhalt `overflow-auto` – sonst wächst wieder die Seite. Nachgerechnet:
+`min-w-0`, sein Inhalt `overflow-auto` – sonst wächst wieder die Seite. Nachgerechnet (vor P2):
 
 | Fenster, Schublade     | Arbeitsfläche | Stufe    | Spalten            | Vorschau (16 : 9) |
 | ---------------------- | ------------- | -------- | ------------------ | ----------------- |
@@ -118,11 +129,16 @@ Außenabstand und Lücken 12 px (`p-3`, `gap-3`) statt heute 24 px. Jedes Feld h
 
 Von oben nach unten, das Feld hat keinen eigenen Kopf:
 
-1. **Vorschau:** nimmt die Höhe, die übrig bleibt (`flex-1`, mindestens 120 px). Darin ein
-   Kasten im Seitenverhältnis der Wand (`pstate.wall`, heute fest 16 : 9), so groß wie Breite
-   und Höhe erlauben, mittig auf Schwarz. Der Inhalt bleibt, wie er ist (`PlaybackEngine` bzw.
-   Standbild mit Hinweis). Der Umschalter „Live-Vorschau“ und „FPS“ werden kleine Knöpfe oben
-   rechts in der Vorschau, sichtbar beim Darüberfahren und bei Tastaturfokus.
+1. **Vorschau – in P2 umgesetzt, aber noch fest 16 : 9:** Der Rahmen ist so breit wie das Feld
+   und 16 : 9 hoch; fehlt die Höhe, schrumpft er (`flex-shrink`, höchstens bis 120 px), und der
+   Kasten darin passt sich per Container-Einheiten ein (`container-type: size`,
+   `width: min(100cqw, calc(100cqh * 16 / 9))`). So stehen die Knöpfe immer direkt unter der
+   Vorschau, freier Platz bleibt unten im Feld. Geplant war ein Rahmen mit `flex-1` – dann
+   schwebte die Vorschau bei 1920 × 1080 mitten im Feld, und die Knöpfe klebten am unteren Rand.
+   **Offen (P3):** das Seitenverhältnis der Wand (`pstate.wall`) statt 16 : 9 – an beiden
+   Stellen in `Stage.tsx`, beim Rahmen (`aspect-video`) und in der Formel; „Live-Vorschau“ und
+   „FPS“ als kleine Knöpfe oben rechts in der Vorschau, sichtbar beim Darüberfahren und bei
+   Tastaturfokus.
 2. **Jetzt-Zeile:** links Titel (`text-sm font-medium truncate`) und darunter Maße und
    Einpass-Art; rechts groß die **Restzeit** (`text-2xl tabular-nums`, „−0:48“), darunter klein
    „0:12 / 1:00“. Bei Bildern zählt die Standzeit herunter. Ohne Titel: „Nichts ausgewählt“.
@@ -138,10 +154,12 @@ Von oben nach unten, das Feld hat keinen eigenen Kopf:
 ### Playlist
 
 - **Kopf:** „Playlist“, Anzahl und Gesamtdauer („14 · 2:05“; Videos mit ihrer Dauer, Bilder mit
-  der Bild-Standzeit). Rechts „Speichern“ und ein Menü „⋯“ mit „Playlist leeren …“ (fragt nach).
+  der Bild-Standzeit) – **in P2 umgesetzt** (`gesamtdauer` in `layout.ts`). **Offen (P4):**
+  rechts „Speichern“ und ein Menü „⋯“ mit „Playlist leeren …“ (fragt nach); heute steht dort
+  „Leeren“ ohne Rückfrage, „Speichern“ am Ende der Reiter.
 - **Gespeicherte Playlists** als Zeile aus Marken direkt darunter – eine Zeile, bei vielen
-  waagrecht scrollbar, kein Umbruch. Verhalten unverändert: Klick lädt und ersetzt die laufende
-  Liste ohne Unterbrechung, ✕ löscht nach Rückfrage.
+  waagrecht scrollbar, kein Umbruch – **in P2 umgesetzt**. Verhalten unverändert: Klick lädt und
+  ersetzt die laufende Liste ohne Unterbrechung, ✕ löscht nach Rückfrage.
 - **Liste:** füllt den Rest, scrollt in sich. Je Zeile Griff, Nummer bzw. Abspielzeichen,
   Miniatur (40 × 22 px aus `thumbUrl`), Titel, Dauer, ✕. Der nächste Eintrag trägt die Marke
   „Danach“. **Der laufende Eintrag bleibt sichtbar:** Wechselt `pstate.index`, scrollt die Liste
@@ -149,10 +167,9 @@ Von oben nach unten, das Feld hat keinen eigenen Kopf:
 - **Umsortieren** über `useSortable` und `Griff` aus `sortable.tsx` (Ziehen nur am Griff,
   Pfeil-Knöpfe für die Tastatur) statt des heutigen Ziehens an der ganzen Zeile. Ziehen aus der
   Bibliothek (`text/x-media-id`) bleibt, die ganze Liste ist Ziel.
-- Der `key` der Zeilen ist heute `id` plus Position. Beim Umsortieren lädt das die Miniaturen
-  neu; mit Miniaturen fällt es auf. Dasselbe Medium darf mehrfach in der Liste stehen, also
-  Schlüssel aus `id` und laufender Nummer **je Medium** bilden (das dritte Vorkommen von X heißt
-  `X#3`), nicht aus dem Platz in der Liste.
+- Schlüssel der Zeilen aus `id` und laufender Nummer **je Medium** (das dritte Vorkommen von X
+  heißt `X#3`), nicht aus dem Platz in der Liste – sonst lädt das Umsortieren die Miniaturen
+  neu. **In P2 umgesetzt** (`zeilenSchluessel` in `layout.ts`).
 
 ### Bibliothek
 
@@ -161,8 +178,10 @@ Von oben nach unten, das Feld hat keinen eigenen Kopf:
   „Alle zur Playlist“, „Medienordner öffnen“, „Bibliothek leeren …“. Die Fußzeile entfällt, der
   doppelte Knopf „Ordner“ damit auch.
 - **Suchfeld** darunter: filtert nach Titel, ohne Treffer „Kein Medium heißt so“.
-- **Inhalt:** füllt den Rest, scrollt in sich, ohne `max-h`. Kacheln mit
-  `repeat(auto-fill, minmax(…, 1fr))` – groß 170 px, klein 110 px – statt fester Spaltenzahlen.
+- **Inhalt:** füllt den Rest, scrollt in sich, ohne `max-h` – **in P2 umgesetzt** (der ganze
+  Inhalt des Felds scrollt). **Offen (P5):** Kacheln mit `repeat(auto-fill, minmax(…, 1fr))` –
+  groß 170 px, klein 110 px – statt fester Spaltenzahlen (`grid-cols-2 sm:grid-cols-3` richtet
+  sich nach dem Fenster).
 - **Hineinziehen von Dateien:** Das ganze Feld nimmt sie an; der gestrichelte Rahmen erscheint
   nur, solange Dateien darüber schweben. Der Leerzustand bleibt als Text in der Mitte.
 - **Import-Liste** (`ConvertQueue.tsx`): unten im Feld angeheftet, höchstens drei Aufträge hoch
@@ -181,46 +200,42 @@ Kundenansicht da.
 
 ## Bausteine
 
-Neue Dateien (Namen sind Vorschläge, alles im Renderer):
+Gebaut in P1 und P2 (alles im Renderer):
+
+| Datei | Inhalt |
+| ----- | ------ |
+| `components/workAreaRaster.ts` | rein, getestet: `Stufe`, `Grenzen`, `GRENZEN` (1180 / 760 / 420 px), `stufe(breite, hoehe, g)`, der Typ `Raster<F>` (`columns`, `rows`, `areas` je Zeile) und `rasterStil(r)` für den Inline-Stil |
+| `components/WorkArea.tsx` | `WorkArea`, `Pane`, `useStufe()` |
+| `video-player/layout.ts` | rein, getestet: `PLAYER_RASTER` (Raster je Stufe), `gesamtdauer()`, `zeilenSchluessel()` |
+| `video-player/Stage.tsx` | die Bühne (umbenannt aus der Karte „Wiedergabe“) |
+| `e2e/player-layout.mjs` | die Abnahme, eingetragen in `e2e/run.mjs` |
+
+**`WorkArea({ raster, grenzen?, children })`** füllt den Platz von `ToolShell` (`h-full`), misst
+sich (`useElementSize`) und setzt das Raster der Stufe als Inline-Stil
+(`grid-template-columns/-rows/-areas`). In `breit` und `mittel` hat sie `overflow-hidden` – es
+scrollen nur Felder –, in `schmal` scrollt sie selbst. Kennungen: `data-testid="arbeitsflaeche"`
+und `data-stufe`. **Die Kinder stehen in jeder Stufe in derselben Reihenfolge**; wohin sie
+gehören, sagt allein ihr Bereich im Raster. Würde die Stufe den React-Baum ändern (andere
+Hüllen, andere Reihenfolge), baute React beim Öffnen der Schublade alles neu auf – auch die
+Wiedergabe-Engine, deren Video dann neu lüde. Das E2E prüft es mit einer Marke am `<video>`.
+
+**`Pane({ area, title?, label?, count?, actions?, footer?, scroll?, kappen?, testId?, children })`**
+ist ein `section` mit `aria-label` (Titel oder `label`), `data-pane` und `style.gridArea`; Kopf
+mit Titel, `count` und `actions` (bricht um, wenn die Aktionen nicht in eine Zeile passen),
+Inhalt mit `data-pane-inhalt` (`min-h-0 flex-1 p-3`, bei `scroll` mit `overflow-auto`, sonst
+`flex flex-col` – der Inhalt regelt sein Scrollen selbst), optional ein Fuß. `kappen` (Vorgabe):
+in `schmal` höchstens 60vh hoch; `false` für Felder, die so hoch wie ihr Inhalt sein sollen (die
+Bühne). `useStufe()` liefert Feldern die Stufe, falls ihr Inhalt sich anpassen muss.
+
+`ToolShell` bekam nur die Kennung `data-testid="tool-main"` an seiner Arbeitsfläche: Sie scrollt
+weiter, wenn der Inhalt höher ist – ein Werkzeug mit `WorkArea` ist nie höher (so macht es
+`LedWall.tsx` von Hand).
+
+Noch zu bauen (P5):
 
 ```text
-src/renderer/src/components/WorkArea.tsx     Gerüst: misst sich, kennt die Stufe, legt Felder
 src/renderer/src/components/ui/menu.tsx      kleines Aufklappmenü für „⋯“ und „Importieren“
-src/renderer/src/tools/video-player/Stage.tsx          die Bühne (aus PlaybackPanel)
-src/renderer/src/tools/video-player/layout.ts          Stufe, Gesamtdauer, Schlüssel – rein
-src/renderer/src/tools/video-player/layout.test.ts
-e2e/player-layout.mjs
 ```
-
-**`WorkArea`** kapselt, was jedes Werkzeug mit Feldern braucht:
-
-```tsx
-// Stufe aus der gemessenen Größe – rein, getestet
-export type Stufe = 'breit' | 'mittel' | 'schmal'
-export function stufe(breite: number, hoehe: number, g = GRENZEN): Stufe
-
-// füllt die Arbeitsfläche (h-full min-h-0), misst sich und reicht die Stufe herein;
-// bei 'schmal' scrollt sie selbst, sonst nie
-export function WorkArea(props: { children: (s: Stufe) => ReactNode; grenzen?: Grenzen })
-
-// ein Feld: Kopf (Titel, Zahl, Aktionen), Inhalt scrollt in sich, optionaler Fuß
-export function Pane(props: {
-  title?: string
-  count?: ReactNode
-  actions?: ReactNode
-  footer?: ReactNode
-  /** false: der Inhalt regelt sein Scrollen selbst (Bühne) */
-  scroll?: boolean
-  children: ReactNode
-  className?: string
-  testId?: string
-})
-```
-
-`Pane` ist `section` mit `aria-label`, `flex min-h-0 min-w-0 flex-col rounded-lg border
-border-border bg-card`; Kopf 40 px hoch, Inhalt `min-h-0 flex-1 overflow-auto p-3`. `ToolShell`
-bleibt unverändert: Seine Arbeitsfläche scrollt nur, wenn der Inhalt höher ist – ein Werkzeug
-mit `WorkArea` ist nie höher (so macht es `LedWall.tsx` heute von Hand).
 
 **Menü:** `WallMenu.tsx` und `ProjectFileMenu.tsx` bauen je ein eigenes Aufklappmenü (Knopf,
 Liste, Klick daneben und Esc schließen). Daraus einen Baustein ziehen und im Player verwenden;
@@ -230,26 +245,41 @@ die beiden vorhandenen Menüs erst in einem späteren Schritt umstellen.
 
 Jeder Schritt ist ein eigener Pull Request und lässt den Player benutzbar zurück. Vorher lesen:
 Skills `electron-e2e`, `review-checkliste`, `abschluss-check`; Ablauf und Regeln stehen in
-[PLAN-DURCHSICHT.md](PLAN-DURCHSICHT.md#so-wird-ein-paket-umgesetzt).
+[PLAN-DURCHSICHT.md](PLAN-DURCHSICHT.md#so-wird-ein-paket-umgesetzt). Jeder Schritt ergänzt
+seine Prüfungen in `e2e/player-layout.mjs` (welche, steht bei [Abnahme](#abnahme)) und lässt
+sie zuerst gegen den Stand davor laufen.
+
+**Erledigt (13. November 2026, ein Pull Request mit zwei Commits):**
+
+- **P1** – reine Helfer mit Tests (`workAreaRaster.ts`, `layout.ts`) und `e2e/player-layout.mjs`;
+  gegen den alten Stand rot mit den gemessenen Werten. P1 und P2 kamen gemeinsam: Das E2E aus
+  P1 scheitert am alten Stand absichtlich und hätte als eigener Pull Request die CI rot gemacht.
+- **P2** – `WorkArea` und `Pane`, die drei Felder; die Seite scrollt nicht mehr. Über den Plan
+  hinaus gleich miterledigt, weil die Abnahme es bei 1024 × 600 sonst nicht schaffte: die
+  Vorschau schrumpft mit der Höhe (aus P3, noch fest 16 : 9), Anzahl und Gesamtdauer im Kopf,
+  gespeicherte Playlists in einer Zeile und Schlüssel je Vorkommen (aus P4).
 
 | Schritt | Inhalt | Größe |
 | ------- | ------ | ----- |
-| **P1** | E2E `player-layout` mit den Prüfungen aus [Abnahme](#abnahme) schreiben und gegen den heutigen Stand laufen lassen – es muss rot sein (Seite 1323 statt 666 px). Dazu die reinen Helfer des Players (Datei „layout“ aus [Bausteine](#bausteine)) mit Tests: `stufe()`, Gesamtdauer, Schlüssel je Vorkommen. | klein |
-| **P2** | `WorkArea` und `Pane` bauen; `VideoPlayer.tsx` auf die drei Felder umstellen. Inhalt der Felder zunächst unverändert aus `Library.tsx`, `Playlist.tsx` und dem Rest von `PlaybackPanel.tsx` – nur ohne `max-h`, ohne Karten in Karten. Danach scrollt die Seite nicht mehr. | mittel |
-| **P3** | Bühne: Vorschau im Seitenverhältnis der Wand, Jetzt-Zeile mit Restzeit, „Danach“, „Stumm“ sichtbar, Tastenkürzel hinter ⓘ. Übergang und Bild-Standzeit in die Schublade (Bereich „Wiedergabe“). | mittel |
-| **P4** | Playlist: Kopf mit Gesamtdauer, Marken in einer Zeile, Miniaturen, „Danach“, laufender Eintrag bleibt sichtbar, Sortieren mit Griff, „Leeren“ ins Menü mit Rückfrage. | mittel |
-| **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen mit Rückfrage, Menü-Baustein. | mittel |
-| **P6** | Doku: Abschnitt Video-Player in `WERKZEUGE.md`, dieses Dokument dorthin überführen, was bleibt (Muster `WorkArea`) in den Skill `neues-werkzeug`; Lehren in `review-checkliste`. | klein |
+| **P3** | Bühne: Vorschau im Seitenverhältnis der Wand (siehe [Bühne](#bühne), Punkt 1), Jetzt-Zeile mit Restzeit, „Danach“, „Stumm“ sichtbar, Tastenkürzel hinter ⓘ, „Live-Vorschau“ und „FPS“ in die Vorschau. Übergang und Bild-Standzeit in die Schublade (Bereich „Wiedergabe“). | mittel |
+| **P4** | Playlist: Miniaturen, „Danach“, laufender Eintrag bleibt sichtbar, Sortieren mit Griff, „Speichern“ und „Leeren“ in den Kopf, „Leeren“ mit Rückfrage. | mittel |
+| **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen mit Rückfrage, Menü-Baustein. Heute bricht der Kopf bei 1366 px Breite in zwei Zeilen um (Ansicht, Dateien, Ordner) – mit „Importieren“ und „⋯“ passt er wieder in eine. | mittel |
+| **P6** | Doku: Abschnitt Video-Player in `WERKZEUGE.md` vervollständigen, dieses Dokument dorthin überführen und löschen; das Muster `WorkArea` steht schon im Skill `neues-werkzeug`, die Lehren in `review-checkliste`. | klein |
 
-Nach P2 ist das Hauptproblem behoben; P3–P5 sind unabhängig voneinander und können in jeder
-Reihenfolge folgen.
+P3–P5 sind unabhängig voneinander und können in jeder Reihenfolge folgen; vorher die
+[offenen Fragen](#offene-fragen) klären.
 
 ## Abnahme
 
-Neues Skript nach dem Muster von `e2e/player.mjs` (Testmedien per lavfi: zehn kurze Clips und
-vier Bilder, alle in die Playlist, drei gespeicherte Playlists), eingetragen in `e2e/run.mjs`.
-Maße liest `page.evaluate` aus der Seite. Jede Prüfung bei zugeklappter Schublade, sofern nichts
-anderes dasteht:
+`e2e/player-layout.mjs` (Testmedien per lavfi: zehn kurze Clips und vier Bilder, alle in die
+Playlist, drei gespeicherte Playlists; Wand 1280 × 720, damit der Import schnell geht). Maße
+liest `page.evaluate` aus der Seite; Kennungen `tool-content`, `tool-main`, `arbeitsflaeche`
+(mit `data-stufe`), `feld-bibliothek`/`feld-playlist`/`feld-buehne`, `vorschau`,
+`playlist-liste`. **Seit P2 im Skript:** 1 bis 4 und 8, dazu „Wechsel der Stufe baut die
+laufende Wiedergabe nicht neu auf“ (Marke am `<video>`, Schublade auf, schmal, wieder breit).
+**Kommen mit ihren Schritten dazu:** 5, 7 und 10 mit P3, 6 und „Leeren fragt“ aus 9 mit P4,
+„Löschen fragt“ aus 9 mit P5. Jede Prüfung bei zugeklappter Schublade, sofern nichts anderes
+dasteht:
 
 1. **Kein Scrollen der Seite** bei 1024 × 600, 1366 × 768 und 1920 × 1080: Die Arbeitsfläche
    (`[data-testid="tool-content"]` und darin der Bereich von `ToolShell`) hat `scrollHeight`
@@ -273,10 +303,11 @@ anderes dasteht:
 10. **Stumm sichtbar:** Im frischen Profil steht „Stumm“ in der Bühne; nach einem Klick auf den
     Ton-Knopf nicht mehr.
 
-Vorhandene Skripte, die den Player anfassen und angepasst werden müssen: `e2e/player.mjs`
-(Playlist-Reiter, Importe), `e2e/layout.mjs` (Ausgabe-Leiste des Players, Monitorwechsel),
-`e2e/mini-manual.mjs` (liest Playlists nur über die Einstellungen – vermutlich unberührt). Vor
-dem Umbau mit `grep -n "video-player" e2e/*.mjs` nachsehen.
+Vorhandene Skripte, die den Player anfassen: `e2e/player.mjs` (Playlist-Reiter, Importe),
+`e2e/layout.mjs` (Ausgabe-Leiste des Players, Monitorwechsel), `e2e/mini-manual.mjs` (liest
+Playlists nur über die Einstellungen). Nach P2 liefen sie unverändert grün; ab P4 (Reiter,
+„Leeren“) und P5 (Knöpfe der Bibliothek) vor dem Umbau mit `grep -n "video-player" e2e/*.mjs`
+nachsehen, was sie anklicken.
 
 Von Hand, weil kein Test es sieht: ein echtes Video mit Ton abspielen, Ausgabe auf einem zweiten
 Monitor öffnen, im laufenden Betrieb umsortieren und zwischen gespeicherten Playlists wechseln –

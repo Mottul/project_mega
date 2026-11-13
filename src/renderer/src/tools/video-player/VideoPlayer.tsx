@@ -1,7 +1,10 @@
-// Video-Player: Bibliothek (Import auf Wand-Auflösung), Playlist und Wiedergabe, Ausgabe auf
-// einem Monitor, als NDI-Quelle und per Handy. Hier stehen Zustand, Einstellungen und das
-// Zusammensetzen; die Teile liegen daneben (Library, PlaybackPanel, Playlist, SetupPanels,
-// NdiPanel, usePlayback). Der Wiedergabezustand tickt im main, das Fenster spiegelt ihn.
+// Video-Player: Bibliothek (Import auf Wand-Auflösung), Playlist und Bühne, Ausgabe auf einem
+// Monitor, als NDI-Quelle und per Handy. Hier stehen Zustand, Einstellungen und das
+// Zusammensetzen; die Teile liegen daneben (Library, Playlist, Stage, SetupPanels, NdiPanel,
+// usePlayback). Der Wiedergabezustand tickt im main, das Fenster spiegelt ihn.
+//
+// Die drei Felder stehen in einer Arbeitsfläche (components/WorkArea.tsx, Raster in layout.ts):
+// je nach Platz nebeneinander oder übereinander, die Listen scrollen in sich, die Seite nicht.
 
 import { useEffect, useState } from 'react'
 import { useKiosk } from '@renderer/launcher/kiosk'
@@ -9,10 +12,10 @@ import { AlertTriangle, Pause, Play } from 'lucide-react'
 import { OutputControls, useOutputTarget } from '@renderer/components/OutputControl'
 import { BarDivider, BarToggle, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
+import { WorkArea } from '@renderer/components/WorkArea'
 import { Alert } from '@renderer/components/ui/alert'
 import { api } from '@renderer/lib/api'
 import { toast } from '@renderer/lib/toast'
-import { useElementWidth } from '@renderer/lib/useElementWidth'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
 import type {
   AppSettings,
@@ -24,10 +27,12 @@ import type {
   SettingsPatch
 } from '@shared/types'
 import { fmtTime } from './format'
+import { PLAYER_RASTER } from './layout'
 import { Library } from './Library'
 import { NdiSection, usePlayerNdi } from './NdiPanel'
-import { PlaybackPanel } from './PlaybackPanel'
+import { PlaylistFeld } from './Playlist'
 import { FitSection, IdleSection, ImportSection, WallSection } from './SetupPanels'
+import { Stage } from './Stage'
 import { usePlayback } from './usePlayback'
 
 export function VideoPlayer(): JSX.Element {
@@ -35,10 +40,6 @@ export function VideoPlayer(): JSX.Element {
   // Idle-Bild). Bibliothek, Import, Fit-Modus, Fernsteuerung, Ausgabe und Playlist
   // bleiben voll bedienbar.
   const locked = useKiosk()
-  // Container-basiertes Layout: Bibliothek neben den Player, sobald genug Breite da
-  // ist (auch nach dem Einklappen der Einstellungen) -> die Vorschau wird dann kleiner.
-  const [mainRef, mainW] = useElementWidth<HTMLDivElement>()
-  const wide = mainW >= 900
   const [enc, setEnc] = useState<PlayerEncoderStatus | null>(null)
   const [library, setLibrary] = useState<MediaItem[]>([])
   const [pstate, setPstate] = useState<PlayerState>(EMPTY_PLAYER_STATE)
@@ -236,35 +237,30 @@ export function VideoPlayer(): JSX.Element {
         </>
       }
       main={
-        <div ref={mainRef} className="space-y-6 p-6">
+        <div className="flex h-full min-h-0 flex-col">
           {ffmpegMissing && (
-            <Alert tone="warning" icon={AlertTriangle} title="ffmpeg nicht gefunden">
-              Zum Konvertieren der Medien wird das gebündelte ffmpeg benötigt. Im Dev-Modus über
-              <code className="mx-1 rounded bg-muted px-1">npm run ff:fetch</code> bereitstellen; im
-              fertigen Paket ist es enthalten.
-              {enc?.error ? ` (${enc.error})` : ''}
-            </Alert>
+            <div className="shrink-0 px-3 pt-3">
+              <Alert tone="warning" icon={AlertTriangle} title="ffmpeg nicht gefunden">
+                Zum Konvertieren der Medien wird das gebündelte ffmpeg benötigt. Im Dev-Modus über
+                <code className="mx-1 rounded bg-muted px-1">npm run ff:fetch</code> bereitstellen;
+                im fertigen Paket ist es enthalten.
+                {enc?.error ? ` (${enc.error})` : ''}
+              </Alert>
+            </div>
           )}
-
-          <div className={`flex gap-6 ${wide ? 'flex-row' : 'flex-col'}`}>
-            {/* Bibliothek – bei genug Breite links, beim Stapeln NACH dem Player
-            (order-2): schmal soll zuerst der Player kommen, nicht die Bibliothek. */}
-            <Library
-              library={library}
-              fit={fit}
-              wallW={wallW}
-              wallH={wallH}
-              onReload={loadLibrary}
-              className={wide ? 'order-1 flex-1' : 'order-2'}
-            />
-            {/* Wiedergabe – beim Stapeln zuerst (order-1), bei genug Breite rechts. */}
-            <PlaybackPanel
-              pstate={pstate}
-              playback={playback}
-              saved={saved}
-              onSaveSaved={persistSaved}
-              className={wide ? 'order-2 flex-1' : 'order-1'}
-            />
+          <div className="min-h-0 flex-1">
+            {/* Reihenfolge der Felder immer gleich – wo sie stehen, sagt das Raster */}
+            <WorkArea raster={PLAYER_RASTER}>
+              <Library
+                library={library}
+                fit={fit}
+                wallW={wallW}
+                wallH={wallH}
+                onReload={loadLibrary}
+              />
+              <PlaylistFeld pstate={pstate} saved={saved} onSaveSaved={persistSaved} />
+              <Stage pstate={pstate} playback={playback} />
+            </WorkArea>
           </div>
         </div>
       }

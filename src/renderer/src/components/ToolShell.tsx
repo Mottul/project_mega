@@ -106,7 +106,9 @@ export function ToolShell({
               <div className="flex-1 space-y-3 overflow-y-auto p-3">{aside}</div>
             </aside>
           )}
-          <section className="min-w-0 flex-1 overflow-auto">{main}</section>
+          <section data-testid="tool-main" className="min-w-0 flex-1 overflow-auto">
+            {main}
+          </section>
         </div>
       </div>
       {hasAside &&

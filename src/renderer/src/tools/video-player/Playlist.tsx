@@ -1,14 +1,60 @@
-// Playlist des Video-Players: gespeicherte Playlists als Reiter (laden, speichern, löschen) und
-// die laufende Liste (springen, umsortieren, entfernen, aus der Bibliothek hineinziehen).
+// Playlist des Video-Players – ein Feld der Arbeitsfläche (components/WorkArea.tsx): gespeicherte
+// Playlists als Reiter (laden, speichern, löschen) und die laufende Liste (springen, umsortieren,
+// entfernen, aus der Bibliothek hineinziehen). Nur die Liste scrollt, die Reiter bleiben stehen.
 
 import { useState, type DragEvent } from 'react'
 import { Eraser, Play, Save, X } from 'lucide-react'
+import { Pane } from '@renderer/components/WorkArea'
 import { Button } from '@renderer/components/ui/button'
 import { api } from '@renderer/lib/api'
 import type { MediaItem, PlayerState, SavedPlaylist } from '@shared/types'
 import { fmtTime } from './format'
+import { gesamtdauer, zeilenSchluessel } from './layout'
 
-/** Gespeicherte Playlists als Reiter (prominent mit Akzentfarbe + Anzahl) */
+/** Das Feld „Playlist“: Kopf mit Anzahl und Gesamtdauer, Reiter, Liste */
+export function PlaylistFeld({
+  pstate,
+  saved,
+  onSaveSaved
+}: {
+  pstate: PlayerState
+  saved: SavedPlaylist[]
+  onSaveSaved: (next: SavedPlaylist[]) => Promise<void>
+}): JSX.Element {
+  const n = pstate.playlist.length
+  return (
+    <Pane
+      area="playlist"
+      testId="feld-playlist"
+      title="Playlist"
+      count={
+        n > 0
+          ? `${n} · ${fmtTime(gesamtdauer(pstate.playlist, pstate.imageDurationSec))}`
+          : undefined
+      }
+      actions={
+        n > 0 ? (
+          <button
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
+            onClick={() => void api.player.command({ type: 'clear' })}
+            title="Playlist leeren"
+          >
+            <Eraser className="size-3.5" /> Leeren
+          </button>
+        ) : undefined
+      }
+      scroll={false}
+    >
+      <PlaylistTabs saved={saved} playlist={pstate.playlist} onSave={onSaveSaved} />
+      <Playlist pstate={pstate} />
+    </Pane>
+  )
+}
+
+/**
+ * Gespeicherte Playlists als Reiter (prominent mit Akzentfarbe + Anzahl) – in EINER Zeile, bei
+ * vielen waagrecht scrollbar: Brächen sie um, nähmen sie der Liste darunter Zeilen weg.
+ */
 export function PlaylistTabs({
   saved,
   playlist,
@@ -43,11 +89,11 @@ export function PlaylistTabs({
   }
 
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-2">
+    <div className="mb-2 flex shrink-0 items-center gap-2 overflow-x-auto pb-1">
       {saved.map((p) => (
         <span
           key={p.name}
-          className="flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 py-1 pl-3 pr-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/70 hover:bg-primary/20"
+          className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-primary/40 bg-primary/10 py-1 pl-3 pr-1.5 text-sm font-medium text-foreground transition-colors hover:border-primary/70 hover:bg-primary/20"
         >
           <button
             onClick={() => void loadSaved(p)}
@@ -86,7 +132,7 @@ export function PlaylistTabs({
         </span>
       ))}
       {naming ? (
-        <span className="flex items-center gap-1">
+        <span className="flex shrink-0 items-center gap-1">
           <input
             autoFocus
             value={nameInput}
@@ -109,6 +155,7 @@ export function PlaylistTabs({
         <Button
           variant="ghost"
           size="sm"
+          className="shrink-0"
           onClick={() => {
             setNameInput('')
             setNaming(true)
@@ -122,9 +169,10 @@ export function PlaylistTabs({
   )
 }
 
-/** Die laufende Playlist */
+/** Die laufende Playlist – füllt das Feld unter den Reitern und scrollt in sich */
 export function Playlist({ pstate }: { pstate: PlayerState }): JSX.Element {
   const cmd = api.player.command
+  const schluessel = zeilenSchluessel(pstate.playlist)
 
   // Drop auf die Playlist: aus der Bibliothek (x-media-id) hinzufügen ODER innerhalb
   // der Liste umsortieren (x-reorder). Position = Ziel-Index (Ende, wenn -1).
@@ -142,21 +190,8 @@ export function Playlist({ pstate }: { pstate: PlayerState }): JSX.Element {
 
   return (
     <>
-      {pstate.playlist.length > 0 && (
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Playlist · {pstate.playlist.length}
-          </span>
-          <button
-            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
-            onClick={() => void cmd({ type: 'clear' })}
-            title="Playlist leeren"
-          >
-            <Eraser className="size-3.5" /> Leeren
-          </button>
-        </div>
-      )}
       <div
+        data-testid="playlist-liste"
         className="min-h-0 flex-1 space-y-1 overflow-auto"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => onPlaylistDrop(e, -1)}
@@ -168,12 +203,12 @@ export function Playlist({ pstate }: { pstate: PlayerState }): JSX.Element {
         ) : (
           pstate.playlist.map((m, i) => (
             <div
-              key={`${m.id}-${i}`}
+              key={schluessel[i]}
               draggable
               onDragStart={(e) => e.dataTransfer.setData('text/x-reorder', String(i))}
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => onPlaylistDrop(e, i)}
-              className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-sm ${
+              className={`flex items-center gap-2 rounded-md border px-2 py-1 text-sm ${
                 i === pstate.index
                   ? 'border-primary bg-primary/10'
                   : 'border-transparent hover:bg-muted/40'
