@@ -647,13 +647,25 @@ export function Readout({
 }
 
 /**
- * Ergebnisse als Kacheln nebeneinander, solange je 10rem Platz ist – gemessen an der Karte,
+ * Ergebnisse als Kacheln nebeneinander, solange je 10rem (`min`) Platz ist – gemessen an der Karte,
  * nicht am Fenster (in zweispaltigen Rechnern ist die Karte schmal, das Fenster breit).
  */
-export function ReadoutGrid({ children }: { children: ReactNode }): JSX.Element {
+export function ReadoutGrid({
+  children,
+  min
+}: {
+  children: ReactNode
+  /** Mindestbreite einer Kachel (CSS), sonst 10rem – kleiner für kurze Werte (Pegel des RTA) */
+  min?: string
+}): JSX.Element {
   return (
     <InGrid.Provider value={true}>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2">
+      <div
+        className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-2"
+        style={
+          min ? { gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${min}), 1fr))` } : {}
+        }
+      >
         {children}
       </div>
     </InGrid.Provider>

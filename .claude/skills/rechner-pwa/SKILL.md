@@ -31,8 +31,16 @@ nicht brauchen. Aufbau und Veröffentlichen: `docs/ENTWICKLUNG.md`, Abschnitt �
 ## Bedienen mit dem Finger
 
 - Bausteine aus `tools/_calc/ui` – sie sind fürs Handy gebaut: `ChoiceField`/`Segmented` (bei
-  grobem Zeiger höher), `QuickPick`, `RunButton big` für die Hauptaktion, `RangeField`.
-  Auswahl bis vier kurze Möglichkeiten als Knopfgruppe, nicht als Liste.
+  grobem Zeiger höher; `wrap` füllt die Reihen gleichmäßig), `QuickPick` (`fill`: eine Reihe wie
+  eine Knopfgruppe), `RunButton big` für die Hauptaktion, `RangeField`. Auswahl bis vier kurze
+  Möglichkeiten als Knopfgruppe, nicht als Liste.
+- **Bedienfelder in ganzer Breite** (Knopfgruppen, Schieber, Zahl mit −/+): `FieldBlock` –
+  Beschriftung darüber, Wert rechts daneben. Neben einer Beschriftung links (`FieldRow`, 10rem)
+  bleiben am Handy kaum 150 px: Gruppen stehen einspaltig, Knöpfe ragen heraus.
+- **Selten Gebrauchtes zuklappen** (`FoldCard`, Kurzfassung im Kopf, Zustand gemerkt): Der RTA
+  zeigt zuerst nur Messen, Pegel und Spektrum – alles offen erschlug am Handy.
+- Höhe prüfen, nicht schätzen: Handy im Browser ≈ 393 × 710 (Kopf- und Fußleiste des Browsers
+  abgezogen), Inhalt per `getBoundingClientRect` messen (Testtongenerator: passt ohne Scrollen).
 - **Tastaturen:** `inputMode="decimal"` hat am iPhone kein Minus (WebKit-Fehler 193825) – Felder
   mit negativen Werten anders lösen; `numeric` hat keinen Doppelpunkt (Timecode: Ziffern
   erlauben). Felder sind auf Touch-Geräten 16 px groß (`pwa.css`), sonst zoomt iOS hinein.

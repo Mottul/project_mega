@@ -109,6 +109,9 @@ const HISTORY_ROWS = 1200
  *  10 dB unter dem Spektrum – die 1/24-Bänder liegen rund 9 dB unter den Terzen. */
 const SPECTROGRAM_RANGE = 60
 
+/** Symbolknöpfe am Handy so hoch wie die Knopfgruppen daneben */
+const iconTouch = '[@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:min-w-10'
+
 /** Pegelanzeige: eine Nachkommastelle, Stille als „–“ */
 export function dbText(v: number): string {
   return Number.isFinite(v) && v > -150 ? fmt(v, 1) : ''
@@ -519,11 +522,81 @@ export function Rta(): JSX.Element {
     setError(null)
   }
 
+  // Bedienung des Spektrums: unter ihm, am Handy in zwei Reihen (Ansicht + Bewertung, dann
+  // Auflösung + Einfrieren/Zurücksetzen) – flex-auto füllt jede Reihe ganz
+  const graphControls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <Segmented
+        label="Ansicht"
+        value={p.view}
+        onChange={(view) => useRta.getState().set({ view })}
+        options={[
+          { value: 'bars', label: 'Bänder' },
+          { value: 'curve', label: 'Kurve' },
+          { value: 'both', label: 'Beides' }
+        ]}
+        className="flex-auto"
+      />
+      <Segmented
+        label="Bewertung"
+        value={p.weighting}
+        onChange={(weighting) => useRta.getState().set({ weighting })}
+        options={[
+          { value: 'Z', label: 'Z' },
+          { value: 'A', label: 'A' },
+          { value: 'C', label: 'C' }
+        ]}
+        className="flex-auto"
+      />
+      <Segmented
+        label="Auflösung (Oktave)"
+        value={String(p.resolution) as '1' | '3' | '6' | '12'}
+        onChange={(v) => useRta.getState().set({ resolution: Number(v) as Resolution })}
+        options={[
+          { value: '1', label: '1/1' },
+          { value: '3', label: '1/3' },
+          { value: '6', label: '1/6' },
+          { value: '12', label: '1/12' }
+        ]}
+        className="flex-auto"
+      />
+      <div className="ml-auto flex gap-1">
+        {/* am Handy nur Symbole (Name per aria-label), ab sm mit Text */}
+        <Button
+          size="sm"
+          variant={frozen ? 'secondary' : 'ghost'}
+          onClick={() => setFrozen((f) => !f)}
+          disabled={!running}
+          aria-label={frozen ? 'Weiter' : 'Einfrieren'}
+          title="Anzeige anhalten (gemessen wird weiter)"
+          className={iconTouch}
+        >
+          {frozen ? <Play className="size-4" /> : <Snowflake className="size-4" />}
+          <span className="hidden sm:inline">{frozen ? 'Weiter' : 'Einfrieren'}</span>
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={reset}
+          aria-label="Zurücksetzen"
+          title="Mittelung, Spitzen, Leq und Max zurücksetzen"
+          className={iconTouch}
+        >
+          <RotateCcw className="size-4" />
+          <span className="hidden sm:inline">Zurücksetzen</span>
+        </Button>
+      </div>
+    </div>
+  )
+
+  const diff = p.diffRef ? p.references.find((r) => r.id === p.diffRef) : undefined
+
   const head = (
     <Card className="space-y-3 p-3 sm:p-4">
-      {/* Leiste: Start und Ansicht */}
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Start und der Hauptpegel in einer Zeile, darunter die übrigen Pegel klein */}
+      <div className="flex items-center gap-3">
         <RunButton
+          big
           running={running}
           starting={starting}
           onStart={() => void start()}
@@ -531,57 +604,17 @@ export function Rta(): JSX.Element {
           startLabel="Messen"
           startIcon={Mic}
           disabled={Boolean(unsupported)}
+          className="w-32 min-w-0 shrink-0 px-3"
         />
-        <Segmented
-          label="Ansicht"
-          value={p.view}
-          onChange={(view) => useRta.getState().set({ view })}
-          options={[
-            { value: 'bars', label: 'Bänder' },
-            { value: 'curve', label: 'Kurve' },
-            { value: 'both', label: 'Beides' }
-          ]}
-        />
-        <Segmented
-          label="Auflösung (Oktave)"
-          value={String(p.resolution) as '1' | '3' | '6' | '12'}
-          onChange={(v) => useRta.getState().set({ resolution: Number(v) as Resolution })}
-          options={[
-            { value: '1', label: '1/1' },
-            { value: '3', label: '1/3' },
-            { value: '6', label: '1/6' },
-            { value: '12', label: '1/12' }
-          ]}
-        />
-        <Segmented
-          label="Bewertung"
-          value={p.weighting}
-          onChange={(weighting) => useRta.getState().set({ weighting })}
-          options={[
-            { value: 'Z', label: 'Z' },
-            { value: 'A', label: 'A' },
-            { value: 'C', label: 'C' }
-          ]}
-        />
-        <div className="ml-auto flex gap-1">
-          <Button
-            size="sm"
-            variant={frozen ? 'secondary' : 'ghost'}
-            onClick={() => setFrozen((f) => !f)}
-            disabled={!running}
-            title="Anzeige anhalten (gemessen wird weiter)"
-          >
-            {frozen ? <Play className="size-4" /> : <Snowflake className="size-4" />}
-            {frozen ? 'Weiter' : 'Einfrieren'}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={reset}
-            title="Mittelung, Spitzen, Leq und Max zurücksetzen"
-          >
-            <RotateCcw className="size-4" /> Zurücksetzen
-          </Button>
+        <div className="min-w-0 flex-1">
+          <Readout
+            label={lname(p.meter)}
+            hint={`Pegel mit Bewertung ${p.weighting} und Zeitbewertung ${p.meter === 'F' ? 'Fast (125 ms)' : 'Slow (1 s)'}. In dB SPL erst nach dem Kalibrieren, sonst relativ zur Vollaussteuerung (dBFS).`}
+            value={dbText(read.level + off)}
+            unit={unit}
+            big
+            accent
+          />
         </div>
       </div>
 
@@ -593,15 +626,7 @@ export function Rta(): JSX.Element {
         </Alert>
       )}
 
-      <ReadoutGrid>
-        <Readout
-          label={lname(p.meter)}
-          hint={`Pegel mit Bewertung ${p.weighting} und Zeitbewertung ${p.meter === 'F' ? 'Fast (125 ms)' : 'Slow (1 s)'}. In dB SPL erst nach dem Kalibrieren, sonst relativ zur Vollaussteuerung (dBFS).`}
-          value={dbText(read.level + off)}
-          unit={unit}
-          big
-          accent
-        />
+      <ReadoutGrid min="6rem">
         <Readout
           label={lname('eq')}
           hint="Energetischer Mittelwert seit dem Start bzw. „Zurücksetzen“."
@@ -615,8 +640,8 @@ export function Rta(): JSX.Element {
           unit={unit}
         />
         <Readout
-          label="Aussteuerung"
-          hint="Größter Abtastwert am Eingang (unbewertet) – zeigt, wie viel Luft bis zur Vollaussteuerung bleibt."
+          label="Spitze"
+          hint="Größter Abtastwert am Eingang (Sample-Peak, unbewertet) – zeigt, wie viel Luft bis zur Vollaussteuerung bleibt."
           value={dbText(read.peak)}
           unit="dBFS"
         />
@@ -631,7 +656,7 @@ export function Rta(): JSX.Element {
       >
         <canvas
           ref={graph}
-          className="block h-64 w-full sm:h-72"
+          className="block h-56 w-full sm:h-72"
           aria-label="Spektrum"
           data-testid="rta-graph"
         />
@@ -725,6 +750,8 @@ export function Rta(): JSX.Element {
         </div>
       )}
 
+      {graphControls}
+
       <p
         className={cn(
           'flex flex-wrap items-center gap-x-2 text-xs',
@@ -756,6 +783,7 @@ export function Rta(): JSX.Element {
             {info.filters.length > 0 && (
               <span>· Gerät filtert: {info.filters.join(', ')} – Messung verfälscht</span>
             )}
+            {diff && <span className="text-primary">· Differenz zu {diff.name}</span>}
             {frozen && (
               <span className="flex items-center gap-1 text-primary">
                 · <Pause className="size-3" /> eingefroren
@@ -771,16 +799,14 @@ export function Rta(): JSX.Element {
 
   return (
     <CalcPage head={head}>
-      {p.feedback && (
-        <FeedbackCard
-          tracks={read.feedback}
-          log={read.log}
-          running={running}
-          onClearLog={() => tracker.current.reset()}
-          offset={off}
-          unit={unit}
-        />
-      )}
+      <FeedbackCard
+        tracks={read.feedback}
+        log={read.log}
+        running={running}
+        onClearLog={() => tracker.current.reset()}
+        offset={off}
+        unit={unit}
+      />
       <ReferenceCard
         canAdd={running}
         onAdd={() => useRta.getState().addReference(proc.current.curveZ())}

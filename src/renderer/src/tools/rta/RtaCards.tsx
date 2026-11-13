@@ -7,7 +7,7 @@ import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { TextField } from '@renderer/components/ui/text-field'
 import { cn } from '@renderer/lib/utils'
-import { fmt, NumField, parseNum, SectionCard, SelectField, trimNum } from '../_calc/ui'
+import { FoldCard, fmt, NumField, parseNum, SelectField, trimNum } from '../_calc/ui'
 import type { Averaging, MeterSpeed, PeakMode } from './analysis'
 import { freqText } from './bands'
 import { parseCorrection } from './calibration'
@@ -32,6 +32,14 @@ const REF_DOT: Record<(typeof REF_TOKENS)[number], string> = {
   primary: 'bg-primary/50',
   border: 'bg-border',
   card: 'bg-card'
+}
+
+/** Mittelung, klein geschrieben für die Kurzfassung („Mittelung langsam“) */
+const AVERAGING: Record<Averaging, string> = {
+  off: 'aus',
+  fast: 'schnell',
+  slow: 'langsam',
+  inf: 'unendlich'
 }
 
 const set = (patch: Parameters<ReturnType<typeof useRta.getState>['set']>[0]): void =>
@@ -60,12 +68,63 @@ export function FeedbackCard({
   onClearLog: () => void
 }): JSX.Element {
   const sensitivity = useRta((s) => s.sensitivity)
+  const on = useRta((s) => s.feedback)
+  // Kurzfassung: auch zugeklappt sieht man, ob sich etwas aufschaukelt
+  const summary = !on ? (
+    'Aus'
+  ) : running && tracks.length > 0 ? (
+    <span className="font-semibold tabular-nums text-danger">
+      {freqText(tracks[0].f)}
+      {tracks.length > 1 && ` +${tracks.length - 1}`}
+    </span>
+  ) : running ? (
+    'Keine Spitze'
+  ) : (
+    'An'
+  )
   return (
-    <SectionCard
+    <FoldCard
+      id="rta:feedback"
       title="Feedback-Finder"
-      desc="Schmale, stehende Spitzen – so beginnt eine Rückkopplung."
+      summary={summary}
+      desc="Schmale, stehende Spitzen – so beginnt eine Rückkopplung. Im Spektrum rot markiert."
       hint="Gemeldet wird, was deutlich über seiner Umgebung (±1/6 Oktave) liegt und an derselben Frequenz stehen bleibt. Zum Einpegeln: Mikrofone offen, Pegel langsam hochziehen, jede gemeldete Frequenz mit einem schmalen Filter absenken. Der Vorschlag nennt eine Glocke mit 1/10 Oktave Breite; die Absenkung richtet sich danach, wie weit die Spitze heraussticht."
     >
+      <Checkbox checked={on} onChange={(feedback) => set({ feedback })} label="Spitzen suchen" />
+      {on && (
+        <FeedbackResults
+          sensitivity={sensitivity}
+          tracks={tracks}
+          log={log}
+          running={running}
+          offset={offset}
+          unit={unit}
+          onClearLog={onClearLog}
+        />
+      )}
+    </FoldCard>
+  )
+}
+
+function FeedbackResults({
+  sensitivity,
+  tracks,
+  log,
+  running,
+  offset,
+  unit,
+  onClearLog
+}: {
+  sensitivity: Sensitivity
+  tracks: FeedbackTrack[]
+  log: FeedbackLogEntry[]
+  running: boolean
+  offset: number
+  unit: string
+  onClearLog: () => void
+}): JSX.Element {
+  return (
+    <>
       <SelectField
         label="Empfindlichkeit"
         hint="Hoch meldet früher (ab 7 dB über der Umgebung, 0,3 s), niedrig erst Deutliches (14 dB, 0,8 s)."
@@ -127,7 +186,7 @@ export function FeedbackCard({
           </div>
         </div>
       )}
-    </SectionCard>
+    </>
   )
 }
 
@@ -144,8 +203,12 @@ export function ReferenceCard({
   const diffRef = useRta((s) => s.diffRef)
   const { updateReference, removeReference } = useRta.getState()
   return (
-    <SectionCard
+    <FoldCard
+      id="rta:referenzen"
       title="Referenzen"
+      summary={
+        refs.length === 0 ? 'Keine' : `${refs.length} gemerkt${diffRef ? ' · Differenz' : ''}`
+      }
       desc="Kurve merken und vergleichen – vorher/nachher, Raum A gegen B."
       hint="Gemerkt wird die gemittelte Kurve in 1/24 Oktave, unbewertet und ohne Kalibrier-Offset – sie passt so zu jeder Auflösung und Bewertung. „Differenz“ zeigt die laufende Messung minus der Referenz (0 dB = gleich)."
     >
@@ -212,7 +275,7 @@ export function ReferenceCard({
           ))}
         </div>
       )}
-    </SectionCard>
+    </FoldCard>
   )
 }
 
@@ -243,9 +306,12 @@ export function InputCard({
     }
   }
 
+  const input = inputs.find((d) => d.id === p.deviceId)?.label ?? 'Standard'
   return (
-    <SectionCard
+    <FoldCard
+      id="rta:eingang"
       title="Eingang & Kalibrierung"
+      summary={`${input} · ${p.offset != null ? 'kalibriert' : 'dBFS'}${p.correction ? ' · Korrektur' : ''}`}
       desc="Mikrofon wählen, Pegel auf dB SPL bringen, Messmikrofon korrigieren."
       hint="Ohne Kalibrierung zeigt der RTA dBFS (relativ zur Vollaussteuerung). Mit einem Kalibrator (94 oder 114 dB bei 1 kHz) auf dem Mikrofon setzt „Kalibrieren“ den Offset so, dass der Pegel stimmt. Handymikrofone messen unter ~100 Hz und ganz oben zu wenig – für Vergleiche und Feedback reicht das, für Messungen ein Messmikrofon (z. B. per USB) mit seiner Korrekturdatei nehmen."
     >
@@ -347,7 +413,7 @@ export function InputCard({
         />
         {fileError && <p className="text-xs text-danger">{fileError}</p>}
       </div>
-    </SectionCard>
+    </FoldCard>
   )
 }
 
@@ -355,18 +421,25 @@ export function InputCard({
 
 export function DisplayCard(): JSX.Element {
   const p = useRta()
+  const spectro = { off: '', waterfall: ' · Wasserfall', timeline: ' · Zeitachse' }[p.spectrogram]
   return (
-    <SectionCard title="Anzeige" desc="Wie schnell und wie die Messung gezeigt wird.">
+    <FoldCard
+      id="rta:anzeige"
+      title="Anzeige"
+      summary={`Mittelung ${AVERAGING[p.averaging]}${spectro}`}
+      desc="Wie schnell und wie die Messung gezeigt wird, Spektrogramm."
+    >
       <SelectField
         label="Mittelung"
         hint="Schnell = 125 ms, Langsam = 1 s (exponentiell), Unendlich = Mittel seit Start/Zurücksetzen – für rosa Rauschen am ruhigsten."
         value={p.averaging}
         onChange={(v) => set({ averaging: v as Averaging })}
       >
-        <option value="off">Aus</option>
-        <option value="fast">Schnell</option>
-        <option value="slow">Langsam</option>
-        <option value="inf">Unendlich</option>
+        {Object.entries(AVERAGING).map(([v, name]) => (
+          <option key={v} value={v}>
+            {name[0].toUpperCase() + name.slice(1)}
+          </option>
+        ))}
       </SelectField>
       <SelectField
         label="Spitzen"
@@ -415,12 +488,6 @@ export function DisplayCard(): JSX.Element {
         <option value="waterfall">Wasserfall</option>
         <option value="timeline">Zeitachse waagrecht</option>
       </SelectField>
-      <Checkbox
-        checked={p.feedback}
-        onChange={(feedback) => set({ feedback })}
-        label="Feedback-Finder"
-        hint="Sucht stehende, schmale Spitzen (Rückkopplung) und schlägt Filter vor."
-      />
-    </SectionCard>
+    </FoldCard>
   )
 }
