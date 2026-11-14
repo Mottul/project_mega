@@ -1,4 +1,4 @@
-// Video-Player ohne Scrollen (docs/PLAN-ARBEITSFLAECHE.md, „Abnahme“): Bibliothek, Playlist und
+// Video-Player ohne Scrollen (docs/PLAN.md, „Muster 1: Arbeitsfläche“): Bibliothek, Playlist und
 // Bühne nebeneinander bzw. übereinander, die Listen scrollen in sich, die Seite nicht. Gemessen
 // mit 14 Medien in Bibliothek und Playlist und drei gespeicherten Playlists, bei den Fenstern
 // aus dem Plan. Gegen den Stand vor dem Umbau war die Seite bei 1366 × 768 doppelt so hoch wie

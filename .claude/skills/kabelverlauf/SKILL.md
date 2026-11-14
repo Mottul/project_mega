@@ -5,7 +5,7 @@ description: Am Kabelverlauf des LED-Wall-Konfigurators arbeiten – Ketten, Sta
 
 # Kabelverlauf (LED-Wall-Konfigurator)
 
-Plan und Festlegungen: `docs/PLAN-MINI-MANUAL.md`, Abschnitt „Kabelverlauf im
+Entwurf und Festlegungen: `docs/PLAN-MINI-MANUAL.md`, Abschnitt „Kabelverlauf im
 LED-Wall-Konfigurator“ (Festlegungen 21, 24–34). Kurz: **Verlauf nur von Hand**, kein
 Einspeisepunkt, keine Automatik.
 

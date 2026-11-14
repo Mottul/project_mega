@@ -9,6 +9,9 @@ Jedes kleine Werkzeug (`SMALL_TOOLS` in `src/shared/toolWindows.ts`) läuft zwei
 kleinen Fenster der App und als Web-App fürs Handy (`src/pwa/`, veröffentlicht unter
 https://mottul.github.io/project_mega/). Derselbe Code – was in der PWA fehlt, darf das Werkzeug
 nicht brauchen. Aufbau und Veröffentlichen: `docs/ENTWICKLUNG.md`, Abschnitt „Rechner-PWA“.
+Wie ein kleines Werkzeug aufgebaut ist (Vorbild Testtongenerator und RTA), was je Werkzeug bei
+393 × 710 gemessen wurde und welche Pakete offen sind: Gesamtplan `docs/PLAN.md`, „Muster 2“ im
+Leitbild und Teil K.
 
 ## Was ein kleines Werkzeug nicht darf
 

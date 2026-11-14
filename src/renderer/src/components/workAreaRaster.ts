@@ -19,7 +19,7 @@ export interface Grenzen {
   hoehe: number
 }
 
-/** Vorgabe, nachgerechnet für den Video-Player (docs/PLAN-ARBEITSFLAECHE.md, „Platzregeln“) */
+/** Vorgabe, nachgerechnet für den Video-Player (docs/PLAN.md, „Muster 1: Arbeitsfläche“) */
 export const GRENZEN: Grenzen = { breit: 1180, mittel: 760, hoehe: 420 }
 
 export function stufe(breite: number, hoehe: number, g: Grenzen = GRENZEN): Stufe {

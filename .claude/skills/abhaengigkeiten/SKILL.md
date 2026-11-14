@@ -43,7 +43,7 @@ npm audit --omit=dev                  # Laufzeit: muss ohne Befund bleiben
   Pakete mit `binding.gyp` lösen bei `npm ci` einen node-gyp-Bau aus, auch mit
   `"gypfile": false` – deshalb die Einstellung (CI-Fehler mit better-sqlite3 13 unter Windows).
 - Große Umstiege (React, Tailwind, Vite, TypeScript, vitest) sind eigene Vorhaben in
-  `docs/ROADMAP.md` und in `dependabot.yml` als Hauptversion ausgenommen.
+  `docs/PLAN.md` (Teil U „Upgrades“) und in `dependabot.yml` als Hauptversion ausgenommen.
 
 ## Neue Electron-Hauptversion
 
@@ -99,7 +99,8 @@ Prüfung auf `main`): erst die Schritte hier, dann mergen.
    echten Installer und startet jede gepackte App einmal, `e2e/paket.mjs`).
 5. **Doku:** Version in `README.md` (Technik) und `docs/ENTWICKLUNG.md` (Node-Vorgabe),
    Systemvoraussetzungen in `docs/INSTALL.md`, „Stand der bekannten Lücken“ in
-   `docs/SICHERHEIT.md`, `docs/ROADMAP.md` (Bereits erledigt). Ändert sich die Node-Vorgabe:
+   `docs/SICHERHEIT.md`, `docs/PLAN.md` („Erledigt – nicht neu planen“, Zeile Technik). Ändert
+   sich die Node-Vorgabe:
    `engines` in `package.json` und `package-lock.json`, README (Entwicklung) und der Kommentar zu
    `@types/node` in `.github/dependabot.yml`.
 6. **Ausliefern:** Ohne `electron-updater` erreicht ein Electron-Upgrade (Sicherheits-Patches in

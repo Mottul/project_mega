@@ -1,4 +1,10 @@
-# Plan: Mini-Manual („So bedienst du deine LED-Wall“)
+# Entwurf: Mini-Manual („So bedienst du deine LED-Wall“)
+
+**Entwurf zu Mini-Manual, Projektdatei und Kabelverlauf** – Festlegungen, Aufbau und Messwerte.
+**Was offen ist und wann es drankommt, steht im [Gesamtplan](PLAN.md#mm--mini-manual)** (Pakete MM3
+bis MM6); was sich nur im Betrieb klären lässt, dort unter
+[Abnahmen am Gerät](PLAN.md#abnahmen-am-gerät). Die folgenden Absätze halten fest, was gebaut wurde
+und wo es vom Entwurf abweicht.
 
 **Status:** Phase 0 umgesetzt (16. Oktober 2026): Projektordner, Projektdatei `.mottul` und das
 Datei-Menü des LED-Wall-Konfigurators – beschrieben in
@@ -6,7 +12,7 @@ Datei-Menü des LED-Wall-Konfigurators – beschrieben in
 Skill `projektdatei`. Danach zweimal geprüft; alle bestätigten Befunde sind behoben und als
 Regeln im Skill `review-checkliste` festgehalten. Abgestimmt in Rücksprachen am selben Tag,
 siehe [Festlegungen](#festlegungen); vor den späteren Phasen die [offenen Fragen](#offene-fragen)
-klären. Nach der Umsetzung in WERKZEUGE überführen und diesen Plan löschen.
+klären. Nach der Umsetzung in WERKZEUGE überführen und diesen Entwurf löschen.
 
 **Phase 1 umgesetzt (16./17. Oktober 2026):** PDF-Weg über eine temporäre Datei, Fotos in der
 Projektdatei, das Werkzeug „Mini-Manual“ mit allem aus der Phasen-Tabelle – beschrieben in
@@ -26,8 +32,9 @@ Abweichungen vom Plan:
 Rückmeldung aus dem ersten Test (17.10.2026), erledigt: Foto auf dem Deckblatt nicht mehr
 verzerrt, Logo größer, eingesetzte Platzhalter-Werte fett.
 
-Noch offen aus Phase 1 (klein, bei Bedarf): Aufräumen des Foto-Speichers. (Bausteine
-„aktualisieren“ und Vorschläge nach Stichworten sind umgesetzt, 22.10.2026, siehe WERKZEUGE.)
+Noch offen aus Phase 1 (klein, bei Bedarf): Aufräumen des Foto-Speichers und das Logo als SVG –
+Paket MM6 im Gesamtplan. (Bausteine „aktualisieren“ und Vorschläge nach Stichworten sind
+umgesetzt, 22.10.2026, siehe WERKZEUGE.)
 
 **Phase 2a, erster Teil umgesetzt (17.10.2026):** mehrere Wände je Datei – Abschnitt `ledWall`
 Version 3 mit Migration (Speicher, Vorlagen, Datei), Wand-Menü im Konfigurator, Name der Wand in
@@ -110,11 +117,10 @@ Die Stores der Werkzeuge lädt erst der Klick (dynamischer Import); ihre Beschri
 dafür ohne Store in `osc-control/labels.ts` und `jingle-player/hotkeys.ts`. Abweichungen: keine
 Vorschaubilder der Clips (lägen erst nach einem Weg in den Foto-Speicher vor), keine
 OSC-Adressen (die Anleitung ist für die Bedienung). Offen in Teil B: die Importe, sobald die
-Beispieldateien da sind.
+Beispieldateien da sind (Paket MM3 im Gesamtplan; eine OBS-Szenensammlung liegt vor).
 
-Offen sind nur Kleinigkeiten ([Fragen 11–13](#offene-fragen)).
-Die Skizzen zu diesem Plan (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum Ausprobieren)
-liegen als Artifact bei Matthias.
+Die Skizzen zu diesem Entwurf (Arbeitsplatz, Fehlersuche, Kurzkarte, Kabelverlauf zum
+Ausprobieren) liegen als Artifact bei Matthias.
 
 Ein neues Werkzeug erzeugt Kurz-Anleitungen für die Leute vor Ort: wie man die LED-Wall
 einschaltet und bedient, was wo steht und wie verkabelt ist – und im Fehlerfall Schritt für
@@ -855,9 +861,10 @@ in 3 s. Der Druck steckt jetzt in
 Anfragefilter nur Dateien aus diesem Ordner durchlässt (`data:`-Bilder brauchen keine Anfrage),
 Optionsobjekt `{ pageSize: 'A4' | 'A5', landscape }`; geprüft in `e2e/pdf.mjs`. Fotos stehen
 im HTML als `foto://bild/<hash>`; der main kopiert sie in den Temp-Ordner und macht die Adressen
-relativ. Noch offen: `footer` fürs Handbuch und die Seitenzählung der Kurzkarte. Schriften: Heute nutzen die PDFs
+relativ. Die Fußzeile des Handbuchs und die Seitenzählung der Kurzkarte (Warnung „Die Kurzkarte
+hat n Seiten“) sind inzwischen gebaut. Schriften: Heute nutzen die PDFs
 Systemschriften und sehen je Betriebssystem anders aus; eine eingebettete Schrift (`@font-face`
-als data:-URI) im Probedruck prüfen.
+als data:-URI) im Probedruck prüfen (Paket MM6 im Gesamtplan).
 
 ## Datenquellen und Importe
 
@@ -883,7 +890,7 @@ Hinweise:
 - Der Video-Player merkt sich `loop`, `shuffle` und die laufende Playlist **nicht** über einen
   Neustart, und es gibt keinen Playlist-Autostart. Für die Anleitung heißt das: „Nach dem
   Einschalten Playlist antippen“ (Baustein) – oder ein Playlist-Autostart als eigene
-  Player-Funktion (Roadmap).
+  Player-Funktion (Wunsch F12 im Gesamtplan).
 - **NovaStar** speichert nichts (Modell, Presets, IP nur im React-Zustand) – Handeingabe, optional
   „aus aktueller Verbindung übernehmen“.
 - **Netzwerk-Scanner:** Geräteliste ist flüchtig, die API hat keinen Getter. Für eine IP-Tabelle
@@ -979,7 +986,7 @@ angegeben (Festlegung 24), mit zwei Wegen:
 
   Werte aus den Handbüchern (17.10.2026). Sonderfälle nur als Hinweis: UHD Jr mit HDR oder 3D
   halbe Kapazität, mit „Low Latency“ höchstens 512 px Breite je Port; Tessera mit „Ultra Low
-  Latency“ halbe Kapazität. Das erledigt zugleich den Roadmap-Punkt „Prozessor-Presets“.
+  Latency“ halbe Kapazität. Das erledigte zugleich den früheren Roadmap-Punkt „Prozessor-Presets“.
 - **Breakout-Box NovaStar CVT10** (Handbuch V1.3.6): 2 × 10G optisch (OPT1 Haupt, OPT2 Backup),
   10 × Gigabit-Ethernet – an 10G-Ports mit 8b/10b (UHD Jr) nur Ports 1–8, an 10,3125G (64b/66b)
   alle 10. Variante **S** (Singlemode, OS1/OS2, LC, bis 10 km) oder **M** (Multimode, OM3/OM4,
@@ -1019,7 +1026,7 @@ angegeben (Festlegung 24), mit zwei Wegen:
       350.000 px, bei 50 Hz 630.000 / 504.000 / 420.000.
 
     Vorgabe: Prozessor wählen, Farbtiefe und Bildrate einstellen, Wert daraus rechnen
-    (Roadmap-Punkt „Prozessor-Presets“).
+    (früherer Roadmap-Punkt „Prozessor-Presets“).
 
     | Modul | Pixel | Module je Port bei 60 Hz, 8 / 10 bit |
     |---|---|---|
@@ -1180,9 +1187,9 @@ Jede Phase ist für sich nutzbar.
 | **1 Mini-Manual, erste Fassung** ✅ | Zuerst ✅: Messung der 2-MB-Grenze im PDF-Weg (aus Phase 0 verschoben) und Fotos in der Projektdatei (Foto-Speicher im main, Protokoll, nur Hashes über IPC); dann Werkzeug, Kapitel-Katalog, Formulare, Vorschau, drei Stufen, Platzhalter, Geräteliste, Fehlersuche als Liste, mitgelieferte und eigene Bausteine, Fotos, Firmenprofil, Prüfung vor dem Export, Handbuch und Kurzkarte als PDF; LED-Wall-Kopie mit „Planung geändert“ | erste echte Anleitung für ein Event |
 | **2a Mehrere Wände** ✅ | Version 3 (Liste der Wände, Migration inkl. Vorlagen), Wand-Wahl im Konfigurator, Packliste je Wand plus Summe, Mini-Manual: Kopie je Wand, „bespielt“ und Signalweg der Zuspieler (Ausgang, Verteiler, Ausschnitt), Systemübersicht, Platzhalter `{wand2.…}` | Projekte mit mehreren Wänden in einer Datei, Anleitung sagt, was wohin geht – umgesetzt 17.10.2026 |
 | **2b Kabelverlauf** ✅ | geteilter Prozessor gleichen Typs; von Hand: Startpunkt und Richtung, Kette zeichnen, Backup-Leitungen („B“, Ports; NovaStar-Port bzw. Tessera-Paar), Port/Kreis/Phase, Prozessor-Vorgaben und Kapazität (Prozessor- und Kartengrenze), Glasfaser-Strecke mit CVT10, Pfeile in Ansicht und PDF, vorne/hinten, Signal und Strom nebeneinander, Warnungen, IMs in den Stammdaten; Kapitel Verkabelung im Mini-Manual | Pläne, nach denen jemand aufbauen und suchen kann |
-| **3 Handy und Bedienfelder** | HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player; Import Stream-Deck-Profil, Companion, OBS-Szenensammlung | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
-| **4 Weitere Quellen** | MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
-| **5 Team und Gesamtprojekt** | Bausteinordner für Kollegen, Packliste als Abschnitt (Ersatz-IMs), Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`) | ein Projekt für Planung, Material und Übergabe; Weg zum Roadmap-„Show-Profil“ |
+| **3 Handy und Bedienfelder** | ✅ HTML-Export (ohne JS nutzbar, mit JS Schritt für Schritt), QR-Encoder erweitert, Tastenfeld-Editor; Übernahme aus Video-Player, OSC-Steuerung, Jingle-Player. **Offen:** Import Stream-Deck-Profil, Companion, OBS-Szenensammlung – Paket MM3 im Gesamtplan | Bedienfeld- und Szenenseiten ohne Abtippen, Fehlersuche am Handy |
+| **4 Weitere Quellen** | offen – Paket MM4 im Gesamtplan: MadMapper live über OSCQuery (nach einem Test, ob Namen enthalten sind), MadMapper-Datei nur nach Prüfung echter Dateien, NovaLCT `.scr`/`.scfg` nur bei Bedarf, OBS live, Resolume als Ausblick | Cue- und Szenenlisten automatisch |
+| **5 Team und Gesamtprojekt** | offen – Paket MM5 im Gesamtplan: Bausteinordner für Kollegen, Etiketten für Kabel und Geräte, „Event öffnen …“ am Startbildschirm (listet die Abschnitte einer Datei und bindet die gewählten Werkzeuge – eine Aktion, kein Zustand), Dateizuordnung `.mottul` (braucht `perMachine: true`); die Packliste als Abschnitt (Ersatz-IMs) ist dort Paket F2 | ein Projekt für Planung, Material und Übergabe; Weg zum Show-Profil (V4 im Gesamtplan) |
 
 ## Skills, Doku, Tests
 
@@ -1220,8 +1227,8 @@ Jede Phase ist für sich nutzbar.
 **Doku:** [WERKZEUGE.md](WERKZEUGE.md) (Mini-Manual, LED-Wall-Kabelverlauf, Projektdateien, „Wo die
 Daten liegen“), README-Überblick, [ENTWICKLUNG.md](ENTWICKLUNG.md) (Tabelle der Speicherorte),
 [SICHERHEIT.md](SICHERHEIT.md) (Projektdateien als fremde Eingabe, Schreiben in Nutzerpfade, CSP
-des PDF-Fensters, Zugangsdaten im Klartext), [ROADMAP.md](ROADMAP.md) (Show-Profil teilweise
-erledigt).
+des PDF-Fensters, Zugangsdaten im Klartext), der [Gesamtplan](PLAN.md#verzahnung) (Show-Profil
+teilweise erledigt).
 
 **Tests:**
 
@@ -1237,6 +1244,11 @@ erledigt).
 - Von Hand: HTML-Datei auf iPhone und Android; Ausdruck der Pläne (gelbe Kette lesbar?).
 
 ## Offene Fragen
+
+**Stand 14. November 2026:** Was noch offen ist, führt der [Gesamtplan](PLAN.md#entscheidungen) – die
+Beispieldateien (Frage 1) als Entscheidung 12, die Redundanz-Paare am Tessera S8 (Frage 12) und der
+rX3ioBF (Frage 13) unter [Abnahmen am Gerät](PLAN.md#abnahmen-am-gerät), weitere Fehlerfälle (Frage 2)
+laufend. Die Liste hier bleibt als Protokoll, was wann geklärt wurde.
 
 Geklärt am 16. Oktober 2026 (Festlegungen 13–23): Verkabelungspraxis, Einspeisepunkt,
 Redundanz, IM-Anordnung und -Tausch, Prozessoren im Bestand, Dateiendung, MadMapper-Version und

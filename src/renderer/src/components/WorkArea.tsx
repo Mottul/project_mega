@@ -1,5 +1,6 @@
 // Arbeitsfläche aus Feldern – das Gerüst für Werkzeuge, die während der Show bedient werden
-// (zuerst der Video-Player; Entwurf und Messungen: docs/PLAN-ARBEITSFLAECHE.md).
+// (zuerst der Video-Player; Muster, Messungen und die nächsten Werkzeuge: docs/PLAN.md,
+// „Muster 1: Arbeitsfläche“ und Teil W).
 //
 // WorkArea füllt den Platz, den ToolShell ihr gibt, misst sich selbst und ordnet ihre Felder nach
 // der Stufe an (workAreaRaster.ts). In den Stufen breit und mittel scrollt nie die Seite, nur der
