@@ -1,9 +1,14 @@
-# Plan: Video-Generator (Diashow & Montage)
+# Entwurf: Video-Generator (Diashow & Montage)
+
+**Entwurf zum Video-Generator** – Verfahren, geprüfte ffmpeg-Befehle, Messwerte und Stolpersteine.
+**Was offen ist und wann es drankommt, steht im [Gesamtplan](PLAN.md#vg--video-generator)**: Paket
+VG3 (Phase 3: Titel, Logo, LUT, Vorlagen), VG4 (zwei offene Messungen) und W1 (Storyboard und
+Vorschau gleichzeitig sichtbar).
 
 **Status:** Phase 0 und 1 umgesetzt (8. Oktober 2026, Branch `video-generator`), Phase 2 ebenso
 (8. Oktober 2026, Branch `video-generator-phase2`, siehe [Umsetzung Phase 2](#umsetzung-phase-2))
 – das Werkzeug steht in [WERKZEUGE.md](WERKZEUGE.md#video-generator). Offen ist Phase 3; dafür
-bleibt dieser Plan mit Messwerten und Stolpersteinen stehen. Die [Festlegungen](#festlegungen)
+bleibt dieser Entwurf mit Messwerten und Stolpersteinen stehen. Die [Festlegungen](#festlegungen)
 (Name, Hauptzweck, Musik, Titel/Logo) gelten weiter.
 
 Bilder und Videos hineinladen, ein Gesamtvideo herausbekommen: Anzeigedauer, Übergänge,
@@ -103,7 +108,8 @@ Video-Konverter**.
 
 Titel-/Texttafeln (im Renderer gezeichnet → PNG → Standbild-Element, wie der Testbild-Export),
 eingebackenes Logo (`overlay`, PNG mit Alpha), Farbkorrektur/LUT (`lut3d`), Schnitt auf den Takt
-der Musik, „ein Video je Ordner“, benannte Projekt-Vorlagen.
+der Musik, „ein Video je Ordner“, benannte Projekt-Vorlagen. Stand und Reihenfolge: Paket VG3 im
+Gesamtplan.
 
 ### Nicht geplant
 
@@ -141,7 +147,8 @@ einem Element bricht alles ab. Stattdessen in Stücken – gemessen bild- und sa
    Bildrate, `yuv420p`, SAR 1, Farbe und Drehung normalisiert, Ken Burns eingerechnet, genau
    `round(dauer × fps)` Bilder. Zwischenformat **H.264 nur Einzelbilder** (`-g 1`, crf 12,
    ultrafast) – jedes Bild ein Keyframe, daher bildgenau schneidbar (gemessen mit `yuv420p`; für
-ProRes-/HAP-Ziele eine 4:4:4-Zwischenstufe wählen, noch nicht gemessen). Ton des Elements als
+ProRes-/HAP-Ziele eine 4:4:4-Zwischenstufe wählen, noch nicht gemessen – Paket VG4 im
+Gesamtplan). Ton des Elements als
    PCM 48 kHz Stereo mit genau passender Samplezahl (Bilder/stumme Videos: Stille).
 3. **Übergangs-Stücke:** je Übergang ein kurzes Stück nur aus den beiden Nachbarn (`xfade`).
    Schnitte brauchen kein Stück.
@@ -172,7 +179,7 @@ Anfang und als Kopfstück im letzten `acrossfade`. Dauer = Summe der Dauern − 
 an Element 0 läuft ohne Sprung weiter, weil die Datei mitten in dessen Bahn beginnt. Die Musik
 bekommt bei Schleife kein Aus-/Einblenden; ihr Ende wird mit ihrem Anfang überblendet
 (`acrossfade`). Prüfen im E2E: letztes Bild → erstes Bild ohne Sprung gegen die Nachbarbilder. Wie
-sauber der Player am Dateiende neu startet, ist getrennt zu prüfen.
+sauber der Player am Dateiende neu startet, ist getrennt zu prüfen (Paket VG4 im Gesamtplan).
 
 ### Geprüfte Befehle
 
@@ -406,8 +413,8 @@ Der gebündelte Windows-Build vom 1. Juni 2026 kennt `-/filter_complex` ebenfall
   `led-wall/store` + `computeWall` dynamisch laden); „Wie Player-Wand“ über
   `useSettings((s) => s.player.wallWidth)` usw.
 - **Übergaben:** Konverter/Medien-Info → Generator (`givePaths`); Ergebnis → Player
-  (`api.player.import({ sources: [ausgabe], fitMode, wall })` – erfüllt nebenbei teilweise
-  „Fertiger Auftrag → Player-Bibliothek“ aus der ROADMAP) und → Medien-Info.
+  (`api.player.import({ sources: [ausgabe], fitMode, wall })` – erfüllte nebenbei teilweise
+  „Fertiger Auftrag → Player-Bibliothek“ aus der damaligen Roadmap) und → Medien-Info.
 
 ## Sonderfälle
 
@@ -466,7 +473,7 @@ ffprobe-Ausgabe eines EXIF-gedrehten Testfotos als Fixture).
 | 0 | ✅ EXIF-Drehung in der Analyse (Player profitiert sofort) | klein |
 | 1 | ✅ Kern-Umbauten, `videoGenPlan`, Rechenlauf mit Cache, Werkzeug mit Storyboard, Vorgaben, Ausgabe, Videoausschnitt (Start/Ende), nahtlose Schleife, Musik einfach (eine Datei), Übergaben | groß |
 | 2 | ✅ Live-Vorschau und „Vorschau rechnen“, Ken-Burns-Rahmen, Videoausschnitt grafisch, Musik-Ausbau | mittel |
-| 3 | Titel, Logo, LUT, Vorlagen | nach Bedarf |
+| 3 | Titel, Logo, LUT, Vorlagen – offen, Paket VG3 im Gesamtplan | nach Bedarf |
 
 ## Umsetzung Phase 2
 
@@ -519,7 +526,7 @@ ffprobe-Ausgabe eines EXIF-gedrehten Testfotos als Fixture).
   Videoausschnitt (Start/Ende bildgenau), Abbrechen, Cache-Treffer beim zweiten Lauf, Übergabe an
   den Player.
 - **Doku bei Umsetzung:** `WERKZEUGE.md` (neuer Abschnitt unter „Medien & Bibliothek“, Übergaben,
-  Kundenansicht), README-Überblick, `ROADMAP.md` (Eintrag streichen, Verzahnung anpassen),
+  Kundenansicht), README-Überblick, die damalige Roadmap (Eintrag streichen, Verzahnung anpassen),
   `SICHERHEIT.md` (`media://vgen`), `ENTWICKLUNG.md` (Kern-Liste). Nebenbei: `WERKZEUGE.md` und
   `ENTWICKLUNG.md` sagen, der Testbild-Export nutze den gemeinsamen Kern – er nutzt aber nur
   `runFfmpeg` und `setparamsFor`/`tagsFor`, nicht `planConversion`/`buildConvertArgs`.

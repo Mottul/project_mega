@@ -110,7 +110,7 @@ Weiter in [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md).
 | [NDI.md](docs/NDI.md)                     | Optionale NDI-Ausgabe von Video-Player und Stage-Timer           |
 | [ENTWICKLUNG.md](docs/ENTWICKLUNG.md)     | Einrichtung, Skripte, Aufbau, neues Werkzeug, Tests, Paketierung |
 | [SICHERHEIT.md](docs/SICHERHEIT.md)       | Supply Chain, bekannte Lücken, Härtung der App                   |
-| [ROADMAP.md](docs/ROADMAP.md)             | Geplante Funktionen und technische Verbesserungen                |
+| [PLAN.md](docs/PLAN.md)                   | Gesamtplan: was ansteht – Bedienung, Funktionen, Technik         |
 
 ## Technik
 

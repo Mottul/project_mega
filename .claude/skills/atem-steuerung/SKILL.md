@@ -5,7 +5,9 @@ description: An der ATEM-Steuerung arbeiten – neuer Befehl, neue Seite, Dienst
 
 # ATEM-Steuerung
 
-Plan, Phasen und offene Abnahmen: `docs/PLAN-ATEM.md`. Benutzersicht: `docs/WERKZEUGE.md`.
+Was offen ist – Phasen als Pakete AT0 und AT3 bis AT9, Abnahmen am Mischer, offene Fragen –
+steht im Gesamtplan `docs/PLAN.md`. Entwurf mit Messwerten und Stolpersteinen:
+`docs/PLAN-ATEM.md`. Benutzersicht: `docs/WERKZEUGE.md`.
 
 ## Aufbau
 

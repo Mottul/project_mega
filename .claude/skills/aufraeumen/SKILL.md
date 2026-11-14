@@ -26,8 +26,8 @@ Treffer ansehen, bevor er geht.
 - **„nur in der eigenen Datei“** (über 200, meist Typen und für Tests exportierte Helfer) → lassen;
   das `export` zu entfernen ist viel Änderung ohne Nutzen.
 - Pakete: `postcss` taucht nur als Plugin-Träger auf (Tailwind/Autoprefixer) – bleibt.
-- Offene Punkte stehen in `docs/ROADMAP.md` („Große Umbauten“: große Dateien teilen,
-  IPC-Vertrag generieren, Handy-Seiten als echte Dateien).
+- Offene Punkte stehen im Gesamtplan `docs/PLAN.md`, Teil E: große Komponenten teilen (E1),
+  `shared/types.ts` nach Bereichen (E2), Handy-Seiten als echte Dateien (E9).
 
 ## 2. Dateien verschieben
 
@@ -140,4 +140,4 @@ alten Stand grün bekommen (so entstand `e2e/osc.mjs`); danach die E2E des Werkz
 ## Abschluss
 
 `/abschluss-check` mit vollem `npm test` und `npm run e2e` (Umzüge in main betreffen Fenster,
-Fernsteuerung und NDI); erledigte Punkte aus `docs/ROADMAP.md` streichen.
+Fernsteuerung und NDI); erledigte Pakete aus `docs/PLAN.md` streichen.

@@ -1,7 +1,7 @@
 // Anordnung des Video-Players – rein und getestet (layout.test.ts): die Raster je Stufe der
 // Arbeitsfläche (components/workAreaRaster.ts), die Gesamtdauer der Playlist, stabile
-// Schlüssel für ihre Zeilen und „Danach“ der Bühne. Entwurf und Messungen:
-// docs/PLAN-ARBEITSFLAECHE.md.
+// Schlüssel für ihre Zeilen und „Danach“ der Bühne. Muster, Messungen und die offenen Schritte
+// (P4, P5): docs/PLAN.md.
 
 import type { Raster, Stufe } from '@renderer/components/workAreaRaster'
 import { nextIndex } from '@shared/player'

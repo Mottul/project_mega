@@ -1,7 +1,7 @@
 # Sicherheit
 
 Zwei Seiten: die Abhängigkeiten (Supply Chain beim Installieren und Bauen) und die laufende App.
-Offene Punkte stehen in der [Roadmap](ROADMAP.md#sicherheit).
+Offene Punkte stehen im [Gesamtplan](PLAN.md#s--sicherheit-und-auslieferung).
 
 ## Abhängigkeiten (npm / Supply Chain)
 
@@ -78,7 +78,7 @@ und ein kurzer App-Start. `save-exact` pinnt dabei auf die genaue Version.
 
 **Automatisch:** Dependabot (`.github/dependabot.yml`) öffnet jeden Montag Pull Requests – nach
 derselben Regel (`cooldown`: 7 Tage). Patch- und Minor-Updates kommen gesammelt in einem PR,
-Hauptversionen einzeln; die großen Umstiege der [Roadmap](ROADMAP.md#upgrades) (React, Tailwind,
+Hauptversionen einzeln; die großen Umstiege aus dem [Gesamtplan](PLAN.md#u--upgrades) (React, Tailwind,
 Vite, TypeScript …) bleiben eigene Vorhaben und kommen nicht als PR. Auch die GitHub Actions der
 CI hält Dependabot aktuell. Gemergt wird erst nach grüner CI, von Hand.
 
@@ -150,7 +150,8 @@ ESLint 10.14.0:
   UDP-Verbindung auf, im eigenen Thread. Adresse und Befehle prüft der Hauptprozess, auch die aus dem
   eigenen Fenster: Durch kommen nur bekannte Befehle mit vorhandener M/E, vorhandener Quelle und
   Werten in den Grenzen des Geräts (`atemCommand`, `src/shared/atem.ts`). Eine Fernsteuerung vom
-  Handy gibt es erst nach dem PIN aus der [Roadmap](ROADMAP.md).
+  Handy gibt es erst nach dem PIN aus dem [Gesamtplan](PLAN.md#s--sicherheit-und-auslieferung)
+  (Paket S1).
 - **Shell-Aufrufe:** „Ordner öffnen“ (`shell.openPath` startet Dateien mit ihrem Programm) nur
   für vorhandene lokale Ordner; „Im Ordner zeigen“ nur mit absolutem Pfad (Netzwerkpfade erlaubt,
   es startet nichts).
@@ -206,7 +207,8 @@ ESLint 10.14.0:
   Version ersetzt.
 - **Kein `eval` im Renderer:** Die Content-Security-Policy verbietet `unsafe-eval`; pdfjs 6 kommt
   ohne eval aus – präparierte PDFs können darüber keinen Code ausführen. (`'unsafe-inline'` für
-  Skripte braucht noch der Vite-Dev-Server, siehe Roadmap.)
+  Skripte braucht noch der Vite-Dev-Server, siehe Paket S2 im
+  [Gesamtplan](PLAN.md#s--sicherheit-und-auslieferung).)
 - **Fernsteuerungen** sind standardmäßig aus, im lokalen Netz erreichbar und ohne Passwort – in
   fremden Netzen nur bei Bedarf einschalten. Befehle vom Handy werden Feld für Feld geprüft (nur
   bekannte Befehle, Werte begrenzt; das Idle-Bild bleibt dem Rechner vorbehalten), Nutzertexte in
@@ -230,7 +232,8 @@ ESLint 10.14.0:
     `localhost`, einfache Namen ohne Punkt, `.local` und der eigene Rechnername mit jeder Endung
     (`regie-pc.fritz.box`). **Grenze:** Wer den Rechnernamen kennt, kann einen passenden Namen
     anlegen – das hält Seiten auf, die blind suchen, keinen gezielten Angriff. Dagegen und gegen
-    Fremde im selben Netz hilft erst die PIN aus der [Roadmap](ROADMAP.md#sicherheit).
+    Fremde im selben Netz hilft erst die PIN aus dem
+    [Gesamtplan](PLAN.md#s--sicherheit-und-auslieferung) (Paket S1).
 - **Uploads vom Handy** (Video-Player): höchstens 8 GB je Datei, danach müssen 2 GB frei bleiben –
   geprüft vorab und beim Schreiben, denn die Größenangabe kann fehlen oder falsch sein.
   Abgebrochene oder abgewiesene Uploads hinterlassen keine Dateien.

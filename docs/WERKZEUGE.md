@@ -346,7 +346,8 @@ Steuert NovaStar-LED-Prozessoren (NovaPro UHD Jr & Co.) über TCP 5200 – Vorab
 Bedient Blackmagic-ATEM-Mischer über das Netzwerk (UDP 9910), mit Rückmeldung vom Mischer. Aufgebaut
 wie ein Pult: Die Seiten Mischen, Keyer, Makros, Medien und AUX liegen links auf Reitern, rechts steht
 auf jeder Seite die Spalte „Übergang“ mit Stil, Dauer, Cut, Auto, Hebel und Fade to Black. Was der
-Mischer nicht kann, fehlt. SuperSource, Multiview und Ton folgen, siehe [PLAN-ATEM.md](PLAN-ATEM.md).
+Mischer nicht kann, fehlt. SuperSource, Multiview und Ton folgen, siehe
+[Gesamtplan](PLAN.md#at--atem-steuerung) und den Entwurf [PLAN-ATEM.md](PLAN-ATEM.md).
 Der Mischer braucht Ethernet, USB allein genügt nicht.
 
 - **Jede Art Knopf sieht überall gleich aus:** Massiv (hell im dunklen Design) löst sofort aus: Cut,
@@ -1034,7 +1035,7 @@ Veröffentlichen: [ENTWICKLUNG.md](ENTWICKLUNG.md#rechner-pwa).
 
 In der Kundenansicht sind die Sprünge in andere Werkzeuge ausgeblendet.
 
-Weitere Übergaben sind geplant: [ROADMAP.md](ROADMAP.md#verzahnung).
+Weitere Übergaben sind geplant: [Gesamtplan](PLAN.md#verzahnung).
 
 ## Projektdateien und Projektordner
 

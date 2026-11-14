@@ -16,7 +16,7 @@ updates:
       kleine-updates:
         update-types: [minor, patch]
     ignore:
-      # Große Umstiege sind eigene Vorhaben (docs/ROADMAP.md, „Upgrades“) und kommen nicht als
+      # Große Umstiege sind eigene Vorhaben (docs/PLAN.md, Teil U „Upgrades“) und kommen nicht als
       # PR. Electron-Hauptversionen dagegen schon: Electron pflegt nur die drei neuesten.
       - dependency-name: react
         update-types: [version-update:semver-major]

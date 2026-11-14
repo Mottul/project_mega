@@ -1,8 +1,13 @@
-# Plan: ATEM-Steuerung
+# Entwurf: ATEM-Steuerung
 
-**Status:** Phase 0 ohne Mischer, Phase 1 und Phase 2 sind gebaut, die Seite „Mischen“ von Phase 1 lief
-am ATEM Mini Extreme, siehe [Stand](#stand). Zum Testen stehen ein ATEM Mini Extreme und ein ATEM Mini bereit, die
-[offenen Fragen](#offene-fragen) betreffen nur noch Details.
+**Entwurf zur ATEM-Steuerung** – Aufbau, Messwerte, Festlegungen und Stolpersteine. **Was offen ist
+und wann es drankommt, steht im [Gesamtplan](PLAN.md#at--atem-steuerung)** (Pakete AT0 und AT3 bis
+AT9; die Nummer ist die Phase), die Abnahmen am Mischer dort unter
+[Abnahmen am Gerät](PLAN.md#abnahmen-am-gerät), die offenen Fragen unter
+[Entscheidungen](PLAN.md#entscheidungen).
+
+**Gebaut:** die Probe ohne Mischer (Phase 0), Phase 1 und Phase 2; die Seite „Mischen“ lief am ATEM
+Mini Extreme, siehe [Stand](#stand). Zum Testen stehen ein ATEM Mini Extreme und ein ATEM Mini bereit.
 
 Blackmagic-ATEM-Mischer vom Laptop bedienen, später auch vom Tablet oder Handy: Programm und
 Vorschau, Übergänge, Keyer, SuperSource mit bildgenau animierten Wechseln, Multiview im Werkzeug,
@@ -60,22 +65,10 @@ Mischer ab 50p also in Schritten von zwei Bildern (`bilderJeSchritt`). Die Bedie
 „nicht durchdacht, die Optionen nicht als solche erkennbar“; sie ist danach mit ihm neu aufgebaut
 worden, siehe [Oberfläche](#oberfläche).
 
-**Noch offen:**
-
-1. Rest von Phase 0: Verbinden aus dem Installer unter Windows und macOS, die
-   [Messungen zur Animation](#animierte-wechsel), USB-Ausgang als Kamera.
-2. **Am Extreme mit Quellen und Monitor:** Übergänge, Hebel und Fade to Black im Bild.
-3. **Null am Ende des Hebels:** Wir senden 10000 und danach 0, wie ältere Hardware-Steuerungen. Im
-   Grobtest fiel nichts auf, ob die Null nötig ist, wurde aber nicht gemessen. Sie stammt aus der
-   Erinnerung an die Arduino-Bibliothek von SKAARHOJ.
-4. **Am ATEM Mini:** Verbinden, Quellen und Stile wie am Gerät, Reiter nur für das, was er kann.
-5. **Phase 2 am Extreme:** Key und DSK hart und mit Übergang, DSK-Auto mit Dauer, Fill und Cut. Makros
-   mit Pause. Standbilder im Media-Player. Zeigt die Liste bei den AUX-Bussen nur, was der jeweilige Bus
-   annimmt? Die Bibliothek nennt vier AUX-Bits, welches zu welchem Bus gehört, ist nicht belegt. Ist
-   einer der Busse der USB-Ausgang, gilt die Vorsicht aus [Multiview](#multiview-im-werkzeug).
-6. **Zählung der Dauer:** Gemessen ist nur der Mix bei 1080p50. FTB, DSK, Dip, Wipe und DVE sowie 59,94p
-   und 60p sind daraus übertragen. Zeigt eines davon die falschen Sekunden, gehört das in
-   `bilderJeSchritt`.
+**Noch offen** sind der Rest von Phase 0 am Gerät (Paket AT0) und die Abnahmen am Mischer für alles
+Gebaute – Hebel und Übergänge im Bild, die Null am Ende des Hebels, der ATEM Mini, Keyer bis AUX, die
+Zählung der Dauer, das Pult. Die Liste steht im Gesamtplan unter
+[Abnahmen am Gerät](PLAN.md#abnahmen-am-gerät).
 
 ## Entscheidung: eigenes Werkzeug
 
@@ -393,41 +386,28 @@ und als Abschnitt `atem` der Projektdatei (Skill `projektdatei`), damit sie mit 
 - **Thread-Abstürze:** Der Socket-Thread startet selbst neu (`autoRestart`). Der Dienst muss das
   überstehen, ohne eine zweite Verbindung aufzubauen.
 - **Sicherheit:** Der Mischer prüft keine Anmeldung, wer ihn im Netz erreicht, kann schalten. Die
-  Fernsteuerung bringt das auf jedes Handy im WLAN. Deshalb kommt sie erst nach dem PIN aus der
-  Roadmap, ist ab Werk aus und hat eine Eintragung in `docs/SICHERHEIT.md`.
+  Fernsteuerung bringt das auf jedes Handy im WLAN. Deshalb kommt sie erst nach dem PIN (Paket S1
+  im Gesamtplan), ist ab Werk aus und hat eine Eintragung in `docs/SICHERHEIT.md`.
 
 ## Phasen
 
 ![Neun Phasen, ab Phase 1 im Einsatz nutzbar](bilder/atem-phasen.svg)
 
-| Phase | Inhalt | Fertig, wenn |
-| --- | --- | --- |
-| **0 Probe** | Bibliothek in Electron einbinden, Paket auf allen drei Systemen bauen, Thread und freetype im Installer prüfen, Anbindung am echten Mischer, [Messungen zur Animation](#animierte-wechsel), USB-Ausgang des Extreme als Kamera im Fenster samt Bus und Verzögerung | Installer verbindet sich auf Windows und macOS, der Weg der Animation steht fest. Sonst Entscheidung: `disableMultithreaded`, Abhängigkeit ersetzen oder eigener, kleiner Protokoll-Client |
-| **1 Mischen** | Dienst, Simulator, Verbinden, Seite „Mischen“: Programm, Vorschau, Cut, Auto, Fade to Black, Übergangsart und -dauer, Hebel, Sperre, Tastatur | Eine Show lässt sich fahren; E2E mit Simulator; Abnahme am Mischer |
-| **2 Mehr Show** | Keyer, DSK, Makros (Liste, Start, Stopp), Media-Player, AUX | Abnahme am Mischer |
-| **3 SuperSource** | Seite mit Boxen, Quellen, Beschnitt, Art und Layouts, Projektdatei | Layout anlegen, abrufen, in anderem Projekt laden; Abnahme am Mischer |
-| **4 Animation** | Schritte je Bild, Kurven, Makro und direktes Senden, Abbruch | Wechsel läuft bei 25p und 50p ohne Sprung und endet exakt im Ziel, belegt an einer Aufnahme |
-| **5 Multiview** | Kamera-Gerät wählen, USB-Ausgang umschalten, Bild mit Raster, Tally, Klick schaltet, eigenes Fenster, Ansicht ohne Bild | Bild steht im Werkzeug, Fenster treffen bei jeder Aufteilung; Abnahme am Mischer |
-| **6 Ton** | Master und Eingänge, Pegel, Stream und Aufzeichnung | Beide Ton-Welten laufen, mindestens im Simulator |
-| **7 Seiten** | Eigene Seiten auf dem Raster der OSC-Steuerung, Projektdatei | Seite anlegen, speichern, in anderem Projekt laden |
-| **8 Handy** | PIN für Fernsteuerungen (eigene Vorarbeit), Steuerseite, Fernsteuer-App | Tablet schaltet, ohne PIN geht nichts |
+Gebaut sind Phase 0 ohne Mischer (Probe: Bibliothek in Electron, Paket auf drei Systemen, Thread und
+FreeType im Installer), Phase 1 (Dienst, Simulator, Verbinden, Seite „Mischen“) und Phase 2 (Keyer,
+DSK, Makros, Media-Player, AUX) – siehe [Stand](#stand).
 
-Phase 5 hängt nur an Phase 1 und lässt sich vorziehen, wenn das Multiview wichtiger ist.
-
-**Später:** Animation auch für DVE-Keyer (für Mischer ohne SuperSource; dort gibt es zudem die
-eingebauten Fly-Keys), Fensterbelegung des Multiview ändern, HyperDeck, mehrere Mischer gleichzeitig,
-Kamerasteuerung, automatisches Umschalten nach Tonpegel.
+Die offenen Phasen stehen mit Inhalt und Abschluss im [Gesamtplan](PLAN.md#at--atem-steuerung); die
+Nummer des Pakets ist die Phase: AT0 (Rest der Probe am Gerät), AT3 SuperSource, AT4 Animation, AT5
+Multiview, AT6 Ton, AT7 eigene Seiten, AT8 Handy. Phase 5 hängt nur an Phase 1 und lässt sich
+vorziehen, wenn das Multiview wichtiger ist. Dort steht auch, was später kommen kann.
 
 ## Verzahnung
 
-- **Netzwerk-Scanner:** Er erkennt ATEMs schon (`netscan/atem.ts`); „In der ATEM-Steuerung
-  verwenden“ übergibt die Adresse. Das ist ein Fall für den verallgemeinerten Übergabe-Speicher aus
-  der Roadmap.
-- **Testbild und Video-Generator:** Standbild per `uploadStill` direkt in den Media-Pool.
-- **Mini-Manual:** Kapitel Bedienfeld übernimmt Seiten und Makro-Namen, Muster Jingle-Player und OSC.
-- **OSC-Steuerung:** Später ein Kachel-Ziel „ATEM“, damit Companion und Stream Deck über OSC mitschalten
-  und SuperSource-Layouts abrufen.
-- **Packliste:** Mischer, Kabel und Tally aus dem Projekt, sobald die Liste mehr Quellen kennt.
+Die geplanten Übergaben stehen im Gesamtplan unter [Verzahnung](PLAN.md#verzahnung): der
+Netzwerk-Scanner übergibt die Adresse (V1; er erkennt ATEMs schon, `netscan/atem.ts`), Mischer, Kabel
+und Tally in der Packliste (V3), Standbilder aus Testbild und Video-Generator per `uploadStill` in den
+Media-Pool, Seiten und Makro-Namen im Mini-Manual, ein Kachel-Ziel „ATEM“ in der OSC-Steuerung (V5).
 
 ## Tests & Doku
 
@@ -442,16 +422,15 @@ Kamerasteuerung, automatisches Umschalten nach Tonpegel.
 - **Abnahme am Mischer** je Phase, von Hand: am ATEM Mini Extreme alles, am ATEM Mini, dass Seiten
   ohne Fähigkeit fehlen und der Rest läuft. Die CI hat kein Gerät.
 - **Doku:** nach der Umsetzung in `docs/WERKZEUGE.md`, README-Überblick, `docs/FERNSTEUERUNG.md`,
-  `docs/SICHERHEIT.md`; dieser Plan wird dann gelöscht. Neuer Skill `atem-steuerung`, sobald sich
-  Muster gezeigt haben.
+  `docs/SICHERHEIT.md`; dieser Entwurf wird dann gelöscht, seine Pakete im Gesamtplan gestrichen.
+  Den Skill `atem-steuerung` gibt es seit Phase 1.
 
 ## Offene Fragen
 
-1. **Darf die Animation einen Makro-Platz belegen?** Vorschlag: ja, ein freier von hinten.
-2. **Wofür zuerst?** Für den Laptop neben dem Mischer oder als Tablet-Bedienung? Beim Tablet rückt
-   Phase 8 samt PIN nach vorn.
-3. **Sperre:** Genügt ein Schalter, oder soll Entsperren eine eigene Bestätigung verlangen?
-4. **Fade to Black mit zweitem Klick:** gewünscht oder im Ernstfall zu langsam?
+Die offenen Fragen stehen im Gesamtplan unter [Entscheidungen](PLAN.md#entscheidungen): Darf die
+Animation einen Makro-Platz belegen (Nr. 9), wofür zuerst – Laptop oder Tablet (Nr. 10), genügt für die
+Sperre ein Schalter (Nr. 11). Entschieden ist seit dem 2. November 2026: Fade to Black behält den
+zweiten Klick.
 
 ## Quellen
 

@@ -16,7 +16,9 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
    `lazy(() => import('./X').then((m) => ({ default: m.X })))`.
 3. **Eintragen** in `src/renderer/src/tools/registry.ts` (Import + Array `tools`) – die einzige
    Stelle, kein weiterer Menüpunkt nötig.
-4. **Oberfläche nach dem Werkzeug-Muster** (`components/ToolShell.tsx`, Vorbild `tools/stage-timer/`):
+4. **Oberfläche nach dem Werkzeug-Muster** (`components/ToolShell.tsx`, Vorbild `tools/stage-timer/`).
+   Vorher das Leitbild im Gesamtplan lesen (`docs/PLAN.md`: sieben Regeln für jede Oberfläche,
+   Muster 1 „Arbeitsfläche“ für große, Muster 2 „Kleines Werkzeug“ für kleine Werkzeuge):
    - `ToolShell` mit `main`, `bar` und `aside`. **`bar`** = `ToolBar`: hat das Werkzeug eine
      Ausgabe (Monitor, NDI, Handy …), `label="Ausgabe"`, `active` = gerade live (rot), Schalter als
      `BarToggle`, rechts `status` (was läuft). Sonst `kind="job"` mit dem Auftrag (Ziel, Start;
@@ -129,6 +131,7 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
 7. **Optional:** Aktivitätsanzeige auf dem Startbildschirm in `launcher/useToolActivity.ts`;
    Kundenansicht über `useKiosk()` (`launcher/kiosk.tsx`), wenn Teile ausgeblendet werden müssen.
 8. **Doku:** Abschnitt in `docs/WERKZEUGE.md` (passende Kategorie), Eintrag im README-Überblick,
-   erledigten Punkt aus `docs/ROADMAP.md` streichen; Fernsteuerung → `docs/FERNSTEUERUNG.md`.
-   Gibt es einen `docs/PLAN-*.md` dazu, nach der Umsetzung nach WERKZEUGE überführen und löschen.
+   erledigten Punkt aus dem Gesamtplan `docs/PLAN.md` streichen (Teil G oder sein Paket);
+   Fernsteuerung → `docs/FERNSTEUERUNG.md`. Gibt es einen Entwurf `docs/PLAN-*.md` dazu, nach der
+   Umsetzung nach WERKZEUGE überführen und löschen.
 9. **Abschluss:** `/abschluss-check`; für das neue Werkzeug ein E2E-Skript `e2e/<id>.mjs` nach dem Vorbild von `e2e/smoke.mjs` anlegen (`launchApp` aus `e2e/harness.mjs`). Rechenkern vorher mit Labortests auf synthetischen Signalen absichern (Vorbild `tools/rta/*.test.ts` mit `testSignals.ts`: nachgebauter Web-Audio-Analysator).
