@@ -903,6 +903,11 @@ mit Warnstufen. Richtwerte – ersetzt keinen Sachkundigen.
 Spektrum des Mikrofons in Echtzeit – am Rechner mit jedem Eingang (Audio-Interface mit
 Messmikrofon), am Handy in der Web-App.
 
+- **Aufbau:** oben **Messen** und der Hauptpegel, darunter Leq, Max und Spitze, das Spektrum und
+  direkt darunter Ansicht, Bewertung, Auflösung, Einfrieren und Zurücksetzen. Die Einstellungen
+  (Feedback-Finder, Referenzen, Eingang & Kalibrierung, Anzeige) stehen in Karten darunter, die
+  zugeklappt nur eine Zeile mit dem Stand zeigen – beim ersten Öffnen ist alles zu; welche offen
+  sind, bleibt gemerkt.
 - **Messen** startet das Mikrofon ohne die Sprachfilter der Geräte (Echo- und Rauschunterdrückung,
   automatischer Pegel); filtert ein Gerät trotzdem, steht das in der Statuszeile.
 - **Spektrum** als Bänder (1/1, 1/3, 1/6 oder 1/12 Oktave nach IEC 61260) und als feine Kurve
@@ -912,7 +917,7 @@ Messmikrofon), am Handy in der Web-App.
 - **Mittelung** aus, schnell (125 ms), langsam (1 s) oder unendlich – für rosa Rauschen am
   ruhigsten. **Einfrieren** hält die Anzeige an, **Zurücksetzen** beginnt Mittelung, Spitzen,
   Leq und Max neu.
-- **Pegel:** LAF/LAS (bzw. C/Z), **Leq** seit dem Start, **Max** und die **Aussteuerung**
+- **Pegel:** LAF/LAS (bzw. C/Z), **Leq** seit dem Start, **Max** und die **Spitze**
   (größter Abtastwert, mit Warnung bei Übersteuerung).
 - **Ablesen:** Zeiger bzw. Finger aufs Spektrum zeigt Frequenz, nächste Note mit Cent, Band- und
   Kurvenpegel.
@@ -925,7 +930,8 @@ Messmikrofon), am Handy in der Web-App.
   Beschriftung; Zeiger bzw. Finger zeigt Frequenz, Note, Pegel und wie lange es her ist, das
   Fadenkreuz des Spektrums läuft durch den Wasserfall weiter.
 - **Referenzen:** die aktuelle Kurve merken (bis zu sechs, benennbar, ein-/ausblendbar) und
-  vergleichen; **Differenz** zeigt die laufende Messung minus der Referenz (0 dB = gleich).
+  vergleichen; **Differenz** zeigt die laufende Messung minus der Referenz (0 dB = gleich), die
+  Statuszeile nennt die Referenz.
   Gespeichert wird unbewertet in 1/24 Oktave – eine Referenz passt so zu jeder Auflösung und
   Bewertung.
 - **Kalibrierung:** ohne zeigt der RTA dBFS (relativ zur Vollaussteuerung). Mit einem
@@ -935,7 +941,8 @@ Messmikrofon), am Handy in der Web-App.
 - **Feedback-Finder:** meldet schmale, stehende Spitzen (deutlich über der Umgebung ±1/6
   Oktave und an derselben Frequenz) mit Frequenz, Note, Pegel und einem Filter-Vorschlag
   (Glocke 1/10 Oktave, Absenkung nach Prominenz); Empfindlichkeit niedrig/mittel/hoch; eine
-  Liste behält die gefundenen Frequenzen fürs Einpegeln.
+  Liste behält die gefundenen Frequenzen fürs Einpegeln. Ein- und ausschalten in seiner Karte;
+  zugeklappt zeigt sie die stärkste Spitze rot, im Spektrum ist sie markiert.
 - **Grenzen:** Handymikrofone messen unter ~100 Hz und ganz oben zu wenig – für Vergleiche und
   Feedback reicht das, für Messungen ein Messmikrofon nehmen. Am Handy bleibt der Bildschirm
   während der Messung an.
@@ -945,10 +952,11 @@ Messmikrofon), am Handy in der Web-App.
 Testsignale fürs Einmessen, Kanäle prüfen und Proben – im eigenen kleinen Fenster und am Handy
 (dieselben Signale wie der Testton des Testbildgenerators, ohne AV-Sync).
 
-- **Oben „Ausgabe“:** großer Knopf **Ton starten** (läuft der Ton: rote Fläche „Stopp“) und daneben,
-  was gespielt wird; darunter Pegel, Kanäle und – am Rechner – das Ausgabegerät. Was man im
-  Betrieb greift, steht damit immer an derselben Stelle; die Felder des gewählten Signals
-  wechseln weiter unten.
+- **Eine Karte, oben die Ausgabe:** großer Knopf **Ton starten** (läuft der Ton: rote Fläche
+  „Stopp“) und daneben, was gespielt wird; darunter Pegel, Kanäle und – am Rechner – das
+  Ausgabegerät. Was man im Betrieb greift, steht damit immer an derselben Stelle; unter dem
+  Strich das Signal, dessen Felder wechseln. Jedes Feld in ganzer Breite mit der Beschriftung
+  darüber – am Handy (ab etwa 390 × 710 Pixel im Browser) passt jedes Signal ohne Scrollen.
 - **Pegel** als Spitzenpegel in dBFS, Schieber von −60 bis −6 dBFS (gedeckelt) und Schnellwahl
   −20 (SMPTE RP 155), −18 (EBU R 68) und −12 dBFS. Dauertöne werden beim Start eingeblendet.
 - **Kanäle:** beide, links, rechts, im Wechsel (sekündlich) oder **gegenphasig** – zum Finden
@@ -957,11 +965,11 @@ Testsignale fürs Einmessen, Kanäle prüfen und Proben – im eigenen kleinen F
   logarithmischem Schieber (20 Hz bis 20 kHz) und Schnellwahl 50 Hz, 100 Hz, 440 Hz, 1 kHz,
   10 kHz; **Sweep** (Dauer je Durchlauf); **rosa** und **weißes Rauschen**; **Metronom**;
   **Kennung** (vertauschte Kanäle); **Polarität** (Puls für Polaritätsprüfer). Was ein Signal
-  kann, steht hinter dem ⓘ der Karte.
+  kann, steht hinter dem ⓘ bei „Signal“ – bei Signalen ohne eigene Felder gleich darunter.
 - **Metronom:** Tempo 30 bis 300 BPM mit „−“/„+“ oder **Tippen** (Mittel der letzten Tipps,
   nach 2 s Pause neu), Schläge je Takt, betonte Eins. Ein neues Tempo gilt ab dem nächsten
-  Schlag, ohne neu bei der Eins anzufangen. Punkte zeigen den klingenden Schlag, die Eins ist
-  größer – genau zum Ton, nicht zum Bild.
+  Schlag, ohne neu bei der Eins anzufangen. Punkte neben „Takt“ zeigen den klingenden Schlag,
+  die Eins ist größer – genau zum Ton, nicht zum Bild.
 - **Leertaste** startet und stoppt (nicht beim Schreiben in einem Feld).
 - **Läuft weiter, auch verdeckt:** Das Fenster wird im Hintergrund nicht gedrosselt, das
   Metronom bleibt im Takt. „Wirklich beenden?“ nennt den laufenden Ton, und der Rechner schläft

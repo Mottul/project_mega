@@ -1,23 +1,21 @@
 // Testtongenerator: kleines Werkzeug im eigenen Fenster und in der Handy-PWA. Spielt die Signale
 // des Ton-Kerns (tools/_tone, derselbe wie im Testbildgenerator) – ohne AV-Sync, das braucht den
-// Blitz des Testbilds. Oben, was man im Betrieb greift (Start, Pegel, Kanäle), darunter das
-// Signal: Dessen Felder wechseln unten, oben verrutscht beim Umschalten nichts.
+// Blitz des Testbilds. Eine Karte: oben, was man im Betrieb greift (Start, Pegel, Kanäle),
+// unter dem Strich das Signal (SignalSection) – dessen Felder wechseln unten, oben verrutscht
+// beim Umschalten nichts. Jedes Feld in ganzer Breite mit der Beschriftung darüber
+// (`FieldBlock`): Am Handy passt so alles ohne Scrollen, Knopfgruppen stehen in gleichmäßigen
+// Reihen statt einspaltig, und nichts ragt heraus.
 // Gemerkt im eigenen Store (store.ts); Meldungen stehen in der Seite – die PWA hat keine Toasts.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Play } from 'lucide-react'
 import { Alert, type AlertTone } from '@renderer/components/ui/alert'
+import { Card } from '@renderer/components/ui/card'
+import { Segmented } from '@renderer/components/ui/segmented'
+import { Select } from '@renderer/components/ui/select'
 import { useWakeLock } from '@renderer/lib/useWakeLock'
 import { cn } from '@renderer/lib/utils'
-import {
-  CalcPage,
-  ChoiceField,
-  QuickPick,
-  RangeField,
-  RunButton,
-  SectionCard,
-  SelectField
-} from '../_calc/ui'
+import { CalcPage, FieldBlock, QuickPick, RunButton, Slider } from '../_calc/ui'
 import { toneUnsupportedReason } from '../_tone/engine'
 import {
   CHANNEL_HINT,
@@ -32,7 +30,7 @@ import {
 } from '../_tone/plan'
 import { useToneEngine } from '../_tone/useToneEngine'
 import { leertasteSchaltet, type TastenZiel } from './bedienung'
-import { SignalCard } from './SignalCard'
+import { SignalSection } from './SignalSection'
 import { useToneGen } from './store'
 
 const CHANNELS = CHANNEL_OPTIONS.map((o) => ({ value: o.value, label: o.short }))
@@ -56,6 +54,8 @@ export function ToneGenerator(): JSX.Element {
   const set = useToneGen((s) => s.set)
   const [notice, setNotice] = useState<{ tone: AlertTone; text: string } | null>(null)
   const unsupported = toneUnsupportedReason()
+  const levelId = useId()
+  const deviceId = useId()
   const engine = useToneEngine(tone, {
     onWarning: (text) => setNotice({ tone: 'warning', text }),
     onError: (text) => setNotice({ tone: 'danger', text }),
@@ -99,8 +99,8 @@ export function ToneGenerator(): JSX.Element {
 
   return (
     <CalcPage>
-      <SectionCard title="Ausgabe" hint={LEVEL_HINT}>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <Card className="space-y-3 p-4 sm:p-5">
+        <div className="flex items-center gap-4">
           <RunButton
             big
             running={engine.playing}
@@ -123,48 +123,65 @@ export function ToneGenerator(): JSX.Element {
         </div>
         {unsupported && <Alert tone="warning">{unsupported}</Alert>}
         {notice && <Alert tone={notice.tone}>{notice.text}</Alert>}
-        <RangeField
+        <FieldBlock
           label="Pegel"
-          value={tone.levelDb}
-          min={TONE_LEVEL_MIN}
-          max={TONE_LEVEL_MAX}
-          step={0.5}
-          onChange={(levelDb) => set({ levelDb })}
-          display={formatDb(tone.levelDb)}
-          ariaLabel="Pegel in dBFS"
+          hint={LEVEL_HINT}
+          htmlFor={levelId}
+          value={formatDb(tone.levelDb)}
         >
+          <Slider
+            id={levelId}
+            label="Pegel in dBFS"
+            value={tone.levelDb}
+            min={TONE_LEVEL_MIN}
+            max={TONE_LEVEL_MAX}
+            step={0.5}
+            onChange={(levelDb) => set({ levelDb })}
+            className="h-7"
+          />
           <QuickPick
+            fill
             label="Pegel-Schnellwahl"
             value={tone.levelDb}
             options={LEVEL_PRESETS.map((db) => ({ value: db, label: formatDb(db) }))}
             onPick={(levelDb) => set({ levelDb })}
           />
-        </RangeField>
-        <ChoiceField
-          label="Kanäle"
-          hint={CHANNEL_HINT}
-          value={usesChannelChoice(tone.signal) ? tone.channels : 'both'}
-          options={CHANNELS}
-          onChange={(channels) => set({ channels })}
-          disabled={!usesChannelChoice(tone.signal)}
-          wrap
-        />
+        </FieldBlock>
+        <FieldBlock label="Kanäle" hint={CHANNEL_HINT}>
+          <Segmented
+            label="Kanäle"
+            value={usesChannelChoice(tone.signal) ? tone.channels : 'both'}
+            options={CHANNELS}
+            onChange={(channels) => set({ channels })}
+            disabled={!usesChannelChoice(tone.signal)}
+            wrap={5.75}
+          />
+        </FieldBlock>
         {engine.canChooseDevice && named.length > 0 && (
-          <SelectField
-            label="Ausgabegerät"
-            value={tone.deviceId}
-            onChange={(deviceId) => set({ deviceId })}
-          >
-            <option value="">Standardgerät</option>
-            {named.map((d) => (
-              <option key={d.deviceId} value={d.deviceId}>
-                {d.label}
-              </option>
-            ))}
-          </SelectField>
+          <FieldBlock label="Ausgabegerät" htmlFor={deviceId}>
+            <Select
+              id={deviceId}
+              className="w-full"
+              value={tone.deviceId}
+              onChange={(e) => set({ deviceId: e.target.value })}
+            >
+              <option value="">Standardgerät</option>
+              {named.map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label}
+                </option>
+              ))}
+            </Select>
+          </FieldBlock>
         )}
-      </SectionCard>
-      <SignalCard tone={tone} set={set} playing={engine.playing} currentBeat={engine.currentBeat} />
+        <hr className="border-border" />
+        <SignalSection
+          tone={tone}
+          set={set}
+          playing={engine.playing}
+          currentBeat={engine.currentBeat}
+        />
+      </Card>
     </CalcPage>
   )
 }

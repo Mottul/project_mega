@@ -91,7 +91,9 @@ async function openSmall(
   await trigger()
   const w = await ev
   await w.waitForLoadState()
-  await w.getByTestId('tool-content').locator('h2').first().waitFor({ timeout: 10_000 })
+  // Inhalt geladen (lazy): eine Kartenüberschrift oder – der Testtongenerator hat keine, seine
+  // Felder tragen die Beschriftung – ein Knopf
+  await w.getByTestId('tool-content').locator('h2, button').first().waitFor({ timeout: 10_000 })
   assert.ok(
     await waitFor(async () => (await winInfo(id))?.visible === true, 5_000),
     `${id} erscheint nicht`

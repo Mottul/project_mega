@@ -1,5 +1,6 @@
-// Karte „Signal“ des Testtongenerators: Wahl des Signals und seine Felder – Frequenz (Feld,
-// Schieber, Schnellwahl), Sweep-Dauer oder das Metronom (Tempo mit „Tippen“, Takt, Schlag-Anzeige).
+// Teil „Signal“ des Testtongenerators (untere Hälfte der Karte): Wahl des Signals und seine Felder – Frequenz (Feld,
+// Schieber, Schnellwahl), Sweep-Dauer oder das Metronom (Tempo mit „Tippen“, Takt, Schlag-Anzeige
+// rechts neben „Takt“). Signale ohne Felder zeigen an deren Stelle ihre Erklärung.
 
 import { useEffect, useRef, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
@@ -9,7 +10,7 @@ import { Checkbox } from '@renderer/components/ui/checkbox'
 import { NumberField } from '@renderer/components/ui/number-field'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { cn } from '@renderer/lib/utils'
-import { FieldRow, FieldUnit, QuickPick, SectionCard, Slider } from '../_calc/ui'
+import { FieldBlock, FieldUnit, QuickPick, Slider } from '../_calc/ui'
 import { FREQ_PRESETS, SIGNAL_HINTS, SIGNAL_OPTIONS, formatHz } from '../_tone/plan'
 import type { SoundingBeat } from '../_tone/engine'
 import {
@@ -29,7 +30,15 @@ const SIGNALS = SIGNAL_OPTIONS.filter((o) => o.value !== 'avsync').map((o) => ({
   label: o.short
 }))
 
-export function SignalCard({
+/** Signale ohne eigene Felder: Dort steht stattdessen ihre Erklärung (sonst hinter dem ⓘ) */
+const HAS_FIELDS: ToneSignal[] = ['sine', 'sweep', 'metronome']
+
+/** Höhe am Handy wie die Knopfgruppen: eine Zeile, ein Raster */
+const touchRow = '[@media(pointer:coarse)]:h-10'
+/** Rechte Spalte neben einem Zahlenknopf („Tippen“, „Eins betonen“): in jeder Zeile gleich breit */
+const sideCol = 'w-32 shrink-0'
+
+export function SignalSection({
   tone,
   set,
   playing,
@@ -40,45 +49,51 @@ export function SignalCard({
   playing: boolean
   currentBeat: () => SoundingBeat | null
 }): JSX.Element {
+  const fields = HAS_FIELDS.includes(tone.signal)
   return (
-    <SectionCard
-      title="Signal"
-      desc="Ein Tipp wechselt – auch während der Ton läuft."
-      hint={SIGNAL_HINTS[tone.signal]}
-    >
-      <Segmented<ToneSignal>
-        label="Signal"
-        value={tone.signal}
-        options={SIGNALS}
-        onChange={(signal) => set({ signal })}
-        wrap
-      />
+    <>
+      <FieldBlock label="Signal" hint={fields ? SIGNAL_HINTS[tone.signal] : undefined}>
+        <Segmented<ToneSignal>
+          label="Signal"
+          value={tone.signal}
+          options={SIGNALS}
+          onChange={(signal) => set({ signal })}
+          wrap={4.75}
+        />
+      </FieldBlock>
+      {!fields && (
+        <p className="text-sm text-muted-foreground" data-testid="signal-text">
+          {SIGNAL_HINTS[tone.signal]}
+        </p>
+      )}
       {tone.signal === 'sine' && (
-        <FrequencyRow value={tone.frequency} onChange={(frequency) => set({ frequency })} />
+        <Frequency value={tone.frequency} onChange={(frequency) => set({ frequency })} />
       )}
       {tone.signal === 'sweep' && (
-        <FieldRow label="Dauer" hint="Ein Durchlauf von 20 Hz bis 20 kHz, danach 0,5 s Pause.">
-          <div className="relative w-28">
-            <NumberField
+        <FieldBlock label="Dauer" hint="Ein Durchlauf von 20 Hz bis 20 kHz, danach 0,5 s Pause.">
+          <div className="flex flex-wrap items-center gap-2">
+            <Stepper
               value={tone.sweepSeconds}
               min={1}
               max={60}
-              onCommit={(sweepSeconds) => set({ sweepSeconds })}
-              aria-label="Dauer je Sweep in Sekunden"
-              className="pr-8"
+              onChange={(sweepSeconds) => set({ sweepSeconds })}
+              label="Dauer je Sweep in Sekunden"
+              less="Kürzer"
+              more="Länger"
+              unit="s"
             />
-            <FieldUnit>s</FieldUnit>
+            <span className={cn(sideCol, 'text-sm text-muted-foreground')}>20 Hz → 20 kHz</span>
           </div>
-        </FieldRow>
+        </FieldBlock>
       )}
       {tone.signal === 'metronome' && (
         <Metronome tone={tone} set={set} playing={playing} currentBeat={currentBeat} />
       )}
-    </SectionCard>
+    </>
   )
 }
 
-function FrequencyRow({
+function Frequency({
   value,
   onChange
 }: {
@@ -86,39 +101,46 @@ function FrequencyRow({
   onChange: (hz: number) => void
 }): JSX.Element {
   return (
-    <FieldRow label="Frequenz">
-      <div className="space-y-2">
-        <div className="relative w-32">
+    <FieldBlock
+      label="Frequenz"
+      value={
+        <div className="relative w-28">
           <NumberField
             value={value}
             min={F_MIN}
             max={F_MAX}
             onCommit={onChange}
             aria-label="Frequenz in Hz"
-            className="pr-10"
+            className={cn('pr-10 text-right', touchRow)}
           />
           <FieldUnit>Hz</FieldUnit>
         </div>
-        <Slider
-          label="Frequenz, logarithmisch"
-          value={hzToSlider(value)}
-          min={0}
-          max={SLIDER_STEPS}
-          step={1}
-          onChange={(pos) => onChange(sliderToHz(pos))}
-        />
-        <QuickPick
-          label="Frequenz-Schnellwahl"
-          value={value}
-          options={FREQ_PRESETS.map((f) => ({ value: f, label: formatHz(f) }))}
-          onPick={onChange}
-        />
-      </div>
-    </FieldRow>
+      }
+    >
+      <Slider
+        label="Frequenz, logarithmisch"
+        value={hzToSlider(value)}
+        min={0}
+        max={SLIDER_STEPS}
+        step={1}
+        onChange={(pos) => onChange(sliderToHz(pos))}
+        className="h-7"
+      />
+      <QuickPick
+        fill
+        label="Frequenz-Schnellwahl"
+        value={value}
+        options={FREQ_PRESETS.map((f) => ({ value: f, label: formatHz(f) }))}
+        onPick={onChange}
+      />
+    </FieldBlock>
   )
 }
 
-/** Zahl mit „−“ und „+“ daneben – am Handy leichter zu treffen als das Feld */
+/**
+ * Zahl mit „−“ und „+“ daneben – am Handy leichter zu treffen als das Feld. Füllt die Zeile bis
+ * auf die rechte Spalte; zu schmal (unter 11rem) rückt die rechte Spalte darunter.
+ */
 function Stepper({
   value,
   min,
@@ -140,25 +162,27 @@ function Stepper({
   more: string
   unit?: string
 }): JSX.Element {
+  const icon = cn('shrink-0', touchRow, '[@media(pointer:coarse)]:w-10')
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex min-w-[11rem] flex-1 items-center gap-1.5">
       <Button
         size="icon"
         variant="outline"
         aria-label={less}
         disabled={value <= min}
         onClick={() => onChange(Math.max(min, value - 1))}
+        className={icon}
       >
         <Minus className="size-4" />
       </Button>
-      <div className={cn('relative', unit ? 'w-24' : 'w-16')}>
+      <div className="relative min-w-0 flex-1">
         <NumberField
           value={value}
           min={min}
           max={max}
           onCommit={onChange}
           aria-label={label}
-          className={cn('text-center', unit && 'pr-11')}
+          className={cn('text-center', unit && 'pl-2 pr-11', touchRow)}
         />
         {unit && <FieldUnit>{unit}</FieldUnit>}
       </div>
@@ -168,6 +192,7 @@ function Stepper({
         aria-label={more}
         disabled={value >= max}
         onClick={() => onChange(Math.min(max, value + 1))}
+        className={icon}
       >
         <Plus className="size-4" />
       </Button>
@@ -194,11 +219,11 @@ function Metronome({
   }
   return (
     <>
-      <FieldRow
+      <FieldBlock
         label="Tempo"
         hint="„Tippen“ im Takt: Aus den letzten Tipps ergibt sich das Tempo; nach 2 s Pause zählt es neu. Ein neues Tempo gilt ab dem nächsten Schlag, ohne neu bei der Eins anzufangen."
       >
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <Stepper
             value={tone.bpm}
             min={BPM_MIN}
@@ -211,7 +236,7 @@ function Metronome({
           />
           <Button
             variant="outline"
-            className="select-none [@media(pointer:coarse)]:h-10"
+            className={cn(sideCol, 'select-none', touchRow)}
             // beim Drücken zählen, nicht beim Loslassen: genauer, besonders mit dem Finger
             onPointerDown={(e) => e.button === 0 && tap(e.timeStamp)}
             // Tastatur (Eingabe auf dem Knopf): Klick ohne Zeiger
@@ -220,9 +245,19 @@ function Metronome({
             Tippen
           </Button>
         </div>
-      </FieldRow>
-      <FieldRow label="Takt">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      </FieldBlock>
+      <FieldBlock
+        label="Takt"
+        value={
+          <BeatDots
+            beatsPerBar={tone.beatsPerBar}
+            accent={tone.accent}
+            playing={playing}
+            currentBeat={currentBeat}
+          />
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
           <Stepper
             value={tone.beatsPerBar}
             min={1}
@@ -232,22 +267,16 @@ function Metronome({
             less="Ein Schlag weniger"
             more="Ein Schlag mehr"
           />
-          <Checkbox
-            checked={tone.accent}
-            onChange={(accent) => set({ accent })}
-            label="Eins betonen"
-            disabled={tone.beatsPerBar < 2}
-          />
+          <div className={cn(sideCol, 'pl-1')}>
+            <Checkbox
+              checked={tone.accent}
+              onChange={(accent) => set({ accent })}
+              label="Eins betonen"
+              disabled={tone.beatsPerBar < 2}
+            />
+          </div>
         </div>
-      </FieldRow>
-      <FieldRow label="Schlag">
-        <BeatDots
-          beatsPerBar={tone.beatsPerBar}
-          accent={tone.accent}
-          playing={playing}
-          currentBeat={currentBeat}
-        />
-      </FieldRow>
+      </FieldBlock>
     </>
   )
 }
@@ -290,7 +319,7 @@ function BeatDots({
   }, [playing, currentBeat])
   return (
     <div
-      className="flex min-h-5 flex-wrap items-center gap-2"
+      className="flex min-h-5 flex-wrap items-center justify-end gap-2"
       data-testid="beat-dots"
       data-beat={beat ?? ''}
       aria-hidden

@@ -90,6 +90,15 @@ async function probeSignal(w) {
   })
 }
 
+/**
+ * Karte unter dem Spektrum aufklappen (FoldCard). Beim ersten Start sind alle zu; der Zustand
+ * wird gemerkt – darum nur klicken, wenn sie noch zu ist.
+ */
+async function openCard(w, title) {
+  const head = w.getByRole('button', { name: new RegExp(`^${title}`) })
+  if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
+}
+
 /** Wert einer Pegelkachel (Beschriftung z. B. „LZF“; gefunden über ihr ⓘ) */
 async function readout(w, label) {
   const tile = w
@@ -201,7 +210,7 @@ try {
         }
       ],
       [
-        'Pegel −20 dBFS (±0,5), Aussteuerung −20 dBFS',
+        'Pegel −20 dBFS (±0,5), Spitze −20 dBFS',
         async () => {
           assert.ok(
             await waitFor(async () => {
@@ -213,8 +222,8 @@ try {
               .innerText()} · ${await w.evaluate(() => document.visibilityState)}`
           )
           assert.equal((await readout(w, 'LZF')).unit, 'dBFS')
-          const peak = await readout(w, 'Aussteuerung')
-          assert.ok(Math.abs(peak.value + 20) <= 0.5, `Aussteuerung ${peak.value}`)
+          const peak = await readout(w, 'Spitze')
+          assert.ok(Math.abs(peak.value + 20) <= 0.5, `Spitze ${peak.value}`)
         }
       ],
       [
@@ -239,6 +248,7 @@ try {
       [
         'Feedback-Finder meldet den stehenden Ton bei 1.000 Hz (H5)',
         async () => {
+          await openCard(w, 'Feedback-Finder')
           const box = w.getByTestId('rta-feedback')
           assert.ok(
             await waitFor(async () => /1\.000 Hz/.test(await box.innerText()), 10_000),
@@ -251,6 +261,7 @@ try {
       [
         'Kalibrieren mit 94-dB-Kalibrator: Pegel zeigt 94 dB, zurück auf dBFS',
         async () => {
+          await openCard(w, 'Eingang & Kalibrierung')
           await w.getByRole('button', { name: 'Kalibrieren', exact: true }).click()
           assert.ok(
             await waitFor(async () => {
@@ -267,6 +278,7 @@ try {
       [
         'Referenz merken, Differenz zeigt bei gleichem Signal 0 dB',
         async () => {
+          await openCard(w, 'Referenzen')
           await w.getByRole('button', { name: 'Aktuelle Kurve merken' }).click()
           await w.getByRole('button', { name: 'Differenz zu Referenz 1' }).click()
           assert.ok(
@@ -282,6 +294,7 @@ try {
       [
         'Wasserfall: 1-kHz-Linie genau unter der Spitze, Ablesung mit Frequenz, Pegel und Zeit',
         async () => {
+          await openCard(w, 'Anzeige')
           await w.getByLabel('Spektrogramm', { exact: true }).selectOption('waterfall')
           const spectro = w.getByTestId('rta-spectro')
           await spectro.waitFor()
@@ -347,6 +360,8 @@ try {
                   .flatMap((s) => s.getTracks())
                   .filter((t) => t.readyState === 'live').length
             )
+          // vor dem Start aufklappen: der Wechsel soll mitten in den Start fallen
+          await openCard(w, 'Eingang & Kalibrierung')
           await w.getByRole('button', { name: 'Messen' }).click()
           await w.getByLabel('Kanal', { exact: true }).selectOption('left')
           await w.getByRole('button', { name: 'Stopp' }).waitFor()
@@ -414,6 +429,7 @@ try {
         [
           'Terzen 63 Hz … 4 kHz flach (±1,5 dB um den Mittelwert, Mittelung unendlich)',
           async () => {
+            await openCard(w, 'Anzeige')
             await w.getByLabel('Mittelung', { exact: true }).selectOption('inf')
             await w.getByRole('button', { name: 'Messen' }).click()
             await w.getByRole('button', { name: 'Stopp' }).waitFor()
@@ -433,6 +449,7 @@ try {
         [
           'Feedback-Finder meldet im Rauschen nichts',
           async () => {
+            await openCard(w, 'Feedback-Finder')
             assert.match(await w.getByTestId('rta-feedback').innerText(), /Keine stehende Spitze/)
           }
         ]
