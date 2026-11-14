@@ -1,7 +1,7 @@
 // Anordnung des Video-Players – rein und getestet (layout.test.ts): die Raster je Stufe der
 // Arbeitsfläche (components/workAreaRaster.ts), die Gesamtdauer der Playlist, stabile
-// Schlüssel für ihre Zeilen und „Danach“ der Bühne. Muster, Messungen und die offenen Schritte
-// (P4, P5): docs/PLAN.md.
+// Schlüssel für ihre Zeilen, der Platz beim Umsortieren und „Danach“ in Bühne und Playlist.
+// Muster, Messungen und der offene Schritt (P5): docs/PLAN.md.
 
 import type { Raster, Stufe } from '@renderer/components/workAreaRaster'
 import { nextIndex } from '@shared/player'
@@ -62,14 +62,36 @@ export function zeilenSchluessel(playlist: Pick<MediaItem, 'id'>[]): string[] {
 }
 
 /**
- * Titel dessen, was nach dem laufenden Eintrag kommt („Danach: …“ in der Bühne): aus
- * `nextIndex` wie im main, also auch bei Zufall (vorab gewürfelt) und Loop „Eines“ (derselbe
- * Titel); „Ende“, wenn danach nichts mehr kommt. `null`, solange nichts läuft.
+ * Platz für den Befehl `move` (der main nimmt den Eintrag heraus und setzt ihn an `to`), wenn
+ * Zeile `von` vor bzw. hinter Zeile `ziel` gezogen wird. −1: eine der Zeilen gibt es nicht.
+ * Ergibt sich `von`, ändert sich nichts.
  */
-export function danach(
-  state: Pick<PlayerState, 'playlist' | 'index' | 'loop' | 'shuffle' | 'shuffleNext'>
-): string | null {
+export function zielPlatz(von: number, ziel: number, hinter: boolean): number {
+  if (von < 0 || ziel < 0) return -1
+  // Platz in der Liste, solange der gezogene Eintrag noch darin steht
+  const vor = hinter ? ziel + 1 : ziel
+  return vor > von ? vor - 1 : vor
+}
+
+type DanachStand = Pick<PlayerState, 'playlist' | 'index' | 'loop' | 'shuffle' | 'shuffleNext'>
+
+/**
+ * Platz des Eintrags nach dem laufenden – die Marke „Danach“ in der Playlist: aus `nextIndex`
+ * wie im main, also auch bei Zufall (vorab gewürfelt); mit Loop „Eines“ der laufende selbst.
+ * −1, wenn danach nichts mehr kommt oder nichts läuft.
+ */
+export function danachIndex(state: DanachStand): number {
+  if (state.playlist.length === 0 || state.index < 0) return -1
+  return nextIndex(state)
+}
+
+/**
+ * Titel dessen, was nach dem laufenden Eintrag kommt („Danach: …“ in der Bühne): derselbe
+ * Eintrag wie die Marke in der Playlist; „Ende“, wenn danach nichts mehr kommt. `null`, solange
+ * nichts läuft.
+ */
+export function danach(state: DanachStand): string | null {
   if (state.playlist.length === 0 || state.index < 0) return null
-  const i = nextIndex(state)
+  const i = danachIndex(state)
   return i < 0 ? 'Ende' : state.playlist[i].title
 }

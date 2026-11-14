@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { MediaItem } from '@shared/types'
-import { danach, gesamtdauer, PLAYER_RASTER, zeilenSchluessel } from './layout'
+import {
+  danach,
+  danachIndex,
+  gesamtdauer,
+  PLAYER_RASTER,
+  zeilenSchluessel,
+  zielPlatz
+} from './layout'
 
 const medium = (id: string, durationSec: number | null): MediaItem => ({
   id,
@@ -49,6 +56,40 @@ describe('zeilenSchluessel', () => {
   it('jeder Schlüssel nur einmal', () => {
     const k = zeilenSchluessel(['x', 'y', 'x', 'x', 'y'].map((id) => ({ id })))
     expect(new Set(k).size).toBe(k.length)
+  })
+})
+
+describe('zielPlatz', () => {
+  /** So setzt der main `move` um (playerState.ts): herausnehmen, an `to` einsetzen */
+  const zieh = (liste: string, von: number, ziel: number, hinter: boolean): string => {
+    const to = zielPlatz(von, ziel, hinter)
+    if (to < 0 || to === von) return liste
+    const l = [...liste]
+    const [x] = l.splice(von, 1)
+    l.splice(to, 0, x)
+    return l.join('')
+  }
+
+  it('vor bzw. hinter eine spätere Zeile', () => {
+    expect(zieh('abcd', 0, 2, false)).toBe('bacd')
+    expect(zieh('abcd', 0, 2, true)).toBe('bcad')
+    expect(zieh('abcd', 2, 3, true)).toBe('abdc')
+  })
+
+  it('vor bzw. hinter eine frühere Zeile', () => {
+    expect(zieh('abcd', 3, 0, false)).toBe('dabc')
+    expect(zieh('abcd', 3, 0, true)).toBe('adbc')
+  })
+
+  it('an den Platz, an dem sie schon steht: kein Befehl', () => {
+    expect(zielPlatz(1, 2, false)).toBe(1) // b vor c – steht schon da
+    expect(zielPlatz(1, 0, true)).toBe(1) // b hinter a
+    expect(zielPlatz(1, 1, false)).toBe(1) // auf sich selbst
+  })
+
+  it('unbekannte Zeile: −1', () => {
+    expect(zielPlatz(-1, 2, false)).toBe(-1)
+    expect(zielPlatz(0, -1, true)).toBe(-1)
   })
 })
 
@@ -107,5 +148,18 @@ describe('danach', () => {
   it('nichts, solange nichts läuft', () => {
     expect(danach(stand(-1))).toBeNull()
     expect(danach({ ...stand(0), playlist: [] })).toBeNull()
+  })
+
+  it('die Marke in der Playlist steht am selben Eintrag, den die Bühne nennt', () => {
+    expect(danachIndex(stand(0))).toBe(1)
+    expect(danachIndex(stand(1, { loop: 'one' }))).toBe(1)
+    expect(danachIndex(stand(2))).toBe(0)
+    expect(danachIndex(stand(0, { shuffle: true, shuffleNext: 2 }))).toBe(2)
+  })
+
+  it('keine Marke am Ende ohne Loop und solange nichts läuft', () => {
+    expect(danachIndex(stand(2, { loop: 'none' }))).toBe(-1)
+    expect(danachIndex(stand(-1, { loop: 'none' }))).toBe(-1)
+    expect(danachIndex({ ...stand(0), playlist: [] })).toBe(-1)
   })
 })

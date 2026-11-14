@@ -6,8 +6,12 @@
 //
 // Seit P3 auch die Bühne: Restzeit, „Danach“, „Stumm“, Tastenkürzel hinter dem ⓘ, Knopf „FPS“
 // über dem Video, Übergang und Bild-Standzeit in der Schublade, Vorschau im Seitenverhältnis der
-// Wand. Mit ihren Schritten kommen noch dazu: laufender Eintrag sichtbar und „Leeren“ fragt (P4),
-// Löschen fragt (P5).
+// Wand.
+// Seit P4 die Playlist: Der laufende Eintrag bleibt im sichtbaren Teil der Liste (in der Stufe
+// schmal scrollt dabei nur die Liste, die Bühne bleibt stehen), Zeilen mit Griff und Miniatur,
+// Marke „Danach“, Umsortieren am Griff und mit den Pfeil-Knöpfen bei laufender Wiedergabe, Ziehen
+// aus der Bibliothek, „Speichern“ im Kopf, „Playlist leeren …“ im Menü „⋯“ mit Rückfrage.
+// Mit P5 kommt noch dazu: Löschen fragt.
 // Braucht das gebündelte ffmpeg (Import); ohne wird übersprungen.
 
 import assert from 'node:assert/strict'
@@ -15,10 +19,19 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { findFfmpeg, launchApp, openRoute, runSteps, Skip, sleep, waitFor } from './harness.mjs'
+import {
+  findFfmpeg,
+  launchApp,
+  openRoute,
+  runSteps,
+  Skip,
+  sleep,
+  stubConfirm,
+  waitFor
+} from './harness.mjs'
 
 const ctx = await launchApp()
-const { page } = ctx
+const { app, page } = ctx
 const ffmpeg = findFfmpeg()
 const clipsDir = mkdtempSync(join(tmpdir(), 'mottulbox-e2e-player-layout-'))
 const WAND = { width: 1280, height: 720 }
@@ -131,9 +144,7 @@ const mass = () =>
       vorschau: rect(q('[data-testid="vorschau"]')),
       play: rect(q('button[aria-label="Play"], button[aria-label="Pause"]')),
       liste: liste ? { ...scroll(liste), rect: rect(liste) } : null,
-      zeilen: liste
-        ? [...liste.querySelectorAll(':scope > [draggable="true"]')].slice(0, 5).map(rect)
-        : [],
+      zeilen: liste ? [...liste.querySelectorAll(':scope > div')].slice(0, 5).map(rect) : [],
       bibliothek: scroll(q('[data-testid="feld-bibliothek"] [data-pane-inhalt]'))
     }
   })
@@ -188,6 +199,88 @@ const buehne = (testId) =>
 const titel = () =>
   page.evaluate(async () => (await window.api.player.getState()).playlist.map((m) => m.title))
 const befehl = (cmd) => page.evaluate((c) => window.api.player.command(c), cmd)
+const stand = () => page.evaluate(() => window.api.player.getState())
+
+/** Zeilen der Playlist: die direkten Kinder der Liste (der Leerzustand ist ein <p>) */
+const ZEILEN = '[data-testid="playlist-liste"] > div'
+const zeilen = () => page.locator(ZEILEN)
+/** Kopf des Felds „Playlist“: Titel, Anzahl, „Speichern“, Menü „⋯“ */
+const kopf = () => page.locator('[data-testid="feld-playlist"] [data-pane-kopf]')
+/** Griff der Zeile i (macht sie erst beim Drücken ziehbar) */
+const griff = (i) =>
+  page
+    .getByTestId('feld-playlist')
+    .getByRole('img', { name: 'Eintrag ziehen zum Verschieben' })
+    .nth(i)
+
+/** Liegt Zeile i ganz im sichtbaren Teil der Liste? Mit den Maßen für die Fehlermeldung */
+const zeileInListe = (i) =>
+  page.evaluate(
+    ([sel, i]) => {
+      const liste = document.querySelector('[data-testid="playlist-liste"]')
+      const zeile = document.querySelectorAll(sel)[i]
+      if (!liste || !zeile) return null
+      const l = liste.getBoundingClientRect()
+      const z = zeile.getBoundingClientRect()
+      return {
+        sichtbar: z.top >= l.top - 1 && z.bottom <= l.bottom + 1,
+        zeile: [Math.round(z.top), Math.round(z.bottom)],
+        liste: [Math.round(l.top), Math.round(l.bottom)],
+        scrollTop: Math.round(liste.scrollTop)
+      }
+    },
+    [ZEILEN, i]
+  )
+const sichtbar = async (i) => (await zeileInListe(i))?.sichtbar === true
+
+/** Plätze der Zeilen, die die Marke „Danach“ tragen */
+const danachZeilen = () =>
+  page.evaluate(
+    (sel) =>
+      [...document.querySelectorAll(sel)]
+        .map((z, i) => (z.querySelector('[data-testid="playlist-danach"]') ? i : -1))
+        .filter((i) => i >= 0),
+    ZEILEN
+  )
+
+/**
+ * Von Hand ziehen, in Schritten (Skill electron-e2e: nicht `dragTo`): drücken, ein Stück bewegen
+ * (das Ziehen startet), dann zum Punkt `x`/`y` und dort loslassen.
+ */
+async function zieheZu(von, x, y) {
+  await von.hover({ timeout: 5_000 })
+  const v = await von.boundingBox()
+  await page.mouse.down()
+  await page.mouse.move(v.x + v.width / 2 + 6, v.y + v.height / 2 + 6, { steps: 4 })
+  await page.mouse.move(x, y, { steps: 6 })
+  await page.mouse.move(x + 2, y + 1, { steps: 2 })
+  await page.mouse.up()
+}
+/** Auf eine Zeile ziehen – `oben` = ihre obere Hälfte, also „davor“ */
+async function ziehe(von, ziel, oben = true) {
+  await ziel.scrollIntoViewIfNeeded({ timeout: 5_000 })
+  const z = await ziel.boundingBox()
+  await zieheZu(von, z.x + 60, oben ? z.y + 5 : z.y + z.height - 7)
+}
+
+/** Läuft das Medium in der Vorschau? Zeit und Zustand des `<video>`, das es gerade zeigt */
+const vorschauVideo = (id) =>
+  page.evaluate((mid) => {
+    const v = [...document.querySelectorAll('[data-testid="vorschau"] video')].find(
+      (e) => e.style.display === 'block' && (e.getAttribute('src') ?? '').includes(mid)
+    )
+    return v ? { zeit: v.currentTime, pausiert: v.paused } : null
+  }, id)
+
+/** Playlist wie nach der Vorbereitung: alle Medien der Bibliothek, Eintrag 3 läuft */
+async function playlistWieVorher() {
+  const ids = await page.evaluate(async () =>
+    (await window.api.player.libraryList()).map((m) => m.id)
+  )
+  await befehl({ type: 'replace', mediaIds: ids })
+  await befehl({ type: 'goto', index: 2 })
+  assert.ok(await waitFor(async () => (await zeilen().count()) === ids.length, 5_000))
+}
 
 const FENSTER = [
   [1024, 600, false, 'mittel'],
@@ -481,6 +574,373 @@ try {
           top('feld-playlist') < top('feld-bibliothek'),
           'Playlist steht nicht vor der Bibliothek'
         )
+      }
+    ],
+    [
+      'Playlist: Der laufende Eintrag bleibt sichtbar – „goto“ auf den letzten, dann auf den ersten',
+      async () => {
+        await fenster(1024, 600)
+        const letzter = (await titel()).length - 1
+        // Die Maus weg von der Liste: Solange sie darüber ist, rückt die Liste nicht nach
+        await page.mouse.move(1, 1)
+        try {
+          await befehl({ type: 'goto', index: 0 })
+          assert.ok(
+            await waitFor(() => sichtbar(0), 5_000),
+            `erster Eintrag nicht sichtbar: ${JSON.stringify(await zeileInListe(0))}`
+          )
+          // Vorbedingung: Der letzte liegt unter dem Rand der Liste – sonst prüfte der Schritt nichts
+          const vorher = await zeileInListe(letzter)
+          assert.ok(vorher && !vorher.sichtbar, `Liste scrollt nicht: ${JSON.stringify(vorher)}`)
+          await befehl({ type: 'goto', index: letzter })
+          assert.ok(
+            await waitFor(() => sichtbar(letzter), 5_000),
+            `Zeile ${letzter + 1} liegt nicht im sichtbaren Teil der Liste: ${JSON.stringify(await zeileInListe(letzter))}`
+          )
+          // Maus über der Liste: Nichts rückt unter dem Zeiger weg (ein Klick auf ✕ träfe sonst
+          // einen anderen Eintrag); geht sie, holt die Liste es nach
+          const l = await page.getByTestId('playlist-liste').boundingBox()
+          const mitte = [l.x + l.width / 2, l.y + l.height / 2]
+          await page.mouse.move(mitte[0], mitte[1], { steps: 3 })
+          await befehl({ type: 'goto', index: 0 })
+          await sleep(800)
+          assert.ok(
+            !(await sichtbar(0)),
+            `die Liste ist unter der Maus nachgerückt: ${JSON.stringify(await zeileInListe(0))}`
+          )
+          await page.mouse.move(1, 1, { steps: 3 })
+          assert.ok(
+            await waitFor(() => sichtbar(0), 5_000),
+            `nach dem Verlassen nicht nachgeholt: ${JSON.stringify(await zeileInListe(0))}`
+          )
+          // Bleibt die Maus still über der Liste liegen (in der Show üblich), rückt sie nach drei
+          // Sekunden trotzdem nach – sonst folgte sie nie mehr
+          await page.mouse.move(mitte[0], mitte[1], { steps: 3 })
+          await befehl({ type: 'goto', index: letzter })
+          // angehalten: Der letzte Clip ist 3 s lang – endete er, folgte die Liste zu Recht dem
+          // nächsten Eintrag
+          await befehl({ type: 'pause' })
+          await sleep(800)
+          assert.ok(!(await sichtbar(letzter)), 'schon nach 0,8 s unter der Maus nachgerückt')
+          assert.ok(
+            await waitFor(() => sichtbar(letzter), 5_000),
+            `mit ruhender Maus nicht nachgerückt: ${JSON.stringify(await zeileInListe(letzter))}`
+          )
+        } finally {
+          await page.mouse.move(1, 1)
+          await befehl({ type: 'goto', index: 2 })
+        }
+      }
+    ],
+    [
+      'Playlist, Stufe „schmal“: Nur die Liste scrollt zum laufenden Eintrag, die Bühne bleibt stehen',
+      async () => {
+        await fenster(700, 600)
+        const letzter = (await titel()).length - 1
+        const BEREICHE = ['arbeitsflaeche', 'tool-main', 'tool-content']
+        const oben = () =>
+          page.evaluate(
+            (ids) =>
+              ids.map((id) => document.querySelector(`[data-testid="${id}"]`)?.scrollTop ?? -1),
+            BEREICHE
+          )
+        await page.mouse.move(1, 1)
+        try {
+          await page.evaluate((ids) => {
+            for (const id of ids) document.querySelector(`[data-testid="${id}"]`).scrollTop = 0
+          }, BEREICHE)
+          await befehl({ type: 'goto', index: 0 })
+          assert.ok(await waitFor(() => sichtbar(0), 5_000), 'erster Eintrag nicht sichtbar')
+          const vorher = await zeileInListe(letzter)
+          assert.ok(vorher && !vorher.sichtbar, `Liste scrollt nicht: ${JSON.stringify(vorher)}`)
+          await befehl({ type: 'goto', index: letzter })
+          assert.ok(
+            await waitFor(() => sichtbar(letzter), 5_000),
+            `Zeile ${letzter + 1} liegt nicht im sichtbaren Teil der Liste: ${JSON.stringify(await zeileInListe(letzter))}`
+          )
+          // scrollIntoView rückte auch die Arbeitsfläche nach – Vorschau und Transport wanderten
+          // bei jedem Titelwechsel aus dem Bild
+          assert.deepEqual(await oben(), [0, 0, 0], 'die Arbeitsfläche ist mitgescrollt')
+        } finally {
+          await befehl({ type: 'goto', index: 2 })
+        }
+      }
+    ],
+    [
+      'Playlist: jede Zeile mit Griff und Miniatur 40 × 22 px, ohne Griff nicht ziehbar, der laufende Eintrag markiert',
+      async () => {
+        await fenster(1366, 768)
+        await befehl({ type: 'goto', index: 2 })
+        const liste = (await stand()).playlist
+        assert.ok(liste[0].thumbUrl, 'Vorbedingung: das erste Medium hat eine Miniatur')
+        assert.ok(
+          await waitFor(async () => (await griff(0).count()) === 1, 5_000),
+          'kein Griff an der ersten Zeile'
+        )
+        assert.equal(await griff(liste.length - 1).count(), 1, 'nicht jede Zeile hat einen Griff')
+        const bild = await zeilen().first().locator('img').boundingBox({ timeout: 5_000 })
+        assert.ok(
+          bild && Math.abs(bild.width - 40) <= 0.5 && Math.abs(bild.height - 22) <= 0.5,
+          `Miniatur ${JSON.stringify(bild)}`
+        )
+        assert.notEqual(
+          await zeilen().first().getAttribute('draggable'),
+          'true',
+          'Zeile ist ohne Griff ziehbar'
+        )
+        assert.ok(
+          await waitFor(
+            async () => (await zeilen().nth(2).getAttribute('aria-current')) === 'true',
+            5_000
+          ),
+          'laufender Eintrag nicht markiert'
+        )
+        assert.equal(await page.locator(`${ZEILEN}[aria-current="true"]`).count(), 1)
+      }
+    ],
+    [
+      'Playlist: „Danach“ steht am nächsten Eintrag – bei Zufall am gewürfelten, mit Loop „Eines“ am laufenden, am Ende an keinem',
+      async () => {
+        const n = (await titel()).length
+        const marke = async (soll, wann) => {
+          const passt = async () => JSON.stringify(await danachZeilen()) === JSON.stringify(soll)
+          assert.ok(
+            await waitFor(passt, 5_000),
+            `${wann}: Marke an ${JSON.stringify(await danachZeilen())}, erwartet ${JSON.stringify(soll)}`
+          )
+        }
+        try {
+          // angehalten: Ein kurzer Clip rückte sonst mitten im Schritt weiter
+          await befehl({ type: 'goto', index: 2 })
+          await befehl({ type: 'pause' })
+          await marke([3], 'Eintrag 3 läuft')
+          await befehl({ type: 'setShuffle', shuffle: true })
+          const wurf = (await stand()).shuffleNext
+          assert.ok(wurf >= 0 && wurf !== 2, `shuffleNext ${wurf}`)
+          await marke([wurf], 'Zufall')
+          await befehl({ type: 'setShuffle', shuffle: false })
+          await befehl({ type: 'setLoop', loop: 'one' })
+          await marke([2], 'Loop Eines')
+          await befehl({ type: 'setLoop', loop: 'none' })
+          await befehl({ type: 'goto', index: n - 1 })
+          await befehl({ type: 'pause' })
+          await marke([], 'am Ende ohne Loop')
+        } finally {
+          await befehl({ type: 'setShuffle', shuffle: false })
+          await befehl({ type: 'setLoop', loop: 'all' })
+          await befehl({ type: 'goto', index: 2 })
+        }
+      }
+    ],
+    [
+      'Playlist umsortieren, während es läuft: am Griff ziehen, dann mit den Pfeil-Knöpfen – die Wiedergabe läuft durch',
+      async () => {
+        await fenster(1366, 768)
+        const ids = async () => (await stand()).playlist.map((m) => m.id)
+        const reihenfolge = async (soll, wann) =>
+          assert.ok(
+            await waitFor(async () => JSON.stringify(await ids()) === JSON.stringify(soll), 5_000),
+            `${wann}: ${JSON.stringify(await titel())}`
+          )
+        /** Der längste Clip läuft (12 s – genug Zeit zum Ziehen); liefert, woran „läuft durch“ hängt */
+        const starte = async () => {
+          const liste = (await stand()).playlist
+          const lang = liste.reduce(
+            (b, m, i) => ((m.durationSec ?? 0) > (liste[b].durationSec ?? 0) ? i : b),
+            0
+          )
+          await befehl({ type: 'goto', index: lang })
+          const id = liste[lang].id
+          assert.ok(
+            await waitFor(async () => {
+              const v = await vorschauVideo(id)
+              return v && !v.pausiert && v.zeit > 0.2
+            }, 10_000),
+            `Clip läuft nicht an: ${JSON.stringify(await vorschauVideo(id))}`
+          )
+          return { id, seekSeq: (await stand()).seekSeq, zeit: (await vorschauVideo(id)).zeit }
+        }
+        /** Dasselbe Medium läuft weiter: nicht neu geladen (seekSeq), nicht angehalten, Zeit läuft */
+        const laeuftDurch = async (vor, wann) => {
+          const s = await stand()
+          assert.equal(s.playlist[s.index]?.id, vor.id, `${wann}: ein anderes Medium läuft`)
+          assert.equal(s.playing, true, `${wann}: angehalten`)
+          assert.equal(s.seekSeq, vor.seekSeq, `${wann}: Medium neu gestartet`)
+          const v = await vorschauVideo(vor.id)
+          assert.ok(v && !v.pausiert && v.zeit > vor.zeit, `${wann}: ${JSON.stringify(v)}`)
+        }
+        try {
+          // 1. Ziehen: den letzten Eintrag am Griff vor den ersten
+          let vor = await starte()
+          let alt = await ids()
+          const n = alt.length
+          await ziehe(griff(n - 1), zeilen().first())
+          await reihenfolge([alt[n - 1], ...alt.slice(0, n - 1)], 'nach dem Ziehen')
+          await laeuftDurch(vor, 'nach dem Ziehen')
+          assert.notEqual(
+            await zeilen().first().getAttribute('draggable'),
+            'true',
+            'Zeile bleibt nach dem Ziehen ziehbar'
+          )
+
+          // 2. Tastatur: „nach unten“ zweimal mit Enter – der Fokus bleibt am Knopf der Zeile
+          vor = await starte()
+          alt = await ids()
+          const runter = (i) => zeilen().nth(i).getByRole('button', { name: 'Eintrag nach unten' })
+          // Breite der beiden Pfeile (unsichtbar ist ihr Rahmen 1 px breit, sr-only)
+          const pfeile = (i) =>
+            runter(i).evaluate((el) => el.parentElement.getBoundingClientRect().width, undefined, {
+              timeout: 5_000
+            })
+          assert.ok(
+            (await pfeile(0)) <= 1,
+            `Pfeile ohne Tastaturfokus sichtbar: ${await pfeile(0)}`
+          )
+          await runter(0).focus({ timeout: 5_000 })
+          await page.keyboard.press('Enter')
+          await reihenfolge([alt[1], alt[0], ...alt.slice(2)], 'einmal nach unten')
+          assert.ok(
+            await waitFor(() => runter(1).evaluate((el) => el === document.activeElement), 5_000),
+            'der Fokus ist nach dem Verschieben nicht mehr am Knopf'
+          )
+          // mit der Tastatur erreicht, sind die Pfeile zu sehen
+          assert.ok((await pfeile(1)) > 30, `Pfeile mit Tastaturfokus ${await pfeile(1)} px breit`)
+          await page.keyboard.press('Enter')
+          await reihenfolge([alt[1], alt[2], alt[0], ...alt.slice(3)], 'zweimal nach unten')
+          await laeuftDurch(vor, 'nach den Pfeil-Knöpfen')
+        } finally {
+          await playlistWieVorher()
+        }
+      }
+    ],
+    [
+      'Playlist: Medium aus der Bibliothek auf eine Zeile ziehen fügt es einmal ein, davor; auf die freie Fläche ans Ende; in die leere Liste',
+      async () => {
+        await fenster(1366, 768)
+        const kachel = (i) =>
+          page.getByTestId('feld-bibliothek').locator('[draggable="true"]').nth(i)
+        const lib = (await page.evaluate(() => window.api.player.libraryList())).map((m) => m.id)
+        const ids = async () => (await stand()).playlist.map((m) => m.id)
+        const reihenfolge = async (soll, wann) =>
+          assert.ok(
+            await waitFor(async () => JSON.stringify(await ids()) === JSON.stringify(soll), 5_000),
+            `${wann}: ${(await ids()).length} Einträge, erwartet ${soll.length} – ${JSON.stringify(await titel())}`
+          )
+        const freieFlaeche = async () => {
+          const l = await page.getByTestId('playlist-liste').boundingBox()
+          return [l.x + l.width / 2, l.y + l.height - 24]
+        }
+        try {
+          const alt = await ids()
+          await ziehe(kachel(0), zeilen().nth(1))
+          await reihenfolge([alt[0], lib[0], ...alt.slice(1)], 'auf die zweite Zeile')
+
+          await befehl({ type: 'replace', mediaIds: [lib[0], lib[1]] })
+          assert.ok(await waitFor(async () => (await zeilen().count()) === 2, 5_000))
+          await zieheZu(kachel(2), ...(await freieFlaeche()))
+          await reihenfolge([lib[0], lib[1], lib[2]], 'auf die freie Fläche')
+
+          await befehl({ type: 'clear' })
+          assert.ok(await waitFor(async () => (await zeilen().count()) === 0, 5_000))
+          await zieheZu(kachel(3), ...(await freieFlaeche()))
+          await reihenfolge([lib[3]], 'in die leere Liste')
+        } finally {
+          await playlistWieVorher()
+        }
+      }
+    ],
+    [
+      'Playlist: „Speichern“ steht im Kopf – Name und Enter speichern, Esc verwirft',
+      async () => {
+        await fenster(1366, 768)
+        const gespeichert = async () =>
+          (await page.evaluate(() => window.api.getSettings())).player.savedPlaylists
+        const feld = page.getByTestId('feld-playlist')
+        const speichern = kopf().getByRole('button', { name: 'Speichern', exact: true })
+        const name = kopf().getByRole('textbox', { name: 'Name der Playlist' })
+        const n = (await titel()).length
+        try {
+          await speichern.click({ timeout: 5_000 })
+          await name.fill('P4 Probe')
+          await name.press('Enter')
+          assert.ok(
+            await waitFor(
+              async () =>
+                (await gespeichert()).some((p) => p.name === 'P4 Probe' && p.mediaIds.length === n),
+              5_000
+            ),
+            JSON.stringify((await gespeichert()).map((p) => [p.name, p.mediaIds.length]))
+          )
+          await feld
+            .getByRole('button', { name: 'Playlist „P4 Probe“ löschen' })
+            .waitFor({ timeout: 5_000 })
+          await speichern.click({ timeout: 5_000 })
+          await name.fill('Verworfen')
+          await name.press('Escape')
+          await speichern.waitFor({ timeout: 5_000 })
+          assert.ok(!(await gespeichert()).some((p) => p.name === 'Verworfen'), 'Esc speichert')
+        } finally {
+          await stubConfirm(app, true)
+          const weg = feld.getByRole('button', { name: 'Playlist „P4 Probe“ löschen' })
+          if (await weg.count()) await weg.click()
+          await waitFor(
+            async () => !(await gespeichert()).some((p) => p.name === 'P4 Probe'),
+            5_000
+          )
+        }
+      }
+    ],
+    [
+      'Playlist leeren … steht im Menü „⋯“ und fragt nach: Abbrechen lässt die Liste, Bestätigen leert sie',
+      async () => {
+        await fenster(1366, 768)
+        const n = (await titel()).length
+        assert.ok(n > 0, 'Vorbedingung: die Playlist hat Einträge')
+        const mehr = kopf().getByRole('button', { name: 'Mehr zur Playlist' })
+        const eintrag = page.getByRole('menuitem', { name: 'Playlist leeren …' })
+        try {
+          // das Menü: Esc und ein Klick daneben schließen es
+          await mehr.click({ timeout: 5_000 })
+          await eintrag.waitFor({ timeout: 5_000 })
+          await page.keyboard.press('Escape')
+          await eintrag.waitFor({ state: 'detached', timeout: 5_000 })
+          await mehr.click()
+          await eintrag.waitFor({ timeout: 5_000 })
+          await page.getByTestId('feld-playlist').getByRole('heading', { name: 'Playlist' }).click()
+          await eintrag.waitFor({ state: 'detached', timeout: 5_000 })
+
+          await stubConfirm(app, false)
+          await mehr.click()
+          await eintrag.click({ timeout: 5_000 })
+          await eintrag.waitFor({ state: 'detached', timeout: 5_000 })
+          await sleep(600)
+          assert.equal(
+            (await titel()).length,
+            n,
+            'nach „Abbrechen“ hat die Playlist weniger Einträge'
+          )
+          assert.equal(await zeilen().count(), n)
+
+          await stubConfirm(app, true)
+          await mehr.click()
+          await eintrag.click({ timeout: 5_000 })
+          assert.ok(
+            await waitFor(async () => (await titel()).length === 0, 5_000),
+            'nach „Leeren“ ist die Playlist nicht leer'
+          )
+          assert.ok(await waitFor(async () => (await zeilen().count()) === 0, 5_000))
+          // leer: nichts zu speichern, nichts zu leeren
+          assert.equal(
+            await kopf().getByRole('button', { name: 'Speichern', exact: true }).isDisabled(),
+            true
+          )
+          await mehr.click()
+          assert.equal(await eintrag.isDisabled(), true, '„Playlist leeren …“ bei leerer Playlist')
+          await page.keyboard.press('Escape')
+          await eintrag.waitFor({ state: 'detached', timeout: 5_000 })
+        } finally {
+          await playlistWieVorher()
+        }
       }
     ],
     [

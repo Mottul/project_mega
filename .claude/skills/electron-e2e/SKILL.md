@@ -21,7 +21,7 @@ Ausführen: `npm run e2e` (baut die App, dann alle Skripte) oder gezielt
 | `toneTap.mjs` | kein Skript: Analysator vor jedem Ausgang (links, rechts, Summe), `record`, `hang` (Seite blockieren, danach Spitze messen), `onsets` mit Hysterese – für `testton.mjs` und `tone-generator.mjs` |
 | `timer.mjs` | Startbildschirm-Status, Ausgabe schließen bei minimiertem Hauptfenster, Bühnen-Anzeige im Browser, Abbruch/Neuverbindung, Zeitzone, toter Strom |
 | `player.mjs` | Playlist-Rückfrage, parallele Importe, doppelte Quelle, gleichnamige Kopien (braucht ffmpeg) |
-| `player-layout.mjs` | Video-Player ohne Scrollen (Muster 1 im Leitbild von docs/PLAN.md, Vorbild für die W-Pakete): 14 Medien per lavfi (Wand 1280 × 720, schneller Import), drei gespeicherte Playlists; bei 1024 × 600, 1366 × 768 (auch mit angehefteter Schublade) und 1920 × 1080 scrollen weder `tool-content`, `tool-main` noch `arbeitsflaeche`, kein Feld (`[data-pane]`) schneidet ab, `data-stufe` stimmt; Vorschau, Play/Pause und die ersten fünf Zeilen der Playlist liegen im Fenster UND im sichtbaren Teil der Liste; Listen scrollen in sich; Vorschau höchstens 60 % der Höhe; bei 700 × 600 eine Spalte, Bühne vor Playlist vor Bibliothek; ein Wechsel der Stufe baut das `<video>` nicht neu auf (Marke am Element). Seit P3 die Bühne: Restzeit `−m:ss` (`restzeit`), ⓘ „Tastenkürzel“ statt der Zeile, „Danach“ (`danach`; `goto`, Loop „Eines“, Ende), „Stumm“ (`ton`) per Ton-Knopf, Übergang und Standzeit im Bereich „Wiedergabe“ der Schublade, Vorschau 3840 × 1080 über die Felder „Breite“/„Höhe“ der Schublade, Knopf „FPS“ über dem Video klickbar. Braucht ffmpeg |
+| `player-layout.mjs` | Video-Player ohne Scrollen (Muster 1 im Leitbild von docs/PLAN.md, Vorbild für die W-Pakete): 14 Medien per lavfi (Wand 1280 × 720, schneller Import), drei gespeicherte Playlists; bei 1024 × 600, 1366 × 768 (auch mit angehefteter Schublade) und 1920 × 1080 scrollen weder `tool-content`, `tool-main` noch `arbeitsflaeche`, kein Feld (`[data-pane]`) schneidet ab, `data-stufe` stimmt; Vorschau, Play/Pause und die ersten fünf Zeilen der Playlist liegen im Fenster UND im sichtbaren Teil der Liste; Listen scrollen in sich; Vorschau höchstens 60 % der Höhe; bei 700 × 600 eine Spalte, Bühne vor Playlist vor Bibliothek; ein Wechsel der Stufe baut das `<video>` nicht neu auf (Marke am Element). Seit P3 die Bühne: Restzeit `−m:ss` (`restzeit`), ⓘ „Tastenkürzel“ statt der Zeile, „Danach“ (`danach`; `goto`, Loop „Eines“, Ende), „Stumm“ (`ton`) per Ton-Knopf, Übergang und Standzeit im Bereich „Wiedergabe“ der Schublade, Vorschau 3840 × 1080 über die Felder „Breite“/„Höhe“ der Schublade, Knopf „FPS“ über dem Video klickbar. Seit P4 die Playlist: `goto` auf den letzten Eintrag – seine Zeile liegt im sichtbaren Teil der Liste (1024 × 600; in der Stufe schmal, ohne dass `arbeitsflaeche`, `tool-main` oder `tool-content` mitscrollen), Maus über der Liste bewegt = kein Nachrücken, erst nach dem Verlassen oder nach 3 s Ruhe; Griff (`role="img"`, „Eintrag ziehen zum Verschieben“) und Miniatur 40 × 22 px, `aria-current` am laufenden Eintrag, Marke `playlist-danach` (Zufall, Loop „Eines“, Ende); Umsortieren am Griff und per Pfeil-Knopf mit Enter, während der längste Clip läuft (dasselbe Medium, `seekSeq` unverändert, das `<video>` der Vorschau läuft weiter), der Fokus bleibt am Knopf; Medium aus der Bibliothek auf eine Zeile (genau einmal, davor), auf die freie Fläche, in die leere Liste; „Speichern“ im Kopf (`[data-pane-kopf]`, Enter/Esc); „Playlist leeren …“ im Menü „⋯“ (Esc und Klick daneben schließen, `stubConfirm` false lässt die Liste, true leert sie, leer gesperrt). Braucht ffmpeg |
 | `rta.mjs` | RTA mit eingespeistem Mikrofon (Fake-Gerät liest eine WAV, Signale per lavfi): Sinus 1 kHz −20 dBFS – Pegel, Terz und Nachbarn über die Fadenkreuz-Ablesung, Feedback-Finder (H5), Kalibrieren auf 94 dB, Referenz/Differenz 0 dB, Wasserfall (Linie unter der Spitze, Ablesung) und Zeitachse per Pixel, Stopp; rosa Rauschen – Terzen 63 Hz … 4 kHz flach, kein Feedback. Freigabe über die echte Berechtigungsregel |
 | `osc.mjs` | OSC-Steuerung gegen einen lokalen UDP-Empfänger: leeres Set, Kacheln aller Arten über „+ Widget“, Learn, Bank (Hinzufügen-Knopf je Modus; hohe Potis bleiben in ihrer Kachel – App und Handy-Seite per Rechteck-Vergleich), Schalter im Live-Modus, Befehle vom Handy (`api/command`), Feedback per UDP an den Feedback-Port, Monitor; Zustand über `api/state` der Handy-Fernsteuerung |
 | `ffmpeg-update.mjs` | ffmpeg-Aktualisierung der fertigen App gegen einen lokalen Schein-Release-Server (`MOTTULBOX_FFMPEG_RELEASES_URL`): 7-Tage-Regel, Prüfsumme, Aktivierung nach Neustart (`launchApp({ userData })`), zurück zum mitgelieferten |
@@ -82,6 +82,32 @@ Schritt, der schon vorher grün ist, prüft nichts.
   dass die Vorschau bei 1920 × 1080 mitten im Feld schwebte. Muster `e2e/player-layout.mjs`.
 - **Neu aufgebaut oder nicht?** Eine Marke an das Element hängen (`el.__marke = 1`), das
   Auslösende tun (Schublade auf, Fenster schmaler), dann prüfen, ob die Marke noch da ist.
+- **Läuft die Wiedergabe durch?** (Umsortieren im Betrieb, `e2e/player-layout.mjs`): im main
+  dasselbe Medium am laufenden Platz, `playing` und `seekSeq` unverändert (jedes `goto` und
+  `seek` zählt hoch), dazu in der Vorschau das `<video>` mit diesem Medium (`style.display ===
+  'block'`, `src` enthält die Kennung): nicht pausiert, `currentTime` größer als vorher. Den
+  längsten Clip nehmen, sonst endet er mitten im Schritt. Allgemein: Wer nach `goto` wartet
+  (hier 3 s Ruhe der Maus), hält an (`pause`) – der letzte Clip der Testmedien ist 3 s lang, und
+  sein Ende verlegte den laufenden Eintrag genau zur Prüfung (rot, obwohl die App richtig lag;
+  erst ein Mitschrieb der Ereignisse zeigte es). Die Ausgabe auf dem Monitor prüft das
+  nicht – das bleibt eine Abnahme am Gerät.
+- **Die Maus bleibt, wo der letzte Schritt sie gelassen hat** – auch nach `setViewportSize`. Was
+  vom Darüberfahren abhängt (die Playlist rückt nicht nach, solange die Maus über ihr arbeitet), vorher
+  mit `page.mouse.move(1, 1)` freimachen und das Verhalten selbst mit `mouse.move` über die Liste
+  prüfen.
+- **Menüs aus `components/ui/menu.tsx` hängen am `<body>`:** Einträge über
+  `page.getByRole('menuitem', { name })` suchen, nicht im Feld. Schließen per Esc und per Klick auf
+  die Überschrift des Felds prüfen.
+- **Knöpfe, die nur mit Tastaturfokus erscheinen** (`sr-only`, bis die Zeile `:focus-visible`
+  enthält – die Pfeile der Playlist): `locator.focus()` geht auch unsichtbar, sichtbar werden sie
+  erst nach einem Tastendruck – Fokus aus dem Skript nach Mausaktionen zählt in Chromium nicht als
+  Tastaturfokus. Sichtbarkeit am Rahmen messen (`parentElement.getBoundingClientRect().width`, 1 px
+  = versteckt), nicht mit `boundingBox()` des Knopfs: Der bleibt 20 px breit, auch wenn sein
+  Rahmen ihn auf 1 px zuschneidet.
+- **Zählen statt „ist enthalten“:** Der Schritt „Medium aus der Bibliothek auf eine Zeile“
+  erwartet genau einen Eintrag mehr – so fiel auf, dass die alte Playlist ihn zweimal einfügte
+  (Zeile und Liste nahmen `drop` an). Zeilen nicht über `[draggable="true"]` zählen: Mit Griff
+  sind sie erst beim Drücken ziehbar (`:scope > div` der Liste).
 - **Verdeckt oder nicht?** `click()` von Playwright klickt nur, wenn das Element den Klick auch
   bekommt – liegt eine andere Ebene darüber, scheitert es mit „intercepts pointer events“. Knöpfe,
   die erst beim Darüberfahren erscheinen: erst `hover()` auf den Bereich, dann `click()`. So fällt

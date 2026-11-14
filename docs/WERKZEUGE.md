@@ -140,8 +140,21 @@ Playlist-Player für LED-Wände und Beamer.
   Die Vorschau hat das Seitenverhältnis der Wand (bei 3840 × 1080 ein breiter Streifen, bei
   1080 × 1920 hochkant), ist so breit wie die Bühne und wird kleiner, wenn die Höhe fehlt.
   Wechselt der Aufbau (Schublade auf, Fenster schmaler), läuft die Vorschau ohne Unterbrechung
-  weiter. Der Kopf der Playlist nennt Anzahl und Gesamtdauer (Bilder mit ihrer Standzeit);
-  gespeicherte Playlists stehen in einer Zeile darunter, bei vielen waagrecht scrollbar.
+  weiter.
+- **Playlist:** Im Kopf Anzahl und Gesamtdauer (Bilder mit ihrer Standzeit), rechts
+  **„Speichern“** (Name eingeben, Enter; ein gleichnamiger Stand wird ersetzt) und das Menü
+  **„⋯“** mit **„Playlist leeren …“** – es fragt nach, die Medien bleiben in der Bibliothek.
+  Gespeicherte Playlists stehen als Reiter in einer Zeile darunter, bei vielen waagrecht
+  scrollbar (ein Klick lädt, ohne dass die Wiedergabe kurz aufs Idle-Bild fällt; Löschen nur nach
+  Rückfrage). Jede Zeile zeigt Griff, Nummer (▶ beim laufenden Eintrag), Miniatur, Titel, Dauer
+  und ✕. Was als Nächstes kommt, trägt die Marke **„Danach“** – auch bei Zufall, mit Loop „Eines“
+  der laufende Eintrag selbst, am Ende ohne Loop keiner. **Der laufende Eintrag bleibt im Bild:**
+  Wechselt der Titel, rückt die Liste nach (nur die Liste, die Bühne bleibt stehen) – nicht,
+  während die Maus über der Liste bewegt oder gezogen wird, damit nichts unter dem Zeiger
+  wegrückt; das holt sie nach, sobald die Maus geht oder drei Sekunden still liegt. **Umsortieren** am Griff ziehen, auch während es läuft;
+  mit der Tastatur über die Pfeil-Knöpfe, die erscheinen, sobald ein Eintrag den Tastaturfokus
+  hat. Medien aus der Bibliothek auf eine Zeile ziehen setzt sie davor ein, auf die freie Fläche
+  ans Ende.
 - **Bühne:** unter der Vorschau der Titel mit Maßen und Einpass-Art, rechts daneben groß die
   **Restzeit** („−0:48“; bei Bildern die restliche Standzeit, grau, solange pausiert). Darunter
   Suchleiste und Transport: links der Ton – **„Stumm“** steht in Warnfarbe da, solange stumm
@@ -189,9 +202,8 @@ Playlist-Player für LED-Wände und Beamer.
   nächste Zufallsmedium wird vorab geladen. Übergang, Dauer der Überblendung und Bild-Standzeit
   stehen in der Schublade unter „Wiedergabe“ (auch in der Kundenansicht; am Handy auf der
   Steuerseite).
-- **Bedienung:** Play/Pause, Skip, Seek, Loop, Shuffle, Stumm; Playlist per Drag & Drop,
-  gespeicherte Playlists als Tabs (Löschen nur nach Rückfrage; die Medien bleiben in der
-  Bibliothek). Tastenkürzel, solange kein Eingabefeld den Fokus hat: Leertaste oder K
+- **Bedienung:** Play/Pause, Skip, Seek, Loop, Shuffle, Stumm (Playlist siehe oben).
+  Tastenkürzel, solange kein Eingabefeld den Fokus hat: Leertaste oder K
   Play/Pause, ←/→ 5 s, J/L 10 s, Pos1 an den Anfang, P/N voriger/nächster Titel, ↑/↓
   Lautstärke, M Stumm.
 - **Bibliothek** mit Thumbnails, Import per Drag & Drop, Listen- und Kachelansicht;
