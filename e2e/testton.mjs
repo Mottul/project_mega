@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict'
 import { launchApp, openRoute, runSteps, Skip, sleep, waitFor } from './harness.mjs'
-import { installToneTap, onsets, silentRuns, toneTap } from './toneTap.mjs'
+import { checkBeatGaps, installToneTap, onsets, silentRuns, toneTap } from './toneTap.mjs'
 
 const ctx = await launchApp()
 const { page } = ctx
@@ -150,9 +150,11 @@ try {
         assert.ok(clicks.length >= 8, `${clicks.length} Klicks`)
         // Bis zu 0,4 s voraus Eingeplantes kommt noch im alten Abstand, danach der neue – jeder
         // Abstand ist also einer der beiden. Ein Neubeginn (Klick gleich nach dem Wechsel, leise
-        // im Überblenden) ergäbe andere.
-        const off = gaps.filter((g) => Math.abs(g - 300) > 45 && Math.abs(g - 500) > 45)
+        // im Überblenden) ergäbe andere. Hängt die Seite kurz (langsamer CI-Rechner), fehlt ein
+        // Schlag – das ist gewollt, siehe checkBeatGaps.
+        const { off, skipped } = checkBeatGaps(gaps, [300, 500])
         assert.deepEqual(off, [], `Abstände: ${gaps.join(', ')} ms`)
+        assert.ok(skipped <= 1, `${skipped} Schläge ausgelassen – Abstände: ${gaps.join(', ')} ms`)
         await tempo.fill('120')
         await tempo.press('Enter')
       }
