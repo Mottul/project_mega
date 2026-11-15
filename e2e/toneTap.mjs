@@ -110,6 +110,24 @@ export function silentRuns(samples) {
 }
 
 /**
+ * Abstände zwischen Schlägen, die im Takt kommen sollen (Metronom), in ms. Jeder Abstand muss
+ * einer aus `intervals` sein – oder zwei davon hintereinander: Auf einem langsamen CI-Rechner
+ * hängt die Seite gelegentlich kurz (macOS-Runner, 14.11.2026: 594 statt 300 ms). Dann lässt der
+ * Ton-Kern den verpassten Schlag mit Absicht aus (`_tone/engine.ts`: nicht nachholen), oder die
+ * Aufnahme verpasst ihn – sie liest im selben Fenster. Ein Neubeginn ergäbe dagegen einen
+ * Abstand, der zu keinem passt. Liefert `off` (passt zu nichts) und `skipped` (so viele Abstände
+ * gelten als ein ausgelassener Schlag). Nicht für Prüfungen, bei denen genau das Auslassen der
+ * Fehler wäre – das gedrosselte Fenster im Hintergrund.
+ */
+export function checkBeatGaps(gaps, intervals, tol = 45) {
+  const near = (g, list) => list.some((v) => Math.abs(g - v) <= tol)
+  const doubled = intervals.flatMap((a) => intervals.map((b) => a + b))
+  const off = gaps.filter((g) => !near(g, intervals) && !near(g, doubled))
+  const skipped = gaps.filter((g) => !near(g, intervals) && near(g, doubled)).length
+  return { off, skipped }
+}
+
+/**
  * Einsätze (Klicks, Pulse, Piepe) in einer Aufnahme [t, l, …]: Zeitpunkte, an denen die Spitze
  * über `high` steigt, nachdem sie unter `low` lag. Die Hysterese verhindert, dass ein Messfenster,
  * das eine Flanke nur halb erfasst, einen Einsatz verschluckt oder doppelt zählt.

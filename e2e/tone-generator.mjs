@@ -10,7 +10,7 @@
 
 import assert from 'node:assert/strict'
 import { launchApp, runSteps, Skip, sleep, waitFor } from './harness.mjs'
-import { installToneTap, onsets, toneTap } from './toneTap.mjs'
+import { checkBeatGaps, installToneTap, onsets, toneTap } from './toneTap.mjs'
 
 const ctx = await launchApp()
 const { app, page } = ctx
@@ -186,10 +186,9 @@ try {
         const steady = onsets(await tap('record', 3000, 4, 2048), { high: 0.03, low: 0.005 })
         assert.ok(steady.length >= 5 && steady.length <= 7, `${steady.length} Klicks in 3 s`)
         const gaps = steady.slice(1).map((t, i) => t - steady[i])
-        assert.ok(
-          gaps.every((g) => Math.abs(g - 500) < 45),
-          `Abstände bei 120 BPM: ${gaps.join(', ')}`
-        )
+        // ein ausgelassener Schlag nach einem Hänger der Seite ist gewollt (checkBeatGaps)
+        const { off, skipped } = checkBeatGaps(gaps, [500])
+        assert.ok(off.length === 0 && skipped <= 1, `Abstände bei 120 BPM: ${gaps.join(', ')}`)
         // zwanzigmal „Schneller“ während der Aufnahme: bis 140 BPM, nie ein Doppelklick
         const recording = tap('record', 3500, 4, 2048)
         const faster = w.getByRole('button', { name: 'Schneller' })
@@ -218,19 +217,42 @@ try {
       }
     ],
     [
-      '„Tippen“: viermal im Abstand von 500 ms – Tempo etwa 120',
+      '„Tippen“: viermal im Abstand von etwa 500 ms – das Tempo folgt den Abständen der Tipps',
       async () => {
         needAudio()
         await setTempo(200)
-        const box = await w.getByRole('button', { name: 'Tippen' }).boundingBox()
+        const button = w.getByRole('button', { name: 'Tippen' })
+        // Mitschreiben, wann die Tipps ankommen – dieselben Zeitstempel (pointerdown), aus denen
+        // die App rechnet. Auf einem langsamen CI-Rechner liegen sie weiter auseinander als die
+        // 500 ms zwischen den Klicks von Playwright (macOS-Runner, 14.11.2026: Tempo 111 statt
+        // etwa 120); geprüft wird, dass die App aus den Abständen rechnet, die ankommen.
+        await button.evaluate((el) => {
+          window.__tipps = []
+          el.addEventListener('pointerdown', (e) => window.__tipps.push(e.timeStamp), true)
+        })
+        const box = await button.boundingBox()
         await w.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
         for (let i = 0; i < 4; i++) {
           await w.mouse.down()
           await w.mouse.up()
           if (i < 3) await sleep(500)
         }
+        const at = await w.evaluate(() => window.__tipps)
+        const steps = at.slice(1).map((t, i) => Math.round(t - at[i]))
+        assert.equal(at.length, 4, `${at.length} Tipps angekommen`)
+        // einzelne Tipps: keine Häufung, keine Pause über 2 s (danach zählte die App neu)
+        assert.ok(
+          steps.every((s) => s > 300 && s < 1500),
+          `Abstände der Tipps: ${steps.join(', ')} ms`
+        )
+        const want = Math.round(60000 / ((at[3] - at[0]) / 3))
+        await waitFor(async () => Number(await tempo().inputValue()) === want, 2000, 50)
         const bpm = Number(await tempo().inputValue())
-        assert.ok(bpm >= 114 && bpm <= 122, `Tempo ${bpm}`)
+        assert.equal(
+          bpm,
+          want,
+          `Tempo ${bpm}, aus den Abständen ${steps.join(', ')} ms wären es ${want}`
+        )
         await setTempo(120)
       }
     ],

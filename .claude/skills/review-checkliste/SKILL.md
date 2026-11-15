@@ -491,6 +491,13 @@ Gemeinsam ist ihnen: Der eigene Code war richtig, die Vorgabe darunter nicht.
   `expect(liste.some((t) => /…/.test(t))).toBe(false)`. Und kein stilles `if (…) return` im Test,
   wenn eine Vorbedingung fehlt – dann prüft er nichts und bleibt grün; die Vorbedingung selbst
   erwarten (`expect(ids).toContain('lib-wand-dunkel')`).
+- **Zeitprüfungen im E2E messen leicht den Rechner statt der App.** Erwartet ein Test, was seine
+  eigenen Pausen ergeben sollten (Klicks alle 500 ms, also 120 BPM), oder jeden Schlag eines
+  Takts, wird er auf dem macOS-Runner rot, obwohl die App richtig rechnet (`main` rot nach #226
+  und #227, 14.11.2026). Im Review fragen: Rechnet der Test mit den Zeitstempeln, die die App
+  sieht? Lässt er zu, was die App mit Absicht tut (einen verpassten Schlag auslassen)? Und wird
+  er weiter rot, wenn die App wirklich falsch liegt (Neubeginn, Doppelklick)? Muster und
+  Nachstellen: Skill `electron-e2e`, „Zeitabstände“.
 
 - **Reine Module importieren Stores anderer Werkzeuge nur als Typ.** Ein Store zieht `api`
   (`window.api`) mit – in den Node-Tests gibt es kein `window`, der Test bricht schon beim Import.
