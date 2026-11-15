@@ -29,7 +29,10 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      dem Fenster) ein Raster wie `PLAYER_RASTER` in `video-player/layout.ts`. Die Felder stehen
      in jeder Stufe in derselben Reihenfolge, nur ihre Bereiche wechseln – sonst baut React beim
      Öffnen der Schublade alles neu auf. Listen scrollen im Feld (`Pane`, `scroll`), die Seite
-     nie; ein Feld, das so hoch wie sein Inhalt sein soll, bekommt `kappen={false}`. Abnahme nach
+     nie; ein Feld, das so hoch wie sein Inhalt sein soll, bekommt `kappen={false}`. Im Kopf
+     eines Felds (`actions`) höchstens zwei niedrige Knöpfe (`h-6`, sonst wächst der Kopf über
+     40 px) und das Menü „⋯“ aus `components/ui/menu.tsx`; Vorbild für ein Feld mit Liste
+     (Griff, Pfeil-Knöpfe, laufender Eintrag bleibt sichtbar): `video-player/Playlist.tsx`. Abnahme nach
      `e2e/player-layout.mjs` (kein Scrollen bei 1024 × 600, 1366 × 768 auch mit angehefteter
      Schublade, 1920 × 1080; Wichtiges im Bild; schmal eine Spalte). Werkzeuge, die man wie ein
      Dokument liest (Listen, Formulare), scrollen weiter als Seite.

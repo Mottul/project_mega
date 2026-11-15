@@ -154,6 +154,50 @@ Aus der Bühne des Video-Players (P3, 13.11.2026):
   das Ausgabefenster aufgeht. Für Anzeigen im Fenster (Seitenverhältnis der Vorschau) die
   Wand-Auflösung aus den Einstellungen nehmen (`wallW`/`wallH` in `VideoPlayer.tsx`).
 
+Aus der Playlist des Video-Players (P4, 15.11.2026; im E2E oder in der gebauten App gemessen,
+wo nicht anders gesagt):
+
+- **Verschachtelte Ablageziele: nur einer wertet aus.** Zeile und Liste nahmen beide `drop` an,
+  ohne `stopPropagation` – ein Medium aus der Bibliothek landete zweimal in der Playlist (an der
+  Zeile und am Ende). Heute wertet nur die Liste aus und sucht die Zeile per
+  `closest('[data-sort-id]')`; die Zeilen halten nur das eigene Sortieren an (`sortable.tsx`).
+  Im E2E die Einträge zählen, nicht nur „enthalten“ prüfen.
+- **`scrollIntoView` scrollt alle Vorfahren, auch `overflow-hidden`.** Gemessen in Electrons
+  Chromium: `block: 'nearest'` schob den äußeren Bereich um 300 px mit – in der Stufe schmal wäre
+  die Bühne bei jedem Titelwechsel aus dem Bild gelaufen, in breit/mittel hätte ein halber Pixel
+  die Arbeitsfläche (nicht scrollbar für den Nutzer) dauerhaft verschoben. `container: 'nearest'`
+  (Chromium ab 140, in lib.dom noch nicht) scrollt nur den nächsten Bereich. E2E: `scrollTop` der
+  äußeren Bereiche bleibt 0.
+- **Nichts unter dem Zeiger verschieben.** Rückt eine Liste von selbst nach (laufender Eintrag),
+  dann nicht, während die Maus über ihr arbeitet oder gezogen wird – sonst trifft ein Klick auf ✕
+  einen anderen Eintrag. Nachholen, sobald die Hand weg ist (`pointerleave`, `dragend`/`drop`, zur
+  Sicherheit beim nächsten `pointerdown`, falls das Ende eines Ziehens nicht ankam). Aber nicht an
+  „Maus ist darüber“ hängen: In der Show bleibt sie dort liegen, die Liste folgte nie mehr (aus dem
+  eigenen Review) – zählen die letzten 3 s Bewegung (`pointermove`).
+- **Eine Rückfrage gilt für den Stand, nach dem sie fragt.** „Playlist leeren (3 Einträge)?“ – lädt
+  währenddessen das Handy eine andere Playlist, leerte „clear“ die neue. Nach der Antwort den Stand
+  im main mit dem gefragten vergleichen und bei Abweichung neu fragen.
+- **`sr-only` in einer scrollenden Liste braucht einen positionierten Vorfahren.** `position:
+  absolute` ohne `relative` darüber entkommt dem `overflow` der Liste: Die versteckten Pfeile der
+  Zeilen unter dem Rand machten bei 1024 × 600 die ganze Seite 40 px höher (rot im alten Schritt
+  „Seite scrollt nicht“, die neuen Schritte waren grün). Die Zeile bekommt `relative`.
+- **Eine verschobene Zeile verliert den Fokus.** React 18 setzt Einträge mit Schlüssel per
+  `insertBefore` um; der Fokus darin fällt auf `body` (gemessen). Bei „nach unten“ wandert die
+  fokussierte Zeile selbst. Nach dem Umsortieren den Knopf derselben Zeile (Schlüssel) wieder
+  fokussieren – nur, wenn der Fokus auf `body` liegt.
+- **Menüs in Feldern hängen am `<body>`.** Ein `Pane` schneidet ab (`overflow-hidden`), ein Menü
+  darin wäre im niedrigen Feld halb weg. Am `<body>` steht es nicht mehr hinter dem Knopf in der
+  Tab-Folge: `components/ui/menu.tsx` setzt den Fokus deshalb selbst und gibt Tasten, die es
+  auswertet, nicht ans Werkzeug weiter – `usePlayback` lauscht am `window` und nimmt jede
+  Leertaste als Play/Pause (auch an Knöpfen, nur Eingabefelder sind ausgenommen) und ↑/↓ als
+  Lautstärke. Neue Bedienelemente im Player, die solche Tasten selbst brauchen, halten das
+  Ereignis an; Knöpfe dort löst man per Enter aus.
+- **Höhe des Feldkopfs** (nachgerechnet): `Pane` reserviert 40 px; ein Knopf `size="sm"` (32 px)
+  im Kopf macht ihn 45 px hoch und nimmt der Liste darunter Platz. Knöpfe im Kopf `h-6`. Mit
+  Miniatur (22 px) wären Zeilen mit `py-1` 32 px hoch – bei 1024 × 600 (Liste rund 170 px)
+  passten keine fünf mehr; mit `py-0.5` sind es 28 px, der E2E-Schritt „fünf Zeilen im Bild“ ist
+  grün.
+
 ## Einstellungen und gemerkte Stände
 
 - Ändert eine Option, was ein bestehender Schalter bedeutet (Beispiel: „Kennung“ blendete früher

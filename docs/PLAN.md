@@ -90,10 +90,12 @@ den Transport nicht mehr.
   groß, was läuft, wie lange noch und was danach kommt. Sie bekommt den Platz, der übrig ist.
 - **Abstände 12 px,** keine Höhen in Pixeln: Raster und `flex` mit `min-h-0` lösen es, gemessen
   wird nur für die Stufe.
-- **Bausteine:** `components/WorkArea.tsx` (`WorkArea`, `Pane`, `useStufe`) und
-  `components/workAreaRaster.ts` (Stufen und Raster, rein und getestet). Vorbild für das Raster
-  eines Werkzeugs: `video-player/layout.ts`; für die Abnahme: `e2e/player-layout.mjs`. Anleitung
-  im Skill `neues-werkzeug`, Lehren im Skill `review-checkliste` („Raster und SVG“).
+- **Bausteine:** `components/WorkArea.tsx` (`WorkArea`, `Pane`, `useStufe`),
+  `components/workAreaRaster.ts` (Stufen und Raster, rein und getestet) und
+  `components/ui/menu.tsx` (das Menü „⋯“; seine Liste hängt am `<body>`, weil ein Feld abschneidet,
+  was über seinen Rand ragt). Vorbild für das Raster eines Werkzeugs: `video-player/layout.ts`;
+  für ein Feld mit Liste: `video-player/Playlist.tsx`; für die Abnahme: `e2e/player-layout.mjs`.
+  Anleitung im Skill `neues-werkzeug`, Lehren im Skill `review-checkliste` („Raster und SVG“).
 - **Nicht für Dokumente:** Werkzeuge, die man von oben nach unten liest – Video-Konverter,
   Medien-Info, Packliste, YouTube-Downloader, Handbücher, Netzwerk-Scanner –, scrollen weiter
   als Seite.
@@ -104,7 +106,7 @@ bzw. angeheftet. „passt“: Die Seite scrollt nicht.
 
 | Werkzeug | 1024 × 600 (zu · an) | 1366 × 768 (zu · an) | 1920 × 1080 (zu · an) | Folge |
 | -------- | -------------------- | -------------------- | --------------------- | ----- |
-| Video-Player | passt · Stufe `schmal` | passt · passt | passt · passt | Vorbild; offen P4, P5 |
+| Video-Player | passt · Stufe `schmal` | passt · passt | passt · passt | Vorbild; offen P5 |
 | Video-Generator (12 Bilder) | +732 · +1074 | +490 · +639 | +169 · +318 | **W1** |
 | Stage-Timer (8 Abschnitte) | +142 · +771 | passt · passt | passt · passt | **W2** |
 | Testbildgenerator | +124 · +143 | +57 · +57 | passt · passt | **W3** |
@@ -254,12 +256,12 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | P4, P5 · K1, K2, K3 | Playlist und Bibliothek des Players sind noch die alten. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
+| **1 – Die Vorbilder fertig** | P5, P6 · K1, K2, K3 | Die Bibliothek des Players ist noch die alte, doppelte Medien verschieben den laufenden Eintrag. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B13 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
-| **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8, E10 nach P5) |
+| **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8) |
 | **Laufend** | Update-PRs, [Abnahmen am Gerät](#abnahmen-am-gerät) | montags bzw. wenn das Gerät da ist |
 
 **Laufend – Update-PRs von Dependabot:** jeden Montag durchsehen und nach grüner CI mergen (7 Tage
@@ -270,44 +272,21 @@ dem Merge an den Breaking Changes prüfen (Skill `abhaengigkeiten`).
 
 Das [Muster 1](#muster-1-arbeitsfläche) zu Ende bringen. Seit dem 13. November 2026 stehen die
 drei Felder Bibliothek · Playlist · Bühne, die Seite scrollt nicht mehr, die Bühne zeigt Restzeit,
-„Danach“ und „Stumm“ (P1 bis P3). Offen sind die Inhalte von Playlist und Bibliothek.
+„Danach“ und „Stumm“ (P1 bis P3); seit dem 15. November auch die Playlist (P4: Miniaturen,
+„Danach“, laufender Eintrag bleibt sichtbar, Sortieren am Griff, „Playlist leeren …“ fragt).
+Offen ist der Inhalt der Bibliothek.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **P4** | Playlist: Miniaturen, „Danach“, laufender Eintrag bleibt sichtbar, Sortieren mit Griff, „Speichern“ und „Leeren“ in den Kopf, Leeren fragt | M | – |
-| **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt; Menü-Baustein | M | – |
+| **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt | M | – |
+| **P6** | Laufender Eintrag springt bei doppelten Medien in der Playlist | S | – |
 
-P4 und P5 sind unabhängig voneinander. Vorher lesen: Skills `electron-e2e`, `review-checkliste`
-(„Raster und SVG“), `abschluss-check`. Jeder Schritt ergänzt seine Prüfungen in
-`e2e/player-layout.mjs` (14 Medien per lavfi, drei gespeicherte Playlists) und lässt sie zuerst
-gegen den Stand davor laufen. Vorhandene Skripte, die den Player anfassen: `e2e/player.mjs`
-(Playlist-Reiter, Importe), `e2e/layout.mjs` (Ausgabe-Leiste, Monitorwechsel),
-`e2e/mini-manual.mjs` (liest Playlists über die Einstellungen) – vor dem Umbau mit
-`grep -n "video-player" e2e/*.mjs` nachsehen, was sie anklicken.
-
-### P4 – Playlist
-
-**Heute** (`Playlist.tsx`): „Leeren“ steht im Kopf und leert ohne Rückfrage – ein Klick daneben
-nimmt in der Show das Bild weg. „Speichern“ steht am Ende der Zeile mit den gespeicherten
-Playlists. Die Zeilen haben keine Miniatur, gezogen wird an der ganzen Zeile, und der laufende
-Eintrag kann aus dem sichtbaren Teil der Liste laufen.
-
-**So:**
-
-- **Kopf:** rechts „Speichern“ und ein Menü „⋯“ mit „Playlist leeren …“ (fragt nach,
-  `api.confirm`, `danger`). Anzahl und Gesamtdauer stehen schon da.
-- **Liste:** je Zeile Griff, Nummer bzw. Abspielzeichen, Miniatur (40 × 22 px aus `thumbUrl`),
-  Titel, Dauer, ✕. Der nächste Eintrag trägt die Marke „Danach“ (`danach()` in
-  `video-player/layout.ts` kennt ihn, auch bei Zufall).
-- **Der laufende Eintrag bleibt sichtbar:** Wechselt `pstate.index`, scrollt die Liste ihn mit
-  `scrollIntoView({ block: 'nearest' })` heran – nicht, während gezogen wird.
-- **Umsortieren** über `useSortable` und `Griff` aus `sortable.tsx` (Ziehen nur am Griff,
-  Pfeil-Knöpfe für die Tastatur). Ziehen aus der Bibliothek (`text/x-media-id`) bleibt, die ganze
-  Liste ist Ziel.
-
-**Abnahme** (`e2e/player-layout.mjs`): Befehl `goto` auf den letzten Eintrag – seine Zeile liegt
-danach im sichtbaren Teil der Liste. „Playlist leeren …“ mit `stubConfirm(app, false)` – die
-Liste hat danach gleich viele Einträge; mit `true` keinen.
+Vorher lesen: Skills `electron-e2e`, `review-checkliste` („Raster und SVG“), `abschluss-check`.
+Jeder Schritt ergänzt seine Prüfungen in `e2e/player-layout.mjs` (14 Medien per lavfi, drei
+gespeicherte Playlists) und lässt sie zuerst gegen den Stand davor laufen. Vorhandene Skripte,
+die den Player anfassen: `e2e/player.mjs` (Playlist-Reiter, Importe), `e2e/layout.mjs`
+(Ausgabe-Leiste, Monitorwechsel), `e2e/mini-manual.mjs` (liest Playlists über die Einstellungen)
+– vor dem Umbau mit `grep -n "video-player" e2e/*.mjs` nachsehen, was sie anklicken.
 
 ### P5 – Bibliothek
 
@@ -332,26 +311,40 @@ einem Medium löscht ohne Rückfrage.
   entfernen“ sie räumt.
 - **Medium löschen** fragt nach (`api.confirm`, `danger`, wie „Bibliothek leeren“).
 - Der Hinweis „n Medien ≠ Wand-Auflösung“ bleibt über dem Inhalt.
-- **Menü-Baustein:** `WallMenu.tsx` und `ProjectFileMenu.tsx` bauen je ein eigenes Aufklappmenü
-  (Knopf, Liste, Klick daneben und Esc schließen). Daraus einen Baustein ziehen und im Player
-  verwenden; die beiden vorhandenen Menüs stellt Paket E10 um.
-
-```text
-src/renderer/src/components/ui/menu.tsx      kleines Aufklappmenü für „⋯“ und „Importieren“
-```
+- **Menüs** aus dem Baustein von P4 (`components/ui/menu.tsx`): „Importieren“ als `Menu` mit
+  Text (`variant="secondary"`), „⋯“ wie in der Playlist; die Ansicht als `MenuItem` mit
+  `checked`, Gruppen mit `MenuSeparator`. Die Liste hängt am `<body>` – das niedrige Feld der
+  Bibliothek (bei 1024 × 600 rund 170 px) schneidet sie nicht ab.
 
 **Abnahme** (`e2e/player-layout.mjs`): Papierkorb an einem Medium mit `stubConfirm(app, false)` –
 die Bibliothek hat danach gleich viele Einträge; mit `true` einen weniger. Bei 1366 × 768 ist der
 Kopf der Bibliothek eine Zeile hoch. Suche nach einem Titel zeigt genau dieses Medium.
 
-### Regeln für beide Schritte
+### P6 – Laufender Eintrag springt bei doppelten Medien
+
+**Heute** (`services/player/playerState.ts`): Nach `move`, `add` und `remove` sucht `reindexTo`
+den laufenden Eintrag über die Kennung des Mediums. Steht dasselbe Medium zweimal in der Liste,
+landet die Marke auf dem ersten Vorkommen. In der gebauten App nachgestellt (15. November 2026,
+beim Bau von P4): Liste A, B, A, es läuft das zweite A (Platz 2); B nach vorn gezogen ergibt
+B, A, A mit Platz 1 statt 2. Das Bild läuft weiter (dasselbe Medium), aber Markierung, „Danach“
+und die Folge danach stimmen nicht mehr – das zweite A läuft ein zweites Mal.
+
+**So:** Den laufenden Platz aus dem Befehl rechnen statt über die Kennung suchen: bei `move` den
+Platz mitführen (der gezogene Eintrag, oder ±1 für die dazwischen), bei `add` vor dem laufenden
+plus Anzahl, bei `remove` davor minus eins. `refreshPlaylist` und `dropMediaFromPlaylist` können
+Einträge entfernen und brauchen dieselbe Rechnung. Zustand und Befehle bleiben im main.
+
+**Abnahme:** Unit-Tests für `applyCommand` (`mediaLibrary` und `store` per `vi.mock` ersetzen;
+E7 baut später darauf auf): A, B, A mit dem zweiten A laufend, B nach vorn – Platz 2; ebenso
+`add` davor und `remove` davor. Vorher rot.
+
+### Regeln für P5
 
 - Keinen Zustand in den Renderer ziehen: Wiedergabe und Playlist bleiben im main, das Fenster
   spiegelt (`api.player.command`, `onState`). Neu sind nur Anordnung und Anzeige.
 - Keine neue Farbe: Rot bleibt „live“, „Stumm“ ist `warning`, der laufende Eintrag `primary`.
 - Die Steuerseite fürs Handy (`player/remotePage.ts`) und `PlaybackEngine.tsx` bleiben, wie sie
   sind.
-- Nicht beide Schritte in einen Pull Request legen, auch wenn sie dieselbe Datei berühren.
 - **„Rückgängig“ statt Rückfrage** lässt sich später nachrüsten, die Rückfrage steht dem nicht im
   Weg: für die Playlist klein (das Fenster merkt sich die Kennungen vor dem Leeren und schickt
   sie per `replace` zurück; dazu braucht `toast` einen Knopf), für die Bibliothek mittel – heute
@@ -434,7 +427,8 @@ die Abschnitte liegen dann unter dem Rand. Ab 1366 × 768 passt es.
 
 **So:** zwei Felder. **Bühne:** Vorschau, Transport mit der Restzeit, Nachricht an die Bühne; so
 hoch wie ihr Inhalt. **Abschnitte:** Kopf mit Anzahl und Gesamtdauer, die Liste scrollt in sich;
-der laufende Abschnitt bleibt sichtbar (`scrollIntoView` wie in P4). `breit` und `mittel`
+der laufende Abschnitt bleibt sichtbar (wie in der Playlist des Players: `scrollIntoView` mit
+`container: 'nearest'`, nicht, während die Maus über der Liste arbeitet). `breit` und `mittel`
 nebeneinander, die Bühne höchstens 38 % breit wie heute; `schmal` Bühne über Abschnitten. Im
 Modus „Uhr“ ein Feld.
 
@@ -1235,7 +1229,7 @@ Was die App heute schützt, steht in [SICHERHEIT.md](SICHERHEIT.md). Offen:
 | **E7** | Tests für Player-Zustand, yt-dlp und Fernsteuer-Parser | M | – |
 | **E8** | Komponententests möglich machen | M | – |
 | **E9** | Handy-Steuerseiten als echte Dateien | L | eigener Entwurf nötig |
-| **E10** | Menü-Baustein in LED-Wall- und Datei-Menü | S | P5 |
+| **E10** | Menü-Baustein in LED-Wall-, Datei- und Handy-Menü | S | – |
 
 ### E1 – Große Komponenten teilen
 
@@ -1329,11 +1323,15 @@ Template-Strings – ungelintet und ohne Typen. Ziel: echte Build-Artefakte bzw.
 Lint und Prettier sehen. Größe L, eigener Entwurf nötig (Skill `fernsteuerung-seite`: alte
 TV-Browser, relative API-Pfade, Einbindung in die Fernsteuer-App).
 
-### E10 – Menü-Baustein in LED-Wall- und Datei-Menü
+### E10 – Menü-Baustein in LED-Wall-, Datei- und Handy-Menü
 
-`WallMenu.tsx` und `ProjectFileMenu.tsx` bauen je ein eigenes Aufklappmenü. Sobald P5 den
-Baustein gezogen hat, beide darauf umstellen – ohne sichtbare Änderung; `e2e/projektdatei.mjs` und
-`e2e/kabelverlauf.mjs` bleiben grün.
+`WallMenu.tsx` und `ProjectFileMenu.tsx` bauen je ein eigenes Aufklappmenü, das Menü „Handy“ des
+Mini-Manuals (`mini-manual/ui/HandyMenu.tsx`) leiht sich `useMenu` und `MenuItem` aus dem
+Datei-Menü. Seit P4 gibt es den Baustein (`components/ui/menu.tsx`: `Menu`, `MenuItem` mit
+`checked`, `shortcut` und `title`, `MenuSeparator`, `MenuLabel`): alle drei darauf umstellen,
+`useMenu` und das alte `MenuItem` entfallen – ohne sichtbare Änderung bis auf die Tastatur (der
+Baustein setzt den Fokus in die Liste, ↑/↓ wandern). `e2e/projektdatei.mjs`,
+`e2e/kabelverlauf.mjs` und `e2e/mini-manual.mjs` bleiben grün.
 
 ## U – Upgrades
 
@@ -1414,8 +1412,11 @@ Was kein Test kann und nur Matthias mit dem Gerät prüfen kann. Ergebnisse geh�
 neues Paket in diesem Plan.
 
 **Video-Player** (nach P1 bis P3, wieder nach P4 und P5): ein echtes Video mit Ton abspielen, die
-Ausgabe auf einem zweiten Monitor öffnen, im laufenden Betrieb umsortieren und zwischen
-gespeicherten Playlists wechseln – ohne Ruckeln und ohne Idle-Bild dazwischen.
+Ausgabe auf einem zweiten Monitor öffnen, im laufenden Betrieb umsortieren – am Griff ziehen,
+auch den laufenden Eintrag, und mit den Pfeil-Knöpfen per Tastatur – und zwischen gespeicherten
+Playlists wechseln: ohne Ruckeln und ohne Idle-Bild dazwischen. Das E2E prüft das nur an der
+Vorschau im Fenster (dasselbe Medium läuft weiter, wird nicht neu gestartet), nicht an der
+Ausgabe auf dem Monitor.
 
 **Testtongenerator und RTA am Handy** (Skill `rechner-pwa`) – mit der veröffentlichten PWA oder
 `npm run pwa:preview` im LAN (dort ohne HTTPS: kein Wachhalten, kein Offline):
@@ -1548,7 +1549,7 @@ Bewusst nicht geplant:
   von NovaLCT-Empfangskarten-Dateien und Brompton-Projekten.
 - **ATEM-Steuerung:** Steuerung über USB (neu bewerten nur, wenn Windows dort von selbst WinUSB
   nimmt und ein Einsatz ohne Netzwerkkabel wirklich gebraucht wird); Multiview aufs Handy.
-- **Video-Player:** Änderungen an der Steuerseite fürs Handy im Zuge von P4 und P5.
+- **Video-Player:** Änderungen an der Steuerseite fürs Handy im Zuge von P5.
 
 ## Erledigt – nicht neu planen
 
@@ -1559,7 +1560,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Energiesparen, solange etwas läuft, eine Mottulbox je Benutzerordner, Fernsteuerungen weisen
   fremde Websites ab); drei kleine Fehler aus der Durchsicht (Medien ausliefern, Umlaute in
   Befehlen vom Handy, gescheitertes Speichern der Werkzeug-Stände); Video-Player ohne Scrollen
-  mit der Bühne (P1 bis P3); Testtongenerator; neuer Aufbau von Testtongenerator und RTA.
+  mit der Bühne (P1 bis P3) und der Playlist (P4, mit dem Menü-Baustein für „⋯“);
+  Testtongenerator; neuer Aufbau von Testtongenerator und RTA.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

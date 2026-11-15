@@ -108,7 +108,10 @@ export function Pane({
       )}
     >
       {(title || actions) && (
-        <div className="flex min-h-10 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1.5">
+        <div
+          data-pane-kopf=""
+          className="flex min-h-10 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-1.5"
+        >
           {title && <h2 className="text-sm font-medium">{title}</h2>}
           {count != null && (
             <span className="text-xs tabular-nums text-muted-foreground">{count}</span>
