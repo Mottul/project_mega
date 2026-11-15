@@ -1,7 +1,7 @@
 // Anordnung des Video-Players – rein und getestet (layout.test.ts): die Raster je Stufe der
 // Arbeitsfläche (components/workAreaRaster.ts), die Gesamtdauer der Playlist, stabile
-// Schlüssel für ihre Zeilen, der Platz beim Umsortieren und „Danach“ in Bühne und Playlist.
-// Muster, Messungen und der offene Schritt (P5): docs/PLAN.md.
+// Schlüssel für ihre Zeilen, der Platz beim Umsortieren, „Danach“ in Bühne und Playlist und die
+// Suche in der Bibliothek. Muster und Messungen: docs/PLAN.md („Muster 1: Arbeitsfläche“).
 
 import type { Raster, Stufe } from '@renderer/components/workAreaRaster'
 import { nextIndex } from '@shared/player'
@@ -94,4 +94,18 @@ export function danach(state: DanachStand): string | null {
   if (state.playlist.length === 0 || state.index < 0) return null
   const i = danachIndex(state)
   return i < 0 ? 'Ende' : state.playlist[i].title
+}
+
+/**
+ * Suche in der Bibliothek: Medien, in deren Titel jedes Wort der Suche vorkommt – Groß- und
+ * Kleinschreibung egal, die Reihenfolge der Wörter auch („auto sponsor“ findet „Sponsor Auto“).
+ * Ohne Suchwort alle.
+ */
+export function sucheMedien<T extends Pick<MediaItem, 'title'>>(medien: T[], suche: string): T[] {
+  const woerter = suche.toLocaleLowerCase('de').split(/\s+/).filter(Boolean)
+  if (woerter.length === 0) return medien
+  return medien.filter((m) => {
+    const titel = m.title.toLocaleLowerCase('de')
+    return woerter.every((w) => titel.includes(w))
+  })
 }

@@ -11,12 +11,15 @@
 // schmal scrollt dabei nur die Liste, die Bühne bleibt stehen), Zeilen mit Griff und Miniatur,
 // Marke „Danach“, Umsortieren am Griff und mit den Pfeil-Knöpfen bei laufender Wiedergabe, Ziehen
 // aus der Bibliothek, „Speichern“ im Kopf, „Playlist leeren …“ im Menü „⋯“ mit Rückfrage.
-// Mit P5 kommt noch dazu: Löschen fragt.
+// Seit P5 die Bibliothek: Kopf in einer Zeile mit „Importieren“ und „⋯“ (Ansicht, „Alle zur
+// Playlist“, „Medienordner öffnen“, „Bibliothek leeren …“), Listen am <body>, Kacheln nach Platz
+// im Feld, Suche, gestrichelter Rahmen nur beim Hineinziehen von Dateien, Import-Liste unten
+// angeheftet, Papierkorb mit Rückfrage.
 // Braucht das gebündelte ffmpeg (Import); ohne wird übersprungen.
 
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -271,6 +274,46 @@ const vorschauVideo = (id) =>
     )
     return v ? { zeit: v.currentTime, pausiert: v.paused } : null
   }, id)
+
+/** Feld „Bibliothek“ und sein Kopf (Titel, Anzahl, „Importieren“, Menü „⋯“) */
+const bib = () => page.getByTestId('feld-bibliothek')
+const bibKopf = () => page.locator('[data-testid="feld-bibliothek"] [data-pane-kopf]')
+/** Medien im Feld: Kacheln bzw. Zeilen der Liste – ziehbar, damit sie in die Playlist gehen */
+const medien = () => bib().locator('[draggable="true"]')
+const bibliothek = () => page.evaluate(() => window.api.player.libraryList())
+
+/**
+ * Gestrichelte Rahmen im Feld „Bibliothek“ (sichtbare Elemente mit `border-style: dashed`) – der
+ * Rahmen fürs Hineinziehen von Dateien
+ */
+const gestrichelt = () =>
+  page.evaluate(
+    () =>
+      [...document.querySelectorAll('[data-testid="feld-bibliothek"] *')].filter((el) => {
+        const r = el.getBoundingClientRect()
+        return getComputedStyle(el).borderTopStyle === 'dashed' && r.width > 0 && r.height > 0
+      }).length
+  )
+
+/**
+ * Ziehen über der Bibliothek nachstellen: die Ereignisse `arten` mit einer Probe-Datei (wie aus
+ * dem Explorer: Typ „Files“) oder einem Medium aus der Bibliothek (`text/x-media-id`) an das
+ * Element `sel` im Feld schicken. Echte Dateien kann Playwright nicht ziehen.
+ */
+const ziehUeber = (sel, arten, was) =>
+  page.evaluate(
+    ([sel, arten, was]) => {
+      const ziel = document.querySelector(`[data-testid="feld-bibliothek"] ${sel}`)
+      const dt = new DataTransfer()
+      if (was === 'datei') dt.items.add(new File(['x'], 'Probe.mp4', { type: 'video/mp4' }))
+      else dt.setData('text/x-media-id', 'probe')
+      for (const art of arten)
+        ziel.dispatchEvent(
+          new DragEvent(art, { bubbles: true, cancelable: true, dataTransfer: dt })
+        )
+    },
+    [sel, arten, was]
+  )
 
 /** Playlist wie nach der Vorbereitung: alle Medien der Bibliothek, Eintrag 3 läuft */
 async function playlistWieVorher() {
@@ -941,6 +984,466 @@ try {
         } finally {
           await playlistWieVorher()
         }
+      }
+    ],
+    [
+      'Bibliothek: Kopf in einer Zeile – „Importieren“ und „⋯“ statt Ansicht, „Dateien“ und zweimal „Ordner“',
+      async () => {
+        for (const [w, h, offen] of [
+          [1366, 768, false],
+          [1366, 768, true],
+          [1024, 600, false]
+        ]) {
+          await fenster(w, h, offen)
+          const k = await bibKopf().boundingBox({ timeout: 5_000 })
+          assert.ok(
+            k && k.height <= 41,
+            `${w} × ${h}${offen ? ', Schublade angeheftet' : ''}: Kopf der Bibliothek ${k && Math.round(k.height)} px hoch, eine Zeile sind 40 px`
+          )
+        }
+        await fenster(1366, 768)
+        for (const name of ['Importieren', 'Mehr zur Bibliothek']) {
+          const n = await bibKopf().getByRole('button', { name, exact: true }).count()
+          assert.equal(n, 1, `Knopf „${name}“ im Kopf: ${n}`)
+        }
+        // Ansicht, „Dateien“ und „Ordner“ (oben Import, in der Fußzeile der Medienordner)
+        for (const name of ['Große Kacheln', 'Liste', 'Dateien', 'Ordner']) {
+          const n = await bib().getByRole('button', { name, exact: true }).count()
+          assert.equal(n, 0, `Knopf „${name}“ steht noch ${n}× im Feld`)
+        }
+      }
+    ],
+    [
+      'Bibliothek: „Importieren“ – „Dateien …“ fragt nach mehreren Dateien, „Ordner …“ nach einem Ordner',
+      async () => {
+        await fenster(1366, 768)
+        // Datei-Dialog ersetzen: merken, wonach gefragt wird, nichts wählen
+        await app.evaluate(({ dialog }) => {
+          globalThis.__dialoge = []
+          globalThis.__showOpenDialog ??= dialog.showOpenDialog
+          dialog.showOpenDialog = async (...args) => {
+            globalThis.__dialoge.push(args.at(-1).properties)
+            return { canceled: true, filePaths: [] }
+          }
+        })
+        const dialoge = () => app.evaluate(() => globalThis.__dialoge)
+        const knopf = bibKopf().getByRole('button', { name: 'Importieren', exact: true })
+        try {
+          for (const [i, eintrag] of ['Dateien …', 'Ordner …'].entries()) {
+            await knopf.click({ timeout: 5_000 })
+            await page.getByRole('menuitem', { name: eintrag }).click({ timeout: 5_000 })
+            assert.ok(
+              await waitFor(async () => (await dialoge()).length === i + 1, 5_000),
+              `„${eintrag}“ öffnet keinen Dialog`
+            )
+          }
+          assert.deepEqual(await dialoge(), [['openFile', 'multiSelections'], ['openDirectory']])
+        } finally {
+          await app.evaluate(({ dialog }) => {
+            if (globalThis.__showOpenDialog) dialog.showOpenDialog = globalThis.__showOpenDialog
+          })
+        }
+      }
+    ],
+    [
+      'Bibliothek, 1024 × 600: Die Listen von „Importieren“ und „⋯“ hängen am <body> und liegen ganz im Fenster, obwohl das Feld niedrig ist',
+      async () => {
+        await fenster(1024, 600)
+        for (const [name, letzter] of [
+          ['Importieren', 'Ordner …'],
+          ['Mehr zur Bibliothek', 'Bibliothek leeren …']
+        ]) {
+          await bibKopf().getByRole('button', { name, exact: true }).click({ timeout: 5_000 })
+          const liste = page.getByRole('menu')
+          await liste.waitFor({ timeout: 5_000 })
+          const lage = await liste.evaluate((el) => {
+            const r = el.getBoundingClientRect()
+            return {
+              amBody: el.parentElement === document.body,
+              oben: r.top,
+              unten: r.bottom,
+              links: r.left,
+              rechts: r.right,
+              fenster: [innerWidth, innerHeight]
+            }
+          })
+          assert.ok(lage.amBody, `${name}: Die Liste hängt nicht am <body>`)
+          assert.ok(
+            lage.oben >= 0 &&
+              lage.links >= 0 &&
+              lage.unten <= lage.fenster[1] &&
+              lage.rechts <= lage.fenster[0],
+            `${name}: Liste ragt aus dem Fenster – ${JSON.stringify(lage)}`
+          )
+          // der letzte Eintrag ist zu sehen und klickbar (Probeklick, löst nichts aus)
+          await page.getByRole('menuitem', { name: letzter }).click({ trial: true, timeout: 5_000 })
+          await page.keyboard.press('Escape')
+          await liste.waitFor({ state: 'detached', timeout: 5_000 })
+        }
+      }
+    ],
+    [
+      'Bibliothek: Kacheln nach dem Platz im Feld (groß ab 170 px, klein ab 110 px), Ansicht im Menü „⋯“ mit Häkchen',
+      async () => {
+        const mehr = bibKopf().getByRole('button', { name: 'Mehr zur Bibliothek' })
+        const ansicht = async (name) => {
+          await mehr.click({ timeout: 5_000 })
+          await page.getByRole('menuitemradio', { name }).click({ timeout: 5_000 })
+          await page.getByRole('menu').waitFor({ state: 'detached', timeout: 5_000 })
+        }
+        const gewaehlt = async () => {
+          await mehr.click({ timeout: 5_000 })
+          await page.getByRole('menu').waitFor({ timeout: 5_000 })
+          const an = await page.getByRole('menuitemradio', { checked: true }).allTextContents()
+          await page.keyboard.press('Escape')
+          await page.getByRole('menu').waitFor({ state: 'detached', timeout: 5_000 })
+          return an
+        }
+        const breiten = () =>
+          medien().evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)))
+        // auto-fill: jede Kachel mindestens so breit wie die Vorgabe; passte noch eine daneben
+        // (2 × Vorgabe + Abstand 8 px), wäre es eine Spalte mehr
+        const passt = async (min, wo) => {
+          const b = await breiten()
+          assert.ok(
+            b.length > 0 && b.every((x) => x >= min && x < 2 * min + 8),
+            `${wo}: Breiten ${JSON.stringify(b)}`
+          )
+        }
+        try {
+          // Vorgabe beim Öffnen: große Kacheln
+          await fenster(1366, 768)
+          await passt(170, '1366 × 768, beim Öffnen')
+          // gleiches Fenster, verschieden breites Feld (Schublade) – und ein großes Fenster
+          for (const [w, h, offen] of [
+            [1366, 768, false],
+            [1366, 768, true],
+            [1920, 1080, false]
+          ]) {
+            await fenster(w, h, offen)
+            for (const [name, min] of [
+              ['Große Kacheln', 170],
+              ['Kleine Kacheln', 110]
+            ]) {
+              await ansicht(name)
+              assert.deepEqual(await gewaehlt(), [name], 'Häkchen an der falschen Ansicht')
+              await passt(min, `${w} × ${h}${offen ? ' angeheftet' : ''}, ${name}`)
+            }
+          }
+          await fenster(1366, 768)
+          await ansicht('Liste')
+          assert.deepEqual(await gewaehlt(), ['Liste'])
+          const zeilen = await medien().evaluateAll((els) =>
+            els.map((e) => Math.round(e.getBoundingClientRect().left))
+          )
+          assert.equal(new Set(zeilen).size, 1, `Liste in mehreren Spalten: ${zeilen}`)
+        } finally {
+          if (await mehr.count()) await ansicht('Große Kacheln')
+        }
+      }
+    ],
+    [
+      'Bibliothek: Suche nach einem Titel zeigt genau dieses Medium, ohne Treffer „Kein Medium heißt so“',
+      async () => {
+        await fenster(1366, 768)
+        const lib = await bibliothek()
+        const suche = bib().getByRole('searchbox', { name: 'Bibliothek durchsuchen' })
+        assert.equal(await suche.count(), 1, 'kein Suchfeld in der Bibliothek')
+        const treffer = async (soll, wann) =>
+          assert.ok(
+            await waitFor(async () => (await medien().count()) === soll, 5_000),
+            `${wann}: ${await medien().count()} Medien, erwartet ${soll}`
+          )
+        // Das Suchfeld bleibt oben stehen: ungescrollt deckt es keine Kachel ab, gescrollt klebt es
+        // am oberen Rand des Inhalts – darüber schaut nichts hervor
+        const scrolle = (y) =>
+          page.evaluate((y) => {
+            const el = document.querySelector('[data-testid="feld-bibliothek"] [data-pane-inhalt]')
+            el.scrollTop = y
+          }, y)
+        const lage = () =>
+          page.evaluate(() => {
+            const inhalt = document.querySelector(
+              '[data-testid="feld-bibliothek"] [data-pane-inhalt]'
+            )
+            const block = document.querySelector('[data-testid="bibliothek-suche"]')
+            const b = block?.getBoundingClientRect()
+            return {
+              inhalt: inhalt.getBoundingClientRect().top,
+              block: b ? [b.top, b.bottom] : null,
+              kachel: inhalt.querySelector('[draggable="true"]').getBoundingClientRect().top,
+              scrollTop: inhalt.scrollTop
+            }
+          })
+        await scrolle(0)
+        let l = await lage()
+        assert.ok(l.block && l.kachel >= l.block[1] - 0.5, `deckt Kacheln ab: ${JSON.stringify(l)}`)
+        await scrolle(150)
+        await sleep(100)
+        l = await lage()
+        assert.ok(
+          l.scrollTop > 0 && Math.abs(l.block[0] - l.inhalt) <= 0.5,
+          `gescrollt nicht am oberen Rand: ${JSON.stringify(l)}`
+        )
+        await scrolle(0)
+        try {
+          const award = lib.find((m) => m.title.startsWith('Award Stinger'))
+          assert.ok(award, 'Vorbedingung: „Award Stinger“ in der Bibliothek')
+          await suche.fill(award.title)
+          await treffer(1, `Suche „${award.title}“`)
+          assert.match((await medien().first().textContent()) ?? '', /Award Stinger/)
+          // klein geschrieben, ein Teil des Titels
+          await suche.fill('sponsor')
+          await treffer(2, 'Suche „sponsor“')
+          await suche.fill('Gibt es nicht')
+          await treffer(0, 'Suche ohne Treffer')
+          assert.equal(await bib().getByText('Kein Medium heißt so').count(), 1)
+        } finally {
+          if (await suche.count()) await suche.fill('')
+        }
+        await treffer(lib.length, 'Suche geleert')
+      }
+    ],
+    [
+      'Bibliothek: Dateien darüber ziehen – gestrichelter Rahmen nur, solange sie schweben, auch über dem Kopf; gezogene Medien zeigen ihn nicht',
+      async () => {
+        await fenster(1366, 768)
+        const rahmen = async (soll, wann) =>
+          assert.ok(
+            await waitFor(async () => (await gestrichelt()) === soll, 2_000),
+            `${wann}: ${await gestrichelt()} gestrichelte Rahmen, erwartet ${soll}`
+          )
+        await rahmen(0, 'ohne Ziehen')
+        await ziehUeber('[data-pane-inhalt]', ['dragenter', 'dragover'], 'datei')
+        await rahmen(1, 'Dateien über dem Inhalt')
+        // vom Inhalt auf den Kopf: erst Betreten, dann Verlassen – der Rahmen bleibt
+        await ziehUeber('[data-pane-kopf]', ['dragenter', 'dragover'], 'datei')
+        await ziehUeber('[data-pane-inhalt]', ['dragleave'], 'datei')
+        await rahmen(1, 'Dateien über dem Kopf')
+        await ziehUeber('[data-pane-kopf]', ['dragleave'], 'datei')
+        await rahmen(0, 'nach dem Verlassen')
+        // Fehlt ein Verlassen (Element unter dem Zeiger neu gebaut), endet das Ziehen, wenn eine
+        // Sekunde lang kein dragover kommt. Kommt es wieder, steht der Rahmen – und bleibt beim
+        // Wechsel zwischen zwei Kindern stehen
+        await ziehUeber('[data-pane-inhalt]', ['dragenter', 'dragover'], 'datei')
+        await rahmen(1, 'Dateien über dem Inhalt')
+        await sleep(1_300)
+        await rahmen(0, 'eine Sekunde ohne dragover')
+        await ziehUeber('[data-pane-inhalt]', ['dragover'], 'datei')
+        await rahmen(1, 'wieder dragover')
+        await ziehUeber('[data-pane-kopf]', ['dragenter', 'dragover'], 'datei')
+        await ziehUeber('[data-pane-inhalt]', ['dragleave'], 'datei')
+        await rahmen(1, 'danach vom Inhalt auf den Kopf')
+        await ziehUeber('[data-pane-kopf]', ['dragleave'], 'datei')
+        await rahmen(0, 'danach verlassen')
+        await ziehUeber('[data-pane-inhalt]', ['dragenter', 'dragover'], 'medium')
+        await sleep(300)
+        await rahmen(0, 'ein Medium aus der Bibliothek darüber gezogen')
+        await ziehUeber('[data-pane-inhalt]', ['dragleave'], 'medium')
+        // echt gezogen, am Vorschaubild gepackt: Chromium gäbe ein gezogenes <img> als Datei mit
+        const von = await medien().nth(0).boundingBox({ timeout: 5_000 })
+        const nach = await medien().nth(1).boundingBox({ timeout: 5_000 })
+        await page.mouse.move(von.x + von.width / 2, von.y + von.height / 3)
+        await page.mouse.down()
+        await page.mouse.move(von.x + von.width / 2 + 6, von.y + von.height / 3 + 6, { steps: 4 })
+        await page.mouse.move(nach.x + nach.width / 2, nach.y + nach.height / 3, { steps: 6 })
+        const waehrend = await gestrichelt()
+        await page.mouse.up()
+        assert.equal(waehrend, 0, 'Rahmen, während eine Kachel über die Bibliothek gezogen wird')
+        // Loslassen: Rahmen weg; die Probe liegt nicht auf der Platte, es entsteht kein Auftrag
+        await ziehUeber('[data-pane-inhalt]', ['dragenter', 'dragover', 'drop'], 'datei')
+        await rahmen(0, 'nach dem Loslassen')
+        await sleep(300)
+        assert.deepEqual(await page.evaluate(() => window.api.player.convertList()), [])
+      }
+    ],
+    [
+      'Bibliothek: Import-Liste unten im Feld angeheftet, höchstens drei Aufträge hoch, scrollt in sich; „Erledigte entfernen“ räumt sie weg',
+      async () => {
+        await fenster(1366, 768)
+        // vier Dateien, die keine Medien sind: Ihre Aufträge enden mit Fehler und bleiben stehen
+        const kaputt = [1, 2, 3, 4].map((i) => {
+          const datei = join(clipsDir, `Kaputt ${i}.mp4`)
+          writeFileSync(datei, 'kein Video')
+          return datei
+        })
+        const vorher = (await bibliothek()).length
+        const auftraege = () => page.evaluate(() => window.api.player.convertList())
+        await page.evaluate(
+          ([sources, wall]) => window.api.player.import({ sources, fitMode: 'bars', wall }),
+          [kaputt, WAND]
+        )
+        try {
+          assert.ok(
+            await waitFor(async () => {
+              const l = await auftraege()
+              return l.length === 4 && l.every((j) => j.status === 'error')
+            }, 60_000),
+            `Aufträge: ${JSON.stringify((await auftraege()).map((j) => j.status))}`
+          )
+          const entfernen = bib().getByRole('button', { name: 'Erledigte entfernen' })
+          await entfernen.waitFor({ timeout: 5_000 })
+          // angeheftet: unten im Feld, auch wenn der Inhalt darüber ganz nach unten scrollt
+          for (const wohin of ['unten', 'oben']) {
+            await page.evaluate((wohin) => {
+              const el = document.querySelector(
+                '[data-testid="feld-bibliothek"] [data-pane-inhalt]'
+              )
+              el.scrollTop = wohin === 'unten' ? el.scrollHeight : 0
+            }, wohin)
+            await sleep(200)
+            const lage = await page.evaluate(() => {
+              const feld = document.querySelector('[data-testid="feld-bibliothek"]')
+              const knopf = [...feld.querySelectorAll('button')].find(
+                (b) => b.textContent === 'Erledigte entfernen'
+              )
+              const f = feld.getBoundingClientRect()
+              const k = knopf.getBoundingClientRect()
+              return { feld: [f.top, f.bottom], knopf: [k.top, k.bottom] }
+            })
+            const mitte = (lage.feld[0] + lage.feld[1]) / 2
+            assert.ok(
+              lage.knopf[0] >= mitte && lage.knopf[1] <= lage.feld[1],
+              `Inhalt ${wohin} gescrollt: Import-Liste nicht unten im Feld – ${JSON.stringify(lage)}`
+            )
+          }
+          const liste = await page.getByTestId('import-auftraege').evaluate((el) => {
+            const l = el.getBoundingClientRect()
+            const zeilen = [...el.children].map((z) => z.getBoundingClientRect())
+            return {
+              sh: el.scrollHeight,
+              ch: el.clientHeight,
+              zeilen: zeilen.length,
+              ganz: zeilen.filter((r) => r.top >= l.top - 1 && r.bottom <= l.bottom + 1).length
+            }
+          })
+          assert.equal(liste.zeilen, 4, `Zeilen: ${JSON.stringify(liste)}`)
+          assert.equal(liste.ganz, 3, `ganz sichtbare Aufträge: ${JSON.stringify(liste)}`)
+          assert.ok(liste.sh > liste.ch, `scrollt nicht in sich: ${JSON.stringify(liste)}`)
+          // auch im kleinsten Fenster schneidet kein Feld ab, die Seite scrollt nicht
+          await fenster(1024, 600)
+          keinScrollen(await mass())
+          await fenster(1366, 768)
+          await entfernen.click({ timeout: 5_000 })
+          assert.ok(
+            await waitFor(
+              async () => (await page.getByTestId('import-liste').count()) === 0,
+              5_000
+            ),
+            'Import-Liste bleibt nach „Erledigte entfernen“ stehen'
+          )
+          assert.equal((await bibliothek()).length, vorher, 'Defekte Dateien in der Bibliothek')
+        } finally {
+          await page.evaluate(() => window.api.player.convertClearFinished())
+        }
+      }
+    ],
+    [
+      'Bibliothek: Papierkorb an einem Medium fragt nach – Abbrechen behält es, Löschen entfernt es',
+      async () => {
+        await fenster(1366, 768)
+        const lib = await bibliothek()
+        const opfer = lib.find((m) => m.title.startsWith('Foto 4'))
+        assert.ok(opfer, 'Vorbedingung: „Foto 4“ in der Bibliothek')
+        const kachel = medien().filter({ hasText: opfer.title })
+        const papierkorb = kachel.getByRole('button', { name: /löschen/ })
+        const anzahl = async (soll, wann) => {
+          assert.ok(
+            await waitFor(async () => (await bibliothek()).length === soll, 5_000),
+            `${wann}: ${(await bibliothek()).length} Medien in der Bibliothek, erwartet ${soll}`
+          )
+          assert.ok(
+            await waitFor(async () => (await medien().count()) === soll, 5_000),
+            `${wann}: ${await medien().count()} Medien im Feld, erwartet ${soll}`
+          )
+        }
+        await stubConfirm(app, false)
+        await kachel.hover({ timeout: 5_000 })
+        await papierkorb.click({ timeout: 5_000 })
+        await sleep(600)
+        await anzahl(lib.length, 'nach „Abbrechen“')
+
+        // Bestätigen – die Frage nennt das Medium
+        await app.evaluate(({ dialog }) => {
+          globalThis.__fragen = []
+          dialog.showMessageBox = async (...args) => {
+            globalThis.__fragen.push(args.at(-1))
+            return { response: 0, checkboxChecked: false }
+          }
+        })
+        await kachel.hover({ timeout: 5_000 })
+        await papierkorb.click({ timeout: 5_000 })
+        await anzahl(lib.length - 1, 'nach „Löschen“')
+        assert.ok(!(await bibliothek()).some((m) => m.id === opfer.id), 'falsches Medium gelöscht')
+        const [frage] = await app.evaluate(() => globalThis.__fragen)
+        assert.ok(frage?.message.includes(opfer.title), `Frage: ${JSON.stringify(frage)}`)
+        assert.equal(frage.type, 'warning', 'Rückfrage nicht als Warnung (danger)')
+        await stubConfirm(app, true)
+      }
+    ],
+    [
+      'Bibliothek: „⋯“ – „Alle zur Playlist“, „Medienordner öffnen“, „Bibliothek leeren …“ fragt; leer steht der Hinweis in der Mitte',
+      async () => {
+        await fenster(1366, 768)
+        const mehr = bibKopf().getByRole('button', { name: 'Mehr zur Bibliothek' })
+        const waehle = async (name) => {
+          await mehr.click({ timeout: 5_000 })
+          await page.getByRole('menuitem', { name }).click({ timeout: 5_000 })
+          await page.getByRole('menu').waitFor({ state: 'detached', timeout: 5_000 })
+        }
+        const lib = await bibliothek()
+        await befehl({ type: 'clear' })
+        await waehle('Alle zur Playlist')
+        assert.ok(
+          await waitFor(async () => (await titel()).length === lib.length, 5_000),
+          `Playlist: ${(await titel()).length} Einträge, erwartet ${lib.length}`
+        )
+
+        await app.evaluate(({ shell }) => {
+          globalThis.__ordner = []
+          shell.openPath = async (p) => {
+            globalThis.__ordner.push(p)
+            return ''
+          }
+        })
+        await waehle('Medienordner öffnen')
+        assert.ok(
+          await waitFor(async () => (await app.evaluate(() => globalThis.__ordner)).length === 1),
+          'kein Ordner geöffnet'
+        )
+        const [ordner] = await app.evaluate(() => globalThis.__ordner)
+        assert.ok(ordner.endsWith('player-media'), `geöffnet: ${ordner}`)
+
+        await stubConfirm(app, false)
+        await waehle('Bibliothek leeren …')
+        await sleep(600)
+        assert.equal((await bibliothek()).length, lib.length, 'nach „Abbrechen“ geleert')
+        await stubConfirm(app, true)
+        await waehle('Bibliothek leeren …')
+        assert.ok(
+          await waitFor(async () => (await bibliothek()).length === 0, 10_000),
+          'nach „Leeren“ nicht leer'
+        )
+        assert.ok(await waitFor(async () => (await medien().count()) === 0, 5_000))
+
+        // leer: kein Suchfeld, der Hinweis mitten im Inhalt, nichts zu leeren
+        assert.equal(
+          await bib().getByRole('searchbox').count(),
+          0,
+          'Suchfeld bei leerer Bibliothek'
+        )
+        const hinweis = bib().getByText('Medien hierher ziehen', { exact: false })
+        const h = await hinweis.boundingBox({ timeout: 5_000 })
+        const inhalt = await page
+          .locator('[data-testid="feld-bibliothek"] [data-pane-inhalt]')
+          .boundingBox()
+        const abweichung = Math.abs(h.y + h.height / 2 - (inhalt.y + inhalt.height / 2))
+        assert.ok(abweichung <= 24, `Hinweis ${abweichung} px neben der Mitte`)
+        await mehr.click({ timeout: 5_000 })
+        for (const name of ['Alle zur Playlist', 'Bibliothek leeren …']) {
+          assert.equal(await page.getByRole('menuitem', { name }).isDisabled(), true, name)
+        }
+        await page.keyboard.press('Escape')
       }
     ],
     [
