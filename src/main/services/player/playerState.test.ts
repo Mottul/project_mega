@@ -1,7 +1,8 @@
 // Player-Zustand im main: Wo steht der laufende Eintrag, nachdem die Playlist sich geändert hat?
 // Dasselbe Medium darf mehrfach in der Liste stehen – der laufende Platz muss deshalb aus dem
-// Befehl folgen, nicht aus der Kennung des Mediums (Paket P6 in docs/PLAN.md).
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+// Befehl folgen, nicht aus der Kennung des Mediums (Paket P6 in docs/PLAN.md). Ebenso der bei
+// Zufall vorab gewürfelte Platz für „Danach“ (P7).
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextIndex } from '@shared/player'
 import type { MediaItem, PlayerCommand, PlayerState } from '@shared/types'
 
@@ -203,5 +204,119 @@ describe('laufender Eintrag ohne doppelte Medien', () => {
     player.dropMediaFromPlaylist('C')
     expect(liste()).toBe('A')
     expect(zustand().index).toBe(-1)
+  })
+})
+
+// Bei Zufall würfelt der main den nächsten Platz vorab, damit die Ausgabe genau dieses Medium
+// vorladen kann. Blieb der Platz beim Umsortieren stehen, stand dort ein anderer Eintrag: Die
+// Marke „Danach“ sprang, und die Ausgabe lud ein anderes Medium vor als das schon geladene (P7).
+describe('Zufall: „Danach“ bleibt derselbe Eintrag', () => {
+  // Jeder Wurf nimmt den nächsten festgelegten Wert (Platz = Wert · Anzahl, abgerundet); ein Wurf
+  // darüber hinaus scheitert – „Danach“ darf nicht durch neues Würfeln zufällig stimmen.
+  beforeEach(() => {
+    vi.spyOn(Math, 'random').mockImplementation(() => {
+      throw new Error('unerwartet gewürfelt')
+    })
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  function wuerfle(...werte: number[]): void {
+    for (const wert of werte) vi.mocked(Math.random).mockReturnValueOnce(wert)
+  }
+
+  /** Zufall einschalten, der erste Wurf ergibt „Danach“ */
+  function mitZufall(wert: number): void {
+    wuerfle(wert)
+    befehl({ type: 'setShuffle', shuffle: true })
+  }
+
+  /** „Danach“, wie Playlist und Ausgabe es nehmen: Platz und Kennung, etwa „2 D“ */
+  function danach(): string {
+    const i = nextIndex(zustand())
+    return `${i} ${zustand().playlist[i]?.id}`
+  }
+
+  it('A läuft, „Danach“ D: D auf Platz 1 ziehen, dann B vorn einfügen – bleibt D', () => {
+    starte('A B C D', 0)
+    mitZufall(0.8) // 0,8 · 4 → Platz 3
+    expect(danach()).toBe('3 D')
+    befehl({ type: 'move', from: 3, to: 1 })
+    expect(liste()).toBe('A D B C')
+    expect(danach()).toBe('1 D')
+    befehl({ type: 'add', mediaIds: ['B'], at: 0 })
+    expect(liste()).toBe('B A D B C')
+    expect(zustand().index).toBe(1)
+    expect(danach()).toBe('2 D')
+  })
+
+  it('den laufenden hinter den gewürfelten ziehen – „Danach“ rückt eins vor', () => {
+    starte('A B C D', 0)
+    mitZufall(0.8)
+    befehl({ type: 'move', from: 0, to: 3 })
+    expect(liste()).toBe('B C D A')
+    expect(zustand().index).toBe(3)
+    expect(danach()).toBe('2 D')
+  })
+
+  it('davor entfernen: minus eins', () => {
+    starte('A B C D X', 0)
+    mitZufall(0.7) // 0,7 · 5 → Platz 3
+    expect(danach()).toBe('3 D')
+    befehl({ type: 'remove', index: 1 })
+    expect(liste()).toBe('A C D X')
+    expect(danach()).toBe('2 D')
+  })
+
+  it('den gewürfelten entfernen: neu gewürfelt, nie auf den laufenden Platz', () => {
+    starte('A B C D', 2)
+    mitZufall(0.1) // 0,1 · 4 → Platz 0
+    expect(danach()).toBe('0 A')
+    // Der laufende C rückt auf Platz 1: Der erste Wurf träfe ihn und wird verworfen
+    wuerfle(0.5, 0.9) // 0,5 · 3 → Platz 1, 0,9 · 3 → Platz 2
+    befehl({ type: 'remove', index: 0 })
+    expect(liste()).toBe('B C D')
+    expect(zustand().index).toBe(1)
+    expect(danach()).toBe('2 D')
+  })
+
+  it('den laufenden entfernen, der gewürfelte rückt nach und läuft: neu gewürfelt', () => {
+    starte('A B C D', 1)
+    mitZufall(0.6) // 0,6 · 4 → Platz 2
+    expect(danach()).toBe('2 C')
+    wuerfle(0.4, 0) // 0,4 · 3 → Platz 1 (jetzt der laufende C, verworfen), dann Platz 0
+    befehl({ type: 'remove', index: 1 })
+    expect(liste()).toBe('A C D')
+    expect(zustand().index).toBe(1)
+    expect(danach()).toBe('0 A')
+  })
+
+  it('refreshPlaylist: Medium davor fehlt in der Bibliothek – minus die Entfernten davor', () => {
+    starte('A B C D X', 0)
+    mitZufall(0.7)
+    bibliothek.delete('B')
+    player.refreshPlaylist()
+    expect(liste()).toBe('A C D X')
+    expect(danach()).toBe('2 D')
+  })
+
+  it('dropMediaFromPlaylist: das gewürfelte Medium gelöscht – neu gewürfelt', () => {
+    starte('A B C D X', 0)
+    mitZufall(0.5) // 0,5 · 5 → Platz 2
+    expect(danach()).toBe('2 C')
+    wuerfle(0.1, 0.9) // 0,1 · 4 → Platz 0 (der laufende, verworfen), 0,9 · 4 → Platz 3
+    player.dropMediaFromPlaylist('C')
+    expect(liste()).toBe('A B D X')
+    expect(danach()).toBe('3 X')
+  })
+
+  it('Playlist ausgetauscht: neu gewürfelt, nicht der alte Platz', () => {
+    starte('A B', 0)
+    mitZufall(0.6) // 0,6 · 2 → Platz 1 (bei zwei Einträgen immer)
+    expect(danach()).toBe('1 B')
+    wuerfle(0.8) // 0,8 · 4 → Platz 3
+    befehl({ type: 'replace', mediaIds: ['C', 'D', 'X', 'A'] })
+    expect(danach()).toBe('3 A')
   })
 })

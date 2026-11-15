@@ -43,10 +43,11 @@ export function getPlayerState(): PlayerState {
   return state
 }
 
-// Haelt den vorab gewuerfelten Shuffle-Index gueltig: nach Konsum (ended ->
-// goToIndex), Playlist-Aenderungen oder Shuffle-Umschalten wird neu gewuerfelt.
-// Ein noch gueltiger Wert (in Range, != aktueller) bleibt bewusst stehen, damit
-// das bereits vorgeladene Medium nicht umsonst geladen wurde.
+// Hält den vorab gewürfelten Shuffle-Index gültig: nach Konsum (ended -> goToIndex) oder
+// Shuffle-Umschalten wird neu gewürfelt. Playlist-Änderungen führen ihn mit wie den laufenden
+// Platz (siehe unten); ist der gewürfelte Eintrag dabei weggefallen, steht er auf −1 und wird hier
+// neu gewürfelt. Ein noch gültiger Wert (in Range, != aktueller) bleibt bewusst stehen, damit das
+// bereits vorgeladene Medium nicht umsonst geladen wurde.
 function normalizeShuffleNext(): void {
   if (!state.shuffle || state.loop === 'one') {
     state.shuffleNext = -1
@@ -72,11 +73,15 @@ function emitState(): void {
 // mehrfach in der Playlist stehen, die Suche nach der Kennung landete auf dem ersten Vorkommen –
 // Markierung und „Danach“ stimmten nicht mehr, das zweite A lief ein zweites Mal (P6). Nichts
 // gewählt (−1) bleibt nichts gewählt.
+// Mit derselben Rechnung der vorab gewürfelte Platz (`shuffleNext`): Blieb er stehen, stand dort
+// nach dem Umsortieren ein anderer Eintrag – „Danach“ sprang, und die Ausgabe lud ein anderes
+// Medium vor als das schon geladene (P7). Fällt der gewürfelte Eintrag weg, wird neu gewürfelt.
 
-/** Platz des laufenden Eintrags, nachdem der Eintrag `from` nach `to` gezogen wurde. */
+/** Platz eines Eintrags (laufend oder gewürfelt), nachdem der Eintrag `from` nach `to` gezogen
+ *  wurde. */
 function indexAfterMove(i: number, from: number, to: number): number {
   if (i < 0) return i
-  if (i === from) return to // der laufende selbst
+  if (i === from) return to // er selbst wurde gezogen
   if (from < i && to >= i) return i - 1 // von davor nach dahinter
   if (from > i && to <= i) return i + 1 // von dahinter nach davor
   return i
@@ -84,13 +89,18 @@ function indexAfterMove(i: number, from: number, to: number): number {
 
 /** Playlist auf die Einträge kürzen, die es noch gibt (`null` = Medium weg). Jeder entfernte
  *  Eintrag vor dem laufenden rückt ihn eins nach vorn; fällt der laufende selbst weg, rückt der
- *  folgende an seinen Platz (am Ende der davor). Ist nichts mehr übrig, steht der Player. */
+ *  folgende an seinen Platz (am Ende der davor). Ist nichts mehr übrig, steht der Player. Der
+ *  gewürfelte rückt ebenso vor; fällt er selbst weg, wird neu gewürfelt. */
 function keepEntries(entries: (MediaItem | null)[]): void {
-  const removedBefore = entries.slice(0, Math.max(0, state.index)).filter((m) => !m).length
+  const removedBefore = (i: number): number =>
+    entries.slice(0, Math.max(0, i)).filter((m) => !m).length
+  const sn = state.shuffleNext
+  state.shuffleNext = sn >= 0 && entries[sn] ? sn - removedBefore(sn) : -1
+  const indexShift = removedBefore(state.index)
   state.playlist = entries.filter((m): m is MediaItem => m !== null)
   if (state.playlist.length === 0) goToIndex(-1, false)
   else if (state.index >= 0) {
-    state.index = Math.min(state.index - removedBefore, state.playlist.length - 1)
+    state.index = Math.min(state.index - indexShift, state.playlist.length - 1)
   }
 }
 
@@ -144,6 +154,7 @@ export function applyCommand(cmd: PlayerCommand): void {
           ? state.playlist.length
           : Math.max(0, Math.min(cmd.at, state.playlist.length))
       state.playlist.splice(at, 0, ...items)
+      if (at <= state.shuffleNext) state.shuffleNext += items.length // davor eingefügt
       // Erstes Medium in eine leere Playlist -> sofort abspielen (kein manuelles Play nötig).
       if (state.index < 0) goToIndex(0, true)
       else if (at <= state.index) state.index += items.length // davor eingefügt
@@ -154,6 +165,7 @@ export function applyCommand(cmd: PlayerCommand): void {
       // kein Zwischenschritt über eine leere Liste -> keine Idle-Blende, kein Pause).
       const items = cmd.mediaIds.map(getMedia).filter((m): m is MediaItem => m !== null)
       state.playlist = items
+      state.shuffleNext = -1 // der gewürfelte Eintrag stand in der alten Liste: neu würfeln
       goToIndex(items.length ? 0 : -1, items.length > 0)
       break
     }
@@ -161,6 +173,9 @@ export function applyCommand(cmd: PlayerCommand): void {
       if (cmd.index < 0 || cmd.index >= state.playlist.length) break
       const removingCurrent = cmd.index === state.index
       state.playlist.splice(cmd.index, 1)
+      // der gewürfelte selbst entfernt: neu würfeln; davor entfernt: minus eins
+      if (cmd.index === state.shuffleNext) state.shuffleNext = -1
+      else if (cmd.index < state.shuffleNext) state.shuffleNext--
       if (state.playlist.length === 0) {
         goToIndex(-1, false)
       } else if (removingCurrent) {
@@ -177,6 +192,7 @@ export function applyCommand(cmd: PlayerCommand): void {
       const [m] = state.playlist.splice(from, 1)
       state.playlist.splice(to, 0, m)
       state.index = indexAfterMove(state.index, from, to)
+      state.shuffleNext = indexAfterMove(state.shuffleNext, from, to)
       break
     }
     case 'clear':

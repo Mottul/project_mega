@@ -156,7 +156,9 @@ Playlist-Player für LED-Wände und Beamer.
   hat. Medien aus der Bibliothek auf eine Zeile ziehen setzt sie davor ein, auf die freie Fläche
   ans Ende. Dasselbe Medium darf mehrmals in der Liste stehen: Beim Umsortieren, Einfügen und
   Entfernen – auch wenn ein Medium aus der Bibliothek verschwindet – bleibt ▶ an dem Eintrag, der
-  gerade läuft.
+  gerade läuft. Ebenso bleibt „Danach“ bei Zufall an dem gewürfelten Eintrag, den die Ausgabe
+  schon vorgeladen hat; fällt er selbst weg oder wird eine gespeicherte Playlist geladen, wird neu
+  gewürfelt.
 - **Bühne:** unter der Vorschau der Titel mit Maßen und Einpass-Art, rechts daneben groß die
   **Restzeit** („−0:48“; bei Bildern die restliche Standzeit, grau, solange pausiert). Darunter
   Suchleiste und Transport: links der Ton – **„Stumm“** steht in Warnfarbe da, solange stumm
