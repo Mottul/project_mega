@@ -1,30 +1,24 @@
 import { useState } from 'react'
 import { CalcPage, NumField, Readout, SectionCard, parseNum, ReadoutGrid } from '../_calc/ui'
+import { dmxAddress, dmxBinary, dmxSwitches, dmxToggle, switchValue } from './math'
 
-// DMX-Startadresse <-> Dip-Schalter. Konvention: Schalter 1..9 bilden die Adresse
-// binär ab, wobei der Binärwert = Adresse − 1 ist (Adresse 1 = alle Schalter aus).
-// Schalter 1 = Wert 1 (LSB) ... Schalter 9 = Wert 256 (MSB) -> Bereich 1..512.
-
-const SWITCHES = 9
+// DMX-Startadresse <-> Dip-Schalter. Schalter 1 … 9 bilden Adresse − 1 binär ab (Adresse 1 =
+// alle aus); die Umrechnung steht in math.ts.
 
 export function DmxAddress(): JSX.Element {
   const [addrRaw, setAddrRaw] = useState('1')
 
-  const parsed = parseNum(addrRaw)
-  const addr = parsed == null ? null : Math.min(512, Math.max(1, Math.round(parsed)))
-  const value = addr == null ? null : addr - 1 // 0..511
+  const addr = dmxAddress(parseNum(addrRaw))
 
   function setAddr(n: number): void {
-    setAddrRaw(String(Math.min(512, Math.max(1, Math.round(n)))))
+    setAddrRaw(String(dmxAddress(n)))
   }
 
   function toggle(i: number): void {
-    const base = value ?? 0
-    setAddr((base ^ (1 << i)) + 1)
+    setAddr(dmxToggle(addr, i))
   }
 
-  const bits = Array.from({ length: SWITCHES }, (_, i) => (value != null ? (value >> i) & 1 : 0))
-  const binary = bits.slice().reverse().join('') // MSB..LSB für die Anzeige
+  const bits = dmxSwitches(addr)
 
   return (
     <CalcPage>
@@ -56,7 +50,7 @@ export function DmxAddress(): JSX.Element {
               type="button"
               onClick={() => toggle(i)}
               className="flex flex-col items-center gap-1"
-              title={`Schalter ${i + 1} · Wert ${1 << i}`}
+              title={`Schalter ${i + 1} · Wert ${switchValue(i)}`}
             >
               <span className="text-[10px] text-muted-foreground">{i + 1}</span>
               <span
@@ -70,14 +64,16 @@ export function DmxAddress(): JSX.Element {
                   }`}
                 />
               </span>
-              <span className="text-[10px] tabular-nums text-muted-foreground">{1 << i}</span>
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {switchValue(i)}
+              </span>
             </button>
           ))}
         </div>
 
         <ReadoutGrid>
           <Readout label="Adresse" value={addr != null ? String(addr) : ''} big accent />
-          <Readout label="Binär (Schalter 9 → 1)" value={addr != null ? binary : ''} />
+          <Readout label="Binär (Schalter 9 → 1)" value={dmxBinary(addr) ?? ''} />
         </ReadoutGrid>
       </SectionCard>
     </CalcPage>

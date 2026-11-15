@@ -64,7 +64,11 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      einer Liste; `wrap` für mehr, die man im Betrieb oft umschaltet), `RangeField` (Schieber mit
      Wert, darunter z. B. `QuickPick` als Schnellwahl); Ergebnisse als `Readout` (mehrere in
      `ReadoutGrid` = Kacheln, zweite Einheit per `sub`), Warnungen als `Alert`; Felder, die sich
-     gegenseitig berechnen, über `useLinkedFields` (nie eigene bind-Funktionen). Ein Feld, das an
+     gegenseitig berechnen, über `useLinkedFields` (nie eigene bind-Funktionen). **Gerechnet wird
+     im Rechenkern** `math.ts` neben der Komponente, mit `math.test.ts` (Vorbild
+     `tools/rigging/math.ts`): Zahlen hinein, Zahlen oder `null` heraus, Entscheidungen wie
+     Warnstufen inklusive; die Komponente liest nur Text (`parseNum`) und zeigt an (`fmt`,
+     `trimNum`) – keine Formel in der `.tsx`. Ein Feld, das an
      einen Store gebunden ist, als `NumberField` in einem `FieldRow` (übernimmt erst bei Enter oder
      Verlassen; `NumField` begrenzte schon beim Tippen). Läuft das Werkzeug (misst, spielt):
      `RunButton` für Start und Stopp, `useWakeLock(läuft)` hält den Handy-Bildschirm an, und in

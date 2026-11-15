@@ -1,20 +1,15 @@
 import { useState } from 'react'
 import { CalcPage, NumField, Readout, ReadoutGrid, SectionCard, fmt, parseNum } from '../_calc/ui'
 import { Alert } from '@renderer/components/ui/alert'
+import { bridle, kgToKn, trussLoads } from './math'
 
-// Rigging-Last: zwei Alltagsfälle.
-// 1) Traverse auf zwei Hängepunkten (einfacher Träger): Auflagerkräfte aus
-//    Punktlast-Position + Eigengewicht. A = F·(L−a)/L + w·L/2, B = F·a/L + w·L/2.
-// 2) Bridle (zweisträngiges Anschlagmittel): Kraft je Strang = F / (2·cosβ),
-//    β aus Höhe und Punktabstand. Der Faktor 1/cosβ explodiert bei flachen
-//    Winkeln -> Warnstufen ab 45°/60°.
-// Richtwerte OHNE Dynamik-/Sicherheitsfaktoren – ersetzt keinen Sachkundigen.
-
-const G = 9.81
+// Rigging-Last: zwei Alltagsfälle – Traverse auf zwei Hängepunkten und Bridle mit zwei Strängen
+// (Formeln und Warnstufen in math.ts). Richtwerte OHNE Dynamik-/Sicherheitsfaktoren – ersetzt
+// keinen Sachkundigen.
 
 /** kg -> kN mit Einheit (zweite Angabe neben dem kg-Wert) */
 function kn(kg: number | null): string {
-  return kg == null ? '' : `${fmt((kg * G) / 1000, 2)} kN`
+  return kg == null ? '' : `${fmt(kgToKn(kg), 2)} kN`
 }
 
 export function Rigging(): JSX.Element {
@@ -29,26 +24,17 @@ export function Rigging(): JSX.Element {
   const [heightRaw, setHeightRaw] = useState('2')
   const [widthRaw, setWidthRaw] = useState('4')
 
-  const L = parseNum(spanRaw)
-  const aPos = parseNum(posRaw)
-  const F = parseNum(loadRaw)
-  const w = parseNum(ownRaw) ?? 0
-
-  const valid = L != null && L > 0 && aPos != null && aPos >= 0 && aPos <= L && F != null && F >= 0
-  const own = valid ? (w * L!) / 2 : null
-  const fA = valid ? (F! * (L! - aPos!)) / L! + own! : null
-  const fB = valid ? (F! * aPos!) / L! + own! : null
-
-  const bF = parseNum(bLoadRaw)
-  const h = parseNum(heightRaw)
-  const b = parseNum(widthRaw)
-  const bValid = bF != null && bF > 0 && h != null && h > 0 && b != null && b >= 0
-  const beta = bValid ? Math.atan(b! / 2 / h!) : null // Winkel von der Vertikalen
-  const betaDeg = beta != null ? (beta * 180) / Math.PI : null
-  const factor = beta != null ? 1 / Math.cos(beta) : null
-  const legForce = bValid && factor != null ? (bF! / 2) * factor : null
-  const legLen = bValid ? Math.hypot(h!, b! / 2) : null
-  const level = betaDeg == null ? null : betaDeg >= 60 ? 'rot' : betaDeg >= 45 ? 'gelb' : 'ok'
+  const { fA, fB, outside } = trussLoads(
+    parseNum(spanRaw),
+    parseNum(posRaw),
+    parseNum(loadRaw),
+    parseNum(ownRaw)
+  )
+  const { betaDeg, spreadDeg, factor, legForce, legLen, level } = bridle(
+    parseNum(bLoadRaw),
+    parseNum(heightRaw),
+    parseNum(widthRaw)
+  )
 
   return (
     <CalcPage note="Statische Richtwerte ohne Dynamik-, Sicherheits- und Anschlagmittel-Faktoren – Auslegung und Abnahme gehören in die Hände eines Sachkundigen (DGUV V 17/18, SQ Q2).">
@@ -67,9 +53,7 @@ export function Rigging(): JSX.Element {
           value={ownRaw}
           onChange={setOwnRaw}
         />
-        {L != null && aPos != null && aPos > L && (
-          <Alert tone="danger">Die Lastposition liegt außerhalb der Spannweite.</Alert>
-        )}
+        {outside && <Alert tone="danger">Die Lastposition liegt außerhalb der Spannweite.</Alert>}
         <ReadoutGrid>
           <Readout label="Punkt A" value={fmt(fA, 1)} unit="kg" sub={kn(fA)} big accent />
           <Readout label="Punkt B" value={fmt(fB, 1)} unit="kg" sub={kn(fB)} big accent />
@@ -109,7 +93,7 @@ export function Rigging(): JSX.Element {
           <Readout
             label="Spreizwinkel"
             hint="Winkel zwischen den beiden Strängen."
-            value={fmt(betaDeg != null ? betaDeg * 2 : null, 1)}
+            value={fmt(spreadDeg, 1)}
             unit="°"
           />
           <Readout

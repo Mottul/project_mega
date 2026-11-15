@@ -137,6 +137,21 @@ auf einer Kachel, die nach dem letzten Klick ihre Hover-Leiste noch ausblendete 
 Übergänge abwarten). **Hat das Werkzeug keinen E2E-Test, zuerst einen schreiben** und gegen den
 alten Stand grün bekommen (so entstand `e2e/osc.mjs`); danach die E2E des Werkzeugs und alle.
 
+**Schneller, ohne Build – Rechnung aus der Komponente lösen** (Rechner, K1 im November 2026):
+
+- **HTML vorher/nachher:** Ein Wegwerf-Test rendert die Komponente mit `renderToStaticMarkup`
+  aus `react-dom/server` – das geht in Vitest ohne DOM, solange beim Rendern nichts vom Browser
+  gebraucht wird (`localStorage`, `window`) – und schreibt das HTML in eine Datei außerhalb des
+  Repos; vor und nach dem Umbau, dann `diff -r`. Zeigt nur den Auslieferungszustand.
+- **Alter gegen neuen Code:** Die Rechnung aus HEAD wörtlich in einen zweiten Wegwerf-Test
+  kopieren und über ein paar tausend Eingaben (feste Fälle, Ränder und Zufall mit festem
+  Startwert) mit dem neuen Modul vergleichen – `toStrictEqual`, also bitgleich, dazu die
+  angezeigten Texte über `fmt`/`trimNum`. Mitzählen, wie oft jeder Zweig getroffen wurde.
+  Rechenwege dafür in derselben Reihenfolge übernehmen (`(F * (L - a)) / L`, nicht umgestellt)
+  und Bedingungen in derselben Form (`x > 0`, nicht verneint – bei `NaN` verhalten sich beide
+  anders).
+- Beide Tests vor dem Commit löschen.
+
 ## Abschluss
 
 `/abschluss-check` mit vollem `npm test` und `npm run e2e` (Umzüge in main betreffen Fenster,

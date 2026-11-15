@@ -10,12 +10,10 @@ import {
   ReadoutGrid,
   useLinkedFields
 } from '../_calc/ui'
+import { delayFrom, speedOfSound, splAtDistance, type DelayField } from './math'
 
-// Audio-Delay (Lautsprecher-Laufzeit) & SPL über Distanz.
-// Schallgeschwindigkeit temperaturabhängig: c = 331.3 + 0.606·T (m/s).
-// Pegel im Freifeld: −6 dB je Abstandsverdopplung (Inverse-Square).
-
-type DelayField = 'dist' | 'delay'
+// Audio-Delay (Lautsprecher-Laufzeit) & SPL über Distanz. Die Formeln (Schallgeschwindigkeit
+// nach Temperatur, Abstandsgesetz) stehen in math.ts.
 
 export function AudioDelay(): JSX.Element {
   const [tempRaw, setTempRaw] = useState('20')
@@ -25,31 +23,9 @@ export function AudioDelay(): JSX.Element {
   const [dRefRaw, setDRefRaw] = useState('1')
   const [dTgtRaw, setDTgtRaw] = useState('10')
 
-  const tParsed = parseNum(tempRaw)
-  const c = 331.3 + 0.606 * (tParsed == null ? 20 : tParsed) // m/s
-
-  const base = parseNum(delay.raw)
-  let dist: number | null = null
-  let delayMs: number | null = null
-  if (base != null && base >= 0) {
-    if (delay.driver === 'dist') {
-      dist = base
-      delayMs = (base / c) * 1000
-    } else {
-      delayMs = base
-      dist = (base / 1000) * c
-    }
-  }
-  const samples48 = delayMs == null ? null : (delayMs / 1000) * 48000
-
-  // Pegel über Distanz.
-  const spl = parseNum(splRaw)
-  const dRef = parseNum(dRefRaw)
-  const dTgt = parseNum(dTgtRaw)
-  const splTarget =
-    spl != null && dRef != null && dRef > 0 && dTgt != null && dTgt > 0
-      ? spl - 20 * Math.log10(dTgt / dRef)
-      : null
+  const c = speedOfSound(parseNum(tempRaw)) // m/s
+  const { dist, delayMs, samples48 } = delayFrom(delay.driver, parseNum(delay.raw), c)
+  const splTarget = splAtDistance(parseNum(splRaw), parseNum(dRefRaw), parseNum(dTgtRaw))
 
   return (
     <CalcPage>

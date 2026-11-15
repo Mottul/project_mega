@@ -1,30 +1,12 @@
 import { CalcPage, NumField, SectionCard, parseNum, trimNum, useLinkedFields } from '../_calc/ui'
+import { circleFrom, type CircleField } from './math'
 
 // Kreisrechner: vier verknüpfte Felder (Durchmesser, Radius, Umfang, Fläche).
-// Das zuletzt bearbeitete Feld ist die Quelle; die übrigen werden daraus berechnet.
-type Field = 'd' | 'r' | 'c' | 'a'
-const TAU = Math.PI * 2
+// Das zuletzt bearbeitete Feld ist die Quelle; die übrigen rechnet math.ts daraus.
 
 export function CircleCalc(): JSX.Element {
-  const { driver, raw, bind } = useLinkedFields<Field>('d', '1')
-
-  const base = parseNum(raw)
-  const r =
-    base == null || base < 0
-      ? null
-      : driver === 'd'
-        ? base / 2
-        : driver === 'r'
-          ? base
-          : driver === 'c'
-            ? base / TAU
-            : Math.sqrt(base / Math.PI) // aus Fläche
-  const vals: Record<Field, number | null> = {
-    d: r == null ? null : r * 2,
-    r,
-    c: r == null ? null : TAU * r,
-    a: r == null ? null : Math.PI * r * r
-  }
+  const { driver, raw, bind } = useLinkedFields<CircleField>('d', '1')
+  const vals = circleFrom(driver, parseNum(raw))
 
   return (
     <CalcPage>
