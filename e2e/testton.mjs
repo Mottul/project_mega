@@ -207,13 +207,28 @@ try {
       async () => {
         needAudio()
         await signalSelect().selectOption('ident')
-        // Zyklus ab dem Wechsel: links Pause bei 4,0 s, rechts bei 4,5 und 5,0 s. Gemessen wird
-        // von 3,8 bis 6,8 s – beide Grenzen liegen sicher im Ton, nicht in einer Pause.
-        await sleep(3800)
-        const rec = await tap('record', 3000, 20, 512)
-        const left = silentRuns(rec.map((x) => x[1]))
-        const right = silentRuns(rec.map((x) => x[2]))
-        assert.deepEqual({ left, right }, { left: 1, right: 2 })
+        const t0 = Date.now()
+        // Zyklus ab dem Wechsel, alle 4 s: links Pause bei 4,0 s, rechts bei 4,5 und 5,0 s.
+        // Gemessen wird von 3,8 bis 6,8 s – beide Grenzen liegen sicher im Ton, nicht in einer
+        // Pause. Hängt die Seite kurz (langsamer CI-Rechner), fehlt in der Aufnahme eine Pause,
+        // oder zwei laufen zusammen (macOS-Runner, 15.11.2026: rechts 1 statt 2) – dann einmal
+        // den nächsten Zyklus messen. Vertauschte oder fehlende Pausen zeigen sich in beiden.
+        const zyklus = async (k) => {
+          await sleep(Math.max(0, t0 + 3800 + k * 4000 - Date.now()))
+          const rec = await tap('record', 3000, 20, 512)
+          return {
+            left: silentRuns(rec.map((x) => x[1])),
+            right: silentRuns(rec.map((x) => x[2]))
+          }
+        }
+        let pausen = await zyklus(0)
+        if (pausen.left !== 1 || pausen.right !== 2) {
+          console.log(
+            `    erster Zyklus gestört (links ${pausen.left}, rechts ${pausen.right}) – der nächste`
+          )
+          pausen = await zyklus(Math.ceil((Date.now() - t0 - 3800) / 4000))
+        }
+        assert.deepEqual(pausen, { left: 1, right: 2 })
       }
     ],
     [
