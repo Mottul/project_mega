@@ -2,6 +2,7 @@
 // Dasselbe Medium darf mehrfach in der Liste stehen – der laufende Platz muss deshalb aus dem
 // Befehl folgen, nicht aus der Kennung des Mediums (Paket P6 in docs/PLAN.md). Ebenso der bei
 // Zufall vorab gewürfelte Platz für „Danach“ (P7) – und fällt der laufende weg, startet er (P8).
+// Ohne Zufall geht es am Ende der Liste weiter wie bei ⏭ (P9).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { nextIndex } from '@shared/player'
 import type { MediaItem, PlayerCommand, PlayerState } from '@shared/types'
@@ -179,8 +180,9 @@ describe('laufender Eintrag ohne doppelte Medien', () => {
     expect(zustand().seekSeq).toBe(seek + 1)
   })
 
-  it('das laufende Medium als letztes gelöscht: der davor wird gewählt', () => {
+  it('mit Loop „Eines“ das laufende Medium als letztes gelöscht: der davor wird gewählt', () => {
     starte('A B C', 2)
+    befehl({ type: 'setLoop', loop: 'one' }) // sonst „Danach“ wie bei ⏭, siehe unten (P9)
     player.dropMediaFromPlaylist('C')
     expect(liste()).toBe('A B')
     expect(zustand().index).toBe(1)
@@ -204,6 +206,77 @@ describe('laufender Eintrag ohne doppelte Medien', () => {
     player.dropMediaFromPlaylist('C')
     expect(liste()).toBe('A')
     expect(zustand().index).toBe(-1)
+  })
+})
+
+// Fällt ohne Zufall der letzte, laufende Eintrag weg, gibt es keinen, der nachrückt. Dann startete
+// der Eintrag davor, obwohl Bühne und Playlist etwas anderes als „Danach“ zeigten: mit Loop „Alle“
+// den ersten (die Ausgabe hatte ihn schon vorgeladen), mit Loop „Aus“ „Ende“. Jetzt geht es weiter
+// wie bei ⏭ (P9, Entscheidung vom 15.11.2026).
+describe('ohne Zufall: der letzte, laufende Eintrag fällt weg – weiter wie bei ⏭', () => {
+  /** „Danach“, wie Bühne und Playlist es zeigen: Platz und Kennung, „Ende“ ohne */
+  function danach(): string {
+    const i = nextIndex(zustand())
+    return i < 0 ? 'Ende' : `${i} ${zustand().playlist[i].id}`
+  }
+
+  it('Loop „Alle“: ✕ an D startet A, den „Danach“ angekündigt hat', () => {
+    starte('A B C D', 3)
+    expect(zustand().loop).toBe('all') // ab Werk
+    expect(danach()).toBe('0 A')
+    const seek = zustand().seekSeq
+    befehl({ type: 'remove', index: 3 })
+    expect(liste()).toBe('A B C')
+    expect(zustand().index).toBe(0)
+    expect(zustand().playing).toBe(true)
+    expect(zustand().seekSeq).toBe(seek + 1) // die Ausgabe startet A von vorn
+    expect(danach()).toBe('1 B')
+  })
+
+  it('Loop „Aus“: ✕ an D hält den Player an – „Danach“ war „Ende“', () => {
+    starte('A B C D', 3)
+    befehl({ type: 'setLoop', loop: 'none' })
+    expect(danach()).toBe('Ende')
+    befehl({ type: 'remove', index: 3 })
+    expect(liste()).toBe('A B C')
+    expect(zustand().index).toBe(-1) // nichts gewählt: die Ausgabe zeigt das Idle-Bild
+    expect(zustand().playing).toBe(false)
+  })
+
+  it('Loop „Alle“, das Medium von D aus der Bibliothek gelöscht: A startet', () => {
+    starte('A B C D', 3)
+    player.dropMediaFromPlaylist('D')
+    expect(liste()).toBe('A B C')
+    expect(zustand().index).toBe(0)
+    expect(zustand().playing).toBe(true)
+  })
+
+  it('Loop „Aus“, das Medium von D aus der Bibliothek gelöscht: der Player hält an', () => {
+    starte('A B C D', 3)
+    befehl({ type: 'setLoop', loop: 'none' })
+    player.dropMediaFromPlaylist('D')
+    expect(liste()).toBe('A B C')
+    expect(zustand().index).toBe(-1)
+    expect(zustand().playing).toBe(false)
+  })
+
+  it('refreshPlaylist: der laufende C und alles dahinter fehlen – Loop „Alle“ startet A', () => {
+    starte('A B C D', 2)
+    bibliothek.delete('C')
+    bibliothek.delete('D')
+    player.refreshPlaylist()
+    expect(liste()).toBe('A B')
+    expect(zustand().index).toBe(0)
+  })
+
+  it('Loop „Eines“: „Danach“ war D selbst – ✕ an D startet C davor, wie bisher', () => {
+    starte('A B C D', 3)
+    befehl({ type: 'setLoop', loop: 'one' })
+    expect(danach()).toBe('3 D')
+    befehl({ type: 'remove', index: 3 })
+    expect(liste()).toBe('A B C')
+    expect(zustand().index).toBe(2)
+    expect(zustand().playing).toBe(true)
   })
 })
 

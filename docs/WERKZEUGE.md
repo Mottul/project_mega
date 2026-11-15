@@ -159,8 +159,10 @@ Playlist-Player für LED-Wände und Beamer.
   gerade läuft. Ebenso bleibt „Danach“ bei Zufall an dem gewürfelten Eintrag, den die Ausgabe
   schon vorgeladen hat; fällt er selbst weg oder wird eine gespeicherte Playlist geladen, wird neu
   gewürfelt. Wird der laufende Eintrag entfernt (✕ oder sein Medium aus der Bibliothek gelöscht),
-  geht es bei Zufall mit „Danach“ weiter wie bei ⏭, dann wird neu gewürfelt; ohne Zufall und mit
-  Loop „Eines“ mit dem Eintrag, der an seinen Platz rückt (am Ende der Liste mit dem davor).
+  geht es mit „Danach“ weiter wie bei ⏭: ohne Zufall mit dem Eintrag, der an seinen Platz rückt,
+  am Ende der Liste mit Loop „Alle“ mit dem ersten, mit Loop „Aus“ hält der Player an (nichts mehr
+  gewählt, die Ausgabe zeigt das Idle-Bild); bei Zufall mit dem gewürfelten, dann wird neu
+  gewürfelt. Mit Loop „Eines“ rückt der folgende nach, am Ende der Liste der davor.
 - **Bühne:** unter der Vorschau der Titel mit Maßen und Einpass-Art, rechts daneben groß die
   **Restzeit** („−0:48“; bei Bildern die restliche Standzeit, grau, solange pausiert). Darunter
   Suchleiste und Transport: links der Ton – **„Stumm“** steht in Warnfarbe da, solange stumm

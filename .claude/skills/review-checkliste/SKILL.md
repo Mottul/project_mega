@@ -74,12 +74,16 @@ Zusätzlich gilt der allgemeine `/code-review`.
   mitgeführt?
   **Was angekündigt ist, kommt auch.** Fiel der laufende Eintrag weg (✕, Medium gelöscht),
   startete der Eintrag, der an seinen Platz rückte – bei Zufall nicht der gewürfelte, den Bühne und
-  Playlist als „Danach“ zeigten und die Ausgabe schon vorgeladen hatte (P8, 15.11.2026). Seitdem
-  nimmt `indexAfterCurrentGone` bei Zufall den mitgeführten `shuffleNext`; den nachrückenden nur
-  noch ohne Zufall, mit Loop „Eines“ oder wenn der gewürfelte mit wegfiel (offen: am Ende der
-  Liste ohne Zufall startet der davor, Paket P9). Im Review bei jedem Weg, der den laufenden
-  Eintrag wechselt, fragen: Wählt er dasselbe wie `nextIndex` – oder kündigt die Bühne etwas an,
-  das nicht kommt?
+  Playlist als „Danach“ zeigten und die Ausgabe schon vorgeladen hatte (P8, 15.11.2026); am Ende
+  der Liste ohne Zufall der davor, der schon gelaufen war, obwohl „Danach“ mit Loop „Alle“ den
+  ersten und mit Loop „Aus“ „Ende“ zeigte (P9, 15.11.2026). Seitdem wählt `indexAfterCurrentGone`,
+  was ⏭ wählen würde: bei Zufall den mitgeführten `shuffleNext`, sonst den nachrückenden, am Ende
+  den ersten oder keinen (−1, der Player hält an); den davor nur noch, wo es kein „Danach“ gibt
+  (Loop „Eines“, der gewürfelte fiel mit weg). **Ein Klemmen ist eine Wahl:** `Math.min(i, n − 1)`
+  sah aus wie eine Absicherung und wählte am Ende still den Eintrag davor. Im Review bei jedem Weg,
+  der den laufenden Eintrag wechselt, fragen: Wählt er dasselbe wie `nextIndex` – oder kündigt die
+  Bühne etwas an, das nicht kommt? Getestet wird je Loop-Art (Alle, Eines, Aus), mit und ohne
+  Zufall, auch am Rand der Liste – in der Mitte stimmte es schon.
 
 ## Fernsteuer- und Browser-Seiten
 
