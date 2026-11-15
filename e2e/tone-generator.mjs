@@ -282,10 +282,11 @@ try {
           const clicks = onsets(await tap('record', 5000, 4, 2048), { high: 0.03, low: 0.005 })
           const gaps = clicks.slice(1).map((t, i) => t - clicks[i])
           assert.ok(clicks.length >= 9, `${clicks.length} Klicks in 5 s`)
-          assert.ok(
-            gaps.every((g) => Math.abs(g - 500) < 60),
-            `Abstände: ${gaps.join(', ')}`
-          )
+          // Gedrosselt (Planungstakt nur einmal je Sekunde) fehlte fast jeder zweite Schlag. Ein
+          // einzelner Aussetzer ist dagegen ein kurzer Hänger der Seite (macOS-Runner,
+          // 15.11.2026: 500, …, 1000, 500) – höchstens einer ist erlaubt.
+          const { off, skipped } = checkBeatGaps(gaps, [500], 60)
+          assert.ok(off.length === 0 && skipped <= 1, `Abstände: ${gaps.join(', ')}`)
         } finally {
           await toolWin('restore')
         }

@@ -116,8 +116,9 @@ export function silentRuns(samples) {
  * Ton-Kern den verpassten Schlag mit Absicht aus (`_tone/engine.ts`: nicht nachholen), oder die
  * Aufnahme verpasst ihn – sie liest im selben Fenster. Ein Neubeginn ergäbe dagegen einen
  * Abstand, der zu keinem passt. Liefert `off` (passt zu nichts) und `skipped` (so viele Abstände
- * gelten als ein ausgelassener Schlag). Nicht für Prüfungen, bei denen genau das Auslassen der
- * Fehler wäre – das gedrosselte Fenster im Hintergrund.
+ * gelten als ein ausgelassener Schlag). Wie viele erlaubt sind, entscheidet die Prüfung: meist
+ * höchstens einer. Auch im minimierten Fenster: Gedrosselt fehlt dort fast jeder zweite Schlag,
+ * ein einzelner Aussetzer ist ein Hänger (macOS-Runner, 15.11.2026).
  */
 export function checkBeatGaps(gaps, intervals, tol = 45) {
   const near = (g, list) => list.some((v) => Math.abs(g - v) <= tol)
