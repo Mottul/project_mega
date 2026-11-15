@@ -64,7 +64,14 @@ Zusätzlich gilt der allgemeine `/code-review`.
   Befehl mitführen: der gezogene Eintrag nach `to`, die dazwischen ±1, davor eingefügt plus
   Anzahl, davor entfernt minus eins, beim Herausfiltern minus die Entfernten davor
   (`indexAfterMove`, `keepEntries` in `playerState.ts`; Test `playerState.test.ts` mit A, B, A).
-  Das gilt für jeden gemerkten Platz, auch den vorab gewürfelten `shuffleNext` (offen: P7).
+  Das gilt für jeden gemerkten Platz: **„gültig“ heißt nicht „derselbe Eintrag“.** Der vorab
+  gewürfelte `shuffleNext` blieb stehen, solange er im Bereich lag und nicht der laufende war
+  (`normalizeShuffleNext`) – nach dem Umsortieren stand dort ein anderer Eintrag, „Danach“ sprang
+  und die Ausgabe lud ein anderes Medium vor als das schon geladene (P7, 15.11.2026). Seitdem
+  läuft er durch dieselbe Rechnung wie der laufende Platz; fällt sein Eintrag weg (auch bei
+  `replace`), steht er auf −1 und wird neu gewürfelt, nie auf den laufenden Platz. Im Review bei
+  jedem „bleibt stehen, solange gültig“ fragen: Wird der Wert bei jeder Änderung der Liste
+  mitgeführt?
 
 ## Fernsteuer- und Browser-Seiten
 
@@ -500,6 +507,12 @@ Gemeinsam ist ihnen: Der eigene Code war richtig, die Vorgabe darunter nicht.
   `expect(liste.some((t) => /…/.test(t))).toBe(false)`. Und kein stilles `if (…) return` im Test,
   wenn eine Vorbedingung fehlt – dann prüft er nichts und bleibt grün; die Vorbedingung selbst
   erwarten (`expect(ids).toContain('lib-wand-dunkel')`).
+- **Zufall im Test festlegen – und jeden Wurf darüber hinaus scheitern lassen.** „Danach bleibt
+  derselbe Eintrag“ ist auch dann grün, wenn der Code neu gewürfelt hat und zufällig dasselbe
+  herauskam (P7, 15.11.2026). `vi.spyOn(Math, 'random')` mit einer Vorgabe, die wirft, dazu je
+  erwartetem Wurf `mockReturnValueOnce` (Muster `playerState.test.ts`, „Zufall“); nach jedem Fall
+  `vi.restoreAllMocks()` – `vitest.config.ts` setzt kein `restoreMocks`, der Spion bliebe sonst
+  für die folgenden Tests stehen.
 - **Zeitprüfungen im E2E messen leicht den Rechner statt der App.** Erwartet ein Test, was seine
   eigenen Pausen ergeben sollten (Klicks alle 500 ms, also 120 BPM), oder jeden Schlag eines
   Takts, wird er auf dem macOS-Runner rot, obwohl die App richtig rechnet (`main` rot nach #226

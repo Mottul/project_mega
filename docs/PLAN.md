@@ -256,7 +256,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | P5, P7 · K1, K2, K3 | Die Bibliothek des Players ist noch die alte, bei Zufall springt „Danach“ beim Umsortieren. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
+| **1 – Die Vorbilder fertig** | P5, P8 · K1, K2, K3 | Die Bibliothek des Players ist noch die alte, bei Zufall startet ✕ am laufenden Eintrag nicht „Danach“. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B13 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
@@ -274,13 +274,14 @@ Das [Muster 1](#muster-1-arbeitsfläche) zu Ende bringen. Seit dem 13. November 
 drei Felder Bibliothek · Playlist · Bühne, die Seite scrollt nicht mehr, die Bühne zeigt Restzeit,
 „Danach“ und „Stumm“ (P1 bis P3); seit dem 15. November auch die Playlist (P4: Miniaturen,
 „Danach“, laufender Eintrag bleibt sichtbar, Sortieren am Griff, „Playlist leeren …“ fragt),
-und der laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz (P6). Offen sind der
-Inhalt der Bibliothek und „Danach“ bei Zufall.
+und der laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz (P6); bei Zufall bleibt
+„Danach“ beim Umsortieren derselbe Eintrag (P7). Offen sind der Inhalt der Bibliothek und ✕ am
+laufenden Eintrag bei Zufall.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
 | **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt | M | – |
-| **P7** | Zufall: „Danach“ springt beim Umsortieren | S | – |
+| **P8** | Zufall: ✕ am laufenden Eintrag startet den folgenden statt „Danach“ | S | Entscheidung 14 |
 
 Vorher lesen: Skills `electron-e2e`, `review-checkliste` („Raster und SVG“), `abschluss-check`.
 Jeder Schritt ergänzt seine Prüfungen in `e2e/player-layout.mjs` (14 Medien per lavfi, drei
@@ -321,23 +322,22 @@ einem Medium löscht ohne Rückfrage.
 die Bibliothek hat danach gleich viele Einträge; mit `true` einen weniger. Bei 1366 × 768 ist der
 Kopf der Bibliothek eine Zeile hoch. Suche nach einem Titel zeigt genau dieses Medium.
 
-### P7 – Zufall: „Danach“ springt beim Umsortieren
+### P8 – Zufall: ✕ am laufenden Eintrag startet den folgenden statt „Danach“
 
-**Heute** (`services/player/playerState.ts`): Bei Zufall würfelt der main den nächsten Platz
-vorab (`shuffleNext`), damit die Ausgabe genau dieses Medium vorladen kann. Nach `move`, `add` und
-`remove` bleibt der Platz stehen, solange er gültig ist (`normalizeShuffleNext`) – auf ihm steht
-dann aber ein anderer Eintrag. Im Unit-Test nachgestellt (15. November 2026, beim Bau von P6):
-A, B, C, D mit Zufall, es läuft A, „Danach“ ist D; D auf Platz 1 gezogen ergibt A, D, B, C mit
-„Danach“ C; danach B vorn eingefügt, „Danach“ B. Die Marke springt, und die Ausgabe lädt ein
-anderes Medium vor als das, das sie schon geladen hatte.
+**Heute** (`services/player/playerState.ts`, Befehl `remove`): Wird der laufende Eintrag
+entfernt, startet der Eintrag, der an seinen Platz rückt – auch bei Zufall. Im Unit-Test
+nachgestellt (15. November 2026, beim Bau von P7): A, B, C, D mit Zufall, es läuft A, „Danach“
+ist D; ✕ an A startet B, „Danach“ bleibt D. Die Bühne hatte D angekündigt, die Ausgabe hatte D
+schon vorgeladen und muss B neu laden. Wird das laufende Medium aus der Bibliothek gelöscht, rückt
+laut Code ebenso der folgende nach (`keepEntries`).
 
-**So:** `shuffleNext` mit derselben Rechnung mitführen wie den laufenden Platz (seit P6:
-`indexAfterMove`, beim Einfügen davor plus Anzahl, beim Entfernen davor minus eins,
-`keepEntries`); fällt der gewürfelte Eintrag selbst weg, neu würfeln. Zustand und Befehle bleiben
-im main.
+**So** (erst [Entscheidung 14](#entscheidungen)): Bei Zufall nach ✕ am laufenden Eintrag mit
+„Danach“ weiter wie bei ⏭ – dessen Platz nach dem Entfernen mit der Rechnung aus P6 –, danach neu
+würfeln. Ohne Zufall bleibt es beim folgenden (er ist dort „Danach“), ebenso mit Loop „Eines“.
+Zustand und Befehle bleiben im main.
 
-**Abnahme:** Unit-Tests in `playerState.test.ts` (Zufall per `vi.spyOn(Math, 'random')`
-festlegen): die Fälle oben – „Danach“ bleibt D. Vorher rot.
+**Abnahme:** Unit-Test in `playerState.test.ts` (Zufall festlegen wie bei P7): ✕ an A startet D.
+Vorher rot.
 
 ### Regeln für P5
 
@@ -1305,8 +1305,9 @@ nicht per Import aus `beenden/laufend.ts` (Kreis in den Importen).
 
 ### E7 – Tests für Player-Zustand, yt-dlp und Fernsteuer-Parser
 
-Drei Stellen mit Lücken: `playerState` hat seit P6 einen Test für die Plätze in der Playlist
-(`playerState.test.ts`, Bibliothek und Einstellungen per `vi.mock`) – darauf aufbauen für die
+Drei Stellen mit Lücken: `playerState` hat seit P6 einen Test für die Plätze in der Playlist, seit
+P7 auch für den gewürfelten Platz bei Zufall (`playerState.test.ts`, Bibliothek und Einstellungen
+per `vi.mock`, Zufall per `vi.spyOn(Math, 'random')`) – darauf aufbauen für die
 Wiedergabe (`next`, `prev`, `ended` mit Loop und Zufall), `replace` und die Einstellungs-Befehle;
 dazu die yt-dlp-Argumente und -Ausgabezeilen sowie die Parser der Fernsteuerungen (Body, OSC- und
 Jingle-Befehle, Upload). Je Stelle ein Pull Request, ohne Änderung am Verhalten.
@@ -1503,6 +1504,9 @@ Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestä
     NovaLCT-Dateien. Eine OBS-Szenensammlung liegt vor. (Matthias sammelt; ohne Datei kein
     Import.)
 13. **Welche neuen Werkzeuge** aus Teil G überhaupt – und welches zuerst? (Offen.)
+14. **Video-Player bei Zufall: Was startet nach ✕ am laufenden Eintrag** (P8) – „Danach“ wie bei
+    ⏭ oder wie heute der Eintrag, der an seinen Platz rückt? („Danach“: Die Bühne hat es
+    angekündigt, die Ausgabe hat es schon vorgeladen.)
 
 Entschieden – damit nichts neu gefragt wird:
 
@@ -1563,7 +1567,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   fremde Websites ab); drei kleine Fehler aus der Durchsicht (Medien ausliefern, Umlaute in
   Befehlen vom Handy, gescheitertes Speichern der Werkzeug-Stände); Video-Player ohne Scrollen
   mit der Bühne (P1 bis P3) und der Playlist (P4, mit dem Menü-Baustein für „⋯“; P6: der
-  laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz);
+  laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz; P7: bei Zufall bleibt
+  „Danach“ beim Umsortieren derselbe Eintrag);
   Testtongenerator; neuer Aufbau von Testtongenerator und RTA.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
