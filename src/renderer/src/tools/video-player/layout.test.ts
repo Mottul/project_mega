@@ -4,6 +4,7 @@ import {
   danach,
   danachIndex,
   gesamtdauer,
+  sucheMedien,
   PLAYER_RASTER,
   zeilenSchluessel,
   zielPlatz
@@ -161,5 +162,32 @@ describe('danach', () => {
     expect(danachIndex(stand(2, { loop: 'none' }))).toBe(-1)
     expect(danachIndex(stand(-1, { loop: 'none' }))).toBe(-1)
     expect(danachIndex({ ...stand(0), playlist: [] })).toBe(-1)
+  })
+})
+
+describe('sucheMedien', () => {
+  const titel = (...namen: string[]): { title: string }[] => namen.map((title) => ({ title }))
+  const bib = titel('Sponsor Bank', 'Sponsor Auto', 'Keynote Vorspann', 'Übergang Blau')
+  const gefunden = (suche: string): string[] => sucheMedien(bib, suche).map((m) => m.title)
+
+  it('ohne Suchwort alle, auch nur mit Leerzeichen', () => {
+    expect(sucheMedien(bib, '')).toBe(bib)
+    expect(sucheMedien(bib, '   ')).toBe(bib)
+  })
+
+  it('ein Teil des Titels, Groß- und Kleinschreibung egal (auch Umlaute)', () => {
+    expect(gefunden('sponsor')).toEqual(['Sponsor Bank', 'Sponsor Auto'])
+    expect(gefunden('VORSP')).toEqual(['Keynote Vorspann'])
+    expect(gefunden('übergang')).toEqual(['Übergang Blau'])
+  })
+
+  it('jedes Wort muss vorkommen, die Reihenfolge ist egal', () => {
+    expect(gefunden('auto sponsor')).toEqual(['Sponsor Auto'])
+    expect(gefunden(' Sponsor  Bank ')).toEqual(['Sponsor Bank'])
+    expect(gefunden('sponsor keynote')).toEqual([])
+  })
+
+  it('ohne Treffer eine leere Liste', () => {
+    expect(gefunden('Gibt es nicht')).toEqual([])
   })
 })

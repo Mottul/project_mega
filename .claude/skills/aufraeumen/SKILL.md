@@ -110,9 +110,9 @@ Importe der neuen Dateien; ein Lauf von `teilen.mjs` danach räumt die Quelle au
   Fit, Bibliothek, Wiedergabezustand); auch das Abonnement, das ihn lädt (`applySettings` setzt
   viele Felder auf einmal – nicht zerreißen).
 - **Zustand, den nur ein Teil braucht, zieht samt Laden und Abo mit** (Konvertier-Aufträge in
-  `ConvertQueue`, Ansicht und Drag-Zustand in `Library`, gemerkte Vorschau-Schalter in
-  `Stage`). Ein Rückruf nach oben (`onDone`) über eine Ref, damit das Abo nicht bei
-  jedem Rendern neu bindet.
+  `useImportAuftraege` neben `ConvertQueue` – die Bibliothek ruft ihn, weil die Liste ihr Fuß ist –,
+  Ansicht und Suche in `Library`, gemerkte Vorschau-Schalter in `Stage`). Ein Rückruf nach oben
+  (`onDone`) über eine Ref, damit das Abo nicht bei jedem Rendern neu bindet.
 - **Logik ohne Oberfläche als Hook** (`usePlayback`: Tick, Ziehen am Regler, Tastatur) – Leiste
   und Karte lesen dieselbe Position, der Hook liefert sie beiden.
 - Kommentare, Texte und Klassen wörtlich übernehmen; nur Variablennamen dürfen sich ändern.

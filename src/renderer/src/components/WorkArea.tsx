@@ -11,6 +11,7 @@
 // schmaler – nichts neu auf: Die Wiedergabe-Engine des Players lüde sonst ihr Video neu.
 
 import { createContext, useContext, type ReactNode } from 'react'
+import type { DateiAblage } from '@renderer/lib/useDateiAblage'
 import { useElementSize } from '@renderer/lib/useElementSize'
 import { cn } from '@renderer/lib/utils'
 import {
@@ -64,7 +65,7 @@ export function WorkArea<F extends string>({
 /**
  * Ein Feld der Arbeitsfläche: Kopf (Titel, Zahl, Aktionen), Inhalt, optional ein Fuß. Der Inhalt
  * scrollt in sich (`scroll`) oder regelt sein Scrollen selbst – etwa eine Liste unter einer
- * Kopfzeile, die stehen bleiben soll.
+ * Kopfzeile, die stehen bleiben soll. Der Fuß bleibt unten stehen, während der Inhalt scrollt.
  */
 export function Pane({
   area,
@@ -75,6 +76,7 @@ export function Pane({
   footer,
   scroll = true,
   kappen = true,
+  ablage,
   testId,
   children
 }: {
@@ -92,19 +94,24 @@ export function Pane({
   scroll?: boolean
   /** In der Stufe schmal höchstens 60 % der Fensterhöhe (Listen); false: so hoch wie der Inhalt */
   kappen?: boolean
+  /** Dateien hineinziehen (useDateiAblage): Das ganze Feld nimmt sie an, mit gestricheltem Rahmen */
+  ablage?: DateiAblage
   testId?: string
   children: ReactNode
 }): JSX.Element {
   const s = useStufe()
+  const { aktiv: ablageAktiv, ...ablageEreignisse } = ablage ?? { aktiv: false }
   return (
     <section
       data-pane=""
       data-testid={testId}
       aria-label={title ?? label}
       style={{ gridArea: area }}
+      {...ablageEreignisse}
       className={cn(
         'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card',
-        s === 'schmal' && kappen && 'max-h-[60vh]'
+        s === 'schmal' && kappen && 'max-h-[60vh]',
+        ablage && 'relative'
       )}
     >
       {(title || actions) && (
@@ -126,9 +133,17 @@ export function Pane({
         {children}
       </div>
       {footer && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border px-3 py-2">
-          {footer}
-        </div>
+        // Bleibt unten stehen. Ist das Feld zu niedrig, gibt er Höhe ab und sein Inhalt scrollt
+        // selbst (min-h-0) – sonst schnitte das Feld unten ab (Import-Liste bei 1024 × 600)
+        <div className="flex min-h-0 flex-col border-t border-border px-3 py-2">{footer}</div>
+      )}
+      {/* über allem, auch dem Kopf – nimmt keine Ereignisse, das Ziehen geht ans Feld */}
+      {ablageAktiv && (
+        <div
+          aria-hidden
+          data-testid="ablage-rahmen"
+          className="pointer-events-none absolute inset-0 z-20 rounded-lg border-2 border-dashed border-primary bg-primary/10"
+        />
       )}
     </section>
   )

@@ -212,8 +212,20 @@ Playlist-Player für LED-Wände und Beamer.
   Tastenkürzel, solange kein Eingabefeld den Fokus hat: Leertaste oder K
   Play/Pause, ←/→ 5 s, J/L 10 s, Pos1 an den Anfang, P/N voriger/nächster Titel, ↑/↓
   Lautstärke, M Stumm.
-- **Bibliothek** mit Thumbnails, Import per Drag & Drop, Listen- und Kachelansicht;
-  Neu-Konvertierung aller Medien bei Auflösungswechsel.
+- **Bibliothek:** Im Kopf die Anzahl, rechts **„Importieren“** („Dateien …“, „Ordner …“) und das
+  Menü **„⋯“** mit der Ansicht (große Kacheln, kleine Kacheln, Liste – Häkchen an der gewählten),
+  „Alle zur Playlist“, „Medienordner öffnen“ und „Bibliothek leeren …“. Darunter das
+  **Suchfeld**: Es zeigt die Medien, in deren Titel jedes Suchwort vorkommt (Groß- und
+  Kleinschreibung egal), ohne Treffer „Kein Medium heißt so“; es bleibt stehen, während die
+  Medien scrollen. Die Kacheln richten sich nach dem Platz im Feld, nicht nach dem Fenster (große
+  mindestens 170 px breit, kleine 110 px) – mit angehefteter Schublade werden es weniger Spalten.
+  Dateien aus Explorer oder Finder nimmt das ganze Feld an; der gestrichelte Rahmen steht nur, solange
+  sie darüber schweben. Die **Import-Liste** steht unten im Feld, solange etwas importiert wird
+  oder ein Fehler dasteht – höchstens drei Aufträge hoch, mehr scrollen in sich; Fehler bleiben,
+  bis „Erledigte entfernen“ sie räumt. Ein Medium löschen (Papierkorb an der Kachel) fragt nach,
+  ebenso „Bibliothek leeren …“. Medien in einer anderen Wand-Auflösung meldet ein Hinweis über den
+  Medien, „Neu konvertieren“ rechnet sie neu. Doppelklick oder Ziehen legt ein Medium in die
+  Playlist.
 - **In-App-Vorschau**, die auch ohne Ausgabefenster abspielt – praktisch ohne zweiten Bildschirm.
 - **Idle-Bild:** Testbild als Ausweichbild auf der Ausgabe.
 - **NDI-Ausgabe** (optional, mit Ton): [NDI.md](NDI.md).

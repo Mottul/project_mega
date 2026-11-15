@@ -93,9 +93,11 @@ den Transport nicht mehr.
 - **Bausteine:** `components/WorkArea.tsx` (`WorkArea`, `Pane`, `useStufe`),
   `components/workAreaRaster.ts` (Stufen und Raster, rein und getestet) und
   `components/ui/menu.tsx` (das Menü „⋯“; seine Liste hängt am `<body>`, weil ein Feld abschneidet,
-  was über seinen Rand ragt). Vorbild für das Raster eines Werkzeugs: `video-player/layout.ts`;
-  für ein Feld mit Liste: `video-player/Playlist.tsx`; für die Abnahme: `e2e/player-layout.mjs`.
-  Anleitung im Skill `neues-werkzeug`, Lehren im Skill `review-checkliste` („Raster und SVG“).
+  was über seinen Rand ragt), `lib/useDateiAblage.ts` (Dateien ins ganze Feld ziehen, `Pane` mit
+  `ablage`). Vorbild für das Raster eines Werkzeugs: `video-player/layout.ts`; für ein Feld mit
+  Liste: `video-player/Playlist.tsx`; mit Kacheln, Suche und einer Auftragsliste als Fuß:
+  `video-player/Library.tsx`; für die Abnahme: `e2e/player-layout.mjs`. Anleitung im Skill
+  `neues-werkzeug`, Lehren im Skill `review-checkliste` („Raster und SVG“).
 - **Nicht für Dokumente:** Werkzeuge, die man von oben nach unten liest – Video-Konverter,
   Medien-Info, Packliste, YouTube-Downloader, Handbücher, Netzwerk-Scanner –, scrollen weiter
   als Seite.
@@ -106,7 +108,7 @@ bzw. angeheftet. „passt“: Die Seite scrollt nicht.
 
 | Werkzeug | 1024 × 600 (zu · an) | 1366 × 768 (zu · an) | 1920 × 1080 (zu · an) | Folge |
 | -------- | -------------------- | -------------------- | --------------------- | ----- |
-| Video-Player | passt · Stufe `schmal` | passt · passt | passt · passt | Vorbild; offen P5 |
+| Video-Player | passt · Stufe `schmal` | passt · passt | passt · passt | Vorbild |
 | Video-Generator (12 Bilder) | +732 · +1074 | +490 · +639 | +169 · +318 | **W1** |
 | Stage-Timer (8 Abschnitte) | +142 · +771 | passt · passt | passt · passt | **W2** |
 | Testbildgenerator | +124 · +143 | +57 · +57 | passt · passt | **W3** |
@@ -256,9 +258,9 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | P5, P9 · K1, K2, K3 | Die Bibliothek des Players ist noch die alte, ✕ am letzten, laufenden Eintrag startet nicht „Danach“. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
+| **1 – Die Vorbilder fertig** | P9 · K1, K2, K3 | Im Player startet ✕ am letzten, laufenden Eintrag nicht „Danach“. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
-| **3 – Täglich spürbar** | B1 bis B7, B9 bis B13 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
+| **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
 | **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8) |
@@ -276,11 +278,12 @@ drei Felder Bibliothek · Playlist · Bühne, die Seite scrollt nicht mehr, die 
 „Danach“, laufender Eintrag bleibt sichtbar, Sortieren am Griff, „Playlist leeren …“ fragt),
 und der laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz (P6); bei Zufall bleibt
 „Danach“ beim Umsortieren derselbe Eintrag (P7) und startet, wenn der laufende Eintrag entfernt
-wird (P8). Offen sind der Inhalt der Bibliothek und ✕ am letzten, laufenden Eintrag ohne Zufall.
+wird (P8); die Bibliothek hat „Importieren“ und „⋯“ im Kopf, eine Suche, Kacheln nach dem Platz
+im Feld, die Import-Liste unten, und Löschen fragt (P5). Offen ist ✕ am letzten, laufenden
+Eintrag ohne Zufall.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt | M | – |
 | **P9** | ✕ am letzten, laufenden Eintrag startet den davor statt „Danach“ | S | Entscheidung 14 |
 
 Vorher lesen: Skills `electron-e2e`, `review-checkliste` („Raster und SVG“), `abschluss-check`.
@@ -289,38 +292,6 @@ gespeicherte Playlists) und lässt sie zuerst gegen den Stand davor laufen. Vorh
 die den Player anfassen: `e2e/player.mjs` (Playlist-Reiter, Importe), `e2e/layout.mjs`
 (Ausgabe-Leiste, Monitorwechsel), `e2e/mini-manual.mjs` (liest Playlists über die Einstellungen)
 – vor dem Umbau mit `grep -n "video-player" e2e/*.mjs` nachsehen, was sie anklicken.
-
-### P5 – Bibliothek
-
-**Heute** (`Library.tsx`): Der Kopf zeigt Ansicht, „Dateien“ und „Ordner“ und bricht bei 1366 px
-Breite in zwei Zeilen um. Zwei Knöpfe heißen „Ordner“ mit demselben Symbol – oben importiert er
-einen Ordner, unten öffnet er den Medienordner. Die Kacheln haben feste Spaltenzahlen nach der
-Fensterbreite (`grid-cols-2 sm:grid-cols-3`), nicht nach dem Platz im Feld. Der Papierkorb an
-einem Medium löscht ohne Rückfrage.
-
-**So:**
-
-- **Kopf:** „Bibliothek“ und Anzahl; rechts ein Knopf **„Importieren“** mit den Einträgen
-  „Dateien …“ und „Ordner …“ und ein Menü „⋯“: Ansicht (große Kacheln, kleine Kacheln, Liste),
-  „Alle zur Playlist“, „Medienordner öffnen“, „Bibliothek leeren …“. Die Fußzeile entfällt, der
-  doppelte Knopf „Ordner“ damit auch.
-- **Suchfeld** darunter: filtert nach Titel, ohne Treffer „Kein Medium heißt so“.
-- **Kacheln nach Platz:** `repeat(auto-fill, minmax(…, 1fr))` – groß 170 px, klein 110 px.
-- **Hineinziehen von Dateien:** Das ganze Feld nimmt sie an; der gestrichelte Rahmen erscheint
-  nur, solange Dateien darüber schweben. Der Leerzustand bleibt als Text in der Mitte.
-- **Import-Liste** (`ConvertQueue.tsx`): unten im Feld angeheftet, höchstens drei Aufträge hoch
-  und in sich scrollbar; ohne Aufträge unsichtbar. Fehler bleiben stehen, bis „Erledigte
-  entfernen“ sie räumt.
-- **Medium löschen** fragt nach (`api.confirm`, `danger`, wie „Bibliothek leeren“).
-- Der Hinweis „n Medien ≠ Wand-Auflösung“ bleibt über dem Inhalt.
-- **Menüs** aus dem Baustein von P4 (`components/ui/menu.tsx`): „Importieren“ als `Menu` mit
-  Text (`variant="secondary"`), „⋯“ wie in der Playlist; die Ansicht als `MenuItem` mit
-  `checked`, Gruppen mit `MenuSeparator`. Die Liste hängt am `<body>` – das niedrige Feld der
-  Bibliothek (bei 1024 × 600 rund 170 px) schneidet sie nicht ab.
-
-**Abnahme** (`e2e/player-layout.mjs`): Papierkorb an einem Medium mit `stubConfirm(app, false)` –
-die Bibliothek hat danach gleich viele Einträge; mit `true` einen weniger. Bei 1366 × 768 ist der
-Kopf der Bibliothek eine Zeile hoch. Suche nach einem Titel zeigt genau dieses Medium.
 
 ### P9 – ✕ am letzten, laufenden Eintrag startet den davor statt „Danach“
 
@@ -341,22 +312,6 @@ die Ausgabe zeigt das Idle-Bild). Zustand und Befehle bleiben im main.
 **Abnahme:** Unit-Test in `playerState.test.ts`: A, B, C, D ohne Zufall, D läuft – mit Loop „Alle“
 startet nach ✕ an D A, mit Loop „Aus“ wie entschieden; ebenso nach `dropMediaFromPlaylist`. Vorher
 rot.
-
-### Regeln für P5
-
-- Keinen Zustand in den Renderer ziehen: Wiedergabe und Playlist bleiben im main, das Fenster
-  spiegelt (`api.player.command`, `onState`). Neu sind nur Anordnung und Anzeige.
-- Keine neue Farbe: Rot bleibt „live“, „Stumm“ ist `warning`, der laufende Eintrag `primary`.
-- Die Steuerseite fürs Handy (`player/remotePage.ts`) und `PlaybackEngine.tsx` bleiben, wie sie
-  sind.
-- **„Rückgängig“ statt Rückfrage** lässt sich später nachrüsten, die Rückfrage steht dem nicht im
-  Weg: für die Playlist klein (das Fenster merkt sich die Kennungen vor dem Leeren und schickt
-  sie per `replace` zurück; dazu braucht `toast` einen Knopf), für die Bibliothek mittel – heute
-  löscht `deleteMedia` Datei, Miniatur und Datenbank-Zeile sofort; nötig wäre ein Papierkorb im
-  main (Dateien verschieben, Zeile merken, nach Ablauf oder beim Beenden endgültig löschen,
-  `conv_key` beim erneuten Import beachten), und die Playlist-Plätze, die `dropMediaFromPlaylist`
-  entfernt, müssten mit zurück. Das allgemeine Rückgängig aus Teil D deckt den Player nicht ab,
-  weil sein Zustand im main lebt.
 
 ## W – Arbeitsfläche für weitere Werkzeuge
 
@@ -758,6 +713,7 @@ Kleine Pakete, die man täglich merkt. Unabhängig voneinander, soweit nichts an
 | **B11** | Kundenansicht ohne Aufblitzen des Startbildschirms | S | – |
 | **B12** | ATEM: Mischer im Netz suchen | M | – |
 | **B13** | Helles Design: Akzent als Schrift lesbar | S | – |
+| **B14** | Bibliothek des Players: Zustände auf Deutsch, Knöpfe per Tastatur, „Bibliothek leeren“ nennt die Playlist | S | – |
 
 ### B1 – Suche: Enter öffnet den ersten Treffer
 
@@ -985,6 +941,30 @@ mindestens 4,5 : 1, und der Farbton bleibt gleich. E2E: im hellen Design hat das
 Ausgabe-Leiste eine dunklere Farbe als der Knopf „Vollbild starten“. Die PWA hat eigene Farben
 (`src/pwa/colors.ts`) – nachsehen, ob sie dieselbe Regel braucht, und `npm run pwa:build`.
 
+### B14 – Bibliothek des Players: Zustände auf Deutsch, Knöpfe per Tastatur, „Bibliothek leeren“ nennt die Playlist
+
+**Heute** (beim Bau von P5 gesehen, 15. November 2026, nicht geändert):
+
+- Die Import-Liste (`video-player/ConvertQueue.tsx`) zeigt den Zustand eines Auftrags roh:
+  „queued“, „probing“, „thumbnail“, dazu „45%“. Video-Konverter und Video-Generator sagen
+  „Warteschlange“, „Analyse“ (`STATUS_META` in `VideoConverter.tsx`, `STATUS` in
+  `video-generator/JobList.tsx`).
+- Die Knöpfe an einer Kachel der Bibliothek (zur Playlist, neu einbacken, löschen) erscheinen nur
+  beim Darüberfahren (`opacity-0 group-hover:opacity-100` in `video-player/Library.tsx`); mit der
+  Tastatur erreicht, bleiben sie unsichtbar.
+- „Bibliothek leeren …“ fragt „Gesamte Bibliothek löschen? Die konvertierten Dateien werden
+  entfernt.“ Der main leert dabei auch die Playlist (Befehl `clear` nach `libraryClear`), was
+  läuft, stoppt – das sagt die Frage nicht.
+
+**So:** deutsche Wörter für jeden Zustand des Imports, Prozent mit Leerzeichen („45 %“); die
+Knöpfe der Kachel auch mit dem Tastaturfokus zeigen (`focus-within:opacity-100`, wie die Knöpfe
+oben in der Vorschau der Bühne); die Frage nennt die Zahl der Medien und sagt, dass die Playlist
+mitgeht und stoppt, was läuft (wie „Playlist leeren …“).
+
+**Abnahme:** Unit-Test der Bezeichnungen (jeder `ConvertStatus` hat ein deutsches Wort).
+`e2e/player-layout.mjs`: Tab bis auf den Papierkorb einer Kachel – seine Knopfleiste hat die
+Deckkraft 1; die Rückfrage von „Bibliothek leeren …“ (Stub schreibt mit) nennt die Playlist.
+
 ## D – Rückgängig
 
 **Heute:** Kein Editor der App kennt Strg+Z – weder die OSC-Fläche noch der Kabelverlauf, das
@@ -1012,6 +992,15 @@ Größe L. Bevor Code entsteht, wird daraus ein eigener Entwurf (Datei „PLAN-R
 - **Reihenfolge:** OSC-Steuerung zuerst (dort schmerzt Löschen am meisten), dann
   LED-Wall-Konfigurator, Mini-Manual, Packliste, Video-Generator, Jingle-Player – je Werkzeug
   ein Pull Request mit E2E („löschen, Strg+Z, wieder da“).
+
+**Video-Player:** Sein Zustand lebt im main, der Baustein für zustand-Stores deckt ihn nicht ab;
+Löschen und Leeren fragen dort nach (P4, P5). Ein „Rückgängig“ ließe sich nachrüsten, die
+Rückfrage steht dem nicht im Weg: für die Playlist klein (das Fenster merkt sich die Kennungen vor
+dem Leeren und schickt sie per `replace` zurück; dazu braucht `toast` einen Knopf), für die
+Bibliothek mittel – heute löscht `deleteMedia` Datei, Miniatur und Datenbank-Zeile sofort; nötig
+wäre ein Papierkorb im main (Dateien verschieben, Zeile merken, nach Ablauf oder beim Beenden
+endgültig löschen, `conv_key` beim erneuten Import beachten), und die Playlist-Plätze, die
+`dropMediaFromPlaylist` entfernt, müssten mit zurück.
 
 Offen und im Entwurf zu klären: Wie fasst man Änderungen aus gepufferten Feldern (`useDraft`,
 Übernahme nach 250 ms) zu einem Schritt zusammen? Was passiert mit Fotos des Mini-Manuals, die
@@ -1337,8 +1326,10 @@ Mini-Manuals (`mini-manual/ui/HandyMenu.tsx`) leiht sich `useMenu` und `MenuItem
 Datei-Menü. Seit P4 gibt es den Baustein (`components/ui/menu.tsx`: `Menu`, `MenuItem` mit
 `checked`, `shortcut` und `title`, `MenuSeparator`, `MenuLabel`): alle drei darauf umstellen,
 `useMenu` und das alte `MenuItem` entfallen – ohne sichtbare Änderung bis auf die Tastatur (der
-Baustein setzt den Fokus in die Liste, ↑/↓ wandern). `e2e/projektdatei.mjs`,
-`e2e/kabelverlauf.mjs` und `e2e/mini-manual.mjs` bleiben grün.
+Baustein setzt den Fokus in die Liste, ↑/↓ wandern). Vorbild für einen Knopf mit Text und Pfeil:
+„Importieren“ in `video-player/Library.tsx` (seit P5; dort `variant="secondary"`, in der Leiste
+bleibt `outline`). `e2e/projektdatei.mjs`, `e2e/kabelverlauf.mjs` und `e2e/mini-manual.mjs`
+bleiben grün.
 
 ## U – Upgrades
 
@@ -1423,7 +1414,10 @@ Ausgabe auf einem zweiten Monitor öffnen, im laufenden Betrieb umsortieren – 
 auch den laufenden Eintrag, und mit den Pfeil-Knöpfen per Tastatur – und zwischen gespeicherten
 Playlists wechseln: ohne Ruckeln und ohne Idle-Bild dazwischen. Das E2E prüft das nur an der
 Vorschau im Fenster (dasselbe Medium läuft weiter, wird nicht neu gestartet), nicht an der
-Ausgabe auf dem Monitor.
+Ausgabe auf dem Monitor. Seit P5 dazu: echte Dateien und einen Ordner aus Explorer bzw. Finder
+auf die Bibliothek ziehen – auch auf den Kopf und die Suche –, der gestrichelte Rahmen kommt und
+geht ohne Flackern, beim Verlassen und nach dem Loslassen ist er weg, der Import startet. Das E2E
+stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen).
 
 **Testtongenerator und RTA am Handy** (Skill `rechner-pwa`) – mit der veröffentlichten PWA oder
 `npm run pwa:preview` im LAN (dort ohne HTTPS: kein Wachhalten, kein Offline):
@@ -1578,7 +1572,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   mit der Bühne (P1 bis P3) und der Playlist (P4, mit dem Menü-Baustein für „⋯“; P6: der
   laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz; P7: bei Zufall bleibt
   „Danach“ beim Umsortieren derselbe Eintrag; P8: bei Zufall startet nach ✕ am laufenden Eintrag
-  „Danach“);
+  „Danach“) und der Bibliothek (P5: „Importieren“ und „⋯“ im Kopf, Suche, Kacheln nach Platz,
+  Import-Liste unten, Löschen fragt);
   Testtongenerator; neuer Aufbau von Testtongenerator und RTA.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,

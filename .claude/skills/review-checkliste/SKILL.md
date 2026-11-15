@@ -222,6 +222,31 @@ wo nicht anders gesagt):
   passten keine fünf mehr; mit `py-0.5` sind es 28 px, der E2E-Schritt „fünf Zeilen im Bild“ ist
   grün.
 
+Aus der Bibliothek des Video-Players (P5, 15.11.2026; im Bild oder im E2E gesehen):
+
+- **`position: sticky` klebt am inneren Rand des Polsters.** In einem scrollenden Bereich mit
+  `p-3` hält Chromium `top: 0` 12 px unter dem oberen Rand. Das Suchfeld sollte mit `-mt-3` den
+  Rand mit abdecken – es rutschte so 12 px über die erste Kachelreihe, und gescrollt schauten
+  darüber Kacheln hervor. Die Messtests waren grün, gesehen erst im Bild. Abhilfe: `top` so weit
+  negativ wie das Polster (`-top-3`); das E2E misst seither beides (Skill `electron-e2e`,
+  „`sticky` prüfen“).
+- **Ein Fuß, der keine Höhe abgibt, schneidet ein niedriges Feld ab.** Die Import-Liste als Fuß
+  mit `shrink-0` machte das Feld der Bibliothek bei 1024 × 600 10 px zu hoch (181 statt 171 px):
+  Der scrollende Inhalt darüber schrumpft nur bis auf sein Polster. Der Fuß von `Pane` hat
+  deshalb `min-h-0` und gibt Höhe ab, seine Liste scrollt in sich. Bei jedem Teil, der nur
+  manchmal erscheint (Aufträge, Fehler), die kleinste Fenstergröße auch MIT diesem Teil messen.
+- **Ein gezogenes `<img>` bringt in Chromium den Typ „Files“ mit.** Wer Dateien aus dem Explorer
+  an `dataTransfer.types` erkennt, hielte sonst auch eine Kachel, die am Vorschaubild gezogen wird,
+  für Dateien (Rahmen auf der eigenen Bibliothek). Bilder in ziehbaren Kacheln `draggable={false}`
+  – dann zieht die Kachel selbst und trägt nur, was ihr `dragstart` setzt (wie die Miniaturen der
+  Playlist).
+- **Hineinziehen ins ganze Feld: Betreten und Verlassen zählen.** Jedes Kind meldet beides; beim
+  Wechsel von Kind zu Kind kommt erst `dragenter` am neuen, dann `dragleave` am alten – gezählt
+  bleibt der Rahmen stehen. Fehlt ein Verlassen, weil das Element unter dem Zeiger neu gebaut
+  wurde, beendet das Ausbleiben von `dragover` das Ziehen (`lib/useDateiAblage.ts`, `Pane` mit
+  `ablage`). Der Rahmen liegt mit `pointer-events-none` über dem Feld, sonst änderte er selbst, was
+  unter dem Zeiger liegt.
+
 ## Einstellungen und gemerkte Stände
 
 - Ändert eine Option, was ein bestehender Schalter bedeutet (Beispiel: „Kennung“ blendete früher
