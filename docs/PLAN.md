@@ -256,7 +256,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | P5, P6 · K1, K2, K3 | Die Bibliothek des Players ist noch die alte, doppelte Medien verschieben den laufenden Eintrag. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
+| **1 – Die Vorbilder fertig** | P5, P7 · K1, K2, K3 | Die Bibliothek des Players ist noch die alte, bei Zufall springt „Danach“ beim Umsortieren. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B13 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
@@ -273,13 +273,14 @@ dem Merge an den Breaking Changes prüfen (Skill `abhaengigkeiten`).
 Das [Muster 1](#muster-1-arbeitsfläche) zu Ende bringen. Seit dem 13. November 2026 stehen die
 drei Felder Bibliothek · Playlist · Bühne, die Seite scrollt nicht mehr, die Bühne zeigt Restzeit,
 „Danach“ und „Stumm“ (P1 bis P3); seit dem 15. November auch die Playlist (P4: Miniaturen,
-„Danach“, laufender Eintrag bleibt sichtbar, Sortieren am Griff, „Playlist leeren …“ fragt).
-Offen ist der Inhalt der Bibliothek.
+„Danach“, laufender Eintrag bleibt sichtbar, Sortieren am Griff, „Playlist leeren …“ fragt),
+und der laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz (P6). Offen sind der
+Inhalt der Bibliothek und „Danach“ bei Zufall.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
 | **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt | M | – |
-| **P6** | Laufender Eintrag springt bei doppelten Medien in der Playlist | S | – |
+| **P7** | Zufall: „Danach“ springt beim Umsortieren | S | – |
 
 Vorher lesen: Skills `electron-e2e`, `review-checkliste` („Raster und SVG“), `abschluss-check`.
 Jeder Schritt ergänzt seine Prüfungen in `e2e/player-layout.mjs` (14 Medien per lavfi, drei
@@ -320,23 +321,23 @@ einem Medium löscht ohne Rückfrage.
 die Bibliothek hat danach gleich viele Einträge; mit `true` einen weniger. Bei 1366 × 768 ist der
 Kopf der Bibliothek eine Zeile hoch. Suche nach einem Titel zeigt genau dieses Medium.
 
-### P6 – Laufender Eintrag springt bei doppelten Medien
+### P7 – Zufall: „Danach“ springt beim Umsortieren
 
-**Heute** (`services/player/playerState.ts`): Nach `move`, `add` und `remove` sucht `reindexTo`
-den laufenden Eintrag über die Kennung des Mediums. Steht dasselbe Medium zweimal in der Liste,
-landet die Marke auf dem ersten Vorkommen. In der gebauten App nachgestellt (15. November 2026,
-beim Bau von P4): Liste A, B, A, es läuft das zweite A (Platz 2); B nach vorn gezogen ergibt
-B, A, A mit Platz 1 statt 2. Das Bild läuft weiter (dasselbe Medium), aber Markierung, „Danach“
-und die Folge danach stimmen nicht mehr – das zweite A läuft ein zweites Mal.
+**Heute** (`services/player/playerState.ts`): Bei Zufall würfelt der main den nächsten Platz
+vorab (`shuffleNext`), damit die Ausgabe genau dieses Medium vorladen kann. Nach `move`, `add` und
+`remove` bleibt der Platz stehen, solange er gültig ist (`normalizeShuffleNext`) – auf ihm steht
+dann aber ein anderer Eintrag. Im Unit-Test nachgestellt (15. November 2026, beim Bau von P6):
+A, B, C, D mit Zufall, es läuft A, „Danach“ ist D; D auf Platz 1 gezogen ergibt A, D, B, C mit
+„Danach“ C; danach B vorn eingefügt, „Danach“ B. Die Marke springt, und die Ausgabe lädt ein
+anderes Medium vor als das, das sie schon geladen hatte.
 
-**So:** Den laufenden Platz aus dem Befehl rechnen statt über die Kennung suchen: bei `move` den
-Platz mitführen (der gezogene Eintrag, oder ±1 für die dazwischen), bei `add` vor dem laufenden
-plus Anzahl, bei `remove` davor minus eins. `refreshPlaylist` und `dropMediaFromPlaylist` können
-Einträge entfernen und brauchen dieselbe Rechnung. Zustand und Befehle bleiben im main.
+**So:** `shuffleNext` mit derselben Rechnung mitführen wie den laufenden Platz (seit P6:
+`indexAfterMove`, beim Einfügen davor plus Anzahl, beim Entfernen davor minus eins,
+`keepEntries`); fällt der gewürfelte Eintrag selbst weg, neu würfeln. Zustand und Befehle bleiben
+im main.
 
-**Abnahme:** Unit-Tests für `applyCommand` (`mediaLibrary` und `store` per `vi.mock` ersetzen;
-E7 baut später darauf auf): A, B, A mit dem zweiten A laufend, B nach vorn – Platz 2; ebenso
-`add` davor und `remove` davor. Vorher rot.
+**Abnahme:** Unit-Tests in `playerState.test.ts` (Zufall per `vi.spyOn(Math, 'random')`
+festlegen): die Fälle oben – „Danach“ bleibt D. Vorher rot.
 
 ### Regeln für P5
 
@@ -1304,10 +1305,11 @@ nicht per Import aus `beenden/laufend.ts` (Kreis in den Importen).
 
 ### E7 – Tests für Player-Zustand, yt-dlp und Fernsteuer-Parser
 
-Drei Stellen ohne Test: `playerState` (better-sqlite3 läuft seit Version 13 auch unter Node – eine
-`:memory:`-Datenbank statt Mock), die yt-dlp-Argumente und -Ausgabezeilen sowie die Parser der
-Fernsteuerungen (Body, OSC- und Jingle-Befehle, Upload). Je Stelle ein Pull Request, ohne
-Änderung am Verhalten.
+Drei Stellen mit Lücken: `playerState` hat seit P6 einen Test für die Plätze in der Playlist
+(`playerState.test.ts`, Bibliothek und Einstellungen per `vi.mock`) – darauf aufbauen für die
+Wiedergabe (`next`, `prev`, `ended` mit Loop und Zufall), `replace` und die Einstellungs-Befehle;
+dazu die yt-dlp-Argumente und -Ausgabezeilen sowie die Parser der Fernsteuerungen (Body, OSC- und
+Jingle-Befehle, Upload). Je Stelle ein Pull Request, ohne Änderung am Verhalten.
 
 ### E8 – Komponententests möglich machen
 
@@ -1560,7 +1562,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Energiesparen, solange etwas läuft, eine Mottulbox je Benutzerordner, Fernsteuerungen weisen
   fremde Websites ab); drei kleine Fehler aus der Durchsicht (Medien ausliefern, Umlaute in
   Befehlen vom Handy, gescheitertes Speichern der Werkzeug-Stände); Video-Player ohne Scrollen
-  mit der Bühne (P1 bis P3) und der Playlist (P4, mit dem Menü-Baustein für „⋯“);
+  mit der Bühne (P1 bis P3) und der Playlist (P4, mit dem Menü-Baustein für „⋯“; P6: der
+  laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz);
   Testtongenerator; neuer Aufbau von Testtongenerator und RTA.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,

@@ -68,21 +68,29 @@ function emitState(): void {
   stateSink({ ...state, playlist: [...state.playlist] })
 }
 
-function currentId(): string | null {
-  return state.index >= 0 && state.index < state.playlist.length
-    ? state.playlist[state.index].id
-    : null
+// Der laufende Platz folgt aus dem Befehl, nie aus der Kennung des Mediums: Dasselbe Medium darf
+// mehrfach in der Playlist stehen, die Suche nach der Kennung landete auf dem ersten Vorkommen –
+// Markierung und „Danach“ stimmten nicht mehr, das zweite A lief ein zweites Mal (P6). Nichts
+// gewählt (−1) bleibt nichts gewählt.
+
+/** Platz des laufenden Eintrags, nachdem der Eintrag `from` nach `to` gezogen wurde. */
+function indexAfterMove(i: number, from: number, to: number): number {
+  if (i < 0) return i
+  if (i === from) return to // der laufende selbst
+  if (from < i && to >= i) return i - 1 // von davor nach dahinter
+  if (from > i && to <= i) return i + 1 // von dahinter nach davor
+  return i
 }
 
-// Index neu auf das Medium mit gegebener id setzen (nach Reorder/Remove), sonst clampen.
-function reindexTo(id: string | null): void {
-  if (id) {
-    const i = state.playlist.findIndex((m) => m.id === id)
-    state.index = i >= 0 ? i : Math.min(state.index, state.playlist.length - 1)
-  } else {
-    state.index = state.playlist.length
-      ? Math.min(Math.max(0, state.index), state.playlist.length - 1)
-      : -1
+/** Playlist auf die Einträge kürzen, die es noch gibt (`null` = Medium weg). Jeder entfernte
+ *  Eintrag vor dem laufenden rückt ihn eins nach vorn; fällt der laufende selbst weg, rückt der
+ *  folgende an seinen Platz (am Ende der davor). Ist nichts mehr übrig, steht der Player. */
+function keepEntries(entries: (MediaItem | null)[]): void {
+  const removedBefore = entries.slice(0, Math.max(0, state.index)).filter((m) => !m).length
+  state.playlist = entries.filter((m): m is MediaItem => m !== null)
+  if (state.playlist.length === 0) goToIndex(-1, false)
+  else if (state.index >= 0) {
+    state.index = Math.min(state.index - removedBefore, state.playlist.length - 1)
   }
 }
 
@@ -135,11 +143,10 @@ export function applyCommand(cmd: PlayerCommand): void {
         cmd.at == null
           ? state.playlist.length
           : Math.max(0, Math.min(cmd.at, state.playlist.length))
-      const keepId = currentId()
       state.playlist.splice(at, 0, ...items)
       // Erstes Medium in eine leere Playlist -> sofort abspielen (kein manuelles Play nötig).
       if (state.index < 0) goToIndex(0, true)
-      else reindexTo(keepId)
+      else if (at <= state.index) state.index += items.length // davor eingefügt
       break
     }
     case 'replace': {
@@ -153,25 +160,23 @@ export function applyCommand(cmd: PlayerCommand): void {
     case 'remove': {
       if (cmd.index < 0 || cmd.index >= state.playlist.length) break
       const removingCurrent = cmd.index === state.index
-      const keepId = removingCurrent ? null : currentId()
       state.playlist.splice(cmd.index, 1)
       if (state.playlist.length === 0) {
         goToIndex(-1, false)
       } else if (removingCurrent) {
         // auf das nun an dieser Stelle stehende Medium springen (oder ans Ende clampen)
         goToIndex(Math.min(cmd.index, state.playlist.length - 1), state.playing)
-      } else {
-        reindexTo(keepId)
+      } else if (cmd.index < state.index) {
+        state.index-- // davor entfernt
       }
       break
     }
     case 'move': {
       const { from, to } = cmd
       if (from < 0 || from >= state.playlist.length || to < 0 || to >= state.playlist.length) break
-      const keepId = currentId()
       const [m] = state.playlist.splice(from, 1)
       state.playlist.splice(to, 0, m)
-      reindexTo(keepId)
+      state.index = indexAfterMove(state.index, from, to)
       break
     }
     case 'clear':
@@ -253,19 +258,14 @@ export function setOutputOpen(open: boolean): void {
 export function refreshPlaylist(): void {
   ensureInit()
   if (state.playlist.length === 0) return
-  const keepId = currentId()
-  const refreshed = state.playlist
-    .map((m) => getMedia(m.id))
-    .filter((m): m is MediaItem => m !== null)
+  const fresh = state.playlist.map((m) => getMedia(m.id))
   // nur wirklich neu broadcasten, wenn sich etwas geändert hat
-  const changed =
-    refreshed.length !== state.playlist.length ||
-    refreshed.some(
-      (m, i) => m !== state.playlist[i] && JSON.stringify(m) !== JSON.stringify(state.playlist[i])
-    )
+  const changed = fresh.some(
+    (m, i) =>
+      !m || (m !== state.playlist[i] && JSON.stringify(m) !== JSON.stringify(state.playlist[i]))
+  )
   if (!changed) return
-  state.playlist = refreshed
-  reindexTo(keepId)
+  keepEntries(fresh)
   emitState()
 }
 
@@ -273,9 +273,6 @@ export function refreshPlaylist(): void {
 export function dropMediaFromPlaylist(mediaId: string): void {
   ensureInit()
   if (!state.playlist.some((m) => m.id === mediaId)) return
-  const keepId = currentId() === mediaId ? null : currentId()
-  state.playlist = state.playlist.filter((m) => m.id !== mediaId)
-  if (state.playlist.length === 0) goToIndex(-1, false)
-  else reindexTo(keepId)
+  keepEntries(state.playlist.map((m) => (m.id === mediaId ? null : m)))
   emitState()
 }

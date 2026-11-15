@@ -56,6 +56,15 @@ Zusätzlich gilt der allgemeine `/code-review`.
   nach jeder Änderung und beim Fokus (anderes Fenster); nur die letzte Anfrage darf setzen.
 - **`key` von Listen mit Medien nicht aus der Position bilden**, wenn Einträge den Platz
   wechseln: Das `<video>` wird sonst neu geladen und hakt (Live-Vorschau beim Übergang).
+- **Und umgekehrt: einen Platz in einer Liste mit doppelten Einträgen nie über die Kennung
+  suchen.** Dasselbe Medium darf mehrfach in der Playlist stehen. Der main suchte den laufenden
+  Eintrag nach `move`, `add` und `remove` per `findIndex` über die Kennung und landete auf dem
+  ersten Vorkommen: A, B, A mit dem zweiten A laufend, B nach vorn – Platz 1 statt 2, Markierung
+  und „Danach“ falsch, das zweite A lief ein zweites Mal (P6, 15.11.2026). Den Platz aus dem
+  Befehl mitführen: der gezogene Eintrag nach `to`, die dazwischen ±1, davor eingefügt plus
+  Anzahl, davor entfernt minus eins, beim Herausfiltern minus die Entfernten davor
+  (`indexAfterMove`, `keepEntries` in `playerState.ts`; Test `playerState.test.ts` mit A, B, A).
+  Das gilt für jeden gemerkten Platz, auch den vorab gewürfelten `shuffleNext` (offen: P7).
 
 ## Fernsteuer- und Browser-Seiten
 

@@ -154,7 +154,9 @@ Playlist-Player für LED-Wände und Beamer.
   wegrückt; das holt sie nach, sobald die Maus geht oder drei Sekunden still liegt. **Umsortieren** am Griff ziehen, auch während es läuft;
   mit der Tastatur über die Pfeil-Knöpfe, die erscheinen, sobald ein Eintrag den Tastaturfokus
   hat. Medien aus der Bibliothek auf eine Zeile ziehen setzt sie davor ein, auf die freie Fläche
-  ans Ende.
+  ans Ende. Dasselbe Medium darf mehrmals in der Liste stehen: Beim Umsortieren, Einfügen und
+  Entfernen – auch wenn ein Medium aus der Bibliothek verschwindet – bleibt ▶ an dem Eintrag, der
+  gerade läuft.
 - **Bühne:** unter der Vorschau der Titel mit Maßen und Einpass-Art, rechts daneben groß die
   **Restzeit** („−0:48“; bei Bildern die restliche Standzeit, grau, solange pausiert). Darunter
   Suchleiste und Transport: links der Ton – **„Stumm“** steht in Warnfarbe da, solange stumm
