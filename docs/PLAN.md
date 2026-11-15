@@ -21,8 +21,7 @@ ist und **wann** es drankommt, steht nur hier.
   [Kleines Werkzeug](#muster-2-kleines-werkzeug)
 - [So wird ein Paket umgesetzt](#so-wird-ein-paket-umgesetzt)
 - [Übersicht und Reihenfolge](#übersicht-und-reihenfolge)
-- **Bedienung:** [P – Video-Player](#p--video-player-fertigstellen),
-  [W – Arbeitsfläche für weitere Werkzeuge](#w--arbeitsfläche-für-weitere-werkzeuge),
+- **Bedienung:** [W – Arbeitsfläche für weitere Werkzeuge](#w--arbeitsfläche-für-weitere-werkzeuge),
   [K – Kleine Werkzeuge](#k--kleine-werkzeuge),
   [B – kleine Pakete](#b--bedienung-und-design-kleine-pakete), [D – Rückgängig](#d--rückgängig)
 - **Funktionen:** [F – Mehr Nutzen](#f--mehr-nutzen), [Verzahnung](#verzahnung),
@@ -258,7 +257,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | P9 · K1, K2, K3 | Im Player startet ✕ am letzten, laufenden Eintrag nicht „Danach“. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
+| **1 – Die Vorbilder fertig** | K1, K2, K3 | Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
@@ -269,49 +268,6 @@ alles andere lässt sich vorziehen.
 **Laufend – Update-PRs von Dependabot:** jeden Montag durchsehen und nach grüner CI mergen (7 Tage
 Abstand, [SICHERHEIT.md](SICHERHEIT.md#updates-einspielen)). Eine neue Electron-Hauptversion vor
 dem Merge an den Breaking Changes prüfen (Skill `abhaengigkeiten`).
-
-## P – Video-Player fertigstellen
-
-Das [Muster 1](#muster-1-arbeitsfläche) zu Ende bringen. Seit dem 13. November 2026 stehen die
-drei Felder Bibliothek · Playlist · Bühne, die Seite scrollt nicht mehr, die Bühne zeigt Restzeit,
-„Danach“ und „Stumm“ (P1 bis P3); seit dem 15. November auch die Playlist (P4: Miniaturen,
-„Danach“, laufender Eintrag bleibt sichtbar, Sortieren am Griff, „Playlist leeren …“ fragt),
-und der laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz (P6); bei Zufall bleibt
-„Danach“ beim Umsortieren derselbe Eintrag (P7) und startet, wenn der laufende Eintrag entfernt
-wird (P8); die Bibliothek hat „Importieren“ und „⋯“ im Kopf, eine Suche, Kacheln nach dem Platz
-im Feld, die Import-Liste unten, und Löschen fragt (P5). Offen ist ✕ am letzten, laufenden
-Eintrag ohne Zufall.
-
-| Paket | Inhalt | Größe | Braucht |
-| ----- | ------ | ----- | ------- |
-| **P9** | ✕ am letzten, laufenden Eintrag startet den davor statt „Danach“ | S | Entscheidung 14 |
-
-Vorher lesen: Skills `electron-e2e`, `review-checkliste` („Raster und SVG“), `abschluss-check`.
-Jeder Schritt ergänzt seine Prüfungen in `e2e/player-layout.mjs` (14 Medien per lavfi, drei
-gespeicherte Playlists) und lässt sie zuerst gegen den Stand davor laufen. Vorhandene Skripte,
-die den Player anfassen: `e2e/player.mjs` (Playlist-Reiter, Importe), `e2e/layout.mjs`
-(Ausgabe-Leiste, Monitorwechsel), `e2e/mini-manual.mjs` (liest Playlists über die Einstellungen)
-– vor dem Umbau mit `grep -n "video-player" e2e/*.mjs` nachsehen, was sie anklicken.
-
-### P9 – ✕ am letzten, laufenden Eintrag startet den davor statt „Danach“
-
-**Heute** (`services/player/playerState.ts`, `indexAfterCurrentGone` für `remove` und
-`keepEntries`): Wird der laufende Eintrag entfernt, rückt ohne Zufall der folgende an seinen Platz
-und startet – er ist „Danach“. Am Ende der Liste gibt es keinen folgenden, dann startet der Eintrag
-davor, auch wenn „Danach“ etwas anderes zeigt. Im Unit-Test nachgestellt (15. November 2026, beim
-Bau von P8): A, B, C, D ohne Zufall, es läuft D. Mit Loop „Alle“ ist „Danach“ A – ✕ an D startet
-C, die Ausgabe hatte A schon vorgeladen und muss C neu laden. Mit Loop „Aus“ steht „Danach: Ende“
-da – ✕ an D startet trotzdem C, der schon gelaufen ist. Ebenso, wenn das Medium von D aus der
-Bibliothek gelöscht wird. Bei Zufall startet seit P8 „Danach“; mit Loop „Eines“ ist „Danach“ der
-laufende selbst, dort bleibt es beim Eintrag davor.
-
-**So** (erst [Entscheidung 14](#entscheidungen)): ohne Zufall am Ende der Liste weiter wie bei ⏭ –
-mit Loop „Alle“ startet der erste Eintrag, mit Loop „Aus“ hält der Player an (nichts mehr gewählt,
-die Ausgabe zeigt das Idle-Bild). Zustand und Befehle bleiben im main.
-
-**Abnahme:** Unit-Test in `playerState.test.ts`: A, B, C, D ohne Zufall, D läuft – mit Loop „Alle“
-startet nach ✕ an D A, mit Loop „Aus“ wie entschieden; ebenso nach `dropMediaFromPlaylist`. Vorher
-rot.
 
 ## W – Arbeitsfläche für weitere Werkzeuge
 
@@ -1502,13 +1458,14 @@ Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestä
     NovaLCT-Dateien. Eine OBS-Szenensammlung liegt vor. (Matthias sammelt; ohne Datei kein
     Import.)
 13. **Welche neuen Werkzeuge** aus Teil G überhaupt – und welches zuerst? (Offen.)
-14. **Video-Player ohne Zufall: Was startet nach ✕ am letzten, laufenden Eintrag** (P9) – wie
-    heute der Eintrag davor oder „Danach“ wie bei ⏭: mit Loop „Alle“ der erste Eintrag, mit Loop
-    „Aus“ hält der Player an? („Danach“ wie bei ⏭, wie seit P8 bei Zufall: Die Bühne hat es
-    angekündigt, die Ausgabe hat es schon vorgeladen; mit Loop „Aus“ zeigt die Bühne „Ende“.)
 
 Entschieden – damit nichts neu gefragt wird:
 
+- **Video-Player ohne Zufall: nach ✕ am letzten, laufenden Eintrag geht es mit „Danach“ weiter**
+  (15. November 2026, „Ja, ‚Danach‘“): wie bei ⏭, nicht mehr mit dem Eintrag davor – mit Loop
+  „Alle“ startet der erste Eintrag, mit Loop „Aus“ hält der Player an (nichts mehr gewählt, die
+  Ausgabe zeigt das Idle-Bild). Mit Loop „Eines“ bleibt es beim Eintrag davor. Ebenso, wenn das
+  laufende Medium aus der Bibliothek gelöscht wird. Umgesetzt in P9.
 - **Video-Player bei Zufall: nach ✕ am laufenden Eintrag startet „Danach“** (15. November 2026,
   „Ja, ‚Danach‘“): wie bei ⏭, nicht der Eintrag, der an seinen Platz rückt – die Bühne hat es
   angekündigt, die Ausgabe hat es schon vorgeladen. Ebenso, wenn das laufende Medium aus der
@@ -1569,11 +1526,12 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Energiesparen, solange etwas läuft, eine Mottulbox je Benutzerordner, Fernsteuerungen weisen
   fremde Websites ab); drei kleine Fehler aus der Durchsicht (Medien ausliefern, Umlaute in
   Befehlen vom Handy, gescheitertes Speichern der Werkzeug-Stände); Video-Player ohne Scrollen
-  mit der Bühne (P1 bis P3) und der Playlist (P4, mit dem Menü-Baustein für „⋯“; P6: der
-  laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz; P7: bei Zufall bleibt
-  „Danach“ beim Umsortieren derselbe Eintrag; P8: bei Zufall startet nach ✕ am laufenden Eintrag
-  „Danach“) und der Bibliothek (P5: „Importieren“ und „⋯“ im Kopf, Suche, Kacheln nach Platz,
-  Import-Liste unten, Löschen fragt);
+  (Teil P, abgeschlossen am 15. November) mit der Bühne (P1 bis P3) und der Playlist (P4, mit dem
+  Menü-Baustein für „⋯“; P6: der laufende Eintrag bleibt auch bei doppelten Medien an seinem
+  Platz; P7: bei Zufall bleibt „Danach“ beim Umsortieren derselbe Eintrag; P8: bei Zufall startet
+  nach ✕ am laufenden Eintrag „Danach“; P9: ohne Zufall auch am Ende der Liste – mit Loop „Alle“
+  der erste Eintrag, mit Loop „Aus“ hält der Player an) und der Bibliothek (P5: „Importieren“ und
+  „⋯“ im Kopf, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt);
   Testtongenerator; neuer Aufbau von Testtongenerator und RTA.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
