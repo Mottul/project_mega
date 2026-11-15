@@ -256,7 +256,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | P5, P8 · K1, K2, K3 | Die Bibliothek des Players ist noch die alte, bei Zufall startet ✕ am laufenden Eintrag nicht „Danach“. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
+| **1 – Die Vorbilder fertig** | P5, P9 · K1, K2, K3 | Die Bibliothek des Players ist noch die alte, ✕ am letzten, laufenden Eintrag startet nicht „Danach“. Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B13 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
@@ -275,13 +275,13 @@ drei Felder Bibliothek · Playlist · Bühne, die Seite scrollt nicht mehr, die 
 „Danach“ und „Stumm“ (P1 bis P3); seit dem 15. November auch die Playlist (P4: Miniaturen,
 „Danach“, laufender Eintrag bleibt sichtbar, Sortieren am Griff, „Playlist leeren …“ fragt),
 und der laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz (P6); bei Zufall bleibt
-„Danach“ beim Umsortieren derselbe Eintrag (P7). Offen sind der Inhalt der Bibliothek und ✕ am
-laufenden Eintrag bei Zufall.
+„Danach“ beim Umsortieren derselbe Eintrag (P7) und startet, wenn der laufende Eintrag entfernt
+wird (P8). Offen sind der Inhalt der Bibliothek und ✕ am letzten, laufenden Eintrag ohne Zufall.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
 | **P5** | Bibliothek: „Importieren“, Menü „⋯“, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt | M | – |
-| **P8** | Zufall: ✕ am laufenden Eintrag startet den folgenden statt „Danach“ | S | Entscheidung 14 |
+| **P9** | ✕ am letzten, laufenden Eintrag startet den davor statt „Danach“ | S | Entscheidung 14 |
 
 Vorher lesen: Skills `electron-e2e`, `review-checkliste` („Raster und SVG“), `abschluss-check`.
 Jeder Schritt ergänzt seine Prüfungen in `e2e/player-layout.mjs` (14 Medien per lavfi, drei
@@ -322,22 +322,25 @@ einem Medium löscht ohne Rückfrage.
 die Bibliothek hat danach gleich viele Einträge; mit `true` einen weniger. Bei 1366 × 768 ist der
 Kopf der Bibliothek eine Zeile hoch. Suche nach einem Titel zeigt genau dieses Medium.
 
-### P8 – Zufall: ✕ am laufenden Eintrag startet den folgenden statt „Danach“
+### P9 – ✕ am letzten, laufenden Eintrag startet den davor statt „Danach“
 
-**Heute** (`services/player/playerState.ts`, Befehl `remove`): Wird der laufende Eintrag
-entfernt, startet der Eintrag, der an seinen Platz rückt – auch bei Zufall. Im Unit-Test
-nachgestellt (15. November 2026, beim Bau von P7): A, B, C, D mit Zufall, es läuft A, „Danach“
-ist D; ✕ an A startet B, „Danach“ bleibt D. Die Bühne hatte D angekündigt, die Ausgabe hatte D
-schon vorgeladen und muss B neu laden. Wird das laufende Medium aus der Bibliothek gelöscht, rückt
-laut Code ebenso der folgende nach (`keepEntries`).
+**Heute** (`services/player/playerState.ts`, `indexAfterCurrentGone` für `remove` und
+`keepEntries`): Wird der laufende Eintrag entfernt, rückt ohne Zufall der folgende an seinen Platz
+und startet – er ist „Danach“. Am Ende der Liste gibt es keinen folgenden, dann startet der Eintrag
+davor, auch wenn „Danach“ etwas anderes zeigt. Im Unit-Test nachgestellt (15. November 2026, beim
+Bau von P8): A, B, C, D ohne Zufall, es läuft D. Mit Loop „Alle“ ist „Danach“ A – ✕ an D startet
+C, die Ausgabe hatte A schon vorgeladen und muss C neu laden. Mit Loop „Aus“ steht „Danach: Ende“
+da – ✕ an D startet trotzdem C, der schon gelaufen ist. Ebenso, wenn das Medium von D aus der
+Bibliothek gelöscht wird. Bei Zufall startet seit P8 „Danach“; mit Loop „Eines“ ist „Danach“ der
+laufende selbst, dort bleibt es beim Eintrag davor.
 
-**So** (erst [Entscheidung 14](#entscheidungen)): Bei Zufall nach ✕ am laufenden Eintrag mit
-„Danach“ weiter wie bei ⏭ – dessen Platz nach dem Entfernen mit der Rechnung aus P6 –, danach neu
-würfeln. Ohne Zufall bleibt es beim folgenden (er ist dort „Danach“), ebenso mit Loop „Eines“.
-Zustand und Befehle bleiben im main.
+**So** (erst [Entscheidung 14](#entscheidungen)): ohne Zufall am Ende der Liste weiter wie bei ⏭ –
+mit Loop „Alle“ startet der erste Eintrag, mit Loop „Aus“ hält der Player an (nichts mehr gewählt,
+die Ausgabe zeigt das Idle-Bild). Zustand und Befehle bleiben im main.
 
-**Abnahme:** Unit-Test in `playerState.test.ts` (Zufall festlegen wie bei P7): ✕ an A startet D.
-Vorher rot.
+**Abnahme:** Unit-Test in `playerState.test.ts`: A, B, C, D ohne Zufall, D läuft – mit Loop „Alle“
+startet nach ✕ an D A, mit Loop „Aus“ wie entschieden; ebenso nach `dropMediaFromPlaylist`. Vorher
+rot.
 
 ### Regeln für P5
 
@@ -1306,8 +1309,9 @@ nicht per Import aus `beenden/laufend.ts` (Kreis in den Importen).
 ### E7 – Tests für Player-Zustand, yt-dlp und Fernsteuer-Parser
 
 Drei Stellen mit Lücken: `playerState` hat seit P6 einen Test für die Plätze in der Playlist, seit
-P7 auch für den gewürfelten Platz bei Zufall (`playerState.test.ts`, Bibliothek und Einstellungen
-per `vi.mock`, Zufall per `vi.spyOn(Math, 'random')`) – darauf aufbauen für die
+P7 auch für den gewürfelten Platz bei Zufall, seit P8 für ✕ am laufenden Eintrag
+(`playerState.test.ts`, Bibliothek und Einstellungen per `vi.mock`, Zufall per
+`vi.spyOn(Math, 'random')`) – darauf aufbauen für die
 Wiedergabe (`next`, `prev`, `ended` mit Loop und Zufall), `replace` und die Einstellungs-Befehle;
 dazu die yt-dlp-Argumente und -Ausgabezeilen sowie die Parser der Fernsteuerungen (Body, OSC- und
 Jingle-Befehle, Upload). Je Stelle ein Pull Request, ohne Änderung am Verhalten.
@@ -1504,12 +1508,17 @@ Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestä
     NovaLCT-Dateien. Eine OBS-Szenensammlung liegt vor. (Matthias sammelt; ohne Datei kein
     Import.)
 13. **Welche neuen Werkzeuge** aus Teil G überhaupt – und welches zuerst? (Offen.)
-14. **Video-Player bei Zufall: Was startet nach ✕ am laufenden Eintrag** (P8) – „Danach“ wie bei
-    ⏭ oder wie heute der Eintrag, der an seinen Platz rückt? („Danach“: Die Bühne hat es
-    angekündigt, die Ausgabe hat es schon vorgeladen.)
+14. **Video-Player ohne Zufall: Was startet nach ✕ am letzten, laufenden Eintrag** (P9) – wie
+    heute der Eintrag davor oder „Danach“ wie bei ⏭: mit Loop „Alle“ der erste Eintrag, mit Loop
+    „Aus“ hält der Player an? („Danach“ wie bei ⏭, wie seit P8 bei Zufall: Die Bühne hat es
+    angekündigt, die Ausgabe hat es schon vorgeladen; mit Loop „Aus“ zeigt die Bühne „Ende“.)
 
 Entschieden – damit nichts neu gefragt wird:
 
+- **Video-Player bei Zufall: nach ✕ am laufenden Eintrag startet „Danach“** (15. November 2026,
+  „Ja, ‚Danach‘“): wie bei ⏭, nicht der Eintrag, der an seinen Platz rückt – die Bühne hat es
+  angekündigt, die Ausgabe hat es schon vorgeladen. Ebenso, wenn das laufende Medium aus der
+  Bibliothek gelöscht wird. Umgesetzt in P8.
 - **Die beiden Muster übertragen** (14. November 2026): Der Aufbau von Testtongenerator und RTA
   und der neue Video-Player haben die Bedienung deutlich verbessert; sie sollen auf andere
   Werkzeuge angewendet werden. Wie weit, entscheiden die Punkte 2 und 5.
@@ -1568,7 +1577,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Befehlen vom Handy, gescheitertes Speichern der Werkzeug-Stände); Video-Player ohne Scrollen
   mit der Bühne (P1 bis P3) und der Playlist (P4, mit dem Menü-Baustein für „⋯“; P6: der
   laufende Eintrag bleibt auch bei doppelten Medien an seinem Platz; P7: bei Zufall bleibt
-  „Danach“ beim Umsortieren derselbe Eintrag);
+  „Danach“ beim Umsortieren derselbe Eintrag; P8: bei Zufall startet nach ✕ am laufenden Eintrag
+  „Danach“);
   Testtongenerator; neuer Aufbau von Testtongenerator und RTA.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,

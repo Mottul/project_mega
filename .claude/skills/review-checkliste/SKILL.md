@@ -72,6 +72,14 @@ Zusätzlich gilt der allgemeine `/code-review`.
   `replace`), steht er auf −1 und wird neu gewürfelt, nie auf den laufenden Platz. Im Review bei
   jedem „bleibt stehen, solange gültig“ fragen: Wird der Wert bei jeder Änderung der Liste
   mitgeführt?
+  **Was angekündigt ist, kommt auch.** Fiel der laufende Eintrag weg (✕, Medium gelöscht),
+  startete der Eintrag, der an seinen Platz rückte – bei Zufall nicht der gewürfelte, den Bühne und
+  Playlist als „Danach“ zeigten und die Ausgabe schon vorgeladen hatte (P8, 15.11.2026). Seitdem
+  nimmt `indexAfterCurrentGone` bei Zufall den mitgeführten `shuffleNext`; den nachrückenden nur
+  noch ohne Zufall, mit Loop „Eines“ oder wenn der gewürfelte mit wegfiel (offen: am Ende der
+  Liste ohne Zufall startet der davor, Paket P9). Im Review bei jedem Weg, der den laufenden
+  Eintrag wechselt, fragen: Wählt er dasselbe wie `nextIndex` – oder kündigt die Bühne etwas an,
+  das nicht kommt?
 
 ## Fernsteuer- und Browser-Seiten
 
