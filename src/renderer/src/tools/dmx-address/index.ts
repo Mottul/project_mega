@@ -5,7 +5,7 @@ import type { ToolModule } from '../types'
 export const dmxAddressTool: ToolModule = {
   id: 'dmx-address',
   name: 'DMX-Dip-Schalter',
-  description: 'DMX-Startadresse in Dip-Schalter umrechnen und zurück (Binär, 9 Schalter, 1–512).',
+  description: 'DMX-Startadresse in Dip-Schalter umrechnen und zurück (Binär, 9 Schalter, 1–511).',
   icon: Binary,
   category: 'control',
   keywords: [
