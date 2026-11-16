@@ -33,6 +33,71 @@ describe('Vorgabe des Rechners: Geräte je Stromkreis, 500 W an 230 V, 16 A', ()
   })
 })
 
+// Einphasige Geräte hängen je an einem Außenleiter (400 V ÷ √3 ≈ 230,9 V), die Absicherung gilt
+// je Leiter. „Summe Strom“ ist der Strom auf einem Leiter, nicht Max. Geräte × Strom je Gerät.
+describe('Geräte je Stromkreis dreiphasig, je Außenleiter: 500 W an 400 V', () => {
+  it('32 A: 2,165 A je Gerät am Leiter · 3 × 14 = 42 Geräte · 21.000 W · 30,31 A je Leiter', () => {
+    const g = devicesPerCircuit(DREI, 500, 32, 1)
+    expect(g.iDev).toBeCloseTo(2.1651, 4)
+    expect(g.maxDevices).toBe(42)
+    expect(g.sumP).toBe(21000)
+    expect(g.sumI).toBeCloseTo(30.311, 3)
+  })
+
+  it('16 A: 3 × 7 = 21 Geräte · 10.500 W · 15,16 A je Leiter', () => {
+    const g = devicesPerCircuit(DREI, 500, 16, 1)
+    expect(g.maxDevices).toBe(21)
+    expect(g.sumP).toBe(10500)
+    expect(g.sumI).toBeCloseTo(15.155, 3)
+  })
+
+  it('16 A bei 80 %: 3 × 5 = 15 Geräte · 7.500 W · 10,83 A je Leiter', () => {
+    const g = devicesPerCircuit(DREI, 500, 16, 0.8)
+    expect(g.maxDevices).toBe(15)
+    expect(g.sumP).toBe(7500)
+    expect(g.sumI).toBeCloseTo(10.825, 3)
+  })
+
+  it('cos φ 0,9: 2,406 A je Gerät am Leiter → 3 × 6 = 18 Geräte an 16 A · 14,43 A je Leiter', () => {
+    const g = devicesPerCircuit({ ...DREI, pf: 0.9 }, 500, 16, 1)
+    expect(g.iDev).toBeCloseTo(2.4056, 4)
+    expect(g.maxDevices).toBe(18)
+    expect(g.sumI).toBeCloseTo(14.434, 3)
+  })
+})
+
+describe('devicesPerCircuit – nie über der Absicherung', () => {
+  const FAELLE = [10, 16, 32, 63].flatMap((a) =>
+    [1, 0.8].flatMap((r) => Array.from({ length: 100 }, (_, k) => [(k + 1) * 50, a, r] as const))
+  )
+
+  it.each<[string, Supply, number]>([
+    ['einphasig', EIN, 1],
+    ['dreiphasig', DREI, 3]
+  ])(
+    '%s: kein Leiter über Absicherung × Auslastung, ein Gerät mehr passte nicht',
+    (_, supply, leiter) => {
+      for (const [pDev, breakerA, reserve] of FAELLE) {
+        const g = devicesPerCircuit(supply, pDev, breakerA, reserve)
+        const maxA = breakerA * reserve
+        const jeLeiter = g.maxDevices! / leiter
+        expect(Number.isInteger(jeLeiter)).toBe(true)
+        expect(g.sumI!).toBeLessThanOrEqual(maxA * (1 + 1e-12))
+        expect((jeLeiter + 1) * g.iDev!).toBeGreaterThan(maxA)
+      }
+    }
+  )
+
+  it('Drehstromgeräte (je Leiter P ÷ (√3 · U · cos φ)): höchstens zwei zu wenig, nie zu viele', () => {
+    for (const [pDev, breakerA, reserve] of FAELLE) {
+      const passen = Math.floor((breakerA * reserve) / (pDev / (Math.sqrt(3) * 400)))
+      const zuWenig = passen - devicesPerCircuit(DREI, pDev, breakerA, reserve).maxDevices!
+      expect(zuWenig).toBeGreaterThanOrEqual(0)
+      expect(zuWenig).toBeLessThanOrEqual(2)
+    }
+  })
+})
+
 describe('loadFrom – Leistung oder Strom', () => {
   it('aus der Leistung: 3.680 W an 230 V → 16 A', () => {
     expect(loadFrom(EIN, 'p', 3680)).toEqual({ p: 3680, i: 16, apparent: 3680 })
@@ -93,13 +158,6 @@ describe('devicesPerCircuit – Ränder', () => {
     expect(g.sumP).toBe(0)
   })
 
-  it('dreiphasig zählt der Strom je Leiter, als ließe sich die Leistung beliebig verteilen', () => {
-    // 500 W an 400 V, 32 A: 44 Geräte. Einphasige Geräte gingen nur 3 × 14 = 42 – Paket K7.
-    const g = devicesPerCircuit(DREI, 500, 32, 1)
-    expect(g.iDev).toBeCloseTo(0.7217, 4)
-    expect(g.maxDevices).toBe(44)
-  })
-
   it.each([null, 0, -500])('Leistung je Gerät %s → kein Ergebnis', (pDev) => {
     expect(devicesPerCircuit(EIN, pDev, 16, 1)).toEqual({
       iDev: null,
@@ -109,7 +167,11 @@ describe('devicesPerCircuit – Ränder', () => {
     })
   })
 
-  it('ohne Spannung kein Ergebnis', () => {
-    expect(devicesPerCircuit({ ...EIN, u: null }, 500, 16, 1).maxDevices).toBeNull()
+  it.each<[string, Supply]>([
+    ['einphasig', EIN],
+    ['dreiphasig', DREI]
+  ])('%s ohne Spannung kein Ergebnis', (_, supply) => {
+    expect(devicesPerCircuit({ ...supply, u: null }, 500, 16, 1).maxDevices).toBeNull()
+    expect(devicesPerCircuit({ ...supply, u: 0 }, 500, 16, 1).maxDevices).toBeNull()
   })
 })

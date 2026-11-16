@@ -16,6 +16,11 @@ import { devicesPerCircuit, loadFrom, powerFactor, type LoadField, type Phase } 
 // Stromlast & Absicherung: oben Leistung <-> Strom, unten wie viele gleiche Geräte auf einen
 // Stromkreis passen (mit Reserve). Die Formeln stehen in math.ts.
 
+// ⓘ der Karte „Geräte pro Stromkreis“. Dreiphasig sagt es, dass je Außenleiter gezählt wird –
+// sonst läse man „Strom je Gerät“ und „Summe Strom“ als Strom des ganzen Stromkreises.
+const DEVICES_HINT = 'Anschluss, Spannung und cos φ gelten wie unter „Last“.'
+const DEVICES_HINT_3 = `${DEVICES_HINT}\nDreiphasig zählt der Rechner je Außenleiter: Jedes Gerät hängt an einem Leiter (U ÷ √3, bei 400 V rund 230 V), die Absicherung gilt je Leiter. Max. Geräte = 3 × Geräte je Leiter; „Strom je Gerät“ und „Summe Strom“ gelten für einen Leiter. Bei Drehstromgeräten sind es höchstens zwei zu wenig, nie zu viele.`
+
 export function PowerLoad(): JSX.Element {
   const [phase, setPhase] = useState<Phase>('1')
   const [uRaw, setURaw] = useState('230')
@@ -78,7 +83,7 @@ export function PowerLoad(): JSX.Element {
       <SectionCard
         title="Geräte pro Stromkreis"
         desc="Wie viele gleiche Geräte verträgt eine Absicherung?"
-        hint="Anschluss, Spannung und cos φ gelten wie unter „Last“."
+        hint={phase === '3' ? DEVICES_HINT_3 : DEVICES_HINT}
       >
         <NumField label="Leistung je Gerät" unit="W" value={devRaw} onChange={setDevRaw} />
         <SelectField label="Absicherung" value={breaker} onChange={setBreaker}>
