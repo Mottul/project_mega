@@ -15,14 +15,18 @@
 //   Wert rechts daneben; so stehen Knopfgruppen, Schieber und Schnellwahl bündig untereinander.
 // - Selten Gebrauchtes (Einstellungen des RTA) in `FoldCard`: zugeklappt nur eine Zeile mit der
 //   Kurzfassung – beim ersten Öffnen erschlägt die Seite nicht.
+// - Nichts bleibt stumm: Eine Fehleingabe ist rot umrandet (`NumField`), der Status eines
+//   Ergebnisses steht in Farbe und Symbol der App (`Readout` mit `tone`) statt als ✓/✗ im Text.
 import { Children, createContext, useContext, useId, useState, type ReactNode } from 'react'
 import { ChevronDown, Square, type LucideIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
+import { parseDecimal } from '@renderer/components/ui/decimal-field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
 import { Input } from '@renderer/components/ui/input'
 import { Segmented, segmentButtonClass, segmentGroupClass } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
+import { STATUS, type StatusTone } from '@renderer/components/ui/status'
 import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
 import { cn } from '@renderer/lib/utils'
 
@@ -268,9 +272,16 @@ export function useLinkedFields<F extends string>(
   return { driver, raw, bind }
 }
 
-/** Eingabe- oder Ergebnisfeld mit Label und Einheit. `derived` markiert bei
- *  verknüpften Feldern den gerade BERECHNETEN Wert (Akzentfarbe) – tippt man
- *  hinein, wird das Feld zur Eingabe und die Markierung wandert weiter. */
+/**
+ * Eingabe- oder Ergebnisfeld mit Label und Einheit. `derived` markiert bei verknüpften Feldern
+ * den gerade BERECHNETEN Wert (Akzentfarbe) – tippt man hinein, wird das Feld zur Eingabe und die
+ * Markierung wandert weiter.
+ *
+ * Eine Fehleingabe ist rot umrandet und trägt `aria-invalid`, damit sie nicht stumm bleibt (das
+ * Ergebnis zeigt sonst nur „–“): Was `parseNum` (bzw. `parse`) nicht lesen kann, erkennt das Feld
+ * selbst; `invalid` meldet Werte, die lesbar, aber nicht rechenbar sind (Gain 0). Leer ist nie
+ * ein Fehler.
+ */
 export function NumField({
   label,
   hint,
@@ -278,8 +289,10 @@ export function NumField({
   value,
   onChange,
   onFocus,
-  readOnly,
   derived,
+  invalid,
+  signed,
+  parse = parseNum,
   placeholder
 }: {
   label: string
@@ -288,26 +301,35 @@ export function NumField({
   value: string
   onChange?: (v: string) => void
   onFocus?: () => void
-  readOnly?: boolean
   derived?: boolean
+  /** lesbar, aber nicht rechenbar – rot umrandet wie eine Fehleingabe */
+  invalid?: boolean
+  /** Der Wert darf negativ sein (Temperatur): am Handy eine Tastatur mit Minus */
+  signed?: boolean
+  /** liest den Text (null = nicht lesbar) – für eine eigene Schreibweise wie den Timecode */
+  parse?: (text: string) => unknown
   placeholder?: string
 }): JSX.Element {
   const id = useId()
+  const bad = value.trim() !== '' && (invalid || parse(value) == null)
   return (
     <FieldRow label={label} hint={hint} htmlFor={id}>
       <Input
         id={id}
-        inputMode="decimal"
+        // Die Dezimaltastatur hat am iPhone kein Minus (WebKit-Fehler 193825) – Felder mit
+        // negativen Werten öffnen deshalb die volle Tastatur.
+        inputMode={signed ? 'text' : 'decimal'}
         value={value}
         placeholder={placeholder}
-        readOnly={readOnly}
+        aria-invalid={bad || undefined}
         title={derived ? 'berechneter Wert – zum Eingeben einfach anklicken' : undefined}
         onFocus={onFocus}
         onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         className={cn(
           unit && 'pr-12',
-          readOnly && 'cursor-default bg-muted/30',
-          derived && 'border-primary/40 bg-primary/[0.07] font-semibold text-primary'
+          derived && 'border-primary/40 bg-primary/[0.07] font-semibold text-primary',
+          // auch der Fokusring: Beim Tippen verdeckte der Akzent sonst das Rot
+          bad && 'border-danger focus-visible:ring-danger/70'
         )}
       />
       {unit && <FieldUnit>{unit}</FieldUnit>}
@@ -581,10 +603,16 @@ export function RunButton({
 /** Liegt die Ergebniszeile in einem ReadoutGrid? Dann als Kachel (Beschriftung über dem Wert). */
 const InGrid = createContext(false)
 
+/** Statusstufen eines Ergebnisses; „info“ ist keine Bewertung */
+type ReadoutTone = Exclude<StatusTone, 'info'>
+
 /** Ergebniszeile. `accent` hebt DIE Kernaussage des Rechners hervor,
  *  `big` vergrößert den Wert (Hero-Ergebnis), `sub` zeigt denselben Wert in einer zweiten
- *  Einheit klein daneben (z. B. kN neben kg) – eine Zeile statt zwei. Im ReadoutGrid steht die
- *  Beschriftung über dem Wert: In halber Breite bräche sie sonst je nach Länge unruhig um. */
+ *  Einheit klein daneben (z. B. kN neben kg) – eine Zeile statt zwei. `tone` bewertet das
+ *  Ergebnis („ausreichend“, „zu dunkel“): Wert in der Statusfarbe, davor das Symbol aus `STATUS`
+ *  – wie überall in der App statt ✓, ✗ oder ⚠ im Text; ohne Wert („–“) bleibt die Zeile neutral.
+ *  Im ReadoutGrid steht die Beschriftung über dem Wert: In halber Breite bräche sie sonst je nach
+ *  Länge unruhig um. */
 export function Readout({
   label,
   hint,
@@ -592,7 +620,8 @@ export function Readout({
   unit,
   sub,
   big,
-  accent
+  accent,
+  tone
 }: {
   label: string
   hint?: string
@@ -601,8 +630,10 @@ export function Readout({
   sub?: string
   big?: boolean
   accent?: boolean
+  tone?: ReadoutTone
 }): JSX.Element {
   const tile = useContext(InGrid)
+  const status = tone && value ? STATUS[tone] : null
   return (
     <div
       className={cn(
@@ -624,9 +655,12 @@ export function Readout({
         className={cn(
           'tabular-nums',
           accent && 'text-primary',
+          status?.className,
           big ? 'text-2xl font-bold tracking-tight' : 'text-base font-semibold'
         )}
       >
+        {/* so groß wie die Schrift, auf deren Mitte gesetzt (Tailwind macht SVGs sonst zu Blöcken) */}
+        {status && <status.icon className="mr-1.5 inline-block size-[1em] align-[-0.125em]" />}
         {value || '–'}
         {unit && value && (
           <span
@@ -677,12 +711,13 @@ export function CalcNote({ children }: { children: ReactNode }): JSX.Element {
   return <p className="text-xs text-muted-foreground">{children}</p>
 }
 
-/** Text -> Zahl (akzeptiert Komma als Dezimaltrenner). Leer/ungültig -> null. */
+/**
+ * Text -> Zahl (Komma oder Punkt als Dezimaltrenner), leer oder ungültig -> null. Reicht nur
+ * `parseDecimal` weiter: eine Lese-Funktion für Rechner und `DecimalField`, damit beide dieselben
+ * Eingaben annehmen – und `NumField` rot zeigt, was der Rechner nicht liest.
+ */
 export function parseNum(s: string): number | null {
-  const t = (s ?? '').replace(',', '.').trim()
-  if (t === '' || t === '-' || t === '.' || !/^-?\d*\.?\d*$/.test(t)) return null
-  const v = Number(t)
-  return Number.isFinite(v) ? v : null
+  return parseDecimal(s)
 }
 
 /**

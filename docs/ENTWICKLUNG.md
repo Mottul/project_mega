@@ -165,7 +165,11 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   `tools/_calc/ui` (Karten im auto-fit-Raster, Zeilen per `FieldRow` mit Umbruch unter ~330 px,
   Ergebnis-Kacheln, `hint` = ⓘ, verknüpfte Felder per `useLinkedFields`; Auswahl bis vier kurze
   Möglichkeiten als Knopfgruppe `ChoiceField`, sonst `SelectField`; `RangeField`, `QuickPick`,
-  `RunButton` für Start und Stopp).
+  `RunButton` für Start und Stopp). `NumField` umrandet selbst rot und mit `aria-invalid`, was
+  `parseNum` nicht liest (dieselbe Lese-Funktion wie `DecimalField`; eigene Schreibweise per
+  `parse`, etwa Timecode), `invalid` für Lesbares, das nicht rechenbar ist, `signed` für negative
+  Werte (Tastatur mit Minus am Handy); Bewertungen als `Readout` mit `tone` (Farbe und Symbol aus
+  `STATUS`).
 - **Testton:** ein Kern in `tools/_tone/` (Engine, Zeitpläne, Hook `useToneEngine`) für den
   Testbildgenerator und den Testtongenerator, in der App wie in der Rechner-PWA – neue Signale
   dort, nicht je Werkzeug. Typen und Vorgabe in `src/shared/testton.ts`. Der Kern kommt ohne
