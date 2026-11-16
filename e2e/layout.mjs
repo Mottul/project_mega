@@ -730,11 +730,21 @@ try {
       'DMX-Dip-Schalter: Schalter sagen, ob sie an sind; die Adresse steht nur im Feld',
       async () => {
         const w = await openSmall('dmx-address')
+        // Adresse = Summe der eingeschalteten Werte: Vorgabe 1 heißt Schalter 1 an, wie am Gerät
+        const s1 = w.getByRole('button', { name: 'Schalter 1, Wert 1', exact: true })
+        assert.equal(await s1.getAttribute('aria-pressed'), 'true')
         const s3 = w.getByRole('button', { name: 'Schalter 3, Wert 4', exact: true })
         assert.equal(await s3.getAttribute('aria-pressed'), 'false')
         await s3.click()
         await expectAttr(s3, 'aria-pressed', 'true', 'Schalter 3 umgelegt')
-        assert.equal(await w.getByLabel('Startadresse', { exact: true }).inputValue(), '5')
+        const adresse = w.getByLabel('Startadresse', { exact: true })
+        assert.equal(await adresse.inputValue(), '5')
+        // nur noch Schalter 3: Adresse 4; alle aus ist keine Adresse – das Feld bleibt leer
+        await s1.click()
+        await expectAttr(s1, 'aria-pressed', 'false', 'Schalter 1 ausgeschaltet')
+        assert.equal(await adresse.inputValue(), '4')
+        await s3.click()
+        assert.ok(await waitFor(async () => (await adresse.inputValue()) === ''), 'alle aus')
         // kein zweites Ergebnis „Adresse“ unter den Schaltern
         assert.equal(await w.getByText('Adresse', { exact: true }).count(), 0)
         await closeToolWindow('dmx-address')

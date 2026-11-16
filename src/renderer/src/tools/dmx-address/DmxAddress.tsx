@@ -3,8 +3,8 @@ import { cn } from '@renderer/lib/utils'
 import { CalcPage, NumField, Readout, SectionCard, parseNum } from '../_calc/ui'
 import { dmxAddress, dmxBinary, dmxSwitches, dmxToggle, switchValue } from './math'
 
-// DMX-Startadresse <-> Dip-Schalter. Schalter 1 … 9 bilden Adresse − 1 binär ab (Adresse 1 =
-// alle aus); die Umrechnung steht in math.ts.
+// DMX-Startadresse <-> Dip-Schalter. Die Adresse ist die Summe der eingeschalteten Werte
+// (Schalter 1 an = Adresse 1); die Umrechnung steht in math.ts.
 
 export function DmxAddress(): JSX.Element {
   const [addrRaw, setAddrRaw] = useState('1')
@@ -16,7 +16,9 @@ export function DmxAddress(): JSX.Element {
   }
 
   function toggle(i: number): void {
-    setAddr(dmxToggle(addr, i))
+    // alle aus ist keine Adresse: dann bleibt das Feld leer
+    const next = dmxToggle(addr, i)
+    setAddrRaw(next == null ? '' : String(next))
   }
 
   const bits = dmxSwitches(addr)
@@ -26,7 +28,7 @@ export function DmxAddress(): JSX.Element {
       <SectionCard
         title="DMX-Adresse ↔ Dip-Schalter"
         desc="Startadresse eingeben oder Schalter umlegen – beides bleibt gleich."
-        hint="Schalter 1 hat den Wert 1, Schalter 2 den Wert 2 … Schalter 9 den Wert 256. Adresse = Summe der eingeschalteten Werte + 1 (alle aus = Adresse 1). ON ist oben. Ein 10. Schalter steuert meist Sonderfunktionen (Display, Modus) und zählt nicht zur Adresse."
+        hint="Schalter 1 hat den Wert 1, Schalter 2 den Wert 2 … Schalter 9 den Wert 256. Adresse = Summe der eingeschalteten Werte: Schalter 1 an = Adresse 1, alle neun an = 511. ON ist oben. Ein 10. Schalter steuert meist Sonderfunktionen (Display, Modus); zählt er bei einem Gerät zur Adresse, hat er den Wert 512 – nur so geht Adresse 512."
       >
         <div className="max-w-xs">
           <NumField

@@ -1378,6 +1378,11 @@ Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestä
 
 Entschieden – damit nichts neu gefragt wird:
 
+- **DMX-Dip-Schalter: Adresse = Summe der eingeschalteten Werte** (16. November 2026, Rückmeldung
+  von Matthias: Adresse 1 ist an den Geräten Schalter 1 an). Vorher rechnete der Rechner Summe + 1
+  (alle aus = Adresse 1). Mit neun Schaltern reicht es bis 511; Adresse 512 braucht einen zehnten
+  Schalter (Wert 512), den nur manche Geräte dafür nutzen – das sagt das ⓘ. Umgesetzt mit K3.
+
 - **Stromlast am Drehstrom: „Geräte pro Stromkreis“ zählt je Außenleiter** (16. November 2026,
   „Ja, je Außenleiter“): Einphasige Geräte hängen je an einem Leiter (U ÷ √3), die Absicherung
   gilt je Leiter – Max. Geräte = 3 × ⌊Absicherung × Auslastung ÷ Strom je Gerät am Leiter⌋.
@@ -1468,7 +1473,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Eigengewicht ergeben kein Ergebnis, Vorgaben stehen als Platzhalter im leeren Feld; Timecode aus
   reinen Ziffern, Temperatur mit Minus, Bewertung und Winkel-Warnungen in den Statusstufen,
   DMX-Schalter mit `aria-pressed`, ein Ergebnis „Adresse“ weniger, „Werkzeuge“ statt „Rechner“ in
-  der PWA, `trimNum` ohne Exponent).
+  der PWA, `trimNum` ohne Exponent); der DMX-Dip-Schalter zählt wie die Geräte (Adresse = Summe
+  der Schalter, Schalter 1 an = Adresse 1).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

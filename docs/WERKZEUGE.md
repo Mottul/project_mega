@@ -461,9 +461,12 @@ Gerätetyp. Adapter, „Scannen“/„Stopp“ und der Fortschritt stehen in der
 
 ### DMX-Dip-Schalter
 
-DMX-Startadresse in Dip-Schalter umrechnen und zurück (binär, 9 Schalter, 1–512). Die Adresse
-steht im Feld, darunter die Schalter und die Binärzahl. Jeder Schalter sagt Vorlesewerkzeugen,
-welcher er ist und ob er an ist („Schalter 3, Wert 4“).
+DMX-Startadresse in Dip-Schalter umrechnen und zurück (binär, 9 Schalter, 1–511). Wie an den
+Geräten ist die Adresse die Summe der eingeschalteten Werte: Schalter 1 an = Adresse 1, alle neun
+an = 511; alle aus ist keine Adresse, das Feld bleibt dann leer. Adresse 512 geht nur mit einem
+zehnten Schalter (Wert 512), wenn das Gerät ihn für die Adresse nutzt. Die Adresse steht im Feld,
+darunter die Schalter und die Binärzahl. Jeder Schalter sagt Vorlesewerkzeugen, welcher er ist und
+ob er an ist („Schalter 3, Wert 4“).
 
 ## Bild & Projektion
 
