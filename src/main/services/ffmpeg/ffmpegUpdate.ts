@@ -26,7 +26,6 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
-  renameSync,
   rmSync,
   writeFileSync
 } from 'node:fs'
@@ -35,6 +34,7 @@ import { join } from 'node:path'
 import type { FfmpegToolStatus } from '@shared/types'
 import { binaryVersion } from '../binaryVersion'
 import { parseEncoderNames, parseFilterNames } from '../convert/capabilities'
+import { renameWithRetry } from '../fsAtomic'
 import { logLine } from '../log'
 import { getSettings } from '../store'
 import { ffmpegBinPath, ffmpegExeName, managedFfmpegDir, setManagedFfmpegDir } from './ffmpegPath'
@@ -310,6 +310,14 @@ async function removeDir(p: string): Promise<void> {
   }
 }
 
+/**
+ * Pausen beim Umbenennen des fertig geprüften Ordners, zusammen gut 6 s: Gleich nach dem
+ * Selbsttest hält Windows (meist der Virenscanner) das eben gelaufene ffmpeg noch fest, dann
+ * scheitert das Umbenennen mit EPERM (Windows-CI, 16. November 2026). Der Auftrag läuft im
+ * Hintergrund, das Warten kostet niemanden etwas.
+ */
+const AFTER_SELFTEST_WAITS = [100, 200, 400, 800, 1600, 3200]
+
 async function install(c: BuildCandidate): Promise<void> {
   const work = file(`tmp-${randomUUID().slice(0, 8)}`)
   mkdirSync(join(work, 'x'), { recursive: true })
@@ -344,7 +352,7 @@ async function install(c: BuildCandidate): Promise<void> {
     const version = await selfTest(next)
     const final = file(c.build)
     rmSync(final, { recursive: true, force: true })
-    renameSync(next, final)
+    await renameWithRetry(next, final, AFTER_SELFTEST_WAITS)
     writeFileSync(
       join(final, 'stand.json'),
       JSON.stringify({ geladen: new Date().toISOString(), quelle: c.url, version }, null, 2) + '\n'

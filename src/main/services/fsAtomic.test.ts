@@ -1,6 +1,7 @@
 import {
   existsSync,
   fsyncSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -29,7 +30,8 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   }
 })
 
-const { writeFileAtomic, writeFileAtomicAsync, writeNewFileAsync } = await import('./fsAtomic')
+const { renameWithRetry, writeFileAtomic, writeFileAtomicAsync, writeNewFileAsync } =
+  await import('./fsAtomic')
 
 const fail = (code: string): Error => Object.assign(new Error(`${code}: simuliert`), { code })
 let dir = ''
@@ -72,6 +74,32 @@ describe('atomar schreiben', () => {
     vi.mocked(rename).mockReset()
     expect(readFileSync(file, 'utf8')).toBe('neu')
     expect(readdirSync(dir)).toEqual(['Messe.mottul'])
+  })
+})
+
+describe('umbenennen mit Wiederholung', () => {
+  it('Ordner mit eben gelaufener .exe (Windows): wartet die übergebenen Pausen ab', async () => {
+    const from = join(dir, 'tmp-1234', 'N-1-gabc')
+    mkdirSync(from, { recursive: true })
+    writeFileSync(join(from, 'ffmpeg.exe'), 'x')
+    const to = join(dir, 'N-1-gabc')
+    vi.mocked(rename)
+      .mockRejectedValueOnce(fail('EPERM'))
+      .mockRejectedValueOnce(fail('EPERM'))
+      .mockRejectedValueOnce(fail('EACCES'))
+    await renameWithRetry(from, to, [1, 1, 1, 1])
+    expect(vi.mocked(rename)).toHaveBeenCalledTimes(4)
+    expect(existsSync(join(to, 'ffmpeg.exe'))).toBe(true)
+  })
+
+  it('andere Fehler sofort, eine bleibende Sperre nach dem letzten Versuch beim Aufrufer', async () => {
+    const missing = renameWithRetry(join(dir, 'fehlt'), join(dir, 'neu'), [1, 1])
+    await expect(missing).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(vi.mocked(rename)).toHaveBeenCalledTimes(1)
+    vi.mocked(rename).mockRejectedValueOnce(fail('EPERM')).mockRejectedValueOnce(fail('EPERM'))
+    const locked = renameWithRetry(join(dir, 'a'), join(dir, 'b'), [1])
+    await expect(locked).rejects.toMatchObject({ code: 'EPERM' })
+    expect(vi.mocked(rename)).toHaveBeenCalledTimes(3)
   })
 })
 

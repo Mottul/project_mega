@@ -10,7 +10,7 @@
 
 import assert from 'node:assert/strict'
 import { launchApp, runSteps, Skip, sleep, waitFor } from './harness.mjs'
-import { checkBeatGaps, installToneTap, onsets, toneTap } from './toneTap.mjs'
+import { AUDIO_MS, checkBeatGaps, installToneTap, onsets, toneTap } from './toneTap.mjs'
 
 const ctx = await launchApp()
 const { app, page } = ctx
@@ -183,10 +183,15 @@ try {
         await signal('Metronom').click()
         await setTempo(120)
         await sleep(600)
-        const steady = onsets(await tap('record', 3000, 4, 2048), { high: 0.03, low: 0.005 })
+        const steady = onsets(await tap('record', 3000, 4, 2048), {
+          high: 0.03,
+          low: 0.005,
+          timeCol: AUDIO_MS
+        })
         assert.ok(steady.length >= 5 && steady.length <= 7, `${steady.length} Klicks in 3 s`)
-        const gaps = steady.slice(1).map((t, i) => t - steady[i])
-        // ein ausgelassener Schlag nach einem Hänger der Seite ist gewollt (checkBeatGaps)
+        const gaps = steady.slice(1).map((t, i) => Math.round(t - steady[i]))
+        // in Audiozeit gemessen (toneTap.mjs); ein ausgelassener Schlag nach einem Hänger der
+        // Seite ist gewollt (checkBeatGaps)
         const { off, skipped } = checkBeatGaps(gaps, [500])
         assert.ok(off.length === 0 && skipped <= 1, `Abstände bei 120 BPM: ${gaps.join(', ')}`)
         // zwanzigmal „Schneller“ während der Aufnahme: bis 140 BPM, nie ein Doppelklick
@@ -279,12 +284,14 @@ try {
         await sleep(600)
         await toolWin('minimize')
         try {
-          const clicks = onsets(await tap('record', 5000, 4, 2048), { high: 0.03, low: 0.005 })
-          const gaps = clicks.slice(1).map((t, i) => t - clicks[i])
+          const rec = await tap('record', 5000, 4, 2048)
+          const clicks = onsets(rec, { high: 0.03, low: 0.005, timeCol: AUDIO_MS })
+          const gaps = clicks.slice(1).map((t, i) => Math.round(t - clicks[i]))
           assert.ok(clicks.length >= 9, `${clicks.length} Klicks in 5 s`)
           // Gedrosselt (Planungstakt nur einmal je Sekunde) fehlte fast jeder zweite Schlag. Ein
           // einzelner Aussetzer ist dagegen ein kurzer Hänger der Seite (macOS-Runner,
-          // 15.11.2026: 500, …, 1000, 500) – höchstens einer ist erlaubt.
+          // 15.11.2026: 500, …, 1000, 500) – höchstens einer ist erlaubt. In Audiozeit gemessen:
+          // Stockte die Audioausgabe, lag jeder Schlag danach später (16.11.2026: 497, 620, 505).
           const { off, skipped } = checkBeatGaps(gaps, [500], 60)
           assert.ok(off.length === 0 && skipped <= 1, `Abstände: ${gaps.join(', ')}`)
         } finally {
