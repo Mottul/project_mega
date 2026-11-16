@@ -135,6 +135,13 @@ Leitbild und Teil K.
    - **Vorschau beenden:** Unter Windows überlebt `vite preview` das Stoppen der
      Hintergrund-Aufgabe. Danach Port 5181 prüfen und den Prozess beenden – sonst weicht die
      nächste Vorschau still auf 5182 aus, und unter 5181 antwortet weiter die alte.
+   - **`localhost` abgewiesen** (K3): `preview_start` und `navigate` auf `http://localhost:5181`
+     scheiterten, `http://127.0.0.1:5181` ging – ein eigener Ursprung mit eigenem Service Worker
+     und eigenen gemerkten Werten (Favoriten danach wieder entfernen).
+   - **Versteckter Browser-Bereich:** Screenshots zeigten dort teils den Stand vor der letzten
+     Eingabe. Werte und `aria-invalid` per JavaScript lesen, für ein Bild kurz warten und neu
+     aufnehmen. Eingaben per JavaScript brauchen den nativen `value`-Setter und ein
+     `input`-Ereignis, sonst merkt React nichts.
    - **Ansehen ohne Build:** `npm run pwa:dev` (Port 5180) registriert keinen Service Worker und
      zeigt Änderungen sofort – gut, um einen Baustein, den noch kein Rechner nutzt, vorübergehend
      in einen einzusetzen und anzusehen (K2: `tone` an der Bewertung im Beamer-Lumen; danach
