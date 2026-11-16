@@ -98,8 +98,16 @@ Leitbild und Teil K.
 1. `npm run pwa:build` (Wächter, Quellen) und `npx vitest run src/pwa src/renderer/src/tools`.
 2. **Handyformat im eingebauten Browser:** `npm run pwa:build`, dann `npm run pwa:preview`
    (Port 5181) im Hintergrund, im Browser-Bereich öffnen, `resize_window` mit `preset: 'mobile'`
-   und neu laden; Ton per Analysator messen wie im E2E (Skill `electron-e2e`, `toneTap.mjs` als
-   Vorlage). Danach `preset: 'desktop'`.
+   (375 × 812; zum Messen wie im Gesamtplan 393 × 710 setzen) und neu laden; Ton per Analysator
+   messen wie im E2E (Skill `electron-e2e`, `toneTap.mjs` als Vorlage). Danach
+   `preset: 'desktop'`.
+   - **Alte Fassung im Browser-Bereich:** Er behält den Service Worker früherer Prüfungen und
+     zeigt still den alten Stand (K7: die Stromlast zählte dort noch 44 statt 42 Geräte). Die
+     geladenen Dateien (`performance.getEntriesByType('resource')`) mit den Namen aus dem
+     frischen Build vergleichen; weichen sie ab, Worker abmelden, Caches leeren, neu laden.
+   - **Vorschau beenden:** Unter Windows überlebt `vite preview` das Stoppen der
+     Hintergrund-Aufgabe. Danach Port 5181 prüfen und den Prozess beenden – sonst weicht die
+     nächste Vorschau still auf 5182 aus, und unter 5181 antwortet weiter die alte.
 3. In der App: `e2e/layout.mjs` (kleines Fenster, 320 px ohne Querscrollen) und das E2E des
    Werkzeugs.
 4. **Am Gerät** (kann kein Test): iPhone als installierte App (Stummschalter, App wechseln und
