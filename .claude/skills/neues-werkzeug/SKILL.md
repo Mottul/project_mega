@@ -59,11 +59,17 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      wären, `TWO_COLUMNS` (stehen dann nebeneinander). Bausteine aus `tools/_calc/ui`:
      `CalcPage` (`note` nur für Sicherheitshinweise), `SectionCard` mit EINER kurzen `desc`-Zeile,
      Formeln/Hintergrund/Beispiel als `hint` (ⓘ) an Karte, Feld oder Ergebnis – keine Absätze;
-     Zeilen aus `FieldRow` (Beschriftung links, beliebiges Element rechts): `NumField`,
+     Zeilen aus `FieldRow` (Beschriftung links, beliebiges Element rechts): `NumField` (umrandet
+     selbst rot und mit `aria-invalid`, was `parseNum` nicht liest – leer ist nie ein Fehler;
+     dazu `invalid` für Werte, die lesbar, aber nicht rechenbar sind, z. B. Gain 0; `signed` für
+     Felder mit negativen Werten, sonst fehlt am iPhone das Minus; `parse` für eine eigene
+     Schreibweise wie den Timecode, sonst wäre jeder gültige Wert rot),
      `SelectField`, `ChoiceField` (Knopfgruppe – bis vier kurze Möglichkeiten immer so statt
      einer Liste; `wrap` für mehr, die man im Betrieb oft umschaltet), `RangeField` (Schieber mit
      Wert, darunter z. B. `QuickPick` als Schnellwahl); Ergebnisse als `Readout` (mehrere in
-     `ReadoutGrid` = Kacheln, zweite Einheit per `sub`), Warnungen als `Alert`; Felder, die sich
+     `ReadoutGrid` = Kacheln, zweite Einheit per `sub`; eine Bewertung wie „ausreichend“ mit
+     `tone` – `success`, `warning` oder `danger`: Farbe und Symbol aus `STATUS`, nie ✓, ✗ oder ⚠
+     im Text), Warnungen als `Alert`; Felder, die sich
      gegenseitig berechnen, über `useLinkedFields` (nie eigene bind-Funktionen). **Gerechnet wird
      im Rechenkern** `math.ts` neben der Komponente, mit `math.test.ts` (Vorbild
      `tools/rigging/math.ts`): Zahlen hinein, Zahlen oder `null` heraus, Entscheidungen wie
@@ -73,10 +79,13 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Verlassen; `NumField` begrenzte schon beim Tippen). Läuft das Werkzeug (misst, spielt):
      `RunButton` für Start und Stopp, `useWakeLock(läuft)` hält den Handy-Bildschirm an, und in
      `SMALL_TOOLS` `background: true` (Fenster ohne Hintergrund-Drosselung). Zahlen mit Komma
-     (`trimNum`, `fmt`), keine hart kodierten Farben (auch nicht im SVG: `fill-primary`). Die id
-     in `SMALL` (und ggf. `TWO_COLUMNS`) in `e2e/layout.mjs` aufnehmen – geprüft werden Höhe,
-     320 px ohne Querscrollen und Kompaktmodus. Es läuft auch in der Handy-PWA: Skill
-     `rechner-pwa` (kein `api`, keine Einstellungen, keine Toasts; Ton und Tastaturen am Handy).
+     (`trimNum` in Felder, `fmt` in Ergebnisse – `fmt` setzt Tausenderpunkte, die `parseNum`
+     nicht zurückliest: ein berechnetes Feld damit wäre rot), keine hart kodierten Farben (auch
+     nicht im SVG: `fill-primary`). Die id in `SMALL` (und ggf. `TWO_COLUMNS`) in
+     `e2e/layout.mjs` aufnehmen – geprüft werden Höhe, 320 px ohne Querscrollen, Kompaktmodus
+     und dass ab Werk kein Feld als Fehleingabe markiert ist. Es läuft auch in der Handy-PWA:
+     Skill `rechner-pwa` (kein `api`, keine Einstellungen, keine Toasts; Ton und Tastaturen am
+     Handy).
    - Bausteine aus `components/ui`, Eingabefelder mit Puffer (`useDraft`, `TextField`,
      `NumberField`; für Inhalte, die leer sein dürfen und eine Vorschau live mitziehen sollen,
      `TextArea`/`LiveInput` aus `components/ui/textarea`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten

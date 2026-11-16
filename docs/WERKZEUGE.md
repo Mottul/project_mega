@@ -86,7 +86,9 @@ Jedes Werkzeug ist gleich aufgebaut:
   die App (liegt die gemerkte Lage auf einem abgesteckten Bildschirm, erscheint es mittig). Die
   Kopfleiste zeigt nur den Namen; wer das Hauptfenster schließt, schließt die kleinen Fenster
   mit. Formeln, Hintergründe und Beispiele stehen hinter dem **ⓘ** am Bereich oder Feld;
-  Zahlen schreiben und zeigen die Rechner mit Komma.
+  Zahlen schreiben und zeigen die Rechner mit Komma (ein Punkt geht auch). Ein Feld, das der
+  Rechner nicht lesen kann – ein Tippfehler wie „1,2,3“ oder ein ungültiger Timecode –, ist **rot
+  umrandet**, auch während man tippt; ein leeres Feld ist kein Fehler.
 - **Kundenansicht:** „Kundenansicht“ in der Kopfleiste eines Werkzeugs sperrt es
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,

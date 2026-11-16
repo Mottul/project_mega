@@ -39,6 +39,11 @@ Leitbild und Teil K.
   Beamer“, Last außerhalb der Spannweite). Die Komponente liest nur Text (`parseNum`) und zeigt
   an (`fmt`, `trimNum`); die Anzeige-Rundung bleibt dort. So prüft Vitest ohne DOM, was am Handy
   steht.
+- **Fehleingaben sind nie stumm:** Was `parseNum` nicht liest, umrandet `NumField` selbst rot
+  (`aria-invalid`; leer ist nie ein Fehler) – `parseNum` reicht nur `parseDecimal` weiter, eine
+  Lese-Funktion für alle Felder. Lesbares, mit dem der Kern nicht rechnet, meldet die Komponente
+  per `invalid`; eine eigene Schreibweise liest das Feld per `parse` (Timecode: `parseTc`).
+  Berechnete Felder bekommen `trimNum`, nie `fmt` (Tausenderpunkte liest `parseNum` nicht).
 - Die Tests halten das heutige Verhalten fest, auch heimliches Ersetzen: Leinwand-Gain ≤ 0 → 1,
   cos φ über 1 → 1 und unter 0,01 → 0,01, leere Temperatur → 20 °C, leeres Eigengewicht → 0.
   Eine Änderung an Formel, Grenze oder Ersetzung beginnt mit dem Test: den Test, der das alte
@@ -55,7 +60,8 @@ Leitbild und Teil K.
 - Bausteine aus `tools/_calc/ui` – sie sind fürs Handy gebaut: `ChoiceField`/`Segmented` (bei
   grobem Zeiger höher; `wrap` füllt die Reihen gleichmäßig), `QuickPick` (`fill`: eine Reihe wie
   eine Knopfgruppe), `RunButton big` für die Hauptaktion, `RangeField`. Auswahl bis vier kurze
-  Möglichkeiten als Knopfgruppe, nicht als Liste.
+  Möglichkeiten als Knopfgruppe, nicht als Liste. Eine Bewertung als `Readout` mit `tone`
+  (Symbol und Farbe aus `STATUS` wie überall in der App, kein ✓ oder ✗ im Text).
 - **Bedienfelder in ganzer Breite** (Knopfgruppen, Schieber, Zahl mit −/+): `FieldBlock` –
   Beschriftung darüber, Wert rechts daneben. Neben einer Beschriftung links (`FieldRow`, 10rem)
   bleiben am Handy kaum 150 px: Gruppen stehen einspaltig, Knöpfe ragen heraus.
@@ -64,8 +70,13 @@ Leitbild und Teil K.
 - Höhe prüfen, nicht schätzen: Handy im Browser ≈ 393 × 710 (Kopf- und Fußleiste des Browsers
   abgezogen), Inhalt per `getBoundingClientRect` messen (Testtongenerator: passt ohne Scrollen).
 - **Tastaturen:** `inputMode="decimal"` hat am iPhone kein Minus (WebKit-Fehler 193825) – Felder
-  mit negativen Werten anders lösen; `numeric` hat keinen Doppelpunkt (Timecode: Ziffern
-  erlauben). Felder sind auf Touch-Geräten 16 px groß (`pwa.css`), sonst zoomt iOS hinein.
+  mit negativen Werten bekommen `signed` (`NumField` öffnet dann die volle Tastatur,
+  `inputMode="text"`; ob das am iPhone taugt, ist eine offene Abnahme am Gerät im Gesamtplan,
+  Ausweg wäre ein Knopf „±“); `numeric` hat keinen Doppelpunkt (Timecode: Ziffern erlauben).
+  Felder sind auf Touch-Geräten 16 px groß (`pwa.css`), sonst zoomt iOS hinein.
+- **Rot muss beim Tippen sichtbar sein:** Wer tippt, hat das Feld im Fokus, und der Fokusring in
+  der Akzentfarbe verdeckte einen roten Rahmen – `NumField` färbt bei einer Fehleingabe auch den
+  Ring rot.
 - **ⓘ:** schließt beim Tippen daneben (auf dem Handy kommt dabei oft kein `blur`), hat eine
   unsichtbar größere Tippfläche; Darüberfahren zählt nur mit der Maus. Ändert eine Wahl, was ein
   Ergebnis bedeutet, sagt es das ⓘ der Karte nur bei dieser Wahl (Stromlast dreiphasig) – keine
@@ -108,8 +119,16 @@ Leitbild und Teil K.
    - **Vorschau beenden:** Unter Windows überlebt `vite preview` das Stoppen der
      Hintergrund-Aufgabe. Danach Port 5181 prüfen und den Prozess beenden – sonst weicht die
      nächste Vorschau still auf 5182 aus, und unter 5181 antwortet weiter die alte.
-3. In der App: `e2e/layout.mjs` (kleines Fenster, 320 px ohne Querscrollen) und das E2E des
-   Werkzeugs.
+   - **Ansehen ohne Build:** `npm run pwa:dev` (Port 5180) registriert keinen Service Worker und
+     zeigt Änderungen sofort – gut, um einen Baustein, den noch kein Rechner nutzt, vorübergehend
+     in einen einzusetzen und anzusehen (K2: `tone` an der Bewertung im Beamer-Lumen; danach
+     zurücknehmen). Abnahme bleibt der gebaute Stand.
+3. In der App: `e2e/layout.mjs` (kleines Fenster, 320 px ohne Querscrollen, ab Werk kein Feld als
+   Fehleingabe markiert) und das E2E des Werkzeugs.
+   - **Baustein ändert sein Aussehen nach dem Inhalt** (`NumField` rot): alle kleinen Werkzeuge
+     im Auslieferungszustand vorher und nachher als HTML vergleichen (Skill `aufraeumen`). In K2
+     fand das die Timecode-Felder – sie führen hh:mm:ss:ff in einem `NumField` und wären ab Werk
+     rot gewesen (Abhilfe `parse`).
 4. **Am Gerät** (kann kein Test): iPhone als installierte App (Stummschalter, App wechseln und
    zurück, Bildschirm bleibt an, danach misst der RTA noch), Android (Chrome), Tastaturen der
    Felder, ⓘ antippen und daneben tippen. Ergebnis in die Doku, nicht nur „sollte gehen“.

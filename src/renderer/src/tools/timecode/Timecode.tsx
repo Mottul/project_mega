@@ -37,6 +37,8 @@ export function Timecode(): JSX.Element {
   const [tcB, setTcB] = useState('01:05:30:00')
 
   const rate = TC_RATES.find((r) => r.key === rateKey) ?? TC_RATES[2]
+  // Ein Timecode ist keine Dezimalzahl: Seine Felder lesen mit parseTc, sonst wären sie rot
+  const readTc = (s: string): unknown => parseTc(s, rate)
 
   // Quelle -> Framenummer (null = Eingabe ungültig)
   let frames: number | null
@@ -84,7 +86,12 @@ export function Timecode(): JSX.Element {
             </option>
           ))}
         </SelectField>
-        <NumField label="Timecode" placeholder="hh:mm:ss:ff" {...bind('tc', vals.tc)} />
+        <NumField
+          label="Timecode"
+          placeholder="hh:mm:ss:ff"
+          parse={readTc}
+          {...bind('tc', vals.tc)}
+        />
         <NumField label="Frames (gesamt)" {...bind('frames', vals.frames)} />
         <NumField label="Echtzeit" unit="s" {...bind('real', vals.real)} />
         <Readout
@@ -103,10 +110,17 @@ export function Timecode(): JSX.Element {
         title="Dauer zwischen zwei Timecodes"
         desc="Zum Beispiel die Clip-Länge aus In- und Out-Punkt (B − A)."
       >
-        <NumField label="Timecode A (In)" placeholder="hh:mm:ss:ff" value={tcA} onChange={setTcA} />
+        <NumField
+          label="Timecode A (In)"
+          placeholder="hh:mm:ss:ff"
+          parse={readTc}
+          value={tcA}
+          onChange={setTcA}
+        />
         <NumField
           label="Timecode B (Out)"
           placeholder="hh:mm:ss:ff"
+          parse={readTc}
           value={tcB}
           onChange={setTcB}
         />

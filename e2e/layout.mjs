@@ -625,12 +625,42 @@ try {
       }
     ],
     [
+      'Rechner: Fehleingabe ist markiert (aria-invalid) – leere Felder und Zahlen nicht',
+      async () => {
+        const w = await openSmall('circle-calc')
+        const field = (label) => w.getByLabel(label, { exact: true })
+        await field('Radius r').fill('abc')
+        await expectAttr(field('Radius r'), 'aria-invalid', 'true', 'Radius „abc“')
+        // die berechneten Felder bleiben dann leer – leer ist kein Fehler
+        assert.equal(await field('Durchmesser d').inputValue(), '')
+        assert.equal(await field('Durchmesser d').getAttribute('aria-invalid'), null)
+        await field('Radius r').fill('')
+        await expectAttr(field('Radius r'), 'aria-invalid', null, 'Radius leer')
+        await field('Radius r').fill('2,5')
+        await expectAttr(field('Radius r'), 'aria-invalid', null, 'Radius 2,5')
+        assert.ok(await waitFor(async () => (await field('Durchmesser d').inputValue()) === '5'))
+        await closeToolWindow('circle-calc')
+        // eigene Schreibweise: Timecodes liest das Feld mit parseTc (25 fps: Frames 0 bis 24)
+        const tc = await openSmall('timecode')
+        const tcA = tc.getByLabel('Timecode A (In)', { exact: true })
+        assert.equal(await tcA.getAttribute('aria-invalid'), null)
+        await tcA.fill('01:00:00:25')
+        await expectAttr(tcA, 'aria-invalid', 'true', 'Timecode A „01:00:00:25“')
+        await tcA.fill('01:00:00:24')
+        await expectAttr(tcA, 'aria-invalid', null, 'Timecode A „01:00:00:24“')
+        await closeToolWindow('timecode')
+      }
+    ],
+    [
       'alle kleinen Werkzeuge: Höhe folgt dem Inhalt, zweispaltig wo vorgesehen, bis 320 px schmal',
       async () => {
         for (const id of SMALL) {
           const w = await openSmall(id)
           await assertFits(w, id)
           assertNoJump(id)
+          // ab Werk ist kein Feld als Fehleingabe markiert (auch kein Timecode)
+          const rot = await w.locator('[aria-invalid="true"]').count()
+          assert.equal(rot, 0, `${id}: ${rot} Feld(er) ab Werk als Fehleingabe markiert`)
           if (TWO_COLUMNS.includes(id)) {
             const tops = await w
               .getByTestId('tool-content')
