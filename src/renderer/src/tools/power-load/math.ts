@@ -1,6 +1,6 @@
 // Rechenkern von Stromlast & Absicherung. Einphasig: P = U·I·cos φ. Dreiphasig: P = √3·U·I·cos φ
 // (U zwischen zwei Außenleitern, I je Leiter). Dazu: Wie viele gleiche Geräte passen auf einen
-// Stromkreis (mit Reserve)?
+// Stromkreis (mit Reserve)? Dreiphasig wird dabei je Außenleiter gezählt.
 
 const SQRT3 = Math.sqrt(3)
 
@@ -59,20 +59,27 @@ export function loadFrom(supply: Supply, field: LoadField, value: number | null)
 }
 
 export interface Devices {
-  /** Strom je Gerät in A */
+  /** Strom je Gerät in A – dreiphasig auf dem Außenleiter, an dem es hängt */
   iDev: number | null
-  /** so viele Geräte passen höchstens auf den Stromkreis */
+  /** so viele Geräte passen höchstens auf den Stromkreis – dreiphasig 3 × Geräte je Leiter */
   maxDevices: number | null
-  /** Leistung (W) und Strom (A) dieser Geräte zusammen */
+  /** Leistung aller dieser Geräte in W */
   sumP: number | null
+  /** Strom auf einem Leiter in A: einphasig der aller Geräte, dreiphasig der eines Außenleiters */
   sumI: number | null
 }
 
 /**
  * Wie viele gleiche Geräte (`pDev` W je Gerät) verträgt eine Absicherung (`breakerA` A), belastet
- * bis zum Anteil `reserve` (1 = 100 %, 0,8 = Dauerbetrieb)? Dreiphasig zählt der Strom je Leiter,
- * als ließe sich die Leistung beliebig auf die drei Außenleiter verteilen – für einphasige Geräte
- * bis zu zwei zu viel (Paket K7 im Gesamtplan).
+ * bis zum Anteil `reserve` (1 = 100 %, 0,8 = Dauerbetrieb)?
+ *
+ * Dreiphasig zählt je Außenleiter: Einphasige Geräte – der Normalfall am CEE-Verteiler – hängen
+ * je ganz an einem Leiter, also an U ÷ √3 (an 400 V rund 230 V), und die Absicherung gilt je
+ * Leiter. Max. Geräte = 3 × ⌊Absicherung × Auslastung ÷ Strom je Gerät am Leiter⌋, „Summe Strom“
+ * ist der Strom auf einem Leiter. Die Leistung frei auf die Leiter zu teilen, zählte bis zu zwei
+ * Geräte zu viel (500 W an 32 A: 44 statt 42, zwei Leiter trügen 32,5 A). Für Drehstromgeräte,
+ * die sich selbst auf die Leiter verteilen, sind es so höchstens zwei zu wenig, nie zu viele –
+ * entschieden im Gesamtplan am 16. November 2026.
  */
 export function devicesPerCircuit(
   supply: Supply,
@@ -80,11 +87,16 @@ export function devicesPerCircuit(
   breakerA: number,
   reserve: number
 ): Devices {
-  const denom = wattsPerAmp(supply)
-  const iDev = pDev != null && pDev > 0 && denom != null ? pDev / denom : null
+  // Einphasig ist der eine Leiter der ganze Stromkreis: dieselbe Rechnung mit U und einem Leiter
+  const three = supply.phase === '3'
+  // Spannung am Gerät: dreiphasig die zwischen Außenleiter und N
+  const uDev = supply.u != null && supply.u > 0 ? (three ? supply.u / SQRT3 : supply.u) : null
+  const iDev =
+    pDev != null && pDev > 0 && uDev != null ? pDev / (uDev * powerFactor(supply.pf)) : null
   const maxA = breakerA * reserve
-  const maxDevices = iDev != null && iDev > 0 ? Math.floor(maxA / iDev) : null
+  const perConductor = iDev != null && iDev > 0 ? Math.floor(maxA / iDev) : null
+  const maxDevices = perConductor != null ? (three ? 3 : 1) * perConductor : null
   const sumP = maxDevices != null && pDev != null ? maxDevices * pDev : null
-  const sumI = maxDevices != null && iDev != null ? maxDevices * iDev : null
+  const sumI = perConductor != null && iDev != null ? perConductor * iDev : null
   return { iDev, maxDevices, sumP, sumI }
 }

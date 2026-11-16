@@ -259,7 +259,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | K2, K3, K7 | Die Rechner bekommen sichtbare Fehleingaben und die Stromlast die richtige Zählung am Drehstrom, bevor ihr Aufbau angefasst wird |
+| **1 – Die Vorbilder fertig** | K2, K3 | Die Rechner bekommen sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
@@ -414,14 +414,14 @@ sich der Baustein in W1 bis W3 bewährt hat. Bis dahin kein Auftrag.
 ## K – Kleine Werkzeuge
 
 Das [Muster 2](#muster-2-kleines-werkzeug) für die Rechner – und was ihnen unabhängig vom Aufbau
-fehlt: sichtbare Fehleingaben und eine Korrektur an der Stromlast. Elf Werkzeuge stehen in
-`SMALL_TOOLS` (`src/shared/toolWindows.ts`): Kreisrechner, DMX-Dip-Schalter,
-Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator, Beamer-Lumen, Timecode-Rechner,
-Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im eigenen kleinen Fenster (Höhe folgt
-dem Inhalt, schmal bis 320 px) und läuft unverändert in der PWA (`src/pwa/tools.ts`). Neun davon
-sind Formulare aus den Bausteinen in `tools/_calc/ui.tsx`; um sie geht es hier. Gerechnet wird je
-Rechner in einem geprüften Kern neben der Komponente (`math.ts` mit Test, beim Kameraobjektiv
-`optics.ts`, beim Timecode `tc.ts`) – jede Änderung an einer Formel beginnt dort.
+fehlt: sichtbare Fehleingaben. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
+Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator,
+Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im
+eigenen kleinen Fenster (Höhe folgt dem Inhalt, schmal bis 320 px) und läuft unverändert in der PWA
+(`src/pwa/tools.ts`). Neun davon sind Formulare aus den Bausteinen in `tools/_calc/ui.tsx`; um sie
+geht es hier. Gerechnet wird je Rechner in einem geprüften Kern neben der Komponente (`math.ts` mit
+Test, beim Kameraobjektiv `optics.ts`, beim Timecode `tc.ts`) – jede Änderung an einer Formel
+beginnt dort.
 
 Was bleibt: eine kurze Zeile je Karte, alles Weitere hinter dem ⓘ, Zahlen mit Komma, berechnete
 Felder in Akzentfarbe.
@@ -430,13 +430,11 @@ Felder in Akzentfarbe.
 | ----- | ------ | ----- | ------- |
 | **K2** | Bausteine: `NumField` zeigt Fehleingaben, Minus am Handy; `Readout` mit Statusstufe | S | – |
 | **K3** | Eingaben und Meldungen der Rechner angleichen | M | K2 |
-| **K7** | Stromlast: Geräte je Stromkreis am Drehstrom je Außenleiter zählen | S | Entscheidung 14 |
 | **K5** | Neuer Aufbau am Pilot: Stromlast & Absicherung | M | K3 |
 | **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | K5, Entscheidung 2 |
 | **K4** | Rechner merken sich die Eingaben | M | K3, Entscheidung 3 |
 
-K2 hängt von nichts ab, K7 nur von Entscheidung 14. Vor jedem Schritt den Skill `rechner-pwa`
-lesen.
+K2 hängt von nichts ab. Vor jedem Schritt den Skill `rechner-pwa` lesen.
 
 ### Befunde
 
@@ -510,30 +508,6 @@ K5 und K6 – Listen bleiben hier Listen. Ein Pull Request.
 tippen – das Feld trägt `aria-invalid`; im Timecode-Rechner „01020312“ – „Frames (gesamt)“ zeigt
 93087 (25 fps: 3.723 s × 25 + 12). `npx vitest run src/renderer/src/tools src/pwa`,
 `npm run pwa:build`.
-
-### K7 – Stromlast: Geräte je Stromkreis am Drehstrom
-
-Nur nach Entscheidung 14. Gefunden beim Bau der Rechenkerne (K1, 15. November 2026).
-
-**Heute** (`power-load/math.ts`, `devicesPerCircuit`): Dreiphasig rechnet „Geräte pro
-Stromkreis“ den Strom je Gerät als P ÷ (√3 · U · cos φ) und teilt die Absicherung dadurch – als
-ließe sich die Leistung beliebig auf die drei Außenleiter verteilen. Das stimmt für
-Drehstromgeräte. Einphasige Geräte, der Normalfall am CEE-Verteiler, hängen aber je ganz an einem
-Außenleiter (U ÷ √3 ≈ 230 V), und die Absicherung gilt je Leiter. Beispiel 500 W, cos φ 1, 32 A,
-100 %: Der Rechner zeigt 44 Geräte, verteilen lassen sich nur 3 × 14 = 42 – mit 44 trügen zwei
-Außenleiter je 15 Geräte, also 32,5 A an 32 A. An 16 A zeigt er 22 statt 21 (ein Leiter mit
-17,3 A), mit 80 % Auslastung 17 statt 15. Der Test „dreiphasig zählt der Strom je Leiter …“ in
-`power-load/math.test.ts` hält das heutige Verhalten fest.
-
-**So** (Vorschlag): dreiphasig je Außenleiter zählen – Max. Geräte = 3 × ⌊Absicherung ×
-Auslastung ÷ Strom je Gerät am Leiter⌋, Strom je Gerät am Leiter = P ÷ (U ÷ √3 · cos φ); „Strom
-je Gerät“ und „Summe Strom“ meinen dann den Strom am Außenleiter, das ⓘ der Karte sagt es. Für
-Drehstromgeräte zählt das höchstens zwei Geräte zu wenig, nie zu viel. Die Alternative – eine
-Wahl „einphasige Geräte / Drehstromgeräte“ – wäre ein neues Feld.
-
-**Abnahme:** Tests in `power-load/math.test.ts`: 500 W an 400 V – 32 A ergibt 42 Geräte, 16 A
-ergibt 21, 16 A bei 80 % ergibt 15; einphasig unverändert 7 bzw. 5. `npm run pwa:build`; die
-Zählung in `docs/WERKZEUGE.md`.
 
 ### K5 – Neuer Aufbau am Pilot: Stromlast & Absicherung
 
@@ -1455,13 +1429,17 @@ Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestä
     NovaLCT-Dateien. Eine OBS-Szenensammlung liegt vor. (Matthias sammelt; ohne Datei kein
     Import.)
 13. **Welche neuen Werkzeuge** aus Teil G überhaupt – und welches zuerst? (Offen.)
-14. **Stromlast: einphasige Geräte am Drehstrom** (K7): „Geräte pro Stromkreis“ zählt dreiphasig,
-    als ließe sich die Leistung beliebig auf die drei Außenleiter teilen – für einphasige Geräte
-    bis zu zwei zu viel (500 W an 32 A: 44 statt 42, ein Leiter trüge 32,5 A). Je Außenleiter
-    zählen oder die Geräteart wählbar machen? (Je Außenleiter: Für Drehstromgeräte sind es
-    höchstens zwei zu wenig, nie zu viel.)
 
 Entschieden – damit nichts neu gefragt wird:
+
+- **Stromlast am Drehstrom: „Geräte pro Stromkreis“ zählt je Außenleiter** (16. November 2026,
+  „Ja, je Außenleiter“): Einphasige Geräte hängen je an einem Leiter (U ÷ √3), die Absicherung
+  gilt je Leiter – Max. Geräte = 3 × ⌊Absicherung × Auslastung ÷ Strom je Gerät am Leiter⌋.
+  „Strom je Gerät“ und „Summe Strom“ meinen den Strom am Außenleiter, das ⓘ der Karte sagt es.
+  Für Drehstromgeräte sind es höchstens zwei zu wenig, nie zu viele; eine Wahl der Geräteart
+  (ein neues Feld) gibt es nicht. Vorher zählte der Rechner, als ließe sich die Leistung
+  beliebig auf die Leiter teilen – für einphasige Geräte bis zu zwei zu viel (500 W an 32 A: 44
+  statt 42). Umgesetzt in K7.
 
 - **Video-Player ohne Zufall: nach ✕ am letzten, laufenden Eintrag geht es mit „Danach“ weiter**
   (15. November 2026, „Ja, ‚Danach‘“): wie bei ⏭, nicht mehr mit dem Eintrag davor – mit Loop
@@ -1535,7 +1513,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   der erste Eintrag, mit Loop „Aus“ hält der Player an) und der Bibliothek (P5: „Importieren“ und
   „⋯“ im Kopf, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt);
   Testtongenerator; neuer Aufbau von Testtongenerator und RTA; Rechenkerne mit Tests für sieben
-  Rechner (K1: je Rechner `math.ts`, ohne sichtbare Änderung).
+  Rechner (K1: je Rechner `math.ts`, ohne sichtbare Änderung); die Stromlast zählt „Geräte pro
+  Stromkreis“ am Drehstrom je Außenleiter (K7).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

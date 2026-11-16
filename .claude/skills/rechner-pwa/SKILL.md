@@ -41,7 +41,14 @@ Leitbild und Teil K.
   steht.
 - Die Tests halten das heutige Verhalten fest, auch heimliches Ersetzen: Leinwand-Gain ≤ 0 → 1,
   cos φ über 1 → 1 und unter 0,01 → 0,01, leere Temperatur → 20 °C, leeres Eigengewicht → 0.
-  Eine Änderung an Formel, Grenze oder Ersetzung beginnt mit dem Test (Gesamtplan, K3 und K7).
+  Eine Änderung an Formel, Grenze oder Ersetzung beginnt mit dem Test: den Test, der das alte
+  Verhalten festhält, zuerst umschreiben und rot sehen, dann rechnen (so K7; offen K3).
+- Neben den Vorgabewerten eine Eigenschaft prüfen, die immer gelten muss – in einer Schleife über
+  viele Eingaben (Stromlast: kein Leiter über Absicherung × Auslastung, ein Gerät mehr je Leiter
+  passte nicht).
+- **Stromlast am Drehstrom:** „Geräte pro Stromkreis“ zählt je Außenleiter (U ÷ √3; Max. Geräte
+  = 3 × Geräte je Leiter); „Strom je Gerät“ und „Summe Strom“ sind der Strom auf einem Leiter.
+  Die Karte „Last“ rechnet weiter mit √3 · U · I · cos φ.
 
 ## Bedienen mit dem Finger
 
@@ -60,7 +67,9 @@ Leitbild und Teil K.
   mit negativen Werten anders lösen; `numeric` hat keinen Doppelpunkt (Timecode: Ziffern
   erlauben). Felder sind auf Touch-Geräten 16 px groß (`pwa.css`), sonst zoomt iOS hinein.
 - **ⓘ:** schließt beim Tippen daneben (auf dem Handy kommt dabei oft kein `blur`), hat eine
-  unsichtbar größere Tippfläche; Darüberfahren zählt nur mit der Maus.
+  unsichtbar größere Tippfläche; Darüberfahren zählt nur mit der Maus. Ändert eine Wahl, was ein
+  Ergebnis bedeutet, sagt es das ⓘ der Karte nur bei dieser Wahl (Stromlast dreiphasig) – keine
+  Zeile mehr in der Karte. Die Blase klappt nicht nach oben: Einen langen Text am Handy prüfen.
 - Was sich beim Umschalten ändert, nach unten: Was man im Betrieb greift, steht oben immer an
   derselben Stelle (Testtongenerator: Start, Pegel, Kanäle oben, die Felder des Signals unten).
 

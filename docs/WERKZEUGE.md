@@ -917,6 +917,13 @@ Leistung ↔ Strom (1∼/3∼, mit Leistungsfaktor cos φ und Scheinleistung) un
 Geräte auf einen 10- bis 63-A-Stromkreis passen – wahlweise mit 80 % Auslastung für den
 Dauerbetrieb.
 
+**Am Drehstrom** zählt „Geräte pro Stromkreis“ je Außenleiter: Jedes Gerät hängt an einem Leiter
+(U ÷ √3, an 400 V rund 230 V), die Absicherung gilt je Leiter – Max. Geräte = 3 × Geräte je
+Leiter. „Strom je Gerät“ und „Summe Strom“ sind der Strom auf einem Außenleiter, „Summe Leistung“
+die aller Geräte. Beispiel 500 W an 32 A: 3 × 14 = 42 Geräte, 30,31 A je Leiter. Für
+Drehstromgeräte, die ihre Last selbst auf die drei Leiter verteilen, sind es so höchstens zwei zu
+wenig, nie zu viele. Das ⓘ der Karte sagt es, sobald dreiphasig gewählt ist.
+
 ### Rigging-Last
 
 Auflagerkräfte einer Traverse auf zwei Punkten und Strangkräfte im Bridle nach Anschlagwinkel,
