@@ -10,10 +10,11 @@ describe('Vorgabe des Rechners: 16 : 9, Breite 5 m, Abstand 8 m', () => {
     expect(s.h).toBe(2.8125)
     expect(s.diag).toBeCloseTo(5.737, 3)
     expect(s.area).toBe(14.0625)
+    expect(s.invalid).toEqual([])
   })
 
   it('Throw Ratio 1,6', () => {
-    expect(throwFrom('dist', 8, 5)).toEqual({ tr: 1.6, dist: 8 })
+    expect(throwFrom('dist', 8, 5)).toEqual({ tr: 1.6, dist: 8, invalid: [] })
   })
 })
 
@@ -54,28 +55,38 @@ describe('screenSize – jedes Maß kann die Quelle sein', () => {
 
 describe('throwFrom – Throw Ratio oder Abstand', () => {
   it('Throw Ratio 1,6 bei 5 m Bildbreite → 8 m Abstand', () => {
-    expect(throwFrom('tr', 1.6, 5)).toEqual({ tr: 1.6, dist: 8 })
+    expect(throwFrom('tr', 1.6, 5)).toEqual({ tr: 1.6, dist: 8, invalid: [] })
   })
 
-  it('ohne Bildbreite kein Ergebnis', () => {
-    expect(throwFrom('dist', 8, null)).toEqual({ tr: null, dist: null })
-    expect(throwFrom('tr', 1.6, 0)).toEqual({ tr: null, dist: null })
+  it('ohne Bildbreite kein Ergebnis – das Feld ist nicht schuld (dafür steht ein Hinweis da)', () => {
+    expect(throwFrom('dist', 8, null)).toEqual({ tr: null, dist: null, invalid: [] })
+    expect(throwFrom('tr', 1.6, 0)).toEqual({ tr: null, dist: null, invalid: [] })
   })
 
-  it.each([null, 0, -1])('Throw Ratio oder Abstand %s → kein Ergebnis', (v) => {
-    expect(throwFrom('tr', v, 5)).toEqual({ tr: null, dist: null })
-    expect(throwFrom('dist', v, 5)).toEqual({ tr: null, dist: null })
+  it('leer → kein Ergebnis, nicht rot', () => {
+    expect(throwFrom('tr', null, 5)).toEqual({ tr: null, dist: null, invalid: [] })
+  })
+
+  it.each([0, -1])('Throw Ratio oder Abstand %s → kein Ergebnis, das Feld ist rot', (v) => {
+    expect(throwFrom('tr', v, 5)).toEqual({ tr: null, dist: null, invalid: ['tr'] })
+    expect(throwFrom('dist', v, 5)).toEqual({ tr: null, dist: null, invalid: ['dist'] })
+    // auch ohne Bildbreite: Der Wert selbst ist unbrauchbar
+    expect(throwFrom('dist', v, null).invalid).toEqual(['dist'])
   })
 })
 
 describe('screenSize – Ränder', () => {
   const leer = { w: null, h: null, diag: null, area: null }
 
-  it.each<[SizeField, number | null]>([
-    ['w', null],
+  it('leer → keine Leinwandmaße, nicht rot', () => {
+    expect(screenSize('w', null, R16_9)).toEqual({ ...leer, invalid: [] })
+  })
+
+  it.each<[SizeField, number]>([
+    ['w', 0],
     ['h', 0],
     ['diag', -2]
-  ])('%s = %s → keine Leinwandmaße', (field, v) => {
-    expect(screenSize(field, v, R16_9)).toEqual(leer)
+  ])('%s = %s → keine Leinwandmaße, das Feld ist rot', (field, v) => {
+    expect(screenSize(field, v, R16_9)).toEqual({ ...leer, invalid: [field] })
   })
 })

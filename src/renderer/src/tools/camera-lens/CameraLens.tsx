@@ -9,13 +9,13 @@ import {
   parseNum,
   trimNum
 } from '../_calc/ui'
-import { angleOfView, diag, equiv35, fovAtDistance, framingLabel } from './optics'
+import { framingLabel, lensView, type LensField } from './optics'
 
 // Kameraobjektiv-Rechner: aus Brennweite, Sensor, optionalem Telekonverter
 // („Doppler") und Entfernung wird der Bildausschnitt berechnet und visualisiert –
 // wie viel einer Person bei maximalem Zoom ins Bild passt. Lochkamera-Näherung
 // (Sichtfeld = Entfernung · Sensormaß ÷ Brennweite); dieselbe Dreiecks-Mathematik
-// wie der Throw-Ratio-Rechner, nur kameraseitig. Die Optik-Formeln liegen in optics.ts.
+// wie der Throw-Ratio-Rechner, nur kameraseitig. Gerechnet wird in optics.ts (lensView).
 
 const SENSORS: { key: string; label: string; w: number; h: number }[] = [
   { key: 'ff', label: 'Vollformat (Kleinbild)', w: 36, h: 24 },
@@ -52,34 +52,17 @@ export function CameraLens(): JSX.Element {
     }
   }
 
-  const sensorW = parseNum(sensorWRaw)
-  const sensorH = parseNum(sensorHRaw)
-  const focal = parseNum(focalRaw)
   const tc = TELECONV.find((t) => t.key === tcKey)?.f ?? 1
-  const dist = parseNum(distRaw)
-  const person = parseNum(personRaw)
-
-  const focalEff = focal != null && focal > 0 ? focal * tc : null
-  const sensorDiag = sensorW != null && sensorH != null ? diag(sensorW, sensorH) : null
-  const equiv =
-    focalEff != null && sensorDiag != null && sensorDiag > 0 ? equiv35(focalEff, sensorDiag) : null
-  const aovH =
-    sensorW != null && sensorW > 0 && focalEff != null ? angleOfView(sensorW, focalEff) : null
-  const aovV =
-    sensorH != null && sensorH > 0 && focalEff != null ? angleOfView(sensorH, focalEff) : null
-
-  const fovW =
-    dist != null && dist > 0 && sensorW != null && focalEff != null
-      ? fovAtDistance(dist, sensorW, focalEff)
-      : null
-  const fovH =
-    dist != null && dist > 0 && sensorH != null && focalEff != null
-      ? fovAtDistance(dist, sensorH, focalEff)
-      : null
-
-  // Rahmenhöhe gemessen in Personenhöhen (>=1 -> ganze Person passt).
-  const ratio = fovH != null && person != null && person > 0 ? fovH / person : null
-  const visiblePct = ratio != null ? Math.min(1, ratio) * 100 : null
+  const { focalEff, equiv, aovH, aovV, fovW, fovH, ratio, visiblePct, aspect, invalid } = lensView({
+    sensorW: parseNum(sensorWRaw),
+    sensorH: parseNum(sensorHRaw),
+    focal: parseNum(focalRaw),
+    teleconverter: tc,
+    dist: parseNum(distRaw),
+    person: parseNum(personRaw)
+  })
+  // rot ist, womit der Rechenkern nicht rechnet (nicht über 0)
+  const bad = (f: LensField): boolean => invalid.includes(f)
 
   return (
     <CalcPage>
@@ -103,6 +86,7 @@ export function CameraLens(): JSX.Element {
         <NumField
           label="Sensorbreite"
           unit="mm"
+          invalid={bad('sensorW')}
           value={sensorWRaw}
           onChange={(v) => {
             setSensorWRaw(v)
@@ -112,6 +96,7 @@ export function CameraLens(): JSX.Element {
         <NumField
           label="Sensorhöhe"
           unit="mm"
+          invalid={bad('sensorH')}
           value={sensorHRaw}
           onChange={(v) => {
             setSensorHRaw(v)
@@ -122,6 +107,7 @@ export function CameraLens(): JSX.Element {
           label="Brennweite"
           hint="Die längste Brennweite des Objektivs (maximaler Zoom) – für den engsten Ausschnitt."
           unit="mm"
+          invalid={bad('focal')}
           value={focalRaw}
           onChange={setFocalRaw}
         />
@@ -157,8 +143,20 @@ export function CameraLens(): JSX.Element {
         desc="Wie viel der Person passt bei maximalem Zoom ins Bild?"
         hint="Näherung (Lochkamera): Sichtfeld = Entfernung × Sensormaß ÷ Brennweite. Beispiel: 200 mm an Vollformat in 25 m ergibt ein etwa 3 m hohes Sichtfeld – die ganze Person passt; mit 2×-Konverter (400 mm) bleiben etwa 1,5 m, also ab der Hüfte aufwärts."
       >
-        <NumField label="Entfernung zur Person" unit="m" value={distRaw} onChange={setDistRaw} />
-        <NumField label="Personengröße" unit="m" value={personRaw} onChange={setPersonRaw} />
+        <NumField
+          label="Entfernung zur Person"
+          unit="m"
+          invalid={bad('dist')}
+          value={distRaw}
+          onChange={setDistRaw}
+        />
+        <NumField
+          label="Personengröße"
+          unit="m"
+          invalid={bad('person')}
+          value={personRaw}
+          onChange={setPersonRaw}
+        />
         <Readout
           label="Sichtfeld"
           value={fovW != null && fovH != null ? `${fmt(fovW, 2)} × ${fmt(fovH, 2)}` : ''}
@@ -172,34 +170,23 @@ export function CameraLens(): JSX.Element {
           accent
           big
         />
-        <FramingView fovH={fovH} person={person} sensorW={sensorW} sensorH={sensorH} />
+        <FramingView ratio={ratio} aspect={aspect} />
       </SectionCard>
     </CalcPage>
   )
 }
 
 /** Silhouette + Kamerarahmen: zeigt, welcher (mittig zentrierte) Anteil der Person
- *  bei maximalem Zoom ins Bild fällt. Rahmenhöhe = Sichtfeldhöhe in Personenhöhen. */
+ *  bei maximalem Zoom ins Bild fällt. Rahmenhöhe = Sichtfeldhöhe in Personenhöhen (`ratio`),
+ *  Rahmenbreite nach dem Seitenverhältnis des Sensors – beide aus dem Rechenkern, nur über 0. */
 function FramingView({
-  fovH,
-  person,
-  sensorW,
-  sensorH
+  ratio,
+  aspect
 }: {
-  fovH: number | null
-  person: number | null
-  sensorW: number | null
-  sensorH: number | null
+  ratio: number | null
+  aspect: number | null
 }): JSX.Element {
-  if (
-    fovH == null ||
-    fovH <= 0 ||
-    person == null ||
-    person <= 0 ||
-    sensorW == null ||
-    sensorH == null ||
-    sensorH <= 0
-  ) {
+  if (ratio == null || aspect == null) {
     return (
       <div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border text-center text-xs text-muted-foreground">
         Sensor, Brennweite, Entfernung und Personengröße eingeben.
@@ -217,8 +204,8 @@ function FramingView({
 
   // Rahmen mittig auf die Person; sehr große Rahmen begrenzen (Clip bleibt korrekt).
   const cap = VB_H * 20
-  const frameH = Math.min((fovH / person) * personPx, cap)
-  const frameW = Math.min(frameH * (sensorW / sensorH), VB_W * 20)
+  const frameH = Math.min(ratio * personPx, cap)
+  const frameW = Math.min(frameH * aspect, VB_W * 20)
   const fx = cx - frameW / 2
   const fy = centerY - frameH / 2
 

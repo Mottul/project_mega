@@ -7,11 +7,20 @@ import {
   SelectField,
   fmt,
   parseNum,
+  parseOptional,
   trimNum,
   ReadoutGrid,
   useLinkedFields
 } from '../_calc/ui'
-import { devicesPerCircuit, loadFrom, powerFactor, type LoadField, type Phase } from './math'
+import {
+  DEFAULT_PF,
+  devicesPerCircuit,
+  loadFrom,
+  powerFactor,
+  type LoadField,
+  type Phase,
+  type SupplyField
+} from './math'
 
 // Stromlast & Absicherung: oben Leistung <-> Strom, unten wie viele gleiche Geräte auf einen
 // Stromkreis passen (mit Reserve). Die Formeln stehen in math.ts.
@@ -30,9 +39,13 @@ export function PowerLoad(): JSX.Element {
   const [breaker, setBreaker] = useState('16')
   const [reserve, setReserve] = useState('1')
 
-  const supply = { phase, u: parseNum(uRaw), pf: parseNum(pfRaw) }
+  // cos φ: leer rechnet mit 1, unlesbar gar nicht (parseOptional)
+  const supply = { phase, u: parseNum(uRaw), pf: parseOptional(pfRaw) }
   const pf = powerFactor(supply.pf)
-  const { p, i, apparent } = loadFrom(supply, load.driver, parseNum(load.raw))
+  const last = loadFrom(supply, load.driver, parseNum(load.raw))
+  const { p, i, apparent } = last
+  // rot ist, womit der Rechenkern nicht rechnet (U nicht über 0, cos φ außerhalb von 0 bis 1 …)
+  const bad = (f: SupplyField | LoadField): boolean => last.invalid.includes(f)
 
   function switchPhase(pNew: Phase): void {
     setPhase(pNew)
@@ -43,7 +56,7 @@ export function PowerLoad(): JSX.Element {
   }
 
   // Geräte pro Absicherung.
-  const { iDev, maxDevices, sumP, sumI } = devicesPerCircuit(
+  const { iDev, maxDevices, sumP, sumI, invalid } = devicesPerCircuit(
     supply,
     parseNum(devRaw),
     Number(breaker),
@@ -61,16 +74,23 @@ export function PowerLoad(): JSX.Element {
           <option value="1">Einphasig (230 V)</option>
           <option value="3">Dreiphasig (400 V)</option>
         </SelectField>
-        <NumField label="Spannung U" unit="V" value={uRaw} onChange={setURaw} />
+        <NumField label="Spannung U" unit="V" invalid={bad('u')} value={uRaw} onChange={setURaw} />
         <NumField
           label="Leistungsfaktor cos φ"
           hint="1 bei rein ohmscher Last (Halogen, Heizer). Netzteile, LED-Geräte und Motoren liegen darunter – mit Leistungsfaktorkorrektur (PFC) meist bei 0,9–0,99. Dann fließt mehr Strom als P ÷ U."
+          placeholder={trimNum(DEFAULT_PF)}
+          invalid={bad('pf')}
           value={pfRaw}
           onChange={setPfRaw}
         />
-        <NumField label="Leistung P" unit="W" {...load.bind('p', trimNum(p, 2))} />
-        <NumField label="Strom I" unit="A" {...load.bind('i', trimNum(i, 2))} />
-        {pf < 1 && (
+        <NumField
+          label="Leistung P"
+          unit="W"
+          invalid={bad('p')}
+          {...load.bind('p', trimNum(p, 2))}
+        />
+        <NumField label="Strom I" unit="A" invalid={bad('i')} {...load.bind('i', trimNum(i, 2))} />
+        {pf != null && pf < 1 && (
           <Readout
             label="Scheinleistung S"
             hint="Das, was Leitung und Sicherung tatsächlich tragen: U · I (dreiphasig · √3)."
@@ -85,7 +105,13 @@ export function PowerLoad(): JSX.Element {
         desc="Wie viele gleiche Geräte verträgt eine Absicherung?"
         hint={phase === '3' ? DEVICES_HINT_3 : DEVICES_HINT}
       >
-        <NumField label="Leistung je Gerät" unit="W" value={devRaw} onChange={setDevRaw} />
+        <NumField
+          label="Leistung je Gerät"
+          unit="W"
+          invalid={invalid.includes('pDev')}
+          value={devRaw}
+          onChange={setDevRaw}
+        />
         <SelectField label="Absicherung" value={breaker} onChange={setBreaker}>
           <option value="10">10 A</option>
           <option value="16">16 A (Schuko)</option>

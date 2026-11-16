@@ -86,9 +86,13 @@ Jedes Werkzeug ist gleich aufgebaut:
   die App (liegt die gemerkte Lage auf einem abgesteckten Bildschirm, erscheint es mittig). Die
   Kopfleiste zeigt nur den Namen; wer das Hauptfenster schließt, schließt die kleinen Fenster
   mit. Formeln, Hintergründe und Beispiele stehen hinter dem **ⓘ** am Bereich oder Feld;
-  Zahlen schreiben und zeigen die Rechner mit Komma (ein Punkt geht auch). Ein Feld, das der
-  Rechner nicht lesen kann – ein Tippfehler wie „1,2,3“ oder ein ungültiger Timecode –, ist **rot
-  umrandet**, auch während man tippt; ein leeres Feld ist kein Fehler.
+  Zahlen schreiben und zeigen die Rechner mit Komma (ein Punkt geht auch). Ein Feld, mit dessen
+  Wert der Rechner nicht rechnet, ist **rot umrandet**, auch während man tippt – ein Tippfehler wie
+  „1,2,3“, ein ungültiger Timecode, aber auch ein lesbarer Wert, der nicht passt: eine negative
+  Distanz, ein Gain von 0, ein cos φ über 1. Was davon abhängt, zeigt dann „–“; nichts wird still
+  durch einen anderen Wert ersetzt. Ein leeres Feld ist kein Fehler; rechnet es leer mit einer
+  Vorgabe (Gain 1, cos φ 1, 20 °C, Eigengewicht 0), steht sie grau im Feld. Hervorgehoben ist je
+  Bereich nur die Antwort auf seine Frage.
 - **Kundenansicht:** „Kundenansicht“ in der Kopfleiste eines Werkzeugs sperrt es
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,
@@ -457,7 +461,9 @@ Gerätetyp. Adapter, „Scannen“/„Stopp“ und der Fortschritt stehen in der
 
 ### DMX-Dip-Schalter
 
-DMX-Startadresse in Dip-Schalter umrechnen und zurück (binär, 9 Schalter, 1–512).
+DMX-Startadresse in Dip-Schalter umrechnen und zurück (binär, 9 Schalter, 1–512). Die Adresse
+steht im Feld, darunter die Schalter und die Binärzahl. Jeder Schalter sagt Vorlesewerkzeugen,
+welcher er ist und ob er an ist („Schalter 3, Wert 4“).
 
 ## Bild & Projektion
 
@@ -550,7 +556,8 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 - **Kameraobjektiv:** aus Brennweite, Sensor, Telekonverter und Entfernung der Bildausschnitt –
   wie viel einer Person bei maximalem Zoom ins Bild passt, mit Visualisierung.
 - **Beamer-Lumen:** Lumen-Bedarf aus Bildgröße und Umgebungslicht – und ob der vorhandene Beamer
-  reicht.
+  reicht: „ausreichend“ in Grün oder „zu dunkel“ in Rot, mit dem Symbol der Statusstufe. Ein
+  leerer Leinwand-Gain rechnet mit 1; ein Gain von 0 oder darunter ergibt keinen Lumen-Bedarf.
 
 ## Medien & Bibliothek
 
@@ -917,7 +924,8 @@ sonst kommt ein Hinweis), dazu die **Handy-Fassung** (eine HTML-Datei).
 
 Leistung ↔ Strom (1∼/3∼, mit Leistungsfaktor cos φ und Scheinleistung) und wie viele gleiche
 Geräte auf einen 10- bis 63-A-Stromkreis passen – wahlweise mit 80 % Auslastung für den
-Dauerbetrieb.
+Dauerbetrieb. cos φ zählt über 0 bis 1; ein Wert außerhalb ergibt kein Ergebnis (früher wurde er
+still auf 0,01 bis 1 begrenzt), ein leeres Feld rechnet mit 1.
 
 **Am Drehstrom** zählt „Geräte pro Stromkreis“ je Außenleiter: Jedes Gerät hängt an einem Leiter
 (U ÷ √3, an 400 V rund 230 V), die Absicherung gilt je Leiter – Max. Geräte = 3 × Geräte je
@@ -929,16 +937,21 @@ wenig, nie zu viele. Das ⓘ der Karte sagt es, sobald dreiphasig gewählt ist.
 ### Rigging-Last
 
 Auflagerkräfte einer Traverse auf zwei Punkten und Strangkräfte im Bridle nach Anschlagwinkel,
-mit Warnstufen. Richtwerte – ersetzt keinen Sachkundigen.
+mit Warnstufen: ab 45° zur Senkrechten der Hinweis „Flacher Winkel“, ab 60° „So nicht
+anschlagen“. Ein leeres Eigengewicht zählt als 0, ein negatives ergibt kein Ergebnis. Richtwerte –
+ersetzt keinen Sachkundigen.
 
 ## Rechner
 
 - **Kreisrechner:** Durchmesser, Radius, Umfang und Fläche – einen Wert eingeben, den Rest
   berechnen.
 - **Audio-Delay & SPL:** Lautsprecher-Laufzeit aus der Distanz und Pegelabfall über die
-  Entfernung.
+  Entfernung. Die Temperatur darf negativ sein – am Handy öffnet ihr Feld deshalb die volle
+  Tastatur (der Dezimaltastatur des iPhones fehlt das Minus); leer rechnet sie mit 20 °C.
 - **Timecode-Rechner:** SMPTE-Timecode ↔ Frames ↔ Echtzeit, inklusive Drop-Frame (29,97/59,94),
-  und Dauer zwischen In und Out.
+  und Dauer zwischen In und Out. Timecodes lassen sich auch nur aus Ziffern tippen, paarweise von
+  rechts gelesen: „1020312“ ist 01:02:03:12, ein oder zwei Ziffern sind Frames. Am Handy öffnen
+  die Felder dafür die Zifferntastatur (sie hat keinen Doppelpunkt).
 
 ### RTA (Echtzeit-Analysator)
 
@@ -1033,9 +1046,9 @@ DMX-Dip-Schalter, Stromlast, Audio-Delay, RTA, Testtongenerator, Rigging-Last un
 eigenständige Web-App „MottulBox“ ohne die übrige Mottulbox: https://mottul.github.io/project_mega/ im
 Browser öffnen, über „Installieren“ bzw.
 „Zum Home-Bildschirm“ als App ablegen, danach läuft sie **offline**. Dieselben Rechner wie am
-Desktop (gleicher Code). Mit dem **Stern** heftet man Rechner als **Favoriten** oben an; „Ordnen“
-stellt ihre Reihenfolge mit Pfeilen ein, die übrigen folgen darunter wie in der App (das Handy
-merkt sich beides, neue Rechner erscheinen von selbst unten). Der Knopf **„Darstellung“** oben rechts stellt wie das App-Menü der
+Desktop (gleicher Code). Mit dem **Stern** heftet man Werkzeuge als **Favoriten** oben an; „Ordnen“
+stellt ihre Reihenfolge mit Pfeilen ein, die übrigen folgen darunter als „Weitere Werkzeuge“ wie
+in der App (das Handy merkt sich beides, neue Werkzeuge erscheinen von selbst unten). Der Knopf **„Darstellung“** oben rechts stellt wie das App-Menü der
 Mottulbox Design (Dunkel, Hell, wie das Gerät) und Akzentfarbe ein; das Handy merkt sich beides.
 Eine neue Version meldet sich mit „Neu laden“, sonst greift sie beim nächsten Start – das kommt nur
 vor, wenn sich an den Rechnern selbst, an gemeinsamen Bedienelementen oder an den Farben etwas

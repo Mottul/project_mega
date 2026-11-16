@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { AMBIENT, ambientLux, projectorLumen, type LumenInput } from './math'
+import { AMBIENT, DEFAULT_GAIN, ambientLux, projectorLumen, type LumenInput } from './math'
 
 // Vorgabe des Rechners: 4 × 2,25 m, gedimmt, Gain 1, kein Beamer eingetragen
 const VORGABE: LumenInput = { width: 4, height: 2.25, targetLux: 400, gain: 1, have: null }
+const NICHTS = { area: null, needed: null, achievedLux: null, enough: null }
 
 describe('Vorgabe des Rechners: 4 × 2,25 m, gedimmt (400 lx), Gain 1', () => {
   it('Bildfläche 9 m², Lumen-Bedarf 3.600 lm, ohne Beamer keine Bewertung', () => {
@@ -10,7 +11,8 @@ describe('Vorgabe des Rechners: 4 × 2,25 m, gedimmt (400 lx), Gain 1', () => {
       area: 9,
       needed: 3600,
       achievedLux: null,
-      enough: null
+      enough: null,
+      invalid: []
     })
   })
 
@@ -38,12 +40,23 @@ describe('projectorLumen – Gain und Bewertung', () => {
     expect(r.achievedLux).toBeCloseTo(1083.3, 1)
   })
 
-  it.each([0, -1, null])(
-    'Gain %s rechnet heimlich mit 1 (Befund 2, ändert sich mit K3)',
+  it('leerer Gain rechnet mit 1 (mattweiß) – das Feld zeigt die 1 als Platzhalter', () => {
+    expect(DEFAULT_GAIN).toBe(1)
+    expect(projectorLumen({ ...VORGABE, gain: null, have: 6500 })).toEqual(
+      projectorLumen({ ...VORGABE, gain: 1, have: 6500 })
+    )
+  })
+
+  it.each([0, -1, Number.NaN])(
+    'Gain %s (auch unlesbar) → kein Bedarf und keine Bewertung, das Feld ist rot – statt still mit 1',
     (gain) => {
-      expect(projectorLumen({ ...VORGABE, gain, have: 6500 })).toEqual(
-        projectorLumen({ ...VORGABE, gain: 1, have: 6500 })
-      )
+      expect(projectorLumen({ ...VORGABE, gain, have: 6500 })).toEqual({
+        area: 9,
+        needed: null,
+        achievedLux: null,
+        enough: null,
+        invalid: ['gain']
+      })
     }
   )
 
@@ -52,27 +65,37 @@ describe('projectorLumen – Gain und Bewertung', () => {
     expect(projectorLumen({ ...VORGABE, have: 3599 }).enough).toBe(false)
   })
 
-  it('Lichtstrom 0 oder negativ: keine Helligkeit, aber „zu dunkel“', () => {
-    for (const have of [0, -100]) {
+  it.each([0, -100])(
+    'Lichtstrom %s → keine Helligkeit und keine Bewertung, das Feld ist rot',
+    (have) => {
       const r = projectorLumen({ ...VORGABE, have })
       expect(r.achievedLux).toBeNull()
-      expect(r.enough).toBe(false)
+      expect(r.enough).toBeNull()
+      expect(r.invalid).toEqual(['have'])
+      expect(r.needed).toBe(3600)
     }
-  })
+  )
 })
 
 describe('projectorLumen – Ränder der Bildgröße', () => {
   it.each<[number | null, number | null]>([
     [null, 2.25],
-    [4, null],
-    [0, 2.25],
-    [4, -1]
-  ])('Breite %s, Höhe %s → kein Bedarf und keine Bewertung', (width, height) => {
+    [4, null]
+  ])('Breite %s, Höhe %s (leer) → kein Bedarf und keine Bewertung, nicht rot', (width, height) => {
     expect(projectorLumen({ ...VORGABE, width, height, have: 6500 })).toEqual({
-      area: null,
-      needed: null,
-      achievedLux: null,
-      enough: null
+      ...NICHTS,
+      invalid: []
+    })
+  })
+
+  it.each<[number, number, string[]]>([
+    [0, 2.25, ['width']],
+    [4, -1, ['height']],
+    [-4, 0, ['width', 'height']]
+  ])('Breite %s, Höhe %s → kein Bedarf und keine Bewertung, rot: %j', (width, height, invalid) => {
+    expect(projectorLumen({ ...VORGABE, width, height, have: 6500 })).toEqual({
+      ...NICHTS,
+      invalid
     })
   })
 })

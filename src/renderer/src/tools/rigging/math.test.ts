@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { bridle, bridleLevel, kgToKn, trussLoads } from './math'
+import { DEFAULT_OWN, bridle, bridleLevel, kgToKn, trussLoads } from './math'
 
 describe('Vorgabe des Rechners: Traverse 8 m, 120 kg bei 3 m, Eigengewicht 10 kg/m', () => {
   it('Punkt A 115 kg · Punkt B 85 kg', () => {
-    expect(trussLoads(8, 3, 120, 10)).toEqual({ fA: 115, fB: 85, outside: false })
+    expect(trussLoads(8, 3, 120, 10)).toEqual({ fA: 115, fB: 85, outside: false, invalid: [] })
   })
 
   it('in kN: 1,13 und 0,83', () => {
@@ -20,6 +20,7 @@ describe('Vorgabe des Rechners: Bridle 200 kg, Höhe 2 m, Punktabstand 4 m', () 
     expect(b.factor).toBeCloseTo(Math.SQRT2, 12)
     expect(b.legForce).toBeCloseTo(141.42, 2)
     expect(b.legLen).toBeCloseTo(2.828, 3)
+    expect(b.invalid).toEqual([])
   })
 
   it('Stufe „gelb“ – genau auf der Grenze von 45°', () => {
@@ -34,48 +35,92 @@ describe('trussLoads – Lastposition', () => {
   })
 
   it('Last direkt an A oder B: dieser Punkt trägt sie ganz', () => {
-    expect(trussLoads(8, 0, 120, 10)).toEqual({ fA: 160, fB: 40, outside: false })
-    expect(trussLoads(8, 8, 120, 10)).toEqual({ fA: 40, fB: 160, outside: false })
+    expect(trussLoads(8, 0, 120, 10)).toEqual({ fA: 160, fB: 40, outside: false, invalid: [] })
+    expect(trussLoads(8, 8, 120, 10)).toEqual({ fA: 40, fB: 160, outside: false, invalid: [] })
   })
 
   it('Last in der Mitte: beide gleich', () => {
-    expect(trussLoads(8, 4, 120, 10)).toEqual({ fA: 100, fB: 100, outside: false })
+    expect(trussLoads(8, 4, 120, 10)).toEqual({ fA: 100, fB: 100, outside: false, invalid: [] })
   })
 
-  it('außerhalb der Spannweite (hinter B): kein Ergebnis, dafür die Meldung', () => {
-    expect(trussLoads(8, 9, 120, 10)).toEqual({ fA: null, fB: null, outside: true })
+  it('außerhalb der Spannweite (hinter B): kein Ergebnis, die Meldung, die Position ist rot', () => {
+    expect(trussLoads(8, 9, 120, 10)).toEqual({
+      fA: null,
+      fB: null,
+      outside: true,
+      invalid: ['pos']
+    })
   })
 
-  it('negative Position (vor A): kein Ergebnis und keine Meldung', () => {
-    expect(trussLoads(8, -1, 120, 10)).toEqual({ fA: null, fB: null, outside: false })
+  it('negative Position (vor A): kein Ergebnis, keine Meldung, die Position ist rot', () => {
+    expect(trussLoads(8, -1, 120, 10)).toEqual({
+      fA: null,
+      fB: null,
+      outside: false,
+      invalid: ['pos']
+    })
   })
 })
 
+describe('trussLoads – Eigengewicht', () => {
+  it('leer zählt als 0 – das Feld zeigt die 0 als Platzhalter', () => {
+    expect(DEFAULT_OWN).toBe(0)
+    expect(trussLoads(8, 3, 120, null)).toEqual({ fA: 75, fB: 45, outside: false, invalid: [] })
+  })
+
+  it('0 rechnet mit: nur die Punktlast', () => {
+    expect(trussLoads(8, 3, 120, 0)).toEqual({ fA: 75, fB: 45, outside: false, invalid: [] })
+  })
+
+  it.each([-10, Number.NaN])(
+    'Eigengewicht %s (negativ oder unlesbar) → kein Ergebnis, das Feld ist rot – es senkte früher die Kräfte',
+    (own) => {
+      expect(trussLoads(8, 3, 120, own)).toEqual({
+        fA: null,
+        fB: null,
+        outside: false,
+        invalid: ['ownPerM']
+      })
+    }
+  )
+})
+
 describe('trussLoads – Ränder', () => {
-  it('Eigengewicht leer zählt als 0', () => {
-    expect(trussLoads(8, 3, 120, null)).toEqual({ fA: 75, fB: 45, outside: false })
-  })
-
   it('Punktlast 0: nur das Eigengewicht', () => {
-    expect(trussLoads(8, 3, 0, 10)).toEqual({ fA: 40, fB: 40, outside: false })
-  })
-
-  it('ein negatives Eigengewicht rechnet heute mit und senkt die Kräfte (Paket K3)', () => {
-    expect(trussLoads(8, 3, 120, -10)).toEqual({ fA: 35, fB: 5, outside: false })
+    expect(trussLoads(8, 3, 0, 10)).toEqual({ fA: 40, fB: 40, outside: false, invalid: [] })
   })
 
   it.each<[number | null, number | null, number | null]>([
     [null, 3, 120],
-    [0, 0, 120],
-    [-8, 3, 120],
     [8, null, 120],
-    [8, 3, null],
-    [8, 3, -120]
-  ])('Spannweite %s, Position %s, Punktlast %s → kein Ergebnis', (span, pos, load) => {
-    const t = trussLoads(span, pos, load, 10)
-    expect(t.fA).toBeNull()
-    expect(t.fB).toBeNull()
-  })
+    [8, 3, null]
+  ])(
+    'Spannweite %s, Position %s, Punktlast %s (leer) → kein Ergebnis, nicht rot',
+    (span, pos, load) => {
+      expect(trussLoads(span, pos, load, 10)).toEqual({
+        fA: null,
+        fB: null,
+        outside: false,
+        invalid: []
+      })
+    }
+  )
+
+  it.each<[number, number, number, string[]]>([
+    [0, 0, 120, ['span']],
+    [8, 3, -120, ['load']],
+    // Position hinter einer Spannweite von 0 oder darunter: auch die Meldung, beide rot
+    [0, 3, 120, ['span', 'pos']],
+    [-8, 3, 120, ['span', 'pos']]
+  ])(
+    'Spannweite %s, Position %s, Punktlast %s → kein Ergebnis, rot: %j',
+    (span, pos, load, invalid) => {
+      const t = trussLoads(span, pos, load, 10)
+      expect(t.fA).toBeNull()
+      expect(t.fB).toBeNull()
+      expect(t.invalid).toEqual(invalid)
+    }
+  )
 
   it('Spannweite 0 oder negativ mit Position dahinter: auch die Meldung', () => {
     expect(trussLoads(0, 3, 120, 10).outside).toBe(true)
@@ -122,27 +167,42 @@ describe('bridle – Ränder', () => {
       factor: 1,
       legForce: 100,
       legLen: 2,
-      level: 'ok'
+      level: 'ok',
+      invalid: []
     })
   })
 
+  const keins = {
+    betaDeg: null,
+    spreadDeg: null,
+    factor: null,
+    legForce: null,
+    legLen: null,
+    level: null
+  }
+
   it.each<[number | null, number | null, number | null]>([
     [null, 2, 4],
-    [0, 2, 4],
-    [-200, 2, 4],
     [200, null, 4],
-    [200, 0, 4],
-    [200, -2, 4],
-    [200, 2, null],
-    [200, 2, -4]
-  ])('Last %s, Höhe %s, Punktabstand %s → kein Ergebnis', (load, height, width) => {
-    expect(bridle(load, height, width)).toEqual({
-      betaDeg: null,
-      spreadDeg: null,
-      factor: null,
-      legForce: null,
-      legLen: null,
-      level: null
-    })
-  })
+    [200, 2, null]
+  ])(
+    'Last %s, Höhe %s, Punktabstand %s (leer) → kein Ergebnis, nicht rot',
+    (load, height, width) => {
+      expect(bridle(load, height, width)).toEqual({ ...keins, invalid: [] })
+    }
+  )
+
+  it.each<[number, number, number, string[]]>([
+    [0, 2, 4, ['load']],
+    [-200, 2, 4, ['load']],
+    [200, 0, 4, ['height']],
+    [200, -2, 4, ['height']],
+    [200, 2, -4, ['width']],
+    [0, 0, -4, ['load', 'height', 'width']]
+  ])(
+    'Last %s, Höhe %s, Punktabstand %s → kein Ergebnis, rot: %j',
+    (load, height, width, invalid) => {
+      expect(bridle(load, height, width)).toEqual({ ...keins, invalid })
+    }
+  )
 })

@@ -14,17 +14,23 @@ export function ambientLux(key: string): number {
   return AMBIENT.find((a) => a.key === key)?.lux ?? 400
 }
 
+/** Gain, mit dem ein leeres Feld rechnet (mattweiß) – das Feld zeigt ihn als Platzhalter */
+export const DEFAULT_GAIN = 1
+
 export interface LumenInput {
   /** Bildbreite und -höhe in m */
   width: number | null
   height: number | null
   /** Ziel-Beleuchtungsstärke in lx */
   targetLux: number
-  /** Leinwand-Gain */
+  /** Leinwand-Gain: leer (`null`) rechnet mit 1, unlesbar (`NaN`) gar nicht */
   gain: number | null
   /** Lichtstrom des vorhandenen Beamers in lm (optional) */
   have: number | null
 }
+
+/** Eingaben, die rot sein können */
+export type LumenField = 'width' | 'height' | 'gain' | 'have'
 
 export interface Lumen {
   /** Bildfläche in m² */
@@ -35,17 +41,29 @@ export interface Lumen {
   achievedLux: number | null
   /** Reicht der vorhandene Beamer? `null` ohne Bedarf oder ohne Beamer */
   enough: boolean | null
+  /** Eingaben, die lesbar, aber nicht über 0 sind – mit ihnen wird nicht gerechnet */
+  invalid: LumenField[]
 }
 
 /**
- * Lumen-Bedarf und – mit vorhandenem Beamer – die erreichte Helligkeit. Ein Gain bis 0 oder ein
- * leeres Feld rechnet mit 1, ohne dass man es sieht (Befund 2 im Gesamtplan, Paket K3).
+ * Lumen-Bedarf und – mit vorhandenem Beamer – die erreichte Helligkeit. Alle Eingaben zählen nur
+ * über 0. Ein Gain bis 0 ergibt keinen Bedarf (früher rechnete er still mit 1); nur ein leeres
+ * Feld rechnet mit 1.
  */
 export function projectorLumen({ width, height, targetLux, gain, have }: LumenInput): Lumen {
-  const g = gain != null && gain > 0 ? gain : 1
-  const area = width != null && height != null && width > 0 && height > 0 ? width * height : null
-  const needed = area != null ? (targetLux * area) / g : null
-  const achievedLux = have != null && have > 0 && area != null ? (have * g) / area : null
-  const enough = needed != null && have != null ? have >= needed : null
-  return { area, needed, achievedLux, enough }
+  const g = gain ?? DEFAULT_GAIN
+  const widthOk = width != null && width > 0
+  const heightOk = height != null && height > 0
+  const gainOk = g > 0 // auch NaN (unlesbar) nicht
+  const haveOk = have != null && have > 0
+  const area = widthOk && heightOk ? width * height : null
+  const needed = area != null && gainOk ? (targetLux * area) / g : null
+  const achievedLux = needed != null && area != null && haveOk ? (have * g) / area : null
+  const enough = needed != null && haveOk ? have >= needed : null
+  const invalid: LumenField[] = []
+  if (width != null && !widthOk) invalid.push('width')
+  if (height != null && !heightOk) invalid.push('height')
+  if (!gainOk) invalid.push('gain')
+  if (have != null && !haveOk) invalid.push('have')
+  return { area, needed, achievedLux, enough, invalid }
 }

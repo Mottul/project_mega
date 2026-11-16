@@ -1,7 +1,18 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, ReadoutGrid, SectionCard, fmt, parseNum } from '../_calc/ui'
+import {
+  CalcPage,
+  NumField,
+  Readout,
+  ReadoutGrid,
+  SectionCard,
+  fmt,
+  parseNum,
+  parseOptional,
+  trimNum
+} from '../_calc/ui'
 import { Alert } from '@renderer/components/ui/alert'
-import { bridle, kgToKn, trussLoads } from './math'
+import { STATUS } from '@renderer/components/ui/status'
+import { DEFAULT_OWN, bridle, kgToKn, trussLoads, type BridleField, type TrussField } from './math'
 
 // Rigging-Last: zwei Alltagsfälle – Traverse auf zwei Hängepunkten und Bridle mit zwei Strängen
 // (Formeln und Warnstufen in math.ts). Richtwerte OHNE Dynamik-/Sicherheitsfaktoren – ersetzt
@@ -24,17 +35,19 @@ export function Rigging(): JSX.Element {
   const [heightRaw, setHeightRaw] = useState('2')
   const [widthRaw, setWidthRaw] = useState('4')
 
-  const { fA, fB, outside } = trussLoads(
+  const truss = trussLoads(
     parseNum(spanRaw),
     parseNum(posRaw),
     parseNum(loadRaw),
-    parseNum(ownRaw)
+    // leer zählt als 0, unlesbar gar nicht (parseOptional)
+    parseOptional(ownRaw)
   )
-  const { betaDeg, spreadDeg, factor, legForce, legLen, level } = bridle(
-    parseNum(bLoadRaw),
-    parseNum(heightRaw),
-    parseNum(widthRaw)
-  )
+  const { fA, fB, outside } = truss
+  const b = bridle(parseNum(bLoadRaw), parseNum(heightRaw), parseNum(widthRaw))
+  const { betaDeg, spreadDeg, factor, legForce, legLen, level } = b
+  // rot ist, womit der Rechenkern nicht rechnet
+  const badTruss = (f: TrussField): boolean => truss.invalid.includes(f)
+  const badBridle = (f: BridleField): boolean => b.invalid.includes(f)
 
   return (
     <CalcPage note="Statische Richtwerte ohne Dynamik-, Sicherheits- und Anschlagmittel-Faktoren – Auslegung und Abnahme gehören in die Hände eines Sachkundigen (DGUV V 17/18, SQ Q2).">
@@ -43,13 +56,33 @@ export function Rigging(): JSX.Element {
         desc="Wie verteilt sich eine Punktlast auf die Hängepunkte A und B?"
         hint="Einfacher Träger: A = F · (L − a) ÷ L, B = F · a ÷ L; das Eigengewicht tragen A und B je zur Hälfte. Mehrere Punktlasten einzeln rechnen und die Ergebnisse addieren."
       >
-        <NumField label="Spannweite A–B" unit="m" value={spanRaw} onChange={setSpanRaw} />
-        <NumField label="Lastposition ab A" unit="m" value={posRaw} onChange={setPosRaw} />
-        <NumField label="Punktlast" unit="kg" value={loadRaw} onChange={setLoadRaw} />
+        <NumField
+          label="Spannweite A–B"
+          unit="m"
+          invalid={badTruss('span')}
+          value={spanRaw}
+          onChange={setSpanRaw}
+        />
+        <NumField
+          label="Lastposition ab A"
+          unit="m"
+          invalid={badTruss('pos')}
+          value={posRaw}
+          onChange={setPosRaw}
+        />
+        <NumField
+          label="Punktlast"
+          unit="kg"
+          invalid={badTruss('load')}
+          value={loadRaw}
+          onChange={setLoadRaw}
+        />
         <NumField
           label="Eigengewicht"
           hint="Gewicht der Traverse je Meter (Datenblatt des Herstellers)."
           unit="kg/m"
+          placeholder={trimNum(DEFAULT_OWN)}
+          invalid={badTruss('ownPerM')}
           value={ownRaw}
           onChange={setOwnRaw}
         />
@@ -65,11 +98,18 @@ export function Rigging(): JSX.Element {
         desc="Je flacher der Winkel, desto höher die Kraft im Strang."
         hint="Symmetrisches Bridle, statisch: Kraft je Strang = halbe Last ÷ cos β; β ist der Winkel eines Strangs zur Senkrechten."
       >
-        <NumField label="Last" unit="kg" value={bLoadRaw} onChange={setBLoadRaw} />
+        <NumField
+          label="Last"
+          unit="kg"
+          invalid={badBridle('load')}
+          value={bLoadRaw}
+          onChange={setBLoadRaw}
+        />
         <NumField
           label="Höhe"
           hint="Senkrechter Abstand vom Lastpunkt (Zusammenführung der Stränge) bis auf die Höhe der Anschlagpunkte."
           unit="m"
+          invalid={badBridle('height')}
           value={heightRaw}
           onChange={setHeightRaw}
         />
@@ -77,6 +117,7 @@ export function Rigging(): JSX.Element {
           label="Punktabstand"
           hint="Waagerechter Abstand der beiden Anschlagpunkte."
           unit="m"
+          invalid={badBridle('width')}
           value={widthRaw}
           onChange={setWidthRaw}
         />
@@ -104,16 +145,17 @@ export function Rigging(): JSX.Element {
           />
           <Readout label="Stranglänge" value={fmt(legLen, 2)} unit="m" />
         </ReadoutGrid>
+        {/* Warnstufen mit Titel und dem Symbol der Statusstufe – wie überall in der App */}
         {level === 'gelb' && (
-          <Alert tone="warning">
-            ⚠ Winkel ab 45° zur Senkrechten – deutlich mehr Kraft im Strang (Faktor ab 1,41). Höher
+          <Alert tone="warning" title="Flacher Winkel" icon={STATUS.warning.icon}>
+            Winkel ab 45° zur Senkrechten – deutlich mehr Kraft im Strang (Faktor ab 1,41). Höher
             anschlagen oder die Punkte enger setzen.
           </Alert>
         )}
         {level === 'rot' && (
-          <Alert tone="danger">
-            ⚠ Winkel ab 60° zur Senkrechten – jeder Strang trägt mindestens die ganze Last (Faktor
-            ab 2). So nicht anschlagen!
+          <Alert tone="danger" title="So nicht anschlagen" icon={STATUS.danger.icon}>
+            Winkel ab 60° zur Senkrechten – jeder Strang trägt mindestens die ganze Last (Faktor ab
+            2).
           </Alert>
         )}
       </SectionCard>

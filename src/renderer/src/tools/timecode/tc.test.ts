@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   TC_RATES,
+  framesFrom,
   framesToSeconds,
   framesToTc,
   formatRealtime,
@@ -113,6 +114,99 @@ describe('parseTc – Validierung & Trennzeichen', () => {
   })
   it('Komma wird (laut Regex) als Trenner akzeptiert', () => {
     expect(parseTc('01,02,03,04', R25)).toEqual({ hh: 1, mm: 2, ss: 3, ff: 4 })
+  })
+  it('mit Trennzeichen wie bisher: fehlende Gruppen links = 0, Gruppen bis drei Ziffern', () => {
+    expect(parseTc('1:2:3:4', R25)).toEqual({ hh: 1, mm: 2, ss: 3, ff: 4 })
+    expect(parseTc('03:12', R25)).toEqual({ hh: 0, mm: 0, ss: 3, ff: 12 })
+    expect(parseTc('100:00:00:00', R25)).toEqual({ hh: 100, mm: 0, ss: 0, ff: 0 })
+    expect(parseTc('01:00:00;12', DF)).toEqual({ hh: 1, mm: 0, ss: 0, ff: 12 })
+    expect(parseTc('1:0203:12', R25)).toBeNull()
+  })
+})
+
+// Die Zifferntastatur am Handy hat keinen Doppelpunkt: Reine Ziffern liest parseTc paarweise von
+// rechts – Frames, Sekunden, Minuten, der Rest sind Stunden.
+describe('parseTc – nur Ziffern', () => {
+  it.each<[string, [number, number, number, number]]>([
+    ['01020312', [1, 2, 3, 12]],
+    ['1020312', [1, 2, 3, 12]],
+    ['20312', [0, 2, 3, 12]],
+    ['0312', [0, 0, 3, 12]],
+    ['312', [0, 0, 3, 12]],
+    ['1000000', [1, 0, 0, 0]],
+    ['000', [0, 0, 0, 0]],
+    ['100020312', [100, 2, 3, 12]],
+    [' 1020312 ', [1, 2, 3, 12]]
+  ])('„%s“ → %j', (text, [hh, mm, ss, ff]) => {
+    expect(parseTc(text, R25)).toEqual({ hh, mm, ss, ff })
+  })
+
+  it('ein oder zwei Ziffern bleiben Frames wie bisher', () => {
+    expect(parseTc('5', R25)).toEqual({ hh: 0, mm: 0, ss: 0, ff: 5 })
+    expect(parseTc('12', R25)).toEqual({ hh: 0, mm: 0, ss: 0, ff: 12 })
+    expect(parseTc('24', R25)).toEqual({ hh: 0, mm: 0, ss: 0, ff: 24 })
+    expect(parseTc('25', R25)).toBeNull()
+  })
+
+  it('dieselben Grenzen wie mit Trennzeichen', () => {
+    expect(parseTc('1006000', R25)).toBeNull() // 60 Sekunden
+    expect(parseTc('1600000', R25)).toBeNull() // 60 Minuten
+    expect(parseTc('1000025', R25)).toBeNull() // Frame 25 bei 25 fps
+    expect(parseTc('1000029', DF)).toEqual({ hh: 1, mm: 0, ss: 0, ff: 29 })
+  })
+
+  it('mehr als neun Ziffern (Stunden über drei Stellen) → null', () => {
+    expect(parseTc('1000020312', R25)).toBeNull()
+  })
+
+  it('stimmt mit der Schreibweise mit Doppelpunkten überein', () => {
+    for (const tc of ['00:00:00:00', '01:02:03:12', '23:59:59:24', '99:00:00:01']) {
+      expect(parseTc(tc.replace(/:/g, ''), R25), tc).toEqual(parseTc(tc, R25))
+    }
+  })
+})
+
+describe('framesFrom – Quelle der verknüpften Felder → Framenummer', () => {
+  it('Timecode als Text, auch nur aus Ziffern', () => {
+    expect(framesFrom({ field: 'tc', text: '01:00:00:00' }, R25)).toEqual({
+      frames: 90000,
+      invalid: []
+    })
+    // 3.723 s × 25 + 12
+    expect(framesFrom({ field: 'tc', text: '01020312' }, R25).frames).toBe(93087)
+  })
+
+  it('ungültiger Timecode: keine Framenummer – rot macht ihn das Feld selbst (parse)', () => {
+    expect(framesFrom({ field: 'tc', text: '01:00:00:25' }, R25)).toEqual({
+      frames: null,
+      invalid: []
+    })
+  })
+
+  it('Frames gesamt: auf ganze gerundet', () => {
+    expect(framesFrom({ field: 'frames', value: 90000 }, R25).frames).toBe(90000)
+    expect(framesFrom({ field: 'frames', value: 1.5 }, R25).frames).toBe(2)
+  })
+
+  it('Echtzeit in Sekunden', () => {
+    expect(framesFrom({ field: 'real', value: 3600 }, R25).frames).toBe(90000)
+    expect(framesFrom({ field: 'real', value: 3600 }, DF).frames).toBe(107892)
+  })
+
+  it('0 ist erlaubt, leer ergibt nichts und ist nicht rot', () => {
+    expect(framesFrom({ field: 'frames', value: 0 }, R25)).toEqual({ frames: 0, invalid: [] })
+    expect(framesFrom({ field: 'real', value: null }, R25)).toEqual({ frames: null, invalid: [] })
+  })
+
+  it('negativ: keine Framenummer, das Feld ist rot', () => {
+    expect(framesFrom({ field: 'frames', value: -5 }, R25)).toEqual({
+      frames: null,
+      invalid: ['frames']
+    })
+    expect(framesFrom({ field: 'real', value: -0.5 }, R25)).toEqual({
+      frames: null,
+      invalid: ['real']
+    })
   })
 })
 

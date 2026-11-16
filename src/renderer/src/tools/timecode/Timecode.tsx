@@ -14,12 +14,13 @@ import {
 import {
   formatRealtime,
   formatTc,
+  framesFrom,
   framesToSeconds,
   framesToTc,
   parseTc,
-  secondsToFrames,
   tcToFrames,
-  TC_RATES
+  TC_RATES,
+  type TcField
 } from './tc'
 import { Alert } from '@renderer/components/ui/alert'
 
@@ -27,11 +28,13 @@ import { Alert } from '@renderer/components/ui/alert'
 // das zuletzt bearbeitete ist die Quelle) + Differenz/Dauer zwischen zwei
 // Timecodes. Drop-Frame (29,97/59,94) wird korrekt behandelt.
 
-type Driver = 'tc' | 'frames' | 'real'
+// ⓘ der Timecode-Felder: Am Handy gibt es nur die Zifferntastatur (ohne Doppelpunkt)
+const TC_HINT =
+  'hh:mm:ss:ff oder nur Ziffern, gelesen paarweise von rechts: 1020312 = 01:02:03:12. Ein oder zwei Ziffern sind Frames.'
 
 export function Timecode(): JSX.Element {
   const [rateKey, setRateKey] = useState('25')
-  const { driver, raw, bind } = useLinkedFields<Driver>('tc', '01:00:00:00')
+  const { driver, raw, bind } = useLinkedFields<TcField>('tc', '01:00:00:00')
 
   const [tcA, setTcA] = useState('01:00:00:00')
   const [tcB, setTcB] = useState('01:05:30:00')
@@ -40,20 +43,15 @@ export function Timecode(): JSX.Element {
   // Ein Timecode ist keine Dezimalzahl: Seine Felder lesen mit parseTc, sonst wären sie rot
   const readTc = (s: string): unknown => parseTc(s, rate)
 
-  // Quelle -> Framenummer (null = Eingabe ungültig)
-  let frames: number | null
-  if (driver === 'tc') {
-    const p = parseTc(raw, rate)
-    frames = p ? tcToFrames(p, rate) : null
-  } else if (driver === 'frames') {
-    const n = parseNum(raw)
-    frames = n != null && n >= 0 ? Math.round(n) : null
-  } else {
-    const n = parseNum(raw)
-    frames = n != null && n >= 0 ? secondsToFrames(n, rate) : null
-  }
+  // Quelle -> Framenummer (null = Eingabe ungültig); negativ macht der Rechenkern das Feld rot
+  const src = framesFrom(
+    driver === 'tc' ? { field: 'tc', text: raw } : { field: driver, value: parseNum(raw) },
+    rate
+  )
+  const { frames } = src
+  const bad = (f: TcField): boolean => src.invalid.includes(f)
 
-  const vals: Record<Driver, string> = {
+  const vals: Record<TcField, string> = {
     tc: frames != null ? formatTc(framesToTc(frames, rate), rate) : '',
     frames: frames != null ? String(frames) : '',
     real: frames != null ? trimNum(framesToSeconds(frames, rate), 4) : ''
@@ -86,22 +84,29 @@ export function Timecode(): JSX.Element {
             </option>
           ))}
         </SelectField>
+        {/* Timecodes lesen mit parseTc (ungültig = rot) und öffnen am Handy die Zifferntastatur */}
         <NumField
           label="Timecode"
+          hint={TC_HINT}
           placeholder="hh:mm:ss:ff"
+          digits
           parse={readTc}
           {...bind('tc', vals.tc)}
         />
-        <NumField label="Frames (gesamt)" {...bind('frames', vals.frames)} />
-        <NumField label="Echtzeit" unit="s" {...bind('real', vals.real)} />
+        <NumField
+          label="Frames (gesamt)"
+          invalid={bad('frames')}
+          {...bind('frames', vals.frames)}
+        />
+        <NumField label="Echtzeit" unit="s" invalid={bad('real')} {...bind('real', vals.real)} />
+        {/* kein Akzent: Die Antwort der Karte sind die berechneten Felder */}
         <Readout
           label="Echtzeit (hh:mm:ss.ms)"
           value={frames != null ? formatRealtime(framesToSeconds(frames, rate)) : ''}
-          accent
         />
         {driver === 'tc' && raw.trim() !== '' && frames == null && (
           <Alert tone="danger">
-            Ungültiger Timecode – Format hh:mm:ss:ff, Frames unter {rate.nominal}.
+            Ungültiger Timecode – hh:mm:ss:ff oder nur Ziffern, Frames unter {rate.nominal}.
           </Alert>
         )}
       </SectionCard>
@@ -109,10 +114,12 @@ export function Timecode(): JSX.Element {
       <SectionCard
         title="Dauer zwischen zwei Timecodes"
         desc="Zum Beispiel die Clip-Länge aus In- und Out-Punkt (B − A)."
+        hint={`Timecodes A und B: ${TC_HINT}`}
       >
         <NumField
           label="Timecode A (In)"
           placeholder="hh:mm:ss:ff"
+          digits
           parse={readTc}
           value={tcA}
           onChange={setTcA}
@@ -120,6 +127,7 @@ export function Timecode(): JSX.Element {
         <NumField
           label="Timecode B (Out)"
           placeholder="hh:mm:ss:ff"
+          digits
           parse={readTc}
           value={tcB}
           onChange={setTcB}

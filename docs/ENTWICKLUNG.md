@@ -167,9 +167,12 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Möglichkeiten als Knopfgruppe `ChoiceField`, sonst `SelectField`; `RangeField`, `QuickPick`,
   `RunButton` für Start und Stopp). `NumField` umrandet selbst rot und mit `aria-invalid`, was
   `parseNum` nicht liest (dieselbe Lese-Funktion wie `DecimalField`; eigene Schreibweise per
-  `parse`, etwa Timecode), `invalid` für Lesbares, das nicht rechenbar ist, `signed` für negative
-  Werte (Tastatur mit Minus am Handy); Bewertungen als `Readout` mit `tone` (Farbe und Symbol aus
-  `STATUS`).
+  `parse`, etwa Timecode), `invalid` für Lesbares, das nicht rechenbar ist – das meldet der
+  Rechenkern in seinem Ergebnis (`invalid`), statt still einen Ersatzwert zu nehmen –, `signed`
+  für negative Werte (Tastatur mit Minus am Handy), `digits` für reine Ziffern (Zifferntastatur);
+  rechnet ein Feld leer mit einer Vorgabe, steht sie als `placeholder` darin und es liest mit
+  `parseOptional` (unlesbar ergibt kein Ergebnis). Bewertungen als `Readout` mit `tone`,
+  Warnungen als `Alert` mit Titel (Farbe und Symbol aus `STATUS`).
 - **Testton:** ein Kern in `tools/_tone/` (Engine, Zeitpläne, Hook `useToneEngine`) für den
   Testbildgenerator und den Testtongenerator, in der App wie in der Rechner-PWA – neue Signale
   dort, nicht je Werkzeug. Typen und Vorgabe in `src/shared/testton.ts`. Der Kern kommt ohne

@@ -279,8 +279,9 @@ export function useLinkedFields<F extends string>(
  *
  * Eine Fehleingabe ist rot umrandet und trägt `aria-invalid`, damit sie nicht stumm bleibt (das
  * Ergebnis zeigt sonst nur „–“): Was `parseNum` (bzw. `parse`) nicht lesen kann, erkennt das Feld
- * selbst; `invalid` meldet Werte, die lesbar, aber nicht rechenbar sind (Gain 0). Leer ist nie
- * ein Fehler.
+ * selbst; `invalid` meldet Werte, die lesbar, aber nicht rechenbar sind (Gain 0) – das sagt der
+ * Rechenkern (`invalid` in seinem Ergebnis). Leer ist nie ein Fehler; rechnet der Kern dann mit
+ * einer Vorgabe, steht sie als `placeholder` im Feld.
  */
 export function NumField({
   label,
@@ -292,6 +293,7 @@ export function NumField({
   derived,
   invalid,
   signed,
+  digits,
   parse = parseNum,
   placeholder
 }: {
@@ -306,6 +308,8 @@ export function NumField({
   invalid?: boolean
   /** Der Wert darf negativ sein (Temperatur): am Handy eine Tastatur mit Minus */
   signed?: boolean
+  /** Eingabe nur aus Ziffern (Timecode): am Handy die Zifferntastatur ohne Komma und Doppelpunkt */
+  digits?: boolean
   /** liest den Text (null = nicht lesbar) – für eine eigene Schreibweise wie den Timecode */
   parse?: (text: string) => unknown
   placeholder?: string
@@ -318,7 +322,7 @@ export function NumField({
         id={id}
         // Die Dezimaltastatur hat am iPhone kein Minus (WebKit-Fehler 193825) – Felder mit
         // negativen Werten öffnen deshalb die volle Tastatur.
-        inputMode={signed ? 'text' : 'decimal'}
+        inputMode={digits ? 'numeric' : signed ? 'text' : 'decimal'}
         value={value}
         placeholder={placeholder}
         aria-invalid={bad || undefined}
@@ -721,12 +725,35 @@ export function parseNum(s: string): number | null {
 }
 
 /**
+ * Text -> Zahl für Felder, die leer mit einer Vorgabe rechnen (Gain 1, 20 °C): leer -> null (der
+ * Rechenkern nimmt die Vorgabe und das Feld zeigt sie als Platzhalter), unlesbar -> NaN. So
+ * rechnet der Kern eine Fehleingabe nicht still mit der Vorgabe, sondern gar nicht – wie einen
+ * lesbaren, aber unbrauchbaren Wert (NaN besteht keine Bereichsprüfung).
+ */
+export function parseOptional(s: string): number | null {
+  return s.trim() === '' ? null : (parseNum(s) ?? Number.NaN)
+}
+
+/**
  * Zahl als editierbarer Klartext (ohne Tausenderpunkte), auf n Stellen gekürzt – mit Komma wie
  * die Ergebnisse (`fmt`); parseNum liest es zurück.
  */
 export function trimNum(n: number | null, digits = 4): string {
   if (n == null || !Number.isFinite(n)) return ''
-  return String(Number(n.toFixed(digits))).replace('.', ',')
+  return plainNumber(Number(n.toFixed(digits))).replace('.', ',')
+}
+
+/**
+ * Zahl als Text ohne Exponent. Ab 10²¹ schreibt JavaScript „1e+21“ – das läse `parseNum` nicht,
+ * ein so großes berechnetes Feld wäre rot. Solche Zahlen sind immer ganz: die Ziffern der kurzen
+ * Schreibweise mit Nullen auffüllen (darunter bleibt `String()`, bitgleich wie bisher).
+ */
+function plainNumber(n: number): string {
+  const text = String(n)
+  const exp = /^(-?)(\d)(?:\.(\d+))?e\+(\d+)$/.exec(text)
+  if (!exp) return text
+  const [, sign, int, frac = '', power] = exp
+  return sign + (int + frac).padEnd(1 + Number(power), '0')
 }
 
 /** Zahl hübsch für Ergebnisse (de-DE, Tausenderpunkte). */
