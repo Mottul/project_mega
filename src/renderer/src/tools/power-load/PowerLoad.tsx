@@ -11,15 +11,13 @@ import {
   ReadoutGrid,
   useLinkedFields
 } from '../_calc/ui'
+import { devicesPerCircuit, loadFrom, powerFactor, type LoadField, type Phase } from './math'
 
-// Stromlast & Absicherung. Einphasig: P = U·I·cosφ. Dreiphasig: P = √3·U·I·cosφ.
-// Unten: wie viele gleiche Geräte passen auf einen Stromkreis (mit Reserve)?
-
-const SQRT3 = Math.sqrt(3)
-type LoadField = 'p' | 'i'
+// Stromlast & Absicherung: oben Leistung <-> Strom, unten wie viele gleiche Geräte auf einen
+// Stromkreis passen (mit Reserve). Die Formeln stehen in math.ts.
 
 export function PowerLoad(): JSX.Element {
-  const [phase, setPhase] = useState<'1' | '3'>('1')
+  const [phase, setPhase] = useState<Phase>('1')
   const [uRaw, setURaw] = useState('230')
   const [pfRaw, setPfRaw] = useState('1')
   const load = useLinkedFields<LoadField>('i', '16')
@@ -27,28 +25,11 @@ export function PowerLoad(): JSX.Element {
   const [breaker, setBreaker] = useState('16')
   const [reserve, setReserve] = useState('1')
 
-  const u = parseNum(uRaw)
-  const pfParsed = parseNum(pfRaw)
-  const pf = pfParsed == null ? 1 : Math.min(1, Math.max(0.01, pfParsed))
-  const factor = phase === '3' ? SQRT3 : 1
-  const denom = u != null && u > 0 ? factor * u * pf : null // U·cosφ (·√3)
+  const supply = { phase, u: parseNum(uRaw), pf: parseNum(pfRaw) }
+  const pf = powerFactor(supply.pf)
+  const { p, i, apparent } = loadFrom(supply, load.driver, parseNum(load.raw))
 
-  // Leistung <-> Strom verknüpft.
-  const lBase = parseNum(load.raw)
-  let p: number | null = null
-  let i: number | null = null
-  if (lBase != null && lBase >= 0 && denom != null) {
-    if (load.driver === 'p') {
-      p = lBase
-      i = p / denom
-    } else {
-      i = lBase
-      p = i * denom
-    }
-  }
-  const apparent = u != null && i != null ? factor * u * i : null // Scheinleistung VA
-
-  function switchPhase(pNew: '1' | '3'): void {
+  function switchPhase(pNew: Phase): void {
     setPhase(pNew)
     // Spannung auf den jeweils üblichen Standard setzen (frei überschreibbar).
     if ((pNew === '3' && uRaw === '230') || (pNew === '1' && uRaw === '400')) {
@@ -57,12 +38,12 @@ export function PowerLoad(): JSX.Element {
   }
 
   // Geräte pro Absicherung.
-  const pDev = parseNum(devRaw)
-  const iDev = pDev != null && pDev > 0 && denom != null ? pDev / denom : null
-  const maxA = Number(breaker) * Number(reserve)
-  const maxDevices = iDev != null && iDev > 0 ? Math.floor(maxA / iDev) : null
-  const sumP = maxDevices != null && pDev != null ? maxDevices * pDev : null
-  const sumI = maxDevices != null && iDev != null ? maxDevices * iDev : null
+  const { iDev, maxDevices, sumP, sumI } = devicesPerCircuit(
+    supply,
+    parseNum(devRaw),
+    Number(breaker),
+    Number(reserve)
+  )
 
   return (
     <CalcPage note="Richtwerte ohne Anlaufströme und Leitungslängen – im Zweifel Herstellerangaben und Elektrofachkraft heranziehen.">
@@ -71,7 +52,7 @@ export function PowerLoad(): JSX.Element {
         desc="Leistung oder Strom eingeben – das andere folgt."
         hint="Einphasig: P = U · I · cos φ. Dreiphasig: P = √3 · U · I · cos φ (U = Spannung zwischen zwei Außenleitern, I = Strom je Leiter)."
       >
-        <SelectField label="Anschluss" value={phase} onChange={(v) => switchPhase(v as '1' | '3')}>
+        <SelectField label="Anschluss" value={phase} onChange={(v) => switchPhase(v as Phase)}>
           <option value="1">Einphasig (230 V)</option>
           <option value="3">Dreiphasig (400 V)</option>
         </SelectField>

@@ -242,7 +242,9 @@ Stolpersteine aus der bisherigen Arbeit:
   `src/pwa/build/sources.ts` einbindet. `npx vitest run src/pwa` prüft, dass PWA-Liste und
   `SMALL_TOOLS` gleich sind.
 - **Es gibt keine Komponententests** (Vitest läuft ohne DOM, Paket E8). Rechnen und Entscheiden
-  gehören in reine Module mit Test; Verhalten der Oberfläche prüft ein E2E-Schritt.
+  gehören in reine Module mit Test; Verhalten der Oberfläche prüft ein E2E-Schritt. Ob ein Umbau
+  ohne sichtbare Änderung wirklich nichts ändert, zeigt trotzdem ein Wegwerf-Test: HTML per
+  `renderToStaticMarkup` vorher und nachher vergleichen (Skill `aufraeumen`).
 - `npm run dev` startet nicht neben der installierten Mottulbox (Einzelinstanz, gleicher
   Benutzerordner). Die E2E-Läufe haben eigene Ordner.
 - Testausgaben mit Ersatzzeichen (U+FFFD, die Raute mit Fragezeichen) nicht in Code, Kommentare
@@ -257,7 +259,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | K1, K2, K3 | Die Rechner bekommen geprüfte Rechenkerne und sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
+| **1 – Die Vorbilder fertig** | K2, K3, K7 | Die Rechner bekommen sichtbare Fehleingaben und die Stromlast die richtige Zählung am Drehstrom, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
@@ -412,37 +414,39 @@ sich der Baustein in W1 bis W3 bewährt hat. Bis dahin kein Auftrag.
 ## K – Kleine Werkzeuge
 
 Das [Muster 2](#muster-2-kleines-werkzeug) für die Rechner – und was ihnen unabhängig vom Aufbau
-fehlt: geprüfte Rechenkerne und sichtbare Fehleingaben. Elf Werkzeuge stehen in `SMALL_TOOLS`
-(`src/shared/toolWindows.ts`): Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay
-& SPL, RTA, Testtongenerator, Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv,
-Rigging-Last. Jedes öffnet sich im eigenen kleinen Fenster (Höhe folgt dem Inhalt, schmal bis
-320 px) und läuft unverändert in der PWA (`src/pwa/tools.ts`). Neun davon sind Formulare aus den
-Bausteinen in `tools/_calc/ui.tsx`; um sie geht es hier.
+fehlt: sichtbare Fehleingaben und eine Korrektur an der Stromlast. Elf Werkzeuge stehen in
+`SMALL_TOOLS` (`src/shared/toolWindows.ts`): Kreisrechner, DMX-Dip-Schalter,
+Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator, Beamer-Lumen, Timecode-Rechner,
+Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im eigenen kleinen Fenster (Höhe folgt
+dem Inhalt, schmal bis 320 px) und läuft unverändert in der PWA (`src/pwa/tools.ts`). Neun davon
+sind Formulare aus den Bausteinen in `tools/_calc/ui.tsx`; um sie geht es hier. Gerechnet wird je
+Rechner in einem geprüften Kern neben der Komponente (`math.ts` mit Test, beim Kameraobjektiv
+`optics.ts`, beim Timecode `tc.ts`) – jede Änderung an einer Formel beginnt dort.
 
 Was bleibt: eine kurze Zeile je Karte, alles Weitere hinter dem ⓘ, Zahlen mit Komma, berechnete
 Felder in Akzentfarbe.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **K1** | Rechenkerne der sieben Rechner mit Tests – ohne sichtbare Änderung | M | – |
 | **K2** | Bausteine: `NumField` zeigt Fehleingaben, Minus am Handy; `Readout` mit Statusstufe | S | – |
-| **K3** | Eingaben und Meldungen der Rechner angleichen | M | K2, besser nach K1 |
+| **K3** | Eingaben und Meldungen der Rechner angleichen | M | K2 |
+| **K7** | Stromlast: Geräte je Stromkreis am Drehstrom je Außenleiter zählen | S | Entscheidung 14 |
 | **K5** | Neuer Aufbau am Pilot: Stromlast & Absicherung | M | K3 |
 | **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | K5, Entscheidung 2 |
 | **K4** | Rechner merken sich die Eingaben | M | K3, Entscheidung 3 |
 
-K1 und K2 hängen nicht voneinander ab. Vor jedem Schritt den Skill `rechner-pwa` lesen.
+K2 hängt von nichts ab, K7 nur von Entscheidung 14. Vor jedem Schritt den Skill `rechner-pwa`
+lesen.
 
 ### Befunde
 
 Am Code geprüft am 13. November 2026, die Maße am 14. November; vor jedem Schritt erst nachsehen,
-ob die Stelle noch so aussieht. Die Nummern stammen aus dem ersten Plan (3, 10, 12, 15 und 16 sind
-mit dem Testtongenerator erledigt), damit Verweise darauf gültig bleiben.
+ob die Stelle noch so aussieht. Die Nummern stammen aus dem ersten Plan (1 ist mit K1 erledigt,
+3, 10, 12, 15 und 16 mit dem Testtongenerator), damit Verweise darauf gültig bleiben.
 
 | Nr. | Befund | Fundstelle | Paket |
 | --- | ------ | ---------- | ----- |
-| 1 | Sieben Rechner rechnen mitten in der Komponente, ohne einen einzigen Test – darunter Rigging-Last und Stromlast, wo ein Rechenfehler am meisten schadet. Nur Kameraobjektiv (`optics.ts`), Timecode (`tc.ts`) und RTA haben einen geprüften Kern | `CircleCalc.tsx`, `DmxAddress.tsx`, `ThrowRatio.tsx`, `AudioDelay.tsx`, `ProjectorLumen.tsx`, `PowerLoad.tsx`, `Rigging.tsx` | K1 |
-| 2 | Ungültige Eingaben bleiben stumm: Das Feld sieht aus wie immer, das Ergebnis zeigt „–“. Zwei Werte werden sogar heimlich ersetzt – Leinwand-Gain ≤ 0 rechnet mit 1, cos φ über 1 mit 1 | `NumField` in `tools/_calc/ui.tsx`; `ProjectorLumen.tsx`, `PowerLoad.tsx` | K2, K3 |
+| 2 | Ungültige Eingaben bleiben stumm: Das Feld sieht aus wie immer, das Ergebnis zeigt „–“. Zwei Werte werden sogar heimlich ersetzt – Leinwand-Gain ≤ 0 rechnet mit 1, cos φ über 1 mit 1 und unter 0,01 mit 0,01 | `NumField` in `tools/_calc/ui.tsx`; `projector-lumen/math.ts`, `power-load/math.ts` | K2, K3 |
 | 4 | Timecode am Handy: Das Feld ist ein `NumField` mit Dezimaltastatur (Ziffern und Komma), ohne Doppelpunkt. Tippen lässt sich „1,02,03,12“ (Komma wird als Trenner gelesen) – darauf kommt niemand; reine Ziffern „01020312“ lehnt `parseTc` ab | `Timecode.tsx`, `tc.ts` | K3 |
 | 5 | Temperatur unter 0 °C lässt sich am iPhone nicht eintippen: Die Dezimaltastatur hat dort kein Minus (WebKit-Fehler 193825; am Gerät zu prüfen) | `AudioDelay.tsx`, `NumField` (`inputMode="decimal"`) | K2, K3 |
 | 6 | Auswahl aus wenigen Möglichkeiten ist mal eine Liste (zwei Tipps, Optionen verdeckt), mal eine Knopfgruppe: in der Stromlast Anschluss, Absicherung und Auslastung, im RTA die Listen in den Karten, dazu Umgebungslicht (Beamer-Lumen), Telekonverter (Kameraobjektiv), Seitenverhältnis (Projektionsverhältnis) und Bildrate (Timecode). Die Bausteine `ChoiceField` und `Segmented` gibt es | `PowerLoad.tsx`, `RtaCards.tsx`, `ProjectorLumen.tsx`, `CameraLens.tsx`, `ThrowRatio.tsx`, `Timecode.tsx` | K5, K6 |
@@ -453,44 +457,6 @@ mit dem Testtongenerator erledigt), damit Verweise darauf gültig bleiben.
 | 13 | Totes und Doppeltes: `NumField` hat eine Eigenschaft `readOnly`, die niemand nutzt; `parseNum` und `parseDecimal` (`components/ui/decimal-field.tsx`) tun dasselbe | `tools/_calc/ui.tsx` | K2 |
 | 14 | Die PWA nennt alles „Rechner“ („Weitere Rechner“, „Alle Rechner“), obwohl RTA und Testtongenerator keine sind (Manifest und Beschreibung sind schon nachgezogen) | `src/pwa/App.tsx` | K3 |
 | 17 | Sechs Rechner sind am Handy höher als der Bildschirm, und die Antwort steht unter den Feldern – bei dreien unter dem Rand | Messung im [Leitbild](#muster-2-kleines-werkzeug) | K5, K6 |
-
-### K1 – Rechenkerne mit Tests
-
-**Heute:** Befund 1. **So:** Je Rechner ein reines Modul neben der Komponente (wie
-`tools/camera-lens/optics.ts`), mit Test. Zahlen hinein, Zahlen oder `null` heraus; die
-Komponente liest nur noch Text und zeigt an. **Keine sichtbare Änderung**, keine neue Formel,
-keine andere Rundung.
-
-```text
-src/renderer/src/tools/circle-calc/math.ts        je mit math.test.ts daneben
-src/renderer/src/tools/dmx-address/math.ts
-src/renderer/src/tools/throw-ratio/math.ts
-src/renderer/src/tools/audio-delay/math.ts
-src/renderer/src/tools/projector-lumen/math.ts
-src/renderer/src/tools/power-load/math.ts
-src/renderer/src/tools/rigging/math.ts
-```
-
-Die Tests halten zuerst fest, was die Rechner heute mit ihren Vorgabewerten zeigen:
-
-| Rechner | Eingabe | Ergebnis |
-| ------- | ------- | -------- |
-| Kreis | Durchmesser 1 | Radius 0,5 · Umfang π · Fläche π ÷ 4 |
-| DMX | Adresse 1 / 10 / 512 | alle aus / Schalter 1 und 4 an / alle neun an; und zurück |
-| Projektionsverhältnis | 16 : 9, Breite 5 m, Abstand 8 m | Höhe 2,8125 m · Diagonale 5,737 m · Throw Ratio 1,6 |
-| Audio-Delay | 20 °C, 10 m | 343,42 m/s · 29,119 ms · 1.398 Samples bei 48 kHz |
-| Pegel über Distanz | 100 dB in 1 m, Ziel 10 m | 80 dB |
-| Beamer-Lumen | 4 × 2,25 m, gedimmt (400 lx), Gain 1; vorhanden 6.500 lm | 3.600 lm · 722 lx, ausreichend |
-| Stromlast | einphasig 230 V, cos φ 1, 16 A / dreiphasig 400 V, 16 A | 3.680 W / 11.085 W |
-| Geräte je Stromkreis | 500 W an 230 V, 16 A bei 100 % / 80 % | 2,174 A je Gerät · 7 / 5 Geräte |
-| Traverse | Spannweite 8 m, Last 120 kg bei 3 m, Eigengewicht 10 kg/m | Punkt A 115 kg · Punkt B 85 kg |
-| Bridle | 200 kg, Höhe 2 m, Punktabstand 4 m | 45° · Faktor 1,414 · 141,4 kg je Strang · Stranglänge 2,828 m · Stufe „gelb“ (genau auf der Grenze) |
-
-Dazu je Rechner die Ränder: leere und negative Eingaben, Lastposition außerhalb der Spannweite,
-Bridle ab 60° („rot“), Adresse unter 1 und über 512.
-
-**Abnahme:** `npx vitest run src/renderer/src/tools`; `npm run e2e -- layout` unverändert grün;
-`npm run pwa:build`. In den sieben Komponenten steht keine Formel mehr.
 
 ### K2 – Bausteine für die Rechner
 
@@ -516,8 +482,10 @@ K5 und K6 – Listen bleiben hier Listen. Ein Pull Request.
 
 - **Alle:** Ein Feld, mit dessen Wert nicht gerechnet wird, ist rot umrandet (`invalid`) –
   leere Felder nicht. Heimliches Ersetzen entfällt: Gain ≤ 0 und cos φ außerhalb von 0 bis 1
-  ergeben kein Ergebnis mehr statt eines mit 1 gerechneten; ein leeres Feld rechnet dort
-  weiter mit 1 und zeigt die 1 als Platzhalter. Hervorgehoben (`accent`) ist je Karte nur die
+  ergeben kein Ergebnis mehr statt eines mit 1 (cos φ unter 0,01: mit 0,01) gerechneten; ein
+  leeres Feld rechnet dort weiter mit 1 und zeigt die 1 als Platzhalter. Die Tests der
+  Rechenkerne halten das heutige Ersetzen fest (`projector-lumen/math.test.ts`,
+  `power-load/math.test.ts`) und ändern sich mit. Hervorgehoben (`accent`) ist je Karte nur die
   Antwort auf ihre Frage, `big` nur zusammen mit `accent`.
 - **DMX-Dip-Schalter:** das Ergebnis „Adresse“ entfällt (steht im Feld), „Binär“ bleibt. Jeder
   Schalter trägt `aria-pressed` und einen Namen („Schalter 3, Wert 4“). Klassen über `cn` statt
@@ -532,7 +500,9 @@ K5 und K6 – Listen bleiben hier Listen. Ein Pull Request.
 - **Beamer-Lumen:** „Bewertung“ als `Readout` mit `tone` – „ausreichend“ (`success`), „zu
   dunkel“ (`danger`), ohne ✓ und ✗.
 - **Rigging-Last:** die beiden Winkel-Warnungen als `Alert` mit Titel und Symbol aus `STATUS`
-  („Flacher Winkel“, „So nicht anschlagen“), ohne „⚠“ im Text.
+  („Flacher Winkel“, „So nicht anschlagen“), ohne „⚠“ im Text. Ein negatives Eigengewicht ergibt
+  kein Ergebnis mehr: Heute rechnet es mit und senkt die Kräfte (8 m, 120 kg bei 3 m, −10 kg/m:
+  A 35 kg, B 5 kg; Test in `rigging/math.test.ts`); leer zählt es weiter als 0.
 - **PWA:** „Rechner“ wird in den sichtbaren Texten von `src/pwa/App.tsx` zu „Werkzeuge“
   („Weitere Werkzeuge“, „Alle Werkzeuge“, der Tipp zum Stern).
 
@@ -540,6 +510,30 @@ K5 und K6 – Listen bleiben hier Listen. Ein Pull Request.
 tippen – das Feld trägt `aria-invalid`; im Timecode-Rechner „01020312“ – „Frames (gesamt)“ zeigt
 93087 (25 fps: 3.723 s × 25 + 12). `npx vitest run src/renderer/src/tools src/pwa`,
 `npm run pwa:build`.
+
+### K7 – Stromlast: Geräte je Stromkreis am Drehstrom
+
+Nur nach Entscheidung 14. Gefunden beim Bau der Rechenkerne (K1, 15. November 2026).
+
+**Heute** (`power-load/math.ts`, `devicesPerCircuit`): Dreiphasig rechnet „Geräte pro
+Stromkreis“ den Strom je Gerät als P ÷ (√3 · U · cos φ) und teilt die Absicherung dadurch – als
+ließe sich die Leistung beliebig auf die drei Außenleiter verteilen. Das stimmt für
+Drehstromgeräte. Einphasige Geräte, der Normalfall am CEE-Verteiler, hängen aber je ganz an einem
+Außenleiter (U ÷ √3 ≈ 230 V), und die Absicherung gilt je Leiter. Beispiel 500 W, cos φ 1, 32 A,
+100 %: Der Rechner zeigt 44 Geräte, verteilen lassen sich nur 3 × 14 = 42 – mit 44 trügen zwei
+Außenleiter je 15 Geräte, also 32,5 A an 32 A. An 16 A zeigt er 22 statt 21 (ein Leiter mit
+17,3 A), mit 80 % Auslastung 17 statt 15. Der Test „dreiphasig zählt der Strom je Leiter …“ in
+`power-load/math.test.ts` hält das heutige Verhalten fest.
+
+**So** (Vorschlag): dreiphasig je Außenleiter zählen – Max. Geräte = 3 × ⌊Absicherung ×
+Auslastung ÷ Strom je Gerät am Leiter⌋, Strom je Gerät am Leiter = P ÷ (U ÷ √3 · cos φ); „Strom
+je Gerät“ und „Summe Strom“ meinen dann den Strom am Außenleiter, das ⓘ der Karte sagt es. Für
+Drehstromgeräte zählt das höchstens zwei Geräte zu wenig, nie zu viel. Die Alternative – eine
+Wahl „einphasige Geräte / Drehstromgeräte“ – wäre ein neues Feld.
+
+**Abnahme:** Tests in `power-load/math.test.ts`: 500 W an 400 V – 32 A ergibt 42 Geräte, 16 A
+ergibt 21, 16 A bei 80 % ergibt 15; einphasig unverändert 7 bzw. 5. `npm run pwa:build`; die
+Zählung in `docs/WERKZEUGE.md`.
 
 ### K5 – Neuer Aufbau am Pilot: Stromlast & Absicherung
 
@@ -574,8 +568,8 @@ sind da. Fehlt doch etwas, kommt es nach `tools/_calc/ui.tsx` und in den Skill `
 Die Seite ist im Auslieferungszustand höchstens 657 px hoch; die Antwort einer offenen Karte liegt
 über ihrem ersten Feld; es gibt keine Liste (`select`) mehr. E2E in `e2e/layout.mjs`: Stromlast
 öffnen, die zweite Karte trägt `aria-expanded="false"` und zeigt ihre Kurzfassung; aufklappen,
-Fenster schließen und wieder öffnen – sie ist noch offen. Die Tests aus K1 bleiben unverändert
-grün; `npm run pwa:build`.
+Fenster schließen und wieder öffnen – sie ist noch offen. Die Tests des Rechenkerns
+(`power-load/math.test.ts`) bleiben unverändert grün; `npm run pwa:build`.
 
 **Danach:** Matthias sieht sich den Pilot am Rechner und am Handy an und entscheidet, ob die
 übrigen Rechner so folgen (Entscheidung 2).
@@ -598,7 +592,7 @@ sind, zeigt der Pilot.
 | DMX-Dip-Schalter, Kreisrechner | nichts – beide passen und haben eine Karte |
 
 **Abnahme** je Rechner wie in K5: Seite im Auslieferungszustand höchstens 657 px hoch, Antwort
-über dem ersten Feld der offenen Karte, ein Schritt in `e2e/layout.mjs`, Tests aus K1 grün,
+über dem ersten Feld der offenen Karte, ein Schritt in `e2e/layout.mjs`, Tests der Rechenkerne grün,
 `npm run pwa:build`. Die neuen Maße in den Skill `rechner-pwa`, die Beschreibung nach
 `docs/WERKZEUGE.md`.
 
@@ -628,6 +622,9 @@ steht da; „Zurücksetzen“ – 1 steht da, der Knopf ist weg. `npm run pwa:bu
 
 - **Kein `api`, keine Einstellungen, kein Toast** in einem kleinen Werkzeug (Skill
   `rechner-pwa`) – der PWA-Build bricht sonst ab. Meldungen als `Alert` in der Seite.
+- **Gerechnet wird nur im Rechenkern** (`math.ts` neben der Komponente, mit `math.test.ts`):
+  Zahlen hinein, Zahlen oder `null` heraus; die Komponente liest Text und zeigt an. Eine
+  Änderung an einer Formel, Grenze oder Ersetzung beginnt mit dem Test.
 - **Keine neuen Formeln, Einheiten oder Felder** in den Rechnern.
 - **Keinen zweiten Ton-Kern** – Töne nur über `tools/_tone`.
 - **`tools/rta/testSignals.ts` nicht mit dem Rauschen des Ton-Kerns zusammenlegen:** andere
@@ -1458,6 +1455,11 @@ Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestä
     NovaLCT-Dateien. Eine OBS-Szenensammlung liegt vor. (Matthias sammelt; ohne Datei kein
     Import.)
 13. **Welche neuen Werkzeuge** aus Teil G überhaupt – und welches zuerst? (Offen.)
+14. **Stromlast: einphasige Geräte am Drehstrom** (K7): „Geräte pro Stromkreis“ zählt dreiphasig,
+    als ließe sich die Leistung beliebig auf die drei Außenleiter teilen – für einphasige Geräte
+    bis zu zwei zu viel (500 W an 32 A: 44 statt 42, ein Leiter trüge 32,5 A). Je Außenleiter
+    zählen oder die Geräteart wählbar machen? (Je Außenleiter: Für Drehstromgeräte sind es
+    höchstens zwei zu wenig, nie zu viel.)
 
 Entschieden – damit nichts neu gefragt wird:
 
@@ -1532,7 +1534,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   nach ✕ am laufenden Eintrag „Danach“; P9: ohne Zufall auch am Ende der Liste – mit Loop „Alle“
   der erste Eintrag, mit Loop „Aus“ hält der Player an) und der Bibliothek (P5: „Importieren“ und
   „⋯“ im Kopf, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt);
-  Testtongenerator; neuer Aufbau von Testtongenerator und RTA.
+  Testtongenerator; neuer Aufbau von Testtongenerator und RTA; Rechenkerne mit Tests für sieben
+  Rechner (K1: je Rechner `math.ts`, ohne sichtbare Änderung).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

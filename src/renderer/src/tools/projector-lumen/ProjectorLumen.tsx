@@ -9,17 +9,10 @@ import {
   parseNum,
   ReadoutGrid
 } from '../_calc/ui'
+import { AMBIENT, ambientLux, projectorLumen } from './math'
 
-// Beamer-Helligkeit: Wieviel ANSI-Lumen braucht die Projektion?
-// Faustformel aus dem Verleih-Alltag: Ziel-Beleuchtungsstärke auf der Leinwand
-// je nach Umgebungslicht, dann Lumen = Ziel-Lux × Bildfläche ÷ Gain.
-
-const AMBIENT: { key: string; label: string; lux: number }[] = [
-  { key: 'dark', label: 'Dunkel (Kino, abgedunkelt)', lux: 250 },
-  { key: 'dim', label: 'Gedimmt (Vortragssaal)', lux: 400 },
-  { key: 'bright', label: 'Hell (Konferenzraum, Messe)', lux: 650 },
-  { key: 'daylight', label: 'Tageslicht (Schaufenster, Zelt)', lux: 1100 }
-]
+// Beamer-Helligkeit: Wieviel ANSI-Lumen braucht die Projektion? Die Faustformel (Ziel-Lux je
+// Umgebungslicht × Bildfläche ÷ Gain) steht in math.ts.
 
 export function ProjectorLumen(): JSX.Element {
   const [wRaw, setWRaw] = useState('4')
@@ -28,18 +21,13 @@ export function ProjectorLumen(): JSX.Element {
   const [gainRaw, setGainRaw] = useState('1')
   const [haveRaw, setHaveRaw] = useState('')
 
-  const w = parseNum(wRaw)
-  const h = parseNum(hRaw)
-  const gainParsed = parseNum(gainRaw)
-  const gain = gainParsed != null && gainParsed > 0 ? gainParsed : 1
-  const targetLux = AMBIENT.find((a) => a.key === ambient)?.lux ?? 400
-
-  const area = w != null && h != null && w > 0 && h > 0 ? w * h : null
-  const needed = area != null ? (targetLux * area) / gain : null
-
-  const have = parseNum(haveRaw)
-  const achievedLux = have != null && have > 0 && area != null ? (have * gain) / area : null
-  const enough = needed != null && have != null ? have >= needed : null
+  const { area, needed, achievedLux, enough } = projectorLumen({
+    width: parseNum(wRaw),
+    height: parseNum(hRaw),
+    targetLux: ambientLux(ambient),
+    gain: parseNum(gainRaw),
+    have: parseNum(haveRaw)
+  })
 
   return (
     <CalcPage>

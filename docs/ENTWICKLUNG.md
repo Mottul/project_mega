@@ -261,7 +261,9 @@ Dazu gilt:
 
 Ein neuer **Rechner** (kleines Werkzeug in `SMALL_TOOLS`) gehört auch in die Rechner-PWA
 (`src/pwa/tools.ts`, der Test `src/pwa/tools.test.ts` erinnert daran) und darf deshalb weder
-`api` noch Einstellungen nutzen. Braucht ein Werkzeug eine Browser-Berechtigung (der RTA das
+`api` noch Einstellungen nutzen. Gerechnet wird in einem reinen Modul neben der Komponente
+(`math.ts` mit `math.test.ts`, Vorbild `tools/rigging/math.ts`); die Komponente liest nur Text
+und zeigt an. Braucht ein Werkzeug eine Browser-Berechtigung (der RTA das
 Mikrofon), bekommt es sie in der App nur über die Allowlist in
 `main/services/windows/windowPolicy.ts` – je Route und so eng wie möglich (RTA: nur Ton); im
 Browser der PWA fragt das Handy selbst (nur über HTTPS). Meldungen stehen dort als `Alert` in

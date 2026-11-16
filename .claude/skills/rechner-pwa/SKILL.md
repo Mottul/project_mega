@@ -31,6 +31,18 @@ Leitbild und Teil K.
   und in `src/pwa/index.html` nachziehen. Jede Änderung, die die PWA erreicht, meldet sich am
   Handy als „Neue Version bereit“.
 
+## Rechnen
+
+- **Rechenkern je Rechner:** `math.ts` neben der Komponente, mit `math.test.ts` (Vorbild
+  `tools/rigging/math.ts`; beim Kameraobjektiv `optics.ts`, beim Timecode `tc.ts`). Zahlen
+  hinein, Zahlen oder `null` heraus – auch Entscheidungen (Warnstufe des Bridle, „reicht der
+  Beamer“, Last außerhalb der Spannweite). Die Komponente liest nur Text (`parseNum`) und zeigt
+  an (`fmt`, `trimNum`); die Anzeige-Rundung bleibt dort. So prüft Vitest ohne DOM, was am Handy
+  steht.
+- Die Tests halten das heutige Verhalten fest, auch heimliches Ersetzen: Leinwand-Gain ≤ 0 → 1,
+  cos φ über 1 → 1 und unter 0,01 → 0,01, leere Temperatur → 20 °C, leeres Eigengewicht → 0.
+  Eine Änderung an Formel, Grenze oder Ersetzung beginnt mit dem Test (Gesamtplan, K3 und K7).
+
 ## Bedienen mit dem Finger
 
 - Bausteine aus `tools/_calc/ui` – sie sind fürs Handy gebaut: `ChoiceField`/`Segmented` (bei
