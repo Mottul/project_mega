@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict'
 import { launchApp, openRoute, runSteps, Skip, sleep, waitFor } from './harness.mjs'
-import { checkBeatGaps, installToneTap, onsets, silentRuns, toneTap } from './toneTap.mjs'
+import { AUDIO_MS, checkBeatGaps, installToneTap, onsets, silentRuns, toneTap } from './toneTap.mjs'
 
 const ctx = await launchApp()
 const { page } = ctx
@@ -145,8 +145,9 @@ try {
           await tempo.fill(i % 2 ? '120' : '200')
           await tempo.press('Enter')
         }
-        const clicks = onsets(await recording, { high: 0.03, low: 0.005 })
-        const gaps = clicks.slice(1).map((t, i) => t - clicks[i])
+        // in der Zeit des Audio-Kontexts: ein Stocken der Audioausgabe ist kein falscher Abstand
+        const clicks = onsets(await recording, { high: 0.03, low: 0.005, timeCol: AUDIO_MS })
+        const gaps = clicks.slice(1).map((t, i) => Math.round(t - clicks[i]))
         assert.ok(clicks.length >= 8, `${clicks.length} Klicks`)
         // Bis zu 0,4 s voraus Eingeplantes kommt noch im alten Abstand, danach der neue – jeder
         // Abstand ist also einer der beiden. Ein Neubeginn (Klick gleich nach dem Wechsel, leise

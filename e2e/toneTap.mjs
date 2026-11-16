@@ -1,7 +1,13 @@
 // Ton messen statt hören – für e2e/testton.mjs (Testbildgenerator) und e2e/tone-generator.mjs:
 // Vor jeden Ausgang (AudioDestinationNode) der Seite hängt je ein Analysator für links, rechts
 // und die Summe (Mono-Abmischung: halbe Summe beider Kanäle, gegenphasig also still). Gelesen
-// wird in der Seite; Zeitstempel sind Date.now() der Seite.
+// wird in der Seite; Zeitstempel sind Date.now() der Seite und die Zeit des Audio-Kontexts.
+//
+// Abstände im Takt (Metronom) in der Zeit des Audio-Kontexts messen (`timeCol: AUDIO_MS`): Nach
+// ihr plant der Ton-Kern. Stockt die Audioausgabe des Rechners, steht sie still, die Wanduhr
+// läuft weiter – dort hieße das einen falschen Abstand (macOS-Runner, 16.11.2026: 497, 620, 505
+// – danach lag jeder Schlag 120 ms später). Ein Neubeginn oder ein gedrosselter Planungstakt
+// zeigt sich auch in der Kontextzeit.
 //
 // Kurze Ereignisse (Metronom-Klicks, 30 ms) mit einem Fenster von 2048 Samples aufnehmen: Der
 // Ton wird in Blöcken von etwa 10 ms gerechnet, ein Fenster von 256 Samples (5 ms) sieht nur
@@ -55,14 +61,17 @@ export async function installToneTap(page) {
         for (let i = 1; i < bins.length; i++) if (bins[i] > bins[best]) best = i
         return (best * t.ctx.sampleRate) / t.l.fftSize
       },
-      /** Spitzen je Kanal über `ms` Millisekunden, alle `step` ms: [Date.now(), l, r, m] */
+      /**
+       * Spitzen je Kanal über `ms` Millisekunden, alle `step` ms: [Date.now(), l, r, m, Zeit des
+       * Audio-Kontexts in ms]
+       */
       record: (ms, step, size) =>
         new Promise((resolve) => {
           const out = []
           const t0 = Date.now()
           const id = setInterval(() => {
             const p = window.__toneTap.peak(size)
-            out.push([Date.now(), p.l, p.r, p.m])
+            out.push([Date.now(), p.l, p.r, p.m, taps.at(-1).ctx.currentTime * 1000])
             if (Date.now() - t0 >= ms) {
               clearInterval(id)
               resolve(out)
@@ -98,6 +107,9 @@ export async function installToneTap(page) {
 export const toneTap = (page, fn, ...args) =>
   page.evaluate(([f, a]) => window.__toneTap[f](...a), [fn, args])
 
+/** Spalte einer Aufnahme (`record`) mit der Zeit des Audio-Kontexts in ms – für `onsets` */
+export const AUDIO_MS = 4
+
 /** Läufe von Stille (< 0,01) in einer Folge von Spitzen zählen */
 export function silentRuns(samples) {
   let runs = 0
@@ -110,15 +122,16 @@ export function silentRuns(samples) {
 }
 
 /**
- * Abstände zwischen Schlägen, die im Takt kommen sollen (Metronom), in ms. Jeder Abstand muss
- * einer aus `intervals` sein – oder zwei davon hintereinander: Auf einem langsamen CI-Rechner
- * hängt die Seite gelegentlich kurz (macOS-Runner, 14.11.2026: 594 statt 300 ms). Dann lässt der
- * Ton-Kern den verpassten Schlag mit Absicht aus (`_tone/engine.ts`: nicht nachholen), oder die
- * Aufnahme verpasst ihn – sie liest im selben Fenster. Ein Neubeginn ergäbe dagegen einen
- * Abstand, der zu keinem passt. Liefert `off` (passt zu nichts) und `skipped` (so viele Abstände
- * gelten als ein ausgelassener Schlag). Wie viele erlaubt sind, entscheidet die Prüfung: meist
- * höchstens einer. Auch im minimierten Fenster: Gedrosselt fehlt dort fast jeder zweite Schlag,
- * ein einzelner Aussetzer ist ein Hänger (macOS-Runner, 15.11.2026).
+ * Abstände zwischen Schlägen, die im Takt kommen sollen (Metronom), in ms – gemessen in der Zeit
+ * des Audio-Kontexts (`AUDIO_MS`, siehe oben). Jeder Abstand muss einer aus `intervals` sein –
+ * oder zwei davon hintereinander: Auf einem langsamen CI-Rechner hängt die Seite gelegentlich
+ * kurz (macOS-Runner, 14.11.2026: 594 statt 300 ms). Dann lässt der Ton-Kern den verpassten
+ * Schlag mit Absicht aus (`_tone/engine.ts`: nicht nachholen), oder die Aufnahme verpasst ihn –
+ * sie liest im selben Fenster. Ein Neubeginn ergäbe dagegen einen Abstand, der zu keinem passt.
+ * Liefert `off` (passt zu nichts) und `skipped` (so viele Abstände gelten als ein ausgelassener
+ * Schlag). Wie viele erlaubt sind, entscheidet die Prüfung: meist höchstens einer. Auch im
+ * minimierten Fenster: Gedrosselt fehlt dort fast jeder zweite Schlag, ein einzelner Aussetzer
+ * ist ein Hänger (macOS-Runner, 15.11.2026).
  */
 export function checkBeatGaps(gaps, intervals, tol = 45) {
   const near = (g, list) => list.some((v) => Math.abs(g - v) <= tol)
@@ -131,15 +144,16 @@ export function checkBeatGaps(gaps, intervals, tol = 45) {
 /**
  * Einsätze (Klicks, Pulse, Piepe) in einer Aufnahme [t, l, …]: Zeitpunkte, an denen die Spitze
  * über `high` steigt, nachdem sie unter `low` lag. Die Hysterese verhindert, dass ein Messfenster,
- * das eine Flanke nur halb erfasst, einen Einsatz verschluckt oder doppelt zählt.
+ * das eine Flanke nur halb erfasst, einen Einsatz verschluckt oder doppelt zählt. `timeCol`: 0 =
+ * Wanduhr (Date.now(), etwa für Piepe zur vollen Sekunde), `AUDIO_MS` = Zeit des Audio-Kontexts.
  */
-export function onsets(rec, { col = 1, high = 0.05, low = 0.01 } = {}) {
+export function onsets(rec, { col = 1, high = 0.05, low = 0.01, timeCol = 0 } = {}) {
   const out = []
   let loud = true // erst nach einer leisen Messung zählen
   for (const row of rec) {
     const v = row[col]
     if (!loud && v > high) {
-      out.push(row[0])
+      out.push(row[timeCol])
       loud = true
     } else if (loud && v < low) loud = false
   }

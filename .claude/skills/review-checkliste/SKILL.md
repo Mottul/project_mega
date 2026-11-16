@@ -327,6 +327,13 @@ Aus dem Review von Phase 0 (16. Oktober 2026, alle mit Test oder E2E-Schritt bel
   schreiben hinterließ bei einem Abbruch eine halbe Datei, die den Pfad sperrte. Erst fertig in
   die Nachbardatei, dann `link()` (atomar, EEXIST) bzw. ohne Hardlinks reservieren + umbenennen
   (`writeNewFileAsync`).
+- **Unter Windows nie einmal umbenennen, was gerade erst entstanden oder gelaufen ist.**
+  Virenscanner halten frische Dateien fest, eine eben gestartete .exe auch Sekunden; dann
+  scheitert `rename` mit EPERM – auch für den Ordner darum (`main` rot nach #239, 16.11.2026:
+  ffmpeg-Aktualisierung nach dem Selbsttest). Immer `renameWithRetry` aus `services/fsAtomic.ts`,
+  bei einer .exe mit längeren Pausen (`AFTER_SELFTEST_WAITS` in `ffmpegUpdate.ts`). Nachstellen:
+  PowerShell öffnet die Datei mit `[System.IO.File]::Open(pfad, 'Open', 'Read', 'Read')` – ohne
+  Löschfreigabe; eine laufende .exe allein sperrt den Ordner nicht.
 
 ## Fenster (Oktober 2026)
 
@@ -521,6 +528,9 @@ Gemeinsam ist ihnen: Der eigene Code war richtig, die Vorgabe darunter nicht.
 - **Langsame Systembefehle nicht vor die Anzeige hängen.** PowerShell braucht unter Windows 2–3 s
   bis zur ersten Ausgabe. Was nur Komfort ist (Adapter-Namen), bekommt einen eigenen Kanal und kommt
   nach; die Liste selbst bleibt sofort da. Ausgabe per `[Console]::OutputEncoding` auf UTF-8 setzen.
+  Das Zeitlimit großzügig wählen, weil niemand darauf wartet: Kalt und auf einem ausgelasteten
+  Rechner brauchte die Abfrage 10,3 s, mit 10 s Grenze kamen gar keine Namen (Windows-CI,
+  16.11.2026; jetzt 20 s in `services/netscan/netNames.ts`).
 
 ## Tests
 
@@ -553,8 +563,9 @@ Gemeinsam ist ihnen: Der eigene Code war richtig, die Vorgabe darunter nicht.
 - **Zeitprüfungen im E2E messen leicht den Rechner statt der App.** Erwartet ein Test, was seine
   eigenen Pausen ergeben sollten (Klicks alle 500 ms, also 120 BPM), oder jeden Schlag eines
   Takts, wird er auf dem macOS-Runner rot, obwohl die App richtig rechnet (`main` rot nach #226,
-  #227, #230 und #233, 14./15.11.2026). Im Review fragen: Rechnet der Test mit den Zeitstempeln, die
-  die App sieht? Lässt er zu, was die App mit Absicht tut (einen verpassten Schlag auslassen)?
+  #227, #230, #233 und #236, 14. bis 16.11.2026). Im Review fragen: Rechnet der Test mit den
+  Zeitstempeln, die die App sieht – bei Takten in der Zeit des Audio-Kontexts, nicht der Wanduhr?
+  Lässt er zu, was die App mit Absicht tut (einen verpassten Schlag auslassen)?
   Misst er nach einer gestörten Messung den nächsten Zyklus, statt die Erwartung aufzuweichen?
   Und wird er weiter rot, wenn die App wirklich falsch liegt (Neubeginn, Doppelklick, vertauschte
   Kanäle)? Muster und Nachstellen: Skill `electron-e2e`, „Zeitabstände“.

@@ -43,21 +43,29 @@ export function writeFileAtomic(file: string, data: string | Uint8Array): void {
 
 const RENAME_RETRY = new Set(['EPERM', 'EACCES', 'EBUSY'])
 
+/** Pausen zwischen den Versuchen, zusammen knapp 0,8 s – für frisch geschriebene Dateien */
+const SHORT_WAITS = [25, 50, 100, 200, 400]
+
 /**
  * Umbenennen mit kurzen Wiederholungen: Unter Windows halten Virenscanner und Sync-Programme
  * (OneDrive, Nextcloud, NAS) die frische Datei oft nur Millisekunden. Der Notweg danach schreibt
- * nicht mehr atomar – bricht er ab, wäre die Projektdatei halb.
+ * nicht mehr atomar – bricht er ab, wäre die Projektdatei halb. Liegt eine eben gestartete .exe im
+ * Ordner, hält Windows sie länger fest: dann längere Pausen übergeben (`waits`).
  */
-async function renameWithRetry(tmp: string, file: string): Promise<void> {
-  for (const ms of [25, 50, 100, 200, 400]) {
+export async function renameWithRetry(
+  from: string,
+  to: string,
+  waits: readonly number[] = SHORT_WAITS
+): Promise<void> {
+  for (const ms of waits) {
     try {
-      return await rename(tmp, file)
+      return await rename(from, to)
     } catch (err) {
       if (!RENAME_RETRY.has((err as NodeJS.ErrnoException).code ?? '')) throw err
       await new Promise((r) => setTimeout(r, ms))
     }
   }
-  await rename(tmp, file)
+  await rename(from, to)
 }
 
 /** Inhalt vollständig in eine neue Nachbardatei schreiben (oder sie bei einem Fehler entfernen). */

@@ -9,7 +9,10 @@ import type { NetInterfaceNames } from '@shared/types'
 
 const pexecFile = promisify(execFile)
 
-const QUERY_TIMEOUT = 10000
+// Großzügig: PowerShell braucht kalt meist 3 bis 6 s, auf einem ausgelasteten Rechner auch über 10
+// (Windows-CI, 16. November 2026: 10,3 s – mit 10 s Grenze kamen gar keine Namen). Die Auswahl
+// wartet nicht darauf (s. o.), länger zu warten kostet also nichts.
+const QUERY_TIMEOUT = 20000
 
 // UTF-8 ausdrücklich: Sonst kommen Umlaute („… für KM-TEST“) in der OEM-Codepage an.
 const WINDOWS_QUERY =
