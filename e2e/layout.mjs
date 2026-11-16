@@ -30,6 +30,10 @@ async function expectAttr(locator, name, value, what) {
     `${what}: ${name}=${await locator.getAttribute(name)} statt ${value}`
   )
 }
+/** Wert einer Ergebniszeile (`Readout`) eines Rechners: die Zeile neben ihrer Beschriftung,
+ *  „–“ ohne Ergebnis, sonst Zahl und Einheit („3.600lm“) */
+const readout = (w, label) =>
+  w.getByText(label, { exact: true }).locator('xpath=following-sibling::span[1]')
 /** Kleine Werkzeuge (shared/toolWindows: SMALL_TOOLS) und die zweispaltig geöffneten */
 const SMALL = [
   'circle-calc',
@@ -649,6 +653,91 @@ try {
         await tcA.fill('01:00:00:24')
         await expectAttr(tcA, 'aria-invalid', null, 'Timecode A „01:00:00:24“')
         await closeToolWindow('timecode')
+      }
+    ],
+    [
+      'Rechner: lesbar, aber nicht rechenbar ist rot und ergibt nichts – leer rechnet mit der Vorgabe',
+      async () => {
+        const w = await openSmall('projector-lumen')
+        const gain = w.getByLabel('Leinwand-Gain', { exact: true })
+        const bedarf = readout(w, 'Lumen-Bedarf')
+        assert.match(await bedarf.textContent(), /^3\.600/)
+        // Gain 0 rechnete früher still mit 1
+        await gain.fill('0')
+        await expectAttr(gain, 'aria-invalid', 'true', 'Gain „0“')
+        assert.ok(
+          await waitFor(async () => (await bedarf.textContent()) === '–'),
+          `Lumen-Bedarf bei Gain 0: ${await bedarf.textContent()}`
+        )
+        // leer rechnet mit 1 und zeigt sie als Platzhalter
+        await gain.fill('')
+        await expectAttr(gain, 'aria-invalid', null, 'Gain leer')
+        assert.equal(await gain.getAttribute('placeholder'), '1')
+        assert.ok(await waitFor(async () => /^3\.600/.test(await bedarf.textContent())))
+        // die Bewertung in den Statusstufen der App, ohne ✓ und ✗ im Text
+        await w.getByLabel('Beamer-Lichtstrom', { exact: true }).fill('6500')
+        const bewertung = readout(w, 'Bewertung')
+        assert.ok(await waitFor(async () => (await bewertung.textContent()) === 'ausreichend'))
+        assert.equal(await bewertung.locator('svg').count(), 1)
+        await closeToolWindow('projector-lumen')
+
+        // Rigging: negatives Eigengewicht senkte früher die Kräfte; leer zählt es als 0
+        const r = await openSmall('rigging')
+        const eigen = r.getByLabel('Eigengewicht', { exact: true })
+        await eigen.fill('-10')
+        await expectAttr(eigen, 'aria-invalid', 'true', 'Eigengewicht „-10“')
+        assert.ok(await waitFor(async () => (await readout(r, 'Punkt A').textContent()) === '–'))
+        await eigen.fill('')
+        assert.equal(await eigen.getAttribute('placeholder'), '0')
+        assert.ok(await waitFor(async () => /^75/.test(await readout(r, 'Punkt A').textContent())))
+        // die Winkel-Warnung (Vorgabe 45°) als Hinweis mit Titel, ohne „⚠“ im Text
+        const warnung = r.getByRole('status').filter({ hasText: 'Flacher Winkel' })
+        await warnung.waitFor({ timeout: 5_000 })
+        assert.ok(!(await warnung.textContent()).includes('⚠'), await warnung.textContent())
+        await closeToolWindow('rigging')
+      }
+    ],
+    [
+      'Rechner-Tastaturen: Timecode nur aus Ziffern (paarweise von rechts), Temperatur mit Minus',
+      async () => {
+        const w = await openSmall('timecode')
+        const tc = w.getByLabel('Timecode', { exact: true })
+        // Zifferntastatur: Am Handy gibt es dort keinen Doppelpunkt
+        assert.equal(await tc.getAttribute('inputmode'), 'numeric')
+        await tc.fill('01020312')
+        const frames = w.getByLabel('Frames (gesamt)', { exact: true })
+        // 25 fps: 3.723 s × 25 + 12
+        assert.ok(
+          await waitFor(async () => (await frames.inputValue()) === '93087'),
+          `Frames bei „01020312“: ${await frames.inputValue()}`
+        )
+        assert.equal(await tc.getAttribute('aria-invalid'), null)
+        // negative Frames sind lesbar, aber nicht rechenbar
+        await frames.fill('-5')
+        await expectAttr(frames, 'aria-invalid', 'true', 'Frames „-5“')
+        await closeToolWindow('timecode')
+
+        const a = await openSmall('audio-delay')
+        // volle Tastatur: Die Dezimaltastatur des iPhones hat kein Minus
+        const temp = a.getByLabel('Temperatur', { exact: true })
+        assert.equal(await temp.getAttribute('inputmode'), 'text')
+        await temp.fill('-5')
+        await expectAttr(temp, 'aria-invalid', null, 'Temperatur „-5“')
+        await closeToolWindow('audio-delay')
+      }
+    ],
+    [
+      'DMX-Dip-Schalter: Schalter sagen, ob sie an sind; die Adresse steht nur im Feld',
+      async () => {
+        const w = await openSmall('dmx-address')
+        const s3 = w.getByRole('button', { name: 'Schalter 3, Wert 4', exact: true })
+        assert.equal(await s3.getAttribute('aria-pressed'), 'false')
+        await s3.click()
+        await expectAttr(s3, 'aria-pressed', 'true', 'Schalter 3 umgelegt')
+        assert.equal(await w.getByLabel('Startadresse', { exact: true }).inputValue(), '5')
+        // kein zweites Ergebnis „Adresse“ unter den Schaltern
+        assert.equal(await w.getByText('Adresse', { exact: true }).count(), 0)
+        await closeToolWindow('dmx-address')
       }
     ],
     [

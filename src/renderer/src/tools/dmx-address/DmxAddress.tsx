@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { CalcPage, NumField, Readout, SectionCard, parseNum, ReadoutGrid } from '../_calc/ui'
+import { cn } from '@renderer/lib/utils'
+import { CalcPage, NumField, Readout, SectionCard, parseNum } from '../_calc/ui'
 import { dmxAddress, dmxBinary, dmxSwitches, dmxToggle, switchValue } from './math'
 
 // DMX-Startadresse <-> Dip-Schalter. Schalter 1 … 9 bilden Adresse − 1 binär ab (Adresse 1 =
@@ -42,26 +43,30 @@ export function DmxAddress(): JSX.Element {
           />
         </div>
 
-        {/* festes 9er-Raster: bleibt auch im schmalsten Fenster eine Reihe */}
+        {/* festes 9er-Raster: bleibt auch im schmalsten Fenster eine Reihe. Jeder Schalter sagt
+            Vorlesewerkzeugen, welcher er ist und ob er an ist. */}
         <div className="grid max-w-sm grid-cols-9 gap-1 pt-1">
           {bits.map((on, i) => (
             <button
               key={i}
               type="button"
+              aria-pressed={on === 1}
+              aria-label={`Schalter ${i + 1}, Wert ${switchValue(i)}`}
               onClick={() => toggle(i)}
               className="flex flex-col items-center gap-1"
-              title={`Schalter ${i + 1} · Wert ${switchValue(i)}`}
             >
               <span className="text-[10px] text-muted-foreground">{i + 1}</span>
               <span
-                className={`relative h-10 w-6 rounded-full border transition-colors ${
+                className={cn(
+                  'relative h-10 w-6 rounded-full border transition-colors',
                   on ? 'border-primary bg-primary/20' : 'border-border bg-muted/40'
-                }`}
+                )}
               >
                 <span
-                  className={`absolute left-1/2 size-3.5 -translate-x-1/2 rounded-full transition-all ${
+                  className={cn(
+                    'absolute left-1/2 size-3.5 -translate-x-1/2 rounded-full transition-all',
                     on ? 'top-1 bg-primary' : 'bottom-1 bg-muted-foreground'
-                  }`}
+                  )}
                 />
               </span>
               <span className="text-[10px] tabular-nums text-muted-foreground">
@@ -71,10 +76,8 @@ export function DmxAddress(): JSX.Element {
           ))}
         </div>
 
-        <ReadoutGrid>
-          <Readout label="Adresse" value={addr != null ? String(addr) : ''} big accent />
-          <Readout label="Binär (Schalter 9 → 1)" value={dmxBinary(addr) ?? ''} />
-        </ReadoutGrid>
+        {/* Die Adresse steht im Feld oben – kein zweites Ergebnis dafür */}
+        <Readout label="Binär (Schalter 9 → 1)" value={dmxBinary(addr) ?? ''} />
       </SectionCard>
     </CalcPage>
   )

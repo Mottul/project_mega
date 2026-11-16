@@ -7,28 +7,48 @@ const SQRT3 = Math.sqrt(3)
 export type Phase = '1' | '3'
 export type LoadField = 'p' | 'i'
 
-/** Anschluss, wie eingegeben: Phasen, Spannung U (V) und cos φ (`null` = leer oder unlesbar). */
+/**
+ * Anschluss, wie eingegeben: Phasen, Spannung U (V) und cos φ (`null` = leer; die Spannung auch
+ * unlesbar, cos φ unlesbar als `NaN`, siehe `parseOptional`).
+ */
 export interface Supply {
   phase: Phase
   u: number | null
   pf: number | null
 }
 
+/** cos φ, mit dem ein leeres Feld rechnet (ohmsche Last) – das Feld zeigt ihn als Platzhalter */
+export const DEFAULT_PF = 1
+
 /**
- * cos φ, mit dem gerechnet wird: leer -> 1, sonst auf 0,01 … 1 begrenzt. Über 1 rechnet also mit 1
- * und unter 0,01 mit 0,01, ohne dass man es sieht (Befund 2 im Gesamtplan, Paket K3).
+ * cos φ, mit dem gerechnet wird: leer -> 1, sonst der Wert selbst, wenn er über 0 und bis 1
+ * liegt. Außerhalb (und unlesbar) `null`: kein Ergebnis und ein rotes Feld – früher rechnete
+ * über 1 still mit 1 und unter 0,01 mit 0,01.
  */
-export function powerFactor(pf: number | null): number {
-  return pf == null ? 1 : Math.min(1, Math.max(0.01, pf))
+export function powerFactor(pf: number | null): number | null {
+  const v = pf ?? DEFAULT_PF
+  return v > 0 && v <= 1 ? v : null
 }
 
 function phaseFactor(phase: Phase): number {
   return phase === '3' ? SQRT3 : 1
 }
 
-/** Watt je Ampere: U · cos φ, dreiphasig mal √3. Ohne Spannung über 0 `null`. */
+/** Felder des Anschlusses, die rot sein können */
+export type SupplyField = 'u' | 'pf'
+
+/** Felder des Anschlusses mit einem lesbaren, aber unbrauchbaren Wert: U nicht über 0, cos φ */
+function supplyInvalid({ u, pf }: Supply): SupplyField[] {
+  const invalid: SupplyField[] = []
+  if (u != null && !(u > 0)) invalid.push('u')
+  if (powerFactor(pf) == null) invalid.push('pf')
+  return invalid
+}
+
+/** Watt je Ampere: U · cos φ, dreiphasig mal √3. Ohne Spannung über 0 oder cos φ `null`. */
 function wattsPerAmp({ phase, u, pf }: Supply): number | null {
-  return u != null && u > 0 ? phaseFactor(phase) * u * powerFactor(pf) : null
+  const cos = powerFactor(pf)
+  return u != null && u > 0 && cos != null ? phaseFactor(phase) * u * cos : null
 }
 
 export interface Load {
@@ -38,14 +58,20 @@ export interface Load {
   i: number | null
   /** Scheinleistung S in VA: U · I (dreiphasig · √3) */
   apparent: number | null
+  /** Felder mit lesbarem, aber unbrauchbarem Wert – mit ihnen wird nicht gerechnet */
+  invalid: (SupplyField | LoadField)[]
 }
 
-/** Leistung und Strom aus dem bearbeiteten der beiden. Leer oder negativ: alles `null`. */
+/**
+ * Leistung und Strom aus dem bearbeiteten der beiden. Leer, negativ oder ohne brauchbaren
+ * Anschluss: alles `null`.
+ */
 export function loadFrom(supply: Supply, field: LoadField, value: number | null): Load {
   const denom = wattsPerAmp(supply)
+  const ok = value != null && value >= 0
   let p: number | null = null
   let i: number | null = null
-  if (value != null && value >= 0 && denom != null) {
+  if (ok && denom != null) {
     if (field === 'p') {
       p = value
       i = p / denom
@@ -55,7 +81,9 @@ export function loadFrom(supply: Supply, field: LoadField, value: number | null)
     }
   }
   const apparent = supply.u != null && i != null ? phaseFactor(supply.phase) * supply.u * i : null
-  return { p, i, apparent }
+  const invalid: Load['invalid'] = supplyInvalid(supply)
+  if (value != null && !ok) invalid.push(field)
+  return { p, i, apparent, invalid }
 }
 
 export interface Devices {
@@ -67,6 +95,8 @@ export interface Devices {
   sumP: number | null
   /** Strom auf einem Leiter in A: einphasig der aller Geräte, dreiphasig der eines Außenleiters */
   sumI: number | null
+  /** Felder mit lesbarem, aber unbrauchbarem Wert – mit ihnen wird nicht gerechnet */
+  invalid: (SupplyField | 'pDev')[]
 }
 
 /**
@@ -91,12 +121,15 @@ export function devicesPerCircuit(
   const three = supply.phase === '3'
   // Spannung am Gerät: dreiphasig die zwischen Außenleiter und N
   const uDev = supply.u != null && supply.u > 0 ? (three ? supply.u / SQRT3 : supply.u) : null
-  const iDev =
-    pDev != null && pDev > 0 && uDev != null ? pDev / (uDev * powerFactor(supply.pf)) : null
+  const cos = powerFactor(supply.pf)
+  const pDevOk = pDev != null && pDev > 0
+  const iDev = pDevOk && uDev != null && cos != null ? pDev / (uDev * cos) : null
   const maxA = breakerA * reserve
   const perConductor = iDev != null && iDev > 0 ? Math.floor(maxA / iDev) : null
   const maxDevices = perConductor != null ? (three ? 3 : 1) * perConductor : null
   const sumP = maxDevices != null && pDev != null ? maxDevices * pDev : null
   const sumI = perConductor != null && iDev != null ? perConductor * iDev : null
-  return { iDev, maxDevices, sumP, sumI }
+  const invalid: Devices['invalid'] = supplyInvalid(supply)
+  if (pDev != null && !pDevOk) invalid.push('pDev')
+  return { iDev, maxDevices, sumP, sumI, invalid }
 }

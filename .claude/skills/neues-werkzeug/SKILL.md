@@ -61,20 +61,24 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Formeln/Hintergrund/Beispiel als `hint` (ⓘ) an Karte, Feld oder Ergebnis – keine Absätze;
      Zeilen aus `FieldRow` (Beschriftung links, beliebiges Element rechts): `NumField` (umrandet
      selbst rot und mit `aria-invalid`, was `parseNum` nicht liest – leer ist nie ein Fehler;
-     dazu `invalid` für Werte, die lesbar, aber nicht rechenbar sind, z. B. Gain 0; `signed` für
-     Felder mit negativen Werten, sonst fehlt am iPhone das Minus; `parse` für eine eigene
-     Schreibweise wie den Timecode, sonst wäre jeder gültige Wert rot),
+     dazu `invalid` für Werte, die lesbar, aber nicht rechenbar sind, z. B. Gain 0 – das sagt der
+     Rechenkern; `signed` für Felder mit negativen Werten, sonst fehlt am iPhone das Minus;
+     `digits` für Eingaben nur aus Ziffern (Zifferntastatur); `parse` für eine eigene
+     Schreibweise wie den Timecode, sonst wäre jeder gültige Wert rot; rechnet ein Feld leer mit
+     einer Vorgabe, steht sie als `placeholder` darin und das Feld liest mit `parseOptional`),
      `SelectField`, `ChoiceField` (Knopfgruppe – bis vier kurze Möglichkeiten immer so statt
      einer Liste; `wrap` für mehr, die man im Betrieb oft umschaltet), `RangeField` (Schieber mit
      Wert, darunter z. B. `QuickPick` als Schnellwahl); Ergebnisse als `Readout` (mehrere in
      `ReadoutGrid` = Kacheln, zweite Einheit per `sub`; eine Bewertung wie „ausreichend“ mit
      `tone` – `success`, `warning` oder `danger`: Farbe und Symbol aus `STATUS`, nie ✓, ✗ oder ⚠
-     im Text), Warnungen als `Alert`; Felder, die sich
+     im Text), Warnungen als `Alert` mit `title` und Symbol aus `STATUS`; hervorgehoben (`accent`)
+     ist je Karte nur die Antwort auf ihre Frage, `big` nur mit `accent`; Felder, die sich
      gegenseitig berechnen, über `useLinkedFields` (nie eigene bind-Funktionen). **Gerechnet wird
      im Rechenkern** `math.ts` neben der Komponente, mit `math.test.ts` (Vorbild
      `tools/rigging/math.ts`): Zahlen hinein, Zahlen oder `null` heraus, Entscheidungen wie
-     Warnstufen inklusive; die Komponente liest nur Text (`parseNum`) und zeigt an (`fmt`,
-     `trimNum`) – keine Formel in der `.tsx`. Ein Feld, das an
+     Warnstufen inklusive – auch `invalid`, die Eingaben, mit denen er nicht rechnet (nie still
+     einen Ersatzwert nehmen); die Komponente liest nur Text (`parseNum`), reicht `invalid` an die
+     Felder weiter und zeigt an (`fmt`, `trimNum`) – keine Formel in der `.tsx`. Ein Feld, das an
      einen Store gebunden ist, als `NumberField` in einem `FieldRow` (übernimmt erst bei Enter oder
      Verlassen; `NumField` begrenzte schon beim Tippen). Läuft das Werkzeug (misst, spielt):
      `RunButton` für Start und Stopp, `useWakeLock(läuft)` hält den Handy-Bildschirm an, und in

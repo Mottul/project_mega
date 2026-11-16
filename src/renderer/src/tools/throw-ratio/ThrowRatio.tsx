@@ -29,8 +29,12 @@ export function ThrowRatio(): JSX.Element {
   const size = useLinkedFields<SizeField>('w', '5')
   const lens = useLinkedFields<ThrowField>('dist', '8')
 
-  const { w, h, diag, area } = screenSize(size.driver, parseNum(size.raw), aspectRatio(aspectKey))
-  const { tr, dist } = throwFrom(lens.driver, parseNum(lens.raw), w)
+  const screen = screenSize(size.driver, parseNum(size.raw), aspectRatio(aspectKey))
+  const { w, h, diag, area } = screen
+  const ratio = throwFrom(lens.driver, parseNum(lens.raw), w)
+  // rot ist nur eine Quelle, die der Rechenkern nicht rechnet (nicht über 0)
+  const badSize = (f: SizeField): boolean => screen.invalid.includes(f)
+  const badLens = (f: ThrowField): boolean => ratio.invalid.includes(f)
 
   return (
     <CalcPage>
@@ -45,9 +49,24 @@ export function ThrowRatio(): JSX.Element {
             </option>
           ))}
         </SelectField>
-        <NumField label="Bildbreite" unit="m" {...size.bind('w', trimNum(w, 3))} />
-        <NumField label="Bildhöhe" unit="m" {...size.bind('h', trimNum(h, 3))} />
-        <NumField label="Diagonale" unit="m" {...size.bind('diag', trimNum(diag, 3))} />
+        <NumField
+          label="Bildbreite"
+          unit="m"
+          invalid={badSize('w')}
+          {...size.bind('w', trimNum(w, 3))}
+        />
+        <NumField
+          label="Bildhöhe"
+          unit="m"
+          invalid={badSize('h')}
+          {...size.bind('h', trimNum(h, 3))}
+        />
+        <NumField
+          label="Diagonale"
+          unit="m"
+          invalid={badSize('diag')}
+          {...size.bind('diag', trimNum(diag, 3))}
+        />
         <Readout label="Bildfläche" value={fmt(area)} unit="m²" />
       </SectionCard>
 
@@ -56,8 +75,17 @@ export function ThrowRatio(): JSX.Element {
         desc="Throw Ratio oder Abstand eingeben – das andere folgt."
         hint="Throw Ratio (TR) = Projektionsabstand ÷ Bildbreite. Passend ist ein Objektiv, dessen TR-Bereich den Wert abdeckt. Beispiel: 5 m Bildbreite aus 8 m Abstand ergibt TR 1,6 – ein Objektiv mit 1,2–1,8 passt."
       >
-        <NumField label="Throw Ratio" {...lens.bind('tr', trimNum(tr, 3))} />
-        <NumField label="Projektionsabstand" unit="m" {...lens.bind('dist', trimNum(dist, 3))} />
+        <NumField
+          label="Throw Ratio"
+          invalid={badLens('tr')}
+          {...lens.bind('tr', trimNum(ratio.tr, 3))}
+        />
+        <NumField
+          label="Projektionsabstand"
+          unit="m"
+          invalid={badLens('dist')}
+          {...lens.bind('dist', trimNum(ratio.dist, 3))}
+        />
         {w == null && <Alert tone="warning">Zuerst die Bildbreite der Leinwand festlegen.</Alert>}
       </SectionCard>
     </CalcPage>

@@ -25,6 +25,8 @@ export interface ScreenSize {
   diag: number | null
   /** Bildfläche in m² */
   area: number | null
+  /** das bearbeitete Maß, wenn es lesbar, aber nicht über 0 ist (das Feld ist rot) */
+  invalid: SizeField[]
 }
 
 /** Leinwandmaße aus dem bearbeiteten Maß und dem Seitenverhältnis; nur Werte über 0 zählen. */
@@ -32,7 +34,8 @@ export function screenSize(field: SizeField, value: number | null, aspect: numbe
   let w: number | null = null
   let h: number | null = null
   let diag: number | null = null
-  if (value != null && value > 0) {
+  const ok = value != null && value > 0
+  if (ok) {
     if (field === 'w') {
       w = value
       h = w / aspect
@@ -47,21 +50,24 @@ export function screenSize(field: SizeField, value: number | null, aspect: numbe
     if (diag == null && w != null && h != null) diag = Math.sqrt(w * w + h * h)
   }
   const area = w != null && h != null ? w * h : null
-  return { w, h, diag, area }
+  return { w, h, diag, area, invalid: value != null && !ok ? [field] : [] }
 }
 
 /**
  * Throw Ratio und Projektionsabstand (m) aus dem bearbeiteten der beiden – verknüpft über die
- * Bildbreite (m). Ohne Bildbreite oder Wert über 0 beide `null`.
+ * Bildbreite (m). Ohne Bildbreite oder Wert über 0 beide `null`. `invalid` nennt das bearbeitete
+ * Feld nur, wenn sein eigener Wert nicht über 0 ist – fehlt die Bildbreite, sagt das ein Hinweis.
  */
 export function throwFrom(
   field: ThrowField,
   value: number | null,
   width: number | null
-): { tr: number | null; dist: number | null } {
+): { tr: number | null; dist: number | null; invalid: ThrowField[] } {
   let tr: number | null = null
   let dist: number | null = null
-  if (width != null && width > 0 && value != null && value > 0) {
+  const ok = value != null && value > 0
+  const invalid: ThrowField[] = value != null && !ok ? [field] : []
+  if (width != null && width > 0 && ok) {
     if (field === 'tr') {
       tr = value
       dist = tr * width
@@ -70,5 +76,5 @@ export function throwFrom(
       tr = dist / width
     }
   }
-  return { tr, dist }
+  return { tr, dist, invalid }
 }

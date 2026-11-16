@@ -139,9 +139,9 @@ function Home({ lookButton }: { lookButton: ReactNode }): JSX.Element {
                 </ToolGrid>
               </section>
               {rest.length > 0 && (
-                <section className="space-y-2" aria-label="Weitere Rechner">
-                  <SectionHeading>Weitere Rechner</SectionHeading>
-                  <ToolGrid label="Weitere Rechner">
+                <section className="space-y-2" aria-label="Weitere Werkzeuge">
+                  <SectionHeading>Weitere Werkzeuge</SectionHeading>
+                  <ToolGrid label="Weitere Werkzeuge">
                     {rest.map((t) => (
                       <ToolCard key={t.id} tool={t} onToggleFavorite={() => toggle(t.id)} />
                     ))}
@@ -150,7 +150,7 @@ function Home({ lookButton }: { lookButton: ReactNode }): JSX.Element {
               )}
             </>
           ) : (
-            <ToolGrid label="Rechner">
+            <ToolGrid label="Werkzeuge">
               {rest.map((t) => (
                 <ToolCard key={t.id} tool={t} onToggleFavorite={() => toggle(t.id)} />
               ))}
@@ -158,7 +158,7 @@ function Home({ lookButton }: { lookButton: ReactNode }): JSX.Element {
           )}
           {favorites.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              Tipp: Mit dem Stern heftest du Rechner oben an und kannst sie dort ordnen.
+              Tipp: Mit dem Stern heftest du Werkzeuge oben an und kannst sie dort ordnen.
             </p>
           )}
           <InstallHint />
@@ -319,7 +319,7 @@ function CalcView({ lookButton }: { lookButton: ReactNode }): JSX.Element {
       <Header>
         <Link
           to="/"
-          aria-label="Alle Rechner"
+          aria-label="Alle Werkzeuge"
           className={buttonVariants({ variant: 'ghost', size: 'icon' })}
         >
           <ArrowLeft className="size-5" />

@@ -3,7 +3,13 @@ import { circleFrom, type CircleField } from './math'
 
 describe('circleFrom – Vorgabe des Rechners', () => {
   it('Durchmesser 1 → Radius 0,5 · Umfang π · Fläche π ÷ 4', () => {
-    expect(circleFrom('d', 1)).toEqual({ d: 1, r: 0.5, c: Math.PI, a: Math.PI / 4 })
+    expect(circleFrom('d', 1)).toEqual({
+      d: 1,
+      r: 0.5,
+      c: Math.PI,
+      a: Math.PI / 4,
+      invalid: []
+    })
   })
 })
 
@@ -32,14 +38,20 @@ describe('circleFrom – Ränder', () => {
   const leer = { d: null, r: null, c: null, a: null }
 
   it('0 ist ein Kreis ohne Ausdehnung', () => {
-    expect(circleFrom('a', 0)).toEqual({ d: 0, r: 0, c: 0, a: 0 })
+    expect(circleFrom('a', 0)).toEqual({ d: 0, r: 0, c: 0, a: 0, invalid: [] })
   })
 
-  it.each<CircleField>(['d', 'r', 'c', 'a'])('leeres Feld %s → kein Ergebnis', (field) => {
-    expect(circleFrom(field, null)).toEqual(leer)
-  })
+  it.each<CircleField>(['d', 'r', 'c', 'a'])(
+    'leeres Feld %s → kein Ergebnis, nicht rot',
+    (field) => {
+      expect(circleFrom(field, null)).toEqual({ ...leer, invalid: [] })
+    }
+  )
 
-  it.each<CircleField>(['d', 'r', 'c', 'a'])('negativer Wert in %s → kein Ergebnis', (field) => {
-    expect(circleFrom(field, -1)).toEqual(leer)
-  })
+  it.each<CircleField>(['d', 'r', 'c', 'a'])(
+    'negativer Wert in %s → kein Ergebnis, das Feld ist rot',
+    (field) => {
+      expect(circleFrom(field, -1)).toEqual({ ...leer, invalid: [field] })
+    }
+  )
 })

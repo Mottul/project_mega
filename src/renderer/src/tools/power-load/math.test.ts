@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { devicesPerCircuit, loadFrom, powerFactor, type Supply } from './math'
+import { DEFAULT_PF, devicesPerCircuit, loadFrom, powerFactor, type Supply } from './math'
 
 const EIN: Supply = { phase: '1', u: 230, pf: 1 } // Vorgabe des Rechners
 const DREI: Supply = { phase: '3', u: 400, pf: 1 }
+/** Last ohne Ergebnis */
+const leer = { p: null, i: null, apparent: null }
 
 describe('Vorgabe des Rechners: Last', () => {
   it('einphasig 230 V, cos φ 1, 16 A → 3.680 W', () => {
-    expect(loadFrom(EIN, 'i', 16)).toEqual({ p: 3680, i: 16, apparent: 3680 })
+    expect(loadFrom(EIN, 'i', 16)).toEqual({ p: 3680, i: 16, apparent: 3680, invalid: [] })
   })
 
   it('dreiphasig 400 V, 16 A → 11.085 W (√3 · 400 V · 16 A)', () => {
@@ -100,7 +102,7 @@ describe('devicesPerCircuit – nie über der Absicherung', () => {
 
 describe('loadFrom – Leistung oder Strom', () => {
   it('aus der Leistung: 3.680 W an 230 V → 16 A', () => {
-    expect(loadFrom(EIN, 'p', 3680)).toEqual({ p: 3680, i: 16, apparent: 3680 })
+    expect(loadFrom(EIN, 'p', 3680)).toEqual({ p: 3680, i: 16, apparent: 3680, invalid: [] })
   })
 
   it('cos φ 0,9: mehr Strom als P ÷ U, die Scheinleistung liegt über der Wirkleistung', () => {
@@ -110,35 +112,59 @@ describe('loadFrom – Leistung oder Strom', () => {
   })
 
   it('0 ist erlaubt', () => {
-    expect(loadFrom(EIN, 'p', 0)).toEqual({ p: 0, i: 0, apparent: 0 })
+    expect(loadFrom(EIN, 'p', 0)).toEqual({ p: 0, i: 0, apparent: 0, invalid: [] })
   })
 
-  it.each([null, -1])('Leistung oder Strom %s → kein Ergebnis', (v) => {
-    const leer = { p: null, i: null, apparent: null }
-    expect(loadFrom(EIN, 'p', v)).toEqual(leer)
-    expect(loadFrom(EIN, 'i', v)).toEqual(leer)
+  it('Leistung oder Strom leer → kein Ergebnis, nicht rot', () => {
+    expect(loadFrom(EIN, 'p', null)).toEqual({ ...leer, invalid: [] })
+    expect(loadFrom(EIN, 'i', null)).toEqual({ ...leer, invalid: [] })
   })
 
-  it.each([null, 0, -230])('Spannung %s → kein Ergebnis', (u) => {
-    expect(loadFrom({ ...EIN, u }, 'i', 16)).toEqual({ p: null, i: null, apparent: null })
+  it('Leistung oder Strom negativ → kein Ergebnis, das Feld ist rot', () => {
+    expect(loadFrom(EIN, 'p', -1)).toEqual({ ...leer, invalid: ['p'] })
+    expect(loadFrom(EIN, 'i', -1)).toEqual({ ...leer, invalid: ['i'] })
+  })
+
+  it('Spannung leer → kein Ergebnis, nicht rot', () => {
+    expect(loadFrom({ ...EIN, u: null }, 'i', 16)).toEqual({ ...leer, invalid: [] })
+  })
+
+  it.each([0, -230])('Spannung %s → kein Ergebnis, das Feld ist rot', (u) => {
+    expect(loadFrom({ ...EIN, u }, 'i', 16)).toEqual({ ...leer, invalid: ['u'] })
   })
 })
 
 describe('powerFactor – womit gerechnet wird', () => {
-  it('0,9 bleibt 0,9; leer → 1', () => {
+  it('0,9 bleibt 0,9, 1 bleibt 1', () => {
     expect(powerFactor(0.9)).toBe(0.9)
+    expect(powerFactor(1)).toBe(1)
+  })
+
+  it('leer → 1 (ohmsche Last) – das Feld zeigt die 1 als Platzhalter', () => {
+    expect(DEFAULT_PF).toBe(1)
     expect(powerFactor(null)).toBe(1)
   })
 
-  it('über 1 rechnet heimlich mit 1 (Befund 2, ändert sich mit K3)', () => {
-    expect(powerFactor(1.5)).toBe(1)
-    expect(loadFrom({ ...EIN, pf: 1.5 }, 'i', 16).p).toBe(3680)
+  it('knapp über 0 rechnet mit dem Wert selbst, nicht mehr mit 0,01', () => {
+    expect(powerFactor(0.005)).toBe(0.005)
   })
 
-  it('unter 0,01 rechnet heimlich mit 0,01 – auch 0 und negative Werte (Befund 2, K3)', () => {
-    expect(powerFactor(0.005)).toBe(0.01)
-    expect(powerFactor(0)).toBe(0.01)
-    expect(powerFactor(-0.5)).toBe(0.01)
+  it.each([1.5, 0, -0.5, Number.NaN])(
+    'cos φ %s (außerhalb von 0 bis 1 oder unlesbar) → nicht rechenbar, statt still begrenzt',
+    (pf) => {
+      expect(powerFactor(pf)).toBeNull()
+    }
+  )
+
+  it('cos φ über 1: weder Last noch Geräte je Stromkreis, das Feld ist rot', () => {
+    expect(loadFrom({ ...EIN, pf: 1.5 }, 'i', 16)).toEqual({ ...leer, invalid: ['pf'] })
+    const g = devicesPerCircuit({ ...EIN, pf: 1.5 }, 500, 16, 1)
+    expect(g.maxDevices).toBeNull()
+    expect(g.invalid).toEqual(['pf'])
+  })
+
+  it('Spannung und cos φ zugleich unbrauchbar: beide rot', () => {
+    expect(loadFrom({ phase: '3', u: -400, pf: 0 }, 'p', 1000).invalid).toEqual(['u', 'pf'])
   })
 })
 
@@ -148,7 +174,8 @@ describe('devicesPerCircuit – Ränder', () => {
       iDev: 2,
       maxDevices: 8,
       sumP: 3680,
-      sumI: 16
+      sumI: 16,
+      invalid: []
     })
   })
 
@@ -158,13 +185,14 @@ describe('devicesPerCircuit – Ränder', () => {
     expect(g.sumP).toBe(0)
   })
 
-  it.each([null, 0, -500])('Leistung je Gerät %s → kein Ergebnis', (pDev) => {
-    expect(devicesPerCircuit(EIN, pDev, 16, 1)).toEqual({
-      iDev: null,
-      maxDevices: null,
-      sumP: null,
-      sumI: null
-    })
+  const keine = { iDev: null, maxDevices: null, sumP: null, sumI: null }
+
+  it('Leistung je Gerät leer → kein Ergebnis, nicht rot', () => {
+    expect(devicesPerCircuit(EIN, null, 16, 1)).toEqual({ ...keine, invalid: [] })
+  })
+
+  it.each([0, -500])('Leistung je Gerät %s → kein Ergebnis, das Feld ist rot', (pDev) => {
+    expect(devicesPerCircuit(EIN, pDev, 16, 1)).toEqual({ ...keine, invalid: ['pDev'] })
   })
 
   it.each<[string, Supply]>([
@@ -172,6 +200,8 @@ describe('devicesPerCircuit – Ränder', () => {
     ['dreiphasig', DREI]
   ])('%s ohne Spannung kein Ergebnis', (_, supply) => {
     expect(devicesPerCircuit({ ...supply, u: null }, 500, 16, 1).maxDevices).toBeNull()
-    expect(devicesPerCircuit({ ...supply, u: 0 }, 500, 16, 1).maxDevices).toBeNull()
+    const ohne = devicesPerCircuit({ ...supply, u: 0 }, 500, 16, 1)
+    expect(ohne.maxDevices).toBeNull()
+    expect(ohne.invalid).toEqual(['u'])
   })
 })

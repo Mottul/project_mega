@@ -95,9 +95,13 @@ export function secondsToFrames(seconds: number, rate: TcRate): number {
 }
 
 /** "1:02:03:12", "02:03:12", "03:12", "12" -> Teile (fehlende links = 0).
- *  Trennzeichen : ; . erlaubt. null bei Unfug. */
+ *  Trennzeichen : ; . , erlaubt. Nur Ziffern ab drei Stellen ("1020312") werden paarweise von
+ *  rechts gelesen – Frames, Sekunden, Minuten, der Rest (bis drei Stellen) sind Stunden: Die
+ *  Zifferntastatur am Handy hat keinen Doppelpunkt. Ein oder zwei Ziffern bleiben Frames.
+ *  null bei Unfug. */
 export function parseTc(input: string, rate: TcRate): TcParts | null {
-  const groups = input.trim().split(/[:;.,]/)
+  const text = input.trim()
+  const groups = /^\d{3,9}$/.test(text) ? digitPairs(text) : text.split(/[:;.,]/)
   if (
     groups.length === 0 ||
     groups.length > 4 ||
@@ -110,6 +114,43 @@ export function parseTc(input: string, rate: TcRate): TcParts | null {
   const [hh, mm, ss, ff] = nums
   if (mm > 59 || ss > 59 || ff >= rate.nominal) return null
   return { hh, mm, ss, ff }
+}
+
+/** "1020312" -> ["1", "02", "03", "12"]: von rechts je zwei Ziffern, höchstens drei Paare. */
+function digitPairs(digits: string): string[] {
+  const groups: string[] = []
+  let rest = digits
+  while (rest.length > 2 && groups.length < 3) {
+    groups.unshift(rest.slice(-2))
+    rest = rest.slice(0, -2)
+  }
+  groups.unshift(rest)
+  return groups
+}
+
+/** Die drei verknüpften Felder des Rechners */
+export type TcField = 'tc' | 'frames' | 'real'
+
+/**
+ * Quelle der verknüpften Felder -> Framenummer. Der Timecode kommt als Text (parseTc; ungültig
+ * markiert das Feld selbst), „Frames (gesamt)“ und „Echtzeit“ (s) als Zahl ab 0 – Frames auf
+ * ganze gerundet. Negativ: keine Framenummer, das Feld steht in `invalid` (rot).
+ */
+export function framesFrom(
+  source: { field: 'tc'; text: string } | { field: 'frames' | 'real'; value: number | null },
+  rate: TcRate
+): { frames: number | null; invalid: TcField[] } {
+  if (source.field === 'tc') {
+    const tc = parseTc(source.text, rate)
+    return { frames: tc ? tcToFrames(tc, rate) : null, invalid: [] }
+  }
+  const { field, value } = source
+  if (value == null) return { frames: null, invalid: [] }
+  if (!(value >= 0)) return { frames: null, invalid: [field] }
+  return {
+    frames: field === 'frames' ? Math.round(value) : secondsToFrames(value, rate),
+    invalid: []
+  }
 }
 
 export function formatTc(tc: TcParts, rate: TcRate): string {

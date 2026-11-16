@@ -161,14 +161,14 @@ ohne Tastatur):
 | -------- | -------------- | ------------------- | ----------------- | ----- |
 | Testtongenerator | passt | eine (603) | – | Vorbild |
 | RTA | 824 px (+167) | Kopf mit Messen, Pegel und Spektrum; vier zugeklappte Karten (je 64) | zehn, in den Karten | Vorbild; Listen → K6 |
-| Rigging-Last | 1209 px (+552) | Traverse 447, Bridle 651 | – | K6 |
+| Rigging-Last | 1281 px (+624; seit K3 die Winkel-Warnung mit Titel, vorher 1209) | Traverse 447, Bridle 723 | – | K6 |
 | Kameraobjektiv | 1071 px (+414) | Kamera 423, Motiv 601 | Sensor (8), Telekonverter (4) | K6 |
 | Stromlast & Absicherung | 929 px (+272) | Last 315, Geräte je Stromkreis 519 | Anschluss (2), Absicherung (4), Auslastung (2) | **K5 – Pilot** |
 | Timecode-Rechner | 749 px (+92) | Umrechnen 321, Dauer 381 | Bildrate (10) | K6 |
 | Beamer-Lumen | 741 px (+84) | Projektion 423, Vorhandener Beamer 271 | Umgebungslicht (4) | K6 |
 | Audio-Delay & SPL | 695 px (+38) | Delay 367, Pegel über Distanz 281 | – | K6 |
 | Projektionsverhältnis | passt | Leinwand 337, Objektiv 171 | Seitenverhältnis (6) | K6, nur die Liste |
-| DMX-Dip-Schalter | passt | eine (389) | – | nur K3 |
+| DMX-Dip-Schalter | passt | eine (287; vor K3 mit der Zeile „Adresse“ 389) | – | nichts |
 | Kreisrechner | passt | eine (267) | – | nichts |
 
 **Wo die Antwort steht:** In den Rechnern steht das hervorgehobene Ergebnis unter den Feldern. Bei
@@ -259,7 +259,6 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **1 – Die Vorbilder fertig** | K3 | Die Rechner bekommen sichtbare Fehleingaben, bevor ihr Aufbau angefasst wird |
 | **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
@@ -414,7 +413,7 @@ sich der Baustein in W1 bis W3 bewährt hat. Bis dahin kein Auftrag.
 ## K – Kleine Werkzeuge
 
 Das [Muster 2](#muster-2-kleines-werkzeug) für die Rechner – und was ihnen unabhängig vom Aufbau
-fehlt: sichtbare Fehleingaben. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
+fehlt: ein Gedächtnis für die Eingaben. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
 Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator,
 Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im
 eigenen kleinen Fenster (Höhe folgt dem Inhalt, schmal bis 320 px) und läuft unverändert in der PWA
@@ -428,10 +427,9 @@ Felder in Akzentfarbe.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **K3** | Eingaben und Meldungen der Rechner angleichen | M | – |
-| **K5** | Neuer Aufbau am Pilot: Stromlast & Absicherung | M | K3 |
+| **K5** | Neuer Aufbau am Pilot: Stromlast & Absicherung | M | – |
 | **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | K5, Entscheidung 2 |
-| **K4** | Rechner merken sich die Eingaben | M | K3, Entscheidung 3 |
+| **K4** | Rechner merken sich die Eingaben | M | Entscheidung 3 |
 
 Vor jedem Schritt den Skill `rechner-pwa` lesen.
 
@@ -439,62 +437,15 @@ Vor jedem Schritt den Skill `rechner-pwa` lesen.
 
 Am Code geprüft am 13. November 2026, die Maße am 14. November; vor jedem Schritt erst nachsehen,
 ob die Stelle noch so aussieht. Die Nummern stammen aus dem ersten Plan (1 ist mit K1 erledigt,
-13 mit K2, 3, 10, 12, 15 und 16 mit dem Testtongenerator), damit Verweise darauf gültig bleiben.
+13 mit K2, 2, 4, 5, 7, 8, 9 und 14 mit K3, 3, 10, 12, 15 und 16 mit dem Testtongenerator), damit
+Verweise darauf gültig bleiben.
 
 | Nr. | Befund | Fundstelle | Paket |
 | --- | ------ | ---------- | ----- |
-| 2 | Nicht rechenbare Eingaben bleiben stumm: Was sich nicht lesen lässt, umrandet `NumField` seit K2 rot – ein lesbarer, aber unbrauchbarer Wert (negative Distanz im Audio-Delay) sieht aus wie immer, das Ergebnis zeigt „–“. Zwei Werte werden sogar heimlich ersetzt – Leinwand-Gain ≤ 0 rechnet mit 1, cos φ über 1 mit 1 und unter 0,01 mit 0,01 | die Rechner (`invalid` an `NumField`); `projector-lumen/math.ts`, `power-load/math.ts` | K3 |
-| 4 | Timecode am Handy: Das Feld ist ein `NumField` mit Dezimaltastatur (Ziffern und Komma), ohne Doppelpunkt. Tippen lässt sich „1,02,03,12“ (Komma wird als Trenner gelesen) – darauf kommt niemand; reine Ziffern „01020312“ lehnt `parseTc` ab | `Timecode.tsx`, `tc.ts` | K3 |
-| 5 | Temperatur unter 0 °C lässt sich am iPhone nicht eintippen: Die Dezimaltastatur hat dort kein Minus (WebKit-Fehler 193825; am Gerät zu prüfen). Seit K2 öffnet `NumField` mit `signed` die volle Tastatur | `AudioDelay.tsx` | K3 |
 | 6 | Auswahl aus wenigen Möglichkeiten ist mal eine Liste (zwei Tipps, Optionen verdeckt), mal eine Knopfgruppe: in der Stromlast Anschluss, Absicherung und Auslastung, im RTA die Listen in den Karten, dazu Umgebungslicht (Beamer-Lumen), Telekonverter (Kameraobjektiv), Seitenverhältnis (Projektionsverhältnis) und Bildrate (Timecode). Die Bausteine `ChoiceField` und `Segmented` gibt es | `PowerLoad.tsx`, `RtaCards.tsx`, `ProjectorLumen.tsx`, `CameraLens.tsx`, `ThrowRatio.tsx`, `Timecode.tsx` | K5, K6 |
-| 7 | Dasselbe Ergebnis steht doppelt: Der DMX-Dip-Schalter zeigt die Adresse im Feld und gleich darunter noch einmal groß | `DmxAddress.tsx` | K3 |
-| 8 | Status steht als Zeichen im Text statt über die Statusstufen der App: „ausreichend ✓ / zu dunkel ✗“, Warnungen mit „⚠“ | `ProjectorLumen.tsx`, `Rigging.tsx`; Baustein seit K2: `Readout` mit `tone` | K3 |
-| 9 | Die Schalter des DMX-Dip-Schalters sagen Vorlesewerkzeugen nicht, ob sie an sind (nur `title`) | `DmxAddress.tsx` | K3 |
 | 11 | Alle Eingaben sind weg, sobald das Fenster zugeht oder das Handy die PWA aus dem Speicher wirft; es erscheinen wieder die Beispielwerte (der Testtongenerator merkt sich seinen Stand schon) | alle Rechner (`useState`) | K4 |
-| 14 | Die PWA nennt alles „Rechner“ („Weitere Rechner“, „Alle Rechner“), obwohl RTA und Testtongenerator keine sind (Manifest und Beschreibung sind schon nachgezogen) | `src/pwa/App.tsx` | K3 |
 | 17 | Sechs Rechner sind am Handy höher als der Bildschirm, und die Antwort steht unter den Feldern – bei dreien unter dem Rand | Messung im [Leitbild](#muster-2-kleines-werkzeug) | K5, K6 |
-
-### K3 – Eingaben und Meldungen der Rechner angleichen
-
-Sichtbare Änderungen am Verhalten, je Rechner klein. Der Aufbau der Karten ändert sich erst mit
-K5 und K6 – Listen bleiben hier Listen. Ein Pull Request.
-
-- **Alle:** Ein Feld, mit dessen Wert nicht gerechnet wird, ist rot umrandet – was sich nicht
-  lesen lässt, markiert `NumField` seit K2 selbst; lesbare, aber unbrauchbare Werte (negative
-  Distanz, Gain ≤ 0) bekommen `invalid`. Leere Felder nie (das setzt `NumField` schon durch).
-  Heimliches Ersetzen entfällt: Gain ≤ 0 und cos φ außerhalb von 0 bis 1 ergeben kein Ergebnis
-  mehr statt eines mit 1 (cos φ unter 0,01: mit 0,01) gerechneten; ein leeres Feld rechnet dort
-  weiter mit 1 und zeigt die 1 als Platzhalter. Die Tests der Rechenkerne halten das heutige
-  Ersetzen fest (`projector-lumen/math.test.ts`, `power-load/math.test.ts`) und ändern sich mit.
-  Hervorgehoben (`accent`) ist je Karte nur die Antwort auf ihre Frage, `big` nur zusammen mit
-  `accent`. Nebenbei gefunden (K2): Ab 10²¹ schreibt `trimNum` einen Exponenten („1e+21“), den
-  `parseNum` nicht liest – ein so großes berechnetes Feld ist dann rot, und der Fokus darauf leert
-  die übrigen (Kreisrechner, Durchmesser 10¹¹ m); `trimNum` soll ohne Exponent schreiben.
-- **DMX-Dip-Schalter:** das Ergebnis „Adresse“ entfällt (steht im Feld), „Binär“ bleibt. Jeder
-  Schalter trägt `aria-pressed` und einen Namen („Schalter 3, Wert 4“). Klassen über `cn` statt
-  zusammengesetzter Zeichenketten.
-- **Timecode:** Die drei Timecode-Felder werden Textfelder in einem `FieldRow` mit
-  Zifferntastatur (`inputMode="numeric"`). `parseTc` liest zusätzlich reine Ziffern paarweise
-  von rechts („1020312“ = 01:02:03:12, „312“ = 00:00:03:12); ein oder zwei Ziffern bleiben
-  Frames wie heute, Eingaben mit Trennzeichen ändern sich nicht. Tests in
-  `tools/timecode/tc.test.ts`. Ungültige Timecodes markieren ihr Feld schon seit K2 – auch „A“
-  und „B“ in der zweiten Karte (`NumField` liest dort mit `parseTc`, Eigenschaft `parse`). Das
-  bleibt beim Umbau, ebenso der Akzent des berechneten Felds „Timecode“.
-- **Audio-Delay:** „Temperatur“ mit `signed`.
-- **Beamer-Lumen:** „Bewertung“ als `Readout` mit `tone` – „ausreichend“ (`success`), „zu
-  dunkel“ (`danger`), ohne ✓ und ✗.
-- **Rigging-Last:** die beiden Winkel-Warnungen als `Alert` mit Titel und Symbol aus `STATUS`
-  („Flacher Winkel“, „So nicht anschlagen“), ohne „⚠“ im Text. Ein negatives Eigengewicht ergibt
-  kein Ergebnis mehr: Heute rechnet es mit und senkt die Kräfte (8 m, 120 kg bei 3 m, −10 kg/m:
-  A 35 kg, B 5 kg; Test in `rigging/math.test.ts`); leer zählt es weiter als 0.
-- **PWA:** „Rechner“ wird in den sichtbaren Texten von `src/pwa/App.tsx` zu „Werkzeuge“
-  („Weitere Werkzeuge“, „Alle Werkzeuge“, der Tipp zum Stern).
-
-**Abnahme:** `npm run e2e -- layout`; neue Schritte in `e2e/layout.mjs`: im Beamer-Lumen Gain
-„0“ tippen – das Feld trägt `aria-invalid`, „Lumen-Bedarf“ zeigt „–“ (Unlesbares wie „abc“ im
-Kreisrechner prüft der Schritt „Fehleingabe ist markiert“ seit K2); im Timecode-Rechner
-„01020312“ – „Frames (gesamt)“ zeigt 93087 (25 fps: 3.723 s × 25 + 12).
-`npx vitest run src/renderer/src/tools src/pwa`, `npm run pwa:build`.
+| 18 | „Frames (gesamt)“ im Timecode-Rechner rundet Bruchteile still: „1,5“ rechnet mit Frame 2, das Feld behält „1,5“ (gefunden in K3, festgehalten im Test „auf ganze gerundet“). Rot markieren wie andere Werte, mit denen nicht gerechnet wird? | `timecode/tc.ts` (`framesFrom`) | K6 |
 
 ### K5 – Neuer Aufbau am Pilot: Stromlast & Absicherung
 
@@ -543,9 +494,9 @@ sind, zeigt der Pilot.
 
 | Rechner | Was sich ändert |
 | ------- | --------------- |
-| Rigging-Last (+552 px) | „Traverse“ und „Bridle“ als `FoldCard` (Kurzfassung „A 115 kg · B 85 kg“ bzw. „141 kg je Strang · 45°“); Antwort zuerst, die Winkel-Warnung direkt darunter |
+| Rigging-Last (+624 px) | „Traverse“ und „Bridle“ als `FoldCard` (Kurzfassung „A 115 kg · B 85 kg“ bzw. „141 kg je Strang · 45°“); Antwort zuerst, die Winkel-Warnung direkt darunter |
 | Kameraobjektiv (+414 px) | „Kamera & Objektiv“ zuklappbar („Vollformat · 200 mm“); Telekonverter (vier Werte) als Knopfgruppe, der Sensor bleibt eine Liste; in „Motiv & Bildausschnitt“ die Antwort zuerst |
-| Timecode-Rechner (+92 px) | „Dauer zwischen zwei Timecodes“ zuklappbar; Bildrate (zehn Werte) als Knopfgruppe mit Umbruch, wenn die Beschriftungen bei 320 px Breite lesbar bleiben – sonst bleibt die Liste |
+| Timecode-Rechner (+92 px) | „Dauer zwischen zwei Timecodes“ zuklappbar; Bildrate (zehn Werte) als Knopfgruppe mit Umbruch, wenn die Beschriftungen bei 320 px Breite lesbar bleiben – sonst bleibt die Liste; Befund 18 klären |
 | Beamer-Lumen (+84 px) | Umgebungslicht (vier Werte) als Knopfgruppe mit kurzen Namen, die Erklärung der gewählten Stufe darunter („Vortragssaal · Ziel 400 lx“) – wie die Signale ohne eigene Felder im Testtongenerator; „Vorhandener Beamer“ zuklappbar („6.500 lm · ausreichend“); Lumen-Bedarf zuerst |
 | Audio-Delay & SPL (+38 px) | „Pegel über Distanz“ zuklappbar („80 dB in 10 m“), Antwort zuerst |
 | Projektionsverhältnis | Seitenverhältnis (sechs Werte) als Knopfgruppe mit Umbruch |
@@ -1224,9 +1175,9 @@ Jingle-Befehle, Upload). Je Stelle ein Pull Request, ohne Änderung am Verhalten
 Vitest sammelt Dateien mit der Endung „.test.tsx“ schon ein, sie laufen aber ohne DOM. jsdom und
 @testing-library ergänzen (Skill `abhaengigkeiten`: Pakete mit 7 Tagen Abstand), ein erster Test
 für einen Baustein aus `tools/_calc/ui.tsx` als Vorbild – naheliegend `NumField` (rot bei
-Fehleingabe, `invalid`, `signed` → `inputMode`) und `Readout` mit `tone`, die seit K2 nur ein
-E2E-Schritt (`aria-invalid` im Kreisrechner und im Timecode) und ein Wegwerf-Vergleich des HTML
-prüfen. Danach lassen sich Bausteine wie `FoldCard` und `Segmented` ohne E2E prüfen.
+Fehleingabe, `invalid`, `signed` und `digits` → `inputMode`) und `Readout` mit `tone`, die seit
+K2 und K3 nur E2E-Schritte (`aria-invalid` und `inputmode` in einzelnen Rechnern) und ein
+Wegwerf-Vergleich des HTML prüfen. Danach lassen sich Bausteine wie `FoldCard` und `Segmented` ohne E2E prüfen.
 
 ### E9 – Handy-Steuerseiten als echte Dateien
 
@@ -1347,12 +1298,14 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
 - **Beide:** Metronom mit „Tippen“; Knopfgruppen ohne Querscrollen; der Testtongenerator passt
   ohne Scrollen; im RTA Karten auf- und zuklappen – der Zustand bleibt gemerkt. ⓘ antippen –
   Blase da; daneben tippen – weg; scrollen – sie läuft mit.
-- **Nach K3:** Timecode nur mit Ziffern eintippen, −5 °C im Audio-Delay: „Temperatur“ hat dann
-  `signed` (seit K2: die volle Tastatur, `inputMode="text"` statt `decimal`, weil die
-  Dezimaltastatur des iPhones kein Minus hat). Ist das Minus am iPhone ohne Suchen zu erreichen,
-  und taugt die Tastatur auch unter Android? Wenn nicht, bekommt `NumField` statt der vollen
-  Tastatur einen Knopf „±“ am Feld (neues Paket). **Nach K5:** Bleibt die Antwort der Stromlast
-  beim Tippen über der Tastatur sichtbar?
+- **Seit K3:** Timecode nur mit Ziffern eintippen – die drei Timecode-Felder öffnen die
+  Zifferntastatur (`digits`, `inputMode="numeric"`), „1020312“ ergibt 01:02:03:12. Zeigt sie am
+  iPhone und unter Android wirklich nur Ziffern, und geht das Tippen ohne Doppelpunkt flüssig?
+  −5 °C im Audio-Delay: „Temperatur“ hat `signed` (die volle Tastatur, `inputMode="text"` statt
+  `decimal`, weil die Dezimaltastatur des iPhones kein Minus hat). Ist das Minus am iPhone ohne
+  Suchen zu erreichen, und taugt die Tastatur auch unter Android? Wenn nicht, bekommt `NumField`
+  statt der vollen Tastatur einen Knopf „±“ am Feld (neues Paket). **Nach K5:** Bleibt die
+  Antwort der Stromlast beim Tippen über der Tastatur sichtbar?
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1509,7 +1462,13 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Rechner (K1: je Rechner `math.ts`, ohne sichtbare Änderung); die Stromlast zählt „Geräte pro
   Stromkreis“ am Drehstrom je Außenleiter (K7); Bausteine für die Rechner (K2: `NumField` umrandet
   Fehleingaben rot, `invalid`, `signed`, `parse`; `Readout` mit `tone`; eine Lese-Funktion
-  `parseDecimal`).
+  `parseDecimal`); Eingaben und Meldungen der Rechner angeglichen (K3: ein Feld, mit dem nicht
+  gerechnet wird, ist rot, nichts wird still ersetzt – die Rechenkerne melden `invalid`, auch das
+  Kameraobjektiv mit `lensView`; Gain ≤ 0, cos φ außerhalb von 0 bis 1 und ein negatives
+  Eigengewicht ergeben kein Ergebnis, Vorgaben stehen als Platzhalter im leeren Feld; Timecode aus
+  reinen Ziffern, Temperatur mit Minus, Bewertung und Winkel-Warnungen in den Statusstufen,
+  DMX-Schalter mit `aria-pressed`, ein Ergebnis „Adresse“ weniger, „Werkzeuge“ statt „Rechner“ in
+  der PWA, `trimNum` ohne Exponent).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.
