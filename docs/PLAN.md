@@ -1381,7 +1381,8 @@ Entschieden – damit nichts neu gefragt wird:
 - **DMX-Dip-Schalter: Adresse = Summe der eingeschalteten Werte** (16. November 2026, Rückmeldung
   von Matthias: Adresse 1 ist an den Geräten Schalter 1 an). Vorher rechnete der Rechner Summe + 1
   (alle aus = Adresse 1). Mit neun Schaltern reicht es bis 511; Adresse 512 braucht einen zehnten
-  Schalter (Wert 512), den nur manche Geräte dafür nutzen – das sagt das ⓘ. Umgesetzt mit K3.
+  Schalter (Wert 512), den nur manche Geräte dafür nutzen – das sagt das ⓘ. Einen zehnten
+  Schalter bekommt der Rechner nicht (17. November 2026, „Nein, so lassen“). Umgesetzt mit K3.
 
 - **Stromlast am Drehstrom: „Geräte pro Stromkreis“ zählt je Außenleiter** (16. November 2026,
   „Ja, je Außenleiter“): Einphasige Geräte hängen je an einem Leiter (U ÷ √3), die Absicherung
