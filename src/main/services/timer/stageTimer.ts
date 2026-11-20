@@ -31,7 +31,8 @@ export const EMPTY_TIMER_STATE: StageTimerState = {
   clockShowDate: true,
   overtimeFlash: true,
   outputOpen: false,
-  ndiActive: false
+  ndiActive: false,
+  streamActive: false
 }
 
 const state: StageTimerState = { ...EMPTY_TIMER_STATE }
@@ -316,6 +317,12 @@ export function setTimerOutputOpen(open: boolean): void {
 export function setTimerNdiActive(active: boolean): void {
   if (state.ndiActive === active) return
   state.ndiActive = active
+  emitState()
+}
+
+export function setTimerStreamActive(active: boolean): void {
+  if (state.streamActive === active) return
+  state.streamActive = active
   emitState()
 }
 

@@ -3,7 +3,7 @@ import { laufendesAus, type LaufendStand } from './laufendText'
 
 const ruhig: LaufendStand = {
   player: { ausgabe: false, spielt: false, ndi: false },
-  timer: { ausgabe: false, laeuft: false, ndi: false },
+  timer: { ausgabe: false, laeuft: false, ndi: false, stream: false },
   testbild: false,
   auftraege: 0,
   vorschau: false,
@@ -22,7 +22,7 @@ describe('Was läuft? (Rückfrage beim Beenden)', () => {
     expect(
       laufendesAus({
         player: { ausgabe: true, spielt: true, ndi: true },
-        timer: { ausgabe: false, laeuft: true, ndi: false },
+        timer: { ausgabe: false, laeuft: true, ndi: false, stream: false },
         testbild: true,
         auftraege: 3,
         vorschau: true,
@@ -46,12 +46,13 @@ describe('Was läuft? (Rückfrage beim Beenden)', () => {
     expect(
       laufendesAus({
         ...ruhig,
-        timer: { ausgabe: true, laeuft: false, ndi: true },
+        timer: { ausgabe: true, laeuft: false, ndi: true, stream: true },
         auftraege: 1
       })
     ).toEqual([
       'Stage-Timer: Ausgabe offen',
       'Stage-Timer: NDI-Ausgabe',
+      'Stage-Timer: Stream fürs Heimnetz',
       '1 Auftrag (Konvertierung, Import, Download oder Video-Generator)'
     ])
   })

@@ -20,6 +20,7 @@ import {
   Square,
   Timer as TimerIcon,
   Trash2,
+  Tv,
   Wifi,
   X
 } from 'lucide-react'
@@ -41,6 +42,7 @@ import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/compone
 import { Checkbox } from '@renderer/components/ui/checkbox'
 import { Field } from '@renderer/components/ui/field'
 import { InfoTip } from '@renderer/components/ui/info-tip'
+import { NumberField } from '@renderer/components/ui/number-field'
 import { Select } from '@renderer/components/ui/select'
 import { api } from '@renderer/lib/api'
 import { migrateLocalStorage, updateSettings, useSettings } from '@renderer/lib/settings'
@@ -50,6 +52,8 @@ import {
   DEFAULT_TIMER_SETTINGS,
   type RemoteStatus,
   type StageTimerState,
+  type StreamConfig,
+  type StreamStatus,
   type TimerCommand,
   type TimerNdiConfig,
   type TimerNdiStatus,
@@ -321,6 +325,131 @@ function NdiPanel({ status }: { status: TimerNdiStatus | null }): JSX.Element {
   )
 }
 
+/** Datenraten für den Stream (kbit/s): Die Timer-Anzeige ist meist ruhig – 4 Mbit/s reichen für
+ *  1080p, das WLAN einer TV-Box schafft das sicher. */
+const STREAM_RATES: [number, string][] = [
+  [2000, 'Sparsam (2 Mbit/s)'],
+  [4000, 'Normal (4 Mbit/s)'],
+  [8000, 'Hoch (8 Mbit/s)']
+]
+
+/** Stream-Zustand des Timers: von der Ausgabe-Leiste (Ein/Aus) und dem Panel geteilt. */
+function useTimerStream(cfg: StreamConfig): {
+  status: StreamStatus | null
+  toggle: () => Promise<void>
+} {
+  const [status, setStatus] = useState<StreamStatus | null>(null)
+  useEffect(() => {
+    void api.timer.streamStatus().then(setStatus)
+    return api.timer.onStreamChanged(setStatus)
+  }, [])
+  // Datenrate und Zuschauer leben im main -> während des Sendens nachfragen.
+  useEffect(() => {
+    if (!status?.running) return
+    const t = setInterval(() => void api.timer.streamStatus().then(setStatus), 2000)
+    return () => clearInterval(t)
+  }, [status?.running])
+
+  async function toggle(): Promise<void> {
+    setStatus(await (status?.running ? api.timer.streamStop() : api.timer.streamStart(cfg)))
+  }
+  return { status, toggle }
+}
+
+/** Stream fürs Heimnetz: Timer-Anzeige als H.264 über HTTP (Heimkino-Box, VLC, Smart-TV). */
+function StreamPanel({ status }: { status: StreamStatus | null }): JSX.Element {
+  const cfg = useSettings((s) => s.timer.stream) ?? DEFAULT_TIMER_SETTINGS.stream
+  function patchCfg(patch: Partial<StreamConfig>): void {
+    updateSettings({ timer: { stream: patch } })
+  }
+  if (!status) return <p className="text-xs text-muted-foreground">Lade…</p>
+  const running = status.running
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Auflösung">
+          <Select
+            className="w-full"
+            disabled={running}
+            value={`${cfg.width}x${cfg.height}`}
+            onChange={(e) => {
+              const [w, h] = e.target.value.split('x').map(Number)
+              patchCfg({ width: w, height: h })
+            }}
+          >
+            {NDI_RESOLUTIONS.map(([w, h]) => (
+              <option key={`${w}x${h}`} value={`${w}x${h}`}>
+                {w} × {h}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Bildrate">
+          <Select
+            className="w-full"
+            disabled={running}
+            value={cfg.fps}
+            onChange={(e) => patchCfg({ fps: Number(e.target.value) })}
+          >
+            {[25, 30].map((f) => (
+              <option key={f} value={f}>
+                {f} fps
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Qualität">
+          <Select
+            className="w-full"
+            disabled={running}
+            value={cfg.bitrateKbps}
+            onChange={(e) => patchCfg({ bitrateKbps: Number(e.target.value) })}
+          >
+            {STREAM_RATES.map(([kbps, label]) => (
+              <option key={kbps} value={kbps}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Port" hint="Die Empfänger öffnen http://<dieser Rechner>:<Port>/live.ts">
+          {running ? (
+            <p className="py-1.5 text-sm tabular-nums">{status.config.port}</p>
+          ) : (
+            <NumberField
+              value={cfg.port}
+              min={1024}
+              max={65535}
+              onCommit={(port) => patchCfg({ port })}
+              aria-label="Port"
+            />
+          )}
+        </Field>
+      </div>
+      {running ? (
+        <div className="space-y-1 text-xs text-muted-foreground">
+          <p>Adresse für Heimkino, VLC („Netzwerkstream öffnen“) oder Smart-TV:</p>
+          {status.urls.map((u) => (
+            <p key={u} className="select-all break-all font-mono text-foreground">
+              {u}
+            </p>
+          ))}
+          <p className="tabular-nums">
+            {status.clients === 0
+              ? 'Niemand schaut zu – kodiert wird erst, wenn ein Empfänger verbindet.'
+              : `${status.clients} Empfänger · ${status.kbps} kbit/s${status.encoder ? ` · ${status.encoder}` : ''}`}
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Ein/Aus mit „Stream“ in der Ausgabe-Leiste. Für Geräte ohne NDI – läuft auch über WLAN.
+        </p>
+      )}
+      {status.error && <p className="text-xs text-danger">{status.error}</p>}
+    </>
+  )
+}
+
 const END_LABEL: Record<StageTimerState['endBehavior'], string> = {
   overtime: 'Überziehung zählen',
   stop: 'bei 0:00 stehen',
@@ -338,6 +467,8 @@ export function StageTimer(): JSX.Element {
   const rc = useRemoteControl(api.timer, 8092)
   const ndiCfg = useSettings((s) => s.timer.ndi) ?? DEFAULT_TIMER_SETTINGS.ndi
   const ndi = useTimerNdi(ndiCfg)
+  const streamCfg = useSettings((s) => s.timer.stream) ?? DEFAULT_TIMER_SETTINGS.stream
+  const stream = useTimerStream(streamCfg)
 
   useEffect(() => {
     void api.timer.getState().then((s) => {
@@ -397,7 +528,9 @@ export function StageTimer(): JSX.Element {
       bar={
         <ToolBar
           label="Ausgabe"
-          active={state.outputOpen || Boolean(ndi.status?.running)}
+          active={
+            state.outputOpen || Boolean(ndi.status?.running) || Boolean(stream.status?.running)
+          }
           status={
             isClock ? (
               <span className="text-muted-foreground">Uhr</span>
@@ -440,6 +573,13 @@ export function StageTimer(): JSX.Element {
             onClick={() => void ndi.toggle()}
           >
             NDI
+          </BarToggle>
+          <BarToggle
+            on={Boolean(stream.status?.running)}
+            title="Timer-Anzeige als Stream ins Heimnetz senden (H.264, z. B. für Heimkino oder VLC)"
+            onClick={() => void stream.toggle()}
+          >
+            Stream
           </BarToggle>
           <RemoteToggle
             rc={rc}
@@ -568,6 +708,21 @@ export function StageTimer(): JSX.Element {
             right={ndi.status?.running ? <Badge tone="success">sendet</Badge> : undefined}
           >
             <NdiPanel status={ndi.status} />
+          </PanelSection>
+
+          <PanelSection
+            id="stream"
+            title="Stream fürs Heimnetz"
+            icon={Tv}
+            defaultOpen={false}
+            summary={
+              stream.status?.running
+                ? `Port ${stream.status.config.port} · ${stream.status.clients} Empfänger`
+                : `${streamCfg.width} × ${streamCfg.height} · ${streamCfg.fps} fps · aus`
+            }
+            right={stream.status?.running ? <Badge tone="success">sendet</Badge> : undefined}
+          >
+            <StreamPanel status={stream.status} />
           </PanelSection>
 
           <RemoteSection

@@ -11,6 +11,7 @@ import { getPlayerState } from '../player/playerState'
 import { isPatternOpen } from '../pattern/patternWindow'
 import { verbundeneGeraete } from '../remote/remoteHttp'
 import { isTimerNdiRunning } from '../timer/timerNdi'
+import { isTimerStreamRunning } from '../timer/timerStream'
 import { getTimerState } from '../timer/stageTimer'
 import { laufendesAus, RENDERER_AKTIV, type LaufendStand, type RendererAktiv } from './laufendText'
 
@@ -43,7 +44,12 @@ export function laufendStand(): LaufendStand {
       // nur „läuft“: Der volle Status lüde das NDI-Modul, hier fragt das Wachhalten im Takt
       ndi: isPlayerNdiRunning()
     },
-    timer: { ausgabe: timer.outputOpen, laeuft: timer.running, ndi: isTimerNdiRunning() },
+    timer: {
+      ausgabe: timer.outputOpen,
+      laeuft: timer.running,
+      ndi: isTimerNdiRunning(),
+      stream: isTimerStreamRunning()
+    },
     testbild: isPatternOpen(),
     auftraege: jobQueue.count(),
     vorschau: previewBusy(),

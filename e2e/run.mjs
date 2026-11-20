@@ -25,6 +25,7 @@ const all = [
   'mini-manual',
   'shutdown',
   'ndi',
+  'stream',
   'youtube',
   'ffmpeg-update'
 ]

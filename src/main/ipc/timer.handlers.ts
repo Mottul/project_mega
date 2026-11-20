@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { ausgabeZiel } from '@shared/ausgabe'
 import { Channels } from '@shared/ipc-contracts'
-import type { TimerCommand, TimerNdiConfig, TimerSetup } from '@shared/types'
+import type { StreamConfig, TimerCommand, TimerNdiConfig, TimerSetup } from '@shared/types'
 import { broadcast } from '../services/broadcast'
 import {
   applyTimerCommand,
@@ -13,6 +13,11 @@ import {
 import { getSettings, setSettings } from '../services/store'
 import { closeTimerOutput, openTimerOutput } from '../services/timer/timerWindow'
 import { getTimerNdiStatus, startTimerNdi, stopTimerNdi } from '../services/timer/timerNdi'
+import {
+  getTimerStreamStatus,
+  startTimerStream,
+  stopTimerStream
+} from '../services/timer/timerStream'
 import {
   getTimerRemoteStatus,
   pushTimerRemoteState,
@@ -67,6 +72,10 @@ export function registerTimerHandlers(): void {
   handle(Channels.timer.ndiStart, (_e, cfg: TimerNdiConfig) => startTimerNdi(cfg))
   handle(Channels.timer.ndiStop, () => stopTimerNdi())
   handle(Channels.timer.ndiStatus, () => getTimerNdiStatus())
+  // Stream fürs Heimnetz (H.264 über HTTP)
+  handle(Channels.timer.streamStart, (_e, cfg: StreamConfig) => startTimerStream(cfg))
+  handle(Channels.timer.streamStop, () => stopTimerStream())
+  handle(Channels.timer.streamStatus, () => getTimerStreamStatus())
 
   // Fernsteuerung (Handy/Tablet)
   registerRemoteControl({

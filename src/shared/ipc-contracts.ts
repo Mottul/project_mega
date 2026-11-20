@@ -77,6 +77,8 @@ import type {
   StageTimerState,
   StageTimerTick,
   TimerCommand,
+  StreamConfig,
+  StreamStatus,
   TimerNdiConfig,
   TimerNdiStatus,
   WallResolution,
@@ -344,6 +346,11 @@ export const Channels = {
     ndiStop: anfrage<() => TimerNdiStatus>('timer:ndiStop'),
     ndiStatus: anfrage<() => TimerNdiStatus>('timer:ndiStatus'),
     onNdiChanged: ereignis<(status: TimerNdiStatus) => void>('timer:ndiChanged'),
+    /** Stream fürs Heimnetz (H.264 über HTTP, z. B. für die Heimkino-Box oder VLC). */
+    streamStart: anfrage<(config: StreamConfig) => StreamStatus>('timer:streamStart'),
+    streamStop: anfrage<() => StreamStatus>('timer:streamStop'),
+    streamStatus: anfrage<() => StreamStatus>('timer:streamStatus'),
+    onStreamChanged: ereignis<(status: StreamStatus) => void>('timer:streamChanged'),
     /** Fernsteuerung per Handy/Tablet (Webserver). */
     remoteStatus: anfrage<() => RemoteStatus>('timer:remoteStatus'),
     remoteStart: anfrage<(port: number) => RemoteStatus>('timer:remoteStart'),
