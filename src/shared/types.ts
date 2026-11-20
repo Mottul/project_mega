@@ -956,6 +956,8 @@ export interface StageTimerState {
   outputOpen: boolean
   /** NDI-Ausgabe sendet (Startbildschirm zeigt „Ausgabe“, ohne das NDI-Modul zu laden) */
   ndiActive: boolean
+  /** Stream fürs Heimnetz läuft (Startbildschirm zeigt „Ausgabe“) */
+  streamActive: boolean
 }
 
 /** Leichter, haeufiger Tick (Restzeit), analog PlayerTick. */
@@ -1008,6 +1010,41 @@ export const DEFAULT_TIMER_NDI: TimerNdiConfig = {
   width: 1920,
   height: 1080,
   fps: 30
+}
+
+/** Stream fürs Heimnetz: das Ausgabebild als H.264 in MPEG-TS über HTTP – für Geräte ohne NDI
+ *  (Heimkino-Box, VLC, Smart-TV). Wenige Mbit/s statt 100+, läuft auch über WLAN. */
+export interface StreamConfig {
+  width: number
+  height: number
+  fps: number
+  /** HTTP-Port; die Adresse ist http://<Rechner>:<port>/live.ts */
+  port: number
+  /** Videobitrate in kbit/s */
+  bitrateKbps: number
+}
+
+export interface StreamStatus {
+  /** Server lauscht (ffmpeg läuft nur, solange jemand zuschaut) */
+  running: boolean
+  config: StreamConfig
+  /** verbundene Empfänger */
+  clients: number
+  /** tatsächlich gesendete Datenrate (kbit/s, gemittelt) */
+  kbps: number
+  /** Encoder des laufenden ffmpeg; null = gerade keiner (niemand schaut zu) */
+  encoder: string | null
+  /** Adressen für die Empfänger (LAN-IPs) */
+  urls: string[]
+  error: string | null
+}
+
+export const DEFAULT_TIMER_STREAM: StreamConfig = {
+  width: 1920,
+  height: 1080,
+  fps: 30,
+  port: 8093,
+  bitrateKbps: 4000
 }
 
 /** NDI-Ausgabe des Video-Players (experimentell): ein Offscreen-Spiegel der
@@ -1610,9 +1647,14 @@ export interface TimerSettings {
   /** Zuletzt eingerichteter Ablauf; null = noch keiner. Führt der main-Prozess. */
   setup: TimerSetup | null
   ndi: TimerNdiConfig
+  stream: StreamConfig
 }
 
-export const DEFAULT_TIMER_SETTINGS: TimerSettings = { setup: null, ndi: DEFAULT_TIMER_NDI }
+export const DEFAULT_TIMER_SETTINGS: TimerSettings = {
+  setup: null,
+  ndi: DEFAULT_TIMER_NDI,
+  stream: DEFAULT_TIMER_STREAM
+}
 
 /** Farbschema der Oberfläche. 'system' folgt der OS-Einstellung. */
 export type ThemeMode = 'system' | 'light' | 'dark'

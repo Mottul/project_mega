@@ -37,6 +37,7 @@ import { stopRemoteApp } from './services/remote/remoteAppServer'
 import { stopTimerRemote } from './services/timer/timerRemoteServer'
 import { disposeTimer } from './services/timer/stageTimer'
 import { stopTimerNdi } from './services/timer/timerNdi'
+import { stopTimerStream } from './services/timer/timerStream'
 import { stopPlayerNdi } from './services/player/playerNdi'
 import { checkOnStartup } from './services/ytdlp/ytDlp'
 
@@ -227,6 +228,7 @@ installBeendenRueckfrage(() => mainWin)
 app.on('before-quit', () => {
   if (!beendenFreigegeben()) return
   stopTimerNdi(false)
+  stopTimerStream(false)
   stopPlayerNdi(false)
 })
 

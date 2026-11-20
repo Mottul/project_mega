@@ -76,10 +76,18 @@ export function useToolActivity(): Record<string, ToolActivity> {
     })
   }, [])
 
-  // Stage-Timer: läuft er, ist ein Ausgabefenster offen oder sendet NDI?
+  // Stage-Timer: läuft er, ist ein Ausgabefenster offen, sendet NDI oder der Stream?
   useEffect(() => {
-    const apply = (s: { running: boolean; outputOpen: boolean; ndiActive?: boolean }): void =>
-      setTimer({ running: s.running, output: s.outputOpen || Boolean(s.ndiActive) })
+    const apply = (s: {
+      running: boolean
+      outputOpen: boolean
+      ndiActive?: boolean
+      streamActive?: boolean
+    }): void =>
+      setTimer({
+        running: s.running,
+        output: s.outputOpen || Boolean(s.ndiActive) || Boolean(s.streamActive)
+      })
     void api.timer.getState().then(apply)
     return api.timer.onState(apply)
   }, [])

@@ -274,10 +274,17 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
   Nachrichten, Uhr-Modus. Antippen schaltet auf Vollbild; die Uhrzeit kommt vom Rechner,
   reißt die Verbindung ab, steht das groß da (verbindet sich von selbst neu). Läuft auch in
   älteren Smart-TV-Browsern. Details: [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
+- **Stream fürs Heimnetz** („Stream“ in der Ausgabe-Leiste): die Timer-Anzeige als H.264-Video
+  unter `http://<Rechner>:8093/live.ts` – für Geräte ohne NDI und ohne Browser (TV-Box mit VLC,
+  VLC am Rechner: „Netzwerkstream öffnen“). 2–8 Mbit/s statt 100+ wie bei NDI, läuft also auch
+  über WLAN; beliebig viele Empfänger. Kodiert wird nur, solange jemand zuschaut (GPU-Encoder,
+  sonst libx264), eine Sekunde bis zum ersten Bild eines neuen Empfängers. Auflösung, Bildrate,
+  Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die Adressen,
+  Empfänger und Datenrate. Wie die Fernsteuerung ohne Passwort, nur im lokalen Netz.
 - **NDI-Ausgabe** (optional): [NDI.md](NDI.md). **Handy-Fernsteuerung**, die auch bei
   geschlossenem Werkzeug funktioniert.
-- **Am Startbildschirm** zeigt die Kachel, ob der Timer läuft und ob eine Ausgabe (Fenster oder
-  NDI) aktiv ist.
+- **Am Startbildschirm** zeigt die Kachel, ob der Timer läuft und ob eine Ausgabe (Fenster, NDI
+  oder Stream) aktiv ist.
 - **Ablauf bleibt erhalten:** Abschnitte, Schwellen, Ende-Verhalten und Anzeige merkt sich die App
   über Neustarts – auch wenn der Timer nur vom Handy aus bedient wurde.
 

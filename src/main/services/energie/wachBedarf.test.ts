@@ -4,7 +4,7 @@ import { wachBedarf } from './wachBedarf'
 
 const ruhig: LaufendStand = {
   player: { ausgabe: false, spielt: false, ndi: false },
-  timer: { ausgabe: false, laeuft: false, ndi: false },
+  timer: { ausgabe: false, laeuft: false, ndi: false, stream: false },
   testbild: false,
   auftraege: 0,
   vorschau: false,
@@ -21,7 +21,7 @@ describe('Wachhalten – wann darf der Rechner nicht einschlafen?', () => {
 
   it('ein Bild auf einem Ausgang hält auch den Bildschirm an – Timer, Testbild, pausierter Player', () => {
     const ausgaben: Partial<LaufendStand>[] = [
-      { timer: { ausgabe: true, laeuft: false, ndi: false } },
+      { timer: { ausgabe: true, laeuft: false, ndi: false, stream: false } },
       { testbild: true },
       // pausiert: Chromium hielte den Bildschirm hier nicht selbst wach
       { player: { ausgabe: true, spielt: false, ndi: false } }
@@ -34,8 +34,9 @@ describe('Wachhalten – wann darf der Rechner nicht einschlafen?', () => {
     const laeuft: Partial<LaufendStand>[] = [
       { auftraege: 1 }, // Konvertierung über Nacht
       { vorschau: true },
-      { timer: { ausgabe: false, laeuft: true, ndi: false } }, // Anzeige im Browser, am Handy
-      { timer: { ausgabe: false, laeuft: false, ndi: true } },
+      { timer: { ausgabe: false, laeuft: true, ndi: false, stream: false } }, // Anzeige im Browser, am Handy
+      { timer: { ausgabe: false, laeuft: false, ndi: true, stream: false } },
+      { timer: { ausgabe: false, laeuft: false, ndi: false, stream: true } }, // Heimkino schaut zu
       { player: { ausgabe: false, spielt: false, ndi: true } },
       { player: { ausgabe: false, spielt: true, ndi: false } },
       { fernsteuerung: { 'jingle-remote': 1 } }, // Jingles vom Handy, dazwischen läuft nichts
@@ -57,7 +58,7 @@ describe('Wachhalten – wann darf der Rechner nicht einschlafen?', () => {
       { ...ruhig, auftraege: 2 },
       { ...ruhig, fernsteuerung: { unbekannt: 1 } },
       { ...ruhig, renderer: ['jingle', 'testton'] },
-      { ...ruhig, timer: { ausgabe: true, laeuft: true, ndi: true } }
+      { ...ruhig, timer: { ausgabe: true, laeuft: true, ndi: true, stream: false } }
     ]
     for (const s of faelle) {
       expect(wachBedarf(s) !== null, JSON.stringify(s)).toBe(laufendesAus(s).length > 0)
