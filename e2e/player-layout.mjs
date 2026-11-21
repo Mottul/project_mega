@@ -15,6 +15,8 @@
 // Playlist“, „Medienordner öffnen“, „Bibliothek leeren …“), Listen am <body>, Kacheln nach Platz
 // im Feld, Suche, gestrichelter Rahmen nur beim Hineinziehen von Dateien, Import-Liste unten
 // angeheftet, Papierkorb mit Rückfrage.
+// Seit die Schublade in Fenstern unter 1100 px schwebt: bei 1024 × 600 mit offener Schublade die
+// Stufe „mittel“ wie ohne (vorher „schmal“), der Wechsel zum Schweben baut nichts neu auf.
 // Braucht das gebündelte ffmpeg (Import); ohne wird übersprungen.
 
 import assert from 'node:assert/strict'
@@ -102,23 +104,42 @@ async function playerNeu() {
   await page.getByTestId('tool-bar').waitFor({ timeout: 10_000 })
 }
 
-/** Schublade öffnen (angeheftet) oder schließen – wie ein Nutzer über den Knopf in der Kopfleiste */
-async function schublade(offen) {
-  const ist = async () => (await page.getByTestId('settings-drawer').count()) > 0
+/** Unter dieser Fensterbreite schwebt die Schublade immer, auch wenn „angeheftet“ gemerkt ist */
+const SCHWEBT_UNTER = 1100
+
+/**
+ * Schublade öffnen (angeheftet) oder schließen – wie ein Nutzer über den Knopf in der Kopfleiste.
+ * In schmalen Fenstern schwebt sie, die Nadel ist dort gesperrt: Dann bleibt „angeheftet“ nur
+ * gemerkt und gilt wieder, sobald das Fenster breiter ist.
+ */
+async function schublade(offen, breite) {
+  const lade = page.getByTestId('settings-drawer')
+  const ist = async () => (await lade.count()) > 0
   if ((await ist()) !== offen) {
     await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
     assert.ok(await waitFor(async () => (await ist()) === offen, 5_000), 'Schublade reagiert nicht')
   }
-  if (offen) {
-    const pin = await page.getByTestId('settings-drawer').getAttribute('data-pinned')
-    if (pin !== 'true') await page.getByRole('button', { name: 'Schublade anheften' }).click()
-  }
+  if (!offen) return
+  const anheftbar = breite >= SCHWEBT_UNTER
+  const nadel = lade.getByRole('button', { name: /^Schublade (anheften|lösen)$/ })
+  // Die neue Breite kommt per matchMedia ein Bild später an – erst dann zählt die Nadel
+  assert.ok(
+    await waitFor(
+      async () => ((await nadel.getAttribute('aria-disabled')) === 'true') !== anheftbar
+    ),
+    `Nadel bei ${breite} px ${anheftbar ? 'gesperrt' : 'bedienbar'}`
+  )
+  if (anheftbar && (await lade.getAttribute('data-pinned')) !== 'true') await nadel.click()
+  assert.ok(
+    await waitFor(async () => (await lade.getAttribute('data-pinned')) === String(anheftbar)),
+    `Schublade bei ${breite} px: data-pinned=${await lade.getAttribute('data-pinned')}`
+  )
 }
 
 /** Fenstergröße und Schublade einstellen, dann warten, bis das Raster nachgezogen hat */
 async function fenster(width, height, offen = false) {
   await page.setViewportSize({ width, height })
-  await schublade(offen)
+  await schublade(offen, width)
   await sleep(700)
 }
 
@@ -402,6 +423,24 @@ try {
       ]
     }),
     [
+      '1024 × 600, Schublade offen und angeheftet gemerkt: Sie schwebt, Stufe „mittel“ wie ohne Schublade',
+      async () => {
+        // Vor dem Schweben nahm sie 360 px: Arbeitsfläche 664 px breit, Stufe „schmal“
+        await fenster(1024, 600, true)
+        const m = await mass()
+        assert.equal(m.fenster.w, 1024)
+        assert.equal(await page.getByTestId('settings-drawer').getAttribute('data-pinned'), 'false')
+        keinScrollen(m)
+        assert.equal(m.stufe, 'mittel')
+        // die Arbeitsfläche hat die ganze Breite, die Schublade liegt darüber
+        const breite = await page
+          .getByTestId('arbeitsflaeche')
+          .evaluate((el) => el.getBoundingClientRect().width)
+        assert.ok(breite >= 1023, `Arbeitsfläche nur ${breite} px breit`)
+        await fenster(1024, 600)
+      }
+    ],
+    [
       'Wechsel der Stufe baut die laufende Wiedergabe nicht neu auf (breit → mittel → schmal → breit)',
       async () => {
         await fenster(1366, 768)
@@ -419,6 +458,8 @@ try {
         assert.ok(await markieren(), 'kein <video> in der Vorschau')
         for (const [w, h, offen] of [
           [1366, 768, true],
+          // die Schublade wechselt von angeheftet zu schwebend, die Arbeitsfläche wird breiter
+          [1024, 600, true],
           [700, 600, false],
           [1366, 768, false]
         ]) {

@@ -54,7 +54,11 @@ Jedes Werkzeug ist gleich aufgebaut:
 - **Schublade links** mit den Einstellungen: Bereiche mit Symbol, Titel und einer Zusammenfassung
   der Werte, einzeln auf- und zuklappbar; längere Erklärungen hinter dem **ⓘ**. Mit der **Nadel**
   angeheftet schiebt sie die Arbeitsfläche zur Seite (zum Einrichten), gelöst schwebt sie darüber
-  und ist in der Show schnell wieder zu. Offen/angeheftet merkt sich jedes Werkzeug.
+  und ist in der Show schnell wieder zu: Ein Klick in die Arbeitsfläche schließt sie (ein
+  angefangenes Feld der Schublade gilt dann trotzdem). In Fenstern unter 1100 px Breite schwebt
+  sie immer, damit die Arbeitsfläche den Platz behält – die Nadel ist dort ausgegraut,
+  „angeheftet“ bleibt gemerkt und gilt wieder, sobald das Fenster breiter ist. Offen/angeheftet
+  merkt sich jedes Werkzeug.
 
 - **Suche** über Name, Beschreibung und Stichworte; mehrere Begriffe grenzen weiter ein.
 - **Ansicht „Alle“ oder „Favoriten“.** Der Stern an einer Kachel macht ein Werkzeug zum Favoriten.

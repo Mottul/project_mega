@@ -6,11 +6,21 @@
 //   Schublade | Arbeitsfläche
 //
 // Die Einstellungen liegen in einer Schublade LINKS. Angeheftet schiebt sie die Arbeitsfläche
-// zur Seite (zum Einrichten), gelöst schwebt sie darüber und ist in der Show schnell wieder zu.
+// zur Seite (zum Einrichten), gelöst schwebt sie darüber und ist in der Show schnell wieder zu:
+// Ein Klick in die Arbeitsfläche schließt sie. In Fenstern unter 1100 px Breite schwebt sie
+// immer – angeheftet ließe sie der Arbeitsfläche bei 1024 px nur 664 px, und große Werkzeuge
+// scrollten. „Angeheftet“ bleibt dabei gemerkt und gilt wieder, sobald das Fenster breiter ist.
 // Offen/angeheftet merkt sich jedes Werkzeug selbst. Der Knopf „Einstellungen“ sitzt in der
 // Kopfleiste neben dem Werkzeugnamen – ToolHost stellt dafür einen Platz bereit
 // (ToolChromeContext), ToolShell hängt den Knopf per Portal dort ein.
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode
+} from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Pin, PinOff, SlidersHorizontal, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -27,6 +37,24 @@ export interface ToolChrome {
 export const ToolChromeContext = createContext<ToolChrome>({ settingsSlot: null, toolName: '' })
 
 const ShellCtx = createContext<string>('tool')
+
+/** Unter dieser Fensterbreite (px) schwebt die Schublade immer, auch wenn sie angeheftet ist */
+const SCHWEBT_UNTER = 1100
+const SCHMALES_FENSTER = `(width < ${SCHWEBT_UNTER}px)`
+
+function fensterbreiteBeobachten(melden: () => void): () => void {
+  const mq = window.matchMedia(SCHMALES_FENSTER)
+  mq.addEventListener('change', melden)
+  return () => mq.removeEventListener('change', melden)
+}
+
+/** Ist das Fenster schmaler als SCHWEBT_UNTER? Folgt jeder Größenänderung. */
+function useSchmalesFenster(): boolean {
+  return useSyncExternalStore(
+    fensterbreiteBeobachten,
+    () => window.matchMedia(SCHMALES_FENSTER).matches
+  )
+}
 
 export function ToolShell({
   id,
@@ -54,6 +82,27 @@ export function ToolShell({
   const [open, setOpen] = usePersistentState(`shell:${id}:drawer`, wasOpen, flag)
   const [pinned, setPinned] = usePersistentState(`shell:${id}:pin`, true, flag)
   const hasAside = aside != null
+  const schmal = useSchmalesFenster()
+  // Was gilt: Im schmalen Fenster schwebt sie, der gemerkte Wert (pinned) bleibt unangetastet
+  const angeheftet = pinned && !schmal
+  const schwebt = hasAside && open && !angeheftet
+  const schubladeRef = useRef<HTMLElement>(null)
+  const nadelHinweis = schmal
+    ? `Im schmalen Fenster schwebt die Schublade, damit die Arbeitsfläche Platz hat – ${
+        pinned ? 'angeheftet ist sie wieder' : 'anheften geht'
+      }, sobald das Fenster breiter ist (ab ${SCHWEBT_UNTER} px).`
+    : angeheftet
+      ? 'Lösen: schwebt über der Arbeitsfläche (für die Show)'
+      : 'Anheften: schiebt die Arbeitsfläche zur Seite (zum Einrichten)'
+
+  /** Klick in die Arbeitsfläche, während die Schublade schwebt: Sie geht zu, der Klick wirkt. */
+  function schliessenDaneben(): void {
+    // Erst das Feld verlassen, in dem gerade getippt wird: TextField und NumberField übernehmen
+    // beim Verlassen, ein abgebautes Feld meldet das nicht mehr
+    const aktiv = document.activeElement
+    if (aktiv instanceof HTMLElement && schubladeRef.current?.contains(aktiv)) aktiv.blur()
+    setOpen(false)
+  }
 
   return (
     <ShellCtx.Provider value={id}>
@@ -62,12 +111,15 @@ export function ToolShell({
         <div className="relative flex min-h-0 flex-1">
           {hasAside && open && (
             <aside
+              ref={schubladeRef}
               data-testid="settings-drawer"
-              data-pinned={pinned}
+              data-pinned={angeheftet}
               aria-label={toolName ? `Einstellungen ${toolName}` : 'Einstellungen'}
               className={cn(
                 'flex max-w-full shrink-0 flex-col border-r border-border bg-card',
-                pinned ? 'relative' : 'absolute inset-y-0 left-0 z-30 shadow-2xl shadow-black/50'
+                angeheftet
+                  ? 'relative'
+                  : 'absolute inset-y-0 left-0 z-30 shadow-2xl shadow-black/50'
               )}
               style={{ width: asideWidth }}
             >
@@ -81,17 +133,21 @@ export function ToolShell({
                 <Button
                   variant="ghost"
                   size="icon"
-                  aria-pressed={pinned}
-                  aria-label={pinned ? 'Schublade lösen' : 'Schublade anheften'}
-                  title={
-                    pinned
-                      ? 'Lösen: schwebt über der Arbeitsfläche (für die Show)'
-                      : 'Anheften: schiebt die Arbeitsfläche zur Seite (zum Einrichten)'
-                  }
-                  className={pinned ? 'text-primary' : 'text-muted-foreground'}
-                  onClick={() => setPinned((p) => !p)}
+                  aria-pressed={angeheftet}
+                  aria-label={angeheftet ? 'Schublade lösen' : 'Schublade anheften'}
+                  // aria-disabled statt disabled: Ein gesperrter Knopf nimmt keine Maus an
+                  // (pointer-events-none) – dann erschiene auch der Hinweis nicht, warum
+                  aria-disabled={schmal || undefined}
+                  title={nadelHinweis}
+                  className={cn(
+                    angeheftet ? 'text-primary' : 'text-muted-foreground',
+                    schmal && 'cursor-not-allowed opacity-50 hover:bg-transparent'
+                  )}
+                  onClick={() => {
+                    if (!schmal) setPinned((p) => !p)
+                  }}
                 >
-                  {pinned ? <Pin className="size-4" /> : <PinOff className="size-4" />}
+                  {angeheftet ? <Pin className="size-4" /> : <PinOff className="size-4" />}
                 </Button>
                 <Button
                   variant="ghost"
@@ -106,7 +162,12 @@ export function ToolShell({
               <div className="flex-1 space-y-3 overflow-y-auto p-3">{aside}</div>
             </aside>
           )}
-          <section data-testid="tool-main" className="min-w-0 flex-1 overflow-auto">
+          {/* capture: auch wenn ein Element darin den Klick selbst abfängt (Griffe, Hebel) */}
+          <section
+            data-testid="tool-main"
+            className="min-w-0 flex-1 overflow-auto"
+            onPointerDownCapture={schwebt ? schliessenDaneben : undefined}
+          >
             {main}
           </section>
         </div>

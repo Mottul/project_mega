@@ -79,9 +79,10 @@ den Transport nicht mehr.
 - **Drei Stufen aus dem gemessenen Platz,** nicht aus der Fensterbreite: `breit` (ab 1180 px),
   `mittel` (ab 760 px), `schmal` (darunter oder niedriger als 420 px: eine Spalte, die
   Arbeitsfläche scrollt). So stimmt es auch mit angehefteter Schublade und im eigenen Fenster:
-  1024 × 600 ergibt `mittel` (Arbeitsfläche 1024 × 498), mit angehefteter Schublade `schmal`
-  (664 × 498); 1366 × 768 ergibt `breit` (1366 × 666), angeheftet `mittel` (1006 × 666);
-  1920 × 1080 ist immer `breit`.
+  1024 × 600 ergibt `mittel` (Arbeitsfläche 1024 × 498) – auch mit offener Schublade, denn in
+  Fenstern unter 1100 px Breite schwebt sie über der Arbeitsfläche (`ToolShell.tsx`);
+  1366 × 768 ergibt `breit` (1366 × 666), angeheftet `mittel` (1006 × 666); 1920 × 1080 ist
+  immer `breit`.
 - **Die Felder stehen in jeder Stufe in derselben Reihenfolge,** nur ihr Platz im Raster wechselt.
   Sonst baut React beim Öffnen der Schublade alles neu auf – im Player lüde das laufende Video
   neu.
@@ -103,29 +104,34 @@ den Transport nicht mehr.
 
 **Gemessen am 14. November 2026** in der gebauten App mit frischem Profil: um wie viele Pixel
 die Seite höher ist als die sichtbare Arbeitsfläche. „zu“ und „an“ heißt: Schublade zugeklappt
-bzw. angeheftet. „passt“: Die Seite scrollt nicht.
+bzw. offen und angeheftet. „passt“: Die Seite scrollt nicht. Die Spalte 1024 × 600 ist nach B8
+neu gemessen (17. und 21. November 2026): Dort schwebt die Schublade, auch wenn sie angeheftet
+ist.
 
 | Werkzeug | 1024 × 600 (zu · an) | 1366 × 768 (zu · an) | 1920 × 1080 (zu · an) | Folge |
 | -------- | -------------------- | -------------------- | --------------------- | ----- |
-| Video-Player | passt · Stufe `schmal` | passt · passt | passt · passt | Vorbild |
-| Video-Generator (12 Bilder) | +732 · +1074 | +490 · +639 | +169 · +318 | **W1** |
-| Stage-Timer (8 Abschnitte) | +142 · +771 | passt · passt | passt · passt | **W2** |
-| Testbildgenerator | +124 · +143 | +57 · +57 | passt · passt | **W3** |
-| NovaStar-Steuerung | +96 · +112 | passt · passt | passt · passt | **W4** |
-| Mini-Manual (leere Anleitung) | +404 · +817 | +196 · +196 | passt · passt | **W5** |
-| LED-Wall-Konfigurator | +46 · +1009 | passt · passt | passt · passt | B8, später W6 |
+| Video-Player | passt · passt (Stufe `mittel`, vorher `schmal`) | passt · passt | passt · passt | Vorbild |
+| Video-Generator (12 Bilder) | +732 · +732 (vorher +1074) | +490 · +639 | +169 · +318 | **W1** |
+| Stage-Timer (8 Abschnitte à 5 min) | +114 · +114 (am 14.11. +142 · +771) | passt · passt | passt · passt | **W2** |
+| Testbildgenerator | +124 · +124 (vorher +143) | +57 · +57 | passt · passt | **W3** |
+| NovaStar-Steuerung | +96 · +96 (vorher +112) | passt · passt | passt · passt | **W4** |
+| Mini-Manual (leere Anleitung) | +404 · +404 (vorher +817) | +196 · +196 | passt · passt | **W5** |
+| LED-Wall-Konfigurator | +46 · +46 (vorher +1009) | passt · passt | passt · passt | später W6 |
 | ATEM-Steuerung (Probebetrieb, Mini Extreme) | passt · passt | passt · passt | passt · passt | nichts: links scrollt die Seite in sich, die Spalte „Übergang“ steht |
 | Jingle-Player (acht leere Pads), OSC-Steuerung (Vorgabe) | passt · passt | passt · passt | passt · passt | nichts |
 | Video-Konverter, Medien-Info, Packliste, YouTube-Downloader, Handbücher, Netzwerk-Scanner | leer: passt | leer: passt | leer: passt | Dokumente – bleiben |
 
-- **Die Schublade ist der größte einzelne Hebel:** Angeheftet lässt sie der Arbeitsfläche in
-  einem 1024 px breiten Fenster 664 px – daher die großen Zahlen in der Spalte „an“. Paket **B8**
-  (die Schublade schwebt in schmalen Fenstern) entschärft das für alle Werkzeuge auf einmal und
-  kommt deshalb vor den W-Paketen.
+- **Die Schublade war der größte einzelne Hebel:** Angeheftet ließ sie der Arbeitsfläche in
+  einem 1024 px breiten Fenster nur 664 px – daher die großen Zahlen, die in der Spalte „an“ in
+  Klammern stehen. Seit B8 schwebt sie in Fenstern unter 1100 px Breite über der Arbeitsfläche,
+  auch wenn sie angeheftet ist; „angeheftet“ bleibt gemerkt und gilt wieder, sobald das Fenster
+  breiter ist. Bei 1024 × 600 gleicht die Spalte „an“ deshalb der Spalte „zu“.
 - **So wurde gemessen:** Playwright über `e2e/harness.mjs`, je Werkzeug und Fenstergröße
   `scrollHeight` gegen `clientHeight` des Bereichs `data-testid="tool-main"`. Inhalte: im
-  Stage-Timer acht Abschnitte (Befehl `setSegments`), im Video-Generator zwölf Bilder über
-  „Bilder & Videos“, die ATEM-Steuerung im Probebetrieb. Jedes W-Paket stellt seine Messung als
+  Stage-Timer acht Abschnitte (Befehl `setSegments`; seit dem 17. November je 5 min mit kurzem
+  Sprecher und Titel – am 14. November, mit anderen Abschnitten, 28 px mehr, obwohl der
+  Stage-Timer dazwischen unverändert war), im Video-Generator zwölf Bilder über „Bilder &
+  Videos“, die ATEM-Steuerung im Probebetrieb. Jedes W-Paket stellt seine Messung als
   E2E-Schritt nach, bevor es etwas ändert.
 
 ### Muster 2: Kleines Werkzeug
@@ -259,7 +265,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **2 – Muster übertragen** | B8 · K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner. B8 zuerst, es wirkt in allen Werkzeugen |
+| **2 – Muster übertragen** | K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
@@ -277,12 +283,12 @@ Reihenfolge des Gewinns. Je Werkzeug ein Pull Request.
 
 | Paket | Werkzeug | Seite zu hoch um (Schublade zu: 1024 · 1366 · 1920) | Größe | Braucht |
 | ----- | -------- | --------------------------------------------------- | ----- | ------- |
-| **W1** | Video-Generator | 732 · 490 · 169 px (12 Bilder) | M–L | Skizze, besser nach B8 |
-| **W2** | Stage-Timer | 142 px · passt · passt (8 Abschnitte) | M | Skizze |
+| **W1** | Video-Generator | 732 · 490 · 169 px (12 Bilder) | M–L | Skizze |
+| **W2** | Stage-Timer | 114 px · passt · passt (8 Abschnitte) | M | Skizze |
 | **W3** | Testbildgenerator | 124 · 57 px · passt | S–M | – |
 | **W4** | NovaStar-Steuerung | 96 px · passt · passt | S | – |
 | **W5** | Mini-Manual | 404 · 196 px · passt (leer) | M | erst ansehen, Skizze |
-| **W6** | LED-Wall-Konfigurator auf `Pane` | 46 px · passt · passt | M | B8; nur wenn sich der Baustein bewährt |
+| **W6** | LED-Wall-Konfigurator auf `Pane` | 46 px · passt · passt | M | nur wenn sich der Baustein bewährt |
 
 Für jedes W-Paket gilt:
 
@@ -338,8 +344,8 @@ auf.
 **Heute:** `StageTimer.tsx` legt zwei Spalten in ein Raster ohne Höhe
 (`minmax(0, min(38%, 34rem)) 1fr`, Rand 24 px): links Vorschau, Steuerung und Nachricht an die
 Bühne, rechts die Abschnitte; unter 820 px Breite eine Spalte. Die Seite scrollt als Ganzes. Mit
-acht Abschnitten ist sie bei 1024 × 600 um 142 px zu hoch, mit angehefteter Schublade um 771 px –
-die Abschnitte liegen dann unter dem Rand. Ab 1366 × 768 passt es.
+acht Abschnitten ist sie bei 1024 × 600 um 114 px zu hoch (nach B8 gemessen), mit offener
+Schublade ebenso – sie schwebt dort. Ab 1366 × 768 passt es, auch angeheftet.
 
 **So:** zwei Felder. **Bühne:** Vorschau, Transport mit der Restzeit, Nachricht an die Bühne; so
 hoch wie ihr Inhalt. **Abschnitte:** Kopf mit Anzahl und Gesamtdauer, die Liste scrollt in sich;
@@ -405,9 +411,10 @@ Formular.
 ### W6 – LED-Wall-Konfigurator auf `Pane`
 
 Der Konfigurator hat sein eigenes Gerüst (`LedWall.tsx`: Kennzahlen, Zeichenfläche, Pläne) und
-passt ab 1366 × 768. Bei 1024 × 600 fehlen 46 px; mit angehefteter Schublade bricht das Gerüst um
-(1009 px zu hoch) – das behebt B8. Ob er `WorkArea` und `Pane` übernimmt, entscheidet sich, wenn
-sich der Baustein in W1 bis W3 bewährt hat. Bis dahin kein Auftrag.
+passt ab 1366 × 768. Bei 1024 × 600 fehlen 46 px, auch mit offener Schublade: Sie schwebt dort
+seit B8, das Gerüst bricht nicht mehr um (vorher 1009 px zu hoch). Ob er `WorkArea` und `Pane`
+übernimmt, entscheidet sich, wenn sich der Baustein in W1 bis W3 bewährt hat. Bis dahin kein
+Auftrag.
 
 
 ## K – Kleine Werkzeuge
@@ -572,7 +579,6 @@ Kleine Pakete, die man täglich merkt. Unabhängig voneinander, soweit nichts an
 | **B5** | Video-Generator: Leerzustand nicht rot | S | – |
 | **B6** | Startbildschirm: Namen und Beschreibungen ganz lesbar | S | – |
 | **B7** | App-Einstellungen als Dialog mit Reitern | M | – |
-| **B8** | Schublade schwebt in schmalen Fenstern | S | – |
 | **B9** | „Über und Diagnose“: Version, Protokoll, Datenordner | M | B7 |
 | **B10** | Mini-Manual: Schritt-Texte ganz sichtbar | S | – |
 | **B11** | Kundenansicht ohne Aufblitzen des Startbildschirms | S | – |
@@ -706,24 +712,6 @@ vorhandenen Komponenten. Design, Akzent und Dichte wirken weiter sofort.
 **Abnahme:** `e2e/layout.mjs` prüft das App-Menü (13 Akzentfarben, yt-dlp-Bereich) und
 `e2e/mini-manual.mjs` das Firmenprofil über das Menü – beide anpassen. Neu: Bei 1024 × 600 liegt
 der ganze Dialog im Fenster.
-
-### B8 – Schublade schwebt in schmalen Fenstern
-
-**Heute:** Die Schublade ist ab Werk in jedem Werkzeug offen und angeheftet (`ToolShell.tsx`,
-360 px). In einem 1024 px breiten Fenster bleiben der Arbeitsfläche 664 px. Gemessen am
-14. November 2026 bei 1024 × 600 mit angehefteter Schublade: Die Seite ist im
-LED-Wall-Konfigurator um 1009 px zu hoch, im Mini-Manual um 817 px, im Stage-Timer um 771 px, im
-Video-Generator um 1074 px; der Video-Player fällt in die Stufe `schmal` (Tabelle im
-[Leitbild](#muster-1-arbeitsfläche)).
-
-**So:** Ist das Werkzeugfenster schmaler als 1100 px, verhält sich die Schublade wie gelöst
-(schwebt über der Arbeitsfläche), auch wenn „angeheftet“ gemerkt ist – der gemerkte Wert bleibt
-unangetastet und gilt wieder, sobald das Fenster breiter ist. Schwebt sie, schließt ein Klick
-in die Arbeitsfläche sie. Die Nadel ist in schmalen Fenstern ausgegraut, mit Hinweis.
-
-**Abnahme:** `e2e/layout.mjs` (Schublade anheften, lösen, schließen) erweitern: bei 1024 px
-Breite `data-pinned="false"`, bei 1366 px wieder `true`, ohne dass jemand die Nadel angefasst
-hat; ein Klick daneben schließt nur die schwebende.
 
 ### B9 – „Über und Diagnose“: Version, Protokoll, Datenordner
 
@@ -1475,7 +1463,9 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   reinen Ziffern, Temperatur mit Minus, Bewertung und Winkel-Warnungen in den Statusstufen,
   DMX-Schalter mit `aria-pressed`, ein Ergebnis „Adresse“ weniger, „Werkzeuge“ statt „Rechner“ in
   der PWA, `trimNum` ohne Exponent); der DMX-Dip-Schalter zählt wie die Geräte (Adresse = Summe
-  der Schalter, Schalter 1 an = Adresse 1).
+  der Schalter, Schalter 1 an = Adresse 1); die Schublade schwebt in Fenstern unter 1100 px
+  Breite, auch wenn sie angeheftet ist – die Nadel ist dort ausgegraut, ein Klick in die
+  Arbeitsfläche schließt die schwebende und übernimmt vorher ein angefangenes Feld (B8).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

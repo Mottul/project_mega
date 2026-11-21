@@ -305,7 +305,9 @@ Stummschalter, Tastaturen der Felder, Abnahme am Gerät), sammelt der Skill `rec
   (Rechenlauf bild- und samplegenau, Zwischenspeicher, Schleife, Abbrechen, Eingabeprüfung,
   Oberfläche; braucht ffmpeg), `paket` (die gepackte App aus `dist/`: Start aus dem `app.asar`,
   ffmpeg aus dem Paket, PDF-Import mit pdfjs und SQLite – nur auf Wunsch, vorher
-  `npm run package:dir`). `E2E_DEBUG=1` schreibt Ausgabe und Fenster des main-Prozesses mit.
+  `npm run package:dir`). `E2E_DEBUG=1` schreibt Ausgabe und Fenster des main-Prozesses mit,
+  `E2E_FENSTER=1024x730` macht das Hauptfenster so klein wie auf den Bildschirmen der CI unter
+  Windows und macOS (dort schwebt die Schublade).
   `e2e/harness.mjs`
   bringt `launchApp`, `openRoute`, `waitFor`, Dialog-Stubs, `openBrowserWindow` (unsichtbares
   Electron-Fenster als fremder Browser), `findFfmpeg`, `portFree` und `runSteps`. Ein neues Skript

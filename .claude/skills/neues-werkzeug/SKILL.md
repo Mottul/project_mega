@@ -37,9 +37,10 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Scrollen stehen bleibt, Dateien ins ganze Feld ziehen (`Pane` mit `ablage` aus
      `lib/useDateiAblage.ts`) und einer Auftragsliste als Fuß (`footer`, nur solange es Aufträge
      gibt): `video-player/Library.tsx`. Abnahme nach
-     `e2e/player-layout.mjs` (kein Scrollen bei 1024 × 600, 1366 × 768 auch mit angehefteter
-     Schublade, 1920 × 1080; Wichtiges im Bild; schmal eine Spalte). Werkzeuge, die man wie ein
-     Dokument liest (Listen, Formulare), scrollen weiter als Seite.
+     `e2e/player-layout.mjs` (kein Scrollen bei 1024 × 600 – dort schwebt die Schublade, auch
+     offen –, 1366 × 768 auch mit angehefteter Schublade, 1920 × 1080; Wichtiges im Bild; schmal
+     eine Spalte). Werkzeuge, die man wie ein Dokument liest (Listen, Formulare), scrollen weiter
+     als Seite.
    - **Bild-Ausgabe auf einen Monitor** (wie Testbild, Player, Timer): in der Leiste
      `useOutputTarget()` + `OutputControls` (`components/OutputControl.tsx`: Monitore und „Als
      Fenster“, Starten/Beenden, „Monitor wechseln“), im main `createOutputWindow()`
@@ -50,7 +51,12 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
    - **`aside`** = Schublade links: `PanelSection`s mit Symbol und `summary` (die wichtigsten Werte,
      auch zugeklappt sichtbar). Felder als `Field`/`Checkbox` mit `hint` – Erklärungen hinter
      dem ⓘ (`InfoTip`), keine Absätze unter jeder Option. **Keine Aktionen** in die Schublade
-     (Start, Import, Export, Ein/Aus) – die gehören in Leiste oder Arbeitsfläche.
+     (Start, Import, Export, Ein/Aus) – die gehören in Leiste oder Arbeitsfläche. `ToolShell`
+     regelt die Schublade für alle gleich: In Fenstern unter 1100 px Breite schwebt sie über der
+     Arbeitsfläche, auch wenn sie angeheftet ist (Nadel ausgegraut), und ein Klick in die
+     Arbeitsfläche schließt sie – das Raster eines Werkzeugs rechnet bei 1024 px also mit der
+     ganzen Breite, angeheftet erst ab 1100 px mit 360 px weniger. Nichts davon im Werkzeug
+     nachbauen.
    - Was die ganze App betrifft, gehört ins App-Menü (`components/app/AppMenu.tsx`), nie ins
      Werkzeug. Die Kopfleiste (`ToolHost`) baut das Werkzeug nicht selbst.
    - **Kleines Werkzeug** (Rechner ohne Ausgabe und Schublade): in `SMALL_TOOLS`

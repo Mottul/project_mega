@@ -132,6 +132,13 @@ nachgestellt, bevor etwas geändert wurde):
   ziehen weder Toasts noch `api` herein: Die App setzt beim Start einen Melder
   (`setStorageErrorHandler` in `main.tsx`), die PWA keinen. Ein Melder, der selbst wirft, darf
   die übrigen Stores nicht am Schreiben hindern.
+- **Wer etwas abbaut, in dem gerade getippt wird, verlässt vorher das Feld.** `TextField` und
+  `NumberField` übernehmen erst beim Verlassen (`blur`) oder mit Enter. Schloss ein Klick in die
+  Arbeitsfläche die schwebende Schublade sofort beim `pointerdown`, war das Feld weg, bevor der
+  Fokus wanderte – kein `blur`, die getippte Breite der Wand ging verloren (17.11.2026, im E2E
+  gegengeprüft). Deshalb `document.activeElement.blur()`, wenn der Fokus in dem Teil liegt, der
+  verschwindet, und erst dann schließen (`schliessenDaneben` in `ToolShell.tsx`). Gilt für jedes
+  Schließen ohne Klick auf einen Knopf: Klick daneben, Tastenkürzel, Wechsel der Ansicht.
 
 ## Raster und SVG (Oktober 2026)
 
