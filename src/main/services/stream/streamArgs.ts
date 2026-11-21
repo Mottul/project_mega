@@ -1,8 +1,14 @@
-// Reine Bausteine des Heimnetz-Streams (ohne Electron, getestet): Eingaben begrenzen, die
-// ffmpeg-Argumente je Encoder und der Bildtakt. Der Stream ist live – jede Einstellung hier
-// zielt auf geringe Verzögerung und schnellen Einstieg, nicht auf die kleinste Datei.
+// Reine Bausteine des Heimnetz-Streams (ohne Electron, getestet): Eingaben begrenzen und die
+// ffmpeg-Argumente je Encoder. Der Stream ist live – jede Einstellung hier zielt auf geringe
+// Verzögerung und schnellen Einstieg, nicht auf die kleinste Datei.
 
 import type { StreamConfig } from '@shared/types'
+
+/** Größe der Bilder, die ffmpeg bekommt: das paint-Bild, bei Bildschirm-Skalierung größer. */
+export interface StreamInput {
+  width: number
+  height: number
+}
 
 function clampInt(v: unknown, min: number, max: number, fallback: number): number {
   const n = typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : fallback
@@ -114,31 +120,51 @@ export function streamEncoderArgs(encoder: string, cfg: StreamConfig): string[] 
 }
 
 /**
- * ffmpeg liest rohe BGRA-Bilder von stdin (fester Takt, siehe framesDue) und schreibt MPEG-TS auf
- * stdout. resend_headers: PAT/PMT kommen regelmäßig – ein Empfänger, der mitten im Strom
- * einsteigt, erkennt ihn sofort. flush_packets: nichts im Muxer liegen lassen.
+ * ffmpeg liest rohe BGRA-Bilder von stdin und schreibt MPEG-TS auf stdout. resend_headers:
+ * PAT/PMT kommen regelmäßig – ein Empfänger, der mitten im Strom einsteigt, erkennt ihn sofort.
+ * flush_packets: nichts im Muxer liegen lassen.
+ *
+ * Die Zeit im Strom kommt von der Uhr, nicht aus der Bildzahl: Jedes Bild bekommt beim Lesen
+ * die Wanduhr als Zeitstempel, der fps-Filter macht daraus den festen Takt und füllt Lücken mit
+ * dem letzten Bild. Stufe 1 zählte nur Bilder – jedes ausgelassene (main-Prozess hing, ffmpeg
+ * kam nicht nach) ließ die Zeit im Strom dauerhaft hinter der Uhr zurück, bis der Empfänger leer
+ * lief und sekundenlang stockte (gemessen: fünf Hänger zu 0,8 s = 4 s Rückstand).
  */
-export function buildStreamArgs(encoder: string, cfg: StreamConfig): string[] {
+export function buildStreamArgs(
+  encoder: string,
+  cfg: StreamConfig,
+  input: StreamInput = cfg
+): string[] {
   const pixFmt = encoder === 'h264_qsv' ? 'nv12' : 'yuv420p'
   return [
     '-hide_banner',
     '-loglevel',
     'error',
+    '-use_wallclock_as_timestamps',
+    '1',
     '-f',
     'rawvideo',
     '-pix_fmt',
     'bgra',
     '-s',
-    `${cfg.width}x${cfg.height}`,
+    `${input.width}x${input.height}`,
     '-framerate',
     String(cfg.fps),
     '-i',
     'pipe:0',
     '-an',
+    // Die Zeitstempel bleiben die der Wanduhr, absolut statt ab 0: Startet ffmpeg neu (andere
+    // Bildgröße), macht der neue Strom dort weiter, wo die Uhr steht – für den Empfänger eine
+    // kurze Lücke. Ab 0 sprang die Zeit zurück (nachgestellt: 5,5 s), und der Empfänger lief
+    // dauerhaft hinterher (einmal auf dem macOS-Runner gesehen: 11,5 s).
+    '-copyts',
+    // Auf die Ausgabegröße bringt ffmpeg das Bild selbst (bei Bildschirm-Skalierung kommt es
+    // größer) – im main-Prozess kostete das je Bild Zeit, in der er nichts anderes tun kann.
     // Begrenzter Bereich (TV-Pegel) und BT.709 ausdrücklich: sonst raten Decoder bei HD-Material
     // verschieden, und Schwarz wird grau.
     '-vf',
-    `scale=out_color_matrix=bt709:out_range=tv,format=${pixFmt}`,
+    `scale=w=${cfg.width}:h=${cfg.height}:out_color_matrix=bt709:out_range=tv,` +
+      `format=${pixFmt},fps=${cfg.fps}`,
     '-color_primaries',
     'bt709',
     '-color_trc',
@@ -154,14 +180,4 @@ export function buildStreamArgs(encoder: string, cfg: StreamConfig): string[] {
     '1',
     'pipe:1'
   ]
-}
-
-/**
- * Wie viele Bilder müssten seit dem Start im Takt geschrieben sein? ffmpeg zählt die Zeit nur
- * über die Bildanzahl – kommen weniger Bilder als der Takt, läuft der Stream langsamer als die
- * Uhr, und der Empfänger stockt. Deshalb schreibt der Sender nach dieser Uhr, nicht nach den
- * paint-Ereignissen (die bei Standbildern ganz ausbleiben).
- */
-export function framesDue(startMs: number, nowMs: number, fps: number): number {
-  return Math.max(0, Math.floor(((nowMs - startMs) * fps) / 1000))
 }

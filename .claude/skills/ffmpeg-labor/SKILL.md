@@ -38,6 +38,16 @@ Dort zuerst nachlesen. Neue Verfahren so prüfen, bevor sie in den Code wandern:
    schreiben und das Verfahren als Test in `convertPlan`/`videoGenPlan` oder `e2e/` verankern –
    Laborskripte im Arbeitsordner gehen sonst verloren.
 
+**Live über eine Pipe (Stream fürs Heimnetz, gemessen November 2026):** Rohe Bilder über stdin
+mit `-framerate` allein bekommen ihre Zeit aus der Bildzahl – fehlen Bilder, läuft die Zeit im
+Strom dauerhaft hinter der Uhr (Labor: fünf Hänger zu 0,8 s = 4,01 s Rückstand). Mit
+`-use_wallclock_as_timestamps 1` vor dem Eingang und `fps=<Rate>` am Ende der Filterkette
+blieben 0,03 s, der nötige Puffer ist ein Hänger (0,83 s). Messen wie im Labor: Bilder im Takt
+schreiben, mit Warteschleifen unterbrechen, den TS-Ausgang mit `e2e/tsMitschnitt.mjs` zerlegen
+(`tsParser`, `zeitachse`). Dazu `-copyts`: Ohne fängt jeder Eingang bei 0 an, und ein neu
+gestartetes ffmpeg dreht die Zeit für den Empfänger zurück; mit bleibt sie die absolute Wanduhr
+(im TS modulo 2³³, rund 26,5 Stunden – Empfänger kennen den Überlauf).
+
 **Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
 Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in
 Terzen von 63 Hz bis 4 kHz flach (±0,3 dB), darüber fällt es (−1 dB bei 8 kHz, −2,3 dB bei
@@ -46,3 +56,7 @@ Terzen von 63 Hz bis 4 kHz flach (±0,3 dB), darüber fällt es (−1 dB bei 8 k
 
 Aufräumen: große Zwischendateien (Intra-Material etwa 320 MB je Minute 1080p) nach dem Lauf
 löschen, Messungen im Scratchpad ablegen, nicht im Repository.
+
+**Nicht neben den E2E messen:** `e2e/shutdown.mjs` zählt nach dem Beenden jedes `ffmpeg` aus
+`resources/ffmpeg` als „läuft weiter“ – auch die eines Laborskripts (21.11.2026 so rot geworden,
+allein wiederholt grün).

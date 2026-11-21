@@ -1328,6 +1328,13 @@ Main- und leicht violett für die Backup-Leitung?
 VideoToolbox samt ProRes) – ohne GPU im Testrechner sind nur Erkennung, Argumente und der
 Rückfall auf die CPU geprüft. ProRes 4444 mit Alpha über VideoToolbox auf einem Mac (F13).
 
+**Stream fürs Heimnetz** (Stage-Timer, seit dem 21. November 2026 ohne die gemeldeten Hänger):
+am Rechner, an dem die Hänger auftraten (mit Bildschirm-Skalierung), den Stream eine
+Viertelstunde in VLC am Handy und am PC ansehen, dabei Timer und Uhr-Modus – stockt er noch,
+springt die Anzeige? Das E2E stellt die Hänger nur mit einer Warteschleife im main-Prozess und
+die Skalierung mit `--force-device-scale-factor` nach. Offen seit Stufe 1: Empfang auf der
+TV-Box über WLAN, NVENC und AMF, macOS.
+
 ## Entscheidungen
 
 Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestätigst:

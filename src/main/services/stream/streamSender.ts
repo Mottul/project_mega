@@ -4,8 +4,11 @@
 //
 // - ffmpeg läuft nur, solange jemand zuschaut: Start beim ersten Empfänger, Ende kurz nach dem
 //   letzten. Der Server und das Fenster laufen, solange „Stream“ an ist.
-// - Bilder gehen im festen Takt an ffmpeg (framesDue), nicht im Takt der paint-Ereignisse: Die
-//   kommen bei Standbildern gar nicht, und ffmpeg leitet die Zeit nur aus der Bildanzahl ab.
+// - Jedes neue Bild geht sofort an ffmpeg, das die Wanduhr als Zeitstempel nimmt (streamArgs).
+//   Ein Hänger im main-Prozess wird so eine kurze Lücke statt dauerhaft verlorener Zeit. Bei
+//   Standbildern kommt kein paint – dann wiederholt ein Takt das letzte Bild.
+// - Im main-Prozess so wenig Arbeit wie möglich: das Bild nur umwandeln, solange jemand
+//   zuschaut, nie skalieren (das macht ffmpeg), nicht dauernd neu zeichnen lassen.
 // - Scheitert ein GPU-Encoder, einmal mit libx264 weiter (wie encodeWithFallback beim Konverter).
 //
 // Das Offscreen-Fenster ist (noch) ein eigenes, auch wenn NDI parallel läuft – zusammengelegt
@@ -21,15 +24,18 @@ import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 import { logLine } from '../log'
 import { lanUrls } from '../remote/remoteHttp'
 import { loadRoute, secureWebPreferences } from '../windows/appWindows'
-import { buildStreamArgs, framesDue } from './streamArgs'
+import { buildStreamArgs, type StreamInput } from './streamArgs'
 import { TsVerteiler } from './tsVerteiler'
 
 /** So lange läuft ffmpeg nach dem letzten Empfänger weiter (Box schaltet kurz um, VLC lädt neu). */
 const NACHLAUF_MS = 10_000
-/** Mehr als so viele Bilder im Rückstand: Takt neu ansetzen statt nachzuschieben. */
-const MAX_NACHHOLEN = 2
 
 const message = (err: unknown): string => (err instanceof Error ? err.message : String(err))
+
+/** neuestes Bild (BGRA) mit seiner Größe */
+interface Frame extends StreamInput {
+  data: Buffer
+}
 
 export class OffscreenStreamSender {
   private win: BrowserWindow | null = null
@@ -37,12 +43,18 @@ export class OffscreenStreamSender {
   private ffmpeg: ChildProcessWithoutNullStreams | null = null
   private readonly verteiler = new TsVerteiler((n) => this.onClients(n))
   private config: StreamConfig | null = null
-  private frame: Buffer | null = null
+  /** neuestes Bild – nur, solange ffmpeg läuft */
+  private frame: Frame | null = null
+  /** Größe der paint-Bilder (bei Bildschirm-Skalierung größer als eingestellt) */
+  private paintSize: StreamInput | null = null
+  /** Eingangsgröße des laufenden ffmpeg */
+  private inputSize: StreamInput | null = null
+  /** wann zuletzt ein Bild an ffmpeg ging (für den Takt bei Standbildern) */
+  private lastWrite = 0
   private pump: ReturnType<typeof setInterval> | null = null
-  private invalidateTimer: ReturnType<typeof setInterval> | null = null
   private nachlauf: ReturnType<typeof setTimeout> | null = null
-  private taktStart = 0
-  private geschrieben = 0
+  /** GPU-Encoder ist gescheitert: bis zum Stopp mit libx264 */
+  private cpuOnly = false
   private encoder: string | null = null
   /** zählt jeden Start und Stopp: was nach einem await nicht mehr aktuell ist, bricht ab */
   private generation = 0
@@ -88,6 +100,7 @@ export class OffscreenStreamSender {
     const gen = this.generation
     this.problem = null
     this.config = cfg
+    this.cpuOnly = false
 
     const server = createServer((req, res) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -156,14 +169,10 @@ export class OffscreenStreamSender {
     })
     this.win = win
     win.webContents.setFrameRate(cfg.fps)
+    // Nur Bilder des AKTUELLEN Fensters (wie bei 'closed'): Ein spätes Bild eines alten Fensters
+    // in anderer Größe würde ffmpeg sonst neu starten lassen.
     win.webContents.on('paint', (_e, _dirty, image) => {
-      const size = image.getSize()
-      // HiDPI-Bildschirm: Electron liefert das Bild ggf. größer – ffmpeg erwartet genau die Maße.
-      const img =
-        size.width === cfg.width && size.height === cfg.height
-          ? image
-          : image.resize({ width: cfg.width, height: cfg.height })
-      this.frame = img.toBitmap()
+      if (this.win === win) this.onPaint(image)
     })
     win.on('closed', () => {
       if (this.win !== win) return
@@ -171,13 +180,9 @@ export class OffscreenStreamSender {
       this.stop()
     })
     loadRoute(win, route)
-    // Statische Anzeige (Timer: 1 Repaint/s) -> regelmäßig neu zeichnen lassen.
-    this.invalidateTimer = setInterval(
-      () => {
-        if (!win.isDestroyed()) win.webContents.invalidate()
-      },
-      Math.round(1000 / cfg.fps)
-    )
+    // Kein Neuzeichnen im Takt (wie beim NDI-Sender): Eine unveränderte Anzeige malt Chromium
+    // nicht neu, dann wiederholt der Takt in startEncoder das letzte Bild – ohne Rendern und
+    // ohne 8 MB Kopie je Bild im main-Prozess.
 
     logLine(this.tag, 'gestartet:', `${cfg.width}x${cfg.height}@${cfg.fps}`, `Port ${cfg.port}`)
     this.emit()
@@ -186,8 +191,6 @@ export class OffscreenStreamSender {
   stop(emit = true): void {
     this.generation++
     this.stopEncoder()
-    if (this.invalidateTimer) clearInterval(this.invalidateTimer)
-    this.invalidateTimer = null
     if (this.win) {
       const w = this.win
       this.win = null // vor destroy nullen -> 'closed'-Handler stoppt nicht doppelt
@@ -200,10 +203,26 @@ export class OffscreenStreamSender {
       this.server = null
     }
     this.frame = null
+    this.paintSize = null
     if (emit) {
       logLine(this.tag, 'gestoppt')
       this.emit()
     }
+  }
+
+  /**
+   * Neues Bild aus dem Offscreen-Fenster. Umgewandelt (8 MB je Bild bei 1080p) wird nur, solange
+   * ffmpeg läuft – und nie skaliert: Bei Bildschirm-Skalierung über 100 % kommt das Bild größer,
+   * ffmpeg bringt es in seinem eigenen Prozess auf die Ausgabegröße.
+   */
+  private onPaint(image: Electron.NativeImage): void {
+    const { width, height } = image.getSize()
+    if (width < 2 || height < 2) return
+    this.paintSize = { width, height }
+    const proc = this.ffmpeg
+    if (!proc) return
+    this.frame = { width, height, data: image.toBitmap() }
+    this.writeFrame(proc)
   }
 
   private report(text: string): void {
@@ -216,7 +235,7 @@ export class OffscreenStreamSender {
     if (n > 0) {
       if (this.nachlauf) clearTimeout(this.nachlauf)
       this.nachlauf = null
-      if (!this.ffmpeg && this.running) void this.startEncoder(false)
+      if (!this.ffmpeg && this.running) void this.startEncoder()
     } else if (this.ffmpeg && !this.nachlauf) {
       this.nachlauf = setTimeout(() => {
         this.nachlauf = null
@@ -227,22 +246,28 @@ export class OffscreenStreamSender {
     this.emit()
   }
 
-  private async startEncoder(cpuOnly: boolean): Promise<void> {
+  private async startEncoder(): Promise<void> {
     const cfg = this.config
     if (!cfg) return
     const gen = this.generation
-    const enc = cpuOnly ? CPU_ENCODERS.h264 : await resolveEncoder('auto')
+    const enc = this.cpuOnly ? CPU_ENCODERS.h264 : await resolveEncoder('auto')
     if (gen !== this.generation || this.ffmpeg || this.verteiler.count === 0) return
 
+    // Eingang in der Größe der paint-Bilder; vor dem ersten paint die eingestellte.
+    const input = this.paintSize ?? { width: cfg.width, height: cfg.height }
     let proc: ChildProcessWithoutNullStreams
     try {
-      proc = spawn(ffmpegBinPath('ffmpeg'), buildStreamArgs(enc.id, cfg), { windowsHide: true })
+      proc = spawn(ffmpegBinPath('ffmpeg'), buildStreamArgs(enc.id, cfg, input), {
+        windowsHide: true
+      })
     } catch (err) {
       this.report(`ffmpeg startet nicht: ${message(err)}`)
       this.verteiler.closeAll()
       return
     }
     this.ffmpeg = proc
+    this.inputSize = input
+    this.frame = null
     this.encoder = enc.label
     this.problem = null
     let stderr = ''
@@ -271,36 +296,47 @@ export class OffscreenStreamSender {
       logLine(this.tag, `ffmpeg (${enc.id}) beendet:`, grund)
       // GPU-Encoder gescheitert (Treiber, Sitzungslimit) -> einmal mit der CPU weiter.
       if (enc.hardware && !sentBytes && gen === this.generation && this.verteiler.count > 0) {
-        void this.startEncoder(true)
+        this.cpuOnly = true
+        void this.startEncoder()
         return
       }
       this.report(`Kodieren abgebrochen: ${grund}`)
       this.verteiler.closeAll()
     })
 
-    logLine(this.tag, 'ffmpeg läuft:', enc.id)
-    this.taktStart = Date.now()
-    this.geschrieben = 0
-    // Doppelter Takt: fällt ein Tick aus, holt der nächste das Bild nach.
-    this.pump = setInterval(() => this.writeFrames(proc), Math.max(5, Math.round(500 / cfg.fps)))
+    logLine(this.tag, 'ffmpeg läuft:', enc.id, `${input.width}x${input.height}`)
+    // Gleich ein frisches Bild holen (bis eben wurde nichts umgewandelt); danach bringt jedes
+    // paint das nächste.
+    const win = this.win
+    if (win && !win.isDestroyed()) win.webContents.invalidate()
+    // Standbild: Chromium malt nicht neu, ffmpeg braucht trotzdem laufend Bilder – der fps-Filter
+    // gibt ein Bild erst aus, wenn das nächste kommt. Also das letzte wiederholen.
+    const takt = Math.round(1000 / cfg.fps)
+    this.lastWrite = 0
+    this.pump = setInterval(() => {
+      if (Date.now() - this.lastWrite >= takt) this.writeFrame(proc)
+    }, takt)
     this.emit()
   }
 
-  private writeFrames(proc: ChildProcessWithoutNullStreams): void {
-    const cfg = this.config
+  /** Neuestes Bild an ffmpeg. Bei Rückstau auslassen – die Zeit kommt von der Uhr. */
+  private writeFrame(proc: ChildProcessWithoutNullStreams): void {
     const frame = this.frame
-    if (!cfg || !frame || this.ffmpeg !== proc) return
-    const due = framesDue(this.taktStart, Date.now(), cfg.fps)
-    if (due - this.geschrieben > MAX_NACHHOLEN) {
-      // Rechner war blockiert (oder ffmpeg zu langsam): neu ansetzen, kein Bilderschwall.
-      this.geschrieben = due - 1
+    const input = this.inputSize
+    if (!frame || !input || this.ffmpeg !== proc) return
+    if (frame.width !== input.width || frame.height !== input.height) {
+      // Größe geändert (Bildschirm-Skalierung umgestellt): ffmpeg neu starten, die Empfänger
+      // bleiben verbunden.
+      logLine(this.tag, 'Bildgröße geändert:', `${frame.width}x${frame.height}`)
+      this.stopEncoder()
+      void this.startEncoder()
+      return
     }
-    // ffmpeg kommt nicht nach -> Bild auslassen, statt den Speicher zu füllen.
-    if (proc.stdin.writableLength > frame.length * 3) return
-    while (this.geschrieben < due) {
-      proc.stdin.write(frame)
-      this.geschrieben++
-    }
+    // ffmpeg kommt nicht nach -> Bild auslassen, statt den Speicher zu füllen. Die Lücke füllt
+    // der fps-Filter mit dem letzten Bild.
+    if (proc.stdin.writableLength > frame.data.length * 2) return
+    proc.stdin.write(frame.data)
+    this.lastWrite = Date.now()
   }
 
   private stopPump(): void {

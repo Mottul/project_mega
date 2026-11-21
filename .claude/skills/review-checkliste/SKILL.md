@@ -465,6 +465,32 @@ Gemeinsam ist ihnen: Der eigene Code war richtig, die Vorgabe darunter nicht.
   Benutzerordner an: Was auf „Ordner fehlt noch“ prüft (`migrateUserData`), läuft davor.
   Nebenwirkung: `npm run dev` startet nicht neben der installierten App (gleicher Ordner).
 
+## Live-Ausgaben (Stream fürs Heimnetz, 21. November 2026)
+
+Gemeldet aus VLC am PC und am Handy: Hänger von mehreren Sekunden, danach sprang die Anzeige oder
+lief schneller. Nachgestellt in `e2e/stream.mjs` (fünf Hänger des main-Prozesses zu 0,8 s: am
+alten Stand 3,98 s Rückstand), dann behoben.
+
+- **Die Zeit eines Live-Stroms kommt von der Uhr, nie aus der Zahl der Bilder.** ffmpeg las rohe
+  Bilder von stdin und leitete die Zeit aus ihrer Anzahl ab; nach einem Hänger setzte der Sender
+  den Takt neu an, statt nachzuliefern. Jedes ausgelassene Bild fehlte der Zeit im Strom für
+  immer, bis der Puffer des Empfängers leer war. Heute stempelt ffmpeg jedes Bild mit der
+  Wanduhr (`-use_wallclock_as_timestamps 1`), der `fps`-Filter füllt Lücken mit dem letzten Bild
+  (`streamArgs.ts`). Im Review bei jedem „Takt neu ansetzen“ fragen: Geht dabei Zeit verloren?
+- **Im paint-Handler nichts Teures, und nichts ohne Abnehmer.** Bei Bildschirm-Skalierung über
+  100 % malt ein Offscreen-Fenster nicht genau in der eingestellten Größe (gemessen 641 × 362 statt
+  640 × 360 bei 150 %). „Passt die Größe nicht, skalieren“ lief deshalb bei JEDEM Bild im
+  main-Prozess, dazu `toBitmap()` (8 MB bei 1080p) auch ohne Zuschauer und ein `invalidate()` im
+  Takt. Heute wandelt der Sender nur, solange ffmpeg läuft, und ffmpeg skaliert selbst.
+  Nachstellen ohne HiDPI-Bildschirm: `launchApp({ args: ['--force-device-scale-factor=1.5'] })`.
+- **Ein Neustart des Kodierers darf die Zeit nicht zurückdrehen.** Auf dem macOS-Runner sprang
+  die Zeit im Strom einmal 11,5 s zurück, während die Bilder weiter im Takt kamen – das Zeichen
+  eines neu gestarteten ffmpeg, dessen Zeitstempel wieder bei 0 begannen (nachgestellt durch ein
+  größeres Offscreen-Fenster: 5,5 s zurück). Neu starten muss der Sender bei jeder anderen
+  Bildgröße. Heute behält `-copyts` die absolute Wanduhr, ein Neustart ist eine Lücke von gut
+  einer halben Sekunde; dazu zählen paint-Bilder nur vom aktuellen Fenster. Im Review bei jedem
+  Neustart eines Live-Prozesses fragen: Was sieht der Empfänger danach?
+
 ## Bilder, PDF und fremdes HTML (Phase 1 Mini-Manual, 16. Oktober 2026)
 
 - **Nicht übernehmen, was ein Werkzeug „sicher“ tut – messen.** Electrons `nativeImage`
