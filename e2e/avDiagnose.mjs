@@ -41,7 +41,13 @@ export async function starteDiagnose(app) {
           break
         }
       }
-      d.ton.push({ t: Date.now(), frame: chunk.frame ?? -1, len: ch.length, onset })
+      d.ton.push({
+        t: Date.now(),
+        gerendert: chunk.gerendert,
+        frame: chunk.frame ?? -1,
+        len: ch.length,
+        onset
+      })
     })
     return true
   }, SPIEGEL)
@@ -58,7 +64,8 @@ export async function starteDiagnose(app) {
                 m: meta.mediaTime,
                 anz: performance.timeOrigin + meta.expectedDisplayTime,
                 jetzt: performance.timeOrigin + now,
-                praes: performance.timeOrigin + meta.presentationTime
+                praes: performance.timeOrigin + meta.presentationTime,
+                uhr: v.currentTime
               })
             }
             v.requestVideoFrameCallback(cb)
@@ -117,10 +124,25 @@ export function werteDiagnoseAus(d) {
       1) *
     1e6
   const anzeigeNachUebergabe = median(rv.map((x) => x.anz - x.praes))
+  // Verzögerung der Übergabe gegen die Medien-Uhr: Medien-Uhr zum Übergabezeitpunkt − Medienzeit
+  // des Bildes (die Uhr läuft im Callback weiter: um jetzt − Übergabe zurückrechnen)
+  const verzug = rv
+    .filter((x) => Number.isFinite(x.uhr))
+    .map((x) => (x.uhr - x.m) * 1000 - (x.jetzt - x.praes))
+  const verzugMs = median(verzug)
+  const verzugSpanne = verzug.length
+    ? [Math.round(Math.min(...verzug)), Math.round(Math.max(...verzug))]
+    : []
   // Ton-Uhr über die pünktlichsten Blöcke je Sekunde (Schübe nach Hängern zählen so nicht):
   // Verspätung = Ankunft − Zeit des Blockendes nach Sample-Nummer
   const ton = d.ton.filter((x) => x.frame >= 0)
-  const spaet = (x) => x.t - ((x.frame + x.len) * 1000) / SR
+  // wie der Ton-Takt: Zeit des Blockendes = Renderzeit aus dem Spiegel, sonst die Ankunft
+  const zeit = (x) => (Number.isFinite(x.gerendert) ? x.gerendert : x.t)
+  const spaet = (x) => zeit(x) - ((x.frame + x.len) * 1000) / SR
+  // Verzug bis zur Ankunft im main (Median), nur zur Auskunft
+  const ankunftNachRender = median(
+    ton.filter((x) => Number.isFinite(x.gerendert)).map((x) => x.t - x.gerendert)
+  )
   const puenktlich = []
   for (const x of ton) {
     const s = Math.floor(x.t / 1000)
@@ -180,6 +202,9 @@ export function werteDiagnoseAus(d) {
     medienPpm: Math.round(medienPpm),
     tonPpm: Math.round(tonPpm),
     anzeigeNachUebergabeMs: Math.round(anzeigeNachUebergabe),
+    ankunftNachRenderMs: Number.isFinite(ankunftNachRender) ? Math.round(ankunftNachRender) : null,
+    verzugMs: Math.round(verzugMs),
+    verzugSpanne,
     paintAbstandMs: paintAbstand,
     paintHz: Math.round(paintHz * 1000) / 1000,
     spiegelHz: Math.round(spiegelHz * 1000) / 1000,
@@ -196,8 +221,10 @@ export function diagnoseZeile(a) {
   const p = a.paare.map((x) => `${x.bildMs ?? '?'}/${x.tonMs ?? '?'}`).join(' ')
   return (
     `Uhren gegen die Wanduhr: Medien ${a.medienPpm} ppm, Ton ${a.tonPpm} ppm; ` +
-    `paint ${a.paintHz} Hz (Bilder im Spiegel ${a.spiegelHz} Hz), Tonblock alle ${a.tonAbstandMs} ms, ` +
-    `Anzeige ${a.anzeigeNachUebergabeMs} ms nach Übergabe ` +
+    `paint ${a.paintHz} Hz (Bilder im Spiegel ${a.spiegelHz} Hz), Tonblock alle ${a.tonAbstandMs} ms ` +
+    `(Ankunft ${a.ankunftNachRenderMs ?? '?'} ms nach dem Rendern), ` +
+    `Anzeige ${a.anzeigeNachUebergabeMs} ms nach Übergabe, Übergabe ${a.verzugMs} ms nach der Medien-Uhr ` +
+    `(${a.verzugSpanne.join(' … ')}) ` +
     `(${a.bilder} Bilder im Spiegel, ${a.paints} paints, ${a.bloecke} Blöcke); ` +
     `je Blitz Bild/Ton nach der Übergabe im Spiegel (ms): ${p}`
   )

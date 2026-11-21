@@ -157,6 +157,34 @@ describe('Tontakt – Zeitachse des Tons', () => {
     expect(Math.abs(abstandMs)).toBeLessThan(2)
   })
 
+  it('beschäftigter main beim Start: Blöcke kommen 3 s lang 25 ms zu spät – mit der Renderzeit sitzt der Anker trotzdem richtig', () => {
+    // Beim Start von ffmpeg lädt auch das Spiegelfenster, der main-Prozess ist beschäftigt: Die
+    // ersten Blöcke kommen alle spät an. Nach der Ankunft eingeordnet, saß der Anker 25 ms zu
+    // spät und blieb dort (unter der Toleranz) – der Ton lag den ganzen Lauf zu spät.
+    const t = new Tontakt(START)
+    t.beginn(START + 50)
+    const abMs = START + 100
+    let letzterFertig = 0
+    for (let f = 0; f < 10 * RATE; f += BLOCK) {
+      const fertig = abMs + ((f + BLOCK) * 1000) / RATE // Renderzeit des Blockendes
+      const ankunft = fertig + (fertig < abMs + 3000 ? 25 : 1)
+      t.block(ankunft, f, BLOCK, fertig)
+      letzterFertig = fertig
+    }
+    // Das Ende des letzten Blocks liegt dort, wo die Uhr stand, als er gerendert wurde.
+    expect(Math.abs(((t.position - t.soll(letzterFertig)) * 1000) / RATE)).toBeLessThan(2)
+  })
+
+  it('unbrauchbare Renderzeit (fehlt, weit weg): eingeordnet nach der Ankunft', () => {
+    const a = new Tontakt(START)
+    const b = new Tontakt(START)
+    a.beginn(START + 50)
+    b.beginn(START + 50)
+    a.block(START + 200, 0, BLOCK)
+    b.block(START + 200, 0, BLOCK, START - 60_000) // eine Minute daneben: nicht glaubhaft
+    expect(b.position).toBe(a.position)
+  })
+
   it('Verzug: Ton liegt um so viel später', () => {
     const ohne = new Tontakt(START)
     const mit = new Tontakt(START, { ...TONTAKT_VORGABE, verzugMs: 30 })

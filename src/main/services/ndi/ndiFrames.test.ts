@@ -68,6 +68,14 @@ describe('NDI-Frames', () => {
     }
   })
 
+  it('Renderzeit (für den Ton-Takt): eine endliche Zahl – oder gar nicht', () => {
+    const ok = { sampleRate: 48000, channels: [new Float32Array(4)], frame: 0 }
+    expect(isAudioChunk({ ...ok, gerendert: 1795000000123.5 })).toBe(true)
+    for (const gerendert of [Number.NaN, Infinity, '1795000000123', null]) {
+      expect(isAudioChunk({ ...ok, gerendert }), String(gerendert)).toBe(false)
+    }
+  })
+
   it('Audioframe: Kanäle nacheinander (planar), Schrittweite = Samples × 4', () => {
     const left = new Float32Array([0.5, -0.25])
     // Ausschnitt aus einem größeren Puffer: nur die eigenen Bytes dürfen hinein

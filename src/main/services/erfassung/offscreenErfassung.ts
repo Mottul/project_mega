@@ -39,11 +39,13 @@ export interface ErfassungsWunsch {
   fit?: 'fill' | 'contain'
 }
 
-/** Tonblock aus dem Spiegelfenster (planare Float32-Kanäle; frame = Sample-Nummer des ersten) */
+/** Tonblock aus dem Spiegelfenster (planare Float32-Kanäle; frame = Sample-Nummer des ersten,
+ *  gerendert = Wanduhr in ms, zu der das letzte Sample gerendert wurde) */
 export interface ErfassungsTon {
   sampleRate: number
   channels: Float32Array[]
   frame?: number
+  gerendert?: number
 }
 
 export interface ErfassungsAusgang {

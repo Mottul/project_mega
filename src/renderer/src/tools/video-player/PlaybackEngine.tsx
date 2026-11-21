@@ -439,13 +439,19 @@ export function PlaybackEngine({
       tap.connect(silent)
       silent.connect(ctx.destination)
       tap.port.onmessage = (ev: MessageEvent<{ channels: Float32Array[]; frame: number }>) => {
-        if (ctx) {
-          api.player.ndiAudio({
-            sampleRate: ctx.sampleRate,
-            channels: ev.data.channels,
-            frame: ev.data.frame
-          })
-        }
+        if (!ctx) return
+        // Wann wurde das letzte Sample gerendert? ctx.currentTime steht am Anfang des nächsten
+        // Quantums – so weit ist der Ton-Kontext jetzt; was seit dem Blockende gerendert wurde,
+        // geht von der Uhr ab. Kam die Nachricht spät an (Seite oder main beschäftigt), steckt
+        // der Verzug damit nicht in der Zeit, nach der der Stream den Ton einordnet.
+        const ende = ev.data.frame + ev.data.channels[0].length
+        const seitEnde = (ctx.currentTime * ctx.sampleRate - ende) / ctx.sampleRate
+        api.player.ndiAudio({
+          sampleRate: ctx.sampleRate,
+          channels: ev.data.channels,
+          frame: ev.data.frame,
+          gerendert: performance.timeOrigin + performance.now() - Math.max(0, seitEnde) * 1000
+        })
       }
       for (const v of videoRefs.current) {
         if (v) ctx.createMediaElementSource(v).connect(tap)

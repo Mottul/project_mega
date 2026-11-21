@@ -255,7 +255,7 @@ export class StreamSender implements ErfassungsAusgang {
     const laenge = t.channels[0].length
     const frame = typeof t.frame === 'number' ? t.frame : weg.naechsterFrame
     weg.naechsterFrame = frame + laenge
-    const platz = weg.takt.block(Date.now(), frame, laenge)
+    const platz = weg.takt.block(Date.now(), frame, laenge, t.gerendert)
     if (platz.stille > 0) weg.socket.write(stille(platz.stille))
     if (platz.anzahl > 0) weg.socket.write(verschraenkt(t.channels, platz.von, platz.anzahl))
   }

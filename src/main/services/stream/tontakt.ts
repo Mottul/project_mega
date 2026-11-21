@@ -78,29 +78,42 @@ export class Tontakt {
     return this.auffuellen(this.soll(nowMs))
   }
 
-  /** Ein Block des Spiegels kam an: wohin er gehört und was davon an ffmpeg geht. */
-  block(nowMs: number, frame: number, laenge: number): TonPlatz {
+  /**
+   * Ein Block des Spiegels kam an: wohin er gehört und was davon an ffmpeg geht. `gerendertMs`:
+   * Wanduhr, zu der der Spiegel das Ende des Blocks gerendert hat (aus `ctx.currentTime`
+   * zurückgerechnet). Sie kennt keinen Verzug durch IPC oder einen beschäftigten main-Prozess –
+   * nach der Ankunft eingeordnet, saß der Anker nach einem zähen Start bis 25 ms zu spät und blieb
+   * dort. Fehlt sie oder ist sie nicht glaubhaft, gilt die Ankunft.
+   */
+  block(nowMs: number, frame: number, laenge: number, gerendertMs?: number): TonPlatz {
     this.letzteAnkunft = nowMs
-    const sollEnde = this.soll(nowMs)
+    const zeit =
+      gerendertMs !== undefined &&
+      Number.isFinite(gerendertMs) &&
+      gerendertMs <= nowMs + 1000 &&
+      gerendertMs > nowMs - 10_000
+        ? gerendertMs
+        : nowMs
+    const sollEnde = this.soll(zeit)
     // Kein Anker, oder die Sample-Nummer lief rückwärts (Spiegel neu geladen, neuer
     // Ton-Kontext): Der Block endet jetzt.
-    if (!this.anker || frame < this.frameEnde) this.ansetzen(nowMs, frame, sollEnde - laenge)
+    if (!this.anker || frame < this.frameEnde) this.ansetzen(zeit, frame, sollEnde - laenge)
     let pos = this.position0(frame)
     const v = sollEnde - (pos + laenge)
     const tol = (this.o.toleranzMs * this.o.rate) / 1000
-    if (v < 0 && nowMs - this.anker!.seit < this.o.einschwingenMs) {
+    if (v < 0 && zeit - this.anker!.seit < this.o.einschwingenMs) {
       // Kam der erste Block verspätet, saß der Anker zu spät – ein pünktlicherer verbessert ihn.
-      this.ansetzen(nowMs, frame, sollEnde - laenge)
+      this.ansetzen(zeit, frame, sollEnde - laenge)
       pos = this.position0(frame)
     } else {
-      this.verspaetung.push({ t: nowMs, v })
-      while (this.verspaetung[0].t < nowMs - this.o.fensterMs) this.verspaetung.shift()
-      const voll = nowMs - this.anker!.seit >= this.o.fensterMs
+      this.verspaetung.push({ t: zeit, v })
+      while (this.verspaetung[0].t < zeit - this.o.fensterMs) this.verspaetung.shift()
+      const voll = zeit - this.anker!.seit >= this.o.fensterMs
       const minV = Math.min(...this.verspaetung.map((x) => x.v))
       // Selbst der pünktlichste Block des Fensters liegt daneben: Drift oder Lücke der
       // Spiegel-Uhr – neu ansetzen. Ein Schub nach einem Hänger ändert das Minimum nicht.
       if (voll && Math.abs(minV) > tol) {
-        this.ansetzen(nowMs, frame, sollEnde - laenge)
+        this.ansetzen(zeit, frame, sollEnde - laenge)
         pos = this.position0(frame)
       }
     }
