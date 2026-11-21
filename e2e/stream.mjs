@@ -290,8 +290,9 @@ try {
         const clip = join(tmp, 'Blitz und Piep.mp4')
         execFileSync(ffmpeg, [
           ...['-v', 'error', '-y'],
-          // 60 s: Während der Messung springt das Video nicht an den Anfang zurück – beim Loop
-          // eines <video> liegen Bild und Ton im Spiegel selbst kurz auseinander.
+          // 60 s: Während der Messung springt das Video nicht an den Anfang zurück. Mit 12 s lag
+          // das letzte Paar eines Laufs einmal bei −112 ms – am Loop des <video> oder am
+          // angeschnittenen Ende (nicht getrennt); beides fällt so heraus.
           ...['-f', 'lavfi', '-i', `color=c=black:s=1280x720:r=30:d=60,${BLITZ}`],
           ...['-f', 'lavfi', '-i', `aevalsrc='${PIEP}':s=48000:d=60`],
           ...['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'],
