@@ -118,6 +118,20 @@ export async function launchApp({
       `Hauptfenster wird nicht angezeigt – Fenster: ${JSON.stringify(fenster)}; Fehler: ${JSON.stringify(errors)}`
     )
   }
+  // E2E_FENSTER=1024x730: Hauptfenster so klein wie auf den Bildschirmen der CI unter Windows und
+  // macOS (etwa 1024 × 768). Dort schwebt die Schublade (unter 1100 px Breite), lokal auf einem
+  // großen Bildschirm nicht – so zeigt sich vor dem Push, was in der CI rot würde.
+  const klein = /^(\d+)x(\d+)$/.exec(process.env.E2E_FENSTER ?? '')
+  if (klein) {
+    await app.evaluate(
+      ({ BrowserWindow }, [w, h]) => {
+        BrowserWindow.getAllWindows()
+          .find((x) => x.isVisible())
+          ?.setContentSize(w, h)
+      },
+      [Number(klein[1]), Number(klein[2])]
+    )
+  }
   return {
     app,
     page,

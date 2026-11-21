@@ -87,6 +87,9 @@ async function ledWallSpeichern(widthM, baseSha) {
 }
 
 try {
+  // Breites Fenster: Die Schublade bleibt angeheftet, während die Schritte im Kapitel klicken.
+  // Unter 1100 px schwebt sie und deckt das Formular ab (Hauptfenster der CI unter Windows/macOS).
+  await page.setViewportSize({ width: 1366, height: 768 })
   await runSteps('Mini-Manual', [
     [
       'Werkzeug öffnet: Leiste „Anleitung“, Schublade, Vorschau mit Ein-/Ausschalten',

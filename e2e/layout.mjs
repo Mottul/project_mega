@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { launchApp, openRoute, runSteps, Skip, waitFor } from './harness.mjs'
+import { launchApp, openRoute, runSteps, Skip, sleep, waitFor } from './harness.mjs'
 
 const ctx = await launchApp()
 const { app, page } = ctx
@@ -145,6 +145,34 @@ const closeToolWindow = async (id) => {
 const windowCount = () =>
   app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length).catch(() => -1)
 
+/** Fenstergrößen: Unter 1100 px Breite schwebt die Schublade immer, darüber gilt „angeheftet“.
+ *  Die Bildschirme der CI unter Windows und macOS sind nur etwa 1024 px breit – wer anheften
+ *  will, stellt deshalb erst ein breites Fenster ein. */
+const BREIT = { width: 1366, height: 768 }
+const SCHMAL = { width: 1024, height: 600 }
+
+/** Klick in die Arbeitsfläche oben rechts, auf den Rand des Inhalts – dort liegt kein
+ *  Bedienelement und nicht die Schublade (vorher geprüft, sonst löste der Klick etwas aus) */
+async function klickInArbeitsflaeche() {
+  const box = await page.getByTestId('tool-main').boundingBox()
+  const [x, y] = [box.x + box.width - 30, box.y + 6]
+  const ziel = await page.evaluate(
+    ([x, y]) => {
+      const el = document.elementFromPoint(x, y)
+      return {
+        inArbeitsflaeche: !!el?.closest('[data-testid="tool-main"]'),
+        bedienbar: !!el?.closest('button, a, input, select, textarea, [role], [tabindex]')
+      }
+    },
+    [x, y]
+  )
+  assert.ok(
+    ziel.inArbeitsflaeche && !ziel.bedienbar,
+    `Klickpunkt ${Math.round(x)}, ${Math.round(y)} ungeeignet: ${JSON.stringify(ziel)}`
+  )
+  await page.mouse.click(x, y)
+}
+
 async function tool(id) {
   await openRoute(page, '/')
   // openRoute setzt nur den Hash: Erst warten, bis die Leiste des vorigen Werkzeugs weg ist (die
@@ -201,6 +229,8 @@ try {
     [
       'Schublade: angeheftet -> gelöst (schwebt), schließen, Zustand bleibt je Werkzeug',
       async () => {
+        // anheften lässt sie sich nur im breiten Fenster; die folgenden Schritte bleiben dabei
+        await page.setViewportSize(BREIT)
         await tool('stage-timer')
         await drawer().waitFor({ timeout: 10_000 })
         assert.equal(await drawer().getAttribute('data-pinned'), 'true')
@@ -221,6 +251,125 @@ try {
         assert.equal(await drawer().getAttribute('data-pinned'), 'false')
         await page.getByRole('button', { name: 'Schublade anheften' }).click()
         assert.equal(await drawer().getAttribute('data-pinned'), 'true')
+      }
+    ],
+    [
+      'Schmales Fenster: angeheftete Schublade schwebt, breiter wieder angeheftet – ohne die Nadel',
+      async () => {
+        // Stand aus dem vorigen Schritt: Stage-Timer, Schublade offen und angeheftet
+        await tool('stage-timer')
+        await drawer().waitFor({ timeout: 10_000 })
+        await expectAttr(drawer(), 'data-pinned', 'true', '1366 px, angeheftet')
+        try {
+          await page.setViewportSize(SCHMAL)
+          await expectAttr(drawer(), 'data-pinned', 'false', '1024 px, angeheftet gemerkt')
+          assert.equal(await drawer().evaluate((el) => getComputedStyle(el).position), 'absolute')
+          // die Arbeitsfläche hat die ganze Breite, die Schublade liegt darüber
+          const breite = await page
+            .getByTestId('tool-main')
+            .evaluate((el) => el.getBoundingClientRect().width)
+          assert.ok(breite >= SCHMAL.width - 1, `Arbeitsfläche nur ${breite} px breit`)
+          await page.setViewportSize(BREIT)
+          await expectAttr(drawer(), 'data-pinned', 'true', 'wieder 1366 px')
+          assert.equal(await drawer().evaluate((el) => getComputedStyle(el).position), 'relative')
+        } finally {
+          await page.setViewportSize(BREIT)
+        }
+      }
+    ],
+    [
+      'Schmales Fenster: Nadel ausgegraut mit Hinweis, ein Klick darauf ändert nichts',
+      async () => {
+        await drawer().waitFor({ timeout: 10_000 })
+        try {
+          await page.setViewportSize(SCHMAL)
+          await expectAttr(drawer(), 'data-pinned', 'false', '1024 px')
+          const nadel = drawer().getByRole('button', { name: 'Schublade anheften' })
+          assert.equal(await nadel.getAttribute('aria-disabled'), 'true')
+          assert.equal(await nadel.isDisabled(), true)
+          const hinweis = (await nadel.getAttribute('title')) ?? ''
+          assert.match(hinweis, /schmalen Fenster/, `Hinweis: „${hinweis}“`)
+          assert.match(hinweis, /angeheftet ist sie wieder/, `Hinweis: „${hinweis}“`)
+          // Ausgegraut heißt halb durchsichtig (wie gesperrte Knöpfe)
+          const deckkraft = await nadel.evaluate((el) => Number(getComputedStyle(el).opacity))
+          assert.ok(deckkraft < 1, `Nadel nicht ausgegraut (opacity ${deckkraft})`)
+          // trotzdem geklickt: Der gemerkte Wert bleibt
+          await nadel.click({ force: true })
+          await sleep(300)
+          assert.equal(await drawer().getAttribute('data-pinned'), 'false')
+          await page.setViewportSize(BREIT)
+          await expectAttr(drawer(), 'data-pinned', 'true', 'nach dem Klick auf die graue Nadel')
+          const offen = drawer().getByRole('button', { name: 'Schublade lösen' })
+          assert.equal(await offen.getAttribute('aria-disabled'), null)
+        } finally {
+          await page.setViewportSize(BREIT)
+        }
+      }
+    ],
+    [
+      'Klick in die Arbeitsfläche schließt nur die schwebende Schublade',
+      async () => {
+        await drawer().waitFor({ timeout: 10_000 })
+        try {
+          // breit und angeheftet: bleibt offen
+          await expectAttr(drawer(), 'data-pinned', 'true', '1366 px')
+          await klickInArbeitsflaeche()
+          await sleep(300)
+          assert.equal(await drawer().count(), 1, 'angeheftete Schublade ging zu')
+          // schmal: schwebt – ein Klick daneben schließt sie
+          await page.setViewportSize(SCHMAL)
+          await expectAttr(drawer(), 'data-pinned', 'false', '1024 px')
+          await klickInArbeitsflaeche()
+          await expectCount(drawer(), 0, 'schwebende Schublade nach dem Klick daneben')
+          assert.equal(await settingsBtn().getAttribute('aria-expanded'), 'false')
+          // breit und gelöst: schwebt ebenfalls und geht ebenso zu
+          await page.setViewportSize(BREIT)
+          await settingsBtn().click()
+          await drawer().waitFor({ timeout: 5_000 })
+          await expectAttr(drawer(), 'data-pinned', 'true', 'angeheftet bleibt gemerkt')
+          await page.getByRole('button', { name: 'Schublade lösen' }).click()
+          await expectAttr(drawer(), 'data-pinned', 'false', 'gelöst')
+          await klickInArbeitsflaeche()
+          await expectCount(drawer(), 0, 'gelöste Schublade nach dem Klick daneben')
+        } finally {
+          // wie vorher: offen und angeheftet
+          await page.setViewportSize(BREIT)
+          if ((await drawer().count()) === 0) await settingsBtn().click()
+          await drawer().waitFor({ timeout: 5_000 })
+          if ((await drawer().getAttribute('data-pinned')) !== 'true') {
+            await page.getByRole('button', { name: 'Schublade anheften' }).click()
+          }
+        }
+      }
+    ],
+    [
+      'Klick daneben übernimmt ein angefangenes Feld der Schublade, bevor sie zugeht',
+      async () => {
+        // Video-Player: „Breite“ der Wand ist ein Zahlenfeld, das erst beim Verlassen übernimmt
+        await tool('video-player')
+        await drawer().waitFor({ timeout: 10_000 })
+        const breite = () => drawer().getByRole('textbox', { name: 'Breite', exact: true })
+        const wand = async () => (await page.evaluate(() => window.api.getSettings())).player
+        const vorher = (await wand()).wallWidth
+        try {
+          await page.setViewportSize(SCHMAL)
+          await expectAttr(drawer(), 'data-pinned', 'false', '1024 px')
+          await breite().fill('1600')
+          await klickInArbeitsflaeche()
+          await expectCount(drawer(), 0, 'Schublade nach dem Klick daneben')
+          assert.ok(
+            await waitFor(async () => (await wand()).wallWidth === 1600, 5_000),
+            `Breite der Wand ${(await wand()).wallWidth} statt 1600 – das Feld ging verloren`
+          )
+        } finally {
+          // zurück wie ein Nutzer: über das Feld (setSettings erreicht dieses Fenster nicht)
+          await page.setViewportSize(BREIT)
+          if ((await drawer().count()) === 0) await settingsBtn().click()
+          await drawer().waitFor({ timeout: 5_000 })
+          await breite().fill(String(vorher))
+          await breite().press('Tab')
+          assert.ok(await waitFor(async () => (await wand()).wallWidth === vorher, 5_000))
+        }
       }
     ],
     [

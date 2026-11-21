@@ -106,6 +106,10 @@ async function probebetrieb(modell) {
 }
 
 try {
+  // Breites Fenster: Die Schublade (Modell des Probebetriebs) bleibt angeheftet, während die
+  // Schritte die Knöpfe drücken. Unter 1100 px schwebt sie und deckt die Knöpfe ab – so auf den
+  // Bildschirmen der CI unter Windows und macOS. Kleine Fenster stellen die Schritte selbst ein.
+  await page.setViewportSize({ width: 1366, height: 768 })
   await runSteps('ATEM-Steuerung', [
     [
       'startet getrennt: Probebetrieb da, Verbinden ohne Adresse gesperrt',
@@ -173,24 +177,35 @@ try {
       'Kleines Fenster mit Schublade: Übergang und Felder liegen nicht übereinander',
       async () => {
         // Auf dem kleinen Bildschirm der CI lag das Dauer-Feld über den Stil-Knöpfen, lokal und
-        // unter Linux (1920 × 1080) fiel das nicht auf
+        // unter Linux (1920 × 1080) fiel das nicht auf. Unter 1100 px schwebt die Schublade; am
+        // schmalsten ist die Arbeitsfläche deshalb bei 1100 px mit angehefteter Schublade (740 px)
         const [breite, hoehe] = await page.evaluate(() => [innerWidth, innerHeight])
-        await page.setViewportSize({ width: 1024, height: 700 })
+        const lade = await schublade()
         try {
-          const stil = page.getByRole('group', { name: 'Übergang' })
-          const felder = ['Dauer in Bildern', 'FTB in Bildern'].map((n) => page.getByLabel(n))
-          const a = await stil.boundingBox()
-          for (const feld of felder) {
-            const b = await feld.boundingBox()
-            const getrennt =
-              a.x + a.width <= b.x ||
-              b.x + b.width <= a.x ||
-              a.y + a.height <= b.y ||
-              b.y + b.height <= a.y
-            assert.ok(getrennt, `überlappt: ${JSON.stringify({ a, b })}`)
-          }
-          for (const knopf of await stil.getByRole('button').all()) {
-            await knopf.click({ trial: true, timeout: 5000 })
+          for (const [w, angeheftet] of [
+            [1024, 'false'],
+            [1100, 'true']
+          ]) {
+            await page.setViewportSize({ width: w, height: 700 })
+            assert.ok(
+              await waitFor(async () => (await lade.getAttribute('data-pinned')) === angeheftet),
+              `${w} px: Schublade data-pinned=${await lade.getAttribute('data-pinned')}`
+            )
+            const stil = page.getByRole('group', { name: 'Übergang' })
+            const felder = ['Dauer in Bildern', 'FTB in Bildern'].map((n) => page.getByLabel(n))
+            const a = await stil.boundingBox()
+            for (const feld of felder) {
+              const b = await feld.boundingBox()
+              const getrennt =
+                a.x + a.width <= b.x ||
+                b.x + b.width <= a.x ||
+                a.y + a.height <= b.y ||
+                b.y + b.height <= a.y
+              assert.ok(getrennt, `${w} px, überlappt: ${JSON.stringify({ a, b })}`)
+            }
+            for (const knopf of await stil.getByRole('button').all()) {
+              await knopf.click({ trial: true, timeout: 5000 })
+            }
           }
         } finally {
           await page.setViewportSize({ width: breite, height: hoehe })

@@ -106,6 +106,9 @@ async function importAndWait(sources, expectedJobs, fitMode = 'bars') {
 
 try {
   await w.getByText('Video-Player').first().waitFor({ timeout: 30_000 })
+  // Breites Fenster: Die Schublade bleibt angeheftet, während die Schritte in der Playlist klicken.
+  // Unter 1100 px schwebt sie und deckt die Playlist ab (Hauptfenster der CI unter Windows/macOS).
+  await w.setViewportSize({ width: 1366, height: 768 })
 
   await runSteps('Video-Player', [
     [
