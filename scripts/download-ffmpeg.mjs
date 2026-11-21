@@ -156,8 +156,14 @@ async function verifyBtbN(url, archive) {
 
 function run(cmd, args) {
   const r = spawnSync(cmd, args, { stdio: 'inherit' })
+  if (r.error) throw new Error(`${cmd} nicht ausführbar: ${r.error.message}`)
   if (r.status !== 0) throw new Error(`${cmd} fehlgeschlagen (Code ${r.status})`)
 }
+
+/** Das tar von Windows (bsdtar): kann ZIP, ein tar aus Git für Windows im PATH könnte es nicht.
+ *  Nicht Expand-Archive: Unter PowerShell 7 gestartet (CI, Windows Terminal), erbt Windows
+ *  PowerShell deren Modulpfad und scheitert seit 7.6.10 daran – meldet aber trotzdem Erfolg. */
+const SYSTEM_TAR = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
 
 function findFile(dir, name) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -176,11 +182,7 @@ function extract(file, destDir, type) {
   if (type === 'tar.xz') {
     run('tar', ['-xJf', file, '-C', destDir])
   } else if (process.platform === 'win32') {
-    run('powershell', [
-      '-NoProfile',
-      '-Command',
-      `Expand-Archive -Force -Path "${file}" -DestinationPath "${destDir}"`
-    ])
+    run(SYSTEM_TAR, ['-xf', file, '-C', destDir])
   } else {
     run('unzip', ['-o', file, '-d', destDir])
   }

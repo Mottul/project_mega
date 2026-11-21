@@ -166,13 +166,36 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, guard]).finally(() => clearTimeout(timer))
 }
 
-/** Zip entpacken. Unter Windows NATIV (Expand-Archive, sonst tar): extract-zip
- *  hängt dort in manchen Node-Versionen und der Prozess endet still mit Exit 0,
- *  bevor das Entpacken fertig ist ("Download vollständig, entpacke …", dann
- *  nichts). spawnSync blockiert bis zum Ende -> kein stiller Abbruch möglich.
+/** Das tar von Windows (bsdtar): kann ZIP und entpackt nie außerhalb des Ziels. Ein tar aus Git
+ *  für Windows im PATH könnte kein ZIP – deshalb der volle Pfad (wie die ffmpeg-Aktualisierung
+ *  der App). */
+const SYSTEM_TAR = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
+
+/** Umgebung für Windows PowerShell ohne PSModulePath: Läuft das Skript unter PowerShell 7 (CI,
+ *  Windows Terminal), erbt Windows PowerShell sonst deren Modulpfad und lädt die Module von 7.
+ *  Deren Expand-Archive braucht seit 7.6.10 eine .NET-Funktion, die es in Windows PowerShell
+ *  nicht gibt. Ohne die Variable nimmt Windows PowerShell ihre eigenen Module. */
+function windowsPowerShellEnv() {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => key.toUpperCase() !== 'PSMODULEPATH')
+  )
+}
+
+/** Warum ein Entpacker nichts gebracht hat (für die Meldung). */
+const why = (r) => r.error?.message ?? `Code ${r.status}`
+
+/** Zip entpacken. Unter Windows NATIV über spawnSync: extract-zip hängt dort in manchen
+ *  Node-Versionen und der Prozess endet still mit Exit 0, bevor das Entpacken fertig ist
+ *  ("Download vollständig, entpacke …", dann nichts). spawnSync blockiert bis zum Ende -> kein
+ *  stiller Abbruch möglich. Erst das System-tar, dann Expand-Archive. Ob es geklappt hat, zeigt
+ *  nur die entpackte Binary: PowerShell endet auch nach einem Fehler im Modul mit Exit 0.
  *  mac/Linux: weiterhin extract-zip, aber mit Zeitwächter. */
 function unzip(zip, destDir) {
   if (process.platform === 'win32') {
+    const unpacked = () => existsSync(join(destDir, ROOT_ENTRY))
+    const t = spawnSync(SYSTEM_TAR, ['-xf', zip, '-C', destDir], { stdio: 'inherit' })
+    if (unpacked()) return Promise.resolve()
+    console.warn(`[electron-bin] tar hat nicht entpackt (${why(t)}), versuche Expand-Archive …`)
     // Ohne Fortschrittsbalken: Er bremst Expand-Archive und landet als CLIXML in der Ausgabe.
     const psScript =
       `$ProgressPreference = 'SilentlyContinue'; Expand-Archive -LiteralPath '${zip.replace(/'/g, "''")}' ` +
@@ -181,13 +204,12 @@ function unzip(zip, destDir) {
     const ps = spawnSync(
       'powershell',
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded],
-      { stdio: 'inherit' }
+      { stdio: 'inherit', env: windowsPowerShellEnv() }
     )
-    if (!ps.error && ps.status === 0) return Promise.resolve()
-    console.warn('[electron-bin] Expand-Archive nicht nutzbar, versuche tar …')
-    const t = spawnSync('tar', ['-xf', zip, '-C', destDir], { stdio: 'inherit' })
-    if (!t.error && t.status === 0) return Promise.resolve()
-    console.warn('[electron-bin] tar nicht nutzbar, versuche extract-zip …')
+    if (unpacked()) return Promise.resolve()
+    console.warn(
+      `[electron-bin] Expand-Archive hat nicht entpackt (${why(ps)}), versuche extract-zip …`
+    )
   }
   return loadExtract().then((extract) =>
     withTimeout(extract(zip, { dir: destDir }), 180000, 'Entpacken (extract-zip)')

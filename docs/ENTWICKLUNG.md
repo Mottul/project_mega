@@ -54,7 +54,10 @@ npm run dev         # App mit Hot Reload
   Video-Generator, Oktober 2026).
 - **Electron-Binary:** lädt `scripts/fetch-electron-bin.mjs` in reinem Node und prüft sie gegen
   ihre Prüfsumme – als erster Schritt von `dev`, `start` und `e2e` (liegt sie schon da, passiert
-  nichts). Einzeln: `npm run electron:bin`.
+  nichts). Einzeln: `npm run electron:bin`. Unter Windows entpacken es und der ffmpeg-Downloader
+  mit dem tar von Windows (`System32\tar.exe`). Expand-Archive ist nur noch Ausweg: Unter
+  PowerShell 7 gestartet, lud Windows PowerShell deren Archiv-Modul und entpackte seit 7.6.10
+  nichts, meldete aber Erfolg.
 - **Keine Install-Skripte:** `.npmrc` setzt `ignore-scripts=true` (siehe
   [SICHERHEIT.md](SICHERHEIT.md#installation)). Damit laufen auch keine `pre`-/`post`-Skripte –
   was vor einem Befehl passieren soll, steht direkt in seinem Skript.

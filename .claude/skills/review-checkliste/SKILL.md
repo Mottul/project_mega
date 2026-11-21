@@ -556,6 +556,20 @@ alten Stand 3,98 s Rückstand), dann behoben.
   der Zugang weg, der das Video geliefert hätte. Fremde Fehler mit `-v` nachstellen und die
   Warnungen davor lesen; ein selbst aktualisiertes Programm ändert seine Voraussetzungen. Electron
   bringt Node mit (`process.execPath` + `ELECTRON_RUN_AS_NODE=1` nur im Kindprozess).
+- **ZIP unter Windows mit dem tar von Windows, nicht mit Expand-Archive** (Windows-CI und `main`
+  rot ab 21.11.2026). Läuft ein Node-Skript unter PowerShell 7 (CI, Windows Terminal), erbt das
+  gestartete `powershell` (Windows PowerShell 5.1) deren `PSModulePath` und lädt die Module von 7.
+  Seit 7.6.10 (Archiv-Modul 1.2.7) ruft deren `Expand-Archive` eine .NET-Überladung, die es in
+  5.1 nicht gibt: Fehlermeldung, **Exit-Code 0**, nichts entpackt – und die Meldung danach riet
+  auf den Virenscanner. Deshalb `%SystemRoot%\System32\tar.exe` (bsdtar, kann ZIP; das tar aus Git
+  im PATH kann es nicht) wie `ffmpegUpdate.ts` und beide Download-Skripte in `scripts/`. Muss
+  doch Windows PowerShell ran: ohne `PSModulePath` starten (`windowsPowerShellEnv()` in
+  `scripts/fetch-electron-bin.mjs`) und das Ergebnis prüfen, nie den Code. Nachstellen ohne
+  PowerShell 7: ein Ordner `Microsoft.PowerShell.Archive` mit einem `Expand-Archive`, das
+  `[System.IO.Compression.ZipFileExtensions]::ExtractToDirectory($zip, $ziel, $true)` aufruft,
+  vorn in `PSModulePath`; `powershell` mit `-ExecutionPolicy Bypass` (sonst lädt das Modul gar
+  nicht). Ob ein Runner-Update schuld ist: Zeile `Image`/`Version` im Log von grünem und rotem
+  Lauf vergleichen, die Liste der Programme verlinkt der Log selbst.
 
 ## Netzwerk (Scanner, 1.11.2026)
 
