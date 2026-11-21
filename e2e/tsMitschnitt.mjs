@@ -221,10 +221,22 @@ export function zeitachse(eintraege) {
   const ende = tail.reduce((a, b) => a + b, 0) / tail.length
   const last = eintraege[eintraege.length - 1]
   const dauer = last.pts - v0.pts
+  // Diagnose: üblicher Abstand zweier Bilder im PTS und Sprünge (rückwärts oder über 0,5 s) –
+  // ein Neustart von ffmpeg fängt wieder vorn an, ein falscher Takt zeigt sich am Abstand.
+  const schritte = eintraege.slice(1).map((e, i) => e.pts - eintraege[i].pts)
+  const sortiert = [...schritte].sort((a, b) => a - b)
+  const spruenge = []
+  schritte.forEach((d, i) => {
+    if (d < 0 || d > 0.5) {
+      spruenge.push({ beiS: eintraege[i + 1].ankunft / 1000, umS: d })
+    }
+  })
   return {
     rueckstand: ende - minVersatz,
     puffer,
     dauer,
-    bilderJeSekunde: dauer > 0 ? (eintraege.length - 1) / dauer : 0
+    bilderJeSekunde: dauer > 0 ? (eintraege.length - 1) / dauer : 0,
+    schrittMs: sortiert.length ? sortiert[Math.floor(sortiert.length / 2)] * 1000 : 0,
+    spruenge
   }
 }

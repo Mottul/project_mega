@@ -172,8 +172,24 @@ try {
         console.log(
           `    ${m.video.length} Bilder über ${z.dauer.toFixed(1)} s Strom-Zeit ` +
             `(${z.bilderJeSekunde.toFixed(1)}/s), Rückstand am Ende ${z.rueckstand.toFixed(2)} s, ` +
-            `größter Versatz ${z.puffer.toFixed(2)} s, Bildschirm-Skalierung ${skala}`
+            `größter Versatz ${z.puffer.toFixed(2)} s, Bildschirm-Skalierung ${skala}, ` +
+            `Abstand ${z.schrittMs.toFixed(1)} ms` +
+            (z.spruenge.length
+              ? `, Sprünge: ${z.spruenge.map((s) => `${s.umS.toFixed(2)} s bei ${s.beiS.toFixed(1)} s`).join(', ')}`
+              : '')
         )
+        const ok = z.rueckstand < 0.3 && Math.abs(z.bilderJeSekunde - 30) < 1.5
+        if (!ok) {
+          // Was der Sender dabei protokolliert hat (Encoder, Neustarts, Abbrüche)
+          const log = readFileSync(join(ctx.userData, 'avtoolbox-debug.log'), 'utf8')
+          const zeilen = log.split(/\r?\n/).filter((l) => l.includes('[timer-stream]'))
+          console.log(
+            zeilen
+              .slice(-25)
+              .map((l) => `      ${l}`)
+              .join('\n')
+          )
+        }
         // Fünf Hänger zu 0,8 s: Stufe 1 verlor dabei gemessen 3,98 s. Erlaubt ist Zittern, kein
         // Verlust – nach jedem Hänger muss die Zeit im Strom wieder mit der Uhr laufen.
         assert.ok(z.rueckstand < 0.3, `Strom-Zeit bleibt ${z.rueckstand.toFixed(2)} s zurück`)
