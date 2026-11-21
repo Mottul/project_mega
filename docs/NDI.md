@@ -70,19 +70,24 @@ Für Installer mit NDI müsste die CI außerdem das Binding je System und Archit
 | Datei                            | Aufgabe                                                                                                            |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `main/services/ndi/ndi.ts`           | Binding laden (paketiert → `vendor/` → `node_modules`), Konstanten normalisieren, NDI einmal initialisieren        |
-| `main/services/ndi/ndiSender.ts`     | **ein** Offscreen-Sender für beide Werkzeuge: unsichtbares Fenster auf einer App-Route, paint-Frames → NDI, Ton, Start/Stopp/Abbau |
+| `main/services/erfassung/offscreenErfassung.ts` | **ein** unsichtbares Fenster je Werkzeug auf einer App-Route, geteilt von NDI und dem Stream fürs Heimnetz: paint-Bilder (einmal umgewandelt für alle), Ton aus dem Spiegel, Größe/Bildrate/Route nach den Ausgängen |
+| `main/services/ndi/ndiSender.ts`     | NDI-Sender für beide Werkzeuge: Bilder und Ton aus der Erfassung → NDI, Start/Stopp/Abbau des nativen Senders |
 | `main/services/ndi/ndiFrames.ts`     | Eingaben begrenzen, Video- und Audioframes bauen (rein, getestet)                                                  |
-| `timer/timerNdi.ts` · `player/playerNdi.ts` | dünne Hüllen: Konfiguration, Status, Route; der Player nimmt die Tonblöcke seines Spiegelfensters an               |
+| `timer/timerNdi.ts` · `player/playerNdi.ts` | dünne Hüllen: Konfiguration, Status; die Erfassung des Werkzeugs liegt daneben (`timer/timerErfassung.ts`, `player/playerErfassung.ts` – dort nimmt der Player die Tonblöcke seines Spiegelfensters an) |
 
 Was der Sender absichert (jeweils schon einmal schiefgegangen): Der native Sender wird erst
 zerstört, wenn kein Send mehr läuft (sonst Absturz beim Stoppen), und vor dem nächsten Erstellen
 abgewartet. Ein Stopp oder zweiter Start mitten im Start baut den gerade erstellten Sender wieder
-ab, statt ein verwaistes Fenster zu öffnen, das unbemerkt weitersendet. `closed` zählt nur vom
-aktuellen Fenster. Tonblöcke aus dem Spiegel werden geprüft (gleich lange Float32-Kanäle), bevor
-das Binding sie liest.
+ab, statt sich an die Erfassung zu hängen und unbemerkt weiterzusenden. Tonblöcke aus dem Spiegel
+werden geprüft (gleich lange Float32-Kanäle), bevor das Binding sie liest.
 
-Prüfen: `npx vitest run src/main/services/ndi` (Sender mit nachgebautem Binding) und
-`npm run e2e -- ndi` mit dem echten Binding – ohne `vendor/grandiose` (so in der CI) überspringt
-das Skript seine Schritte.
+Was die Erfassung absichert: `closed` zählt nur vom aktuellen Fenster; ein Bild wird nur
+umgewandelt, wenn ein Ausgang es gerade braucht (NDI nicht, solange ein Bild im Flug ist); im Takt
+neu gezeichnet wird nur, solange NDI sendet. Läuft der Stream fürs Heimnetz parallel, bestimmt NDI
+die Größe des Fensters – der Stream rechnet das Bild selbst auf seine Größe um.
+
+Prüfen: `npx vitest run src/main/services/ndi src/main/services/erfassung` (Sender und Erfassung mit
+nachgebautem Fenster und Binding) und `npm run e2e -- ndi stream` mit dem echten Binding – ohne
+`vendor/grandiose` (so in der CI) überspringen die Skripte ihre NDI-Schritte.
 
 NDI ist eine Marke von Vizrt/NewTek; die Lizenzbedingungen des SDK beachten.

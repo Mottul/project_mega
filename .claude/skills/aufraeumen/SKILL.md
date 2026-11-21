@@ -52,11 +52,13 @@ Danach `npm run typecheck`, `npm run typecheck:test` und die Tests des Bereichs.
 
 Lose Dateien nur für das ganze Programm: `store.ts`, `db.ts`, `log.ts`, `broadcast.ts`,
 `fileDialogs.ts` (+ `dialogStartPath.ts`), `shutdown.ts`. Alles andere in den Ordner seines
-Bereichs: `windows/`, `remote/` (Fernsteuer-Basis und -App), `ndi/` (gemeinsamer Sender),
+Bereichs: `windows/`, `remote/` (Fernsteuer-Basis und -App), `erfassung/` (gemeinsames
+Offscreen-Fenster), `ndi/` (gemeinsamer Sender), `stream/` (Stream fürs Heimnetz),
 `player/`, `timer/`, `jingle/`, `osc/`, `pattern/`, `convert/`, `jobs/`, `ffmpeg/`, `ytdlp/`,
-`netscan/`, `novastar/`, `manuals/`. Die NDI-Hülle eines Werkzeugs liegt beim Werkzeug
-(`timer/timerNdi.ts`, `player/playerNdi.ts`), die Fernsteuer-Seite ebenso. Neuer Bereich →
-neuer Ordner, Baum in `docs/ENTWICKLUNG.md` („Aufbau“) ergänzen.
+`netscan/`, `novastar/`, `manuals/`. NDI- und Stream-Hülle eines Werkzeugs und seine Erfassung
+liegen beim Werkzeug (`timer/timerNdi.ts`, `timer/timerStream.ts`, `timer/timerErfassung.ts`,
+ebenso unter `player/`), die Fernsteuer-Seite ebenso. Neuer Bereich → neuer Ordner, Baum in
+`docs/ENTWICKLUNG.md` („Aufbau“) ergänzen.
 
 ## 4. Doku und Skills nachziehen
 

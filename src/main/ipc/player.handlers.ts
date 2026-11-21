@@ -32,6 +32,11 @@ import {
 import { closePlayerOutput, openPlayerOutput } from '../services/player/playerWindow'
 import { getPlayerNdiStatus, startPlayerNdi, stopPlayerNdi } from '../services/player/playerNdi'
 import {
+  getPlayerStreamStatus,
+  startPlayerStream,
+  stopPlayerStream
+} from '../services/player/playerStream'
+import {
   getRemoteStatus,
   pushRemoteLibrary,
   pushRemoteState,
@@ -185,8 +190,13 @@ export function registerPlayerHandlers(): void {
   })
 
   // NDI-Ausgabe (experimentell; ohne optionales Binding meldet Status "nicht verfügbar").
-  // Der Audio-Kanal (playerNdiAudio) wird im Service selbst verdrahtet.
+  // Der Ton-Kanal des Spiegels (ndiAudio) wird in playerErfassung.ts verdrahtet.
   handle(Channels.player.ndiStart, (_e, cfg) => startPlayerNdi(cfg))
   handle(Channels.player.ndiStop, () => stopPlayerNdi())
   handle(Channels.player.ndiStatus, () => getPlayerNdiStatus())
+
+  // Stream fürs Heimnetz mit Ton (H.264 + AAC über HTTP); Werte prüft clampStreamConfig.
+  handle(Channels.player.streamStart, (_e, cfg) => startPlayerStream(cfg))
+  handle(Channels.player.streamStop, () => stopPlayerStream())
+  handle(Channels.player.streamStatus, () => getPlayerStreamStatus())
 }

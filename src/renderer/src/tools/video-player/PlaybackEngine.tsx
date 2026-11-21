@@ -438,8 +438,14 @@ export function PlaybackEngine({
       silent.gain.value = 0
       tap.connect(silent)
       silent.connect(ctx.destination)
-      tap.port.onmessage = (ev: MessageEvent<{ channels: Float32Array[] }>) => {
-        if (ctx) api.player.ndiAudio({ sampleRate: ctx.sampleRate, channels: ev.data.channels })
+      tap.port.onmessage = (ev: MessageEvent<{ channels: Float32Array[]; frame: number }>) => {
+        if (ctx) {
+          api.player.ndiAudio({
+            sampleRate: ctx.sampleRate,
+            channels: ev.data.channels,
+            frame: ev.data.frame
+          })
+        }
       }
       for (const v of videoRefs.current) {
         if (v) ctx.createMediaElementSource(v).connect(tap)

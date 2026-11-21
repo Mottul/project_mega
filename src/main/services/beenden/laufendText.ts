@@ -20,7 +20,7 @@ const FERNSTEUERUNG: Record<string, string> = {
 }
 
 export interface LaufendStand {
-  player: { ausgabe: boolean; spielt: boolean; ndi: boolean }
+  player: { ausgabe: boolean; spielt: boolean; ndi: boolean; stream: boolean }
   timer: { ausgabe: boolean; laeuft: boolean; ndi: boolean; stream: boolean }
   testbild: boolean
   /** laufende und wartende Aufträge (Konverter, Import, Download, Video-Generator) */
@@ -40,6 +40,7 @@ export function laufendesAus(s: LaufendStand): string[] {
   if (p.ausgabe) out.push(`Video-Player: Ausgabe offen${p.spielt ? ', spielt' : ''}`)
   else if (p.spielt) out.push('Video-Player spielt')
   if (p.ndi) out.push('Video-Player: NDI-Ausgabe')
+  if (p.stream) out.push('Video-Player: Stream fürs Heimnetz')
   const t = s.timer
   if (t.ausgabe) out.push(`Stage-Timer: Ausgabe offen${t.laeuft ? ', läuft' : ''}`)
   else if (t.laeuft) out.push('Stage-Timer läuft')

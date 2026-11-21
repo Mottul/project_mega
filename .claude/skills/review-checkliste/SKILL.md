@@ -483,6 +483,17 @@ alten Stand 3,98 s Rückstand), dann behoben.
   main-Prozess, dazu `toBitmap()` (8 MB bei 1080p) auch ohne Zuschauer und ein `invalidate()` im
   Takt. Heute wandelt der Sender nur, solange ffmpeg läuft, und ffmpeg skaliert selbst.
   Nachstellen ohne HiDPI-Bildschirm: `launchApp({ args: ['--force-device-scale-factor=1.5'] })`.
+- **Ton eines Live-Stroms: die Zeit aus der Sample-Nummer, nicht aus dem Lesezeitpunkt** (Stufe
+  2, im Labor gemessen, bevor gebaut wurde). Wanduhr-Stempel am Ton setzt ffmpeg erst am Ende
+  eines Roh-PCM-Pakets (4096 Samples = 85 ms), und nach einem Hänger kommen die gestauten Blöcke
+  als Schub – ffmpeg hält das für eine Lücke (bis 162 ms Versatz). Darum trägt jeder Block des
+  AudioWorklets seine Sample-Nummer (`currentFrame`), der Sender legt ihn danach lückenlos an
+  seinen Platz (`stream/tontakt.ts`), und ffmpeg rechnet die Zeit nur aus der Samplezahl
+  (`asetpts`). Im Review bei jedem zweiten Eingang fragen: Woher kennt ffmpeg seine Zeit?
+- **Ein Fenster für alle Ausgänge eines Werkzeugs.** NDI und Stream hatten je ein eigenes
+  Offscreen-Fenster – der Player dekodierte sein Video dann zweimal, und die Fallen der Fenster
+  (`closed` nur vom aktuellen, Stopp mitten im Start) standen doppelt. Neue Offscreen-Ausgaben
+  hängen sich an `erfassung/offscreenErfassung.ts`, statt ein Fenster zu öffnen.
 
 ## Bilder, PDF und fremdes HTML (Phase 1 Mini-Manual, 16. Oktober 2026)
 

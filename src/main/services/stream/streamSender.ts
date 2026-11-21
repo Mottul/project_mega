@@ -1,52 +1,72 @@
-// Stream fürs Heimnetz: Ein unsichtbares Offscreen-Fenster rendert eine App-Route (wie beim
-// NDI-Sender), ffmpeg kodiert die Bilder zu H.264 in MPEG-TS, ein kleiner HTTP-Server verteilt
-// den Strom unter /live.ts an alle Empfänger (Heimkino-Box, VLC …).
+// Stream fürs Heimnetz: Bilder (und beim Video-Player der Ton) kommen aus der Offscreen-Erfassung
+// des Werkzeugs (erfassung/offscreenErfassung.ts) – derselben, aus der auch NDI sendet. ffmpeg
+// kodiert sie zu H.264 (+ AAC) in MPEG-TS, ein kleiner HTTP-Server verteilt den Strom unter
+// /live.ts an alle Empfänger (Heimkino-Box, VLC …).
 //
 // - ffmpeg läuft nur, solange jemand zuschaut: Start beim ersten Empfänger, Ende kurz nach dem
-//   letzten. Der Server und das Fenster laufen, solange „Stream“ an ist.
+//   letzten. Der Server läuft, solange „Stream“ an ist.
 // - Jedes neue Bild geht sofort an ffmpeg, das die Wanduhr als Zeitstempel nimmt (streamArgs).
 //   Ein Hänger im main-Prozess wird so eine kurze Lücke statt dauerhaft verlorener Zeit. Bei
 //   Standbildern kommt kein paint – dann wiederholt ein Takt das letzte Bild.
-// - Im main-Prozess so wenig Arbeit wie möglich: das Bild nur umwandeln, solange jemand
-//   zuschaut, nie skalieren (das macht ffmpeg), nicht dauernd neu zeichnen lassen.
+// - Ton: ffmpeg verbindet sich mit einem lokalen TCP-Port und liest Stereo-Float ohne
+//   Zeitstempel; wohin jedes Sample gehört, entscheidet der Ton-Takt (tontakt.ts) nach der
+//   Sample-Nummer der Blöcke – auch wenn sie nach einem Hänger als Schub kommen.
+// - Im main-Prozess so wenig Arbeit wie möglich: Bilder nur, solange ffmpeg läuft, nie skalieren
+//   (das macht ffmpeg), nicht dauernd neu zeichnen lassen.
 // - Scheitert ein GPU-Encoder, einmal mit libx264 weiter (wie encodeWithFallback beim Konverter).
-//
-// Das Offscreen-Fenster ist (noch) ein eigenes, auch wenn NDI parallel läuft – zusammengelegt
-// wird die Erfassung mit dem Ton des Video-Players (siehe PLAN-STREAM, Stufe 2).
 
-import { BrowserWindow } from 'electron'
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createServer, type Server } from 'node:http'
+import net from 'node:net'
 import type { StreamConfig, StreamStatus } from '@shared/types'
 import { CPU_ENCODERS } from '@shared/encoderChoice'
 import { resolveEncoder } from '../convert/encoders'
+import type {
+  ErfassungsAusgang,
+  ErfassungsBild,
+  ErfassungsTon,
+  ErfassungsWunsch,
+  OffscreenErfassung
+} from '../erfassung/offscreenErfassung'
 import { ffmpegBinPath } from '../ffmpeg/ffmpegPath'
 import { logLine } from '../log'
 import { lanUrls } from '../remote/remoteHttp'
-import { loadRoute, secureWebPreferences } from '../windows/appWindows'
-import { buildStreamArgs, type StreamInput } from './streamArgs'
+import { buildStreamArgs, STREAM_TON_RATE, type StreamInput } from './streamArgs'
+import { stille, verschraenkt } from './tonFormat'
+import { Tontakt } from './tontakt'
 import { TsVerteiler } from './tsVerteiler'
 
 /** So lange läuft ffmpeg nach dem letzten Empfänger weiter (Box schaltet kurz um, VLC lädt neu). */
 const NACHLAUF_MS = 10_000
+/** Takt, in dem fehlender Ton als Stille nachgeschoben wird */
+const TON_TICK_MS = 20
 
 const message = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
-/** neuestes Bild (BGRA) mit seiner Größe */
-interface Frame extends StreamInput {
-  data: Buffer
+export interface StreamSenderOptions {
+  /** Ton aus dem Spiegel mitsenden (Video-Player) */
+  ton?: boolean
 }
 
-export class OffscreenStreamSender {
-  private win: BrowserWindow | null = null
+/** Ton-Weg zu einem laufenden ffmpeg */
+interface TonWeg {
+  server: net.Server
+  socket: net.Socket | null
+  takt: Tontakt
+  tick: ReturnType<typeof setInterval> | null
+  /** Sample-Nummer, falls ein Block keine mitbringt (zusammenhängend angenommen) */
+  naechsterFrame: number
+}
+
+export class StreamSender implements ErfassungsAusgang {
   private server: Server | null = null
   private ffmpeg: ChildProcessWithoutNullStreams | null = null
   private readonly verteiler = new TsVerteiler((n) => this.onClients(n))
   private config: StreamConfig | null = null
+  private mitTon = false
+  private tonWeg: TonWeg | null = null
   /** neuestes Bild – nur, solange ffmpeg läuft */
-  private frame: Frame | null = null
-  /** Größe der paint-Bilder (bei Bildschirm-Skalierung größer als eingestellt) */
-  private paintSize: StreamInput | null = null
+  private frame: ErfassungsBild | null = null
   /** Eingangsgröße des laufenden ffmpeg */
   private inputSize: StreamInput | null = null
   /** wann zuletzt ein Bild an ffmpeg ging (für den Takt bei Standbildern) */
@@ -59,6 +79,7 @@ export class OffscreenStreamSender {
   /** zählt jeden Start und Stopp: was nach einem await nicht mehr aktuell ist, bricht ab */
   private generation = 0
   private problem: string | null = null
+  private falscheRateGemeldet = false
   /** gemessene Datenrate: Bytes und Zeit beim letzten Statusabruf */
   private rate = { bytes: 0, at: 0, kbps: 0 }
 
@@ -66,7 +87,9 @@ export class OffscreenStreamSender {
     /** Präfix der Logzeilen, z. B. '[timer-stream]' */
     private readonly tag: string,
     /** Zustand geändert -> Status an die Fenster */
-    private readonly emit: () => void
+    private readonly emit: () => void,
+    /** Offscreen-Erfassung des Werkzeugs (geteilt mit NDI) */
+    private readonly erfassung: OffscreenErfassung
   ) {}
 
   get running(): boolean {
@@ -95,12 +118,14 @@ export class OffscreenStreamSender {
     }
   }
 
-  async start(cfg: StreamConfig, route: string): Promise<void> {
+  async start(cfg: StreamConfig, opts: StreamSenderOptions = {}): Promise<void> {
     this.stop(false)
     const gen = this.generation
     this.problem = null
     this.config = cfg
+    this.mitTon = opts.ton === true
     this.cpuOnly = false
+    this.falscheRateGemeldet = false
 
     const server = createServer((req, res) => {
       if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -159,39 +184,23 @@ export class OffscreenStreamSender {
     void resolveEncoder('auto').catch(() => {})
     // Ein Empfänger kann nach dem Stopp noch hängen; close() wartet sonst auf ihn.
     server.on('error', (err) => this.report(`Stream-Server: ${message(err)}`))
+    // Bilder (und Ton) kommen ab jetzt aus der Erfassung – sie öffnet ihr Fenster bei Bedarf.
+    this.erfassung.verbinde(this)
 
-    const win = new BrowserWindow({
-      show: false,
-      width: cfg.width,
-      height: cfg.height,
-      frame: false,
-      webPreferences: secureWebPreferences({ offscreen: true, backgroundThrottling: false })
-    })
-    this.win = win
-    win.webContents.setFrameRate(cfg.fps)
-    win.webContents.on('paint', (_e, _dirty, image) => this.onPaint(image))
-    win.on('closed', () => {
-      if (this.win !== win) return
-      this.win = null
-      this.stop()
-    })
-    loadRoute(win, route)
-    // Kein Neuzeichnen im Takt (wie beim NDI-Sender): Eine unveränderte Anzeige malt Chromium
-    // nicht neu, dann wiederholt der Takt in startEncoder das letzte Bild – ohne Rendern und
-    // ohne 8 MB Kopie je Bild im main-Prozess.
-
-    logLine(this.tag, 'gestartet:', `${cfg.width}x${cfg.height}@${cfg.fps}`, `Port ${cfg.port}`)
+    logLine(
+      this.tag,
+      'gestartet:',
+      `${cfg.width}x${cfg.height}@${cfg.fps}`,
+      `Port ${cfg.port}`,
+      this.mitTon ? 'mit Ton' : 'ohne Ton'
+    )
     this.emit()
   }
 
   stop(emit = true): void {
     this.generation++
     this.stopEncoder()
-    if (this.win) {
-      const w = this.win
-      this.win = null // vor destroy nullen -> 'closed'-Handler stoppt nicht doppelt
-      if (!w.isDestroyed()) w.destroy()
-    }
+    this.erfassung.trenne(this)
     this.verteiler.closeAll()
     if (this.server) {
       this.server.close()
@@ -199,26 +208,65 @@ export class OffscreenStreamSender {
       this.server = null
     }
     this.frame = null
-    this.paintSize = null
     if (emit) {
       logLine(this.tag, 'gestoppt')
       this.emit()
     }
   }
 
-  /**
-   * Neues Bild aus dem Offscreen-Fenster. Umgewandelt (8 MB je Bild bei 1080p) wird nur, solange
-   * ffmpeg läuft – und nie skaliert: Bei Bildschirm-Skalierung über 100 % kommt das Bild größer,
-   * ffmpeg bringt es in seinem eigenen Prozess auf die Ausgabegröße.
-   */
-  private onPaint(image: Electron.NativeImage): void {
-    const { width, height } = image.getSize()
-    if (width < 2 || height < 2) return
-    this.paintSize = { width, height }
+  // --- Ausgang der Erfassung ---
+
+  wunsch(): ErfassungsWunsch {
+    const cfg = this.config
+    return {
+      width: cfg?.width ?? 1920,
+      height: cfg?.height ?? 1080,
+      fps: cfg?.fps ?? 30,
+      // ffmpeg skaliert und passt ein – das Fenster darf eine andere Größe haben (NDI parallel)
+      festeGroesse: false,
+      takt: false,
+      ton: this.mitTon,
+      // allein: in die Auflösung einbetten, ein anderes Seitenverhältnis der Wand nicht verzerren
+      fit: 'contain'
+    }
+  }
+
+  willBilder(): boolean {
+    return this.ffmpeg != null
+  }
+
+  bild(b: ErfassungsBild): void {
     const proc = this.ffmpeg
     if (!proc) return
-    this.frame = { width, height, data: image.toBitmap() }
+    this.frame = b
     this.writeFrame(proc)
+  }
+
+  ton(t: ErfassungsTon): void {
+    const weg = this.tonWeg
+    if (!weg?.socket) return // ffmpeg hat sich noch nicht verbunden: Der Block läge davor
+    if (t.sampleRate !== STREAM_TON_RATE) {
+      if (!this.falscheRateGemeldet) {
+        this.falscheRateGemeldet = true
+        this.report(`Ton mit ${t.sampleRate} Hz statt ${STREAM_TON_RATE} Hz – bleibt stumm.`)
+      }
+      return
+    }
+    const laenge = t.channels[0].length
+    const frame = typeof t.frame === 'number' ? t.frame : weg.naechsterFrame
+    weg.naechsterFrame = frame + laenge
+    const platz = weg.takt.block(Date.now(), frame, laenge)
+    if (platz.stille > 0) weg.socket.write(stille(platz.stille))
+    if (platz.anzahl > 0) weg.socket.write(verschraenkt(t.channels, platz.von, platz.anzahl))
+  }
+
+  tonFehler(text: string): void {
+    this.report(`Ton: ${text}`)
+  }
+
+  /** Erfassungsfenster von außen geschlossen (z. B. App-Ende) -> sauber stoppen */
+  beendet(): void {
+    this.stop()
   }
 
   private report(text: string): void {
@@ -248,15 +296,26 @@ export class OffscreenStreamSender {
     const gen = this.generation
     const enc = this.cpuOnly ? CPU_ENCODERS.h264 : await resolveEncoder('auto')
     if (gen !== this.generation || this.ffmpeg || this.verteiler.count === 0) return
+    // Ton-Weg vor ffmpeg: Es verbindet sich beim Start mit diesem Port.
+    const weg = this.mitTon ? await this.oeffneTonWeg() : null
+    if (gen !== this.generation || this.ffmpeg || this.verteiler.count === 0) {
+      weg?.server.close()
+      return
+    }
 
-    // Eingang in der Größe der paint-Bilder; vor dem ersten paint die eingestellte.
-    const input = this.paintSize ?? { width: cfg.width, height: cfg.height }
+    // Eingang in der Größe, in der die Erfassung malt; vor dem ersten Bild die eingestellte.
+    const input = this.erfassung.bildGroesse ?? { width: cfg.width, height: cfg.height }
+    const startMs = Date.now()
     let proc: ChildProcessWithoutNullStreams
     try {
-      proc = spawn(ffmpegBinPath('ffmpeg'), buildStreamArgs(enc.id, cfg, input), {
+      const ton = weg
+        ? { port: (weg.server.address() as net.AddressInfo).port, startMs }
+        : undefined
+      proc = spawn(ffmpegBinPath('ffmpeg'), buildStreamArgs(enc.id, cfg, input, ton), {
         windowsHide: true
       })
     } catch (err) {
+      weg?.server.close()
       this.report(`ffmpeg startet nicht: ${message(err)}`)
       this.verteiler.closeAll()
       return
@@ -266,6 +325,10 @@ export class OffscreenStreamSender {
     this.frame = null
     this.encoder = enc.label
     this.problem = null
+    if (weg) {
+      weg.takt = new Tontakt(startMs)
+      this.tonWeg = weg
+    }
     let stderr = ''
     let sentBytes = false
     proc.stdout.on('data', (chunk: Buffer) => {
@@ -281,6 +344,7 @@ export class OffscreenStreamSender {
       if (this.ffmpeg !== proc) return
       this.ffmpeg = null
       this.stopPump()
+      this.schliesseTonWeg()
       this.report(`ffmpeg startet nicht (${message(err)}) – ist ffmpeg installiert?`)
       this.verteiler.closeAll()
     })
@@ -288,6 +352,7 @@ export class OffscreenStreamSender {
       if (this.ffmpeg !== proc) return // selbst beendet
       this.ffmpeg = null
       this.stopPump()
+      this.schliesseTonWeg()
       const grund = stderr.trim().split('\n').pop() || `Code ${code}`
       logLine(this.tag, `ffmpeg (${enc.id}) beendet:`, grund)
       // GPU-Encoder gescheitert (Treiber, Sitzungslimit) -> einmal mit der CPU weiter.
@@ -303,8 +368,7 @@ export class OffscreenStreamSender {
     logLine(this.tag, 'ffmpeg läuft:', enc.id, `${input.width}x${input.height}`)
     // Gleich ein frisches Bild holen (bis eben wurde nichts umgewandelt); danach bringt jedes
     // paint das nächste.
-    const win = this.win
-    if (win && !win.isDestroyed()) win.webContents.invalidate()
+    this.erfassung.neuZeichnen()
     // Standbild: Chromium malt nicht neu, ffmpeg braucht trotzdem laufend Bilder – der fps-Filter
     // gibt ein Bild erst aus, wenn das nächste kommt. Also das letzte wiederholen.
     const takt = Math.round(1000 / cfg.fps)
@@ -315,14 +379,70 @@ export class OffscreenStreamSender {
     this.emit()
   }
 
+  /**
+   * Lokaler TCP-Port für den Ton: nur 127.0.0.1, nur EINE Verbindung (ffmpeg), danach nimmt der
+   * Server keine weitere an. Was vor der Verbindung an Blöcken kommt, läge ohnehin davor.
+   */
+  private async oeffneTonWeg(): Promise<TonWeg | null> {
+    const server = net.createServer()
+    const weg: TonWeg = {
+      server,
+      socket: null,
+      takt: new Tontakt(Date.now()),
+      tick: null,
+      naechsterFrame: 0
+    }
+    server.on('connection', (socket) => {
+      const lokal = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(socket.remoteAddress ?? '')
+      if (weg.socket || !lokal || this.tonWeg !== weg) {
+        socket.destroy()
+        return
+      }
+      weg.socket = socket
+      server.close() // keine zweite Verbindung
+      socket.setNoDelay(true)
+      // EPIPE/ECONNRESET beim Beenden von ffmpeg ist erwartet
+      socket.on('error', () => {})
+      // Zeit seit dem Start (ffmpeg las zuerst das Bild) als Stille, dann der Takt
+      socket.write(stille(weg.takt.beginn(Date.now())))
+      weg.tick = setInterval(() => {
+        const n = weg.takt.tick(Date.now(), TON_TICK_MS)
+        if (n > 0 && weg.socket) weg.socket.write(stille(n))
+      }, TON_TICK_MS)
+    })
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject)
+        server.listen(0, '127.0.0.1', () => {
+          server.off('error', reject)
+          resolve()
+        })
+      })
+      return weg
+    } catch (err) {
+      server.close()
+      this.report(`Ton-Weg zu ffmpeg nicht geöffnet: ${message(err)} – der Stream läuft ohne Ton.`)
+      return null
+    }
+  }
+
+  private schliesseTonWeg(): void {
+    const weg = this.tonWeg
+    if (!weg) return
+    this.tonWeg = null
+    if (weg.tick) clearInterval(weg.tick)
+    weg.server.close()
+    weg.socket?.destroy()
+  }
+
   /** Neuestes Bild an ffmpeg. Bei Rückstau auslassen – die Zeit kommt von der Uhr. */
   private writeFrame(proc: ChildProcessWithoutNullStreams): void {
     const frame = this.frame
     const input = this.inputSize
     if (!frame || !input || this.ffmpeg !== proc) return
     if (frame.width !== input.width || frame.height !== input.height) {
-      // Größe geändert (Bildschirm-Skalierung umgestellt): ffmpeg neu starten, die Empfänger
-      // bleiben verbunden.
+      // Größe geändert (Bildschirm-Skalierung umgestellt, NDI dazu oder weg): ffmpeg neu
+      // starten, die Empfänger bleiben verbunden.
       logLine(this.tag, 'Bildgröße geändert:', `${frame.width}x${frame.height}`)
       this.stopEncoder()
       void this.startEncoder()
@@ -344,6 +464,7 @@ export class OffscreenStreamSender {
     if (this.nachlauf) clearTimeout(this.nachlauf)
     this.nachlauf = null
     this.stopPump()
+    this.schliesseTonWeg()
     const proc = this.ffmpeg
     if (!proc) return
     this.ffmpeg = null

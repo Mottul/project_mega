@@ -4,6 +4,8 @@
 // ausgelassen, Hänger), kommen die Bilder danach dauerhaft später an, als ihr PTS sagt – der
 // Puffer des Empfängers läuft leer, er stockt (Fehler aus Stufe 1, gemeldet am 21.11.2026).
 
+import { spawnSync } from 'node:child_process'
+import { createWriteStream } from 'node:fs'
 import http from 'node:http'
 
 const TS = 188
@@ -108,13 +110,15 @@ function entfalter() {
 /**
  * Schneidet `ms` Millisekunden des Stroms unter `url` mit. Liefert je Art die Liste
  * `{ ankunft, pts }` (Ankunft in ms seit Beginn, PTS in Sekunden) und die Zahl der Bytes.
- * `bremse(ms)` darf die Funktion unterwegs aufrufen lassen (z. B. den main-Prozess blockieren).
+ * `waehrend()` läuft unterwegs (z. B. den main-Prozess blockieren); `datei` speichert den Strom
+ * zusätzlich, etwa für `blitzUndPiep`.
  */
-export function mitschneiden(url, ms, { waehrend } = {}) {
+export function mitschneiden(url, ms, { waehrend, datei } = {}) {
   return new Promise((resolve, reject) => {
     const t0 = performance.now()
     const ergebnis = { video: [], audio: [], bytes: 0 }
     const pts = { video: entfalter(), audio: entfalter() }
+    const ablage = datei ? createWriteStream(datei) : null
     let jetzt = 0
     const parse = tsParser((art, roh) => {
       ergebnis[art].push({ ankunft: jetzt, pts: pts[art](roh) })
@@ -128,12 +132,14 @@ export function mitschneiden(url, ms, { waehrend } = {}) {
       res.on('data', (chunk) => {
         jetzt = performance.now() - t0
         ergebnis.bytes += chunk.length
+        ablage?.write(chunk)
         parse(chunk)
       })
       res.on('error', () => {})
       setTimeout(() => {
         req.destroy()
-        resolve(ergebnis)
+        if (ablage) ablage.end(() => resolve(ergebnis))
+        else resolve(ergebnis)
       }, ms)
       waehrend?.().catch(reject)
     })
@@ -141,6 +147,56 @@ export function mitschneiden(url, ms, { waehrend } = {}) {
       if (performance.now() - t0 < ms) reject(err)
     })
   })
+}
+
+/**
+ * Lippensynchron? Wertet einen mitgeschnittenen Strom eines Testclips aus, in dem Blitz (weißes
+ * Bild) und Piep zur selben Zeit kommen: Blitze über die mittlere Helligkeit (signalstats),
+ * Pieps über das Ende der Stille davor (silencedetect), beides in der Zeit des Stroms (PTS in s).
+ * `paare`: je Blitz mit Piep in der Nähe `{ blitz, versatzMs, hell }`, Ton − Bild (positiv = Ton
+ * zu spät; `hell`: mittlere Helligkeit der Bilder um den Blitz, zur Diagnose). `ende`: PTS des
+ * letzten Bildes – ein Blitz kurz davor kann angeschnitten sein.
+ */
+export function blitzUndPiep(datei, ffmpeg) {
+  const lauf = (args) =>
+    spawnSync(ffmpeg, ['-hide_banner', '-nostats', '-copyts', '-i', datei, ...args], {
+      encoding: 'utf8',
+      maxBuffer: 1e8
+    })
+  const v = lauf([
+    ...['-map', '0:v', '-vf', 'signalstats,metadata=mode=print:key=lavfi.signalstats.YAVG:file=-'],
+    ...['-f', 'null', '-']
+  ])
+  const bilder = [] // [pts, YAVG]
+  let t = null
+  for (const zeile of v.stdout.split(/\r?\n/)) {
+    const m = zeile.match(/pts_time:([\d.]+)/)
+    if (m) t = Number(m[1])
+    const y = zeile.match(/YAVG=([\d.]+)/)
+    if (y) bilder.push([t, Number(y[1])])
+  }
+  const blitze = []
+  const verlauf = new Map() // Blitz -> Helligkeit der Bilder drumherum (Diagnose)
+  bilder.forEach(([pts, y], i) => {
+    if (y > 128 && (i === 0 || bilder[i - 1][1] <= 128)) {
+      blitze.push(pts)
+      verlauf.set(
+        pts,
+        bilder.slice(Math.max(0, i - 2), i + 3).map(([, yy]) => Math.round(yy))
+      )
+    }
+  })
+  const a = lauf(['-map', '0:a', '-af', 'silencedetect=n=-30dB:d=0.3', '-f', 'null', '-'])
+  const pieps = [...a.stderr.matchAll(/silence_end: ([\d.]+)/g)].map((m) => Number(m[1]))
+  const paare = []
+  for (const b of blitze) {
+    const p = pieps.find((x) => Math.abs(x - b) < 0.5)
+    if (p != null) {
+      paare.push({ blitz: b, versatzMs: Math.round((p - b) * 1000), hell: verlauf.get(b) })
+    }
+  }
+  const ende = bilder.length ? bilder[bilder.length - 1][0] : 0
+  return { blitze, pieps, paare, ende }
 }
 
 /**

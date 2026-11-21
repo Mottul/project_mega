@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '@renderer/lib/api'
+import type { PlayerState } from '@shared/types'
 
 // Live-Status je Tool für den Homescreen: zeigt, was gerade läuft (Konverter-Aufträge,
 // YouTube-Downloads, laufender Timer, offene Player- bzw. Timer-Ausgabe). Tools ohne
@@ -92,16 +93,16 @@ export function useToolActivity(): Record<string, ToolActivity> {
     return api.timer.onState(apply)
   }, [])
 
-  // Video-Player
+  // Video-Player: Ausgabefenster offen oder Stream fürs Heimnetz an
   useEffect(() => {
-    void api.player
-      .getState()
-      .then((s) =>
-        setPlayer({ playing: s.playing, output: s.outputOpen, items: s.playlist.length })
-      )
-    return api.player.onState((s) =>
-      setPlayer({ playing: s.playing, output: s.outputOpen, items: s.playlist.length })
-    )
+    const apply = (s: PlayerState): void =>
+      setPlayer({
+        playing: s.playing,
+        output: s.outputOpen || s.streamActive,
+        items: s.playlist.length
+      })
+    void api.player.getState().then(apply)
+    return api.player.onState(apply)
   }, [])
 
   const out: Record<string, ToolActivity> = {}

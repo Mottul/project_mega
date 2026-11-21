@@ -125,8 +125,10 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   Verbindung und Probebetrieb erfüllen dieselbe Schnittstelle (`atemVerbindung.ts`).
 - **Native/optionale Module:** better-sqlite3 (ab 13 über N-API: die Binaries liegen im Paket und
   laufen unter jeder Electron- und Node-Version, kein Rebuild, KEIN node-gyp im Baum); NDI-Binding
-  `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`); NDI-Ausgaben nur über den
-  gemeinsamen Offscreen-Sender `services/ndi/ndiSender.ts` (Timer und Player sind dünne Hüllen).
+  `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`). Offscreen-Ausgaben (NDI,
+  Stream fürs Heimnetz) nur über die gemeinsame Erfassung `services/erfassung/offscreenErfassung.ts`
+  (EIN Fenster je Werkzeug) mit den Sendern `ndi/ndiSender.ts` und `stream/streamSender.ts` (Timer
+  und Player sind dünne Hüllen); die Ton-Zeit des Streams legt `stream/tontakt.ts` fest.
 
 ## Konventionen
 

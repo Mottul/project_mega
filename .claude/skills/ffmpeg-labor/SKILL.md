@@ -46,6 +46,21 @@ blieben 0,03 s, der nötige Puffer ist ein Hänger (0,83 s). Messen wie im Labor
 schreiben, mit Warteschleifen unterbrechen, den TS-Ausgang mit `e2e/tsMitschnitt.mjs` zerlegen
 (`tsParser`, `zeitachse`).
 
+**Ton dazu über einen zweiten Eingang (Stufe 2, gemessen November 2026)** – Blitz und Piep alle
+2 s, Versatz Ton − Bild im Ausgang (`blitzUndPiep` in `e2e/tsMitschnitt.mjs`):
+
+- Roh-PCM (`-f f32le -sample_rate 48000 -ch_layout stereo`) liest ffmpeg in Paketen zu **4096
+  Samples (85 ms)**; mit `-use_wallclock_as_timestamps` kommt der Stempel erst am Paketende –
+  der Ton lag 55 bis 162 ms zu spät. Mit `-itsoffset -0.0853` ±20 ms, nach Hängern blieben bis
+  44 ms stehen: ffmpeg unterscheidet einen Schub verspäteter Blöcke nicht von einer Lücke.
+- `-isync 0` am Ton: ab dem zweiten Paket gar kein Zeitstempel mehr (`pts N/A`).
+- **`-itsoffset` greift bei Roh-PCM nicht** – ihre Pakete haben keinen Zeitstempel, ffmpeg zählt
+  erst später ab 0.
+- Was trägt: Ton OHNE Wanduhr, Sample für Sample in der richtigen Reihenfolge (der Sender legt
+  die Blöcke nach ihrer Sample-Nummer, `stream/tontakt.ts`), `-af asetpts=N/SR/TB+<Start>/TB`
+  mit der Startzeit in Sekunden, `-copyts`, `-avoid_negative_ts make_zero`: −9 ms konstant,
+  auch über vier Hänger zu 0,8 s; der Strom beginnt trotzdem bei 0.
+
 **Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
 Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in
 Terzen von 63 Hz bis 4 kHz flach (±0,3 dB), darüber fällt es (−1 dB bei 8 kHz, −2,3 dB bei

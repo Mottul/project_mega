@@ -1,33 +1,36 @@
-// Gemeinsamer NDI-Sender für Stage-Timer und Video-Player (experimentell). Ein unsichtbares
-// Offscreen-BrowserWindow rendert eine App-Route in der gewünschten Auflösung; seine paint-Frames
-// (BGRA) gehen als NDI-Videoquelle ins Netz, auf Wunsch dazu Ton (planare Float32-Blöcke).
+// Gemeinsamer NDI-Sender für Stage-Timer und Video-Player (experimentell). Bilder (BGRA) und beim
+// Player der Ton (planare Float32-Blöcke) kommen aus der Offscreen-Erfassung des Werkzeugs
+// (erfassung/offscreenErfassung.ts) – derselben, aus der auch der Stream fürs Heimnetz sendet.
 // Architektur wie beim Tool "Vingester" (Electron-Offscreen -> NDI).
 //
 // Hier steckt einmal, was beide Sender gleich brauchen und was schon schiefging:
 // - destroy() des Senders erst, wenn kein Send mehr läuft (sonst Use-after-free im nativen Code
 //   -> Absturz beim Stoppen), und vor dem nächsten Erstellen abwarten (Stop->Start kollidiert)
-// - 'closed' nur vom AKTUELLEN Fenster auswerten (kommt asynchron, auch nach einem Neustart)
-// - Stopp mitten im Start: den gerade erstellten Sender wieder abbauen, kein Fenster öffnen
+// - Stopp mitten im Start: den gerade erstellten Sender wieder abbauen, nicht an die Erfassung
 // - ein Video-Send in Flight -> neue Frames verwerfen; Ton bei Stau verwerfen (keine Latenz)
+// Was das Fenster betrifft ('closed' nur vom aktuellen Fenster …), regelt die Erfassung.
 //
 // Das NDI-Binding ist BEWUSST optional (./ndi): ohne Modul läuft die App unverändert, die
 // Werkzeuge zeigen "nicht verfügbar".
 
-import { BrowserWindow } from 'electron'
-import { loadRoute, secureWebPreferences } from '../windows/appWindows'
+import type {
+  ErfassungsAusgang,
+  ErfassungsBild,
+  ErfassungsTon,
+  ErfassungsWunsch,
+  OffscreenErfassung
+} from '../erfassung/offscreenErfassung'
 import { logLine } from '../log'
-import { ensureNdiInitialized, getNdiLoadError, loadGrandiose, type Grandiose } from './ndi'
+import { ensureNdiInitialized, getNdiLoadError, loadGrandiose } from './ndi'
 import { audioFrame, peakOf, videoFrame, type NdiSize } from './ndiFrames'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export interface NdiSenderRoute {
-  /** App-Route des Offscreen-Fensters, z. B. '/timer-output' */
-  route: string
+export interface NdiSenderOptions {
   /** Ton mitschicken: das SDK stempelt dann auch die Audioframes (clockAudio) */
   audio?: boolean
-  /** Die Seite spielt Medien ohne Nutzergeste ab (Player-Spiegel, von der Engine gesteuert) */
-  autoplay?: boolean
+  /** Player: Wandbild 1:1 (fill) oder in die Zielauflösung eingebettet (contain) */
+  fit?: 'fill' | 'contain'
   /** Zusatz für die Logzeile beim Start */
   logInfo?: string[]
 }
@@ -35,20 +38,20 @@ export interface NdiSenderRoute {
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 const message = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
-export class OffscreenNdiSender {
-  private win: BrowserWindow | null = null
+export class NdiSender implements ErfassungsAusgang {
   private sender: any = null
   private teardown: Promise<void> | null = null
-  private invalidateTimer: ReturnType<typeof setInterval> | null = null
   private sendingVideo = false
   private audioBacklog = 0
   /** zählt jeden Start und Stopp: ein Start, der nach einem await nicht mehr aktuell ist, bricht ab */
   private generation = 0
-  private fps = 30
+  private size: NdiSize = { name: '', width: 1920, height: 1080, fps: 30 }
+  private opts: NdiSenderOptions = {}
   /** Sendefehler – verschwindet mit dem nächsten gesendeten Bild */
   private sendError: string | null = null
   /** bleibt bis zum nächsten Start stehen (Sender nicht erstellt, Audio-Tap gescheitert) */
   private problem: string | null = null
+  private silenceWarned = false
   framesSent = 0
   audioChunks = 0
   /** Spitzenpegel des Tons (0..1, abklingend) – unterscheidet Stille von Signal */
@@ -58,7 +61,9 @@ export class OffscreenNdiSender {
     /** Präfix der Logzeilen, z. B. '[timer-ndi]' */
     private readonly tag: string,
     /** Zustand geändert -> Status an die Fenster */
-    private readonly emit: () => void
+    private readonly emit: () => void,
+    /** Offscreen-Erfassung des Werkzeugs (geteilt mit dem Stream) */
+    private readonly erfassung: OffscreenErfassung
   ) {}
 
   get available(): boolean {
@@ -66,17 +71,11 @@ export class OffscreenNdiSender {
   }
 
   get running(): boolean {
-    return this.win != null
+    return this.sender != null
   }
 
   get error(): string | null {
     return this.problem ?? this.sendError ?? getNdiLoadError()
-  }
-
-  /** Kommt die Nachricht aus dem eigenen Offscreen-Fenster? (IPC vom Spiegel) */
-  isOwnWindow(webContentsId: number): boolean {
-    const w = this.win
-    return w != null && !w.isDestroyed() && w.webContents.id === webContentsId
   }
 
   /** Fehler sichtbar machen, der bis zum nächsten Start stehen bleibt */
@@ -86,15 +85,15 @@ export class OffscreenNdiSender {
     this.emit()
   }
 
-  async start(size: NdiSize, opts: NdiSenderRoute): Promise<void> {
+  async start(size: NdiSize, opts: NdiSenderOptions = {}): Promise<void> {
     const g = loadGrandiose()
     if (!g) return
     this.stop(false)
     const gen = this.generation
-    this.fps = size.fps
     this.framesSent = 0
     this.audioChunks = 0
     this.audioLevel = 0
+    this.silenceWarned = false
     this.sendError = null
     this.problem = null
 
@@ -136,38 +135,10 @@ export class OffscreenNdiSender {
       return
     }
     this.sender = sender
-
-    const win = new BrowserWindow({
-      show: false,
-      width: size.width,
-      height: size.height,
-      frame: false,
-      webPreferences: secureWebPreferences({
-        offscreen: true,
-        backgroundThrottling: false,
-        ...(opts.autoplay ? { autoplayPolicy: 'no-user-gesture-required' as const } : {})
-      })
-    })
-    this.win = win
-    win.webContents.setFrameRate(size.fps)
-    win.webContents.on('paint', (_e, _dirty, image) => this.pushFrame(g, image))
-    // externes Schließen (z.B. App-Ende) -> sauber stoppen. Nur das AKTUELLE Fenster: 'closed'
-    // kann nach einem Neustart des Senders kommen, wenn schon das neue in `win` steht.
-    win.on('closed', () => {
-      if (this.win !== win) return
-      this.win = null
-      this.stop()
-    })
-    loadRoute(win, opts.route)
-
-    // Die Anzeige ist oft statisch (Timer: 1 Repaint/s, Player: Standbild/Pause) -> regelmäßig
-    // invalidieren, damit ein gleichmäßiger NDI-Frame-Takt entsteht.
-    this.invalidateTimer = setInterval(
-      () => {
-        if (!win.isDestroyed()) win.webContents.invalidate()
-      },
-      Math.round(1000 / size.fps)
-    )
+    this.size = size
+    this.opts = opts
+    // Bilder kommen ab jetzt aus der Erfassung; ihr Fenster richtet sich nach dieser Größe.
+    this.erfassung.verbinde(this)
 
     logLine(
       this.tag,
@@ -181,15 +152,7 @@ export class OffscreenNdiSender {
 
   stop(emit = true): void {
     this.generation++
-    if (this.invalidateTimer) {
-      clearInterval(this.invalidateTimer)
-      this.invalidateTimer = null
-    }
-    if (this.win) {
-      const w = this.win
-      this.win = null // vor destroy nullen -> 'closed'-Handler stoppt nicht doppelt
-      if (!w.isDestroyed()) w.destroy()
-    }
+    this.erfassung.trenne(this)
     if (this.sender) {
       const s = this.sender
       this.sender = null
@@ -199,6 +162,44 @@ export class OffscreenNdiSender {
       logLine(this.tag, 'gestoppt')
       this.emit()
     }
+  }
+
+  // --- Ausgang der Erfassung ---
+
+  wunsch(): ErfassungsWunsch {
+    return {
+      width: this.size.width,
+      height: this.size.height,
+      fps: this.size.fps,
+      festeGroesse: true,
+      // Die Anzeige ist oft statisch (Timer: 1 Repaint/s, Player: Standbild/Pause) -> im Takt
+      // neu zeichnen lassen, damit ein gleichmäßiger NDI-Frame-Takt entsteht.
+      takt: true,
+      ton: this.opts.audio === true,
+      fit: this.opts.fit
+    }
+  }
+
+  /** Während ein Bild im Flug ist, keins umwandeln lassen – es würde ohnehin verworfen. */
+  willBilder(): boolean {
+    return this.sender != null && !this.sendingVideo
+  }
+
+  bild(b: ErfassungsBild): void {
+    this.pushFrame(b)
+  }
+
+  ton(t: ErfassungsTon): void {
+    this.pushAudio(t)
+  }
+
+  tonFehler(text: string): void {
+    this.report(`Audio-Tap: ${text}`)
+  }
+
+  /** Erfassungsfenster von außen geschlossen (z. B. App-Ende) -> sauber stoppen */
+  beendet(): void {
+    this.stop()
   }
 
   /** Tonblock (planare Float32-Kanäle) als NDI-Audioframe senden; Ungültiges und Stau verwerfen. */
@@ -212,6 +213,15 @@ export class OffscreenNdiSender {
       peakOf((chunk as { channels: Float32Array[] }).channels),
       this.audioLevel * 0.85
     )
+    // Stille trotz Blöcken: CORS-tainted media -> WebAudio liefert Nullen, oder keine Tonspur
+    if (!this.silenceWarned && this.audioChunks > 90 && this.audioLevel < 0.0001) {
+      this.silenceWarned = true
+      logLine(
+        this.tag,
+        'WARNUNG: Audio-Tap liefert nur Stille (Pegel 0) --',
+        'Medium ohne Tonspur? Sonst CORS-Kette prüfen (media://-Header + crossOrigin).'
+      )
+    }
     // Stau begrenzen: lieber einen Block verlieren als Latenz aufzubauen.
     if (this.audioBacklog > 8) return
     this.audioBacklog++
@@ -234,13 +244,12 @@ export class OffscreenNdiSender {
       })
   }
 
-  /** paint-Frame (BGRA) als NDI-Videoframe senden; bei laufendem Send verwerfen. */
-  private pushFrame(g: Grandiose, image: Electron.NativeImage): void {
+  /** Bild (BGRA) als NDI-Videoframe senden; bei laufendem Send verwerfen. */
+  private pushFrame(b: ErfassungsBild): void {
+    const g = loadGrandiose()
     const s = this.sender
-    if (!s || this.sendingVideo) return
-    const { width, height } = image.getSize()
-    if (width < 2 || height < 2) return
-    const frame = videoFrame(g, width, height, this.fps, image.toBitmap()) // eigene Kopie
+    if (!g || !s || this.sendingVideo) return
+    const frame = videoFrame(g, b.width, b.height, this.size.fps, b.data)
     this.sendingVideo = true
     void new Promise((resolve) => resolve(s.video(frame)))
       .then(() => {
