@@ -153,6 +153,11 @@ export function buildStreamArgs(
     '-i',
     'pipe:0',
     '-an',
+    // Die Zeitstempel bleiben die der Wanduhr, absolut statt ab 0: Startet ffmpeg neu (andere
+    // Bildgröße), macht der neue Strom dort weiter, wo die Uhr steht – für den Empfänger eine
+    // kurze Lücke. Ab 0 sprang die Zeit zurück (nachgestellt: 5,5 s), und der Empfänger lief
+    // dauerhaft hinterher (einmal auf dem macOS-Runner gesehen: 11,5 s).
+    '-copyts',
     // Auf die Ausgabegröße bringt ffmpeg das Bild selbst (bei Bildschirm-Skalierung kommt es
     // größer) – im main-Prozess kostete das je Bild Zeit, in der er nichts anderes tun kann.
     // Begrenzter Bereich (TV-Pegel) und BT.709 ausdrücklich: sonst raten Decoder bei HD-Material

@@ -169,7 +169,11 @@ export class OffscreenStreamSender {
     })
     this.win = win
     win.webContents.setFrameRate(cfg.fps)
-    win.webContents.on('paint', (_e, _dirty, image) => this.onPaint(image))
+    // Nur Bilder des AKTUELLEN Fensters (wie bei 'closed'): Ein spätes Bild eines alten Fensters
+    // in anderer Größe würde ffmpeg sonst neu starten lassen.
+    win.webContents.on('paint', (_e, _dirty, image) => {
+      if (this.win === win) this.onPaint(image)
+    })
     win.on('closed', () => {
       if (this.win !== win) return
       this.win = null

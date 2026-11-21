@@ -483,6 +483,13 @@ alten Stand 3,98 s Rückstand), dann behoben.
   main-Prozess, dazu `toBitmap()` (8 MB bei 1080p) auch ohne Zuschauer und ein `invalidate()` im
   Takt. Heute wandelt der Sender nur, solange ffmpeg läuft, und ffmpeg skaliert selbst.
   Nachstellen ohne HiDPI-Bildschirm: `launchApp({ args: ['--force-device-scale-factor=1.5'] })`.
+- **Ein Neustart des Kodierers darf die Zeit nicht zurückdrehen.** Auf dem macOS-Runner sprang
+  die Zeit im Strom einmal 11,5 s zurück, während die Bilder weiter im Takt kamen – das Zeichen
+  eines neu gestarteten ffmpeg, dessen Zeitstempel wieder bei 0 begannen (nachgestellt durch ein
+  größeres Offscreen-Fenster: 5,5 s zurück). Neu starten muss der Sender bei jeder anderen
+  Bildgröße. Heute behält `-copyts` die absolute Wanduhr, ein Neustart ist eine Lücke von gut
+  einer halben Sekunde; dazu zählen paint-Bilder nur vom aktuellen Fenster. Im Review bei jedem
+  Neustart eines Live-Prozesses fragen: Was sieht der Empfänger danach?
 
 ## Bilder, PDF und fremdes HTML (Phase 1 Mini-Manual, 16. Oktober 2026)
 

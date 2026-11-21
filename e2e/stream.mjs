@@ -26,6 +26,11 @@ const offscreenWindows = () =>
 const PORT = 18093
 const cfg = { width: 640, height: 360, fps: 15, port: PORT, bitrateKbps: 1000 }
 const url = `http://127.0.0.1:${PORT}/live.ts`
+/** Wie oft ffmpeg für den Timer-Stream gestartet ist (Zeilen im Protokoll der App) */
+const ffmpegStarts = () =>
+  readFileSync(join(ctx.userData, 'avtoolbox-debug.log'), 'utf8')
+    .split(/\r?\n/)
+    .filter((l) => l.includes('[timer-stream] ffmpeg läuft')).length
 
 /** Liest ein paar Sekunden vom Strom und meldet, was darin steckt (wie ein Empfänger). */
 async function probe() {
@@ -168,6 +173,50 @@ try {
         // Verlust – nach jedem Hänger muss die Zeit im Strom wieder mit der Uhr laufen.
         assert.ok(z.rueckstand < 0.3, `Strom-Zeit bleibt ${z.rueckstand.toFixed(2)} s zurück`)
         assert.ok(Math.abs(z.bilderJeSekunde - 30) < 1.5, `${z.bilderJeSekunde} Bilder/s`)
+      }
+    ],
+    [
+      'Bildgröße ändert sich mitten im Strom: ffmpeg startet neu, die Zeit läuft weiter',
+      async () => {
+        needFfmpeg()
+        // Einmal auf dem macOS-Runner gesehen: Mitten im Strom fing die Zeit wieder vorn an
+        // (11,5 s zurück, die Bilder kamen weiter im Takt) – das Bild eines neu gestarteten
+        // ffmpeg. Neu starten muss der Sender, wenn sich die Bildgröße ändert (Skalierung
+        // umgestellt, später NDI an oder aus). Für den Empfänger darf das nur eine kurze Lücke
+        // sein, kein Sprung zurück. Nachgestellt: Das Offscreen-Fenster wird größer.
+        const st = await page.evaluate((c) => window.api.timer.streamStart(c), {
+          ...cfg,
+          fps: 30
+        })
+        assert.equal(st.running, true, st.error ?? '')
+        const vorher = ffmpegStarts()
+        const groesser = async () => {
+          await sleep(4000)
+          await app.evaluate(({ BrowserWindow }) => {
+            const w = BrowserWindow.getAllWindows().find(
+              (x) => !x.isDestroyed() && x.webContents.isOffscreen()
+            )
+            w?.setContentSize(800, 450)
+          })
+        }
+        const m = await mitschneiden(url, 10_000, { waehrend: groesser })
+        const z = zeitachse(m.video)
+        assert.ok(z, 'kein Bild empfangen')
+        const neu = ffmpegStarts() - vorher
+        console.log(
+          `    ffmpeg ${neu}-mal gestartet, Rückstand am Ende ${z.rueckstand.toFixed(2)} s, ` +
+            `größter Versatz ${z.puffer.toFixed(2)} s` +
+            (z.spruenge.length
+              ? `, Sprünge: ${z.spruenge.map((s) => `${s.umS.toFixed(2)} s bei ${s.beiS.toFixed(1)} s`).join(', ')}`
+              : '')
+        )
+        assert.ok(neu >= 2, 'ffmpeg ist nicht neu gestartet – kam die neue Größe nicht an?')
+        // Die Lücke des Neustarts darf sein, ein dauerhafter Rückstand nicht.
+        assert.ok(z.rueckstand < 0.6, `Strom-Zeit bleibt ${z.rueckstand.toFixed(2)} s zurück`)
+        assert.ok(
+          z.spruenge.every((s) => s.umS > 0),
+          'Zeit springt zurück'
+        )
       }
     ],
     [

@@ -34,6 +34,14 @@ describe('Stream – ffmpeg-Argumente', () => {
     expect(a[a.indexOf('-vf') + 1]).toMatch(/,fps=25$/)
   })
 
+  it('absolute Zeitstempel: Ein Neustart von ffmpeg dreht die Zeit nicht auf 0 zurück', () => {
+    const a = buildStreamArgs('libx264', cfg)
+    expect(a).toContain('-copyts')
+    // weder an den Anfang schieben (start_at_zero) noch beim Muxen auf 0 setzen
+    expect(a).not.toContain('-start_at_zero')
+    expect(a).not.toContain('-avoid_negative_ts')
+  })
+
   it('bei Bildschirm-Skalierung: Eingang in der paint-Größe, ffmpeg skaliert auf die Ausgabe', () => {
     const a = buildStreamArgs('libx264', cfg, { width: 2880, height: 1620 })
     expect(a.join(' ')).toContain('-s 2880x1620')
