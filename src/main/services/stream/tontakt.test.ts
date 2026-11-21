@@ -185,6 +185,39 @@ describe('Tontakt – Zeitachse des Tons', () => {
     expect(b.position).toBe(a.position)
   })
 
+  it('Weg des Bildes als Verzug je Block: Der Ton liegt genau so viel später', () => {
+    // Das Bild braucht vom Spiegel bis zum main länger als der Ton (am Mac rund 19 ms) – um diesen
+    // Weg legt der Takt den Ton später, damit beide im Strom zusammenpassen.
+    const ohne = new Tontakt(START)
+    const mit = new Tontakt(START)
+    ohne.beginn(START + 50)
+    mit.beginn(START + 50)
+    const abMs = START + 100
+    for (let f = 0; f < 3 * RATE; f += BLOCK) {
+      const fertig = abMs + ((f + BLOCK) * 1000) / RATE
+      ohne.block(fertig + 2, f, BLOCK, fertig)
+      mit.block(fertig + 2, f, BLOCK, fertig, 19)
+    }
+    expect(((mit.position - ohne.position) * 1000) / RATE).toBeCloseTo(19, 0)
+  })
+
+  it('Verzug wackelt um 1–2 ms: kein neues Ansetzen; ändert er sich um 10 ms: einmal Stille', () => {
+    const t = new Tontakt(START)
+    t.beginn(START + 50)
+    const abMs = START + 100
+    let stille = 0
+    for (let f = 0; f < 6 * RATE; f += BLOCK) {
+      const fertig = abMs + ((f + BLOCK) * 1000) / RATE
+      // Median schwankt zwischen 19 und 21; ab 4 s ist der Weg 31 ms
+      const verzug = fertig < abMs + 4000 ? 19 + (f % 3) : 31
+      stille += t.block(fertig + 2, f, BLOCK, fertig, verzug).stille
+    }
+    // Stille nur am Anfang (bis zum ersten Block) und einmal 10–12 ms beim Sprung
+    const beginn = Math.round(((START + 100 + 19 - START - 50) * RATE) / 1000)
+    expect(stille - beginn).toBeGreaterThan((10 * RATE) / 1000)
+    expect(stille - beginn).toBeLessThan((13 * RATE) / 1000)
+  })
+
   it('Verzug: Ton liegt um so viel später', () => {
     const ohne = new Tontakt(START)
     const mit = new Tontakt(START, { ...TONTAKT_VORGABE, verzugMs: 30 })

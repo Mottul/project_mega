@@ -408,6 +408,32 @@ export function PlaybackEngine({
     }
   }, [tapCors, audioTap])
 
+  // Wann übergibt der Spiegel ein Videobild? Gesammelt und mit dem nächsten Tonblock an den main:
+  // Der Stream misst daraus, wie lange ein Bild bis zum paint im main braucht, und legt den Ton
+  // um genau so viel später (erfassung/bildweg.ts) – am Mac rund 19 ms, unter Windows 9.
+  const uebergaben = useRef<number[]>([])
+  useEffect(() => {
+    if (!audioTap) return
+    let aktiv = true
+    const offen = new Map<HTMLVideoElement, number>()
+    for (const v of videoRefs.current) {
+      if (!v || typeof v.requestVideoFrameCallback !== 'function') continue
+      const cb: VideoFrameRequestCallback = (_now, meta) => {
+        if (!aktiv) return
+        const liste = uebergaben.current
+        liste.push(performance.timeOrigin + meta.presentationTime)
+        if (liste.length > 64) liste.splice(0, liste.length - 64)
+        offen.set(v, v.requestVideoFrameCallback(cb))
+      }
+      offen.set(v, v.requestVideoFrameCallback(cb))
+    }
+    return () => {
+      aktiv = false
+      for (const [v, id] of offen) v.cancelVideoFrameCallback(id)
+      uebergaben.current = []
+    }
+  }, [audioTap])
+
   // NDI-Audio-Tap: beide Video-Ebenen in einen AudioWorklet leiten (planare
   // Float32-Blöcke -> IPC -> NDI-Audioframes). Crossfades mischen sich dadurch
   // automatisch korrekt. Der Graph endet in Gain(0) -> lokal bleibt es stumm.
@@ -450,7 +476,8 @@ export function PlaybackEngine({
           sampleRate: ctx.sampleRate,
           channels: ev.data.channels,
           frame: ev.data.frame,
-          gerendert: performance.timeOrigin + performance.now() - Math.max(0, seitEnde) * 1000
+          gerendert: performance.timeOrigin + performance.now() - Math.max(0, seitEnde) * 1000,
+          uebergaben: uebergaben.current.splice(0)
         })
       }
       for (const v of videoRefs.current) {

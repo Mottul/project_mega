@@ -40,6 +40,8 @@ import { TsVerteiler } from './tsVerteiler'
 const NACHLAUF_MS = 10_000
 /** Takt, in dem fehlender Ton als Stille nachgeschoben wird */
 const TON_TICK_MS = 20
+/** Ist der Weg des Bildes so lange nach dem Start nicht gemessen, steht im Protokoll, warum */
+const BILDWEG_GEDULD_MS = 5000
 
 const message = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
@@ -56,6 +58,8 @@ interface TonWeg {
   tick: ReturnType<typeof setInterval> | null
   /** Sample-Nummer, falls ein Block keine mitbringt (zusammenhängend angenommen) */
   naechsterFrame: number
+  /** Wanduhr beim Öffnen (ms): ab wann ein fehlender Weg des Bildes gemeldet wird */
+  seit: number
 }
 
 export class StreamSender implements ErfassungsAusgang {
@@ -80,6 +84,10 @@ export class StreamSender implements ErfassungsAusgang {
   private generation = 0
   private problem: string | null = null
   private falscheRateGemeldet = false
+  /** Weg des Bildes, um den der Ton später liegt (ms); null, solange nicht gemessen */
+  private bildweg: number | null = null
+  /** „nicht messbar“ steht schon im Protokoll */
+  private bildwegFehlt = false
   /** gemessene Datenrate: Bytes und Zeit beim letzten Statusabruf */
   private rate = { bytes: 0, at: 0, kbps: 0 }
 
@@ -125,6 +133,8 @@ export class StreamSender implements ErfassungsAusgang {
     this.config = cfg
     this.mitTon = opts.ton === true
     this.cpuOnly = false
+    this.bildweg = null
+    this.bildwegFehlt = false
     this.falscheRateGemeldet = false
 
     const server = createServer((req, res) => {
@@ -255,9 +265,38 @@ export class StreamSender implements ErfassungsAusgang {
     const laenge = t.channels[0].length
     const frame = typeof t.frame === 'number' ? t.frame : weg.naechsterFrame
     weg.naechsterFrame = frame + laenge
-    const platz = weg.takt.block(Date.now(), frame, laenge, t.gerendert)
+    const platz = weg.takt.block(Date.now(), frame, laenge, t.gerendert, this.bildwegFuerTon(weg))
     if (platz.stille > 0) weg.socket.write(stille(platz.stille))
     if (platz.anzahl > 0) weg.socket.write(verschraenkt(t.channels, platz.von, platz.anzahl))
+  }
+
+  /**
+   * Das Bild braucht vom Spiegel bis hierher länger als der Ton (gemessen von der Erfassung): um
+   * so viel später einordnen. Wackelt der Median um 1–2 ms, bleibt der Wert – jeder Wechsel setzt
+   * den Ton neu an (eine kurze Lücke). Kommt kein Wert zustande, steht einmal im Protokoll, warum.
+   */
+  private bildwegFuerTon(weg: TonWeg): number {
+    const s = this.erfassung.bildwegStand
+    if (s && (this.bildweg === null || Math.abs(s.ms - this.bildweg) > 3)) {
+      this.bildweg = s.ms
+      logLine(
+        this.tag,
+        'Weg des Bildes:',
+        `${s.ms} ms (${s.unten} … ${s.oben} ms, ${s.proben} Proben) – der Ton liegt so viel später`
+      )
+    } else if (!s && this.bildweg === null && !this.bildwegFehlt) {
+      if (Date.now() - weg.seit > BILDWEG_GEDULD_MS) {
+        this.bildwegFehlt = true
+        const z = this.erfassung.bildwegZaehler
+        logLine(
+          this.tag,
+          'Weg des Bildes nicht messbar:',
+          `${z.uebergaben} Übergaben aus dem Spiegel, ${z.paints} paints, ${z.verworfen} ohne ` +
+            'passenden paint – der Ton bleibt bei der Renderzeit'
+        )
+      }
+    }
+    return this.bildweg ?? 0
   }
 
   tonFehler(text: string): void {
@@ -390,7 +429,8 @@ export class StreamSender implements ErfassungsAusgang {
       socket: null,
       takt: new Tontakt(Date.now()),
       tick: null,
-      naechsterFrame: 0
+      naechsterFrame: 0,
+      seit: Date.now()
     }
     server.on('connection', (socket) => {
       const lokal = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(socket.remoteAddress ?? '')

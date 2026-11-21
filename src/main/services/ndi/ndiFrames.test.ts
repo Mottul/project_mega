@@ -68,6 +68,21 @@ describe('NDI-Frames', () => {
     }
   })
 
+  it('Übergaben der Videobilder (für den Weg des Bildes): höchstens 64 endliche Zahlen', () => {
+    const ok = { sampleRate: 48000, channels: [new Float32Array(4)], frame: 0 }
+    expect(isAudioChunk({ ...ok, uebergaben: [] })).toBe(true)
+    expect(isAudioChunk({ ...ok, uebergaben: [1795000000123.4, 1795000000156.7] })).toBe(true)
+    for (const uebergaben of [
+      [Number.NaN],
+      ['1795000000123'],
+      Array.from({ length: 65 }, () => 1),
+      'x',
+      null
+    ]) {
+      expect(isAudioChunk({ ...ok, uebergaben }), JSON.stringify(uebergaben)).toBe(false)
+    }
+  })
+
   it('Renderzeit (für den Ton-Takt): eine endliche Zahl – oder gar nicht', () => {
     const ok = { sampleRate: 48000, channels: [new Float32Array(4)], frame: 0 }
     expect(isAudioChunk({ ...ok, gerendert: 1795000000123.5 })).toBe(true)

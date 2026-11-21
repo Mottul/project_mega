@@ -39,6 +39,19 @@ describe('Weg des Bildes vom Spiegel bis in den main', () => {
     expect(w.ms).toBe(12)
   })
 
+  it('die Übergabe kommt vor ihrem paint an (Tonblock schneller als das Bild) – sie wartet', () => {
+    // Der Spiegel meldet die Übergabe mit dem nächsten Tonblock, oft bevor das Bild als paint
+    // im main ist (so im echten Ablauf gesehen: ohne Warten kam kein einziger Wert zustande).
+    const w = new Bildweg()
+    let t = 1_000_000
+    for (let i = 0; i < 30; i++) {
+      w.uebergaben([t]) // zuerst die Meldung …
+      w.paint(t + 9) // … dann das Bild
+      t += 1000 / 30
+    }
+    expect(w.ms).toBe(9)
+  })
+
   it('Hänger: ein paint fehlt oder kommt viel später – der Median bleibt', () => {
     const w = new Bildweg()
     const t = laufen(w, 10, 40)
@@ -46,6 +59,18 @@ describe('Weg des Bildes vom Spiegel bis in den main', () => {
     for (let i = 0; i < 5; i++) w.uebergaben([t + i * 33])
     w.paint(t + 800)
     expect(w.ms).toBe(10)
+    expect(w.zaehler).toEqual({ paints: 41, uebergaben: 45, verworfen: 5 })
+  })
+
+  it('Streuung fürs Protokoll: Median mit 10. und 90. Perzentil', () => {
+    const w = new Bildweg()
+    let t = 1_000_000
+    for (let i = 0; i < 60; i++) {
+      w.paint(t + (i % 2 ? 12 : 6))
+      w.uebergaben([t])
+      t += 1000 / 30
+    }
+    expect(w.stand).toEqual({ ms: 12, unten: 6, oben: 12, proben: 60 })
   })
 
   it('neues Fenster: alte Messungen gelten nicht mehr', () => {

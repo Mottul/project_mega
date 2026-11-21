@@ -424,7 +424,22 @@ try {
         const m = await mitschneiden(playerUrl, 20_000, { waehrend: haenger, datei })
         if (diagnose) {
           try {
-            console.log(`    ${diagnoseZeile(werteDiagnoseAus(await holeDiagnose(app)))}`)
+            // Weg des Bildes, den der Sender gemeldet hat (der Ton liegt so viel später); jeder
+            // Wechsel steht im Protokoll, gewertet wird der letzte
+            const text = log()
+            const wege = [...text.matchAll(/\[player-stream\] Weg des Bildes: (\d+) ms([^\r\n]*)/g)]
+            const fehlt = text.match(/\[player-stream\] Weg des Bildes nicht messbar: ([^\r\n]*)/)
+            const bildwegMs = wege.length ? Number(wege.at(-1)[1]) : 0
+            console.log(
+              '    Weg des Bildes laut Sender: ' +
+                (wege.length
+                  ? wege.map((w) => `${w[1]} ms${w[2].replace(/ – .*$/, '')}`).join(', dann ')
+                  : fehlt
+                    ? `nicht messbar (${fehlt[1]})`
+                    : 'nicht gemessen')
+            )
+            const auswertung = werteDiagnoseAus(await holeDiagnose(app), { bildwegMs })
+            console.log(`    ${diagnoseZeile(auswertung)}`)
           } catch (e) {
             console.log(`    Diagnose nicht auswertbar: ${e.message}`)
           }

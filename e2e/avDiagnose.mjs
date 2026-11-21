@@ -113,7 +113,7 @@ const median = (a) => {
  * (Anker am pünktlichsten Block der ersten 2 s, danach nach Sample-Nummer) − Übergabe. Dazu die
  * Gänge der Uhren gegen die Wanduhr in ppm.
  */
-export function werteDiagnoseAus(d) {
+export function werteDiagnoseAus(d, { bildwegMs = 0 } = {}) {
   // Medien-Uhr des Spiegels (Sekunden Medienzeit je Sekunde Wanduhr)
   const rv = d.rvfc.filter((x) => Number.isFinite(x.m) && Number.isFinite(x.praes))
   const medienPpm =
@@ -159,7 +159,8 @@ export function werteDiagnoseAus(d) {
     1e6
   // wie der Ton-Takt: Anker am pünktlichsten Block der ersten 2 s
   const anker = ton.length ? Math.min(...ton.filter((x) => x.t < ton[0].t + 2000).map(spaet)) : 0
-  const platz = (f) => (f * 1000) / SR + anker
+  // dazu der Weg des Bildes, um den der Sender den Ton später legt
+  const platz = (f) => (f * 1000) / SR + anker + bildwegMs
   const paintAbstand = median(d.paints.slice(1).map((p, i) => p.t - d.paints[i].t))
   // genaue Zeichenrate: Zahl der paints über die ganze Zeit (der Median rundet auf ganze ms)
   const paintHz =

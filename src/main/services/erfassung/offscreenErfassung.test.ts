@@ -218,6 +218,28 @@ describe('Offscreen-Erfassung – ein Fenster für NDI und Stream', () => {
     e.trenne(b)
   })
 
+  it('misst den Weg des Bildes: Übergaben aus dem Spiegel gegen die Ankunft der paints', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000_000)
+    const e = new OffscreenErfassung('[t]', { route })
+    const stream = { ...ausgang(STREAM), ton: vi.fn() }
+    e.verbinde(stream)
+    const win = lastWindow()
+    const uebergaben: number[] = []
+    for (let i = 0; i < 20; i++) {
+      uebergaben.push(Date.now())
+      vi.advanceTimersByTime(15) // so lange braucht das Bild bis zum paint
+      win.paint?.(null, null, bild())
+      vi.advanceTimersByTime(18)
+    }
+    expect(e.bildwegStand).toBeNull() // noch nichts gemeldet
+    expect(e.bildwegZaehler).toEqual({ paints: 20, uebergaben: 0, verworfen: 0 })
+    e.ton({ sampleRate: 48000, channels: [new Float32Array(2)], frame: 0, uebergaben })
+    expect(e.bildwegStand).toMatchObject({ ms: 15, proben: 20 })
+    expect(stream.ton).toHaveBeenCalled()
+    e.trenne(stream)
+  })
+
   it('Ton nur an Ausgänge, die Ton wollen', () => {
     const e = new OffscreenErfassung('[t]', { route })
     const mit = { ...ausgang(STREAM), ton: vi.fn(), tonFehler: vi.fn() }
