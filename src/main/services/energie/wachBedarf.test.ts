@@ -3,7 +3,7 @@ import { laufendesAus, type LaufendStand } from '../beenden/laufendText'
 import { wachBedarf } from './wachBedarf'
 
 const ruhig: LaufendStand = {
-  player: { ausgabe: false, spielt: false, ndi: false },
+  player: { ausgabe: false, spielt: false, ndi: false, stream: false },
   timer: { ausgabe: false, laeuft: false, ndi: false, stream: false },
   testbild: false,
   auftraege: 0,
@@ -24,7 +24,7 @@ describe('Wachhalten – wann darf der Rechner nicht einschlafen?', () => {
       { timer: { ausgabe: true, laeuft: false, ndi: false, stream: false } },
       { testbild: true },
       // pausiert: Chromium hielte den Bildschirm hier nicht selbst wach
-      { player: { ausgabe: true, spielt: false, ndi: false } }
+      { player: { ausgabe: true, spielt: false, ndi: false, stream: false } }
     ]
     for (const a of ausgaben)
       expect(wachBedarf({ ...ruhig, ...a }), JSON.stringify(a)).toBe('bildschirm')
@@ -37,8 +37,9 @@ describe('Wachhalten – wann darf der Rechner nicht einschlafen?', () => {
       { timer: { ausgabe: false, laeuft: true, ndi: false, stream: false } }, // Anzeige im Browser, am Handy
       { timer: { ausgabe: false, laeuft: false, ndi: true, stream: false } },
       { timer: { ausgabe: false, laeuft: false, ndi: false, stream: true } }, // Heimkino schaut zu
-      { player: { ausgabe: false, spielt: false, ndi: true } },
-      { player: { ausgabe: false, spielt: true, ndi: false } },
+      { player: { ausgabe: false, spielt: false, ndi: false, stream: true } }, // auch beim Player
+      { player: { ausgabe: false, spielt: false, ndi: true, stream: false } },
+      { player: { ausgabe: false, spielt: true, ndi: false, stream: false } },
       { fernsteuerung: { 'jingle-remote': 1 } }, // Jingles vom Handy, dazwischen läuft nichts
       { renderer: ['jingle'] },
       { renderer: ['testton'] }

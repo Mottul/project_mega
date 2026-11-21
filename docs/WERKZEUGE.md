@@ -241,8 +241,19 @@ Playlist-Player für LED-Wände und Beamer.
 - **In-App-Vorschau**, die auch ohne Ausgabefenster abspielt – praktisch ohne zweiten Bildschirm.
 - **Idle-Bild:** Testbild als Ausweichbild auf der Ausgabe.
 - **NDI-Ausgabe** (optional, mit Ton): [NDI.md](NDI.md).
+- **Stream fürs Heimnetz** („Stream“ in der Ausgabe-Leiste): die Wiedergabe **mit Ton** als
+  H.264 und AAC unter `http://<Rechner>:8094/live.ts` – für Geräte ohne NDI (Heimkino-Box, VLC am
+  Rechner oder Handy). Eigener Port, damit Stage-Timer und Player gleichzeitig senden können;
+  3–10 Mbit/s, läuft also auch über WLAN. Der Ton kommt vor dem Regler (unabhängig von Lautstärke
+  und „Stumm“, wie bei NDI) und bleibt lippensynchron, auch wenn der Rechner kurz hängt. Eine
+  Wand in anderem Seitenverhältnis steht eingepasst mit schwarzem Rand im Bild. Auflösung,
+  Bildrate, Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die
+  Adressen, Empfänger und Datenrate. Laufen NDI und Stream gleichzeitig, spielt der Spiegel das
+  Video nur einmal ab – NDI bestimmt dann die Größe, der Stream rechnet sie selbst um.
 - **Handy-Fernsteuerung** inklusive Upload von Dateien, Fotos und Videos direkt von der Kamera:
   [FERNSTEUERUNG.md](FERNSTEUERUNG.md).
+- **Am Startbildschirm** zeigt die Kachel „Ausgabe“, solange das Ausgabefenster offen ist oder der
+  Stream läuft.
 
 Hervorgegangen aus dem „LED Wall Player V4“ (Python/mpv).
 
@@ -286,7 +297,9 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
   kommt von der Uhr: Hängt der Rechner kurz, steht das Bild beim Empfänger einen Moment und läuft
   dann mit der Uhr weiter, statt nach einigen Hängern sekundenlang zu stocken. Auflösung, Bildrate,
   Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die Adressen,
-  Empfänger und Datenrate. Wie die Fernsteuerung ohne Passwort, nur im lokalen Netz.
+  Empfänger und Datenrate. Wie die Fernsteuerung ohne Passwort, nur im lokalen Netz. Läuft NDI
+  gleichzeitig, malt die App die Anzeige nur einmal; der Stream rechnet das NDI-Bild selbst auf
+  seine Größe um.
 - **NDI-Ausgabe** (optional): [NDI.md](NDI.md). **Handy-Fernsteuerung**, die auch bei
   geschlossenem Werkzeug funktioniert.
 - **Am Startbildschirm** zeigt die Kachel, ob der Timer läuft und ob eine Ausgabe (Fenster, NDI

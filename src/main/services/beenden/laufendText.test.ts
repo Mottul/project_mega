@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { laufendesAus, type LaufendStand } from './laufendText'
 
 const ruhig: LaufendStand = {
-  player: { ausgabe: false, spielt: false, ndi: false },
+  player: { ausgabe: false, spielt: false, ndi: false, stream: false },
   timer: { ausgabe: false, laeuft: false, ndi: false, stream: false },
   testbild: false,
   auftraege: 0,
@@ -21,7 +21,7 @@ describe('Was läuft? (Rückfrage beim Beenden)', () => {
   it('nennt jede Ausgabe, Aufträge, verbundene Geräte und Ton im Fenster', () => {
     expect(
       laufendesAus({
-        player: { ausgabe: true, spielt: true, ndi: true },
+        player: { ausgabe: true, spielt: true, ndi: true, stream: false },
         timer: { ausgabe: false, laeuft: true, ndi: false, stream: false },
         testbild: true,
         auftraege: 3,
@@ -40,6 +40,15 @@ describe('Was läuft? (Rückfrage beim Beenden)', () => {
       'Testton läuft',
       'Jingle-Player spielt'
     ])
+  })
+
+  it('Stream des Video-Players (Heimkino schaut zu)', () => {
+    expect(
+      laufendesAus({
+        ...ruhig,
+        player: { ausgabe: false, spielt: false, ndi: false, stream: true }
+      })
+    ).toEqual(['Video-Player: Stream fürs Heimnetz'])
   })
 
   it('Einzahl und Ausgabe ohne Wiedergabe', () => {

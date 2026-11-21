@@ -1,13 +1,15 @@
-// Stream fürs Heimnetz vom Stage-Timer: echter Server, echtes ffmpeg, ein Empfänger wie die
-// Heimkino-Box (ffprobe liest den Strom über HTTP). Ohne gebündeltes ffmpeg übersprungen.
+// Stream fürs Heimnetz von Stage-Timer und Video-Player: echter Server, echtes ffmpeg, ein
+// Empfänger wie die Heimkino-Box (ffprobe bzw. tsMitschnitt.mjs liest den Strom über HTTP).
+// Ohne gebündeltes ffmpeg übersprungen, die Schritte mit NDI ohne Binding.
 import assert from 'node:assert/strict'
-import { execFile } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { execFile, execFileSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import net from 'node:net'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { findFfmpeg, launchApp, portFree, runSteps, Skip, sleep, waitFor } from './harness.mjs'
-import { mitschneiden, zeitachse } from './tsMitschnitt.mjs'
+import { blitzUndPiep, mitschneiden, zeitachse } from './tsMitschnitt.mjs'
 
 const pexec = promisify(execFile)
 const ffmpeg = findFfmpeg()
@@ -33,7 +35,7 @@ const ffmpegStarts = () =>
     .filter((l) => l.includes('[timer-stream] ffmpeg läuft')).length
 
 /** Liest ein paar Sekunden vom Strom und meldet, was darin steckt (wie ein Empfänger). */
-async function probe() {
+async function probeAlle(u = url) {
   const { stdout } = await pexec(
     ffprobe,
     [
@@ -42,20 +44,44 @@ async function probe() {
       '-read_intervals',
       '%+3',
       '-show_entries',
-      'stream=codec_name,width,height,profile',
+      'stream=codec_type,codec_name,width,height,profile,sample_rate,channels',
       '-count_frames',
       '-of',
       'json',
-      url
+      u
     ],
     { timeout: 30_000 }
   )
-  return JSON.parse(stdout).streams[0]
+  return JSON.parse(stdout).streams
 }
+const probe = async () => (await probeAlle())[0]
 
 const needFfmpeg = () => {
   if (!ffmpeg) throw new Skip('kein gebündeltes ffmpeg (resources/ffmpeg)')
 }
+
+// Stufe 2: Player mit Ton. Testclip: alle 2 s ein weißes Bild und ein Piep, 100 ms lang.
+const PLAYER_PORT = 18094
+const playerUrl = `http://127.0.0.1:${PLAYER_PORT}/live.ts`
+const playerCfg = { width: 1280, height: 720, fps: 30, port: PLAYER_PORT, bitrateKbps: 3000 }
+const WAND = { width: 1280, height: 720 }
+const BLITZ = "drawbox=x=0:y=0:w=iw:h=ih:color=white:t=fill:enable='lt(mod(t-1,2),0.1)'"
+const PIEP = '0.5*sin(2*PI*1000*t)*lt(mod(t-1,2),0.1)'
+/**
+ * Erlaubter Versatz Ton − Bild. Gemessen ±12 ms (ein Bild Raster bei 30 fps); 60 ms ist die
+ * EBU-Grenze für Ton nach dem Bild und lässt langsameren Rechnern Luft (dort dauert das Zeichnen
+ * im Offscreen-Fenster länger). Jeder Fehler aus dem Labor läge darüber: 85 ms Paketversatz der
+ * Roh-PCM-Stempel, bis 162 ms nach Hängern.
+ */
+const LIPPENSYNCHRON_MS = 60
+const tmp = mkdtempSync(join(tmpdir(), 'mottulbox-stream-'))
+let geladen = false
+const needClip = () => {
+  needFfmpeg()
+  if (!geladen) throw new Skip('Testclip nicht im Player')
+}
+const ndiVerfuegbar = async () =>
+  (await page.evaluate(() => window.api.timer.ndiStatus())).available
 
 try {
   await runSteps('Stream fürs Heimnetz (Stage-Timer)', [
@@ -268,8 +294,211 @@ try {
       }
     ]
   ])
+
+  await runSteps('Stufe 2: eine Erfassung für NDI und Stream, Video-Player mit Ton', [
+    [
+      'Timer: NDI und Stream aus EINEM Offscreen-Fenster; NDI geht, der Stream läuft weiter',
+      async () => {
+        needFfmpeg()
+        if (!(await ndiVerfuegbar())) throw new Skip('kein NDI-Binding (npm run ndi:setup)')
+        const ndi = await page.evaluate(() =>
+          window.api.timer.ndiStart({
+            name: 'Mottulbox E2E Stream',
+            width: 1280,
+            height: 720,
+            fps: 15
+          })
+        )
+        assert.equal(ndi.running, true, ndi.error ?? '')
+        const st = await page.evaluate((c) => window.api.timer.streamStart(c), cfg)
+        assert.equal(st.running, true, st.error ?? '')
+        assert.equal(await offscreenWindows(), 1)
+        // Das Fenster malt in der Größe der NDI-Ausgabe, der Stream skaliert selbst
+        const s = await probe()
+        assert.deepEqual([s.codec_name, s.width, s.height], ['h264', 640, 360])
+        const vorher = (await page.evaluate(() => window.api.timer.ndiStatus())).framesSent
+        assert.ok(
+          await waitFor(
+            async () =>
+              (await page.evaluate(() => window.api.timer.ndiStatus())).framesSent > vorher + 10,
+            10_000
+          ),
+          'NDI sendet nicht weiter, während der Stream läuft'
+        )
+        await page.evaluate(() => window.api.timer.ndiStop())
+        assert.equal(await offscreenWindows(), 1)
+        assert.equal((await probe()).codec_name, 'h264')
+        await page.evaluate(() => window.api.timer.streamStop())
+        assert.ok(await waitFor(async () => (await offscreenWindows()) === 0, 5000))
+      }
+    ],
+    [
+      'Vorbereitung: Testclip mit Blitz und Piep alle 2 s spielt im Player',
+      async () => {
+        needFfmpeg()
+        const clip = join(tmp, 'Blitz und Piep.mp4')
+        execFileSync(ffmpeg, [
+          ...['-v', 'error', '-y'],
+          // 60 s: Während der Messung springt das Video nicht an den Anfang zurück – ein Loop
+          // wäre eine Störung mehr, die mit dem Stream nichts zu tun hat.
+          ...['-f', 'lavfi', '-i', `color=c=black:s=1280x720:r=30:d=60,${BLITZ}`],
+          ...['-f', 'lavfi', '-i', `aevalsrc='${PIEP}':s=48000:d=60`],
+          ...['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'],
+          ...['-c:a', 'aac', '-ac', '2', '-shortest', clip]
+        ])
+        await page.evaluate(
+          (w) => window.api.setSettings({ player: { wallWidth: w.width, wallHeight: w.height } }),
+          WAND
+        )
+        await page.evaluate(
+          ([sources, wall]) => window.api.player.import({ sources, fitMode: 'bars', wall }),
+          [[clip], WAND]
+        )
+        const fertig = await waitFor(
+          async () => (await page.evaluate(() => window.api.player.libraryList())).length >= 1,
+          120_000,
+          500
+        )
+        assert.ok(fertig, 'Import nicht fertig')
+        const ids = await page.evaluate(async () =>
+          (await window.api.player.libraryList()).map((m) => m.id)
+        )
+        await page.evaluate(
+          (ids) => window.api.player.command({ type: 'replace', mediaIds: ids }),
+          ids
+        )
+        assert.equal((await page.evaluate(() => window.api.player.getState())).playing, true)
+        geladen = true
+      }
+    ],
+    [
+      'Player-Stream: H.264 und AAC aus EINEM Fenster, der Startbildschirm weiß davon',
+      async () => {
+        needClip()
+        assert.equal(await portFree(PLAYER_PORT), true, `Port ${PLAYER_PORT} ist belegt`)
+        const st = await page.evaluate((c) => window.api.player.streamStart(c), playerCfg)
+        assert.equal(st.running, true, st.error ?? '')
+        assert.equal(await offscreenWindows(), 1)
+        assert.equal((await page.evaluate(() => window.api.player.getState())).streamActive, true)
+        const streams = await probeAlle(playerUrl)
+        const v = streams.find((x) => x.codec_type === 'video')
+        const a = streams.find((x) => x.codec_type === 'audio')
+        assert.deepEqual([v?.codec_name, v?.width, v?.height], ['h264', 1280, 720])
+        assert.deepEqual([a?.codec_name, Number(a?.sample_rate), a?.channels], ['aac', 48000, 2])
+      }
+    ],
+    [
+      'Ton lippensynchron – vor und nach zwei Hängern des main-Prozesses',
+      async () => {
+        needClip()
+        // Kommt Ton aus dem Spiegel? Ohne laufende Audioausgabe bleibt der Abgriff stumm.
+        const log = () => readFileSync(join(ctx.userData, 'avtoolbox-debug.log'), 'utf8')
+        if (!(await waitFor(() => log().includes('erster PCM-Block empfangen'), 8000))) {
+          throw new Skip('kein Ton aus dem Spiegel – keine laufende Audioausgabe?')
+        }
+        // Die Blöcke tragen ihre Sample-Nummer (currentFrame im AudioWorklet) – ohne sie legte der
+        // Sender sie nur der Reihe nach, und ein Schub nach einem Hänger wäre nicht zu erkennen.
+        assert.match(log(), /erster PCM-Block empfangen:.*Sample-Nummer \d+/)
+        const datei = join(tmp, 'mitschnitt.ts')
+        const t0 = performance.now()
+        const haengerBei = []
+        const haenger = async () => {
+          await sleep(6000)
+          for (let i = 0; i < 2; i++) {
+            haengerBei.push(performance.now() - t0)
+            await app.evaluate(() => {
+              const ende = Date.now() + 800
+              while (Date.now() < ende) {
+                // blockiert absichtlich
+              }
+            })
+            await sleep(4500)
+          }
+        }
+        const m = await mitschneiden(playerUrl, 20_000, { waehrend: haenger, datei })
+        const r = blitzUndPiep(datei, ffmpeg)
+        // Zeit des Stroms zu jedem Hänger: PTS des Bildes, das damals ankam
+        const haengerPts = haengerBei.map((ms) => {
+          const e = m.video.find((x) => x.ankunft >= ms) ?? m.video.at(-1)
+          return e.pts
+        })
+        // Ein Blitz IN einem Hänger hat kein Bild (der main-Prozess nimmt keins an) – gewertet
+        // wird, was davor und danach kommt: Danach muss der Ton wieder genau passen. Ebenso
+        // nicht der Blitz in der letzten halben Sekunde: silencedetect meldet am Ende der Tonspur
+        // ein letztes silence_end, und ein Blitz kurz davor paarte sich damit (gesehen: −112 und
+        // −122 ms, je 30 ms vor dem Ende des Mitschnitts – kein Versatz, ein Schein-Piep).
+        const gewertet = r.paare.filter(
+          (p) =>
+            !haengerPts.some((h) => p.blitz > h - 0.3 && p.blitz < h + 1.5) &&
+            p.blitz < r.ende - 0.5
+        )
+        console.log(
+          `    ${r.blitze.length} Blitze, ${r.pieps.length} Pieps; Ton − Bild (ms): ` +
+            r.paare.map((p) => `${p.versatzMs}${gewertet.includes(p) ? '' : '*'}`).join(' ') +
+            ' (* im Hänger oder am Ende, nicht gewertet)'
+        )
+        for (const p of r.paare) {
+          if (Math.abs(p.versatzMs) > LIPPENSYNCHRON_MS) {
+            console.log(
+              `    Ausreißer bei ${p.blitz.toFixed(2)} s (Ende ${r.ende.toFixed(2)} s), ` +
+                `Helligkeit um den Blitz: ${p.hell.join(' ')}`
+            )
+          }
+        }
+        assert.ok(gewertet.length >= 5, `nur ${gewertet.length} gewertete Paare`)
+        const nachHaenger = gewertet.filter((p) => p.blitz > haengerPts.at(-1))
+        assert.ok(nachHaenger.length >= 1, 'kein Paar nach den Hängern')
+        for (const p of gewertet) {
+          assert.ok(Math.abs(p.versatzMs) <= LIPPENSYNCHRON_MS, `Versatz ${p.versatzMs} ms`)
+        }
+      }
+    ],
+    [
+      'Player: NDI mit Ton läuft parallel aus demselben Fenster, der Stream weiter',
+      async () => {
+        needClip()
+        if (!(await ndiVerfuegbar())) throw new Skip('kein NDI-Binding (npm run ndi:setup)')
+        const ndiStatus = () => page.evaluate(() => window.api.player.ndiStatus())
+        const st = await page.evaluate(() =>
+          window.api.player.ndiStart({
+            name: 'Mottulbox E2E Player',
+            width: 1280,
+            height: 720,
+            fps: 30,
+            fit: 'fill',
+            audio: true
+          })
+        )
+        assert.equal(st.running, true, st.error ?? '')
+        assert.equal(await offscreenWindows(), 1)
+        assert.ok(
+          await waitFor(async () => {
+            const s = await ndiStatus()
+            return s.framesSent > 10 && s.audioChunks > 10
+          }, 15_000),
+          'NDI bekommt weder Bild noch Ton aus der gemeinsamen Erfassung'
+        )
+        const streams = await probeAlle(playerUrl)
+        assert.deepEqual(streams.map((x) => x.codec_name).sort(), ['aac', 'h264'])
+      }
+    ],
+    [
+      'Stopp: NDI geht, das Fenster bleibt für den Stream; danach Fenster weg, Port frei',
+      async () => {
+        needClip()
+        await page.evaluate(() => window.api.player.ndiStop())
+        assert.equal(await offscreenWindows(), 1)
+        const st = await page.evaluate(() => window.api.player.streamStop())
+        assert.equal(st.running, false)
+        assert.ok(await waitFor(async () => (await offscreenWindows()) === 0, 5000))
+        assert.ok(await waitFor(() => portFree(PLAYER_PORT), 5000), 'Port bleibt belegt')
+        assert.equal((await page.evaluate(() => window.api.player.getState())).streamActive, false)
+      }
+    ]
+  ])
 } finally {
   await ctx.close()
+  rmSync(tmp, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
 }
 
 // Bildschirm-Skalierung 150 %: Das Offscreen-Fenster malt dann nicht genau in der eingestellten

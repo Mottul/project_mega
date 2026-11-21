@@ -961,7 +961,7 @@ Was heute zwischen den Werkzeugen übergeben wird, steht in
 
 ## Große Vorhaben mit eigenem Entwurf
 
-Drei Vorhaben sind zu groß für ein Paket. Ihr Entwurf – Aufbau, Messwerte, Festlegungen,
+Vier Vorhaben sind zu groß für ein Paket. Ihr Entwurf – Aufbau, Messwerte, Festlegungen,
 Stolpersteine – steht je in einem eigenen Dokument; hier steht, was davon offen ist. Vor jeder
 Phase den Entwurf und den genannten Skill lesen.
 
@@ -1027,6 +1027,22 @@ rechnen“. Offen:
 
 - **Später:** Schnitt auf den Takt der Musik, „ein Video je Ordner“.
 - **Die Oberfläche** (Storyboard und Vorschau gleichzeitig sichtbar) ist Paket W1.
+
+### ST – Stream fürs Heimnetz (Heimkino-Box)
+
+Entwurf: „Live-Bild von der Mottulbox auf die Heimkino-Box“ – er liegt im Heimkino-Projekt
+(PLAN-STREAM.md im Ordner project_MI), weil er Sender und Empfänger umfasst; die Stufen dort
+gelten. Skills `ffmpeg-labor` (Messungen zu Bild- und Ton-Zeit), `electron-e2e` (`stream.mjs`).
+**Gebaut:** Stufe 1 (Stream vom Stage-Timer, #243), die Hänger daraus behoben (#245), Stufe 2
+(Video-Player mit Ton, Erfassung mit NDI geteilt). Offen für die Mottulbox:
+
+| Paket | Inhalt | Größe | Braucht |
+| ----- | ------ | ----- | ------- |
+| **ST4** | Ankündigen per mDNS (Dienst _mottulbox._tcp, TXT: Name, Pfad /live.ts, Werkzeug), Feld „Name“ im Bereich „Stream fürs Heimnetz“; abmelden beim Stoppen und Beenden | M | Stufe 3 im Heimkino-Projekt (Empfang mit Adresse von Hand) |
+| **ST5** | Doku für Anwender (Seite oder Abschnitt zum Stream, Eintrag im README) | S | ST4 |
+
+- **Offene Frage aus dem Entwurf:** nur Video-Player und Stage-Timer – oder später auch
+  Testbildgenerator und die Vorschau des Video-Generators?
 
 ## G – Neue Werkzeuge
 
@@ -1146,7 +1162,12 @@ nicht per Import aus `beenden/laufend.ts` (Kreis in den Importen).
   in `tools/registry.ts`, sonst läuft sie beim nächsten Werkzeug wieder auseinander.
 - **Liegengebliebener Worktree** `.claude/worktrees/wonderful-taussig-0eac94` (1,8 GB, Branch
   `electron-45-pruefung`, Stand ist in main): nur auf ausdrücklichen Wunsch entfernen
-  (Entscheidung 8).
+  (Entscheidung 8). Ebenso liegt seit #243 der Worktree von Stufe 1 des Streams unter
+  .claude/worktrees/stream-stufe1 (ohne Branch, Stand ist in main).
+- **Startbildschirm, Video-Player:** Die Kachel zeigt „Ausgabe“ beim Ausgabefenster und seit
+  Stufe 2 des Streams auch beim Stream, aber nicht bei NDI (der Stage-Timer schon). Wie dort
+  `ndiActive` in den Player-Zustand (`playerState.ts`, `useToolActivity.ts`). Gefunden am
+  21. November 2026.
 
 ### E7 – Tests für Player-Zustand, yt-dlp und Fernsteuer-Parser
 
@@ -1333,7 +1354,12 @@ am Rechner, an dem die Hänger auftraten (mit Bildschirm-Skalierung), den Stream
 Viertelstunde in VLC am Handy und am PC ansehen, dabei Timer und Uhr-Modus – stockt er noch,
 springt die Anzeige? Das E2E stellt die Hänger nur mit einer Warteschleife im main-Prozess und
 die Skalierung mit `--force-device-scale-factor` nach. Offen seit Stufe 1: Empfang auf der
-TV-Box über WLAN, NVENC und AMF, macOS.
+TV-Box über WLAN, NVENC und AMF, macOS. **Seit Stufe 2 (Video-Player mit Ton):** ein Video mit
+Sprache in VLC am Fernseher oder Handy – passt der Ton zu den Lippen (das E2E misst ±12 ms an
+Blitz und Piep, aber nur bis ffmpeg, ohne Decoder und Lautsprecher des Empfängers)? NDI und
+Stream gleichzeitig mit echten Empfängern (NDI Studio Monitor und VLC); NDI ein- und ausschalten,
+während VLC zuschaut – fängt sich das Bild nach dem kurzen Neustart von ffmpeg? Eine breite Wand
+(z. B. 3840 × 1080) mit NDI „Wand 1:1“: steht sie im Stream eingepasst mit schwarzem Rand?
 
 ## Entscheidungen
 

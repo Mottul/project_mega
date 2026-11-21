@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Fenster und NDI-Binding nachgebaut: geprüft wird die Reihenfolge von Start, Stopp und Abbau,
-// an der die echten Sender schon gescheitert sind (Absturz beim Stoppen, verwaister Sender).
+// an der die echten Sender schon gescheitert sind (Absturz beim Stoppen, verwaister Sender) –
+// seit Stufe 2 des Streams mit der Offscreen-Erfassung, aus der NDI seine Bilder bekommt.
 const h = vi.hoisted(() => {
   let nextId = 0
   class FakeWindow {
@@ -9,6 +10,7 @@ const h = vi.hoisted(() => {
     destroyed = false
     closed: (() => void)[] = []
     paint: ((e: unknown, dirty: unknown, image: unknown) => void) | null = null
+    setContentSize = vi.fn()
     webContents = {
       id: ++nextId,
       setFrameRate: vi.fn(),
@@ -48,12 +50,20 @@ vi.mock('./ndi', () => ({
   ensureNdiInitialized: async () => {}
 }))
 
-const { OffscreenNdiSender } = await import('./ndiSender')
+const { NdiSender } = await import('./ndiSender')
+const { OffscreenErfassung } = await import('../erfassung/offscreenErfassung')
 const { loadRoute } = await import('../windows/appWindows')
 
 const size = { name: 'Bühne', width: 640, height: 360, fps: 25 }
 const image = { getSize: () => ({ width: 4, height: 2 }), toBitmap: () => Buffer.alloc(32) }
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+const timerErfassung = (): InstanceType<typeof OffscreenErfassung> =>
+  new OffscreenErfassung('[t-erf]', { route: () => '/timer-output' })
+const playerErfassung = (): InstanceType<typeof OffscreenErfassung> =>
+  new OffscreenErfassung('[p-erf]', {
+    route: (p) => `/player-ndi?fit=${p.fit}&audio=${p.ton ? 1 : 0}`,
+    autoplay: true
+  })
 
 function fakeSender(): {
   video: ReturnType<typeof vi.fn>
@@ -72,15 +82,17 @@ beforeEach(() => {
   h.FakeWindow.all = []
   h.available.value = true
   h.g.send.mockReset()
+  vi.mocked(loadRoute).mockClear()
 })
 
-describe('Offscreen-NDI-Sender', () => {
+describe('NDI-Sender an der Offscreen-Erfassung', () => {
   it('startet Sender und Offscreen-Fenster mit Route und Bildrate, Stopp baut beides ab', async () => {
     const s = fakeSender()
     h.g.send.mockResolvedValue(s)
     const emit = vi.fn()
-    const ndi = new OffscreenNdiSender('[t]', emit)
-    await ndi.start(size, { route: '/timer-output' })
+    const erfassung = timerErfassung()
+    const ndi = new NdiSender('[t]', emit, erfassung)
+    await ndi.start(size)
 
     expect(h.g.send).toHaveBeenCalledWith({ name: 'Bühne', clockVideo: true, clockAudio: false })
     const win = lastWindow()
@@ -94,7 +106,7 @@ describe('Offscreen-NDI-Sender', () => {
     expect(win.webContents.setFrameRate).toHaveBeenCalledWith(25)
     expect(loadRoute).toHaveBeenCalledWith(win, '/timer-output')
     expect(ndi.running).toBe(true)
-    expect(ndi.isOwnWindow(win.webContents.id)).toBe(true)
+    expect(erfassung.isOwnWindow(win.webContents.id)).toBe(true)
     expect(emit).toHaveBeenCalled()
 
     win.paint?.(null, null, image)
@@ -106,18 +118,23 @@ describe('Offscreen-NDI-Sender', () => {
     ndi.stop()
     expect(win.destroyed).toBe(true)
     expect(ndi.running).toBe(false)
-    expect(ndi.isOwnWindow(win.webContents.id)).toBe(false)
+    expect(erfassung.isOwnWindow(win.webContents.id)).toBe(false)
     await vi.waitFor(() => expect(s.destroy).toHaveBeenCalled())
   })
 
-  it('Ton und Autoplay für den Player-Spiegel', async () => {
-    h.g.send.mockResolvedValue(fakeSender())
-    const ndi = new OffscreenNdiSender('[p]', () => {})
-    await ndi.start(size, { route: '/player-ndi', audio: true, autoplay: true })
+  it('Ton und Autoplay für den Player-Spiegel; der Ton kommt über die Erfassung', async () => {
+    const s = fakeSender()
+    h.g.send.mockResolvedValue(s)
+    const erfassung = playerErfassung()
+    const ndi = new NdiSender('[p]', () => {}, erfassung)
+    await ndi.start(size, { audio: true, fit: 'fill' })
     expect(h.g.send).toHaveBeenCalledWith({ name: 'Bühne', clockVideo: true, clockAudio: true })
     expect(lastWindow().opts.webPreferences).toMatchObject({
       autoplayPolicy: 'no-user-gesture-required'
     })
+    expect(loadRoute).toHaveBeenCalledWith(lastWindow(), '/player-ndi?fit=fill&audio=1')
+    erfassung.ton({ sampleRate: 48000, channels: [new Float32Array([0.5, -0.5])] })
+    await vi.waitFor(() => expect(ndi.audioChunks).toBe(1))
     ndi.stop(false)
   })
 
@@ -125,8 +142,8 @@ describe('Offscreen-NDI-Sender', () => {
     const s = fakeSender()
     let created: (v: unknown) => void = () => {}
     h.g.send.mockImplementation(() => new Promise((r) => (created = r)))
-    const ndi = new OffscreenNdiSender('[t]', () => {})
-    const starting = ndi.start(size, { route: '/timer-output' })
+    const ndi = new NdiSender('[t]', () => {}, timerErfassung())
+    const starting = ndi.start(size)
     await vi.waitFor(() => expect(h.g.send).toHaveBeenCalled())
     ndi.stop(false)
     created(s)
@@ -141,16 +158,18 @@ describe('Offscreen-NDI-Sender', () => {
     const s1 = fakeSender()
     const s2 = fakeSender()
     h.g.send.mockResolvedValueOnce(s1).mockResolvedValueOnce(s2)
-    const ndi = new OffscreenNdiSender('[t]', () => {})
-    await ndi.start(size, { route: '/timer-output' })
+    const erfassung = timerErfassung()
+    const ndi = new NdiSender('[t]', () => {}, erfassung)
+    await ndi.start(size)
     const first = lastWindow()
-    await ndi.start({ ...size, width: 1280, height: 720 }, { route: '/timer-output' })
+    await ndi.start({ ...size, width: 1280, height: 720 })
     const second = lastWindow()
     await sleep(10) // 'closed' des ersten Fensters ist jetzt durch
 
     expect(first.destroyed).toBe(true)
     expect(ndi.running).toBe(true)
-    expect(ndi.isOwnWindow(second.webContents.id)).toBe(true)
+    expect(erfassung.isOwnWindow(second.webContents.id)).toBe(true)
+    expect(second.opts).toMatchObject({ width: 1280, height: 720 })
     expect(s1.destroy).toHaveBeenCalled()
     expect(s2.destroy).not.toHaveBeenCalled()
 
@@ -165,14 +184,17 @@ describe('Offscreen-NDI-Sender', () => {
     let finish: (v?: unknown) => void = () => {}
     s.video.mockImplementation(() => new Promise((r) => (finish = r)))
     h.g.send.mockResolvedValue(s)
-    const ndi = new OffscreenNdiSender('[t]', () => {})
-    await ndi.start(size, { route: '/timer-output' })
+    const toBitmap = vi.fn(() => Buffer.alloc(32))
+    const ndi = new NdiSender('[t]', () => {}, timerErfassung())
+    await ndi.start(size)
     const win = lastWindow()
 
-    win.paint?.(null, null, image)
-    win.paint?.(null, null, image) // noch im Flug -> verworfen
+    win.paint?.(null, null, { ...image, toBitmap })
+    win.paint?.(null, null, { ...image, toBitmap }) // noch im Flug -> verworfen
     await sleep(0)
     expect(s.video).toHaveBeenCalledTimes(1)
+    // … und gar nicht erst umgewandelt (8 MB je Bild bei 1080p)
+    expect(toBitmap).toHaveBeenCalledTimes(1)
 
     ndi.stop()
     await sleep(80)
@@ -191,8 +213,9 @@ describe('Offscreen-NDI-Sender', () => {
       })
       .mockResolvedValue(undefined)
     h.g.send.mockResolvedValue(s)
-    const ndi = new OffscreenNdiSender('[t]', () => {})
-    await ndi.start(size, { route: '/timer-output' })
+    const erfassung = playerErfassung()
+    const ndi = new NdiSender('[t]', () => {}, erfassung)
+    await ndi.start(size, { audio: true })
     const paint = async (): Promise<void> => {
       lastWindow().paint?.(null, null, image)
       await sleep(0)
@@ -207,7 +230,7 @@ describe('Offscreen-NDI-Sender', () => {
     expect(ndi.error).toBeNull()
     expect(ndi.framesSent).toBe(1)
 
-    ndi.report('Audio-Tap: kein Worklet')
+    erfassung.tonFehler('kein Worklet')
     await paint()
     expect(ndi.error).toBe('Audio-Tap: kein Worklet')
     ndi.stop(false)
@@ -215,8 +238,8 @@ describe('Offscreen-NDI-Sender', () => {
 
   it('Sender lässt sich nicht erstellen: zweiter Versuch, dann Hinweis statt Fenster', async () => {
     h.g.send.mockRejectedValue(new Error('NDIlib_send_create'))
-    const ndi = new OffscreenNdiSender('[t]', () => {})
-    await ndi.start(size, { route: '/timer-output' })
+    const ndi = new NdiSender('[t]', () => {}, timerErfassung())
+    await ndi.start(size)
     expect(h.g.send).toHaveBeenCalledTimes(2)
     expect(ndi.running).toBe(false)
     expect(h.FakeWindow.all).toHaveLength(0)
@@ -228,8 +251,8 @@ describe('Offscreen-NDI-Sender', () => {
     const pending: (() => void)[] = []
     s.audio.mockImplementation(() => new Promise<void>((r) => pending.push(r)))
     h.g.send.mockResolvedValue(s)
-    const ndi = new OffscreenNdiSender('[p]', () => {})
-    await ndi.start(size, { route: '/player-ndi', audio: true })
+    const ndi = new NdiSender('[p]', () => {}, playerErfassung())
+    await ndi.start(size, { audio: true })
 
     ndi.pushAudio({ sampleRate: 48000, channels: [new Float32Array(4), new Float32Array(2)] })
     expect(s.audio).not.toHaveBeenCalled()
@@ -247,10 +270,23 @@ describe('Offscreen-NDI-Sender', () => {
     ndi.stop(false)
   })
 
+  it('Ton aus: die Erfassung reicht keinen Ton an NDI', async () => {
+    const s = fakeSender()
+    h.g.send.mockResolvedValue(s)
+    const erfassung = playerErfassung()
+    const ndi = new NdiSender('[p]', () => {}, erfassung)
+    await ndi.start(size, { audio: false })
+    expect(loadRoute).toHaveBeenCalledWith(lastWindow(), '/player-ndi?fit=contain&audio=0')
+    erfassung.ton({ sampleRate: 48000, channels: [new Float32Array([0.5])] })
+    await sleep(0)
+    expect(s.audio).not.toHaveBeenCalled()
+    ndi.stop(false)
+  })
+
   it('ohne NDI-Modul: Start tut nichts, der Grund steht im Fehler', async () => {
     h.available.value = false
-    const ndi = new OffscreenNdiSender('[t]', () => {})
-    await ndi.start(size, { route: '/timer-output' })
+    const ndi = new NdiSender('[t]', () => {}, timerErfassung())
+    await ndi.start(size)
     expect(ndi.available).toBe(false)
     expect(ndi.running).toBe(false)
     expect(h.g.send).not.toHaveBeenCalled()

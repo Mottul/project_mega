@@ -7,6 +7,7 @@ import type { WebContents } from 'electron'
 import { jobQueue } from '../jobs/queue'
 import { previewBusy } from '../convert/videoGenPreview'
 import { isPlayerNdiRunning } from '../player/playerNdi'
+import { isPlayerStreamRunning } from '../player/playerStream'
 import { getPlayerState } from '../player/playerState'
 import { isPatternOpen } from '../pattern/patternWindow'
 import { verbundeneGeraete } from '../remote/remoteHttp'
@@ -42,7 +43,8 @@ export function laufendStand(): LaufendStand {
       ausgabe: player.outputOpen,
       spielt: player.playing,
       // nur „läuft“: Der volle Status lüde das NDI-Modul, hier fragt das Wachhalten im Takt
-      ndi: isPlayerNdiRunning()
+      ndi: isPlayerNdiRunning(),
+      stream: isPlayerStreamRunning()
     },
     timer: {
       ausgabe: timer.outputOpen,

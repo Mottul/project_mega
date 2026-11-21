@@ -487,9 +487,20 @@ alten Stand 3,98 s Rückstand), dann behoben.
   die Zeit im Strom einmal 11,5 s zurück, während die Bilder weiter im Takt kamen – das Zeichen
   eines neu gestarteten ffmpeg, dessen Zeitstempel wieder bei 0 begannen (nachgestellt durch ein
   größeres Offscreen-Fenster: 5,5 s zurück). Neu starten muss der Sender bei jeder anderen
-  Bildgröße. Heute behält `-copyts` die absolute Wanduhr, ein Neustart ist eine Lücke von gut
+  Bildgröße (auch wenn NDI dazukommt oder geht). Heute behält `-copyts` die absolute Wanduhr, ein Neustart ist eine Lücke von gut
   einer halben Sekunde; dazu zählen paint-Bilder nur vom aktuellen Fenster. Im Review bei jedem
   Neustart eines Live-Prozesses fragen: Was sieht der Empfänger danach?
+- **Ton eines Live-Stroms: die Zeit aus der Sample-Nummer, nicht aus dem Lesezeitpunkt** (Stufe
+  2, im Labor gemessen, bevor gebaut wurde). Wanduhr-Stempel am Ton setzt ffmpeg erst am Ende
+  eines Roh-PCM-Pakets (4096 Samples = 85 ms), und nach einem Hänger kommen die gestauten Blöcke
+  als Schub – ffmpeg hält das für eine Lücke (bis 162 ms Versatz). Darum trägt jeder Block des
+  AudioWorklets seine Sample-Nummer (`currentFrame`), der Sender legt ihn danach lückenlos an
+  seinen Platz (`stream/tontakt.ts`), und ffmpeg rechnet die Zeit nur aus der Samplezahl
+  (`asetpts`). Im Review bei jedem zweiten Eingang fragen: Woher kennt ffmpeg seine Zeit?
+- **Ein Fenster für alle Ausgänge eines Werkzeugs.** NDI und Stream hatten je ein eigenes
+  Offscreen-Fenster – der Player dekodierte sein Video dann zweimal, und die Fallen der Fenster
+  (`closed` nur vom aktuellen, Stopp mitten im Start) standen doppelt. Neue Offscreen-Ausgaben
+  hängen sich an `erfassung/offscreenErfassung.ts`, statt ein Fenster zu öffnen.
 
 ## Bilder, PDF und fremdes HTML (Phase 1 Mini-Manual, 16. Oktober 2026)
 

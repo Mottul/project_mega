@@ -39,6 +39,7 @@ import { disposeTimer } from './services/timer/stageTimer'
 import { stopTimerNdi } from './services/timer/timerNdi'
 import { stopTimerStream } from './services/timer/timerStream'
 import { stopPlayerNdi } from './services/player/playerNdi'
+import { stopPlayerStream } from './services/player/playerStream'
 import { checkOnStartup } from './services/ytdlp/ytDlp'
 
 // Globale Auffanglinien: unbehandelte Fehler/Rejections landen im Debug-Log
@@ -230,6 +231,7 @@ app.on('before-quit', () => {
   stopTimerNdi(false)
   stopTimerStream(false)
   stopPlayerNdi(false)
+  stopPlayerStream(false)
 })
 
 // Laufende Konvertierungen, Generator-Läufe, Importe und Downloads abbrechen und ihr Aufräumen

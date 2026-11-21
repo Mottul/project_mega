@@ -294,6 +294,14 @@ export function setOutputOpen(open: boolean): void {
   emitState()
 }
 
+/** Stream fürs Heimnetz an/aus (playerStream.ts) – nur für die Anzeige am Startbildschirm. */
+export function setPlayerStreamActive(active: boolean): void {
+  ensureInit()
+  if (state.streamActive === active) return
+  state.streamActive = active
+  emitState()
+}
+
 /** Playlist-Snapshots aus der Bibliothek auffrischen (nach Reconvert/Änderungen);
  *  entfernt zwischenzeitlich gelöschte Medien, behält Reihenfolge + aktuelles. */
 export function refreshPlaylist(): void {

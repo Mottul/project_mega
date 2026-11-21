@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_TIMER_STREAM } from '@shared/types'
-import { buildStreamArgs, clampStreamConfig, streamEncoderArgs } from './streamArgs'
+import {
+  buildStreamArgs,
+  clampStreamConfig,
+  streamEncoderArgs,
+  streamVideoFilter
+} from './streamArgs'
 
 const cfg = DEFAULT_TIMER_STREAM
 
@@ -46,6 +51,38 @@ describe('Stream – ffmpeg-Argumente', () => {
     const a = buildStreamArgs('libx264', cfg, { width: 2880, height: 1620 })
     expect(a.join(' ')).toContain('-s 2880x1620')
     expect(a[a.indexOf('-vf') + 1]).toMatch(/^scale=w=1920:h=1080:/)
+    expect(a[a.indexOf('-vf') + 1]).not.toContain('pad=')
+  })
+
+  it('anderes Seitenverhältnis (breite NDI-Wand): eingepasst mit Rand, nicht verzerrt', () => {
+    const vf = streamVideoFilter('nv12', cfg, { width: 3840, height: 1080 })
+    expect(vf).toContain('force_original_aspect_ratio=decrease')
+    expect(vf).toContain('force_divisible_by=2')
+    expect(vf).toContain('pad=1920:1080:(ow-iw)/2:(oh-ih)/2')
+    // Rand auf yuv420p (sicher für pad), danach das Format des Encoders, dann der Takt
+    expect(vf).toMatch(/format=yuv420p,pad=.*,format=nv12,fps=30$/)
+  })
+
+  it('ohne Ton: -an, kein zweiter Eingang', () => {
+    const a = buildStreamArgs('libx264', cfg)
+    expect(a).toContain('-an')
+    expect(a.filter((x) => x === '-i')).toHaveLength(1)
+  })
+
+  it('mit Ton: Stereo-Float über TCP, Zeit = Start + Samples (absolut wie die Bilder), AAC', () => {
+    const a = buildStreamArgs('libx264', cfg, cfg, { port: 51234, startMs: 1795000000123 })
+    const s = a.join(' ')
+    expect(a).not.toContain('-an')
+    expect(s).toContain('-f f32le -sample_rate 48000 -ch_layout stereo -i tcp://127.0.0.1:51234')
+    expect(s).toContain('-map 0:v -map 1:a')
+    expect(a[a.indexOf('-af') + 1]).toBe('asetpts=N/SR/TB+1795000000.123/TB')
+    // absolut auch mit Ton: Ein Neustart (NDI an oder aus) dreht die Zeit nicht zurück
+    expect(a.filter((x) => x === '-copyts')).toHaveLength(1)
+    expect(a).not.toContain('-avoid_negative_ts')
+    expect(s).toContain('-c:a aac -b:a 160k')
+    // Wanduhr nur am Bild: Roh-PCM bekäme Stempel am Ende seiner 85-ms-Pakete
+    expect(a.filter((x) => x === '-use_wallclock_as_timestamps')).toHaveLength(1)
+    expect(a.indexOf('-use_wallclock_as_timestamps')).toBeLessThan(a.indexOf('pipe:0'))
   })
 
   it('jeder Encoder: konstante Rate, Schlüsselbild jede Sekunde, keine B-Frames', () => {

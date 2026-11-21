@@ -320,9 +320,14 @@ export const Channels = {
     ndiStop: anfrage<() => PlayerNdiStatus>('player:ndiStop'),
     ndiStatus: anfrage<() => PlayerNdiStatus>('player:ndiStatus'),
     onNdiChanged: ereignis<(status: PlayerNdiStatus) => void>('player:ndiChanged'),
-    /** Vom NDI-Spiegelfenster: PCM-Block des Audio-Taps (fire-and-forget). */
+    /** Stream fürs Heimnetz mit Ton (H.264 + AAC über HTTP, z. B. für die Heimkino-Box). */
+    streamStart: anfrage<(config: StreamConfig) => StreamStatus>('player:streamStart'),
+    streamStop: anfrage<() => StreamStatus>('player:streamStop'),
+    streamStatus: anfrage<() => StreamStatus>('player:streamStatus'),
+    onStreamChanged: ereignis<(status: StreamStatus) => void>('player:streamChanged'),
+    /** Vom Spiegelfenster (NDI und Stream): PCM-Block des Audio-Taps (fire-and-forget). */
     ndiAudio: einweg<(chunk: NdiAudioChunk) => void>('player:ndiAudio'),
-    /** Vom NDI-Spiegelfenster: Fehler beim Aufbau des Audio-Taps melden. */
+    /** Vom Spiegelfenster: Fehler beim Aufbau des Audio-Taps melden. */
     ndiTapError: einweg<(message: string) => void>('player:ndiTapError')
   },
 

@@ -12,19 +12,22 @@ import { AlertTriangle, Pause, Play } from 'lucide-react'
 import { OutputControls, useOutputTarget } from '@renderer/components/OutputControl'
 import { BarDivider, BarToggle, ToolBar, ToolShell } from '@renderer/components/ToolShell'
 import { RemoteSection, RemoteToggle, useRemoteControl } from '@renderer/components/RemoteControl'
+import { StreamSection, useStream } from '@renderer/components/StreamAusgabe'
 import { WorkArea } from '@renderer/components/WorkArea'
 import { Alert } from '@renderer/components/ui/alert'
 import { api } from '@renderer/lib/api'
+import { updateSettings, useSettings } from '@renderer/lib/settings'
 import { toast } from '@renderer/lib/toast'
 import { EMPTY_PLAYER_STATE } from '@shared/player'
-import type {
-  AppSettings,
-  FitMode,
-  MediaItem,
-  PlayerEncoderStatus,
-  PlayerState,
-  SavedPlaylist,
-  SettingsPatch
+import {
+  DEFAULT_PLAYER_SETTINGS,
+  type AppSettings,
+  type FitMode,
+  type MediaItem,
+  type PlayerEncoderStatus,
+  type PlayerState,
+  type SavedPlaylist,
+  type SettingsPatch
 } from '@shared/types'
 import { fmtTime } from './format'
 import { PLAYER_RASTER } from './layout'
@@ -41,6 +44,14 @@ import {
 import { Stage } from './Stage'
 import { usePlayback } from './usePlayback'
 
+/** Datenraten für den Stream (kbit/s): bewegtes Bild braucht mehr als die Timer-Anzeige –
+ *  1080p30 um 6 Mbit/s, das schafft das WLAN einer TV-Box (keine LAN-Buchse) noch sicher. */
+const STREAM_RATEN: [number, string][] = [
+  [3000, 'Sparsam (3 Mbit/s)'],
+  [6000, 'Normal (6 Mbit/s)'],
+  [10000, 'Hoch (10 Mbit/s)']
+]
+
 export function VideoPlayer(): JSX.Element {
   // Kundenansicht: technische Setup-Optionen ausblenden (Wand/Auflösung, Encoder,
   // Idle-Bild). Bibliothek, Import, Fit-Modus, Fernsteuerung, Ausgabe und Playlist
@@ -53,6 +64,8 @@ export function VideoPlayer(): JSX.Element {
   const [wallW, setWallW] = useState(1920)
   const [wallH, setWallH] = useState(1080)
   const ndi = usePlayerNdi(wallW, wallH)
+  const streamCfg = useSettings((s) => s.player.stream) ?? DEFAULT_PLAYER_SETTINGS.stream
+  const stream = useStream(api.player, streamCfg)
   const playback = usePlayback(pstate)
   const [fit, setFit] = useState<FitMode>('blur')
   const [encoder, setEncoder] = useState('auto')
@@ -152,7 +165,9 @@ export function VideoPlayer(): JSX.Element {
       bar={
         <ToolBar
           label="Ausgabe"
-          active={pstate.outputOpen || Boolean(ndi.status?.running)}
+          active={
+            pstate.outputOpen || Boolean(ndi.status?.running) || Boolean(stream.status?.running)
+          }
           status={
             current ? (
               <>
@@ -191,6 +206,13 @@ export function VideoPlayer(): JSX.Element {
             onClick={() => void ndi.toggle()}
           >
             NDI
+          </BarToggle>
+          <BarToggle
+            on={Boolean(stream.status?.running)}
+            title="Wiedergabe mit Ton als Stream ins Heimnetz senden (H.264, z. B. für Heimkino oder VLC)"
+            onClick={() => void stream.toggle()}
+          >
+            Stream
           </BarToggle>
           <RemoteToggle rc={rc} />
         </ToolBar>
@@ -237,6 +259,13 @@ export function VideoPlayer(): JSX.Element {
           <WiedergabeSection pstate={pstate} />
           {!locked && <IdleSection pstate={pstate} />}
           <NdiSection wallW={wallW} wallH={wallH} status={ndi.status} />
+          <StreamSection
+            status={stream.status}
+            cfg={streamCfg}
+            patch={(p) => updateSettings({ player: { stream: p } })}
+            raten={STREAM_RATEN}
+            hinweis="Ein/Aus mit „Stream“ in der Ausgabe-Leiste. Bild und Ton für Geräte ohne NDI – läuft auch über WLAN."
+          />
           <RemoteSection
             rc={rc}
             hint="Das Handy steuert die Wiedergabe und lädt Medien hoch. Ein/Aus mit „Handy“ in der Ausgabe-Leiste."

@@ -873,6 +873,8 @@ export interface PlayerState {
   idleMediaUrl: string | null // bei 'custom': media://-URL des eigenen Bilds/Videos
   idleMediaKind: 'image' | 'video' | null
   outputOpen: boolean
+  /** Stream fürs Heimnetz läuft – der Startbildschirm zeigt dann „Ausgabe“ */
+  streamActive: boolean
   wall: WallResolution
   seekSeq: number // monotone Seek-Marke -> Ausgabefenster setzt currentTime
   /** Bei Shuffle: VORAB gewürfelter nächster Index (-1 = keiner). Main würfelt,
@@ -1047,6 +1049,16 @@ export const DEFAULT_TIMER_STREAM: StreamConfig = {
   bitrateKbps: 4000
 }
 
+/** Stream des Video-Players (mit Ton): bewegtes Bild braucht mehr Rate als die Timer-Anzeige;
+ *  eigener Port, damit Timer und Player gleichzeitig senden können. */
+export const DEFAULT_PLAYER_STREAM: StreamConfig = {
+  width: 1920,
+  height: 1080,
+  fps: 30,
+  port: 8094,
+  bitrateKbps: 6000
+}
+
 /** NDI-Ausgabe des Video-Players (experimentell): ein Offscreen-Spiegel der
  *  Wiedergabe sendet Bild (und optional Ton) als NDI-Quelle ins Netz. */
 export interface PlayerNdiConfig {
@@ -1082,10 +1094,14 @@ export const DEFAULT_PLAYER_NDI: PlayerNdiConfig = {
   audio: true
 }
 
-/** PCM-Block des NDI-Audio-Taps (Renderer -> main): planare Float32-Kanäle. */
+/** PCM-Block des Audio-Taps im Player-Spiegel (Renderer -> main, für NDI und Stream): planare
+ *  Float32-Kanäle. */
 export interface NdiAudioChunk {
   sampleRate: number
   channels: Float32Array[]
+  /** Sample-Nummer des ersten Samples (currentFrame im AudioWorklet) – damit der Stream Blöcke,
+   *  die nach einem Hänger als Schub kommen, lückenlos an ihren Platz legt */
+  frame?: number
 }
 
 /* -------------------------------- Dialog -------------------------------- */
@@ -1535,6 +1551,8 @@ export interface PlayerSettings {
   savedPlaylists: SavedPlaylist[]
   /** NDI-Panel: Quellenname, Auflösung, Bildrate, Ton mitsenden */
   ndi: PlayerNdiPrefs
+  /** Stream fürs Heimnetz (mit Ton): Auflösung, Bildrate, Qualität, Port */
+  stream: StreamConfig
 }
 
 /** Auflösung der Player-NDI-Ausgabe: Wand 1:1 / halbe Wand / eingebettet in HD. */
@@ -1569,7 +1587,8 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettings = {
   remoteEnabled: false,
   remotePort: 8088,
   savedPlaylists: [],
-  ndi: { name: DEFAULT_PLAYER_NDI.name, mode: 'wall', fps: 30, audio: true }
+  ndi: { name: DEFAULT_PLAYER_NDI.name, mode: 'wall', fps: 30, audio: true },
+  stream: DEFAULT_PLAYER_STREAM
 }
 
 /** YouTube-Downloader: Zielordner und Vorgaben für neue Downloads. */

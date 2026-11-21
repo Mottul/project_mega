@@ -21,6 +21,7 @@ export const EMPTY_PLAYER_STATE: PlayerState = {
   idleMediaUrl: null,
   idleMediaKind: null,
   outputOpen: false,
+  streamActive: false,
   wall: { width: 1920, height: 1080 },
   seekSeq: 0,
   shuffleNext: -1

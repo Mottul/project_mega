@@ -58,6 +58,16 @@ describe('NDI-Frames', () => {
     expect(audioFrame(g, { sampleRate: 'x' })).toBeNull()
   })
 
+  it('Sample-Nummer (für den Stream): ganz, nicht negativ – oder gar nicht', () => {
+    const ok = { sampleRate: 48000, channels: [new Float32Array(4)] }
+    expect(isAudioChunk(ok)).toBe(true)
+    expect(isAudioChunk({ ...ok, frame: 0 })).toBe(true)
+    expect(isAudioChunk({ ...ok, frame: 2 ** 40 })).toBe(true) // gut acht Monate Ton am Stück
+    for (const frame of [-1, 1.5, Number.NaN, Infinity, '3', null]) {
+      expect(isAudioChunk({ ...ok, frame }), String(frame)).toBe(false)
+    }
+  })
+
   it('Audioframe: Kanäle nacheinander (planar), Schrittweite = Samples × 4', () => {
     const left = new Float32Array([0.5, -0.25])
     // Ausschnitt aus einem größeren Puffer: nur die eigenen Bytes dürfen hinein
