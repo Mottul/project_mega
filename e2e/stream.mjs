@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { findFfmpeg, launchApp, portFree, runSteps, Skip, sleep, waitFor } from './harness.mjs'
 import { blitzUndPiep, mitschneiden, zeitachse } from './tsMitschnitt.mjs'
+import { diagnoseZeile, holeDiagnose, starteDiagnose, werteDiagnoseAus } from './avDiagnose.mjs'
 
 const pexec = promisify(execFile)
 const ffmpeg = findFfmpeg()
@@ -415,7 +416,19 @@ try {
             await sleep(4500)
           }
         }
+        // Diagnose je Teilstrecke (avDiagnose.mjs): Anzeige im Spiegel, paint im main, Tonblock
+        const diagnose = await starteDiagnose(app).catch((e) => {
+          console.log(`    Diagnose nicht eingehängt: ${e.message}`)
+          return false
+        })
         const m = await mitschneiden(playerUrl, 20_000, { waehrend: haenger, datei })
+        if (diagnose) {
+          try {
+            console.log(`    ${diagnoseZeile(werteDiagnoseAus(await holeDiagnose(app)))}`)
+          } catch (e) {
+            console.log(`    Diagnose nicht auswertbar: ${e.message}`)
+          }
+        }
         const r = blitzUndPiep(datei, ffmpeg)
         // Zeit des Stroms zu jedem Hänger: PTS des Bildes, das damals ankam
         const haengerPts = haengerBei.map((ms) => {
