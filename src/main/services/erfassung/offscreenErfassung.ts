@@ -203,7 +203,11 @@ export class OffscreenErfassung {
     })
     this.win = win
     win.webContents.setFrameRate(plan.fps)
-    win.webContents.on('paint', (_e, _dirty, image) => this.onPaint(image))
+    // Nur Bilder des AKTUELLEN Fensters (wie bei 'closed'): Ein spätes Bild eines alten Fensters
+    // in anderer Größe ließe den Stream sonst ffmpeg neu starten.
+    win.webContents.on('paint', (_e, _dirty, image) => {
+      if (this.win === win) this.onPaint(image)
+    })
     // Von außen geschlossen (App-Ende) -> alle Ausgänge hören auf. Nur das AKTUELLE Fenster:
     // 'closed' kann nach einem Neuaufbau kommen, wenn schon das neue in `win` steht.
     win.on('closed', () => {

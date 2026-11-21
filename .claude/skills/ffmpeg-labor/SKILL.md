@@ -44,7 +44,9 @@ Strom dauerhaft hinter der Uhr (Labor: fünf Hänger zu 0,8 s = 4,01 s Rückstan
 `-use_wallclock_as_timestamps 1` vor dem Eingang und `fps=<Rate>` am Ende der Filterkette
 blieben 0,03 s, der nötige Puffer ist ein Hänger (0,83 s). Messen wie im Labor: Bilder im Takt
 schreiben, mit Warteschleifen unterbrechen, den TS-Ausgang mit `e2e/tsMitschnitt.mjs` zerlegen
-(`tsParser`, `zeitachse`).
+(`tsParser`, `zeitachse`). Dazu `-copyts`: Ohne fängt jeder Eingang bei 0 an, und ein neu
+gestartetes ffmpeg dreht die Zeit für den Empfänger zurück; mit bleibt sie die absolute Wanduhr
+(im TS modulo 2³³, rund 26,5 Stunden – Empfänger kennen den Überlauf).
 
 **Ton dazu über einen zweiten Eingang (Stufe 2, gemessen November 2026)** – Blitz und Piep alle
 2 s, Versatz Ton − Bild im Ausgang (`blitzUndPiep` in `e2e/tsMitschnitt.mjs`):
@@ -58,8 +60,10 @@ schreiben, mit Warteschleifen unterbrechen, den TS-Ausgang mit `e2e/tsMitschnitt
   erst später ab 0.
 - Was trägt: Ton OHNE Wanduhr, Sample für Sample in der richtigen Reihenfolge (der Sender legt
   die Blöcke nach ihrer Sample-Nummer, `stream/tontakt.ts`), `-af asetpts=N/SR/TB+<Start>/TB`
-  mit der Startzeit in Sekunden, `-copyts`, `-avoid_negative_ts make_zero`: −9 ms konstant,
-  auch über vier Hänger zu 0,8 s; der Strom beginnt trotzdem bei 0.
+  mit der Startzeit in Sekunden und `-copyts`: −36 … −2 ms (das Raster eines Bildes), auch über
+  vier Hänger zu 0,8 s. Mit `-avoid_negative_ts make_zero` dazu waren es −9 ms konstant, der
+  Strom begann bei 0 – aber dann beginnt auch jeder Neustart von ffmpeg wieder bei 0, die Zeit
+  springt für den Empfänger zurück. Deshalb ohne.
 
 **Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
 Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in

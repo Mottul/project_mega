@@ -159,8 +159,8 @@ export function streamVideoFilter(pixFmt: string, cfg: StreamConfig, input: Stre
  *
  * Mit Ton (Video-Player): Der Ton kommt ohne Zeitstempel über einen lokalen TCP-Port, lückenlos
  * vom Ton-Takt des Senders. asetpts legt Sample n auf Start + n / 48000 – auf dieselbe Uhr wie
- * die Bilder; -copyts behält beide Zeiten, avoid_negative_ts lässt den Strom trotzdem bei 0
- * beginnen. (-itsoffset greift bei Roh-PCM nicht: Ihre Pakete haben gar keinen Zeitstempel.)
+ * die Bilder; -copyts behält beide Zeiten absolut, auch über einen Neustart von ffmpeg hinweg.
+ * (-itsoffset greift bei Roh-PCM nicht: Ihre Pakete haben gar keinen Zeitstempel.)
  */
 export function buildStreamArgs(
   encoder: string,
@@ -184,10 +184,7 @@ export function buildStreamArgs(
         '-map',
         '1:a',
         '-af',
-        `asetpts=N/SR/TB+${(ton.startMs / 1000).toFixed(3)}/TB`,
-        '-copyts',
-        '-avoid_negative_ts',
-        'make_zero'
+        `asetpts=N/SR/TB+${(ton.startMs / 1000).toFixed(3)}/TB`
       ]
     : ['-an']
   const tonKodierung = ton ? ['-c:a', 'aac', '-b:a', '160k'] : []
@@ -208,6 +205,11 @@ export function buildStreamArgs(
     '-i',
     'pipe:0',
     ...tonEingang,
+    // Die Zeitstempel bleiben die der Wanduhr, absolut statt ab 0: Startet ffmpeg neu (andere
+    // Bildgröße, NDI an oder aus), macht der neue Strom dort weiter, wo die Uhr steht – für den
+    // Empfänger eine kurze Lücke. Ab 0 sprang die Zeit zurück (nachgestellt: 5,5 s), und der
+    // Empfänger lief dauerhaft hinterher (einmal auf dem macOS-Runner gesehen: 11,5 s).
+    '-copyts',
     // Auf die Ausgabegröße bringt ffmpeg das Bild selbst (bei Bildschirm-Skalierung kommt es
     // größer) – im main-Prozess kostete das je Bild Zeit, in der er nichts anderes tun kann.
     // Begrenzter Bereich (TV-Pegel) und BT.709 ausdrücklich: sonst raten Decoder bei HD-Material

@@ -39,6 +39,14 @@ describe('Stream – ffmpeg-Argumente', () => {
     expect(a[a.indexOf('-vf') + 1]).toMatch(/,fps=25$/)
   })
 
+  it('absolute Zeitstempel: Ein Neustart von ffmpeg dreht die Zeit nicht auf 0 zurück', () => {
+    const a = buildStreamArgs('libx264', cfg)
+    expect(a).toContain('-copyts')
+    // weder an den Anfang schieben (start_at_zero) noch beim Muxen auf 0 setzen
+    expect(a).not.toContain('-start_at_zero')
+    expect(a).not.toContain('-avoid_negative_ts')
+  })
+
   it('bei Bildschirm-Skalierung: Eingang in der paint-Größe, ffmpeg skaliert auf die Ausgabe', () => {
     const a = buildStreamArgs('libx264', cfg, { width: 2880, height: 1620 })
     expect(a.join(' ')).toContain('-s 2880x1620')
@@ -59,17 +67,18 @@ describe('Stream – ffmpeg-Argumente', () => {
     const a = buildStreamArgs('libx264', cfg)
     expect(a).toContain('-an')
     expect(a.filter((x) => x === '-i')).toHaveLength(1)
-    expect(a).not.toContain('-copyts')
   })
 
-  it('mit Ton: Stereo-Float über TCP, Zeit = Start + Samples, AAC, Strom beginnt bei 0', () => {
+  it('mit Ton: Stereo-Float über TCP, Zeit = Start + Samples (absolut wie die Bilder), AAC', () => {
     const a = buildStreamArgs('libx264', cfg, cfg, { port: 51234, startMs: 1795000000123 })
     const s = a.join(' ')
     expect(a).not.toContain('-an')
     expect(s).toContain('-f f32le -sample_rate 48000 -ch_layout stereo -i tcp://127.0.0.1:51234')
     expect(s).toContain('-map 0:v -map 1:a')
     expect(a[a.indexOf('-af') + 1]).toBe('asetpts=N/SR/TB+1795000000.123/TB')
-    expect(s).toContain('-copyts -avoid_negative_ts make_zero')
+    // absolut auch mit Ton: Ein Neustart (NDI an oder aus) dreht die Zeit nicht zurück
+    expect(a.filter((x) => x === '-copyts')).toHaveLength(1)
+    expect(a).not.toContain('-avoid_negative_ts')
     expect(s).toContain('-c:a aac -b:a 160k')
     // Wanduhr nur am Bild: Roh-PCM bekäme Stempel am Ende seiner 85-ms-Pakete
     expect(a.filter((x) => x === '-use_wallclock_as_timestamps')).toHaveLength(1)

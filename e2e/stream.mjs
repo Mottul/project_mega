@@ -28,6 +28,11 @@ const offscreenWindows = () =>
 const PORT = 18093
 const cfg = { width: 640, height: 360, fps: 15, port: PORT, bitrateKbps: 1000 }
 const url = `http://127.0.0.1:${PORT}/live.ts`
+/** Wie oft ffmpeg für den Timer-Stream gestartet ist (Zeilen im Protokoll der App) */
+const ffmpegStarts = () =>
+  readFileSync(join(ctx.userData, 'avtoolbox-debug.log'), 'utf8')
+    .split(/\r?\n/)
+    .filter((l) => l.includes('[timer-stream] ffmpeg läuft')).length
 
 /** Liest ein paar Sekunden vom Strom und meldet, was darin steckt (wie ein Empfänger). */
 async function probeAlle(u = url) {
@@ -197,6 +202,50 @@ try {
       }
     ],
     [
+      'Bildgröße ändert sich mitten im Strom: ffmpeg startet neu, die Zeit läuft weiter',
+      async () => {
+        needFfmpeg()
+        // Einmal auf dem macOS-Runner gesehen: Mitten im Strom fing die Zeit wieder vorn an
+        // (11,5 s zurück, die Bilder kamen weiter im Takt) – das Bild eines neu gestarteten
+        // ffmpeg. Neu starten muss der Sender, wenn sich die Bildgröße ändert (Skalierung
+        // umgestellt, später NDI an oder aus). Für den Empfänger darf das nur eine kurze Lücke
+        // sein, kein Sprung zurück. Nachgestellt: Das Offscreen-Fenster wird größer.
+        const st = await page.evaluate((c) => window.api.timer.streamStart(c), {
+          ...cfg,
+          fps: 30
+        })
+        assert.equal(st.running, true, st.error ?? '')
+        const vorher = ffmpegStarts()
+        const groesser = async () => {
+          await sleep(4000)
+          await app.evaluate(({ BrowserWindow }) => {
+            const w = BrowserWindow.getAllWindows().find(
+              (x) => !x.isDestroyed() && x.webContents.isOffscreen()
+            )
+            w?.setContentSize(800, 450)
+          })
+        }
+        const m = await mitschneiden(url, 10_000, { waehrend: groesser })
+        const z = zeitachse(m.video)
+        assert.ok(z, 'kein Bild empfangen')
+        const neu = ffmpegStarts() - vorher
+        console.log(
+          `    ffmpeg ${neu}-mal gestartet, Rückstand am Ende ${z.rueckstand.toFixed(2)} s, ` +
+            `größter Versatz ${z.puffer.toFixed(2)} s` +
+            (z.spruenge.length
+              ? `, Sprünge: ${z.spruenge.map((s) => `${s.umS.toFixed(2)} s bei ${s.beiS.toFixed(1)} s`).join(', ')}`
+              : '')
+        )
+        assert.ok(neu >= 2, 'ffmpeg ist nicht neu gestartet – kam die neue Größe nicht an?')
+        // Die Lücke des Neustarts darf sein, ein dauerhafter Rückstand nicht.
+        assert.ok(z.rueckstand < 0.6, `Strom-Zeit bleibt ${z.rueckstand.toFixed(2)} s zurück`)
+        assert.ok(
+          z.spruenge.every((s) => s.umS > 0),
+          'Zeit springt zurück'
+        )
+      }
+    ],
+    [
       'Werte aus dem Renderer begrenzt',
       async () => {
         const st = await page.evaluate(
@@ -290,9 +339,8 @@ try {
         const clip = join(tmp, 'Blitz und Piep.mp4')
         execFileSync(ffmpeg, [
           ...['-v', 'error', '-y'],
-          // 60 s: Während der Messung springt das Video nicht an den Anfang zurück. Mit 12 s lag
-          // das letzte Paar eines Laufs einmal bei −112 ms – am Loop des <video> oder am
-          // angeschnittenen Ende (nicht getrennt); beides fällt so heraus.
+          // 60 s: Während der Messung springt das Video nicht an den Anfang zurück – ein Loop
+          // wäre eine Störung mehr, die mit dem Stream nichts zu tun hat.
           ...['-f', 'lavfi', '-i', `color=c=black:s=1280x720:r=30:d=60,${BLITZ}`],
           ...['-f', 'lavfi', '-i', `aevalsrc='${PIEP}':s=48000:d=60`],
           ...['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'],
@@ -376,7 +424,9 @@ try {
         })
         // Ein Blitz IN einem Hänger hat kein Bild (der main-Prozess nimmt keins an) – gewertet
         // wird, was davor und danach kommt: Danach muss der Ton wieder genau passen. Ebenso
-        // nicht der Blitz in der letzten halben Sekunde: Der Mitschnitt kann ihn anschneiden.
+        // nicht der Blitz in der letzten halben Sekunde: silencedetect meldet am Ende der Tonspur
+        // ein letztes silence_end, und ein Blitz kurz davor paarte sich damit (gesehen: −112 und
+        // −122 ms, je 30 ms vor dem Ende des Mitschnitts – kein Versatz, ein Schein-Piep).
         const gewertet = r.paare.filter(
           (p) =>
             !haengerPts.some((h) => p.blitz > h - 0.3 && p.blitz < h + 1.5) &&
