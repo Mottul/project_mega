@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_TIMER_STREAM } from '@shared/types'
-import { buildStreamArgs, clampStreamConfig, framesDue, streamEncoderArgs } from './streamArgs'
+import { buildStreamArgs, clampStreamConfig, streamEncoderArgs } from './streamArgs'
 
 const cfg = DEFAULT_TIMER_STREAM
 
@@ -25,6 +25,21 @@ describe('Stream – ffmpeg-Argumente', () => {
     )
   })
 
+  it('Zeit von der Uhr: Wanduhr-Zeitstempel am Eingang, fester Takt per fps-Filter', () => {
+    const a = buildStreamArgs('libx264', { ...cfg, fps: 25 })
+    // Die Option gilt nur vor dem Eingang, den sie betrifft
+    expect(a.indexOf('-use_wallclock_as_timestamps')).toBeLessThan(a.indexOf('-i'))
+    expect(a[a.indexOf('-use_wallclock_as_timestamps') + 1]).toBe('1')
+    // fps zuletzt: Es verdoppelt fertige Bilder, statt jedes Doppel neu umzurechnen
+    expect(a[a.indexOf('-vf') + 1]).toMatch(/,fps=25$/)
+  })
+
+  it('bei Bildschirm-Skalierung: Eingang in der paint-Größe, ffmpeg skaliert auf die Ausgabe', () => {
+    const a = buildStreamArgs('libx264', cfg, { width: 2880, height: 1620 })
+    expect(a.join(' ')).toContain('-s 2880x1620')
+    expect(a[a.indexOf('-vf') + 1]).toMatch(/^scale=w=1920:h=1080:/)
+  })
+
   it('jeder Encoder: konstante Rate, Schlüsselbild jede Sekunde, keine B-Frames', () => {
     for (const enc of ['libx264', 'h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_videotoolbox']) {
       const a = streamEncoderArgs(enc, { ...cfg, fps: 25 })
@@ -46,18 +61,5 @@ describe('Stream – ffmpeg-Argumente', () => {
   it('Quick Sync bekommt nv12, alle anderen yuv420p', () => {
     expect(buildStreamArgs('h264_qsv', cfg).join(' ')).toContain('format=nv12')
     expect(buildStreamArgs('h264_nvenc', cfg).join(' ')).toContain('format=yuv420p')
-  })
-})
-
-describe('Stream – Bildtakt', () => {
-  it('zählt die fälligen Bilder nach der Uhr', () => {
-    expect(framesDue(1000, 1000, 30)).toBe(0)
-    expect(framesDue(1000, 1999, 30)).toBe(29)
-    expect(framesDue(1000, 2000, 30)).toBe(30)
-    expect(framesDue(0, 60_000, 25)).toBe(1500)
-  })
-
-  it('nie negativ (Uhr springt zurück)', () => {
-    expect(framesDue(5000, 4000, 30)).toBe(0)
   })
 })

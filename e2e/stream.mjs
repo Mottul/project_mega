@@ -2,9 +2,12 @@
 // Heimkino-Box (ffprobe liest den Strom über HTTP). Ohne gebündeltes ffmpeg übersprungen.
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import net from 'node:net'
+import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { findFfmpeg, launchApp, portFree, runSteps, Skip, waitFor } from './harness.mjs'
+import { findFfmpeg, launchApp, portFree, runSteps, Skip, sleep, waitFor } from './harness.mjs'
+import { mitschneiden, zeitachse } from './tsMitschnitt.mjs'
 
 const pexec = promisify(execFile)
 const ffmpeg = findFfmpeg()
@@ -109,6 +112,49 @@ try {
       }
     ],
     [
+      'Zeit im Strom läuft mit der Uhr, auch wenn der main-Prozess hängt',
+      async () => {
+        needFfmpeg()
+        // Hänger nachstellen: Der main-Prozess rechnet fünfmal 0,8 s am Stück (wie ein großer
+        // GC-Lauf oder ein Bild, das lange umgerechnet wird). Stufe 1 ließ danach Bilder aus –
+        // die Zeit im Strom blieb jedes Mal dauerhaft zurück, bis der Puffer des Empfängers leer
+        // war und er sekundenlang stockte (gemeldet am 21.11.2026 aus VLC am PC und am Handy).
+        const st = await page.evaluate((c) => window.api.timer.streamStart(c), {
+          ...cfg,
+          width: 1280,
+          height: 720,
+          fps: 30,
+          bitrateKbps: 2000
+        })
+        assert.equal(st.running, true, st.error ?? '')
+        const haenger = async () => {
+          await sleep(4000)
+          for (let i = 0; i < 5; i++) {
+            await app.evaluate(() => {
+              const ende = Date.now() + 800
+              while (Date.now() < ende) {
+                // blockiert absichtlich
+              }
+            })
+            await sleep(2500)
+          }
+        }
+        const m = await mitschneiden(url, 24_000, { waehrend: haenger })
+        const z = zeitachse(m.video)
+        assert.ok(z, 'kein Bild empfangen')
+        const skala = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().scaleFactor)
+        console.log(
+          `    ${m.video.length} Bilder über ${z.dauer.toFixed(1)} s Strom-Zeit ` +
+            `(${z.bilderJeSekunde.toFixed(1)}/s), Rückstand am Ende ${z.rueckstand.toFixed(2)} s, ` +
+            `größter Versatz ${z.puffer.toFixed(2)} s, Bildschirm-Skalierung ${skala}`
+        )
+        // Fünf Hänger zu 0,8 s: Stufe 1 verlor dabei gemessen 3,98 s. Erlaubt ist Zittern, kein
+        // Verlust – nach jedem Hänger muss die Zeit im Strom wieder mit der Uhr laufen.
+        assert.ok(z.rueckstand < 0.3, `Strom-Zeit bleibt ${z.rueckstand.toFixed(2)} s zurück`)
+        assert.ok(Math.abs(z.bilderJeSekunde - 30) < 1.5, `${z.bilderJeSekunde} Bilder/s`)
+      }
+    ],
+    [
       'Werte aus dem Renderer begrenzt',
       async () => {
         const st = await page.evaluate(
@@ -159,4 +205,36 @@ try {
   ])
 } finally {
   await ctx.close()
+}
+
+// Bildschirm-Skalierung 150 %: Das Offscreen-Fenster malt dann nicht genau in der eingestellten
+// Größe (gemessen 641 × 362 statt 640 × 360). Stufe 1 skalierte deshalb JEDES Bild im
+// main-Prozess zurück – bei jeder Skalierung über 100 % (Verdacht für die Hänger). Jetzt bekommt
+// ffmpeg das Bild, wie es kommt, und skaliert selbst.
+const hidpi = await launchApp({ args: ['--force-device-scale-factor=1.5'] })
+try {
+  await runSteps('Stream bei Bildschirm-Skalierung 150 %', [
+    [
+      'ffmpeg bekommt das Bild ungeändert, der Empfänger die eingestellte Größe',
+      async () => {
+        needFfmpeg()
+        const st = await hidpi.page.evaluate((c) => window.api.timer.streamStart(c), cfg)
+        assert.equal(st.running, true, st.error ?? '')
+        const s = await probe()
+        assert.equal(s.codec_name, 'h264')
+        assert.deepEqual([s.width, s.height], [640, 360])
+        await hidpi.page.evaluate(() => window.api.timer.streamStop())
+        // Die letzte Startzeile nennt die Eingangsgröße. Kam der Empfänger vor dem ersten Bild,
+        // startete ffmpeg zuerst in der eingestellten Größe und danach neu – auch das ist recht.
+        const log = readFileSync(join(hidpi.userData, 'avtoolbox-debug.log'), 'utf8')
+        const starts = [...log.matchAll(/\[timer-stream\] ffmpeg läuft: \S+ (\d+)x(\d+)/g)]
+        assert.ok(starts.length, 'keine Logzeile „ffmpeg läuft“')
+        const [, w, h] = starts.at(-1)
+        if (w === '640' && h === '360') throw new Skip('Electron malt genau 640 × 360')
+        console.log(`    paint-Bild ${w} × ${h}, ffmpeg skaliert auf 640 × 360`)
+      }
+    ]
+  ])
+} finally {
+  await hidpi.close()
 }

@@ -282,7 +282,9 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
   unter `http://<Rechner>:8093/live.ts` – für Geräte ohne NDI und ohne Browser (TV-Box mit VLC,
   VLC am Rechner: „Netzwerkstream öffnen“). 2–8 Mbit/s statt 100+ wie bei NDI, läuft also auch
   über WLAN; beliebig viele Empfänger. Kodiert wird nur, solange jemand zuschaut (GPU-Encoder,
-  sonst libx264), eine Sekunde bis zum ersten Bild eines neuen Empfängers. Auflösung, Bildrate,
+  sonst libx264), eine Sekunde bis zum ersten Bild eines neuen Empfängers. Die Zeit im Strom
+  kommt von der Uhr: Hängt der Rechner kurz, steht das Bild beim Empfänger einen Moment und läuft
+  dann mit der Uhr weiter, statt nach einigen Hängern sekundenlang zu stocken. Auflösung, Bildrate,
   Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die Adressen,
   Empfänger und Datenrate. Wie die Fernsteuerung ohne Passwort, nur im lokalen Netz.
 - **NDI-Ausgabe** (optional): [NDI.md](NDI.md). **Handy-Fernsteuerung**, die auch bei
