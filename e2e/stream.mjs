@@ -539,7 +539,10 @@ try {
             const auswertung = werteDiagnoseAus(diagDaten, { bildwegMs })
             console.log(`    ${diagnoseZeile(auswertung)}`)
             console.log(`    ${zeitbasisZeile(zeitbasisAusSpiegel(diagDaten, playerCfg.fps))}`)
-            console.log(`    ${inhaltZeile(inhaltZuordnung(diagDaten, playerCfg.fps))}`)
+            // ST6, nur im Labor (MOTTULBOX_E2E_ST6=1): Bild am Inhalt erkennen
+            if (process.env.MOTTULBOX_E2E_ST6 === '1') {
+              console.log(`    ${inhaltZeile(inhaltZuordnung(diagDaten, playerCfg.fps))}`)
+            }
           } catch (e) {
             console.log(`    Diagnose nicht auswertbar: ${e.message}`)
           }

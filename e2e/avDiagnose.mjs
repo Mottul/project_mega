@@ -14,89 +14,107 @@ const SPIEGEL = `(BrowserWindow) =>
     (w) => !w.isDestroyed() && w.webContents.isOffscreen() && w.webContents.getURL().includes('player-ndi')
   )`
 
-/** Messung einhängen. Muss laufen, während der Player spielt und der Spiegel offen ist. */
-export async function starteDiagnose(app) {
-  const ok = await app.evaluate(({ BrowserWindow, ipcMain }, finde) => {
-    const win = eval(finde)(BrowserWindow)
-    if (!win) return false
-    const d = { paints: [], ton: [] }
-    globalThis.__avDiag = d
-    win.webContents.on('paint', (_e, _dirty, image) => {
-      if (d.paints.length > 5000) return
-      const { width, height } = image.getSize()
-      const px = image
-        .crop({ x: Math.floor(width / 2) - 2, y: Math.floor(height / 2) - 2, width: 4, height: 4 })
-        .toBitmap()
-      let summe = 0
-      for (let i = 0; i < px.length; i += 4) summe += (px[i] + px[i + 1] + px[i + 2]) / 3
-      // Fläche des Videos im paint: Der Clip (1280 × 720) liegt eingepasst wie im Player – auf dem
-      // Windows-Runner ist das Fenster nur 1024 breit, dort mit Rändern oben und unten
-      const s = Math.min(width / 1280, height / 720)
-      const vw = Math.round(1280 * s)
-      const vh = Math.round(720 * s)
-      const vx = Math.floor((width - vw) / 2)
-      const vy = Math.floor((height - vh) / 2)
-      // 16 Felder, Mitte hell = 1: oben links im Video die Bildnummer des Testclips (stream.mjs,
-      // Felder 16 px im Clip), unten links im Fenster die Marke des Spiegels (16 px, unten)
-      const lies = (x0, y0, feld) => {
-        const w = Math.ceil(16 * feld * 16)
-        const h = Math.ceil(16 * feld)
-        if (x0 + w > width || y0 + h > height) return -1
-        const code = image.crop({ x: x0, y: y0, width: w, height: h }).toBitmap()
-        let n = 0
-        for (let k = 0; k < 16; k++) {
-          const i = (Math.floor(8 * feld) * w + Math.floor((16 * k + 8) * feld)) * 4
-          if ((code[i] + code[i + 1] + code[i + 2]) / 3 > 128) n += 2 ** k
+/**
+ * Messung einhängen. Muss laufen, während der Player spielt und der Spiegel offen ist. `st6`:
+ * zusätzlich die Messungen zu ST6 (Marke des Spiegels, Vorschaubilder für „Bild am Inhalt“) –
+ * nur im Labor (`MOTTULBOX_E2E_ST6=1`): Das Vorschaubild kostet im Spiegel 3–15 ms je Bild, und
+ * diese Last machte den Schritt „lippensynchron“ selbst wackeliger (Windows-Runner, #250).
+ */
+export async function starteDiagnose(app, { st6 = process.env.MOTTULBOX_E2E_ST6 === '1' } = {}) {
+  const ok = await app.evaluate(
+    ({ BrowserWindow, ipcMain }, [finde, st6]) => {
+      const win = eval(finde)(BrowserWindow)
+      if (!win) return false
+      const d = { paints: [], ton: [] }
+      globalThis.__avDiag = d
+      win.webContents.on('paint', (_e, _dirty, image) => {
+        if (d.paints.length > 5000) return
+        const { width, height } = image.getSize()
+        const px = image
+          .crop({
+            x: Math.floor(width / 2) - 2,
+            y: Math.floor(height / 2) - 2,
+            width: 4,
+            height: 4
+          })
+          .toBitmap()
+        let summe = 0
+        for (let i = 0; i < px.length; i += 4) summe += (px[i] + px[i + 1] + px[i + 2]) / 3
+        // Fläche des Videos im paint: Der Clip (1280 × 720) liegt eingepasst wie im Player – auf dem
+        // Windows-Runner ist das Fenster nur 1024 breit, dort mit Rändern oben und unten
+        const s = Math.min(width / 1280, height / 720)
+        const vw = Math.round(1280 * s)
+        const vh = Math.round(720 * s)
+        const vx = Math.floor((width - vw) / 2)
+        const vy = Math.floor((height - vh) / 2)
+        // 16 Felder, Mitte hell = 1: oben links im Video die Bildnummer des Testclips (stream.mjs,
+        // Felder 16 px im Clip), unten links im Fenster die Marke des Spiegels (16 px, unten)
+        const lies = (x0, y0, feld) => {
+          const w = Math.ceil(16 * feld * 16)
+          const h = Math.ceil(16 * feld)
+          if (x0 + w > width || y0 + h > height) return -1
+          const code = image.crop({ x: x0, y: y0, width: w, height: h }).toBitmap()
+          let n = 0
+          for (let k = 0; k < 16; k++) {
+            const i = (Math.floor(8 * feld) * w + Math.floor((16 * k + 8) * feld)) * 4
+            if ((code[i] + code[i + 1] + code[i + 2]) / 3 > 128) n += 2 ** k
+          }
+          return n
         }
-        return n
-      }
-      // ST6, D: Vorschaubild 32 × 18 (Helligkeit je Feld), wie der Spiegel es im Rückruf rechnet;
-      // die Zeit dafür zählt mit – im Produkt liefe das je paint im main
-      const v0 = performance.now()
-      const klein = image
-        .crop({ x: vx, y: vy, width: vw, height: vh })
-        .resize({ width: 32, height: 18, quality: 'good' })
-        .toBitmap()
-      const th = new Array(32 * 18)
-      for (let i = 0; i < th.length; i++) {
-        th[i] = Math.round((klein[i * 4] + klein[i * 4 + 1] + klein[i * 4 + 2]) / 3)
-      }
-      d.paints.push({
-        t: Date.now(),
-        groesse: `${width}x${height}`,
-        hell: summe / (px.length / 4),
-        nr: lies(vx, vy, s),
-        marke: lies(0, height - 16, 1),
-        th,
-        thMs: performance.now() - v0
-      })
-    })
-    ipcMain.on('player:ndiAudio', (_e, chunk) => {
-      if (d.ton.length > 5000 || !chunk?.channels?.[0]) return
-      const ch = chunk.channels[0]
-      let onset = -1
-      for (let i = 0; i < ch.length; i++) {
-        if (Math.abs(ch[i]) > 0.05) {
-          onset = i
-          break
+        const paint = {
+          t: Date.now(),
+          groesse: `${width}x${height}`,
+          hell: summe / (px.length / 4),
+          nr: lies(vx, vy, s)
         }
-      }
-      d.ton.push({
-        t: Date.now(),
-        gerendert: chunk.gerendert,
-        frame: chunk.frame ?? -1,
-        len: ch.length,
-        onset
+        if (st6) {
+          // ST6, D: Vorschaubild 32 × 18 (Helligkeit je Feld), wie der Spiegel es im Rückruf
+          // rechnet; die Zeit dafür zählt mit – im Produkt liefe das je paint im main
+          const v0 = performance.now()
+          const klein = image
+            .crop({ x: vx, y: vy, width: vw, height: vh })
+            .resize({ width: 32, height: 18, quality: 'good' })
+            .toBitmap()
+          const th = new Array(32 * 18)
+          for (let i = 0; i < th.length; i++) {
+            th[i] = Math.round((klein[i * 4] + klein[i * 4 + 1] + klein[i * 4 + 2]) / 3)
+          }
+          paint.marke = lies(0, height - 16, 1)
+          paint.th = th
+          paint.thMs = performance.now() - v0
+        }
+        d.paints.push(paint)
       })
-    })
-    return true
-  }, SPIEGEL)
+      ipcMain.on('player:ndiAudio', (_e, chunk) => {
+        if (d.ton.length > 5000 || !chunk?.channels?.[0]) return
+        const ch = chunk.channels[0]
+        let onset = -1
+        for (let i = 0; i < ch.length; i++) {
+          if (Math.abs(ch[i]) > 0.05) {
+            onset = i
+            break
+          }
+        }
+        d.ton.push({
+          t: Date.now(),
+          gerendert: chunk.gerendert,
+          frame: chunk.frame ?? -1,
+          len: ch.length,
+          onset
+        })
+      })
+      return true
+    },
+    [SPIEGEL, st6]
+  )
   if (!ok) return false
   // Im Spiegel: jedes angezeigte Bild mit Medienzeit und erwarteter Anzeigezeit (Wanduhr)
-  await app.evaluate(async ({ BrowserWindow }, finde) => {
-    const win = eval(finde)(BrowserWindow)
-    await win.webContents.executeJavaScript(`(() => {
+  await app.evaluate(
+    async ({ BrowserWindow }, [finde, st6]) => {
+      const win = eval(finde)(BrowserWindow)
+      await win.webContents.executeJavaScript(`(() => {
         window.__rvfc = []
+        const st6 = ${st6 ? 'true' : 'false'}
         // ST6: Marke mit der Bildnummer, gezeichnet im Rückruf des angezeigten Bildes – landet sie
         // im selben paint wie das Bild oder eines später?
         const marke = document.createElement('div')
@@ -109,7 +127,7 @@ export async function starteDiagnose(app) {
           marke.appendChild(z)
           zellen.push(z)
         }
-        document.body.appendChild(marke)
+        if (st6) document.body.appendChild(marke)
         // ST6, D: Vorschaubild genau des angezeigten Bildes (im Rückruf liefert drawImage dieses)
         const leinwand = document.createElement('canvas')
         leinwand.width = 32
@@ -117,18 +135,22 @@ export async function starteDiagnose(app) {
         const ctx = leinwand.getContext('2d', { willReadFrequently: true })
         for (const v of document.querySelectorAll('video')) {
           const cb = (now, meta) => {
-            const n = Math.round(meta.mediaTime * 30)
-            for (let k = 0; k < 16; k++) {
-              zellen[k].style.background = Math.floor(n / 2 ** k) % 2 ? '#fff' : '#000'
+            let th
+            let thMs
+            if (st6) {
+              const n = Math.round(meta.mediaTime * 30)
+              for (let k = 0; k < 16; k++) {
+                zellen[k].style.background = Math.floor(n / 2 ** k) % 2 ? '#fff' : '#000'
+              }
+              const v0 = performance.now()
+              ctx.drawImage(v, 0, 0, 32, 18)
+              const px = ctx.getImageData(0, 0, 32, 18).data
+              th = new Array(32 * 18)
+              for (let i = 0; i < th.length; i++) {
+                th[i] = Math.round((px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2]) / 3)
+              }
+              thMs = performance.now() - v0
             }
-            const v0 = performance.now()
-            ctx.drawImage(v, 0, 0, 32, 18)
-            const px = ctx.getImageData(0, 0, 32, 18).data
-            const th = new Array(32 * 18)
-            for (let i = 0; i < th.length; i++) {
-              th[i] = Math.round((px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2]) / 3)
-            }
-            const thMs = performance.now() - v0
             if (window.__rvfc.length < 5000) {
               window.__rvfc.push({
                 m: meta.mediaTime,
@@ -145,7 +167,9 @@ export async function starteDiagnose(app) {
           v.requestVideoFrameCallback(cb)
         }
       })()`)
-  }, SPIEGEL)
+    },
+    [SPIEGEL, st6]
+  )
   return true
 }
 
@@ -412,7 +436,7 @@ export function zeitbasisAusSpiegel(d, fps = 30) {
       const rvNah = rv.filter((x) => x.praes <= t0).slice(-4)
       return {
         paints: nah.map((x) => x.nr),
-        marken: nah.map((x) => x.marke),
+        marken: nah.map((x) => x.marke ?? '–'),
         groesse: d.paints[0]?.groesse ?? null,
         medien: rvNah.map((x) => x.n)
       }

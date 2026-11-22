@@ -4,7 +4,8 @@
 drankommt, steht im [Gesamtplan](PLAN.md#st--stream-fürs-heimnetz-heimkino-box).** Nach der
 Umsetzung in WERKZEUGE und die Skills überführen und diesen Entwurf löschen.
 
-**Status (22.11.2026):** Messung läuft (#250). Gebaut ist noch nichts.
+**Status (22.11.2026):** Messung abgeschlossen (#250), Empfehlung B, Entscheidung bei Matthias.
+Gebaut ist noch nichts.
 
 ## Heute
 
@@ -22,8 +23,9 @@ kam 92 ms nach der Anzeige im Spiegel (normal 20–30), bei anderen Blitzen 200 
 
 Testclip mit der Bildnummer oben links (16 Felder, binär), die der main aus jedem paint liest;
 der Spiegel meldet je Bild Medienzeit und Anzeigezeit (`requestVideoFrameCallback`,
-`presentationTime`). Zeile „Zeitbasis Spiegel (ST6)“ im Stream-E2E (`e2e/avDiagnose.mjs`).
-Labor: `MOTTULBOX_E2E_LAST=1` lässt den main 40–200 ms stocken.
+`presentationTime`). Zeile „Zeitbasis Spiegel (ST6)“ im Stream-E2E (`e2e/avDiagnose.mjs`), in
+jedem Lauf. Labor: `MOTTULBOX_E2E_LAST=1` lässt den main 40–200 ms stocken,
+`MOTTULBOX_E2E_ST6=1` schaltet die teuren Messungen zu A (Marke) und D (Vorschaubilder) zu.
 
 ### Windows lokal
 
@@ -106,10 +108,40 @@ Gemessen (Windows lokal, Testclip mit bewegtem Testbild, Vorschaubild 32 × 18):
 | Vorschaubild im Spiegel: Median / größter | 7,4 / 26,1 ms | 5,5 / 17,3 ms | 5,8 / 18,3 ms |
 | Vorschaubild im main: Median / größter | 1,2 / 3,5 ms | 1,2 / 7 ms | 1,2 / 6,5 ms |
 
-Ohne Last trifft D praktisch immer; unter Last liegt es bei 11–14 % der paints daneben. Drei
-Viertel davon sind grundsätzlich: Stockt der main, ruft der Spiegel nicht für jedes Bild zurück,
-das trotzdem gemalt wird – zu diesem Bild gibt es kein Vorschaubild. Dazu kostet das Zurücklesen
-des Vorschaubilds im Spiegel 5–7 ms je Bild.
+CI (Lauf 45027756171, ohne künstliche Last):
+
+| | macOS | Linux | Windows |
+| --- | --- | --- | --- |
+| richtig / gleich gut | 534 / 38 von 573 | 153 / 29 von 556 | 546 / 5 von 559 |
+| falsch | 1 | 374 (bis 5 Bilder), davon 96 ohne Rückruf | 8, alle ohne Rückruf |
+| Vorschaubild im Spiegel: Median / größter | 2,7 / 15,2 ms | 4,2 / 9,7 ms | 4,2 / 13,8 ms |
+
+Ohne Last trifft D auf Windows und macOS praktisch immer; unter Last liegt es bei 11–14 % der
+paints daneben. Drei Viertel davon sind grundsätzlich: Stockt der main, ruft der Spiegel nicht für
+jedes Bild zurück, das trotzdem gemalt wird – zu diesem Bild gibt es kein Vorschaubild. Auf dem
+Linux-Runner (ohne Grafikkarte, 19 Bilder/s im Spiegel) weichen Vorschaubild und paint so
+voneinander ab, dass zwei Drittel falsch zugeordnet werden. Dazu kostet das Zurücklesen des
+Vorschaubilds im Spiegel 3–7 ms je Bild – diese Last machte im selben Lauf den Schritt
+„lippensynchron“ auf dem Windows-Runner rot (−62 ms); die Messungen zu A und D laufen seither nur
+noch mit `MOTTULBOX_E2E_ST6=1`.
+
+## Empfehlung
+
+**B.** Nur dort passt die Kennung immer zum gemalten Bild, auch wenn der main stockt: Gemalt wird
+nur, was der Spiegel im Rückruf selbst gezeichnet hat. A scheidet aus (die Marke landet je nach
+System und Lauf im selben paint oder eines später, macOS einmal 31 %, einmal 95 % richtig), C ist
+nicht eindeutig (4–5 % der Bilder werden nie gemalt), D trifft unter Last 11–14 % daneben, drei
+Viertel davon grundsätzlich (kein Rückruf zum gemalten Bild), und auf dem Linux-Runner zwei
+Drittel.
+
+Aufwand für B (eher L als M):
+- Der Spiegel (`PlayerNdiOutput`, heute der passive PlaybackEngine) zeichnet auf eine Leinwand:
+  zwei Ebenen (Video oder Bild), Überblendung mit laufender Opazität, Einpassen (füllen oder
+  einbetten), Standbilder, Ruhebild und Testbilder.
+- Kennung je Bild: in einem Rand, den NDI und Stream wegschneiden, oder unsichtbar in den
+  untersten Bits einzelner Pixel (zu prüfen: bleiben sie im paint unverändert, auch unter macOS
+  mit Farbprofil?).
+- Bildtakt im Sender (unten), Neustart, Hänger, Standbild; Tests für den Takt, E2E wie heute.
 
 ## Bildtakt (für A, B und D)
 
