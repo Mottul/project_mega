@@ -1,0 +1,120 @@
+# Entwurf: Bildzeit aus dem Spiegel (Paket ST6)
+
+**Entwurf zu Paket ST6** – Messwerte, Möglichkeiten, Stolpersteine. **Was offen ist und wann es
+drankommt, steht im [Gesamtplan](PLAN.md#st--stream-fürs-heimnetz-heimkino-box).** Nach der
+Umsetzung in WERKZEUGE und die Skills überführen und diesen Entwurf löschen.
+
+**Status (22.11.2026):** Messung läuft (#250). Gebaut ist noch nichts.
+
+## Heute
+
+Im Stream bekommt der Ton seine Zeit im Spiegel: Der Ton-Takt legt jeden Block nach seiner
+Renderzeit im AudioWorklet (`stream/tontakt.ts`). Das Bild bekommt seine Zeit erst im main: Das
+Offscreen-Fenster malt, der main nimmt das paint an, schreibt es über TCP an ffmpeg, und ffmpeg
+stempelt es beim Lesen mit der Wanduhr (`-use_wallclock_as_timestamps 1`). Stockt der main, kommt
+das paint zu spät, und das Bild liegt so viel zu spät im Strom; der Ton nicht. Der Sender gleicht
+nur den gemessenen typischen Weg aus (Median), keine einzelne Stockung.
+
+Belege: main nach #248 auf dem macOS-Runner −126 ms am ersten Blitz; in #249 −92 ms, das paint
+kam 92 ms nach der Anzeige im Spiegel (normal 20–30), bei anderen Blitzen 200 und 124 ms.
+
+## Messung
+
+Testclip mit der Bildnummer oben links (16 Felder, binär), die der main aus jedem paint liest;
+der Spiegel meldet je Bild Medienzeit und Anzeigezeit (`requestVideoFrameCallback`,
+`presentationTime`). Zeile „Zeitbasis Spiegel (ST6)“ im Stream-E2E (`e2e/avDiagnose.mjs`).
+Labor: `MOTTULBOX_E2E_LAST=1` lässt den main 40–200 ms stocken.
+
+### Windows lokal
+
+| | ohne Last | mit Last (26 Stockungen, 3 s) |
+| --- | --- | --- |
+| paint nach der Anzeige: Median / p90 / größter | 10 / 11 / 793 ms (Hänger) | 9 / 79 / 1005 ms |
+| paints über Median + 50 ms | 16 | 63 |
+| paint vor seiner Anzeige | 0 | 0 |
+| Zuordnung nach Reihenfolge falsch (`erfassung/bildweg.ts`) | 39 von 553, bis 23 Bilder | 114 von 547 (21 %), bis 29 |
+| Anzeigezeit um die Gerade über der Bildnummer (p10 … p90) | −1 … 1 ms, keine über 20 | −1 … 1 ms, keine über 20 |
+| Marke des Spiegels = Bild im selben paint | 527, ein Bild hinterher 48 | 516, ein Bild hinterher 66 |
+| angezeigt, aber nie gemalt | 22 von 542 | 28 von 547 |
+| Ton − Bild | grün | einmal rot (−103 ms), einmal grün – eine Stockung trifft nur manchmal einen Blitz |
+
+### CI (Lauf 45024137810, ohne künstliche Last)
+
+| | macOS | Linux | Windows |
+| --- | --- | --- | --- |
+| paint nach der Anzeige: Median / p90 | 19 / 21 ms | 5 / 6 ms | – |
+| Zuordnung nach Reihenfolge falsch | 52 von 590 | 6 von 525 | – |
+| Anzeigezeit um die Gerade (p10 … p90) | −1 … 1 ms, keine über 20 | −1 … 0 ms, 2 über 20 | −1 … 1 ms, 2 über 20 |
+| Marke = Bild / ein Bild hinterher | 182 / 392 | 49 / 508 | – |
+| Ton − Bild | −14 bei jedem Blitz | −4 bei jedem Blitz | −3, nach Hänger 2 −37 |
+
+Auf dem Windows-Runner passten die gelesenen Bildnummern nie zur Medienzeit (lokal unter Windows
+schon) – die Probe im nächsten Lauf soll zeigen, warum. In diesem Lauf stockte der main des
+macOS-Runners nicht so, dass ein Blitz getroffen wurde.
+
+### Was daraus folgt
+
+- **Die Anzeigezeiten taugen als Zeitbasis:** Sie liegen auf 1 ms genau auf einer Geraden über
+  der Bildnummer, auch wenn der main stockt (Windows, mit Last), und ebenso auf macOS und Linux –
+  der Spiegel zeigt unbeirrt weiter, nur die paints stauen sich.
+- **Eine Marke im Rückruf kennzeichnet das Bild nicht sicher:** Ob sie im selben paint landet wie
+  ihr Bild, hängt vom System ab – Windows meist ja (90 %), Linux meist eines später (90 %), macOS
+  gemischt (31 % zu 68 %).
+- **Die heutige Zuordnung taugt nicht:** „erster paint nach der Anzeige“ trifft unter Last jedes
+  fünfte Mal ein anderes Bild, bis fast eine Sekunde daneben. Wer Anzeigezeiten nutzen will,
+  braucht eine sichere Kennung des Bildes im paint.
+- **Früher gesehene „negative“ Werte waren Fehler der Zuordnung,** nicht der Anzeigezeit: Mit
+  sicherer Kennung kam nie ein paint vor seiner Anzeige.
+- **Nicht jedes angezeigte Bild wird gemalt** (4–5 %); eine Zuordnung nur nach der Reihenfolge
+  ist deshalb nicht eindeutig.
+
+## Möglichkeiten
+
+**A – Marke im Rand, Bildtakt.** Der Spiegel zeichnet im Rückruf jedes Bildes dessen Nummer als
+schmale Marke in einen Rand unter dem Bild (das Offscreen-Fenster wird dafür einige Pixel höher,
+ffmpeg schneidet den Rand weg). Der main liest die Marke aus dem paint und weiß so, welches Bild
+es zeigt und wann der Spiegel es angezeigt hat. ffmpeg zählt die Bilder (`setpts` wie `asetpts`
+beim Ton), der Sender legt jedes Bild nach seiner Anzeigezeit in den Takt und füllt Lücken.
+Gemessen landet die Marke je nach System im selben paint oder eines später (macOS: 31 % zu
+68 %) – ein Teil der Bilder bekäme den Zeitstempel ein Bild daneben (33 ms). Heute sind es bei
+einem Stocken 100 ms und mehr, aber sicher ist A nicht.
+
+**B – Der Spiegel zeichnet das Video selbst.** Im Rückruf zeichnet er das Bild und die Marke in
+dieselbe Leinwand; paint und Kennung passen dann immer zusammen. Exakt, aber ein Umbau des
+Spiegels: Übergänge, Einpassen und Ränder des Players müssten dort nachgebaut werden.
+
+**C – Ohne Kennung, nur besser zuordnen.** Gestaute paints nach der Reihenfolge den Anzeigen der
+Stockung zuordnen. Das ginge nur, wenn zu jeder Anzeige genau ein paint käme – gemessen bleiben
+4–5 % der angezeigten Bilder ungemalt, vor allem beim Stocken. Damit nicht eindeutig.
+
+**D – Bild am Inhalt erkennen.** Der Spiegel rechnet im Rückruf jedes Bildes ein winziges
+Vorschaubild genau dieses Bildes (`drawImage` in eine kleine Leinwand – im Rückruf ist das
+garantiert das angezeigte Bild) und schickt es mit der Anzeigezeit. Der main verkleinert jedes
+paint genauso (auf die Fläche des Videos, ohne Ränder) und sucht das ähnlichste Bild der letzten
+Sekunde. Keine sichtbare Marke, kein Umbau des Spiegels. Gleiche Bilder hintereinander sind nicht
+zu unterscheiden – dann steht das Bild, und Lippen bewegen sich nicht; bei einer Überblendung
+zeigt das paint eine Mischung, dort gilt die heutige Schätzung. Noch nicht gemessen: Trifft das
+Vorschaubild unter Last das richtige Bild (Testclip mit Bewegung nötig)?
+
+## Bildtakt (für A, B und D)
+
+- ffmpeg liest die Bilder ohne Wanduhr; Bild n liegt bei Start + n / Bildrate (`setpts`), wie der
+  Ton bei Start + Sample / 48000.
+- Der Sender legt jedes Bild auf den Platz, der seiner Anzeigezeit entspricht; fehlt ein Platz
+  (Stocken, Standbild), wiederholt er das letzte Bild; ist ein Platz schon geschrieben, fällt das
+  Bild weg.
+- Offen: Hänger von 0,8 s heißen 24 Wiederholungen auf einmal; ein Neustart von ffmpeg braucht
+  einen neuen Startpunkt (wie heute `-copyts`); kommt ffmpeg dauerhaft nicht nach, darf der
+  Rückstand nicht wachsen.
+
+## Stolpersteine
+
+- `app.evaluate((electron, arg) => …)`: Das Argument kommt als zweiter Parameter – die künstliche
+  Last lief zunächst gar nicht (Skill `electron-e2e`).
+- Die Marke im Rückruf landet nicht immer im selben paint wie ihr Bild (siehe oben).
+
+## Offene Fragen
+
+- Nächster Schritt: D messen (Vorschaubild gegen Bildnummer, mit und ohne Last), oder gleich B
+  (exakt, größerer Umbau des Spiegels)? A scheidet nach den Messwerten eher aus.
+- Wie wichtig ist der Fall? Stockt der main beim Nutzer so wie auf dem macOS-Runner?

@@ -43,6 +43,7 @@ export async function starteDiagnose(app) {
       }
       d.paints.push({
         t: Date.now(),
+        groesse: `${width}x${height}`,
         hell: summe / (px.length / 4),
         nr: lies(0),
         marke: lies(height - 16)
@@ -327,6 +328,8 @@ export function zeitbasisAusSpiegel(d, fps = 30) {
   const ankunft = new Map()
   for (const p of mitNummer) if (!ankunft.has(p.nr)) ankunft.set(p.nr, p.t)
   const nachAnzeige = rv.filter((x) => ankunft.has(x.n)).map((x) => ankunft.get(x.n) - x.praes)
+  // angezeigt, aber nie gemalt: dann käme zu einer Anzeige kein paint (Möglichkeit C im Entwurf)
+  const ungemalt = rv.filter((x) => !ankunft.has(x.n)).length
   const basis = median(nachAnzeige)
   // heutige Zuordnung: erster paint ab 1 ms vor der Anzeige
   let falsch = 0
@@ -361,7 +364,22 @@ export function zeitbasisAusSpiegel(d, fps = 30) {
   return {
     marke,
     bilder: rv.length,
+    ungemalt,
     ohneNummer: d.paints.length - mitNummer.length,
+    // Stichprobe, falls die Nummern nicht zusammenpassen (Windows-Runner: alle „daneben“):
+    // gelesen aus den paints um die Mitte der Messung, Größe des paints, Medienzeit-Nummern dazu
+    probe: (() => {
+      const mitte = Math.floor(mitNummer.length / 2)
+      const nah = mitNummer.slice(mitte, mitte + 4)
+      const t0 = nah[0]?.t ?? 0
+      const rvNah = rv.filter((x) => x.praes <= t0).slice(-4)
+      return {
+        paints: nah.map((x) => x.nr),
+        marken: nah.map((x) => x.marke),
+        groesse: d.paints[0]?.groesse ?? null,
+        medien: rvNah.map((x) => x.n)
+      }
+    })(),
     paintNachAnzeige: {
       median: r(basis),
       p90: r(anteil(nachAnzeige, 0.9)),
@@ -383,12 +401,15 @@ export function zeitbasisAusSpiegel(d, fps = 30) {
 export function zeitbasisZeile(z) {
   const p = z.paintNachAnzeige
   return (
-    `Zeitbasis Spiegel (ST6): ${z.bilder} Bilder; paint nach der Anzeige Median ${p.median} ms ` +
+    `Zeitbasis Spiegel (ST6): ${z.bilder} Bilder (${z.ungemalt} nie gemalt); paint nach der ` +
+    `Anzeige Median ${p.median} ms ` +
     `(p90 ${p.p90}, größter ${p.max}; vor der Anzeige ${p.vorher}, über Median + 50 ms ` +
     `${p.gestaut}); erster paint nach der Anzeige ein anderes Bild: ${z.zuordnung.falsch} von ` +
     `${z.zuordnung.gezaehlt} (bis ${z.zuordnung.bis} Bilder daneben); Anzeige gegen Bildnummer ` +
     `${z.takt.p10} … ${z.takt.p90} ms um die Gerade (${z.takt.ppm} ppm), über 20 ms daneben ` +
-    `${z.takt.ueber20}; paints ohne Nummer ${z.ohneNummer}; Marke des Spiegels gegen die ` +
+    `${z.takt.ueber20}; paints ohne Nummer ${z.ohneNummer} (Probe: paint ${z.probe.paints.join(',')}, ` +
+    `Marke ${z.probe.marken.join(',')}, Medienzeit ${z.probe.medien.join(',')}, paint ${z.probe.groesse}); ` +
+    `Marke des Spiegels gegen die ` +
     `Bildnummer im selben paint: ${
       Object.entries(z.marke)
         .sort(([a], [b]) => (a === 'sonst' ? 1 : b === 'sonst' ? -1 : Number(a) - Number(b)))
