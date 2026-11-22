@@ -16,7 +16,8 @@ solange etwas live ist); eingestellt wird im Bereich **„NDI“** der Einstellu
 | Stage-Timer  | Quellenname, 1920 × 1080 oder 1280 × 720, 25/30/50 fps                                                             |
 
 - Gerendert wird in einem eigenen, unsichtbaren Fenster – ein Vollbild-Ausgabefenster braucht es
-  dafür nicht.
+  dafür nicht. Es hat immer die volle Größe der Ausgabe, auch wenn der Bildschirm kleiner ist (eine
+  Wand mit 3840 × 1080 an einem 1080p-Laptop).
 - Der Ton des Video-Players geht **Pre-Fader** raus (unabhängig von lokaler Lautstärke/Stumm).
 - Volle Auflösung braucht Gigabit-LAN (rund 100–150 Mbit/s bei 1080p30).
 

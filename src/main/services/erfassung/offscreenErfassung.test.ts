@@ -152,6 +152,18 @@ describe('Offscreen-Erfassung – ein Fenster für NDI und Stream', () => {
     expect(stream.ende).not.toHaveBeenCalled() // selbst geschlossen: niemand wird beendet
   })
 
+  it('neues Fenster: Größe gleich nach dem Anlegen noch einmal gesetzt (sonst höchstens Bildschirmgröße)', () => {
+    // Gemessen (ST7, Windows, Bildschirm 1920 × 1080 mit Taskleiste): new BrowserWindow mit
+    // 3840 × 2160 malte 1920 × 1032, auch mit enableLargerThanScreen – erst setContentSize
+    // danach gilt in voller Größe.
+    const e = new OffscreenErfassung('[t]', { route })
+    e.verbinde(ausgang(NDI))
+    const win = lastWindow()
+    expect(win.setContentSize).toHaveBeenCalledWith(3840, 1080)
+    // macOS hält Fenster sonst im Bildschirm
+    expect(win.opts).toMatchObject({ enableLargerThanScreen: true })
+  })
+
   it('ein Bild wird einmal umgewandelt – für alle, die es wollen; ohne Abnehmer gar nicht', () => {
     const e = new OffscreenErfassung('[t]', { route })
     const a = ausgang(NDI)

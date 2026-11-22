@@ -278,6 +278,48 @@ try {
       }
     ],
     [
+      'größer als der Bildschirm (2560 × 1440): das Offscreen-Fenster malt in voller Größe',
+      async () => {
+        // Electron legt ein neues Fenster höchstens so groß an wie die Arbeitsfläche des
+        // Bildschirms – auf einem 1080p-Bildschirm mit Taskleiste malte sogar die Vorgabe des
+        // Streams (1920 × 1080) nur 1920 × 1032, eine breite Wand für NDI nur Bildschirmgröße (ST7).
+        // 2560 × 1440 ist größer als die Bildschirme aller CI-Runner.
+        const st = await page.evaluate((c) => window.api.timer.streamStart(c), {
+          ...cfg,
+          width: 2560,
+          height: 1440
+        })
+        assert.equal(st.running, true, st.error ?? '')
+        try {
+          await waitFor(async () => (await offscreenWindows()) === 1)
+          const groesse = await app.evaluate(async ({ BrowserWindow }) => {
+            const win = BrowserWindow.getAllWindows().find(
+              (w) => !w.isDestroyed() && w.webContents.isOffscreen()
+            )
+            if (!win) return null
+            // erstes paint mit Inhalt (ein leeres kann vorausgehen)
+            const paint = await new Promise((resolve) => {
+              const bei = (_e, _d, image) => {
+                const g = image.getSize()
+                if (g.width < 2) return
+                win.webContents.off('paint', bei)
+                resolve(g)
+              }
+              win.webContents.on('paint', bei)
+              win.webContents.invalidate()
+              setTimeout(() => resolve(null), 5000)
+            })
+            return { inhalt: win.getContentSize(), paint }
+          })
+          assert.ok(groesse, 'kein Offscreen-Fenster')
+          assert.deepEqual(groesse.inhalt, [2560, 1440], 'Größe des Fensters')
+          assert.deepEqual(groesse.paint, { width: 2560, height: 1440 }, 'Größe des Bildes')
+        } finally {
+          await page.evaluate(() => window.api.timer.streamStop())
+        }
+      }
+    ],
+    [
       'Werte aus dem Renderer begrenzt',
       async () => {
         const st = await page.evaluate(

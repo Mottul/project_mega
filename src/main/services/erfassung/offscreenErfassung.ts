@@ -220,12 +220,19 @@ export class OffscreenErfassung {
       width: plan.width,
       height: plan.height,
       frame: false,
+      // macOS hält ein Fenster sonst im Bildschirm
+      enableLargerThanScreen: true,
       webPreferences: secureWebPreferences({
         offscreen: true,
         backgroundThrottling: false,
         ...(this.opts.autoplay ? { autoplayPolicy: 'no-user-gesture-required' as const } : {})
       })
     })
+    // Electron legt ein neues Fenster höchstens so groß an wie die Arbeitsfläche des Bildschirms:
+    // Unter Windows mit 1080p-Bildschirm und Taskleiste malte die Vorgabe des Streams (1920 × 1080)
+    // nur 1920 × 1032, eine breite Wand für NDI nur Bildschirmgröße (ST7) – auch mit
+    // enableLargerThanScreen. Danach noch einmal gesetzt, gilt die volle Größe.
+    win.setContentSize(plan.width, plan.height)
     this.win = win
     win.webContents.setFrameRate(plan.fps)
     // Nur Bilder des AKTUELLEN Fensters (wie bei 'closed'): Ein spätes Bild eines alten Fensters

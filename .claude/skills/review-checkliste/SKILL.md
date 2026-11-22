@@ -515,6 +515,14 @@ alten Stand 3,98 s Rückstand), dann behoben.
   Offscreen-Fenster – der Player dekodierte sein Video dann zweimal, und die Fallen der Fenster
   (`closed` nur vom aktuellen, Stopp mitten im Start) standen doppelt. Neue Offscreen-Ausgaben
   hängen sich an `erfassung/offscreenErfassung.ts`, statt ein Fenster zu öffnen.
+- **Electron legt ein neues Fenster höchstens so groß an wie die Arbeitsfläche des Bildschirms** –
+  auch unsichtbare Offscreen-Fenster, auch mit `enableLargerThanScreen` (gemessen unter Windows,
+  ST7, 22.11.2026). Auf einem 1080p-Bildschirm mit Taskleiste malte so die Vorgabe des Streams
+  (1920 × 1080) nur 1920 × 1032, eine breite Wand für NDI nur Bildschirmgröße; aufgefallen erst am
+  Windows-Runner mit 1024 breitem Bildschirm. Ein `setContentSize` gleich nach dem Anlegen gilt in
+  voller Größe. Im Review bei jedem Fenster mit fester Ausgabegröße fragen: Was, wenn der
+  Bildschirm kleiner ist? Prüfen mit einer Größe über jedem Bildschirm (`e2e/stream.mjs`,
+  2560 × 1440).
 
 ## Bilder, PDF und fremdes HTML (Phase 1 Mini-Manual, 16. Oktober 2026)
 
