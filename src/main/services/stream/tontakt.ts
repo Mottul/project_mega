@@ -46,11 +46,14 @@ export interface TonPlatz {
   anzahl: number
 }
 
+/** Ändert sich der Weg des Bildes um mehr als das, wird neu angesetzt (der Median wackelt) */
+const VERZUG_SPRUNG_MS = 3
+
 export class Tontakt {
   /** Samples, die an ffmpeg gingen (= Position im Strom) */
   private geschrieben = 0
   /** Sample-Nummer des Spiegels ↔ Position im Strom */
-  private anker: { frame: number; pos: number; seit: number } | null = null
+  private anker: { frame: number; pos: number; seit: number; verzug: number } | null = null
   /** Sample-Nummer hinter dem letzten Block */
   private frameEnde = -1
   private letzteAnkunft = -Infinity
@@ -78,29 +81,58 @@ export class Tontakt {
     return this.auffuellen(this.soll(nowMs))
   }
 
-  /** Ein Block des Spiegels kam an: wohin er gehört und was davon an ffmpeg geht. */
-  block(nowMs: number, frame: number, laenge: number): TonPlatz {
+  /**
+   * Ein Block des Spiegels kam an: wohin er gehört und was davon an ffmpeg geht. `gerendertMs`:
+   * Wanduhr, zu der der Spiegel das Ende des Blocks gerendert hat (aus `ctx.currentTime`
+   * zurückgerechnet). Sie kennt keinen Verzug durch IPC oder einen beschäftigten main-Prozess –
+   * nach der Ankunft eingeordnet, saß der Anker nach einem zähen Start bis 25 ms zu spät und blieb
+   * dort. Fehlt sie oder ist sie nicht glaubhaft, gilt die Ankunft.
+   * `verzugMs`: so viel später einordnen – um so viel kommt das Bild später in den Strom
+   * (Spiegel, paint, Raster von ffmpeg; der Sender misst es), der Ton hat diesen Weg nicht.
+   * Ändert er sich um mehr als 3 ms, wird neu angesetzt (einmal Stille bzw. ein kurzes Stück
+   * weniger).
+   */
+  block(
+    nowMs: number,
+    frame: number,
+    laenge: number,
+    gerendertMs?: number,
+    verzugMs = 0
+  ): TonPlatz {
     this.letzteAnkunft = nowMs
-    const sollEnde = this.soll(nowMs)
+    const zeit =
+      gerendertMs !== undefined &&
+      Number.isFinite(gerendertMs) &&
+      gerendertMs <= nowMs + 1000 &&
+      gerendertMs > nowMs - 10_000
+        ? gerendertMs + verzugMs
+        : nowMs + verzugMs
+    const sollEnde = this.soll(zeit)
     // Kein Anker, oder die Sample-Nummer lief rückwärts (Spiegel neu geladen, neuer
     // Ton-Kontext): Der Block endet jetzt.
-    if (!this.anker || frame < this.frameEnde) this.ansetzen(nowMs, frame, sollEnde - laenge)
+    if (
+      !this.anker ||
+      frame < this.frameEnde ||
+      Math.abs(verzugMs - this.anker.verzug) > VERZUG_SPRUNG_MS
+    ) {
+      this.ansetzen(zeit, frame, sollEnde - laenge, verzugMs)
+    }
     let pos = this.position0(frame)
     const v = sollEnde - (pos + laenge)
     const tol = (this.o.toleranzMs * this.o.rate) / 1000
-    if (v < 0 && nowMs - this.anker!.seit < this.o.einschwingenMs) {
+    if (v < 0 && zeit - this.anker!.seit < this.o.einschwingenMs) {
       // Kam der erste Block verspätet, saß der Anker zu spät – ein pünktlicherer verbessert ihn.
-      this.ansetzen(nowMs, frame, sollEnde - laenge)
+      this.ansetzen(zeit, frame, sollEnde - laenge, verzugMs)
       pos = this.position0(frame)
     } else {
-      this.verspaetung.push({ t: nowMs, v })
-      while (this.verspaetung[0].t < nowMs - this.o.fensterMs) this.verspaetung.shift()
-      const voll = nowMs - this.anker!.seit >= this.o.fensterMs
+      this.verspaetung.push({ t: zeit, v })
+      while (this.verspaetung[0].t < zeit - this.o.fensterMs) this.verspaetung.shift()
+      const voll = zeit - this.anker!.seit >= this.o.fensterMs
       const minV = Math.min(...this.verspaetung.map((x) => x.v))
       // Selbst der pünktlichste Block des Fensters liegt daneben: Drift oder Lücke der
       // Spiegel-Uhr – neu ansetzen. Ein Schub nach einem Hänger ändert das Minimum nicht.
       if (voll && Math.abs(minV) > tol) {
-        this.ansetzen(nowMs, frame, sollEnde - laenge)
+        this.ansetzen(zeit, frame, sollEnde - laenge, verzugMs)
         pos = this.position0(frame)
       }
     }
@@ -128,8 +160,8 @@ export class Tontakt {
     return this.anker!.pos + (frame - this.anker!.frame)
   }
 
-  private ansetzen(nowMs: number, frame: number, pos: number): void {
-    this.anker = { frame, pos, seit: nowMs }
+  private ansetzen(nowMs: number, frame: number, pos: number, verzug: number): void {
+    this.anker = { frame, pos, seit: nowMs, verzug }
     // Der Block, an dem angesetzt wird, ist per Definition pünktlich.
     this.verspaetung = [{ t: nowMs, v: 0 }]
   }

@@ -15,12 +15,15 @@
 import { BrowserWindow } from 'electron'
 import { logLine } from '../log'
 import { loadRoute, secureWebPreferences } from '../windows/appWindows'
+import { Bildweg, type BildwegStand, type BildwegZaehler, type Uebergabe } from './bildweg'
 
 /** Ein Bild aus dem Offscreen-Fenster (BGRA, Zeilen ohne Lücke) */
 export interface ErfassungsBild {
   width: number
   height: number
   data: Buffer
+  /** Wanduhr (ms), zu der der paint im main ankam – der Stream misst daran, wo es landet */
+  zeit: number
 }
 
 /** Was ein Ausgang vom Fenster braucht */
@@ -39,11 +42,15 @@ export interface ErfassungsWunsch {
   fit?: 'fill' | 'contain'
 }
 
-/** Tonblock aus dem Spiegelfenster (planare Float32-Kanäle; frame = Sample-Nummer des ersten) */
+/** Tonblock aus dem Spiegelfenster (planare Float32-Kanäle; frame = Sample-Nummer des ersten,
+ *  gerendert = Wanduhr in ms, zu der das letzte Sample gerendert wurde) */
 export interface ErfassungsTon {
   sampleRate: number
   channels: Float32Array[]
   frame?: number
+  gerendert?: number
+  /** Videobilder seit dem letzten Block: [Wanduhr, Verspätung gegen die Medien-Uhr] (ms) */
+  uebergaben?: Uebergabe[]
 }
 
 export interface ErfassungsAusgang {
@@ -102,6 +109,8 @@ export class OffscreenErfassung {
   private taktTimer: ReturnType<typeof setInterval> | null = null
   /** Größe des letzten Bildes – auch ohne Abnehmer gemerkt (getSize kostet nichts) */
   private groesse: { width: number; height: number } | null = null
+  /** Weg eines Bildes vom Spiegel bis zum paint im main (der Ton kennt ihn nicht) */
+  private readonly bildweg = new Bildweg()
 
   constructor(
     /** Präfix der Logzeilen, z. B. '[timer-erfassung]' */
@@ -147,8 +156,22 @@ export class OffscreenErfassung {
     if (this.ausgaenge.size) this.anpassen()
   }
 
+  /**
+   * Wie lange ein Videobild vom Spiegel bis zum paint im main braucht (Median und Streuung in
+   * ms); null, solange nicht genug gemessen ist (kein Video, oder der Spiegel meldet nichts).
+   */
+  get bildwegStand(): BildwegStand | null {
+    return this.bildweg.stand
+  }
+
+  /** Fürs Protokoll, wenn der Weg des Bildes nicht messbar ist */
+  get bildwegZaehler(): BildwegZaehler {
+    return this.bildweg.zaehler
+  }
+
   /** Ton aus dem Spiegelfenster an die Ausgänge, die Ton wollen */
   ton(t: ErfassungsTon): void {
+    if (t.uebergaben?.length) this.bildweg.uebergaben(t.uebergaben)
     for (const a of this.ausgaenge) if (a.wunsch().ton) a.ton?.(t)
   }
 
@@ -168,6 +191,7 @@ export class OffscreenErfassung {
     let win = this.win
     if (!win || win.isDestroyed()) {
       win = this.oeffnen(plan)
+      this.bildweg.zuruecksetzen()
       this.route = route
       loadRoute(win, route)
       logLine(this.tag, 'Fenster:', `${plan.width}x${plan.height}@${plan.fps}`, route)
@@ -179,6 +203,7 @@ export class OffscreenErfassung {
       // den Wiedergabestand vom main, der Ton-Abgriff beginnt mit neuer Sample-Zählung.
       const neueRoute = route !== this.route
       if (neueRoute) {
+        this.bildweg.zuruecksetzen()
         this.route = route
         loadRoute(win, route)
       }
@@ -227,11 +252,13 @@ export class OffscreenErfassung {
     const { width, height } = image.getSize()
     if (width < 2 || height < 2) return
     this.groesse = { width, height }
+    const zeit = Date.now()
+    this.bildweg.paint(zeit)
     let bild: ErfassungsBild | null = null
     for (const a of this.ausgaenge) {
       if (!a.willBilder()) continue
       // eine Kopie für alle: Die Ausgänge lesen sie nur (NDI-Send, Schreiben an ffmpeg)
-      bild ??= { width, height, data: image.toBitmap() }
+      bild ??= { width, height, data: image.toBitmap(), zeit }
       a.bild(bild)
     }
   }

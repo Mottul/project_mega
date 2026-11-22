@@ -68,6 +68,40 @@ describe('NDI-Frames', () => {
     }
   })
 
+  it('Übergaben der Videobilder (für den Weg des Bildes): höchstens 64 Paare endlicher Zahlen', () => {
+    const ok = { sampleRate: 48000, channels: [new Float32Array(4)], frame: 0 }
+    expect(isAudioChunk({ ...ok, uebergaben: [] })).toBe(true)
+    expect(
+      isAudioChunk({
+        ...ok,
+        uebergaben: [
+          [1795000000123.4, 8.2],
+          [1795000000156.7, -14.9]
+        ]
+      })
+    ).toBe(true)
+    for (const uebergaben of [
+      [[Number.NaN, 0]],
+      [[1795000000123, '8']],
+      [1795000000123.4, 1795000000156.7], // ohne Verspätung (alte Form)
+      [[1795000000123, 8, 1]],
+      [[1795000000123, 5000]], // Verspätung über 1 s: kein Messwert
+      Array.from({ length: 65 }, () => [1, 0]),
+      'x',
+      null
+    ]) {
+      expect(isAudioChunk({ ...ok, uebergaben }), JSON.stringify(uebergaben)).toBe(false)
+    }
+  })
+
+  it('Renderzeit (für den Ton-Takt): eine endliche Zahl – oder gar nicht', () => {
+    const ok = { sampleRate: 48000, channels: [new Float32Array(4)], frame: 0 }
+    expect(isAudioChunk({ ...ok, gerendert: 1795000000123.5 })).toBe(true)
+    for (const gerendert of [Number.NaN, Infinity, '1795000000123', null]) {
+      expect(isAudioChunk({ ...ok, gerendert }), String(gerendert)).toBe(false)
+    }
+  })
+
   it('Audioframe: Kanäle nacheinander (planar), Schrittweite = Samples × 4', () => {
     const left = new Float32Array([0.5, -0.25])
     // Ausschnitt aus einem größeren Puffer: nur die eigenen Bytes dürfen hinein

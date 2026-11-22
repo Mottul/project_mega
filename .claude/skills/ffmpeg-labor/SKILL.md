@@ -65,6 +65,39 @@ gestartetes ffmpeg dreht die Zeit für den Empfänger zurück; mit bleibt sie di
   Strom begann bei 0 – aber dann beginnt auch jeder Neustart von ffmpeg wieder bei 0, die Zeit
   springt für den Empfänger zurück. Deshalb ohne.
 
+**Wo ein Bild im Strom landet (gemessen 22.11.2026):** Mit `-use_wallclock_as_timestamps 1`,
+`-copyts` und `fps=30` liegt das Raster absolut auf Vielfachen von 1/30 s seit 1970, nicht ab dem
+ersten Bild: Ein Bild erscheint zuerst auf `round(Ende des Schreibens / 33,3 ms) · 33,3 ms`
+(193 von 199 Bildern genau, 6 ein Raster später, wenn ffmpeg spät las). Der MPEG-TS-Muxer
+schiebt Bild und Ton gleich um 1,4 s. Das Raster verschiebt also jedes Bild um bis zu ±16,7 ms,
+je Start fest (Bilder und Raster laufen im selben Takt; im E2E vor dem Ausgleich je Lauf
+−21 … +6 ms, einmal sprang ein Blitz um ein Raster). Der Sender rechnet es je frischem Bild aus
+dem Ende des Schreibens nach (`stream/bildRaster.ts`, Mittel statt Median: an der
+Rundungsgrenze landen die Bilder abwechselnd davor und danach) und legt den Ton mit.
+Messen: Bilder mit Nummer als **Streifenmuster** schreiben (ein Bit je Streifen, schwarz/weiß)
+und mit `scale=8:1:flags=area,format=gray` zurücklesen. Nicht über die Helligkeit: x264 rundet
+flache Flächen um mehrere Stufen, und `format=gray` liefert den begrenzten Bereich (16–235) –
+beides ergab ein Sägezahn-Muster von ±5 Bildern, das wie ein schwankendes Raster aussah.
+
+**Bild und Ton aus dem Spiegel des Players (Stufe 2):** Der Ton folgt der Medien-Uhr (Renderzeit
+im AudioWorklet), das Bild kommt erst mit dem paint im main – dazwischen liegen die Phase der
+Anzeige im Spiegel (Übergabe per `requestVideoFrameCallback` gegen `currentTime`, je Start
+−15 … +13 ms) und der Weg zum paint (Windows 9 ms, Linux 4, macOS-Runner 19), danach das
+Raster von ffmpeg (oben). Alles misst der Sender laufend (`erfassung/bildweg.ts`,
+`stream/bildRaster.ts`) und legt den Ton um die Summe später (Protokollzeile „Weg des Bildes“);
+ohne das lag der Ton am Mac bis zu zwei Bilder zu früh. Diagnose je Teilstrecke im E2E:
+`e2e/avDiagnose.mjs`. Nach einem Hänger kann der Spiegel ein Bild später zeigen und nach dem
+nächsten wieder pünktlich (CI, Linux-Runner ohne GPU, Lauf 44970466157: +33 ms nach dem ersten
+Hänger, zurück nach dem zweiten). Der Median der letzten 90 Proben zieht nach 2–3 s nach, jeder
+Wechsel setzt den Ton neu an (eine kurze Lücke, deshalb erst ab 5 ms Änderung): Blitze in dieser
+Zeit lagen ein Bild daneben (−38, +29 ms), danach wieder bei 0. Erwogen und verworfen: nur aus
+eng liegenden Proben nachführen – das hätte genau diese Sprünge verzögert und auf Rechnern mit
+breiter Streuung den Ausgleich eingefroren. Auch der Weg zum paint kann nach einem Hänger länger
+bleiben (Windows lokal: je Blitz 20–29 statt 9–12 ms, der Median nur 15); landet der Blitz dann
+jenseits einer Rundungsgrenze des Rasters, steht er ein Raster später im Strom (−23 … −30 ms).
+Ein Bild Genauigkeit ist mit 30 Bildern/s je Blitz also nicht garantiert, die Grenze im E2E ist
+60 ms.
+
 **Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
 Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in
 Terzen von 63 Hz bis 4 kHz flach (±0,3 dB), darüber fällt es (−1 dB bei 8 kHz, −2,3 dB bei

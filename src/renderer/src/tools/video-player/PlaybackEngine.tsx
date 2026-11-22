@@ -408,6 +408,42 @@ export function PlaybackEngine({
     }
   }, [tapCors, audioTap])
 
+  // Wann übergibt der Spiegel ein Videobild – und wie spät gegenüber der Medien-Uhr, nach der auch
+  // der Ton läuft? Gesammelt und mit dem nächsten Tonblock an den main: Der Stream misst daraus,
+  // um wie viel das Bild hinter dem Ton liegt, und legt den Ton so viel später
+  // (erfassung/bildweg.ts). Der Weg zum paint im main: am Mac rund 19 ms, unter Windows 9; die
+  // Phase der Anzeige: je Start anders, bis zu einem Bild.
+  const uebergaben = useRef<[number, number][]>([])
+  useEffect(() => {
+    if (!audioTap) return
+    let aktiv = true
+    const offen = new Map<HTMLVideoElement, number>()
+    for (const v of videoRefs.current) {
+      if (!v || typeof v.requestVideoFrameCallback !== 'function') continue
+      const cb: VideoFrameRequestCallback = (_now, meta) => {
+        if (!aktiv) return
+        offen.set(v, v.requestVideoFrameCallback(cb))
+        if (v.paused || v.seeking || !(v.playbackRate > 0)) return
+        // So weit ist die Medien-Uhr schon über das Bild hinaus (in Wanduhr-ms), abzüglich der
+        // Zeit seit der Übergabe: um so viel kam es nach der Uhr. currentTime gilt für jetzt –
+        // Chromium liest die Uhr beim ersten Zugriff seit dem letzten Microtask neu.
+        const jetzt = performance.now()
+        const ueber = ((v.currentTime - meta.mediaTime) * 1000) / v.playbackRate
+        const spaet = ueber - (jetzt - meta.presentationTime)
+        if (!Number.isFinite(spaet) || Math.abs(spaet) > 1000) return // Schleife, Sprung
+        const liste = uebergaben.current
+        liste.push([performance.timeOrigin + meta.presentationTime, spaet])
+        if (liste.length > 64) liste.splice(0, liste.length - 64)
+      }
+      offen.set(v, v.requestVideoFrameCallback(cb))
+    }
+    return () => {
+      aktiv = false
+      for (const [v, id] of offen) v.cancelVideoFrameCallback(id)
+      uebergaben.current = []
+    }
+  }, [audioTap])
+
   // NDI-Audio-Tap: beide Video-Ebenen in einen AudioWorklet leiten (planare
   // Float32-Blöcke -> IPC -> NDI-Audioframes). Crossfades mischen sich dadurch
   // automatisch korrekt. Der Graph endet in Gain(0) -> lokal bleibt es stumm.
@@ -439,13 +475,20 @@ export function PlaybackEngine({
       tap.connect(silent)
       silent.connect(ctx.destination)
       tap.port.onmessage = (ev: MessageEvent<{ channels: Float32Array[]; frame: number }>) => {
-        if (ctx) {
-          api.player.ndiAudio({
-            sampleRate: ctx.sampleRate,
-            channels: ev.data.channels,
-            frame: ev.data.frame
-          })
-        }
+        if (!ctx) return
+        // Wann wurde das letzte Sample gerendert? ctx.currentTime steht am Anfang des nächsten
+        // Quantums – so weit ist der Ton-Kontext jetzt; was seit dem Blockende gerendert wurde,
+        // geht von der Uhr ab. Kam die Nachricht spät an (Seite oder main beschäftigt), steckt
+        // der Verzug damit nicht in der Zeit, nach der der Stream den Ton einordnet.
+        const ende = ev.data.frame + ev.data.channels[0].length
+        const seitEnde = (ctx.currentTime * ctx.sampleRate - ende) / ctx.sampleRate
+        api.player.ndiAudio({
+          sampleRate: ctx.sampleRate,
+          channels: ev.data.channels,
+          frame: ev.data.frame,
+          gerendert: performance.timeOrigin + performance.now() - Math.max(0, seitEnde) * 1000,
+          uebergaben: uebergaben.current.splice(0)
+        })
       }
       for (const v of videoRefs.current) {
         if (v) ctx.createMediaElementSource(v).connect(tap)

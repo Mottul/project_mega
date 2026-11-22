@@ -1102,6 +1102,13 @@ export interface NdiAudioChunk {
   /** Sample-Nummer des ersten Samples (currentFrame im AudioWorklet) – damit der Stream Blöcke,
    *  die nach einem Hänger als Schub kommen, lückenlos an ihren Platz legt */
   frame?: number
+  /** Wanduhr (ms seit 1970), zu der das letzte Sample gerendert wurde – aus `ctx.currentTime`
+   *  beim Empfang im Spiegel zurückgerechnet, also ohne den Verzug bis zum main-Prozess */
+  gerendert?: number
+  /** Videobilder, die der Spiegel seit dem letzten Block übergeben hat (requestVideoFrameCallback),
+   *  je Bild [Wanduhr in ms, wie spät gegenüber der Medien-Uhr in ms] – daraus misst der Stream,
+   *  um wie viel er den Ton später legen muss (erfassung/bildweg.ts) */
+  uebergaben?: [number, number][]
 }
 
 /* -------------------------------- Dialog -------------------------------- */

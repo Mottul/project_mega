@@ -118,9 +118,11 @@ src/
 │       │                     #   Quelladressen (Live-Vorschau) des Video-Generators
 │       ├── ffmpeg/           # ffmpeg-Pfade, Medien-Info (ffprobe-Analyse, Parser, Cache)
 │       ├── remote/           # Fernsteuer-Basis (remoteHttp), Fernsteuer-App (remoteApp*), Web-App (remotePwa)
-│       ├── erfassung/        # Offscreen-Erfassung: EIN unsichtbares Fenster je Werkzeug für NDI und Stream
+│       ├── erfassung/        # Offscreen-Erfassung: EIN unsichtbares Fenster je Werkzeug für NDI und Stream;
+│       │                     #   Weg des Bildes vom Spiegel bis zum paint (bildweg, rein)
 │       ├── ndi/              # Binding laden (ndi), NDI-Sender für Timer und Player (ndiSender), Frames (rein)
-│       ├── stream/           # Stream fürs Heimnetz: Sender, ffmpeg-Argumente, Ton-Takt, Verteiler (rein)
+│       ├── stream/           # Stream fürs Heimnetz: Sender, ffmpeg-Argumente, Ton-Takt, Raster von ffmpeg,
+│       │                     #   Verteiler (rein)
 │       ├── player/           # Bibliothek, Import, Wiedergabezustand, Ausgabefenster, Fernsteuerung, NDI, Stream
 │       ├── timer/            # Stage-Timer: Zustand, Ausgabefenster, Fernsteuerung, Bühnen-Anzeige, NDI, Stream
 │       ├── jingle/ · osc/    # Jingle-Bibliothek · OSC – je mit Fernsteuerung
