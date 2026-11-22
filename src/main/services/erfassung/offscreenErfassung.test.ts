@@ -225,17 +225,17 @@ describe('Offscreen-Erfassung – ein Fenster für NDI und Stream', () => {
     const stream = { ...ausgang(STREAM), ton: vi.fn() }
     e.verbinde(stream)
     const win = lastWindow()
-    const uebergaben: number[] = []
-    for (let i = 0; i < 20; i++) {
-      uebergaben.push(Date.now())
+    const uebergaben: [number, number][] = []
+    for (let i = 0; i < 40; i++) {
+      uebergaben.push([Date.now(), 6]) // 6 ms nach der Medien-Uhr übergeben
       vi.advanceTimersByTime(15) // so lange braucht das Bild bis zum paint
       win.paint?.(null, null, bild())
       vi.advanceTimersByTime(18)
     }
     expect(e.bildwegStand).toBeNull() // noch nichts gemeldet
-    expect(e.bildwegZaehler).toEqual({ paints: 20, uebergaben: 0, verworfen: 0 })
+    expect(e.bildwegZaehler).toEqual({ paints: 40, uebergaben: 0, verworfen: 0 })
     e.ton({ sampleRate: 48000, channels: [new Float32Array(2)], frame: 0, uebergaben })
-    expect(e.bildwegStand).toMatchObject({ ms: 15, proben: 20 })
+    expect(e.bildwegStand).toMatchObject({ ms: 21, weg: 15, spaet: 6, proben: 40 })
     expect(stream.ton).toHaveBeenCalled()
     e.trenne(stream)
   })

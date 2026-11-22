@@ -245,7 +245,9 @@ Playlist-Player für LED-Wände und Beamer.
   H.264 und AAC unter `http://<Rechner>:8094/live.ts` – für Geräte ohne NDI (Heimkino-Box, VLC am
   Rechner oder Handy). Eigener Port, damit Stage-Timer und Player gleichzeitig senden können;
   3–10 Mbit/s, läuft also auch über WLAN. Der Ton kommt vor dem Regler (unabhängig von Lautstärke
-  und „Stumm“, wie bei NDI) und bleibt lippensynchron, auch wenn der Rechner kurz hängt. Eine
+  und „Stumm“, wie bei NDI) und bleibt lippensynchron, auch wenn der Rechner kurz hängt: Wie lange
+  das Bild bis in den Stream braucht, misst die Mottulbox laufend und legt den Ton um so viel
+  später (je Rechner verschieden, am Mac rund 20 ms mehr; der Wert steht im Protokoll). Eine
   Wand in anderem Seitenverhältnis steht eingepasst mit schwarzem Rand im Bild. Auflösung,
   Bildrate, Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die
   Adressen, Empfänger und Datenrate. Laufen NDI und Stream gleichzeitig, spielt der Spiegel das

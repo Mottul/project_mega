@@ -425,19 +425,36 @@ try {
         if (diagnose) {
           try {
             // Weg des Bildes, den der Sender gemeldet hat (der Ton liegt so viel später); jeder
-            // Wechsel steht im Protokoll, gewertet wird der letzte
+            // Wechsel steht im Protokoll, gewertet wird der letzte. Je Wert die Zeit seit dem
+            // Start von ffmpeg – jeder Wechsel setzt den Ton neu an, es sollen wenige sein.
             const text = log()
-            const wege = [...text.matchAll(/\[player-stream\] Weg des Bildes: (\d+) ms([^\r\n]*)/g)]
+            const wege = []
+            let start = null
+            for (const z of text.split(/\r?\n/)) {
+              const zeit = Date.parse(z.slice(1, z.indexOf(']')))
+              if (/\[player-stream\] ffmpeg läuft/.test(z)) start = zeit
+              const w = z.match(/\[player-stream\] Weg des Bildes: (-?\d+(?:\.\d+)?) ms(.*)$/)
+              if (!w) continue
+              const nach = start === null ? '?' : ((zeit - start) / 1000).toFixed(1)
+              wege.push({ ms: Number(w[1]), nach, mehr: w[2].replace(/ – .*$/, '') })
+            }
             const fehlt = text.match(/\[player-stream\] Weg des Bildes nicht messbar: ([^\r\n]*)/)
-            const bildwegMs = wege.length ? Number(wege.at(-1)[1]) : 0
+            const bildwegMs = wege.length ? wege.at(-1).ms : 0
+            const zeige = (w, i) =>
+              `${w.ms} ms nach ${w.nach} s` + (i === 0 || i === wege.length - 1 ? w.mehr : '')
             console.log(
               '    Weg des Bildes laut Sender: ' +
                 (wege.length
-                  ? wege.map((w) => `${w[1]} ms${w[2].replace(/ – .*$/, '')}`).join(', dann ')
+                  ? `${wege.length}× gesetzt: ${wege.map(zeige).join(', dann ')}`
                   : fehlt
                     ? `nicht messbar (${fehlt[1]})`
                     : 'nicht gemessen')
             )
+            if (!wege.length && !fehlt) {
+              // weder Wert noch Grund: die letzten Zeilen des Senders zeigen, wo er steht
+              const zeilen = text.split(/\r?\n/).filter((z) => /\[player-(stream|ndi)/.test(z))
+              for (const z of zeilen.slice(-12)) console.log(`      ${z}`)
+            }
             const auswertung = werteDiagnoseAus(await holeDiagnose(app), { bildwegMs })
             console.log(`    ${diagnoseZeile(auswertung)}`)
           } catch (e) {

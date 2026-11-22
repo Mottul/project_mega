@@ -55,9 +55,16 @@ export function videoFrame(
   }
 }
 
+/** Eine Übergabe: [Wanduhr, Verspätung gegen die Medien-Uhr] – endlich, Verspätung bis 1 s */
+const istUebergabe = (u: unknown): boolean =>
+  Array.isArray(u) &&
+  u.length === 2 &&
+  u.every((x) => typeof x === 'number' && Number.isFinite(x)) &&
+  Math.abs(u[1]) <= 1000
+
 /** Gültiger Tonblock: 1–16 gleich lange Float32-Kanäle (höchstens 1 s), übliche Abtastrate,
  *  Sample-Nummer (falls mitgeschickt) ganz und nicht negativ, Renderzeit (falls mitgeschickt)
- *  eine endliche Zahl, Übergaben (falls mitgeschickt) höchstens 64 endliche Zahlen */
+ *  eine endliche Zahl, Übergaben (falls mitgeschickt) höchstens 64 Paare endlicher Zahlen */
 export function isAudioChunk(chunk: unknown): chunk is NdiAudioChunk {
   if (!chunk || typeof chunk !== 'object') return false
   const { sampleRate, channels, frame, gerendert, uebergaben } = chunk as Partial<NdiAudioChunk>
@@ -66,11 +73,7 @@ export function isAudioChunk(chunk: unknown): chunk is NdiAudioChunk {
   if (gerendert !== undefined && !Number.isFinite(gerendert)) return false
   if (
     uebergaben !== undefined &&
-    !(
-      Array.isArray(uebergaben) &&
-      uebergaben.length <= 64 &&
-      uebergaben.every((t) => typeof t === 'number' && Number.isFinite(t))
-    )
+    !(Array.isArray(uebergaben) && uebergaben.length <= 64 && uebergaben.every(istUebergabe))
   ) {
     return false
   }

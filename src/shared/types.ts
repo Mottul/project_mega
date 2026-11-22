@@ -1105,9 +1105,10 @@ export interface NdiAudioChunk {
   /** Wanduhr (ms seit 1970), zu der das letzte Sample gerendert wurde – aus `ctx.currentTime`
    *  beim Empfang im Spiegel zurückgerechnet, also ohne den Verzug bis zum main-Prozess */
   gerendert?: number
-  /** Wanduhr (ms), zu der der Spiegel seit dem letzten Block Videobilder übergeben hat
-   *  (requestVideoFrameCallback) – daraus misst der Stream den Weg des Bildes bis zum main */
-  uebergaben?: number[]
+  /** Videobilder, die der Spiegel seit dem letzten Block übergeben hat (requestVideoFrameCallback),
+   *  je Bild [Wanduhr in ms, wie spät gegenüber der Medien-Uhr in ms] – daraus misst der Stream,
+   *  um wie viel er den Ton später legen muss (erfassung/bildweg.ts) */
+  uebergaben?: [number, number][]
 }
 
 /* -------------------------------- Dialog -------------------------------- */

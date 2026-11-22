@@ -15,13 +15,15 @@
 import { BrowserWindow } from 'electron'
 import { logLine } from '../log'
 import { loadRoute, secureWebPreferences } from '../windows/appWindows'
-import { Bildweg, type BildwegStand, type BildwegZaehler } from './bildweg'
+import { Bildweg, type BildwegStand, type BildwegZaehler, type Uebergabe } from './bildweg'
 
 /** Ein Bild aus dem Offscreen-Fenster (BGRA, Zeilen ohne Lücke) */
 export interface ErfassungsBild {
   width: number
   height: number
   data: Buffer
+  /** Wanduhr (ms), zu der der paint im main ankam – der Stream misst daran, wo es landet */
+  zeit: number
 }
 
 /** Was ein Ausgang vom Fenster braucht */
@@ -47,8 +49,8 @@ export interface ErfassungsTon {
   channels: Float32Array[]
   frame?: number
   gerendert?: number
-  /** Wanduhr (ms), zu der der Spiegel seit dem letzten Block Videobilder übergeben hat */
-  uebergaben?: number[]
+  /** Videobilder seit dem letzten Block: [Wanduhr, Verspätung gegen die Medien-Uhr] (ms) */
+  uebergaben?: Uebergabe[]
 }
 
 export interface ErfassungsAusgang {
@@ -250,12 +252,13 @@ export class OffscreenErfassung {
     const { width, height } = image.getSize()
     if (width < 2 || height < 2) return
     this.groesse = { width, height }
-    this.bildweg.paint(Date.now())
+    const zeit = Date.now()
+    this.bildweg.paint(zeit)
     let bild: ErfassungsBild | null = null
     for (const a of this.ausgaenge) {
       if (!a.willBilder()) continue
       // eine Kopie für alle: Die Ausgänge lesen sie nur (NDI-Send, Schreiben an ffmpeg)
-      bild ??= { width, height, data: image.toBitmap() }
+      bild ??= { width, height, data: image.toBitmap(), zeit }
       a.bild(bild)
     }
   }

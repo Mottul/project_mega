@@ -1034,7 +1034,10 @@ Entwurf: „Live-Bild von der Mottulbox auf die Heimkino-Box“ – er liegt im 
 (PLAN-STREAM.md im Ordner project_MI), weil er Sender und Empfänger umfasst; die Stufen dort
 gelten. Skills `ffmpeg-labor` (Messungen zu Bild- und Ton-Zeit), `electron-e2e` (`stream.mjs`).
 **Gebaut:** Stufe 1 (Stream vom Stage-Timer, #243), die Hänger daraus behoben (#245), Stufe 2
-(Video-Player mit Ton, Erfassung mit NDI geteilt). Offen für die Mottulbox:
+(Video-Player mit Ton, Erfassung mit NDI geteilt, #246), Ton und Bild auch am Mac zusammen (#248:
+der Sender misst laufend, wie viel später das Bild in den Strom kommt – Phase der Anzeige im
+Spiegel, Weg zum paint, Raster von ffmpeg – und legt den Ton so viel später). Offen für die
+Mottulbox:
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
@@ -1355,8 +1358,10 @@ Viertelstunde in VLC am Handy und am PC ansehen, dabei Timer und Uhr-Modus – s
 springt die Anzeige? Das E2E stellt die Hänger nur mit einer Warteschleife im main-Prozess und
 die Skalierung mit `--force-device-scale-factor` nach. Offen seit Stufe 1: Empfang auf der
 TV-Box über WLAN, NVENC und AMF, macOS. **Seit Stufe 2 (Video-Player mit Ton):** ein Video mit
-Sprache in VLC am Fernseher oder Handy – passt der Ton zu den Lippen (das E2E misst ±12 ms an
-Blitz und Piep, aber nur bis ffmpeg, ohne Decoder und Lautsprecher des Empfängers)? NDI und
+Sprache in VLC am Fernseher oder Handy – passt der Ton zu den Lippen (das E2E misst seit #248
+unter Windows −6 … 0 ms an Blitz und Piep, aber nur bis ffmpeg, ohne Decoder und Lautsprecher des
+Empfängers)? Am Mac dazu die Protokollzeile „Weg des Bildes“ notieren (der Sender legt den Ton um
+so viel später; auf dem macOS-Runner rund 20 ms mehr als unter Windows). NDI und
 Stream gleichzeitig mit echten Empfängern (NDI Studio Monitor und VLC); NDI ein- und ausschalten,
 während VLC zuschaut – fängt sich das Bild nach dem kurzen Neustart von ffmpeg? Eine breite Wand
 (z. B. 3840 × 1080) mit NDI „Wand 1:1“: steht sie im Stream eingepasst mit schwarzem Rand?
