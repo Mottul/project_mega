@@ -269,7 +269,7 @@ alles andere lässt sich vorziehen.
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
-| **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8) |
+| **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 · ST6 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8); ST6 macht den macOS-Lauf der CI wieder verlässlich |
 | **Laufend** | Update-PRs, [Abnahmen am Gerät](#abnahmen-am-gerät) | montags bzw. wenn das Gerät da ist |
 
 **Laufend – Update-PRs von Dependabot:** jeden Montag durchsehen und nach grüner CI mergen (7 Tage
@@ -1045,6 +1045,7 @@ stdin). Offen für die Mottulbox:
 | ----- | ------ | ----- | ------- |
 | **ST4** | Ankündigen per mDNS (Dienst _mottulbox._tcp, TXT: Name, Pfad /live.ts, Werkzeug), Feld „Name“ im Bereich „Stream fürs Heimnetz“; abmelden beim Stoppen und Beenden | M | Stufe 3 im Heimkino-Projekt (Empfang mit Adresse von Hand) |
 | **ST5** | Doku für Anwender (Seite oder Abschnitt zum Stream, Eintrag im README) | S | ST4 |
+| **ST6** | Bilder mit Zeitstempeln aus dem Spiegel statt aus dem main. Heute stempelt ffmpeg ein Bild beim Lesen; stockt der main-Prozess, kommt das paint zu spät, und das Bild liegt so viel zu spät im Strom (macOS-Runner, #249: paint bis 200 ms nach der Anzeige im Spiegel, Blitz −92 ms; der Ton ist davon frei, er bekommt seine Zeit im Spiegel). Zuerst messen (Skill `ffmpeg-labor`): Taugen die Anzeigezeiten des Spiegels (`requestVideoFrameCallback`) unter Last als Zeitbasis? Auf den Runnern kamen manche ein Bild zu spät. Dann bauen: ffmpeg zählt die Bilder (`setpts` wie `asetpts` beim Ton), der Sender legt jedes Bild nach seiner Anzeigezeit in den Takt und füllt Lücken; Hänger, Neustart und Standbild wie heute. Bis dahin ist der macOS-Lauf der CI im Schritt „Ton lippensynchron“ wackelig. Abnahme: macOS-Job mehrmals neu gestartet grün, Laufnummern im PR | L | – |
 
 - **Offene Frage aus dem Entwurf:** nur Video-Player und Stage-Timer – oder später auch
   Testbildgenerator und die Vorschau des Video-Generators?
