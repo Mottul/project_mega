@@ -402,6 +402,7 @@ try {
         assert.match(log(), /erster PCM-Block empfangen:.*Sample-Nummer \d+/)
         const datei = join(tmp, 'mitschnitt.ts')
         const t0 = performance.now()
+        const t0Wand = Date.now()
         const haengerBei = []
         const haenger = async () => {
           await sleep(6000)
@@ -422,34 +423,36 @@ try {
           return false
         })
         const m = await mitschneiden(playerUrl, 20_000, { waehrend: haenger, datei })
+        // Weg des Bildes, den der Sender gemeldet hat (der Ton liegt so viel später); jeder
+        // Wechsel steht im Protokoll, gewertet wird der letzte. Alle Zeiten seit dem Start von
+        // ffmpeg (er läuft oft schon seit dem Schritt davor) – so lassen sich Wechsel, Hänger und
+        // Blitze zuordnen. Jeder Wechsel setzt den Ton neu an, es sollen wenige sein.
+        const text = log()
+        const wege = []
+        let start = null
+        for (const z of text.split(/\r?\n/)) {
+          const zeit = Date.parse(z.slice(1, z.indexOf(']')))
+          if (/\[player-stream\] ffmpeg läuft/.test(z)) start = zeit
+          const w = z.match(/\[player-stream\] Weg des Bildes: (-?\d+(?:\.\d+)?) ms(.*)$/)
+          if (!w) continue
+          const nach = start === null ? '?' : ((zeit - start) / 1000).toFixed(1)
+          wege.push({ ms: Number(w[1]), nach, mehr: w[2].replace(/ – .*$/, '') })
+        }
+        const seitStart = (wand) =>
+          start === null || wand === null ? '?' : ((wand - start) / 1000).toFixed(1)
         if (diagnose) {
           try {
-            // Weg des Bildes, den der Sender gemeldet hat (der Ton liegt so viel später); jeder
-            // Wechsel steht im Protokoll, gewertet wird der letzte. Je Wert die Zeit seit dem
-            // Start von ffmpeg – jeder Wechsel setzt den Ton neu an, es sollen wenige sein.
-            const text = log()
-            const wege = []
-            let start = null
-            for (const z of text.split(/\r?\n/)) {
-              const zeit = Date.parse(z.slice(1, z.indexOf(']')))
-              if (/\[player-stream\] ffmpeg läuft/.test(z)) start = zeit
-              const w = z.match(/\[player-stream\] Weg des Bildes: (-?\d+(?:\.\d+)?) ms(.*)$/)
-              if (!w) continue
-              const nach = start === null ? '?' : ((zeit - start) / 1000).toFixed(1)
-              wege.push({ ms: Number(w[1]), nach, mehr: w[2].replace(/ – .*$/, '') })
-            }
             const fehlt = text.match(/\[player-stream\] Weg des Bildes nicht messbar: ([^\r\n]*)/)
             const bildwegMs = wege.length ? wege.at(-1).ms : 0
-            const zeige = (w, i) =>
-              `${w.ms} ms nach ${w.nach} s` + (i === 0 || i === wege.length - 1 ? w.mehr : '')
             console.log(
               '    Weg des Bildes laut Sender: ' +
                 (wege.length
-                  ? `${wege.length}× gesetzt: ${wege.map(zeige).join(', dann ')}`
+                  ? `${wege.length}× gesetzt`
                   : fehlt
                     ? `nicht messbar (${fehlt[1]})`
                     : 'nicht gemessen')
             )
+            for (const w of wege) console.log(`      ${w.ms} ms nach ${w.nach} s${w.mehr}`)
             if (!wege.length && !fehlt) {
               // weder Wert noch Grund: die letzten Zeilen des Senders zeigen, wo er steht
               const zeilen = text.split(/\r?\n/).filter((z) => /\[player-(stream|ndi)/.test(z))
@@ -481,6 +484,17 @@ try {
           `    ${r.blitze.length} Blitze, ${r.pieps.length} Pieps; Ton − Bild (ms): ` +
             r.paare.map((p) => `${p.versatzMs}${gewertet.includes(p) ? '' : '*'}`).join(' ') +
             ' (* im Hänger oder am Ende, nicht gewertet)'
+        )
+        // Wanduhr eines Bildes im Strom: wann es beim Empfänger ankam (wenige 100 ms nach dem paint)
+        const angekommen = (pts) => {
+          const e = m.video.find((x) => x.pts >= pts - 0.001)
+          return e ? m.start + e.ankunft : null
+        }
+        console.log(
+          '    s seit dem Start von ffmpeg: Blitze ' +
+            r.paare.map((p) => seitStart(angekommen(p.blitz))).join(' ') +
+            ' (Ankunft beim Empfänger), Hänger ' +
+            haengerBei.map((ms) => seitStart(t0Wand + ms)).join(' ')
         )
         for (const p of r.paare) {
           if (Math.abs(p.versatzMs) > LIPPENSYNCHRON_MS) {

@@ -109,14 +109,14 @@ function entfalter() {
 
 /**
  * Schneidet `ms` Millisekunden des Stroms unter `url` mit. Liefert je Art die Liste
- * `{ ankunft, pts }` (Ankunft in ms seit Beginn, PTS in Sekunden) und die Zahl der Bytes.
+ * `{ ankunft, pts }` (Ankunft in ms seit Beginn, PTS in Sekunden), Bytes und `start` (Wanduhr).
  * `waehrend()` läuft unterwegs (z. B. den main-Prozess blockieren); `datei` speichert den Strom
  * zusätzlich, etwa für `blitzUndPiep`.
  */
 export function mitschneiden(url, ms, { waehrend, datei } = {}) {
   return new Promise((resolve, reject) => {
     const t0 = performance.now()
-    const ergebnis = { video: [], audio: [], bytes: 0 }
+    const ergebnis = { video: [], audio: [], bytes: 0, start: Date.now() }
     const pts = { video: entfalter(), audio: entfalter() }
     const ablage = datei ? createWriteStream(datei) : null
     let jetzt = 0

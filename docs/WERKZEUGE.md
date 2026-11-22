@@ -247,7 +247,8 @@ Playlist-Player für LED-Wände und Beamer.
   3–10 Mbit/s, läuft also auch über WLAN. Der Ton kommt vor dem Regler (unabhängig von Lautstärke
   und „Stumm“, wie bei NDI) und bleibt lippensynchron, auch wenn der Rechner kurz hängt: Wie lange
   das Bild bis in den Stream braucht, misst die Mottulbox laufend und legt den Ton um so viel
-  später (je Rechner verschieden, am Mac rund 20 ms mehr; der Wert steht im Protokoll). Eine
+  später (je Rechner und Start verschieden, der Wert steht im Protokoll). Verschiebt ein Hänger
+  das Bild, zieht der Ausgleich nach zwei bis drei Sekunden nach. Eine
   Wand in anderem Seitenverhältnis steht eingepasst mit schwarzem Rand im Bild. Auflösung,
   Bildrate, Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die
   Adressen, Empfänger und Datenrate. Laufen NDI und Stream gleichzeitig, spielt der Spiegel das

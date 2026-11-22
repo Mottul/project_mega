@@ -1359,9 +1359,12 @@ springt die Anzeige? Das E2E stellt die Hänger nur mit einer Warteschleife im m
 die Skalierung mit `--force-device-scale-factor` nach. Offen seit Stufe 1: Empfang auf der
 TV-Box über WLAN, NVENC und AMF, macOS. **Seit Stufe 2 (Video-Player mit Ton):** ein Video mit
 Sprache in VLC am Fernseher oder Handy – passt der Ton zu den Lippen (das E2E misst seit #248
-unter Windows −6 … 0 ms an Blitz und Piep, aber nur bis ffmpeg, ohne Decoder und Lautsprecher des
-Empfängers)? Am Mac dazu die Protokollzeile „Weg des Bildes“ notieren (der Sender legt den Ton um
-so viel später; auf dem macOS-Runner rund 20 ms mehr als unter Windows). NDI und
+unter Windows und macOS meist −7 … 0 ms an Blitz und Piep, nach einem Hänger in einzelnen Läufen
+bis −36 ms, aber nur bis ffmpeg, ohne Decoder und Lautsprecher des Empfängers; auf dem
+Linux-Runner liegen Blitze nach einem Hänger ein Bild daneben, bis der Sender nach 2–3 s
+nachzieht)? Am Mac dazu die Protokollzeile „Weg des Bildes“
+notieren (der Sender legt den Ton um so viel später; in der CI auf dem macOS-Runner 50 ms, unter
+Windows −11). NDI und
 Stream gleichzeitig mit echten Empfängern (NDI Studio Monitor und VLC); NDI ein- und ausschalten,
 während VLC zuschaut – fängt sich das Bild nach dem kurzen Neustart von ffmpeg? Eine breite Wand
 (z. B. 3840 × 1080) mit NDI „Wand 1:1“: steht sie im Stream eingepasst mit schwarzem Rand?

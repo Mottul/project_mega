@@ -86,7 +86,17 @@ Anzeige im Spiegel (Übergabe per `requestVideoFrameCallback` gegen `currentTime
 Raster von ffmpeg (oben). Alles misst der Sender laufend (`erfassung/bildweg.ts`,
 `stream/bildRaster.ts`) und legt den Ton um die Summe später (Protokollzeile „Weg des Bildes“);
 ohne das lag der Ton am Mac bis zu zwei Bilder zu früh. Diagnose je Teilstrecke im E2E:
-`e2e/avDiagnose.mjs`.
+`e2e/avDiagnose.mjs`. Nach einem Hänger kann der Spiegel ein Bild später zeigen und nach dem
+nächsten wieder pünktlich (CI, Linux-Runner ohne GPU, Lauf 44970466157: +33 ms nach dem ersten
+Hänger, zurück nach dem zweiten). Der Median der letzten 90 Proben zieht nach 2–3 s nach, jeder
+Wechsel setzt den Ton neu an (eine kurze Lücke, deshalb erst ab 5 ms Änderung): Blitze in dieser
+Zeit lagen ein Bild daneben (−38, +29 ms), danach wieder bei 0. Erwogen und verworfen: nur aus
+eng liegenden Proben nachführen – das hätte genau diese Sprünge verzögert und auf Rechnern mit
+breiter Streuung den Ausgleich eingefroren. Auch der Weg zum paint kann nach einem Hänger länger
+bleiben (Windows lokal: je Blitz 20–29 statt 9–12 ms, der Median nur 15); landet der Blitz dann
+jenseits einer Rundungsgrenze des Rasters, steht er ein Raster später im Strom (−23 … −30 ms).
+Ein Bild Genauigkeit ist mit 30 Bildern/s je Blitz also nicht garantiert, die Grenze im E2E ist
+60 ms.
 
 **Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
 Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in
