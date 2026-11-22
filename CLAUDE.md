@@ -163,7 +163,7 @@ RTA – mit Messwerten je Werkzeug), Pakete mit Kennung (B3, K5, W1 …), Reihen
 Gerät, Entscheidungen. Ein Auftrag lautet „Setze Paket B3 aus docs/PLAN.md um“; der Ablauf steht
 dort, Erledigtes wird dort gestrichen. Große Vorhaben haben zusätzlich einen Entwurf
 `docs/PLAN-*.md` (Messwerte, Festlegungen, Stolpersteine – heute ATEM, Mini-Manual,
-Video-Generator; Stand und Reihenfolge stehen auch für sie im Gesamtplan) – vor der Umsetzung
+Video-Generator, Bildzeit des Streams; Stand und Reihenfolge stehen auch für sie im Gesamtplan) – vor der Umsetzung
 lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überführen und löschen.
 Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
 `abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,

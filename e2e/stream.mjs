@@ -13,9 +13,13 @@ import { blitzUndPiep, mitschneiden, zeitachse } from './tsMitschnitt.mjs'
 import {
   diagnoseZeile,
   holeDiagnose,
+  inhaltZeile,
+  inhaltZuordnung,
   starteDiagnose,
   streamZuordnung,
-  werteDiagnoseAus
+  werteDiagnoseAus,
+  zeitbasisAusSpiegel,
+  zeitbasisZeile
 } from './avDiagnose.mjs'
 
 const pexec = promisify(execFile)
@@ -72,7 +76,28 @@ const PLAYER_PORT = 18094
 const playerUrl = `http://127.0.0.1:${PLAYER_PORT}/live.ts`
 const playerCfg = { width: 1280, height: 720, fps: 30, port: PLAYER_PORT, bitrateKbps: 3000 }
 const WAND = { width: 1280, height: 720 }
+/**
+ * Schwarz mit einem bewegten Testbild unten (320 × 180, 13 px je Bild): Aufeinanderfolgende Bilder
+ * unterscheiden sich, sonst ließe sich ein Bild nicht an seinem Inhalt erkennen (ST6, D). Weg von
+ * der Bildmitte, wo die Diagnose die Helligkeit misst; dunkle Bilder bleiben unter YAVG 23.
+ */
+const BEWEGUNG =
+  'testsrc2=s=320x180:r=30:d=60[mv];color=c=black:s=1280x720:r=30:d=60[bg];' +
+  "[bg][mv]overlay=x='mod(n*13,960)':y=480"
 const BLITZ = "drawbox=x=0:y=0:w=iw:h=ih:color=white:t=fill:enable='lt(mod(t-1,2),0.1)'"
+/**
+ * Bildnummer oben links als 16 Felder zu 16 px (weiß = 1, binär), über dem Blitz gezeichnet: Der
+ * main liest sie aus jedem paint (avDiagnose.mjs), der Spiegel meldet je Bild die Medienzeit – so
+ * gehören paint und Anzeige sicher zum selben Bild, auch wenn paints gestaut ankommen (ST6).
+ */
+const NUMMER = [
+  'drawbox=x=0:y=0:w=256:h=16:color=black:t=fill',
+  ...Array.from(
+    { length: 16 },
+    (_, k) =>
+      `drawbox=x=${16 * k}:y=0:w=16:h=16:color=white:t=fill:enable='mod(floor(n/${2 ** k}),2)'`
+  )
+].join(',')
 const PIEP = '0.5*sin(2*PI*1000*t)*lt(mod(t-1,2),0.1)'
 /**
  * Erlaubter Versatz Ton − Bild. Gemessen ±12 ms (ein Bild Raster bei 30 fps); 60 ms ist die
@@ -348,7 +373,7 @@ try {
           ...['-v', 'error', '-y'],
           // 60 s: Während der Messung springt das Video nicht an den Anfang zurück – ein Loop
           // wäre eine Störung mehr, die mit dem Stream nichts zu tun hat.
-          ...['-f', 'lavfi', '-i', `color=c=black:s=1280x720:r=30:d=60,${BLITZ}`],
+          ...['-f', 'lavfi', '-i', `${BEWEGUNG},${BLITZ},${NUMMER}`],
           ...['-f', 'lavfi', '-i', `aevalsrc='${PIEP}':s=48000:d=60`],
           ...['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'],
           ...['-c:a', 'aac', '-ac', '2', '-shortest', clip]
@@ -428,7 +453,39 @@ try {
           console.log(`    Diagnose nicht eingehängt: ${e.message}`)
           return false
         })
-        const m = await mitschneiden(playerUrl, 20_000, { waehrend: haenger, datei })
+        // Nur fürs Labor (ST6, MOTTULBOX_E2E_LAST=1): der main-Prozess stockt immer wieder 40 bis
+        // 200 ms – so wie der macOS-Runner von sich aus. In der CI nicht gesetzt.
+        const lastBis = performance.now() + 20_000
+        const stockungen = []
+        const last = async () => {
+          while (process.env.MOTTULBOX_E2E_LAST === '1' && performance.now() < lastBis) {
+            await sleep(400 + Math.random() * 500)
+            const ms = Math.round(40 + Math.random() * 160)
+            const t = performance.now()
+            // erster Parameter ist das Electron-Modul, das Argument kommt als zweiter
+            await app.evaluate((_electron, dauer) => {
+              const ende = Date.now() + dauer
+              while (Date.now() < ende) {
+                // blockiert absichtlich
+              }
+            }, ms)
+            stockungen.push([ms, Math.round(performance.now() - t)])
+          }
+        }
+        const [m] = await Promise.all([
+          mitschneiden(playerUrl, 20_000, { waehrend: haenger, datei }),
+          last()
+        ])
+        if (stockungen.length) {
+          const summe = stockungen.reduce((s, [ms]) => s + ms, 0)
+          console.log(
+            `    Last (Labor): ${stockungen.length} Stockungen des main, zusammen ${summe} ms ` +
+              `(je Aufruf bestellt/gedauert: ${stockungen
+                .slice(0, 6)
+                .map(([a, b]) => `${a}/${b}`)
+                .join(' ')} …)`
+          )
+        }
         // Weg des Bildes, den der Sender gemeldet hat (der Ton liegt so viel später); jeder
         // Wechsel steht im Protokoll, gewertet wird der letzte. Alle Zeiten seit dem Start von
         // ffmpeg (er läuft oft schon seit dem Schritt davor) – so lassen sich Wechsel, Hänger und
@@ -481,6 +538,11 @@ try {
             diagDaten = await holeDiagnose(app)
             const auswertung = werteDiagnoseAus(diagDaten, { bildwegMs })
             console.log(`    ${diagnoseZeile(auswertung)}`)
+            console.log(`    ${zeitbasisZeile(zeitbasisAusSpiegel(diagDaten, playerCfg.fps))}`)
+            // ST6, nur im Labor (MOTTULBOX_E2E_ST6=1): Bild am Inhalt erkennen
+            if (process.env.MOTTULBOX_E2E_ST6 === '1') {
+              console.log(`    ${inhaltZeile(inhaltZuordnung(diagDaten, playerCfg.fps))}`)
+            }
           } catch (e) {
             console.log(`    Diagnose nicht auswertbar: ${e.message}`)
           }

@@ -14,58 +14,152 @@ const SPIEGEL = `(BrowserWindow) =>
     (w) => !w.isDestroyed() && w.webContents.isOffscreen() && w.webContents.getURL().includes('player-ndi')
   )`
 
-/** Messung einhängen. Muss laufen, während der Player spielt und der Spiegel offen ist. */
-export async function starteDiagnose(app) {
-  const ok = await app.evaluate(({ BrowserWindow, ipcMain }, finde) => {
-    const win = eval(finde)(BrowserWindow)
-    if (!win) return false
-    const d = { paints: [], ton: [] }
-    globalThis.__avDiag = d
-    win.webContents.on('paint', (_e, _dirty, image) => {
-      if (d.paints.length > 5000) return
-      const { width, height } = image.getSize()
-      const px = image
-        .crop({ x: Math.floor(width / 2) - 2, y: Math.floor(height / 2) - 2, width: 4, height: 4 })
-        .toBitmap()
-      let summe = 0
-      for (let i = 0; i < px.length; i += 4) summe += (px[i] + px[i + 1] + px[i + 2]) / 3
-      d.paints.push({ t: Date.now(), hell: summe / (px.length / 4) })
-    })
-    ipcMain.on('player:ndiAudio', (_e, chunk) => {
-      if (d.ton.length > 5000 || !chunk?.channels?.[0]) return
-      const ch = chunk.channels[0]
-      let onset = -1
-      for (let i = 0; i < ch.length; i++) {
-        if (Math.abs(ch[i]) > 0.05) {
-          onset = i
-          break
+/**
+ * Messung einhängen. Muss laufen, während der Player spielt und der Spiegel offen ist. `st6`:
+ * zusätzlich die Messungen zu ST6 (Marke des Spiegels, Vorschaubilder für „Bild am Inhalt“) –
+ * nur im Labor (`MOTTULBOX_E2E_ST6=1`): Das Vorschaubild kostet im Spiegel 3–15 ms je Bild, und
+ * diese Last machte den Schritt „lippensynchron“ selbst wackeliger (Windows-Runner, #250).
+ */
+export async function starteDiagnose(app, { st6 = process.env.MOTTULBOX_E2E_ST6 === '1' } = {}) {
+  const ok = await app.evaluate(
+    ({ BrowserWindow, ipcMain }, [finde, st6]) => {
+      const win = eval(finde)(BrowserWindow)
+      if (!win) return false
+      const d = { paints: [], ton: [] }
+      globalThis.__avDiag = d
+      win.webContents.on('paint', (_e, _dirty, image) => {
+        if (d.paints.length > 5000) return
+        const { width, height } = image.getSize()
+        const px = image
+          .crop({
+            x: Math.floor(width / 2) - 2,
+            y: Math.floor(height / 2) - 2,
+            width: 4,
+            height: 4
+          })
+          .toBitmap()
+        let summe = 0
+        for (let i = 0; i < px.length; i += 4) summe += (px[i] + px[i + 1] + px[i + 2]) / 3
+        // Fläche des Videos im paint: Der Clip (1280 × 720) liegt eingepasst wie im Player – auf dem
+        // Windows-Runner ist das Fenster nur 1024 breit, dort mit Rändern oben und unten
+        const s = Math.min(width / 1280, height / 720)
+        const vw = Math.round(1280 * s)
+        const vh = Math.round(720 * s)
+        const vx = Math.floor((width - vw) / 2)
+        const vy = Math.floor((height - vh) / 2)
+        // 16 Felder, Mitte hell = 1: oben links im Video die Bildnummer des Testclips (stream.mjs,
+        // Felder 16 px im Clip), unten links im Fenster die Marke des Spiegels (16 px, unten)
+        const lies = (x0, y0, feld) => {
+          const w = Math.ceil(16 * feld * 16)
+          const h = Math.ceil(16 * feld)
+          if (x0 + w > width || y0 + h > height) return -1
+          const code = image.crop({ x: x0, y: y0, width: w, height: h }).toBitmap()
+          let n = 0
+          for (let k = 0; k < 16; k++) {
+            const i = (Math.floor(8 * feld) * w + Math.floor((16 * k + 8) * feld)) * 4
+            if ((code[i] + code[i + 1] + code[i + 2]) / 3 > 128) n += 2 ** k
+          }
+          return n
         }
-      }
-      d.ton.push({
-        t: Date.now(),
-        gerendert: chunk.gerendert,
-        frame: chunk.frame ?? -1,
-        len: ch.length,
-        onset
+        const paint = {
+          t: Date.now(),
+          groesse: `${width}x${height}`,
+          hell: summe / (px.length / 4),
+          nr: lies(vx, vy, s)
+        }
+        if (st6) {
+          // ST6, D: Vorschaubild 32 × 18 (Helligkeit je Feld), wie der Spiegel es im Rückruf
+          // rechnet; die Zeit dafür zählt mit – im Produkt liefe das je paint im main
+          const v0 = performance.now()
+          const klein = image
+            .crop({ x: vx, y: vy, width: vw, height: vh })
+            .resize({ width: 32, height: 18, quality: 'good' })
+            .toBitmap()
+          const th = new Array(32 * 18)
+          for (let i = 0; i < th.length; i++) {
+            th[i] = Math.round((klein[i * 4] + klein[i * 4 + 1] + klein[i * 4 + 2]) / 3)
+          }
+          paint.marke = lies(0, height - 16, 1)
+          paint.th = th
+          paint.thMs = performance.now() - v0
+        }
+        d.paints.push(paint)
       })
-    })
-    return true
-  }, SPIEGEL)
+      ipcMain.on('player:ndiAudio', (_e, chunk) => {
+        if (d.ton.length > 5000 || !chunk?.channels?.[0]) return
+        const ch = chunk.channels[0]
+        let onset = -1
+        for (let i = 0; i < ch.length; i++) {
+          if (Math.abs(ch[i]) > 0.05) {
+            onset = i
+            break
+          }
+        }
+        d.ton.push({
+          t: Date.now(),
+          gerendert: chunk.gerendert,
+          frame: chunk.frame ?? -1,
+          len: ch.length,
+          onset
+        })
+      })
+      return true
+    },
+    [SPIEGEL, st6]
+  )
   if (!ok) return false
   // Im Spiegel: jedes angezeigte Bild mit Medienzeit und erwarteter Anzeigezeit (Wanduhr)
-  await app.evaluate(async ({ BrowserWindow }, finde) => {
-    const win = eval(finde)(BrowserWindow)
-    await win.webContents.executeJavaScript(`(() => {
+  await app.evaluate(
+    async ({ BrowserWindow }, [finde, st6]) => {
+      const win = eval(finde)(BrowserWindow)
+      await win.webContents.executeJavaScript(`(() => {
         window.__rvfc = []
+        const st6 = ${st6 ? 'true' : 'false'}
+        // ST6: Marke mit der Bildnummer, gezeichnet im Rückruf des angezeigten Bildes – landet sie
+        // im selben paint wie das Bild oder eines später?
+        const marke = document.createElement('div')
+        marke.style.cssText =
+          'position:fixed;left:0;bottom:0;width:256px;height:16px;display:flex;z-index:2147483647'
+        const zellen = []
+        for (let k = 0; k < 16; k++) {
+          const z = document.createElement('div')
+          z.style.cssText = 'width:16px;height:16px;background:#000'
+          marke.appendChild(z)
+          zellen.push(z)
+        }
+        if (st6) document.body.appendChild(marke)
+        // ST6, D: Vorschaubild genau des angezeigten Bildes (im Rückruf liefert drawImage dieses)
+        const leinwand = document.createElement('canvas')
+        leinwand.width = 32
+        leinwand.height = 18
+        const ctx = leinwand.getContext('2d', { willReadFrequently: true })
         for (const v of document.querySelectorAll('video')) {
           const cb = (now, meta) => {
+            let th
+            let thMs
+            if (st6) {
+              const n = Math.round(meta.mediaTime * 30)
+              for (let k = 0; k < 16; k++) {
+                zellen[k].style.background = Math.floor(n / 2 ** k) % 2 ? '#fff' : '#000'
+              }
+              const v0 = performance.now()
+              ctx.drawImage(v, 0, 0, 32, 18)
+              const px = ctx.getImageData(0, 0, 32, 18).data
+              th = new Array(32 * 18)
+              for (let i = 0; i < th.length; i++) {
+                th[i] = Math.round((px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2]) / 3)
+              }
+              thMs = performance.now() - v0
+            }
             if (window.__rvfc.length < 5000) {
               window.__rvfc.push({
                 m: meta.mediaTime,
                 anz: performance.timeOrigin + meta.expectedDisplayTime,
                 jetzt: performance.timeOrigin + now,
                 praes: performance.timeOrigin + meta.presentationTime,
-                uhr: v.currentTime
+                uhr: v.currentTime,
+                th,
+                thMs
               })
             }
             v.requestVideoFrameCallback(cb)
@@ -73,7 +167,9 @@ export async function starteDiagnose(app) {
           v.requestVideoFrameCallback(cb)
         }
       })()`)
-  }, SPIEGEL)
+    },
+    [SPIEGEL, st6]
+  )
   return true
 }
 
@@ -264,6 +360,201 @@ export function streamZuordnung(d, paare) {
       tonMs: piep === undefined ? null : Math.round(ton - piep)
     }
   })
+}
+
+/** Wert beim Anteil `p` (0 … 1) einer Liste */
+const anteil = (a, p) => {
+  if (!a.length) return NaN
+  const s = [...a].sort((x, y) => x - y)
+  return s[Math.min(s.length - 1, Math.floor(s.length * p))]
+}
+
+/**
+ * ST6: Taugen die Anzeigezeiten des Spiegels als Zeitbasis für die Bilder im Strom? Je Bild des
+ * Testclips – Nummer aus dem paint (stream.mjs zeichnet sie), Medienzeit und Anzeige aus
+ * requestVideoFrameCallback:
+ * - paint nach der Anzeige: wann das paint dieses Bildes im main ankam. Hier wirkt jedes Stocken
+ *   des main; vor der Anzeige (negativ) hieße, die gemeldete Anzeigezeit ist zu spät.
+ * - Zuordnung nach Reihenfolge: wie oft der erste paint nach einer Anzeige ein anderes Bild zeigt
+ *   – so ordnet erfassung/bildweg.ts heute zu.
+ * - Anzeige gegen Bildnummer: Abstand der Anzeigezeiten von ihrer Ausgleichsgeraden über der
+ *   Bildnummer. Schmal heißt: als Takt brauchbar, auch wenn der main stockt.
+ */
+export function zeitbasisAusSpiegel(d, fps = 30) {
+  const rv = d.rvfc
+    .filter((x) => Number.isFinite(x.m) && Number.isFinite(x.praes))
+    .map((x) => ({ n: Math.round(x.m * fps), praes: x.praes }))
+    .sort((a, b) => a.praes - b.praes)
+  const mitNummer = d.paints.filter((p) => p.nr >= 0)
+  const ankunft = new Map()
+  for (const p of mitNummer) if (!ankunft.has(p.nr)) ankunft.set(p.nr, p.t)
+  const nachAnzeige = rv.filter((x) => ankunft.has(x.n)).map((x) => ankunft.get(x.n) - x.praes)
+  // angezeigt, aber nie gemalt: dann käme zu einer Anzeige kein paint (Möglichkeit C im Entwurf)
+  const ungemalt = rv.filter((x) => !ankunft.has(x.n)).length
+  const basis = median(nachAnzeige)
+  // heutige Zuordnung: erster paint ab 1 ms vor der Anzeige
+  let falsch = 0
+  let gezaehlt = 0
+  const daneben = []
+  let j = 0
+  for (const x of rv) {
+    while (j < d.paints.length && d.paints[j].t < x.praes - 1) j++
+    const p = d.paints[j]
+    if (!p || p.nr < 0) continue
+    gezaehlt++
+    if (p.nr !== x.n) {
+      falsch++
+      daneben.push(p.nr - x.n)
+    }
+  }
+  const b = steigung(
+    rv.map((x) => x.n),
+    rv.map((x) => x.praes)
+  )
+  const mn = rv.reduce((s, x) => s + x.n, 0) / (rv.length || 1)
+  const mp = rv.reduce((s, x) => s + x.praes, 0) / (rv.length || 1)
+  const rest = rv.map((x) => x.praes - (mp + b * (x.n - mn)))
+  const r = (v) => (Number.isFinite(v) ? Math.round(v) : null)
+  // Marke des Spiegels gegen die Bildnummer im selben paint (0 = gleiches Bild)
+  const marke = {}
+  for (const p of mitNummer) {
+    if (!(p.marke >= 0)) continue
+    const k = Math.abs(p.marke - p.nr) <= 3 ? String(p.marke - p.nr) : 'sonst'
+    marke[k] = (marke[k] ?? 0) + 1
+  }
+  return {
+    marke,
+    bilder: rv.length,
+    ungemalt,
+    ohneNummer: d.paints.length - mitNummer.length,
+    // Stichprobe, falls die Nummern nicht zusammenpassen (Windows-Runner: alle „daneben“):
+    // gelesen aus den paints um die Mitte der Messung, Größe des paints, Medienzeit-Nummern dazu
+    probe: (() => {
+      const mitte = Math.floor(mitNummer.length / 2)
+      const nah = mitNummer.slice(mitte, mitte + 4)
+      const t0 = nah[0]?.t ?? 0
+      const rvNah = rv.filter((x) => x.praes <= t0).slice(-4)
+      return {
+        paints: nah.map((x) => x.nr),
+        marken: nah.map((x) => x.marke ?? '–'),
+        groesse: d.paints[0]?.groesse ?? null,
+        medien: rvNah.map((x) => x.n)
+      }
+    })(),
+    paintNachAnzeige: {
+      median: r(basis),
+      p90: r(anteil(nachAnzeige, 0.9)),
+      max: r(nachAnzeige.length ? Math.max(...nachAnzeige) : NaN),
+      vorher: nachAnzeige.filter((v) => v < 0).length,
+      gestaut: nachAnzeige.filter((v) => v > basis + 50).length
+    },
+    zuordnung: { falsch, gezaehlt, bis: daneben.length ? Math.max(...daneben.map(Math.abs)) : 0 },
+    takt: {
+      ppm: r(((b * fps) / 1000 - 1) * 1e6),
+      p10: r(anteil(rest, 0.1)),
+      p90: r(anteil(rest, 0.9)),
+      ueber20: rest.filter((v) => Math.abs(v) > 20).length
+    }
+  }
+}
+
+/**
+ * ST6, Möglichkeit D: das Bild im paint an seinem Inhalt erkennen. Der Spiegel rechnet im Rückruf
+ * jedes Bildes ein Vorschaubild (32 × 18 Felder, Helligkeit), der main dasselbe aus jedem paint;
+ * je paint gewinnt das ähnlichste Bild der letzten 1,5 s (Summe der Abstände; die unterste Zeile
+ * mit der Marke des Spiegels zählt nicht). Prüfstein ist die Bildnummer im paint. „Gleich gut“:
+ * Das richtige Bild war praktisch genauso nah – gleiche Bilder hintereinander, dort ist die Wahl
+ * egal.
+ */
+export function inhaltZuordnung(d, fps = 30) {
+  const felder = 17 * 32
+  const rv = d.rvfc
+    .filter((x) => Array.isArray(x.th) && Number.isFinite(x.praes) && Number.isFinite(x.m))
+    .map((x) => ({ n: Math.round(x.m * fps), praes: x.praes, th: x.th }))
+    .sort((a, b) => a.praes - b.praes)
+  let richtig = 0
+  let gleich = 0
+  let falsch = 0
+  let ohneRueckruf = 0
+  let ohne = 0
+  const daneben = []
+  for (const p of d.paints) {
+    if (!(p.nr >= 0) || !Array.isArray(p.th)) continue
+    const kandidaten = rv.filter((x) => x.praes <= p.t + 1 && x.praes > p.t - 1500)
+    if (!kandidaten.length) {
+      ohne++
+      continue
+    }
+    const abstand = kandidaten.map((x) => {
+      let s = 0
+      for (let i = 0; i < felder; i++) s += Math.abs(x.th[i] - p.th[i])
+      return s
+    })
+    const min = Math.min(...abstand)
+    const gewaehlt = kandidaten[abstand.indexOf(min)]
+    if (gewaehlt.n === p.nr) {
+      richtig++
+      continue
+    }
+    const r = kandidaten.findIndex((x) => x.n === p.nr)
+    if (r >= 0 && abstand[r] <= min * 1.02 + felder * 0.05) gleich++
+    else {
+      falsch++
+      // fehlte zum richtigen Bild der Rückruf des Spiegels? Dann gab es kein Vorschaubild dafür
+      if (r < 0) ohneRueckruf++
+      daneben.push(Math.abs(gewaehlt.n - p.nr))
+    }
+  }
+  const zeiten = (liste) => {
+    const ms = liste.filter((x) => Number.isFinite(x.thMs)).map((x) => x.thMs)
+    return ms.length
+      ? { median: Math.round(median(ms) * 10) / 10, max: Math.round(Math.max(...ms) * 10) / 10 }
+      : { median: null, max: null }
+  }
+  return {
+    richtig,
+    gleich,
+    falsch,
+    ohneRueckruf,
+    ohne,
+    bis: daneben.length ? Math.max(...daneben) : 0,
+    spiegel: zeiten(d.rvfc),
+    main: zeiten(d.paints)
+  }
+}
+
+/** Zeile zu inhaltZuordnung */
+export function inhaltZeile(z) {
+  const n = z.richtig + z.gleich + z.falsch
+  return (
+    `Bild am Inhalt (ST6, D): richtig ${z.richtig} von ${n}, gleich gut ${z.gleich}, falsch ` +
+    `${z.falsch} (bis ${z.bis} Bilder daneben; davon ohne Rückruf zum richtigen Bild ` +
+    `${z.ohneRueckruf}), ohne Kandidat ${z.ohne}; Vorschaubild im Spiegel ` +
+    `Median ${z.spiegel.median} ms (größter ${z.spiegel.max}), im main Median ${z.main.median} ms ` +
+    `(größter ${z.main.max})`
+  )
+}
+
+/** Zeile zu zeitbasisAusSpiegel */
+export function zeitbasisZeile(z) {
+  const p = z.paintNachAnzeige
+  return (
+    `Zeitbasis Spiegel (ST6): ${z.bilder} Bilder (${z.ungemalt} nie gemalt); paint nach der ` +
+    `Anzeige Median ${p.median} ms ` +
+    `(p90 ${p.p90}, größter ${p.max}; vor der Anzeige ${p.vorher}, über Median + 50 ms ` +
+    `${p.gestaut}); erster paint nach der Anzeige ein anderes Bild: ${z.zuordnung.falsch} von ` +
+    `${z.zuordnung.gezaehlt} (bis ${z.zuordnung.bis} Bilder daneben); Anzeige gegen Bildnummer ` +
+    `${z.takt.p10} … ${z.takt.p90} ms um die Gerade (${z.takt.ppm} ppm), über 20 ms daneben ` +
+    `${z.takt.ueber20}; paints ohne Nummer ${z.ohneNummer} (Probe: paint ${z.probe.paints.join(',')}, ` +
+    `Marke ${z.probe.marken.join(',')}, Medienzeit ${z.probe.medien.join(',')}, paint ${z.probe.groesse}); ` +
+    `Marke des Spiegels gegen die ` +
+    `Bildnummer im selben paint: ${
+      Object.entries(z.marke)
+        .sort(([a], [b]) => (a === 'sonst' ? 1 : b === 'sonst' ? -1 : Number(a) - Number(b)))
+        .map(([k, n]) => `${k}: ${n}`)
+        .join(', ') || 'keine'
+    }`
+  )
 }
 
 /** Eine Zeile für das Protokoll des Tests */

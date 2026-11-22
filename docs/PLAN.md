@@ -12,9 +12,10 @@ Die Punkte sind Vorschläge. Was umgesetzt wird und in welcher Reihenfolge, ents
 Was noch zu entscheiden ist, steht gesammelt unter [Entscheidungen](#entscheidungen); was sich nur
 am Gerät prüfen lässt, unter [Abnahmen am Gerät](#abnahmen-am-gerät).
 
-Drei große Vorhaben haben zusätzlich einen **Entwurf** mit Messwerten, Festlegungen und
-Stolpersteinen: [PLAN-ATEM.md](PLAN-ATEM.md), [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md) und
-[PLAN-VIDEO-GENERATOR.md](PLAN-VIDEO-GENERATOR.md). Dort steht, **wie** gebaut wird. **Was** offen
+Vier große Vorhaben haben zusätzlich einen **Entwurf** mit Messwerten, Festlegungen und
+Stolpersteinen: [PLAN-ATEM.md](PLAN-ATEM.md), [PLAN-MINI-MANUAL.md](PLAN-MINI-MANUAL.md),
+[PLAN-VIDEO-GENERATOR.md](PLAN-VIDEO-GENERATOR.md) und [PLAN-BILDZEIT.md](PLAN-BILDZEIT.md)
+(Stream, ST6). Dort steht, **wie** gebaut wird. **Was** offen
 ist und **wann** es drankommt, steht nur hier.
 
 - [Leitbild: zwei Muster](#leitbild-zwei-muster) – [Arbeitsfläche](#muster-1-arbeitsfläche),
@@ -1045,7 +1046,8 @@ stdin). Offen für die Mottulbox:
 | ----- | ------ | ----- | ------- |
 | **ST4** | Ankündigen per mDNS (Dienst _mottulbox._tcp, TXT: Name, Pfad /live.ts, Werkzeug), Feld „Name“ im Bereich „Stream fürs Heimnetz“; abmelden beim Stoppen und Beenden | M | Stufe 3 im Heimkino-Projekt (Empfang mit Adresse von Hand) |
 | **ST5** | Doku für Anwender (Seite oder Abschnitt zum Stream, Eintrag im README) | S | ST4 |
-| **ST6** | Bilder mit Zeitstempeln aus dem Spiegel statt aus dem main. Heute stempelt ffmpeg ein Bild beim Lesen; stockt der main-Prozess, kommt das paint zu spät, und das Bild liegt so viel zu spät im Strom (macOS-Runner, #249: paint bis 200 ms nach der Anzeige im Spiegel, Blitz −92 ms; der Ton ist davon frei, er bekommt seine Zeit im Spiegel). Zuerst messen (Skill `ffmpeg-labor`): Taugen die Anzeigezeiten des Spiegels (`requestVideoFrameCallback`) unter Last als Zeitbasis? Auf den Runnern kamen manche ein Bild zu spät. Dann bauen: ffmpeg zählt die Bilder (`setpts` wie `asetpts` beim Ton), der Sender legt jedes Bild nach seiner Anzeigezeit in den Takt und füllt Lücken; Hänger, Neustart und Standbild wie heute. Bis dahin ist der macOS-Lauf der CI im Schritt „Ton lippensynchron“ wackelig. Abnahme: macOS-Job mehrmals neu gestartet grün, Laufnummern im PR | L | – |
+| **ST7** | Offscreen-Fenster auf schmalem Bildschirm prüfen: Auf dem Windows-Runner (Bildschirm 1024 breit) malte das Fenster des Player-Spiegels 1024 × 720 statt 1280 × 720, das Video lag eingepasst mit Rändern (gesehen in #250). Klären, ob NDI und Stream beim Nutzer kleiner werden, wenn der Bildschirm schmaler oder niedriger ist als die Wand – wenn ja, das Fenster in voller Größe erzwingen; E2E mit kleinem Fenster | S | – |
+| **ST6** | Entwurf: [PLAN-BILDZEIT.md](PLAN-BILDZEIT.md) (Messung abgeschlossen in #250, Empfehlung: der Spiegel zeichnet Video und Kennung selbst – Entscheidung offen). Bilder mit Zeitstempeln aus dem Spiegel statt aus dem main. Heute stempelt ffmpeg ein Bild beim Lesen; stockt der main-Prozess, kommt das paint zu spät, und das Bild liegt so viel zu spät im Strom (macOS-Runner, #249: paint bis 200 ms nach der Anzeige im Spiegel, Blitz −92 ms; der Ton ist davon frei, er bekommt seine Zeit im Spiegel). Zuerst messen (Skill `ffmpeg-labor`): Taugen die Anzeigezeiten des Spiegels (`requestVideoFrameCallback`) unter Last als Zeitbasis? Auf den Runnern kamen manche ein Bild zu spät. Dann bauen: ffmpeg zählt die Bilder (`setpts` wie `asetpts` beim Ton), der Sender legt jedes Bild nach seiner Anzeigezeit in den Takt und füllt Lücken; Hänger, Neustart und Standbild wie heute. Bis dahin ist der macOS-Lauf der CI im Schritt „Ton lippensynchron“ wackelig. Abnahme: macOS-Job mehrmals neu gestartet grün, Laufnummern im PR | L | – |
 
 - **Offene Frage aus dem Entwurf:** nur Video-Player und Stage-Timer – oder später auch
   Testbildgenerator und die Vorschau des Video-Generators?
