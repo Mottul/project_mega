@@ -128,7 +128,8 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   `grandiose` ist optional + lazy (rollup-external, siehe `docs/NDI.md`). Offscreen-Ausgaben (NDI,
   Stream fürs Heimnetz) nur über die gemeinsame Erfassung `services/erfassung/offscreenErfassung.ts`
   (EIN Fenster je Werkzeug) mit den Sendern `ndi/ndiSender.ts` und `stream/streamSender.ts` (Timer
-  und Player sind dünne Hüllen); die Ton-Zeit des Streams legt `stream/tontakt.ts` fest.
+  und Player sind dünne Hüllen); die Ton-Zeit des Streams legt `stream/tontakt.ts` fest, die
+  Bilder gehen über TCP an ffmpeg (nie stdin: unter macOS 8 KB Puffer, ein Bild käme zu spät).
 
 ## Konventionen
 

@@ -10,7 +10,13 @@ import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { findFfmpeg, launchApp, portFree, runSteps, Skip, sleep, waitFor } from './harness.mjs'
 import { blitzUndPiep, mitschneiden, zeitachse } from './tsMitschnitt.mjs'
-import { diagnoseZeile, holeDiagnose, starteDiagnose, werteDiagnoseAus } from './avDiagnose.mjs'
+import {
+  diagnoseZeile,
+  holeDiagnose,
+  starteDiagnose,
+  streamZuordnung,
+  werteDiagnoseAus
+} from './avDiagnose.mjs'
 
 const pexec = promisify(execFile)
 const ffmpeg = findFfmpeg()
@@ -429,15 +435,22 @@ try {
         // Blitze zuordnen. Jeder Wechsel setzt den Ton neu an, es sollen wenige sein.
         const text = log()
         const wege = []
+        // was der Sender meldet: Ton nachgeführt, neu angesetzt, Blöcke mit zu früher Renderzeit,
+        // Bilder spät an ffmpeg
+        const meldungen = []
         let start = null
         for (const z of text.split(/\r?\n/)) {
           const zeit = Date.parse(z.slice(1, z.indexOf(']')))
           if (/\[player-stream\] ffmpeg läuft/.test(z)) start = zeit
-          const w = z.match(/\[player-stream\] Weg des Bildes: (-?\d+(?:\.\d+)?) ms(.*)$/)
-          if (!w) continue
           const nach = start === null ? '?' : ((zeit - start) / 1000).toFixed(1)
-          wege.push({ ms: Number(w[1]), nach, mehr: w[2].replace(/ – .*$/, '') })
+          const w = z.match(/\[player-stream\] Weg des Bildes: (-?\d+(?:\.\d+)?) ms(.*)$/)
+          if (w) wege.push({ ms: Number(w[1]), nach, mehr: w[2].replace(/ – .*$/, '') })
+          const t = z.match(
+            /\[player-stream\] (Ton nachgeführt: .*?|Ton neu angesetzt.*?|Renderzeit zu früh: .*?|Bild spät an ffmpeg: .*?|Spiegel wandert langsam: .*?)( – .*)?$/
+          )
+          if (t) meldungen.push(`${nach} s: ${t[1]}`)
         }
+        let diagDaten = null
         const seitStart = (wand) =>
           start === null || wand === null ? '?' : ((wand - start) / 1000).toFixed(1)
         if (diagnose) {
@@ -453,12 +466,20 @@ try {
                     : 'nicht gemessen')
             )
             for (const w of wege) console.log(`      ${w.ms} ms nach ${w.nach} s${w.mehr}`)
+            console.log(
+              '    Sender meldet: ' +
+                (meldungen.length
+                  ? `${meldungen.length}×`
+                  : 'nichts nachgeführt, keine Ausreißer, kein spätes Bild')
+            )
+            for (const z of meldungen) console.log(`      ${z}`)
             if (!wege.length && !fehlt) {
               // weder Wert noch Grund: die letzten Zeilen des Senders zeigen, wo er steht
               const zeilen = text.split(/\r?\n/).filter((z) => /\[player-(stream|ndi)/.test(z))
               for (const z of zeilen.slice(-12)) console.log(`      ${z}`)
             }
-            const auswertung = werteDiagnoseAus(await holeDiagnose(app), { bildwegMs })
+            diagDaten = await holeDiagnose(app)
+            const auswertung = werteDiagnoseAus(diagDaten, { bildwegMs })
             console.log(`    ${diagnoseZeile(auswertung)}`)
           } catch (e) {
             console.log(`    Diagnose nicht auswertbar: ${e.message}`)
@@ -485,6 +506,15 @@ try {
             r.paare.map((p) => `${p.versatzMs}${gewertet.includes(p) ? '' : '*'}`).join(' ') +
             ' (* im Hänger oder am Ende, nicht gewertet)'
         )
+        if (diagDaten) {
+          // Auf welcher Seite entsteht ein Ausreißer? Bild im Strom gegen seinen paint, Piep im
+          // Strom gegen seine Renderzeit (ein Ausreißer zeigt sich nur auf einer Seite)
+          const z = streamZuordnung(diagDaten, r.paare)
+          console.log(
+            '    je Blitz im Strom: Bild nach dem paint / Piep nach der Renderzeit (ms): ' +
+              z.map((x) => `${x.bildMs ?? '?'}/${x.tonMs ?? '?'}`).join(' ')
+          )
+        }
         // Wanduhr eines Bildes im Strom: wann es beim Empfänger ankam (wenige 100 ms nach dem paint)
         const angekommen = (pts) => {
           const e = m.video.find((x) => x.pts >= pts - 0.001)

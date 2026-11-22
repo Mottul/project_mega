@@ -7,19 +7,23 @@
 //   letzten. Der Server läuft, solange „Stream“ an ist.
 // - Jedes neue Bild geht sofort an ffmpeg, das die Wanduhr als Zeitstempel nimmt (streamArgs).
 //   Ein Hänger im main-Prozess wird so eine kurze Lücke statt dauerhaft verlorener Zeit. Bei
-//   Standbildern kommt kein paint – dann wiederholt ein Takt das letzte Bild.
+//   Standbildern kommt kein paint – dann wiederholt ein Takt das letzte Bild. Die Bilder gehen
+//   über einen lokalen TCP-Port, nicht über stdin (dort unter macOS nur 8 KB Puffer – ein Bild
+//   käme unter Last zu spät bei ffmpeg an und läge so viel zu spät im Strom).
 // - Ton: ffmpeg verbindet sich mit einem lokalen TCP-Port und liest Stereo-Float ohne
 //   Zeitstempel; wohin jedes Sample gehört, entscheidet der Ton-Takt (tontakt.ts) nach der
 //   Sample-Nummer der Blöcke – auch wenn sie nach einem Hänger als Schub kommen. Um so viel, wie
 //   das Bild später in den Strom kommt (Spiegel, paint, Raster von ffmpeg), liegt der Ton später:
-//   erfassung/bildweg.ts und bildRaster.ts messen es laufend.
+//   erfassung/bildweg.ts und bildRaster.ts messen es laufend; vom Spiegel gelten nur Sprünge
+//   (spiegelAnteil.ts).
 // - Im main-Prozess so wenig Arbeit wie möglich: Bilder nur, solange ffmpeg läuft, nie skalieren
 //   (das macht ffmpeg), nicht dauernd neu zeichnen lassen.
 // - Scheitert ein GPU-Encoder, einmal mit libx264 weiter (wie encodeWithFallback beim Konverter).
 
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import { createServer, type Server } from 'node:http'
 import net from 'node:net'
+import type { Readable } from 'node:stream'
 import type { StreamConfig, StreamStatus } from '@shared/types'
 import { CPU_ENCODERS } from '@shared/encoderChoice'
 import { resolveEncoder } from '../convert/encoders'
@@ -35,8 +39,9 @@ import { logLine } from '../log'
 import { lanUrls } from '../remote/remoteHttp'
 import { BildRaster } from './bildRaster'
 import { buildStreamArgs, STREAM_TON_RATE, type StreamInput } from './streamArgs'
+import { SpiegelAnteil } from './spiegelAnteil'
 import { stille, verschraenkt } from './tonFormat'
-import { Tontakt } from './tontakt'
+import { Tontakt, type TonPlatz } from './tontakt'
 import { TsVerteiler } from './tsVerteiler'
 
 /** So lange läuft ffmpeg nach dem letzten Empfänger weiter (Box schaltet kurz um, VLC lädt neu). */
@@ -48,15 +53,28 @@ const BILDWEG_GEDULD_MS = 5000
 /** Weiter verschiebt der Sender den Ton nie (ms) – zeigt der Spiegel früh, auch nach vorn */
 const BILDWEG_MIN_MS = -100
 const BILDWEG_MAX_MS = 300
-/** Erst ab so viel Änderung (ms) setzt der Sender den Ton neu an – jedes Mal eine kurze Lücke
- *  oder ein paar ms weniger; die Messung wackelt im Betrieb um ±2–4 ms */
-const BILDWEG_SPRUNG_MS = 5
+/** Erst ab so viel Änderung (ms) rückt der Sender den Ton – jedes Mal eine kurze Lücke oder ein
+ *  paar ms weniger. Auf einem ruhigen Rechner wackelt die Messung um ±2–4 ms, unter Last wandert
+ *  sie um ±15 ms (macOS-Runner, main f810d49: mit 5 ms 14 Wechsel in 25 s; an denselben Werten
+ *  nachgerechnet mit 10 ms vier) */
+const BILDWEG_SPRUNG_MS = 10
+/** Blöcke mit zu früher Renderzeit und späte Bilder stehen höchstens so oft im Protokoll */
+const AUSREISSER_MELDEN_MS = 5000
 
 const message = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
 export interface StreamSenderOptions {
   /** Ton aus dem Spiegel mitsenden (Video-Player) */
   ton?: boolean
+}
+
+/** ffmpeg ohne stdin (die Bilder kommen über TCP), stdout = Strom, stderr = Meldungen */
+type Ffmpeg = ChildProcessByStdio<null, Readable, Readable>
+
+/** Bild-Weg zu einem laufenden ffmpeg: lokaler TCP-Port, EINE Verbindung */
+interface BildWeg {
+  server: net.Server
+  socket: net.Socket | null
 }
 
 /** Ton-Weg zu einem laufenden ffmpeg */
@@ -69,15 +87,20 @@ interface TonWeg {
   naechsterFrame: number
   /** Wanduhr beim Öffnen (ms): ab wann ein fehlender Weg des Bildes gemeldet wird */
   seit: number
+  /** Blöcke mit zu früher Renderzeit seit der letzten Meldung: Zahl, größter Abstand, wann */
+  ausreisser: { n: number; maxMs: number; gemeldet: number }
+  /** so oft hat der Ton-Takt angesetzt (das erste Mal beim Start) */
+  angesetzt: number
 }
 
 export class StreamSender implements ErfassungsAusgang {
   private server: Server | null = null
-  private ffmpeg: ChildProcessWithoutNullStreams | null = null
+  private ffmpeg: Ffmpeg | null = null
   private readonly verteiler = new TsVerteiler((n) => this.onClients(n))
   private config: StreamConfig | null = null
   private mitTon = false
   private tonWeg: TonWeg | null = null
+  private bildWeg: BildWeg | null = null
   /** neuestes Bild – nur, solange ffmpeg läuft */
   private frame: ErfassungsBild | null = null
   /** Eingangsgröße des laufenden ffmpeg */
@@ -99,6 +122,10 @@ export class StreamSender implements ErfassungsAusgang {
   private bildwegFehlt = false
   /** wo ffmpeg die Bilder ins Raster legt (je Start von ffmpeg neu) */
   private raster: BildRaster | null = null
+  /** wann zuletzt nach späten Bildern geschaut wurde (Wanduhr, ms) */
+  private spaetGemeldet = 0
+  /** welcher Anteil des Spiegels am Weg des Bildes gilt (nur Sprünge, kein Wandern) */
+  private spiegel = new SpiegelAnteil()
   /** gemessene Datenrate: Bytes und Zeit beim letzten Statusabruf */
   private rate = { bytes: 0, at: 0, kbps: 0 }
 
@@ -146,6 +173,7 @@ export class StreamSender implements ErfassungsAusgang {
     this.cpuOnly = false
     this.bildweg = null
     this.bildwegFehlt = false
+    this.spiegel = new SpiegelAnteil()
     this.falscheRateGemeldet = false
 
     const server = createServer((req, res) => {
@@ -262,7 +290,28 @@ export class StreamSender implements ErfassungsAusgang {
     this.frame = b
     // frisches Bild: messen, wo es im Strom landet (Wiederholungen des Standbilds zählen nicht)
     const raster = this.raster
-    this.writeFrame(proc, (geschrieben) => raster?.geschrieben(b.zeit, geschrieben))
+    this.writeFrame(proc, (geschrieben) => {
+      if (!raster) return
+      raster.geschrieben(b.zeit, geschrieben)
+      this.spaeteBilderImProtokoll(raster, geschrieben)
+    })
+  }
+
+  /**
+   * Bilder, die lange nach ihrem paint erst ganz bei ffmpeg waren, liegen im Strom so viel zu spät
+   * (ffmpeg stempelt beim Lesen) – gesammelt höchstens alle 5 s eine Zeile.
+   */
+  private spaeteBilderImProtokoll(raster: BildRaster, jetzt: number): void {
+    if (jetzt - this.spaetGemeldet < AUSREISSER_MELDEN_MS) return
+    this.spaetGemeldet = jetzt
+    const s = raster.spaeteAbholen()
+    if (s.n === 0) return
+    logLine(
+      this.tag,
+      'Bild spät an ffmpeg:',
+      `${s.n} Bilder bis ${s.maxMs} ms nach dem paint – im Strom so viel zu spät (main-Prozess ` +
+        'beschäftigt oder ffmpeg liest nicht nach)'
+    )
   }
 
   ton(t: ErfassungsTon): void {
@@ -281,6 +330,42 @@ export class StreamSender implements ErfassungsAusgang {
     const platz = weg.takt.block(Date.now(), frame, laenge, t.gerendert, this.bildwegFuerTon(weg))
     if (platz.stille > 0) weg.socket.write(stille(platz.stille))
     if (platz.anzahl > 0) weg.socket.write(verschraenkt(t.channels, platz.von, platz.anzahl))
+    this.tonImProtokoll(weg, platz)
+  }
+
+  /**
+   * Was der Ton-Takt tut, steht im Protokoll – nur, was nicht ohnehin dasteht (den Weg des Bildes
+   * meldet bildwegFuerTon): Nachführen, neues Ansetzen nach dem Start, Blöcke mit zu früher
+   * Renderzeit (gesammelt, höchstens alle 5 s eine Zeile).
+   */
+  private tonImProtokoll(weg: TonWeg, platz: TonPlatz): void {
+    const e = platz.ereignis
+    if (e?.art === 'nachgefuehrt') {
+      logLine(
+        this.tag,
+        'Ton nachgeführt:',
+        `um ${Math.round(e.umMs)} ms – die Tonblöcke lagen so weit neben der Uhr ` +
+          '(Einschwingen oder Gang der Soundkarte)'
+      )
+    } else if (e?.art === 'angesetzt' && weg.angesetzt++ > 0) {
+      // das erste Ansetzen je Start von ffmpeg ist der Anfang, jedes weitere ein Neuladen
+      logLine(this.tag, 'Ton neu angesetzt: Die Sample-Nummer lief zurück (Spiegel neu geladen)')
+    }
+    const a = weg.ausreisser
+    if (platz.ausreisserMs !== undefined) {
+      a.n++
+      a.maxMs = Math.max(a.maxMs, platz.ausreisserMs)
+    }
+    const jetzt = Date.now()
+    if (a.n > 0 && jetzt - a.gemeldet >= AUSREISSER_MELDEN_MS) {
+      logLine(
+        this.tag,
+        'Renderzeit zu früh:',
+        `${a.n} Tonblöcke bis ${a.maxMs} ms vor den anderen – nicht übernommen (der Ton-Thread ` +
+          'des Spiegels holte auf)'
+      )
+      weg.ausreisser = { n: 0, maxMs: 0, gemeldet: jetzt }
+    }
   }
 
   /**
@@ -292,15 +377,20 @@ export class StreamSender implements ErfassungsAusgang {
    */
   private bildwegFuerTon(weg: TonWeg): number {
     const s = this.erfassung.bildwegStand
+    const spiegelMs = s ? this.spiegelAnteil(s.ms) : this.spiegel.ms
     const imStrom = this.raster?.ms ?? null
-    if (s || imStrom !== null) {
-      const summe = (s?.ms ?? 0) + (imStrom ?? 0)
+    if (spiegelMs !== null || imStrom !== null) {
+      const summe = (spiegelMs ?? 0) + (imStrom ?? 0)
       if (this.bildweg === null || Math.abs(summe - this.bildweg) > BILDWEG_SPRUNG_MS) {
         this.bildweg = Math.max(BILDWEG_MIN_MS, Math.min(BILDWEG_MAX_MS, summe))
-        const spiegel = s
-          ? `paint ${s.weg} ms nach der Übergabe, Übergabe ${s.spaet} ms nach der Medien-Uhr ` +
-            `(${s.unten} … ${s.oben} ms, ${s.proben} Proben)`
-          : 'Spiegel nicht gemessen'
+        const spiegel = !s
+          ? spiegelMs === null
+            ? 'Spiegel nicht gemessen'
+            : `Spiegel und paint ${spiegelMs} ms`
+          : spiegelMs !== s.ms
+            ? `Spiegel und paint ${spiegelMs} ms (gemessen ${s.ms}, langsam gewandert)`
+            : `paint ${s.weg} ms nach der Übergabe, Übergabe ${s.spaet} ms nach der Medien-Uhr ` +
+              `(${s.unten} … ${s.oben} ms, ${s.proben} Proben)`
         const strom = imStrom === null ? '' : `, im Strom ${imStrom} ms nach dem paint`
         logLine(
           this.tag,
@@ -322,6 +412,20 @@ export class StreamSender implements ErfassungsAusgang {
       }
     }
     return this.bildweg ?? 0
+  }
+
+  /** Anteil des Spiegels (spiegelAnteil.ts); langsames Wandern steht einmal im Protokoll */
+  private spiegelAnteil(median: number): number {
+    const schritt = this.spiegel.neu(median, Date.now())
+    if (schritt.wandert) {
+      const [gilt, gemessen] = schritt.wandert
+      logLine(
+        this.tag,
+        'Spiegel wandert langsam:',
+        `${gilt} → ${gemessen} ms ohne Sprung – gilt als Gang der Medien-Uhr, es bleibt bei ${gilt} ms`
+      )
+    }
+    return schritt.ms
   }
 
   tonFehler(text: string): void {
@@ -360,9 +464,11 @@ export class StreamSender implements ErfassungsAusgang {
     const gen = this.generation
     const enc = this.cpuOnly ? CPU_ENCODERS.h264 : await resolveEncoder('auto')
     if (gen !== this.generation || this.ffmpeg || this.verteiler.count === 0) return
-    // Ton-Weg vor ffmpeg: Es verbindet sich beim Start mit diesem Port.
-    const weg = this.mitTon ? await this.oeffneTonWeg() : null
-    if (gen !== this.generation || this.ffmpeg || this.verteiler.count === 0) {
+    // Bild- und Ton-Weg vor ffmpeg: Es verbindet sich beim Start mit diesen Ports.
+    const bilder = await this.oeffneBildWeg()
+    const weg = bilder && this.mitTon ? await this.oeffneTonWeg() : null
+    if (!bilder || gen !== this.generation || this.ffmpeg || this.verteiler.count === 0) {
+      bilder?.server.close()
       weg?.server.close()
       return
     }
@@ -370,21 +476,25 @@ export class StreamSender implements ErfassungsAusgang {
     // Eingang in der Größe, in der die Erfassung malt; vor dem ersten Bild die eingestellte.
     const input = this.erfassung.bildGroesse ?? { width: cfg.width, height: cfg.height }
     const startMs = Date.now()
-    let proc: ChildProcessWithoutNullStreams
+    let proc: Ffmpeg
     try {
       const ton = weg
         ? { port: (weg.server.address() as net.AddressInfo).port, startMs }
         : undefined
-      proc = spawn(ffmpegBinPath('ffmpeg'), buildStreamArgs(enc.id, cfg, input, ton), {
-        windowsHide: true
+      const eingang = { ...input, port: (bilder.server.address() as net.AddressInfo).port }
+      proc = spawn(ffmpegBinPath('ffmpeg'), buildStreamArgs(enc.id, cfg, eingang, ton), {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
       })
     } catch (err) {
+      bilder.server.close()
       weg?.server.close()
       this.report(`ffmpeg startet nicht: ${message(err)}`)
       this.verteiler.closeAll()
       return
     }
     this.ffmpeg = proc
+    this.bildWeg = bilder
     this.inputSize = input
     this.frame = null
     this.raster = new BildRaster(cfg.fps, Date.now())
@@ -403,12 +513,11 @@ export class StreamSender implements ErfassungsAusgang {
     proc.stderr.on('data', (d: Buffer) => {
       stderr = (stderr + d.toString()).slice(-2000)
     })
-    // EPIPE beim Beenden ist erwartet – ohne Handler stürzte der main-Prozess ab.
-    proc.stdin.on('error', () => {})
     proc.on('error', (err) => {
       if (this.ffmpeg !== proc) return
       this.ffmpeg = null
       this.stopPump()
+      this.schliesseBildWeg()
       this.schliesseTonWeg()
       this.report(`ffmpeg startet nicht (${message(err)}) – ist ffmpeg installiert?`)
       this.verteiler.closeAll()
@@ -417,6 +526,7 @@ export class StreamSender implements ErfassungsAusgang {
       if (this.ffmpeg !== proc) return // selbst beendet
       this.ffmpeg = null
       this.stopPump()
+      this.schliesseBildWeg()
       this.schliesseTonWeg()
       const grund = stderr.trim().split('\n').pop() || `Code ${code}`
       logLine(this.tag, `ffmpeg (${enc.id}) beendet:`, grund)
@@ -445,6 +555,54 @@ export class StreamSender implements ErfassungsAusgang {
   }
 
   /**
+   * Lokaler TCP-Port für die Bilder: nur 127.0.0.1, nur EINE Verbindung (ffmpeg). Nicht über
+   * stdin – dort hätte ein Bild unter macOS nur 8 KB Puffer je Seite (streamArgs.ts). Sobald ffmpeg
+   * verbunden ist, geht das neueste Bild hinaus; bis dahin wartet es.
+   */
+  private async oeffneBildWeg(): Promise<BildWeg | null> {
+    const server = net.createServer()
+    const weg: BildWeg = { server, socket: null }
+    server.on('connection', (socket) => {
+      const lokal = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(socket.remoteAddress ?? '')
+      if (weg.socket || !lokal || this.bildWeg !== weg) {
+        socket.destroy()
+        return
+      }
+      weg.socket = socket
+      server.close() // keine zweite Verbindung
+      socket.setNoDelay(true)
+      // EPIPE/ECONNRESET beim Beenden von ffmpeg ist erwartet
+      socket.on('error', () => {})
+      if (this.ffmpeg) this.writeFrame(this.ffmpeg)
+    })
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject)
+        server.listen(0, '127.0.0.1', () => {
+          server.off('error', reject)
+          resolve()
+        })
+      })
+      return weg
+    } catch (err) {
+      server.close()
+      this.report(`Bild-Weg zu ffmpeg nicht geöffnet: ${message(err)}`)
+      this.verteiler.closeAll()
+      return null
+    }
+  }
+
+  /** `beenden`: ffmpeg das Ende melden (es schreibt den Strom zu Ende), sonst hart trennen */
+  private schliesseBildWeg(beenden = false): void {
+    const weg = this.bildWeg
+    if (!weg) return
+    this.bildWeg = null
+    weg.server.close()
+    if (beenden) weg.socket?.end()
+    else weg.socket?.destroy()
+  }
+
+  /**
    * Lokaler TCP-Port für den Ton: nur 127.0.0.1, nur EINE Verbindung (ffmpeg), danach nimmt der
    * Server keine weitere an. Was vor der Verbindung an Blöcken kommt, läge ohnehin davor.
    */
@@ -456,7 +614,9 @@ export class StreamSender implements ErfassungsAusgang {
       takt: new Tontakt(Date.now()),
       tick: null,
       naechsterFrame: 0,
-      seit: Date.now()
+      seit: Date.now(),
+      ausreisser: { n: 0, maxMs: 0, gemeldet: 0 },
+      angesetzt: 0
     }
     server.on('connection', (socket) => {
       const lokal = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(socket.remoteAddress ?? '')
@@ -501,12 +661,12 @@ export class StreamSender implements ErfassungsAusgang {
     weg.socket?.destroy()
   }
 
-  /** Neuestes Bild an ffmpeg. Bei Rückstau auslassen – die Zeit kommt von der Uhr. */
-  /** `angekommen`: Wanduhr, sobald ffmpeg das Bild ganz hat – dann stempelt es (Raster) */
-  private writeFrame(
-    proc: ChildProcessWithoutNullStreams,
-    angekommen?: (geschriebenMs: number) => void
-  ): void {
+  /**
+   * Neuestes Bild an ffmpeg. Bei Rückstau auslassen – die Zeit kommt von der Uhr.
+   * `angekommen`: Wanduhr, sobald das Bild ganz im Puffer der Verbindung liegt – ffmpeg liest es
+   * gleich danach und stempelt es (Raster)
+   */
+  private writeFrame(proc: Ffmpeg, angekommen?: (geschriebenMs: number) => void): void {
     const frame = this.frame
     const input = this.inputSize
     if (!frame || !input || this.ffmpeg !== proc) return
@@ -518,10 +678,13 @@ export class StreamSender implements ErfassungsAusgang {
       void this.startEncoder()
       return
     }
+    // ffmpeg noch nicht verbunden: Das Bild wartet (this.frame), bis es da ist.
+    const socket = this.bildWeg?.socket
+    if (!socket) return
     // ffmpeg kommt nicht nach -> Bild auslassen, statt den Speicher zu füllen. Die Lücke füllt
     // der fps-Filter mit dem letzten Bild.
-    if (proc.stdin.writableLength > frame.data.length * 2) return
-    proc.stdin.write(frame.data, (err) => {
+    if (socket.writableLength > frame.data.length * 2) return
+    socket.write(frame.data, (err) => {
       if (!err) angekommen?.(Date.now())
     })
     this.lastWrite = Date.now()
@@ -538,11 +701,11 @@ export class StreamSender implements ErfassungsAusgang {
     this.stopPump()
     this.schliesseTonWeg()
     const proc = this.ffmpeg
+    this.schliesseBildWeg(true)
     if (!proc) return
     this.ffmpeg = null
     this.encoder = null
-    proc.stdin.end()
-    // ffmpeg schließt nach stdin-Ende selbst; hängt es (GPU-Treiber), hart beenden.
+    // ffmpeg schließt nach dem Ende der Bilder selbst; hängt es (GPU-Treiber), hart beenden.
     setTimeout(() => {
       if (proc.exitCode === null) proc.kill()
     }, 2000)

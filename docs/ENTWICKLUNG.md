@@ -122,7 +122,7 @@ src/
 │       │                     #   Weg des Bildes vom Spiegel bis zum paint (bildweg, rein)
 │       ├── ndi/              # Binding laden (ndi), NDI-Sender für Timer und Player (ndiSender), Frames (rein)
 │       ├── stream/           # Stream fürs Heimnetz: Sender, ffmpeg-Argumente, Ton-Takt, Raster von ffmpeg,
-│       │                     #   Verteiler (rein)
+│       │                     #   Anteil des Spiegels, Verteiler (rein)
 │       ├── player/           # Bibliothek, Import, Wiedergabezustand, Ausgabefenster, Fernsteuerung, NDI, Stream
 │       ├── timer/            # Stage-Timer: Zustand, Ausgabefenster, Fernsteuerung, Bühnen-Anzeige, NDI, Stream
 │       ├── jingle/ · osc/    # Jingle-Bibliothek · OSC – je mit Fernsteuerung

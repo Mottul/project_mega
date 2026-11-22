@@ -225,3 +225,106 @@ describe('Tontakt – Zeitachse des Tons', () => {
     expect(mit.soll(START + 10)).toBe(0) // nie negativ
   })
 })
+
+describe('Tontakt – Renderzeit auf einem ausgelasteten Rechner', () => {
+  const ab = START + 100
+  /** Wanduhr, zu der Block i fertig gerendert ist (`uhr`: Gang der Soundkarte gegen die Wanduhr) */
+  const fertigVon = (i: number, uhr = 1): number => ab + ((i + 1) * BLOCK * 1000) / RATE / uhr
+
+  /**
+   * Block für Block wie der Spiegel: `fehler(i)` ms zu früh gemeldete Renderzeit, `verzug(i)` Weg
+   * des Bildes. Je Block: wo sein Ende im Strom liegt gegen die Uhr zu seiner echten Renderzeit
+   * (ms, negativ: Ton zu früh), dazu Ereignisse und gemeldete Ausreißer.
+   */
+  function lauf(
+    t: Tontakt,
+    n: number,
+    {
+      fehler = () => 0,
+      verzug = () => 0,
+      uhr = 1
+    }: { fehler?: (i: number) => number; verzug?: (i: number) => number; uhr?: number } = {}
+  ): {
+    abw: number[]
+    ereignisse: { i: number; art: string; umMs: number }[]
+    ausreisser: { i: number; ms: number }[]
+  } {
+    const abw: number[] = []
+    const ereignisse: { i: number; art: string; umMs: number }[] = []
+    const ausreisser: { i: number; ms: number }[] = []
+    for (let i = 0; i < n; i++) {
+      const fertig = fertigVon(i, uhr)
+      const vorher = t.position
+      const p = t.block(fertig + 2, i * BLOCK, BLOCK, fertig - fehler(i), verzug(i))
+      const pos = vorher + p.stille - p.von
+      abw.push(((pos + BLOCK - t.soll(fertig + verzug(i))) * 1000) / RATE)
+      if (p.ereignis) ereignisse.push({ i, ...p.ereignis })
+      if (p.ausreisserMs !== undefined) ausreisser.push({ i, ms: p.ausreisserMs })
+    }
+    return { abw, ereignisse, ausreisser }
+  }
+  const groesste = (werte: number[]): number => Math.max(...werte.map(Math.abs))
+
+  it('Schub zu früher Renderzeiten (Ton-Thread holt auf): der Ton bleibt an seinem Platz', () => {
+    // Holt der Ton-Thread nach einem Stocken auf, steht ctx.currentTime schon weiter, und der
+    // Spiegel rechnet die Blöcke des Schubs zu früh. Früher wurde so ein Block zum Anker (der
+    // pünktlichste lag über der Toleranz daneben -> neu angesetzt, genau an ihm) und der ganze
+    // Ton lag 1,5 s lang so viel zu früh – main f810d49, macOS-Runner: −126 ms am ersten Blitz.
+    const t = new Tontakt(START)
+    t.beginn(START + 50)
+    const schub = [126, 93, 60, 27]
+    const r = lauf(t, 300, { fehler: (i) => schub[i - 150] ?? 0 })
+    expect(groesste(r.abw.slice(10))).toBeLessThan(2)
+    expect(r.ausreisser.map((a) => [a.i, a.ms])).toEqual([
+      [150, 126],
+      [151, 93],
+      [152, 60],
+      [153, 27]
+    ])
+    expect(r.ereignisse.filter((e) => e.art !== 'angesetzt')).toEqual([])
+  })
+
+  it('zu frühe Renderzeit gleich nach dem Start: wird beim Einschwingen nicht zum Anker', () => {
+    const t = new Tontakt(START)
+    t.beginn(START + 50)
+    const schub = [80, 47, 14]
+    const r = lauf(t, 120, { fehler: (i) => schub[i - 20] ?? 0 })
+    expect(groesste(r.abw.slice(10))).toBeLessThan(2)
+  })
+
+  it('erster Block zu früh gemeldet: nach acht Blöcken im Median nachgeführt', () => {
+    const t = new Tontakt(START)
+    t.beginn(START + 50)
+    const r = lauf(t, 120, { fehler: (i) => (i === 0 ? 100 : 0) })
+    expect(groesste(r.abw.slice(10))).toBeLessThan(2)
+    const nach = r.ereignisse.filter((e) => e.art === 'nachgefuehrt')
+    expect(nach).toHaveLength(1)
+    expect(nach[0].umMs).toBeCloseTo(100, 0)
+  })
+
+  it('Weg des Bildes ändert sich: der Ton rückt genau um die Änderung, ohne neuen Anker', () => {
+    // Früher setzte jede Änderung neu an, und zwar nach der Zeit des Blocks, der gerade kam –
+    // war seine Renderzeit zu früh, lag der Ton so viel zu früh. Hier ist er 60 ms zu früh.
+    const t = new Tontakt(START)
+    t.beginn(START + 50)
+    const r = lauf(t, 200, {
+      verzug: (i) => (i < 100 ? 20 : 32),
+      fehler: (i) => (i === 100 ? 60 : 0)
+    })
+    expect(groesste(r.abw.slice(10))).toBeLessThan(2)
+    const weg = r.ereignisse.filter((e) => e.art === 'weg')
+    expect(weg).toHaveLength(1)
+    expect(weg[0].i).toBe(100)
+    expect(weg[0].umMs).toBeCloseTo(12, 0)
+  })
+
+  it('Soundkarte 0,22 % zu langsam (Renderzeit): im Median nachgeführt, in der Toleranz', () => {
+    // Gang der Ton-Uhr auf dem macOS-Runner: −2240 ppm gegen die Wanduhr
+    const t = new Tontakt(START)
+    t.beginn(START + 50)
+    const r = lauf(t, 1800, { uhr: 0.99776 })
+    expect(Math.min(...r.abw.slice(10))).toBeGreaterThan(-TONTAKT_VORGABE.toleranzMs - 2)
+    expect(Math.max(...r.abw.slice(10))).toBeLessThan(2)
+    expect(r.ereignisse.filter((e) => e.art === 'nachgefuehrt').length).toBeGreaterThan(0)
+  })
+})

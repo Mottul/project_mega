@@ -89,7 +89,7 @@ ohne das lag der Ton am Mac bis zu zwei Bilder zu früh. Diagnose je Teilstrecke
 `e2e/avDiagnose.mjs`. Nach einem Hänger kann der Spiegel ein Bild später zeigen und nach dem
 nächsten wieder pünktlich (CI, Linux-Runner ohne GPU, Lauf 44970466157: +33 ms nach dem ersten
 Hänger, zurück nach dem zweiten). Der Median der letzten 90 Proben zieht nach 2–3 s nach, jeder
-Wechsel setzt den Ton neu an (eine kurze Lücke, deshalb erst ab 5 ms Änderung): Blitze in dieser
+Wechsel rückt den Ton (eine kurze Lücke, deshalb erst ab 10 ms Änderung, bis #249 5): Blitze in dieser
 Zeit lagen ein Bild daneben (−38, +29 ms), danach wieder bei 0. Erwogen und verworfen: nur aus
 eng liegenden Proben nachführen – das hätte genau diese Sprünge verzögert und auf Rechnern mit
 breiter Streuung den Ausgleich eingefroren. Auch der Weg zum paint kann nach einem Hänger länger
@@ -97,6 +97,33 @@ bleiben (Windows lokal: je Blitz 20–29 statt 9–12 ms, der Median nur 15); la
 jenseits einer Rundungsgrenze des Rasters, steht er ein Raster später im Strom (−23 … −30 ms).
 Ein Bild Genauigkeit ist mit 30 Bildern/s je Blitz also nicht garantiert, die Grenze im E2E ist
 60 ms.
+
+**Unter Last (main f810d49, macOS-Runner: −126 ms am ersten Blitz):** Holt der Ton-Thread des
+Spiegels nach einem Stocken auf, steht `ctx.currentTime` schon weiter, und der Spiegel meldet die
+Renderzeit der Blöcke des Schubs zu früh. Der Ton-Takt richtete sich nach dem pünktlichsten Block
+(richtig für Ankunftszeiten, die nur zu spät sein können) und machte so einen Block zum Anker –
+der ganze Ton lag bis zu 1,5 s um dessen Fehler zu früh. Seit #249 zählt mit Renderzeit der
+Median der Blöcke (`stream/tontakt.ts`), ein neuer Weg rückt den Anker um genau die Änderung,
+statt am gerade ankommenden Block neu anzusetzen, und der Sender rückt erst ab 10 ms Änderung
+(unter Last wanderte der Weg um ±15 ms: 14 Wechsel in 25 s). Im Protokoll: „Renderzeit zu
+früh“, „Ton nachgeführt“; die E2E-Diagnose zählt die Blöcke mit zu früher Renderzeit.
+Zweiter Weg zu so einem Ausreißer, von der Bildseite: Unter macOS und Linux geht ein Bild in
+64-KB-Stücken durch die Pipe zu ffmpeg (3,7 MB bei 720p), jedes Stück eine Runde im Event-Loop
+des main-Prozesses, und ffmpeg stempelt erst, wenn es ganz da ist. Ist der main beschäftigt,
+liegt das Bild so viel zu spät im Strom – im roten Lauf stieg das Raster genau um den ersten
+Blitz von 14 auf 19 ms (über 300 Bilder gemittelt: die 20 Bilder dazwischen im Schnitt 44 ms
+später). Der Sender meldet solche Bilder („Bild spät an ffmpeg“, ab 50 ms), und das E2E zerlegt
+jeden Blitz in „Bild nach dem paint“ und „Piep nach der Renderzeit“ (PTS − 1,4 s gegen die
+Wanduhr) – ein Ausreißer zeigt sich nur auf einer Seite. Im nächsten macOS-Lauf genau so: erster
+Blitz −42 ms, davon das Bild 34 ms nach dem paint (sonst 0), der Piep normal. Grund: stdin eines
+Kindprozesses ist unter macOS ein Unix-Socket-Paar mit 8 KB Puffer je Seite – 3,7 MB brauchen
+Hunderte Runden. Seit #249 gehen die Bilder über TCP auf 127.0.0.1 (128 KB je Seite, wächst).
+Drittens wanderte dort der Anteil des Spiegels: Er misst gegen `currentTime`, und die Medien-Uhr
+ging anders als die Ton-Uhr (−439 gegen −1542 ppm) – 27 ms in 25 s, während Ton und Bild im
+Spiegel zusammenblieben; der Sender wanderte mit und legte den Ton 14 ms zu früh. Seit #249
+gelten nach dem ersten Wert nur Sprünge (mehr als 10 ms in 3 s, `stream/spiegelAnteil.ts`) –
+echte Wechsel nach Hängern sind Sprünge, Wandern steht einmal als „Spiegel wandert langsam“ im
+Protokoll.
 
 **Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
 Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in
