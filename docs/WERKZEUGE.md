@@ -250,7 +250,8 @@ Playlist-Player für LED-Wände und Beamer.
   später (je Rechner und Start verschieden, der Wert steht im Protokoll). Verschiebt ein Hänger
   das Bild, zieht der Ausgleich nach zwei bis drei Sekunden nach; auch auf einem ausgelasteten
   Rechner bleibt der Ton an seinem Platz. Eine
-  Wand in anderem Seitenverhältnis steht eingepasst mit schwarzem Rand im Bild. Auflösung,
+  Wand in anderem Seitenverhältnis steht eingepasst mit schwarzem Rand im Bild. Das Bild kommt in
+  voller Auflösung, auch wenn der Bildschirm des Rechners kleiner ist. Auflösung,
   Bildrate, Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die
   Adressen, Empfänger und Datenrate. Laufen NDI und Stream gleichzeitig, spielt der Spiegel das
   Video nur einmal ab – NDI bestimmt dann die Größe, der Stream rechnet sie selbst um.

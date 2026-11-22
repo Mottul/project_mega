@@ -1040,13 +1040,14 @@ der Sender misst laufend, wie viel später das Bild in den Strom kommt – Phase
 Spiegel, Weg zum paint, Raster von ffmpeg – und legt den Ton so viel später), auch unter Last
 (#249: zu früh gemeldete Renderzeiten werden nicht mehr zum Anker des Tons, ein neuer Weg rückt
 den Ton nur um die Änderung, vom Spiegel gelten nur Sprünge, die Bilder gehen über TCP statt
-stdin). Offen für die Mottulbox:
+stdin), NDI und Stream in voller Größe auch auf kleinem Bildschirm (#251: Electron begrenzte das
+unsichtbare Fenster auf die Arbeitsfläche, 1920 × 1080 kam als 1920 × 1032). Offen für die
+Mottulbox:
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
 | **ST4** | Ankündigen per mDNS (Dienst _mottulbox._tcp, TXT: Name, Pfad /live.ts, Werkzeug), Feld „Name“ im Bereich „Stream fürs Heimnetz“; abmelden beim Stoppen und Beenden | M | Stufe 3 im Heimkino-Projekt (Empfang mit Adresse von Hand) |
 | **ST5** | Doku für Anwender (Seite oder Abschnitt zum Stream, Eintrag im README) | S | ST4 |
-| **ST7** | Offscreen-Fenster auf schmalem Bildschirm prüfen: Auf dem Windows-Runner (Bildschirm 1024 breit) malte das Fenster des Player-Spiegels 1024 × 720 statt 1280 × 720, das Video lag eingepasst mit Rändern (gesehen in #250). Klären, ob NDI und Stream beim Nutzer kleiner werden, wenn der Bildschirm schmaler oder niedriger ist als die Wand – wenn ja, das Fenster in voller Größe erzwingen; E2E mit kleinem Fenster | S | – |
 | **ST6** | Entwurf: [PLAN-BILDZEIT.md](PLAN-BILDZEIT.md) (Messung abgeschlossen in #250, Empfehlung: der Spiegel zeichnet Video und Kennung selbst – Entscheidung offen). Bilder mit Zeitstempeln aus dem Spiegel statt aus dem main. Heute stempelt ffmpeg ein Bild beim Lesen; stockt der main-Prozess, kommt das paint zu spät, und das Bild liegt so viel zu spät im Strom (macOS-Runner, #249: paint bis 200 ms nach der Anzeige im Spiegel, Blitz −92 ms; der Ton ist davon frei, er bekommt seine Zeit im Spiegel). Zuerst messen (Skill `ffmpeg-labor`): Taugen die Anzeigezeiten des Spiegels (`requestVideoFrameCallback`) unter Last als Zeitbasis? Auf den Runnern kamen manche ein Bild zu spät. Dann bauen: ffmpeg zählt die Bilder (`setpts` wie `asetpts` beim Ton), der Sender legt jedes Bild nach seiner Anzeigezeit in den Takt und füllt Lücken; Hänger, Neustart und Standbild wie heute. Bis dahin ist der macOS-Lauf der CI im Schritt „Ton lippensynchron“ wackelig. Abnahme: macOS-Job mehrmals neu gestartet grün, Laufnummern im PR | L | – |
 
 - **Offene Frage aus dem Entwurf:** nur Video-Player und Stage-Timer – oder später auch
