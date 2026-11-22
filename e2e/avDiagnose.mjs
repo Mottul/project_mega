@@ -29,7 +29,24 @@ export async function starteDiagnose(app) {
         .toBitmap()
       let summe = 0
       for (let i = 0; i < px.length; i += 4) summe += (px[i] + px[i + 1] + px[i + 2]) / 3
-      d.paints.push({ t: Date.now(), hell: summe / (px.length / 4) })
+      // 16 Felder zu 16 px, Mitte hell = 1: oben links die Bildnummer des Testclips (stream.mjs),
+      // unten links die Marke, die der Spiegel je angezeigtem Bild zeichnet (unten)
+      const lies = (y) => {
+        if (width < 256 || height < 16) return -1
+        const code = image.crop({ x: 0, y, width: 256, height: 16 }).toBitmap()
+        let n = 0
+        for (let k = 0; k < 16; k++) {
+          const i = (8 * 256 + 16 * k + 8) * 4
+          if ((code[i] + code[i + 1] + code[i + 2]) / 3 > 128) n += 2 ** k
+        }
+        return n
+      }
+      d.paints.push({
+        t: Date.now(),
+        hell: summe / (px.length / 4),
+        nr: lies(0),
+        marke: lies(height - 16)
+      })
     })
     ipcMain.on('player:ndiAudio', (_e, chunk) => {
       if (d.ton.length > 5000 || !chunk?.channels?.[0]) return
@@ -57,8 +74,25 @@ export async function starteDiagnose(app) {
     const win = eval(finde)(BrowserWindow)
     await win.webContents.executeJavaScript(`(() => {
         window.__rvfc = []
+        // ST6: Marke mit der Bildnummer, gezeichnet im Rückruf des angezeigten Bildes – landet sie
+        // im selben paint wie das Bild oder eines später?
+        const marke = document.createElement('div')
+        marke.style.cssText =
+          'position:fixed;left:0;bottom:0;width:256px;height:16px;display:flex;z-index:2147483647'
+        const zellen = []
+        for (let k = 0; k < 16; k++) {
+          const z = document.createElement('div')
+          z.style.cssText = 'width:16px;height:16px;background:#000'
+          marke.appendChild(z)
+          zellen.push(z)
+        }
+        document.body.appendChild(marke)
         for (const v of document.querySelectorAll('video')) {
           const cb = (now, meta) => {
+            const n = Math.round(meta.mediaTime * 30)
+            for (let k = 0; k < 16; k++) {
+              zellen[k].style.background = Math.floor(n / 2 ** k) % 2 ? '#fff' : '#000'
+            }
             if (window.__rvfc.length < 5000) {
               window.__rvfc.push({
                 m: meta.mediaTime,
@@ -264,6 +298,104 @@ export function streamZuordnung(d, paare) {
       tonMs: piep === undefined ? null : Math.round(ton - piep)
     }
   })
+}
+
+/** Wert beim Anteil `p` (0 … 1) einer Liste */
+const anteil = (a, p) => {
+  if (!a.length) return NaN
+  const s = [...a].sort((x, y) => x - y)
+  return s[Math.min(s.length - 1, Math.floor(s.length * p))]
+}
+
+/**
+ * ST6: Taugen die Anzeigezeiten des Spiegels als Zeitbasis für die Bilder im Strom? Je Bild des
+ * Testclips – Nummer aus dem paint (stream.mjs zeichnet sie), Medienzeit und Anzeige aus
+ * requestVideoFrameCallback:
+ * - paint nach der Anzeige: wann das paint dieses Bildes im main ankam. Hier wirkt jedes Stocken
+ *   des main; vor der Anzeige (negativ) hieße, die gemeldete Anzeigezeit ist zu spät.
+ * - Zuordnung nach Reihenfolge: wie oft der erste paint nach einer Anzeige ein anderes Bild zeigt
+ *   – so ordnet erfassung/bildweg.ts heute zu.
+ * - Anzeige gegen Bildnummer: Abstand der Anzeigezeiten von ihrer Ausgleichsgeraden über der
+ *   Bildnummer. Schmal heißt: als Takt brauchbar, auch wenn der main stockt.
+ */
+export function zeitbasisAusSpiegel(d, fps = 30) {
+  const rv = d.rvfc
+    .filter((x) => Number.isFinite(x.m) && Number.isFinite(x.praes))
+    .map((x) => ({ n: Math.round(x.m * fps), praes: x.praes }))
+    .sort((a, b) => a.praes - b.praes)
+  const mitNummer = d.paints.filter((p) => p.nr >= 0)
+  const ankunft = new Map()
+  for (const p of mitNummer) if (!ankunft.has(p.nr)) ankunft.set(p.nr, p.t)
+  const nachAnzeige = rv.filter((x) => ankunft.has(x.n)).map((x) => ankunft.get(x.n) - x.praes)
+  const basis = median(nachAnzeige)
+  // heutige Zuordnung: erster paint ab 1 ms vor der Anzeige
+  let falsch = 0
+  let gezaehlt = 0
+  const daneben = []
+  let j = 0
+  for (const x of rv) {
+    while (j < d.paints.length && d.paints[j].t < x.praes - 1) j++
+    const p = d.paints[j]
+    if (!p || p.nr < 0) continue
+    gezaehlt++
+    if (p.nr !== x.n) {
+      falsch++
+      daneben.push(p.nr - x.n)
+    }
+  }
+  const b = steigung(
+    rv.map((x) => x.n),
+    rv.map((x) => x.praes)
+  )
+  const mn = rv.reduce((s, x) => s + x.n, 0) / (rv.length || 1)
+  const mp = rv.reduce((s, x) => s + x.praes, 0) / (rv.length || 1)
+  const rest = rv.map((x) => x.praes - (mp + b * (x.n - mn)))
+  const r = (v) => (Number.isFinite(v) ? Math.round(v) : null)
+  // Marke des Spiegels gegen die Bildnummer im selben paint (0 = gleiches Bild)
+  const marke = {}
+  for (const p of mitNummer) {
+    if (!(p.marke >= 0)) continue
+    const k = Math.abs(p.marke - p.nr) <= 3 ? String(p.marke - p.nr) : 'sonst'
+    marke[k] = (marke[k] ?? 0) + 1
+  }
+  return {
+    marke,
+    bilder: rv.length,
+    ohneNummer: d.paints.length - mitNummer.length,
+    paintNachAnzeige: {
+      median: r(basis),
+      p90: r(anteil(nachAnzeige, 0.9)),
+      max: r(nachAnzeige.length ? Math.max(...nachAnzeige) : NaN),
+      vorher: nachAnzeige.filter((v) => v < 0).length,
+      gestaut: nachAnzeige.filter((v) => v > basis + 50).length
+    },
+    zuordnung: { falsch, gezaehlt, bis: daneben.length ? Math.max(...daneben.map(Math.abs)) : 0 },
+    takt: {
+      ppm: r(((b * fps) / 1000 - 1) * 1e6),
+      p10: r(anteil(rest, 0.1)),
+      p90: r(anteil(rest, 0.9)),
+      ueber20: rest.filter((v) => Math.abs(v) > 20).length
+    }
+  }
+}
+
+/** Zeile zu zeitbasisAusSpiegel */
+export function zeitbasisZeile(z) {
+  const p = z.paintNachAnzeige
+  return (
+    `Zeitbasis Spiegel (ST6): ${z.bilder} Bilder; paint nach der Anzeige Median ${p.median} ms ` +
+    `(p90 ${p.p90}, größter ${p.max}; vor der Anzeige ${p.vorher}, über Median + 50 ms ` +
+    `${p.gestaut}); erster paint nach der Anzeige ein anderes Bild: ${z.zuordnung.falsch} von ` +
+    `${z.zuordnung.gezaehlt} (bis ${z.zuordnung.bis} Bilder daneben); Anzeige gegen Bildnummer ` +
+    `${z.takt.p10} … ${z.takt.p90} ms um die Gerade (${z.takt.ppm} ppm), über 20 ms daneben ` +
+    `${z.takt.ueber20}; paints ohne Nummer ${z.ohneNummer}; Marke des Spiegels gegen die ` +
+    `Bildnummer im selben paint: ${
+      Object.entries(z.marke)
+        .sort(([a], [b]) => (a === 'sonst' ? 1 : b === 'sonst' ? -1 : Number(a) - Number(b)))
+        .map(([k, n]) => `${k}: ${n}`)
+        .join(', ') || 'keine'
+    }`
+  )
 }
 
 /** Eine Zeile für das Protokoll des Tests */

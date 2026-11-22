@@ -182,6 +182,11 @@ Schritt, der schon vorher grün ist, prüft nichts.
   Jede Meldung nennt die Messwerte (welche Frames, ihr Vorgänger, Wert) und die Lage der Seite:
   rAF-Abstand, `document.visibilityState`, `document.hasFocus()` – so ist eine Drosselung von
   einem Messfehler zu unterscheiden, ohne den Lauf zu wiederholen.
+- **`app.evaluate((electron, arg) => …, arg)`: Das Argument kommt als zweiter Parameter.** Der
+  erste ist das Electron-Modul. Eine Warteschleife `(ms) => { … Date.now() + ms … }` rechnete mit
+  dem Modul, lief gar nicht, und der Labor-Lauf „mit Last“ (ST6) sah aus wie ohne – erst die
+  ausgegebene Dauer je Aufruf (bestellt 102 ms, gedauert 1 ms) verriet es. Künstliche Last deshalb
+  immer mit gemessener Dauer ausgeben (`MOTTULBOX_E2E_LAST=1` in `e2e/stream.mjs`).
 - **Werte aus dem Protokoll: das Muster muss die Form treffen, die wirklich geschrieben wird.**
   Das Stream-E2E suchte `Weg des Bildes: (\d+) ms`, der Sender schrieb `9.89990234375 ms` –
   drei Läufe meldeten „nicht gemessen“, obwohl gemessen wurde (22.11.2026). Werte fürs Protokoll
