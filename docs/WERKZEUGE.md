@@ -248,7 +248,8 @@ Playlist-Player für LED-Wände und Beamer.
   und „Stumm“, wie bei NDI) und bleibt lippensynchron, auch wenn der Rechner kurz hängt: Wie lange
   das Bild bis in den Stream braucht, misst die Mottulbox laufend und legt den Ton um so viel
   später (je Rechner und Start verschieden, der Wert steht im Protokoll). Verschiebt ein Hänger
-  das Bild, zieht der Ausgleich nach zwei bis drei Sekunden nach. Eine
+  das Bild, zieht der Ausgleich nach zwei bis drei Sekunden nach; auch auf einem ausgelasteten
+  Rechner bleibt der Ton an seinem Platz. Eine
   Wand in anderem Seitenverhältnis steht eingepasst mit schwarzem Rand im Bild. Auflösung,
   Bildrate, Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die
   Adressen, Empfänger und Datenrate. Laufen NDI und Stream gleichzeitig, spielt der Spiegel das

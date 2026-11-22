@@ -8,8 +8,13 @@
 // Mittel statt Median: Liegt die Phase der paints nahe an der Rundungsgrenze, landen die Bilder
 // abwechselnd ein Raster früher oder später – das Mittel liegt dann dazwischen und springt nicht
 // bei jedem Bild zwischen beiden Seiten. Über zehn Sekunden, damit es ruhig bleibt: Jeder
-// Wechsel setzt den Ton neu an. Der Anlauf zählt nicht – gerade gestartet, liest ffmpeg die
+// Wechsel rückt den Ton. Der Anlauf zählt nicht – gerade gestartet, liest ffmpeg die
 // ersten Bilder spät (gemessen: bis 45 ms), das Mittel trug das sonst sekundenlang mit.
+//
+// Ein Bild, das lange nach seinem paint erst ganz bei ffmpeg ist, liegt im Strom so viel zu spät:
+// Unter macOS und Linux geht ein Bild (3,7 MB bei 720p) in 64-KB-Stücken durch die Pipe, jedes
+// Stück eine Runde im Event-Loop des main-Prozesses – ist er beschäftigt, dauert das. Solche
+// Bilder zählt das Raster mit (fürs Protokoll), auch die, die es fürs Mittel verwirft.
 
 /** So viele Bilder zählen (zehn Sekunden bei 30 Bildern/s) */
 const MAX_WERTE = 300
@@ -19,9 +24,12 @@ const MIN_WERTE = 30
 const MAX_MS = 500
 /** So lange nach dem Start von ffmpeg zählt noch nichts */
 export const RASTER_ANLAUF_MS = 2000
+/** Ab so viel vom paint bis zum Ende des Schreibens (ms) gilt ein Bild als spät an ffmpeg */
+export const SPAET_MS = 50
 
 export class BildRaster {
   private werte: number[] = []
+  private spaet = { n: 0, maxMs: 0 }
 
   constructor(
     /** Bildrate des Stroms (fps-Filter) */
@@ -33,6 +41,11 @@ export class BildRaster {
   /** Ein frisches Bild (paint zur Wanduhr `paintMs`) ist zu `geschriebenMs` bei ffmpeg angekommen */
   geschrieben(paintMs: number, geschriebenMs: number): void {
     if (paintMs < this.start + RASTER_ANLAUF_MS) return
+    const dauer = geschriebenMs - paintMs
+    if (dauer >= SPAET_MS) {
+      this.spaet.n++
+      this.spaet.maxMs = Math.max(this.spaet.maxMs, Math.round(dauer))
+    }
     const raster = 1000 / this.fps
     const imStrom = Math.round(geschriebenMs / raster) * raster
     const verzug = imStrom - paintMs
@@ -45,5 +58,12 @@ export class BildRaster {
   get ms(): number | null {
     if (this.werte.length < MIN_WERTE) return null
     return Math.round(this.werte.reduce((a, b) => a + b, 0) / this.werte.length)
+  }
+
+  /** Späte Bilder seit dem letzten Abruf (Zahl, längste Zeit vom paint bis ffmpeg), dann von vorn */
+  spaeteAbholen(): { n: number; maxMs: number } {
+    const s = this.spaet
+    this.spaet = { n: 0, maxMs: 0 }
+    return s
   }
 }

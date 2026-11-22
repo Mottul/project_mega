@@ -497,6 +497,14 @@ alten Stand 3,98 s Rückstand), dann behoben.
   AudioWorklets seine Sample-Nummer (`currentFrame`), der Sender legt ihn danach lückenlos an
   seinen Platz (`stream/tontakt.ts`), und ffmpeg rechnet die Zeit nur aus der Samplezahl
   (`asetpts`). Im Review bei jedem zweiten Eingang fragen: Woher kennt ffmpeg seine Zeit?
+- **Eine geschätzte Zeit nur dann am Extremwert ausrichten, wenn ihr Fehler nur in eine Richtung
+  geht.** Der Ton-Takt nahm den pünktlichsten Block als Anker – richtig für Ankunftszeiten (nur
+  zu spät), falsch für Renderzeiten aus dem Spiegel: Holt der Ton-Thread nach einem Stocken auf,
+  sind sie zu früh, und der Ton lag um genau diesen Fehler daneben (main f810d49, macOS-Runner:
+  −126 ms). Ebenso übernahm jedes Neuansetzen nach einem neuen Weg des Bildes die Zeit des Blocks,
+  der gerade kam. Seit #249: Median, und eine bekannte Änderung verschiebt nur. Im Review bei
+  jedem Minimum oder Maximum über Messwerten fragen: In welche Richtung kann sich die Messung
+  irren?
 - **Ein Fenster für alle Ausgänge eines Werkzeugs.** NDI und Stream hatten je ein eigenes
   Offscreen-Fenster – der Player dekodierte sein Video dann zweimal, und die Fallen der Fenster
   (`closed` nur vom aktuellen, Stopp mitten im Start) standen doppelt. Neue Offscreen-Ausgaben

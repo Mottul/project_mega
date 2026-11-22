@@ -1036,8 +1036,9 @@ gelten. Skills `ffmpeg-labor` (Messungen zu Bild- und Ton-Zeit), `electron-e2e` 
 **Gebaut:** Stufe 1 (Stream vom Stage-Timer, #243), die Hänger daraus behoben (#245), Stufe 2
 (Video-Player mit Ton, Erfassung mit NDI geteilt, #246), Ton und Bild auch am Mac zusammen (#248:
 der Sender misst laufend, wie viel später das Bild in den Strom kommt – Phase der Anzeige im
-Spiegel, Weg zum paint, Raster von ffmpeg – und legt den Ton so viel später). Offen für die
-Mottulbox:
+Spiegel, Weg zum paint, Raster von ffmpeg – und legt den Ton so viel später), auch unter Last
+(#249: zu früh gemeldete Renderzeiten werden nicht mehr zum Anker des Tons, ein neuer Weg rückt
+den Ton nur um die Änderung). Offen für die Mottulbox:
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
@@ -1364,7 +1365,8 @@ bis −36 ms, aber nur bis ffmpeg, ohne Decoder und Lautsprecher des Empfängers
 Linux-Runner liegen Blitze nach einem Hänger ein Bild daneben, bis der Sender nach 2–3 s
 nachzieht)? Am Mac dazu die Protokollzeile „Weg des Bildes“
 notieren (der Sender legt den Ton um so viel später; in der CI auf dem macOS-Runner 50 ms, unter
-Windows −11). NDI und
+Windows −11) und unter Last nachsehen, ob „Renderzeit zu früh“ oder „Ton nachgeführt“ im
+Protokoll steht. NDI und
 Stream gleichzeitig mit echten Empfängern (NDI Studio Monitor und VLC); NDI ein- und ausschalten,
 während VLC zuschaut – fängt sich das Bild nach dem kurzen Neustart von ffmpeg? Eine breite Wand
 (z. B. 3840 × 1080) mit NDI „Wand 1:1“: steht sie im Stream eingepasst mit schwarzem Rand?

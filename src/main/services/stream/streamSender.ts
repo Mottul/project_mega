@@ -36,7 +36,7 @@ import { lanUrls } from '../remote/remoteHttp'
 import { BildRaster } from './bildRaster'
 import { buildStreamArgs, STREAM_TON_RATE, type StreamInput } from './streamArgs'
 import { stille, verschraenkt } from './tonFormat'
-import { Tontakt } from './tontakt'
+import { Tontakt, type TonPlatz } from './tontakt'
 import { TsVerteiler } from './tsVerteiler'
 
 /** So lange läuft ffmpeg nach dem letzten Empfänger weiter (Box schaltet kurz um, VLC lädt neu). */
@@ -48,9 +48,13 @@ const BILDWEG_GEDULD_MS = 5000
 /** Weiter verschiebt der Sender den Ton nie (ms) – zeigt der Spiegel früh, auch nach vorn */
 const BILDWEG_MIN_MS = -100
 const BILDWEG_MAX_MS = 300
-/** Erst ab so viel Änderung (ms) setzt der Sender den Ton neu an – jedes Mal eine kurze Lücke
- *  oder ein paar ms weniger; die Messung wackelt im Betrieb um ±2–4 ms */
-const BILDWEG_SPRUNG_MS = 5
+/** Erst ab so viel Änderung (ms) rückt der Sender den Ton – jedes Mal eine kurze Lücke oder ein
+ *  paar ms weniger. Auf einem ruhigen Rechner wackelt die Messung um ±2–4 ms, unter Last wandert
+ *  sie um ±15 ms (macOS-Runner, main f810d49: mit 5 ms 14 Wechsel in 25 s; an denselben Werten
+ *  nachgerechnet mit 10 ms vier) */
+const BILDWEG_SPRUNG_MS = 10
+/** Blöcke mit zu früher Renderzeit und späte Bilder stehen höchstens so oft im Protokoll */
+const AUSREISSER_MELDEN_MS = 5000
 
 const message = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
@@ -69,6 +73,10 @@ interface TonWeg {
   naechsterFrame: number
   /** Wanduhr beim Öffnen (ms): ab wann ein fehlender Weg des Bildes gemeldet wird */
   seit: number
+  /** Blöcke mit zu früher Renderzeit seit der letzten Meldung: Zahl, größter Abstand, wann */
+  ausreisser: { n: number; maxMs: number; gemeldet: number }
+  /** so oft hat der Ton-Takt angesetzt (das erste Mal beim Start) */
+  angesetzt: number
 }
 
 export class StreamSender implements ErfassungsAusgang {
@@ -99,6 +107,8 @@ export class StreamSender implements ErfassungsAusgang {
   private bildwegFehlt = false
   /** wo ffmpeg die Bilder ins Raster legt (je Start von ffmpeg neu) */
   private raster: BildRaster | null = null
+  /** wann zuletzt nach späten Bildern geschaut wurde (Wanduhr, ms) */
+  private spaetGemeldet = 0
   /** gemessene Datenrate: Bytes und Zeit beim letzten Statusabruf */
   private rate = { bytes: 0, at: 0, kbps: 0 }
 
@@ -262,7 +272,28 @@ export class StreamSender implements ErfassungsAusgang {
     this.frame = b
     // frisches Bild: messen, wo es im Strom landet (Wiederholungen des Standbilds zählen nicht)
     const raster = this.raster
-    this.writeFrame(proc, (geschrieben) => raster?.geschrieben(b.zeit, geschrieben))
+    this.writeFrame(proc, (geschrieben) => {
+      if (!raster) return
+      raster.geschrieben(b.zeit, geschrieben)
+      this.spaeteBilderImProtokoll(raster, geschrieben)
+    })
+  }
+
+  /**
+   * Bilder, die lange nach ihrem paint erst ganz bei ffmpeg waren, liegen im Strom so viel zu spät
+   * (ffmpeg stempelt beim Lesen) – gesammelt höchstens alle 5 s eine Zeile.
+   */
+  private spaeteBilderImProtokoll(raster: BildRaster, jetzt: number): void {
+    if (jetzt - this.spaetGemeldet < AUSREISSER_MELDEN_MS) return
+    this.spaetGemeldet = jetzt
+    const s = raster.spaeteAbholen()
+    if (s.n === 0) return
+    logLine(
+      this.tag,
+      'Bild spät an ffmpeg:',
+      `${s.n} Bilder bis ${s.maxMs} ms nach dem paint – im Strom so viel zu spät (main-Prozess ` +
+        'beschäftigt oder ffmpeg liest nicht nach)'
+    )
   }
 
   ton(t: ErfassungsTon): void {
@@ -281,6 +312,42 @@ export class StreamSender implements ErfassungsAusgang {
     const platz = weg.takt.block(Date.now(), frame, laenge, t.gerendert, this.bildwegFuerTon(weg))
     if (platz.stille > 0) weg.socket.write(stille(platz.stille))
     if (platz.anzahl > 0) weg.socket.write(verschraenkt(t.channels, platz.von, platz.anzahl))
+    this.tonImProtokoll(weg, platz)
+  }
+
+  /**
+   * Was der Ton-Takt tut, steht im Protokoll – nur, was nicht ohnehin dasteht (den Weg des Bildes
+   * meldet bildwegFuerTon): Nachführen, neues Ansetzen nach dem Start, Blöcke mit zu früher
+   * Renderzeit (gesammelt, höchstens alle 5 s eine Zeile).
+   */
+  private tonImProtokoll(weg: TonWeg, platz: TonPlatz): void {
+    const e = platz.ereignis
+    if (e?.art === 'nachgefuehrt') {
+      logLine(
+        this.tag,
+        'Ton nachgeführt:',
+        `um ${Math.round(e.umMs)} ms – die Tonblöcke lagen so weit neben der Uhr ` +
+          '(Einschwingen oder Gang der Soundkarte)'
+      )
+    } else if (e?.art === 'angesetzt' && weg.angesetzt++ > 0) {
+      // das erste Ansetzen je Start von ffmpeg ist der Anfang, jedes weitere ein Neuladen
+      logLine(this.tag, 'Ton neu angesetzt: Die Sample-Nummer lief zurück (Spiegel neu geladen)')
+    }
+    const a = weg.ausreisser
+    if (platz.ausreisserMs !== undefined) {
+      a.n++
+      a.maxMs = Math.max(a.maxMs, platz.ausreisserMs)
+    }
+    const jetzt = Date.now()
+    if (a.n > 0 && jetzt - a.gemeldet >= AUSREISSER_MELDEN_MS) {
+      logLine(
+        this.tag,
+        'Renderzeit zu früh:',
+        `${a.n} Tonblöcke bis ${a.maxMs} ms vor den anderen – nicht übernommen (der Ton-Thread ` +
+          'des Spiegels holte auf)'
+      )
+      weg.ausreisser = { n: 0, maxMs: 0, gemeldet: jetzt }
+    }
   }
 
   /**
@@ -456,7 +523,9 @@ export class StreamSender implements ErfassungsAusgang {
       takt: new Tontakt(Date.now()),
       tick: null,
       naechsterFrame: 0,
-      seit: Date.now()
+      seit: Date.now(),
+      ausreisser: { n: 0, maxMs: 0, gemeldet: 0 },
+      angesetzt: 0
     }
     server.on('connection', (socket) => {
       const lokal = /^(::ffff:)?127\.0\.0\.1$|^::1$/.test(socket.remoteAddress ?? '')

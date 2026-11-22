@@ -70,4 +70,17 @@ describe('Wo ein Bild im Strom landet (fps-Raster von ffmpeg)', () => {
     laufen(r, 5, 1, 1)
     expect(r.ms).toBe(-5)
   })
+
+  it('späte Bilder an ffmpeg (Pipe unter Last): gezählt bis zum Abruf, auch über dem Messbereich', () => {
+    const r = new BildRaster(30, GESTARTET)
+    laufen(r, 5, 12, 40) // normal: 12 ms bis ffmpeg
+    laufen(r, 5, 140, 3, NULL + 40 * RASTER) // drei Bilder 140 ms (der erste Blitz in main f810d49)
+    r.geschrieben(NULL + 50 * RASTER, NULL + 50 * RASTER + 900) // Hänger: zählt auch
+    expect(r.spaeteAbholen()).toEqual({ n: 4, maxMs: 900 })
+    expect(r.spaeteAbholen()).toEqual({ n: 0, maxMs: 0 })
+    // im Anlauf nach dem Start von ffmpeg zählt nichts
+    const neu = new BildRaster(30, NULL)
+    neu.geschrieben(NULL + 100, NULL + 300)
+    expect(neu.spaeteAbholen()).toEqual({ n: 0, maxMs: 0 })
+  })
 })

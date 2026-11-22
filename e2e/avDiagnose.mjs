@@ -143,6 +143,14 @@ export function werteDiagnoseAus(d, { bildwegMs = 0 } = {}) {
   const ankunftNachRender = median(
     ton.filter((x) => Number.isFinite(x.gerendert)).map((x) => x.t - x.gerendert)
   )
+  // Renderzeit gegen die Sample-Nummer: Blöcke, die der Spiegel deutlich zu früh meldet (Schub
+  // des Ton-Threads nach einem Stocken), gemessen am Median der Blöcke ringsum
+  const versatz = ton
+    .filter((x) => Number.isFinite(x.gerendert))
+    .map((x) => x.gerendert - ((x.frame + x.len) * 1000) / SR)
+  const zuFrueh = versatz
+    .map((w, i) => median(versatz.slice(Math.max(0, i - 22), i + 23)) - w)
+    .filter((vorMedian) => vorMedian >= 25)
   const puenktlich = []
   for (const x of ton) {
     const s = Math.floor(x.t / 1000)
@@ -204,6 +212,8 @@ export function werteDiagnoseAus(d, { bildwegMs = 0 } = {}) {
     tonPpm: Math.round(tonPpm),
     anzeigeNachUebergabeMs: Math.round(anzeigeNachUebergabe),
     ankunftNachRenderMs: Number.isFinite(ankunftNachRender) ? Math.round(ankunftNachRender) : null,
+    renderZuFrueh: zuFrueh.length,
+    renderZuFruehMaxMs: zuFrueh.length ? Math.round(Math.max(...zuFrueh)) : 0,
     verzugMs: Math.round(verzugMs),
     verzugSpanne,
     paintAbstandMs: paintAbstand,
@@ -217,13 +227,53 @@ export function werteDiagnoseAus(d, { bildwegMs = 0 } = {}) {
   }
 }
 
+/** Zeitstempel im Strom (PTS in s) -> Wanduhr (ms): ffmpeg stempelt mit der Wanduhr in 90 kHz
+ *  (alle 2^33 Ticks von vorn), der MPEG-TS-Muxer schiebt Bild und Ton um 1,4 s (Skill ffmpeg-labor) */
+const UMLAUF_S = 2 ** 33 / 90000
+const MUX_S = 1.4
+function wanduhrAusPts(pts) {
+  const roh = pts - MUX_S
+  return (roh + Math.round((Date.now() / 1000 - roh) / UMLAUF_S) * UMLAUF_S) * 1000
+}
+
+/**
+ * Je Paar aus dem Strom (`blitzUndPiep`): wie lange nach seinem paint im main das Blitzbild im
+ * Strom liegt, und wie lange nach seiner Renderzeit der Piep. Daran steht, auf welcher Seite ein
+ * Ausreißer entsteht: Bild spät an ffmpeg (Pipe, main beschäftigt) oder Ton falsch eingeordnet
+ * (Ton-Takt). Ruhig erwartet: Bild etwa der Weg zu ffmpeg ± ein halbes Raster, Ton etwa der Weg
+ * des Bildes, den der Sender ausgleicht.
+ */
+export function streamZuordnung(d, paare) {
+  const hell = d.paints.filter((p, i) => p.hell > 128 && (i === 0 || d.paints[i - 1].hell <= 128))
+  const pieps = []
+  let letzter = -Infinity
+  for (const b of d.ton) {
+    if (b.onset < 0 || b.frame < 0 || !Number.isFinite(b.gerendert)) continue
+    const f = b.frame + b.onset
+    if (f - letzter < SR / 2) continue
+    letzter = f
+    pieps.push(b.gerendert - ((b.len - b.onset) * 1000) / SR)
+  }
+  return paare.map((p) => {
+    const bild = wanduhrAusPts(p.blitz)
+    const ton = wanduhrAusPts(p.blitz + p.versatzMs / 1000)
+    const paint = hell.filter((x) => x.t <= bild + 50 && x.t > bild - 500).at(-1)
+    const piep = pieps.find((t) => Math.abs(t - ton) < 300)
+    return {
+      bildMs: paint ? Math.round(bild - paint.t) : null,
+      tonMs: piep === undefined ? null : Math.round(ton - piep)
+    }
+  })
+}
+
 /** Eine Zeile für das Protokoll des Tests */
 export function diagnoseZeile(a) {
   const p = a.paare.map((x) => `${x.bildMs ?? '?'}/${x.tonMs ?? '?'}`).join(' ')
   return (
     `Uhren gegen die Wanduhr: Medien ${a.medienPpm} ppm, Ton ${a.tonPpm} ppm; ` +
     `paint ${a.paintHz} Hz (Bilder im Spiegel ${a.spiegelHz} Hz), Tonblock alle ${a.tonAbstandMs} ms ` +
-    `(Ankunft ${a.ankunftNachRenderMs ?? '?'} ms nach dem Rendern), ` +
+    `(Ankunft ${a.ankunftNachRenderMs ?? '?'} ms nach dem Rendern; Renderzeit ` +
+    `${a.renderZuFrueh} Blöcke ≥ 25 ms zu früh, bis ${a.renderZuFruehMaxMs} ms), ` +
     `Anzeige ${a.anzeigeNachUebergabeMs} ms nach Übergabe, Übergabe ${a.verzugMs} ms nach der Medien-Uhr ` +
     `(${a.verzugSpanne.join(' … ')}) ` +
     `(${a.bilder} Bilder im Spiegel, ${a.paints} paints, ${a.bloecke} Blöcke); ` +
