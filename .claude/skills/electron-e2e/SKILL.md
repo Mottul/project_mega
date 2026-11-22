@@ -173,7 +173,15 @@ Schritt, der schon vorher grün ist, prüft nichts.
   auf dem macOS-Runner 30 ms und mehr dauern, und wer im selben Frame vor dem Zeichnen misst,
   sieht das alte Bild. Stattdessen den Verzug am vorigen Frame messen – „hell nach 60 ms nur,
   wenn der Frame davor noch im Blitz lag“ (`e2e/testton.mjs`, AV-Sync, macOS rot bei #179 mit
-  39 → 69 ms). Gegenprobe: ein Blitz zur falschen Zeit muss weiter rot werden.
+  39 → 69 ms). Gegenprobe: ein Blitz zur falschen Zeit muss weiter rot werden. Drei Nachträge
+  vom November 2026 (macOS rot in #246 und auf main 6903999): die Zeit beim **Eintritt** in den
+  Rückruf nehmen, vor `getImageData` (das Auslesen der Leinwand dauert auf dem Runner, eine Zeit
+  danach liegt zu spät); den vorigen Frame **auch in der verworfenen Anlaufzeit** merken (sonst
+  fehlt dem ersten Wert der Vorgänger – erster Frame bei 72 ms noch hell); und dieselbe Regel für
+  die Mitte der Sekunde (ein langer Abstand ließ dort einen Frame mit dem Blitz von davor stehen).
+  Jede Meldung nennt die Messwerte (welche Frames, ihr Vorgänger, Wert) und die Lage der Seite:
+  rAF-Abstand, `document.visibilityState`, `document.hasFocus()` – so ist eine Drosselung von
+  einem Messfehler zu unterscheiden, ohne den Lauf zu wiederholen.
 - **Zeitabstände: prüfen, was die App bekommt, nicht was der Test wollte.** Auf dem macOS-Runner
   kommen Eingaben von Playwright später an, als die Pausen im Test sagen, und die Seite hängt
   gelegentlich kurz (`main` rot nach #226 und #227, 14.11.2026: „Tippen“ ergab 111 statt etwa

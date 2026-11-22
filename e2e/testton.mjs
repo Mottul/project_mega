@@ -256,45 +256,75 @@ try {
           offsets.every((o) => o > -150 && o < 40),
           offsets.join(', ')
         )
-        // Vorschau: kurz nach der vollen Sekunde weiß, in der Mitte der Sekunde schwarz
-        const frames = await page.evaluate(
+        // Vorschau: kurz nach der vollen Sekunde weiß, in der Mitte der Sekunde schwarz. Je Frame
+        // die Zeit beim Eintritt – vor getImageData: Das Auslesen der Leinwand kann auf dem
+        // macOS-Runner dauern, eine Zeit danach läge zu spät – und die des vorigen Frames, auch
+        // aus der verworfenen Anlaufzeit (sonst fehlt dem ersten Wert der Vorgänger: #246 rot,
+        // erster Frame bei 72 ms noch hell).
+        const messung = await page.evaluate(
           () =>
             new Promise((resolve) => {
               const canvas =
                 document.querySelector('main canvas') ?? document.querySelector('canvas')
               const g = canvas.getContext('2d')
-              const out = []
+              const frames = []
               const t0 = Date.now()
+              let vor = null
               const loop = () => {
+                const t = Date.now()
                 // Anlaufzeit verwerfen: Die Ton-Messung davor hat die Seite beschäftigt, auf
                 // langsamen Rechnern (macOS in der CI) zeigt das erste Bild noch den alten Blitz
-                if (Date.now() - t0 >= 300) {
+                if (t - t0 >= 300 && vor !== null) {
                   const px = g.getImageData(canvas.width >> 1, canvas.height >> 2, 1, 1).data
-                  out.push([Date.now() % 1000, px[0]])
+                  frames.push({ t, vor, v: px[0] })
                 }
-                if (Date.now() - t0 < 3500) requestAnimationFrame(loop)
-                else resolve(out)
+                vor = t
+                if (t - t0 < 3500) requestAnimationFrame(loop)
+                else {
+                  resolve({
+                    frames,
+                    sichtbar: document.visibilityState,
+                    fokus: document.hasFocus()
+                  })
+                }
               }
               requestAnimationFrame(loop)
             })
         )
-        // helle Frames nur knapp nach der vollen Sekunde: 40 ms Blitz plus ein Frame Verzug, weil
-        // die Vorschau im selben Frame vor oder nach dieser Messung zeichnet. Der Verzug ist der
-        // Abstand zum vorigen Frame – auf dem langsamen macOS-Runner kam der nächste Frame einmal
-        // erst bei 69 ms und zeigte noch den Blitz von 39 ms (CI rot, #179). Also: hell nach 60 ms
-        // nur, wenn der Frame davor noch im Blitz lag.
-        const lit = frames.filter(([, v]) => v > 200)
-        const dark = frames.filter(([ms]) => ms >= 100 && ms < 900)
-        assert.ok(lit.length > 0, 'die Vorschau blitzt nicht')
-        const zuSpaet = frames.filter(([ms, v], i) => {
-          if (v <= 200 || ms < 60) return false
-          const vor = frames[i - 1]?.[0]
-          return !(vor !== undefined && vor < 40 && vor <= ms)
-        })
-        assert.ok(zuSpaet.length === 0, JSON.stringify({ zuSpaet, lit }))
+        // Die Vorschau zeichnet im selben Frame vor oder nach dieser Messung: Ein Frame zeigt, was
+        // sie in diesem Frame (Zeit t) oder im vorigen (vor) gezeichnet hat. Hell ist also nur
+        // dann falsch, wenn keine der beiden Zeiten im Blitz lag (40 ms ab der vollen Sekunde,
+        // dazu Spiel für die Zeit zwischen ihrem Rückruf und unserem). Auf dem langsamen
+        // macOS-Runner kam der nächste Frame einmal erst bei 69 ms und zeigte noch den Blitz von
+        // 39 ms (#179); auf main 6903999 fiel ein solcher Frame in die Mitte der Sekunde.
+        const { frames, sichtbar, fokus } = messung
+        const ms = (t) => t % 1000
+        const imBlitz = (f) => ms(f.t) < 60 || ms(f.vor) < 50
+        const lit = frames.filter((f) => f.v > 200)
+        const falschHell = frames.filter((f) => f.v >= 60 && !imBlitz(f))
+        // Einen falschen Blitz sieht die Messung nur in Frames, die schwarz sein müssen
+        const mitte = frames.filter((f) => ms(f.t) >= 100 && ms(f.t) < 900 && !imBlitz(f))
+        const abstaende = frames.map((f) => f.t - f.vor).sort((a, b) => a - b)
+        const lage =
+          `${frames.length} Frames, rAF alle ${abstaende[abstaende.length >> 1]} ms (längster ` +
+          `Abstand ${abstaende.at(-1)} ms), Seite ${sichtbar}, Fokus ${fokus ? 'ja' : 'nein'}`
+        const zeige = (liste) =>
+          liste
+            .slice(0, 12)
+            .map((f) => `${ms(f.t)} ms (davor ${ms(f.vor)}): ${f.v}`)
+            .join(', ') || '–'
+        console.log(
+          `    Vorschau: ${lit.length} helle Frames, ${mitte.length} in der Mitte; ${lage}`
+        )
+        assert.ok(lit.length > 0, `die Vorschau blitzt nicht – ${lage}`)
         assert.ok(
-          dark.length > 10 && dark.every(([, v]) => v < 60),
-          'Vorschau blitzt zur falschen Zeit'
+          falschHell.length === 0,
+          `Vorschau hell zur falschen Zeit: ${zeige(falschHell)}; alle hellen: ${zeige(lit)} – ${lage}`
+        )
+        assert.ok(
+          mitte.length > 10,
+          `nur ${mitte.length} Frames mitten in der Sekunde – zu wenig, um einen falschen Blitz ` +
+            `zu sehen (gedrosselt?) – ${lage}`
         )
       }
     ],
