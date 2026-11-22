@@ -87,9 +87,10 @@ export class Tontakt {
    * zurückgerechnet). Sie kennt keinen Verzug durch IPC oder einen beschäftigten main-Prozess –
    * nach der Ankunft eingeordnet, saß der Anker nach einem zähen Start bis 25 ms zu spät und blieb
    * dort. Fehlt sie oder ist sie nicht glaubhaft, gilt die Ankunft.
-   * `verzugMs`: so viel später einordnen – der Weg des Bildes vom Spiegel bis zum main
-   * (erfassung/bildweg.ts), den der Ton nicht hat. Ändert er sich um mehr als 3 ms, wird neu
-   * angesetzt (einmal Stille bzw. ein kurzes Stück weniger).
+   * `verzugMs`: so viel später einordnen – um so viel kommt das Bild später in den Strom
+   * (Spiegel, paint, Raster von ffmpeg; der Sender misst es), der Ton hat diesen Weg nicht.
+   * Ändert er sich um mehr als 3 ms, wird neu angesetzt (einmal Stille bzw. ein kurzes Stück
+   * weniger).
    */
   block(
     nowMs: number,

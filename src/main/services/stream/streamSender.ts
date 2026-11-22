@@ -317,7 +317,7 @@ export class StreamSender implements ErfassungsAusgang {
           this.tag,
           'Weg des Bildes nicht messbar:',
           `${z.uebergaben} Übergaben aus dem Spiegel, ${z.paints} paints, ${z.verworfen} ohne ` +
-            'passenden paint – der Ton bleibt bei der Renderzeit'
+            'passenden paint – im Ausgleich fehlt der Anteil des Spiegels'
         )
       }
     }
