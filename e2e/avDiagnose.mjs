@@ -29,24 +29,46 @@ export async function starteDiagnose(app) {
         .toBitmap()
       let summe = 0
       for (let i = 0; i < px.length; i += 4) summe += (px[i] + px[i + 1] + px[i + 2]) / 3
-      // 16 Felder zu 16 px, Mitte hell = 1: oben links die Bildnummer des Testclips (stream.mjs),
-      // unten links die Marke, die der Spiegel je angezeigtem Bild zeichnet (unten)
-      const lies = (y) => {
-        if (width < 256 || height < 16) return -1
-        const code = image.crop({ x: 0, y, width: 256, height: 16 }).toBitmap()
+      // Fläche des Videos im paint: Der Clip (1280 × 720) liegt eingepasst wie im Player – auf dem
+      // Windows-Runner ist das Fenster nur 1024 breit, dort mit Rändern oben und unten
+      const s = Math.min(width / 1280, height / 720)
+      const vw = Math.round(1280 * s)
+      const vh = Math.round(720 * s)
+      const vx = Math.floor((width - vw) / 2)
+      const vy = Math.floor((height - vh) / 2)
+      // 16 Felder, Mitte hell = 1: oben links im Video die Bildnummer des Testclips (stream.mjs,
+      // Felder 16 px im Clip), unten links im Fenster die Marke des Spiegels (16 px, unten)
+      const lies = (x0, y0, feld) => {
+        const w = Math.ceil(16 * feld * 16)
+        const h = Math.ceil(16 * feld)
+        if (x0 + w > width || y0 + h > height) return -1
+        const code = image.crop({ x: x0, y: y0, width: w, height: h }).toBitmap()
         let n = 0
         for (let k = 0; k < 16; k++) {
-          const i = (8 * 256 + 16 * k + 8) * 4
+          const i = (Math.floor(8 * feld) * w + Math.floor((16 * k + 8) * feld)) * 4
           if ((code[i] + code[i + 1] + code[i + 2]) / 3 > 128) n += 2 ** k
         }
         return n
+      }
+      // ST6, D: Vorschaubild 32 × 18 (Helligkeit je Feld), wie der Spiegel es im Rückruf rechnet;
+      // die Zeit dafür zählt mit – im Produkt liefe das je paint im main
+      const v0 = performance.now()
+      const klein = image
+        .crop({ x: vx, y: vy, width: vw, height: vh })
+        .resize({ width: 32, height: 18, quality: 'good' })
+        .toBitmap()
+      const th = new Array(32 * 18)
+      for (let i = 0; i < th.length; i++) {
+        th[i] = Math.round((klein[i * 4] + klein[i * 4 + 1] + klein[i * 4 + 2]) / 3)
       }
       d.paints.push({
         t: Date.now(),
         groesse: `${width}x${height}`,
         hell: summe / (px.length / 4),
-        nr: lies(0),
-        marke: lies(height - 16)
+        nr: lies(vx, vy, s),
+        marke: lies(0, height - 16, 1),
+        th,
+        thMs: performance.now() - v0
       })
     })
     ipcMain.on('player:ndiAudio', (_e, chunk) => {
@@ -88,19 +110,34 @@ export async function starteDiagnose(app) {
           zellen.push(z)
         }
         document.body.appendChild(marke)
+        // ST6, D: Vorschaubild genau des angezeigten Bildes (im Rückruf liefert drawImage dieses)
+        const leinwand = document.createElement('canvas')
+        leinwand.width = 32
+        leinwand.height = 18
+        const ctx = leinwand.getContext('2d', { willReadFrequently: true })
         for (const v of document.querySelectorAll('video')) {
           const cb = (now, meta) => {
             const n = Math.round(meta.mediaTime * 30)
             for (let k = 0; k < 16; k++) {
               zellen[k].style.background = Math.floor(n / 2 ** k) % 2 ? '#fff' : '#000'
             }
+            const v0 = performance.now()
+            ctx.drawImage(v, 0, 0, 32, 18)
+            const px = ctx.getImageData(0, 0, 32, 18).data
+            const th = new Array(32 * 18)
+            for (let i = 0; i < th.length; i++) {
+              th[i] = Math.round((px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2]) / 3)
+            }
+            const thMs = performance.now() - v0
             if (window.__rvfc.length < 5000) {
               window.__rvfc.push({
                 m: meta.mediaTime,
                 anz: performance.timeOrigin + meta.expectedDisplayTime,
                 jetzt: performance.timeOrigin + now,
                 praes: performance.timeOrigin + meta.presentationTime,
-                uhr: v.currentTime
+                uhr: v.currentTime,
+                th,
+                thMs
               })
             }
             v.requestVideoFrameCallback(cb)
@@ -395,6 +432,83 @@ export function zeitbasisAusSpiegel(d, fps = 30) {
       ueber20: rest.filter((v) => Math.abs(v) > 20).length
     }
   }
+}
+
+/**
+ * ST6, Möglichkeit D: das Bild im paint an seinem Inhalt erkennen. Der Spiegel rechnet im Rückruf
+ * jedes Bildes ein Vorschaubild (32 × 18 Felder, Helligkeit), der main dasselbe aus jedem paint;
+ * je paint gewinnt das ähnlichste Bild der letzten 1,5 s (Summe der Abstände; die unterste Zeile
+ * mit der Marke des Spiegels zählt nicht). Prüfstein ist die Bildnummer im paint. „Gleich gut“:
+ * Das richtige Bild war praktisch genauso nah – gleiche Bilder hintereinander, dort ist die Wahl
+ * egal.
+ */
+export function inhaltZuordnung(d, fps = 30) {
+  const felder = 17 * 32
+  const rv = d.rvfc
+    .filter((x) => Array.isArray(x.th) && Number.isFinite(x.praes) && Number.isFinite(x.m))
+    .map((x) => ({ n: Math.round(x.m * fps), praes: x.praes, th: x.th }))
+    .sort((a, b) => a.praes - b.praes)
+  let richtig = 0
+  let gleich = 0
+  let falsch = 0
+  let ohneRueckruf = 0
+  let ohne = 0
+  const daneben = []
+  for (const p of d.paints) {
+    if (!(p.nr >= 0) || !Array.isArray(p.th)) continue
+    const kandidaten = rv.filter((x) => x.praes <= p.t + 1 && x.praes > p.t - 1500)
+    if (!kandidaten.length) {
+      ohne++
+      continue
+    }
+    const abstand = kandidaten.map((x) => {
+      let s = 0
+      for (let i = 0; i < felder; i++) s += Math.abs(x.th[i] - p.th[i])
+      return s
+    })
+    const min = Math.min(...abstand)
+    const gewaehlt = kandidaten[abstand.indexOf(min)]
+    if (gewaehlt.n === p.nr) {
+      richtig++
+      continue
+    }
+    const r = kandidaten.findIndex((x) => x.n === p.nr)
+    if (r >= 0 && abstand[r] <= min * 1.02 + felder * 0.05) gleich++
+    else {
+      falsch++
+      // fehlte zum richtigen Bild der Rückruf des Spiegels? Dann gab es kein Vorschaubild dafür
+      if (r < 0) ohneRueckruf++
+      daneben.push(Math.abs(gewaehlt.n - p.nr))
+    }
+  }
+  const zeiten = (liste) => {
+    const ms = liste.filter((x) => Number.isFinite(x.thMs)).map((x) => x.thMs)
+    return ms.length
+      ? { median: Math.round(median(ms) * 10) / 10, max: Math.round(Math.max(...ms) * 10) / 10 }
+      : { median: null, max: null }
+  }
+  return {
+    richtig,
+    gleich,
+    falsch,
+    ohneRueckruf,
+    ohne,
+    bis: daneben.length ? Math.max(...daneben) : 0,
+    spiegel: zeiten(d.rvfc),
+    main: zeiten(d.paints)
+  }
+}
+
+/** Zeile zu inhaltZuordnung */
+export function inhaltZeile(z) {
+  const n = z.richtig + z.gleich + z.falsch
+  return (
+    `Bild am Inhalt (ST6, D): richtig ${z.richtig} von ${n}, gleich gut ${z.gleich}, falsch ` +
+    `${z.falsch} (bis ${z.bis} Bilder daneben; davon ohne Rückruf zum richtigen Bild ` +
+    `${z.ohneRueckruf}), ohne Kandidat ${z.ohne}; Vorschaubild im Spiegel ` +
+    `Median ${z.spiegel.median} ms (größter ${z.spiegel.max}), im main Median ${z.main.median} ms ` +
+    `(größter ${z.main.max})`
+  )
 }
 
 /** Zeile zu zeitbasisAusSpiegel */

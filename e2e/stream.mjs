@@ -13,6 +13,8 @@ import { blitzUndPiep, mitschneiden, zeitachse } from './tsMitschnitt.mjs'
 import {
   diagnoseZeile,
   holeDiagnose,
+  inhaltZeile,
+  inhaltZuordnung,
   starteDiagnose,
   streamZuordnung,
   werteDiagnoseAus,
@@ -74,6 +76,14 @@ const PLAYER_PORT = 18094
 const playerUrl = `http://127.0.0.1:${PLAYER_PORT}/live.ts`
 const playerCfg = { width: 1280, height: 720, fps: 30, port: PLAYER_PORT, bitrateKbps: 3000 }
 const WAND = { width: 1280, height: 720 }
+/**
+ * Schwarz mit einem bewegten Testbild unten (320 × 180, 13 px je Bild): Aufeinanderfolgende Bilder
+ * unterscheiden sich, sonst ließe sich ein Bild nicht an seinem Inhalt erkennen (ST6, D). Weg von
+ * der Bildmitte, wo die Diagnose die Helligkeit misst; dunkle Bilder bleiben unter YAVG 23.
+ */
+const BEWEGUNG =
+  'testsrc2=s=320x180:r=30:d=60[mv];color=c=black:s=1280x720:r=30:d=60[bg];' +
+  "[bg][mv]overlay=x='mod(n*13,960)':y=480"
 const BLITZ = "drawbox=x=0:y=0:w=iw:h=ih:color=white:t=fill:enable='lt(mod(t-1,2),0.1)'"
 /**
  * Bildnummer oben links als 16 Felder zu 16 px (weiß = 1, binär), über dem Blitz gezeichnet: Der
@@ -363,7 +373,7 @@ try {
           ...['-v', 'error', '-y'],
           // 60 s: Während der Messung springt das Video nicht an den Anfang zurück – ein Loop
           // wäre eine Störung mehr, die mit dem Stream nichts zu tun hat.
-          ...['-f', 'lavfi', '-i', `color=c=black:s=1280x720:r=30:d=60,${BLITZ},${NUMMER}`],
+          ...['-f', 'lavfi', '-i', `${BEWEGUNG},${BLITZ},${NUMMER}`],
           ...['-f', 'lavfi', '-i', `aevalsrc='${PIEP}':s=48000:d=60`],
           ...['-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p'],
           ...['-c:a', 'aac', '-ac', '2', '-shortest', clip]
@@ -529,6 +539,7 @@ try {
             const auswertung = werteDiagnoseAus(diagDaten, { bildwegMs })
             console.log(`    ${diagnoseZeile(auswertung)}`)
             console.log(`    ${zeitbasisZeile(zeitbasisAusSpiegel(diagDaten, playerCfg.fps))}`)
+            console.log(`    ${inhaltZeile(inhaltZuordnung(diagDaten, playerCfg.fps))}`)
           } catch (e) {
             console.log(`    Diagnose nicht auswertbar: ${e.message}`)
           }

@@ -80,8 +80,11 @@ Gemessen landet die Marke je nach System im selben paint oder eines später (mac
 einem Stocken 100 ms und mehr, aber sicher ist A nicht.
 
 **B – Der Spiegel zeichnet das Video selbst.** Im Rückruf zeichnet er das Bild und die Marke in
-dieselbe Leinwand; paint und Kennung passen dann immer zusammen. Exakt, aber ein Umbau des
-Spiegels: Übergänge, Einpassen und Ränder des Players müssten dort nachgebaut werden.
+dieselbe Leinwand; paint und Kennung passen dann immer zusammen. Exakt, auch unter Last: Gemalt
+wird nur, was gezeichnet wurde – fehlt ein Rückruf, fehlt im Strom ein Bild, aber keines bekommt
+eine falsche Zeit. `drawImage` in eine sichtbare Leinwand bleibt auf der Grafikkarte (kein
+Zurücklesen wie bei D). Dafür ein Umbau des Spiegels: Übergänge, Einpassen und Ränder des Players
+müssten dort nachgebaut werden.
 
 **C – Ohne Kennung, nur besser zuordnen.** Gestaute paints nach der Reihenfolge den Anzeigen der
 Stockung zuordnen. Das ginge nur, wenn zu jeder Anzeige genau ein paint käme – gemessen bleiben
@@ -91,10 +94,22 @@ Stockung zuordnen. Das ginge nur, wenn zu jeder Anzeige genau ein paint käme �
 Vorschaubild genau dieses Bildes (`drawImage` in eine kleine Leinwand – im Rückruf ist das
 garantiert das angezeigte Bild) und schickt es mit der Anzeigezeit. Der main verkleinert jedes
 paint genauso (auf die Fläche des Videos, ohne Ränder) und sucht das ähnlichste Bild der letzten
-Sekunde. Keine sichtbare Marke, kein Umbau des Spiegels. Gleiche Bilder hintereinander sind nicht
-zu unterscheiden – dann steht das Bild, und Lippen bewegen sich nicht; bei einer Überblendung
-zeigt das paint eine Mischung, dort gilt die heutige Schätzung. Noch nicht gemessen: Trifft das
-Vorschaubild unter Last das richtige Bild (Testclip mit Bewegung nötig)?
+1,5 s. Keine sichtbare Marke, kein Umbau des Spiegels. Gleiche Bilder hintereinander sind nicht
+zu unterscheiden – dann steht das Bild, und Lippen bewegen sich nicht.
+
+Gemessen (Windows lokal, Testclip mit bewegtem Testbild, Vorschaubild 32 × 18):
+
+| | ohne Last | mit Last (26 Stockungen) | mit Last, zweiter Lauf |
+| --- | --- | --- | --- |
+| richtig / gleich gut | 538 / 36 von 575 | 449 / 39 von 569 | 483 / 40 von 588 |
+| falsch | 1 (1 Bild daneben) | 81 (bis 6 Bilder) | 65 (bis 3), davon 48 ohne Rückruf zum richtigen Bild |
+| Vorschaubild im Spiegel: Median / größter | 7,4 / 26,1 ms | 5,5 / 17,3 ms | 5,8 / 18,3 ms |
+| Vorschaubild im main: Median / größter | 1,2 / 3,5 ms | 1,2 / 7 ms | 1,2 / 6,5 ms |
+
+Ohne Last trifft D praktisch immer; unter Last liegt es bei 11–14 % der paints daneben. Drei
+Viertel davon sind grundsätzlich: Stockt der main, ruft der Spiegel nicht für jedes Bild zurück,
+das trotzdem gemalt wird – zu diesem Bild gibt es kein Vorschaubild. Dazu kostet das Zurücklesen
+des Vorschaubilds im Spiegel 5–7 ms je Bild.
 
 ## Bildtakt (für A, B und D)
 
