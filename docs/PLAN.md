@@ -1038,7 +1038,8 @@ gelten. Skills `ffmpeg-labor` (Messungen zu Bild- und Ton-Zeit), `electron-e2e` 
 der Sender misst laufend, wie viel später das Bild in den Strom kommt – Phase der Anzeige im
 Spiegel, Weg zum paint, Raster von ffmpeg – und legt den Ton so viel später), auch unter Last
 (#249: zu früh gemeldete Renderzeiten werden nicht mehr zum Anker des Tons, ein neuer Weg rückt
-den Ton nur um die Änderung). Offen für die Mottulbox:
+den Ton nur um die Änderung, vom Spiegel gelten nur Sprünge, die Bilder gehen über TCP statt
+stdin). Offen für die Mottulbox:
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |

@@ -114,7 +114,16 @@ liegt das Bild so viel zu spät im Strom – im roten Lauf stieg das Raster gena
 Blitz von 14 auf 19 ms (über 300 Bilder gemittelt: die 20 Bilder dazwischen im Schnitt 44 ms
 später). Der Sender meldet solche Bilder („Bild spät an ffmpeg“, ab 50 ms), und das E2E zerlegt
 jeden Blitz in „Bild nach dem paint“ und „Piep nach der Renderzeit“ (PTS − 1,4 s gegen die
-Wanduhr) – ein Ausreißer zeigt sich nur auf einer Seite.
+Wanduhr) – ein Ausreißer zeigt sich nur auf einer Seite. Im nächsten macOS-Lauf genau so: erster
+Blitz −42 ms, davon das Bild 34 ms nach dem paint (sonst 0), der Piep normal. Grund: stdin eines
+Kindprozesses ist unter macOS ein Unix-Socket-Paar mit 8 KB Puffer je Seite – 3,7 MB brauchen
+Hunderte Runden. Seit #249 gehen die Bilder über TCP auf 127.0.0.1 (128 KB je Seite, wächst).
+Drittens wanderte dort der Anteil des Spiegels: Er misst gegen `currentTime`, und die Medien-Uhr
+ging anders als die Ton-Uhr (−439 gegen −1542 ppm) – 27 ms in 25 s, während Ton und Bild im
+Spiegel zusammenblieben; der Sender wanderte mit und legte den Ton 14 ms zu früh. Seit #249
+gelten nach dem ersten Wert nur Sprünge (mehr als 10 ms in 3 s, `stream/spiegelAnteil.ts`) –
+echte Wechsel nach Hängern sind Sprünge, Wandern steht einmal als „Spiegel wandert langsam“ im
+Protokoll.
 
 **Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
 Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in

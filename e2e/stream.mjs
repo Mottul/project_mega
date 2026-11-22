@@ -446,7 +446,7 @@ try {
           const w = z.match(/\[player-stream\] Weg des Bildes: (-?\d+(?:\.\d+)?) ms(.*)$/)
           if (w) wege.push({ ms: Number(w[1]), nach, mehr: w[2].replace(/ – .*$/, '') })
           const t = z.match(
-            /\[player-stream\] (Ton nachgeführt: .*?|Ton neu angesetzt.*?|Renderzeit zu früh: .*?|Bild spät an ffmpeg: .*?)( – .*)?$/
+            /\[player-stream\] (Ton nachgeführt: .*?|Ton neu angesetzt.*?|Renderzeit zu früh: .*?|Bild spät an ffmpeg: .*?|Spiegel wandert langsam: .*?)( – .*)?$/
           )
           if (t) meldungen.push(`${nach} s: ${t[1]}`)
         }

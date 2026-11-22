@@ -505,6 +505,12 @@ alten Stand 3,98 s Rückstand), dann behoben.
   der gerade kam. Seit #249: Median, und eine bekannte Änderung verschiebt nur. Im Review bei
   jedem Minimum oder Maximum über Messwerten fragen: In welche Richtung kann sich die Messung
   irren?
+- **Große Daten an einen Kindprozess nicht über stdin, wenn die Zeit am Lesen hängt.** libuv gibt
+  dem Kindprozess unter macOS ein Unix-Socket-Paar mit 8 KB Puffer je Seite; ein Bild des Streams
+  (3,7 MB) brauchte Hunderte Runden im Event-Loop des main-Prozesses, und ffmpeg stempelt erst,
+  wenn es ganz da ist – unter Last lag es zu spät im Strom (#249). Heute über TCP auf 127.0.0.1.
+  Im Review bei jedem `proc.stdin.write` mit großen Puffern fragen: Was passiert mit der Zeit,
+  wenn der main beschäftigt ist?
 - **Ein Fenster für alle Ausgänge eines Werkzeugs.** NDI und Stream hatten je ein eigenes
   Offscreen-Fenster – der Player dekodierte sein Video dann zweimal, und die Fallen der Fenster
   (`closed` nur vom aktuellen, Stopp mitten im Start) standen doppelt. Neue Offscreen-Ausgaben

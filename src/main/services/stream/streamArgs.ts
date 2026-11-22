@@ -10,6 +10,12 @@ export interface StreamInput {
   height: number
 }
 
+/** Eingang der Bilder: Größe, in der die Erfassung malt, und der lokale Port des Senders */
+export interface StreamBildEingang extends StreamInput {
+  /** lokaler TCP-Port (127.0.0.1), an dem der Sender die Bilder für ffmpeg bereitstellt */
+  port: number
+}
+
 function clampInt(v: unknown, min: number, max: number, fallback: number): number {
   const n = typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : fallback
   return Math.max(min, Math.min(max, n))
@@ -147,9 +153,15 @@ export function streamVideoFilter(pixFmt: string, cfg: StreamConfig, input: Stre
 }
 
 /**
- * ffmpeg liest rohe BGRA-Bilder von stdin und schreibt MPEG-TS auf stdout. resend_headers:
- * PAT/PMT kommen regelmäßig – ein Empfänger, der mitten im Strom einsteigt, erkennt ihn sofort.
- * flush_packets: nichts im Muxer liegen lassen.
+ * ffmpeg liest rohe BGRA-Bilder über einen lokalen TCP-Port und schreibt MPEG-TS auf stdout.
+ * resend_headers: PAT/PMT kommen regelmäßig – ein Empfänger, der mitten im Strom einsteigt,
+ * erkennt ihn sofort. flush_packets: nichts im Muxer liegen lassen.
+ *
+ * TCP statt stdin: ffmpeg stempelt ein Bild erst, wenn es ganz da ist. Über stdin gibt libuv dem
+ * Kindprozess unter macOS ein Unix-Socket-Paar mit 8 KB Puffer je Seite – ein Bild (3,7 MB bei
+ * 720p) brauchte Hunderte Runden im Event-Loop des main-Prozesses, und war der beschäftigt, lag
+ * das Bild so viel zu spät im Strom (macOS-Runner: der erste Blitz 34 ms nach seinem paint statt
+ * 0). TCP auf 127.0.0.1 beginnt mit 128 KB je Seite und wächst mit. stdin bleibt zu (-nostdin).
  *
  * Die Zeit im Strom kommt von der Uhr, nicht aus der Bildzahl: Jedes Bild bekommt beim Lesen
  * die Wanduhr als Zeitstempel, der fps-Filter macht daraus den festen Takt und füllt Lücken mit
@@ -165,7 +177,7 @@ export function streamVideoFilter(pixFmt: string, cfg: StreamConfig, input: Stre
 export function buildStreamArgs(
   encoder: string,
   cfg: StreamConfig,
-  input: StreamInput = cfg,
+  input: StreamBildEingang,
   ton?: StreamTon
 ): string[] {
   const pixFmt = encoder === 'h264_qsv' ? 'nv12' : 'yuv420p'
@@ -192,6 +204,7 @@ export function buildStreamArgs(
     '-hide_banner',
     '-loglevel',
     'error',
+    '-nostdin',
     '-use_wallclock_as_timestamps',
     '1',
     '-f',
@@ -203,7 +216,7 @@ export function buildStreamArgs(
     '-framerate',
     String(cfg.fps),
     '-i',
-    'pipe:0',
+    `tcp://127.0.0.1:${input.port}`,
     ...tonEingang,
     // Die Zeitstempel bleiben die der Wanduhr, absolut statt ab 0: Startet ffmpeg neu (andere
     // Bildgröße, NDI an oder aus), macht der neue Strom dort weiter, wo die Uhr steht – für den
