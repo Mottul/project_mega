@@ -123,7 +123,10 @@ ging anders als die Ton-Uhr (−439 gegen −1542 ppm) – 27 ms in 25 s, währe
 Spiegel zusammenblieben; der Sender wanderte mit und legte den Ton 14 ms zu früh. Seit #249
 gelten nach dem ersten Wert nur Sprünge (mehr als 10 ms in 3 s, `stream/spiegelAnteil.ts`) –
 echte Wechsel nach Hängern sind Sprünge, Wandern steht einmal als „Spiegel wandert langsam“ im
-Protokoll.
+Protokoll. Ein Stocken des main selbst sieht „Bild spät an ffmpeg“ nicht: Die Erfassung stempelt
+das paint erst bei der Ankunft, danach geht es schnell. Dafür zählt der Sender seit #253 jeden
+Takt, der mehr als 50 ms zu spät kommt (`stream/stockWaechter.ts`, Zeile „main-Prozess stockte“);
+Bilder aus so einem Moment liegen im Strom so viel zu spät, der Ton nicht (Paket ST6).
 
 **Audio-Testsignale (gemessen, Oktober 2026):** `aevalsrc=0.1*sin(2*PI*1000*t)` trifft den
 Pegel exakt (Spitze −20,0 dBFS; `sine` hat dagegen 1/8 Amplitude). `anoisesrc=color=pink` ist in

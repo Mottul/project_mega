@@ -6,10 +6,11 @@
 // - ffmpeg läuft nur, solange jemand zuschaut: Start beim ersten Empfänger, Ende kurz nach dem
 //   letzten. Der Server läuft, solange „Stream“ an ist.
 // - Jedes neue Bild geht sofort an ffmpeg, das die Wanduhr als Zeitstempel nimmt (streamArgs).
-//   Ein Hänger im main-Prozess wird so eine kurze Lücke statt dauerhaft verlorener Zeit. Bei
-//   Standbildern kommt kein paint – dann wiederholt ein Takt das letzte Bild. Die Bilder gehen
-//   über einen lokalen TCP-Port, nicht über stdin (dort unter macOS nur 8 KB Puffer – ein Bild
-//   käme unter Last zu spät bei ffmpeg an und läge so viel zu spät im Strom).
+//   Ein Hänger im main-Prozess wird so eine kurze Lücke statt dauerhaft verlorener Zeit; wie oft
+//   der main stockt, steht im Protokoll (stockWaechter.ts). Bei Standbildern kommt kein paint –
+//   dann wiederholt ein Takt das letzte Bild. Die Bilder gehen über einen lokalen TCP-Port, nicht
+//   über stdin (dort unter macOS nur 8 KB Puffer – ein Bild käme unter Last zu spät bei ffmpeg an
+//   und läge so viel zu spät im Strom).
 // - Ton: ffmpeg verbindet sich mit einem lokalen TCP-Port und liest Stereo-Float ohne
 //   Zeitstempel; wohin jedes Sample gehört, entscheidet der Ton-Takt (tontakt.ts) nach der
 //   Sample-Nummer der Blöcke – auch wenn sie nach einem Hänger als Schub kommen. Um so viel, wie
@@ -40,6 +41,7 @@ import { lanUrls } from '../remote/remoteHttp'
 import { BildRaster } from './bildRaster'
 import { buildStreamArgs, STREAM_TON_RATE, type StreamInput } from './streamArgs'
 import { SpiegelAnteil } from './spiegelAnteil'
+import { StockWaechter, STOCKEN_MS } from './stockWaechter'
 import { stille, verschraenkt } from './tonFormat'
 import { Tontakt, type TonPlatz } from './tontakt'
 import { TsVerteiler } from './tsVerteiler'
@@ -126,6 +128,15 @@ export class StreamSender implements ErfassungsAusgang {
   private spaetGemeldet = 0
   /** welcher Anteil des Spiegels am Weg des Bildes gilt (nur Sprünge, kein Wandern) */
   private spiegel = new SpiegelAnteil()
+  /** wie oft der main stockt, solange ffmpeg läuft – die Bilder aus dieser Zeit kommen zu spät */
+  private readonly stock = new StockWaechter((s) =>
+    logLine(
+      this.tag,
+      'main-Prozess stockte:',
+      `${s.n}-mal über ${STOCKEN_MS} ms, längstens ${s.maxMs} ms – Bilder aus dieser Zeit liegen ` +
+        'im Strom bis so viel zu spät (der Ton nicht)'
+    )
+  )
   /** gemessene Datenrate: Bytes und Zeit beim letzten Statusabruf */
   private rate = { bytes: 0, at: 0, kbps: 0 }
 
@@ -551,6 +562,7 @@ export class StreamSender implements ErfassungsAusgang {
     this.pump = setInterval(() => {
       if (Date.now() - this.lastWrite >= takt) this.writeFrame(proc)
     }, takt)
+    this.stock.start()
     this.emit()
   }
 
@@ -690,9 +702,11 @@ export class StreamSender implements ErfassungsAusgang {
     this.lastWrite = Date.now()
   }
 
+  /** Takt und Wächter laufen genau so lange wie ffmpeg (Stopp, Fehler, Ende) */
   private stopPump(): void {
     if (this.pump) clearInterval(this.pump)
     this.pump = null
+    this.stock.stop()
   }
 
   private stopEncoder(): void {

@@ -249,7 +249,9 @@ Playlist-Player für LED-Wände und Beamer.
   das Bild bis in den Stream braucht, misst die Mottulbox laufend und legt den Ton um so viel
   später (je Rechner und Start verschieden, der Wert steht im Protokoll). Verschiebt ein Hänger
   das Bild, zieht der Ausgleich nach zwei bis drei Sekunden nach; auch auf einem ausgelasteten
-  Rechner bleibt der Ton an seinem Platz. Eine
+  Rechner bleibt der Ton an seinem Platz. Stockt der Rechner kurz, liegen nur die Bilder aus
+  diesem Moment zu spät im Stream – wie oft und wie lange, steht im Protokoll („main-Prozess
+  stockte“, ab 50 ms). Eine
   Wand in anderem Seitenverhältnis steht eingepasst mit schwarzem Rand im Bild. Das Bild kommt in
   voller Auflösung, auch wenn der Bildschirm des Rechners kleiner ist. Auflösung,
   Bildrate, Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die
@@ -300,7 +302,8 @@ Kurze Audios (Auftrittsmusik, Stinger) auf belegbaren Pads.
   über WLAN; beliebig viele Empfänger. Kodiert wird nur, solange jemand zuschaut (GPU-Encoder,
   sonst libx264), eine Sekunde bis zum ersten Bild eines neuen Empfängers. Die Zeit im Strom
   kommt von der Uhr: Hängt der Rechner kurz, steht das Bild beim Empfänger einen Moment und läuft
-  dann mit der Uhr weiter, statt nach einigen Hängern sekundenlang zu stocken. Auflösung, Bildrate,
+  dann mit der Uhr weiter, statt nach einigen Hängern sekundenlang zu stocken (jeder Hänger ab
+  50 ms steht im Protokoll: „main-Prozess stockte“). Auflösung, Bildrate,
   Qualität und Port in der Schublade unter „Stream fürs Heimnetz“; dort stehen auch die Adressen,
   Empfänger und Datenrate. Wie die Fernsteuerung ohne Passwort, nur im lokalen Netz. Läuft NDI
   gleichzeitig, malt die App die Anzeige nur einmal; der Stream rechnet das NDI-Bild selbst auf
