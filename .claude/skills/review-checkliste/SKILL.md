@@ -523,6 +523,13 @@ alten Stand 3,98 s Rückstand), dann behoben.
   voller Größe. Im Review bei jedem Fenster mit fester Ausgabegröße fragen: Was, wenn der
   Bildschirm kleiner ist? Prüfen mit einer Größe über jedem Bildschirm (`e2e/stream.mjs`,
   2560 × 1440).
+- **Wer Verspätung zählen will, muss vor der Stelle stempeln, die sich verspätet.** „Bild spät an
+  ffmpeg“ misst vom paint bis ffmpeg. Stockt der main, kommt aber schon das paint zu spät, und die
+  Erfassung stempelt es erst bei der Ankunft – danach geht es schnell, die Zeile bleibt still. Sie
+  war schon als Beleg für die Abnahme am Mac genannt (22.11.2026). Fürs Stocken selbst zählt
+  `stream/stockWaechter.ts` einen Takt mit monotoner Uhr (#253). Im Review bei jeder
+  Protokollzeile, die ein Problem zeigen soll, fragen: Wo entsteht die Verspätung, und wo wird
+  gestempelt?
 
 ## Bilder, PDF und fremdes HTML (Phase 1 Mini-Manual, 16. Oktober 2026)
 

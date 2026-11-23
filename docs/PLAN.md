@@ -1041,14 +1041,15 @@ Spiegel, Weg zum paint, Raster von ffmpeg – und legt den Ton so viel später),
 (#249: zu früh gemeldete Renderzeiten werden nicht mehr zum Anker des Tons, ein neuer Weg rückt
 den Ton nur um die Änderung, vom Spiegel gelten nur Sprünge, die Bilder gehen über TCP statt
 stdin), NDI und Stream in voller Größe auch auf kleinem Bildschirm (#251: Electron begrenzte das
-unsichtbare Fenster auf die Arbeitsfläche, 1920 × 1080 kam als 1920 × 1032). Offen für die
-Mottulbox:
+unsichtbare Fenster auf die Arbeitsfläche, 1920 × 1080 kam als 1920 × 1032), und der Stream
+zählt im Protokoll, wie oft der main stockt (#253: „main-Prozess stockte“ – „Bild spät an
+ffmpeg“ sah das nicht). Offen für die Mottulbox:
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
 | **ST4** | Ankündigen per mDNS (Dienst _mottulbox._tcp, TXT: Name, Pfad /live.ts, Werkzeug), Feld „Name“ im Bereich „Stream fürs Heimnetz“; abmelden beim Stoppen und Beenden | M | Stufe 3 im Heimkino-Projekt (Empfang mit Adresse von Hand) |
 | **ST5** | Doku für Anwender (Seite oder Abschnitt zum Stream, Eintrag im README) | S | ST4 |
-| **ST6** | Entwurf: [PLAN-BILDZEIT.md](PLAN-BILDZEIT.md) (Messung abgeschlossen in #250, Empfehlung: der Spiegel zeichnet Video und Kennung selbst – Entscheidung offen). Bilder mit Zeitstempeln aus dem Spiegel statt aus dem main. Heute stempelt ffmpeg ein Bild beim Lesen; stockt der main-Prozess, kommt das paint zu spät, und das Bild liegt so viel zu spät im Strom (macOS-Runner, #249: paint bis 200 ms nach der Anzeige im Spiegel, Blitz −92 ms; der Ton ist davon frei, er bekommt seine Zeit im Spiegel). Zuerst messen (Skill `ffmpeg-labor`): Taugen die Anzeigezeiten des Spiegels (`requestVideoFrameCallback`) unter Last als Zeitbasis? Auf den Runnern kamen manche ein Bild zu spät. Dann bauen: ffmpeg zählt die Bilder (`setpts` wie `asetpts` beim Ton), der Sender legt jedes Bild nach seiner Anzeigezeit in den Takt und füllt Lücken; Hänger, Neustart und Standbild wie heute. Bis dahin ist der macOS-Lauf der CI im Schritt „Ton lippensynchron“ wackelig. Abnahme: macOS-Job mehrmals neu gestartet grün, Laufnummern im PR | L | – |
+| **ST6** | Entwurf: [PLAN-BILDZEIT.md](PLAN-BILDZEIT.md) (Messung abgeschlossen in #250, Empfehlung: der Spiegel zeichnet Video und Kennung selbst). **Entschieden wird nach der Abnahme am Mac** (Matthias, 22.11.2026): Stockt der main dort so wie auf dem macOS-Runner? Das zeigt seit #253 die Protokollzeile „main-Prozess stockte“ ([Abnahmen am Gerät](#abnahmen-am-gerät)). Bilder mit Zeitstempeln aus dem Spiegel statt aus dem main. Heute stempelt ffmpeg ein Bild beim Lesen; stockt der main-Prozess, kommt das paint zu spät, und das Bild liegt so viel zu spät im Strom (macOS-Runner, #249: paint bis 200 ms nach der Anzeige im Spiegel, Blitz −92 ms; der Ton ist davon frei, er bekommt seine Zeit im Spiegel). Bauen: ffmpeg zählt die Bilder (`setpts` wie `asetpts` beim Ton), der Sender legt jedes Bild nach seiner Anzeigezeit in den Takt und füllt Lücken; Hänger, Neustart und Standbild wie heute. Bis dahin ist der macOS-Lauf der CI im Schritt „Ton lippensynchron“ wackelig. Abnahme: macOS-Job mehrmals neu gestartet grün, Laufnummern im PR | L | Abnahme am Mac |
 
 - **Offene Frage aus dem Entwurf:** nur Video-Player und Stage-Timer – oder später auch
   Testbildgenerator und die Vorschau des Video-Generators?
@@ -1371,7 +1372,13 @@ Linux-Runner liegen Blitze nach einem Hänger ein Bild daneben, bis der Sender n
 nachzieht)? Am Mac dazu die Protokollzeile „Weg des Bildes“
 notieren (der Sender legt den Ton um so viel später; in der CI auf dem macOS-Runner 50 ms, unter
 Windows −11) und unter Last nachsehen, ob „Renderzeit zu früh“ oder „Ton nachgeführt“ im
-Protokoll steht. NDI und
+Protokoll steht. **Vor der Entscheidung über ST6, am Mac:** den Stream des Video-Players eine
+Viertelstunde in VLC am Fernseher ansehen und dabei normal arbeiten – ein Video konvertieren,
+die Playlist umsortieren, die Ausgabe öffnen; notieren, ob das Bild in VLC kurz hakt. Danach im
+Protokoll (am Mac `~/Library/Application Support/Mottulbox/avtoolbox-debug.log`) nach
+„main-Prozess stockte“ suchen – seit #253 höchstens alle 5 s eine Zeile mit Anzahl und längster
+Dauer, gezählt ab 50 ms. Fehlt die Zeile oder steht sie nur selten da, ist ST6 nicht dringend;
+steht sie öfter, mit 100 ms und mehr, ST6 bauen. NDI und
 Stream gleichzeitig mit echten Empfängern (NDI Studio Monitor und VLC); NDI ein- und ausschalten,
 während VLC zuschaut – fängt sich das Bild nach dem kurzen Neustart von ffmpeg? Eine breite Wand
 (z. B. 3840 × 1080) mit NDI „Wand 1:1“: steht sie im Stream eingepasst mit schwarzem Rand?

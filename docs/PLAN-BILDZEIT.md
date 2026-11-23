@@ -4,8 +4,9 @@
 drankommt, steht im [Gesamtplan](PLAN.md#st--stream-fürs-heimnetz-heimkino-box).** Nach der
 Umsetzung in WERKZEUGE und die Skills überführen und diesen Entwurf löschen.
 
-**Status (22.11.2026):** Messung abgeschlossen (#250), Empfehlung B, Entscheidung bei Matthias.
-Gebaut ist noch nichts.
+**Status (23.11.2026):** Messung abgeschlossen (#250), Empfehlung B. Entschieden wird nach der
+Abnahme am Mac ([Gesamtplan](PLAN.md#abnahmen-am-gerät)): Seit #253 zählt der Stream im Protokoll,
+wie oft der main stockt („main-Prozess stockte“). Von B ist noch nichts gebaut.
 
 ## Heute
 
@@ -162,6 +163,6 @@ Aufwand für B (eher L als M):
 
 ## Offene Fragen
 
-- Nächster Schritt: D messen (Vorschaubild gegen Bildnummer, mit und ohne Last), oder gleich B
-  (exakt, größerer Umbau des Spiegels)? A scheidet nach den Messwerten eher aus.
-- Wie wichtig ist der Fall? Stockt der main beim Nutzer so wie auf dem macOS-Runner?
+- Wie wichtig ist der Fall? Stockt der main beim Nutzer so wie auf dem macOS-Runner? Die Antwort
+  kommt aus der Abnahme am Mac (Protokollzeile „main-Prozess stockte“, `stream/stockWaechter.ts`).
+  „Bild spät an ffmpeg“ taugt dafür nicht: Die Erfassung stempelt das paint erst bei der Ankunft.

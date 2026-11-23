@@ -182,6 +182,8 @@ try {
         // GC-Lauf oder ein Bild, das lange umgerechnet wird). Stufe 1 ließ danach Bilder aus –
         // die Zeit im Strom blieb jedes Mal dauerhaft zurück, bis der Puffer des Empfängers leer
         // war und er sekundenlang stockte (gemeldet am 21.11.2026 aus VLC am PC und am Handy).
+        const logDatei = join(ctx.userData, 'avtoolbox-debug.log')
+        const logVorher = readFileSync(logDatei, 'utf8').length
         const st = await page.evaluate((c) => window.api.timer.streamStart(c), {
           ...cfg,
           width: 1280,
@@ -231,6 +233,31 @@ try {
         // Verlust – nach jedem Hänger muss die Zeit im Strom wieder mit der Uhr laufen.
         assert.ok(z.rueckstand < 0.3, `Strom-Zeit bleibt ${z.rueckstand.toFixed(2)} s zurück`)
         assert.ok(Math.abs(z.bilderJeSekunde - 30) < 1.5, `${z.bilderJeSekunde} Bilder/s`)
+        // Der Sender zählt die Hänger fürs Protokoll (stockWaechter.ts) – daran sieht man am Gerät,
+        // ob der main stockt; „Bild spät an ffmpeg“ sieht es nicht. Gesammelte Hänger meldet er
+        // bis zu 5 s nach dem ersten.
+        const stockt = () => {
+          const neu = readFileSync(logDatei, 'utf8').slice(logVorher)
+          const treffer = [
+            ...neu.matchAll(
+              /\[timer-stream\] main-Prozess stockte: (\d+)-mal über \d+ ms, längstens (\d+) ms/g
+            )
+          ]
+          return {
+            n: treffer.reduce((summe, m) => summe + Number(m[1]), 0),
+            maxMs: Math.max(0, ...treffer.map((m) => Number(m[2])))
+          }
+        }
+        await waitFor(() => stockt().n >= 5, 8000)
+        const gemeldet = stockt()
+        console.log(
+          `    Sender meldet: main-Prozess stockte ${gemeldet.n}-mal, längstens ${gemeldet.maxMs} ms`
+        )
+        assert.ok(gemeldet.n >= 5, `${gemeldet.n} Stockungen gemeldet – nachgestellt: fünf Hänger`)
+        assert.ok(
+          gemeldet.maxMs >= 700,
+          `längste Stockung ${gemeldet.maxMs} ms – nachgestellt: 800`
+        )
       }
     ],
     [
@@ -535,7 +562,7 @@ try {
         const text = log()
         const wege = []
         // was der Sender meldet: Ton nachgeführt, neu angesetzt, Blöcke mit zu früher Renderzeit,
-        // Bilder spät an ffmpeg
+        // Bilder spät an ffmpeg, Stocken des main (hier mindestens die zwei Hänger)
         const meldungen = []
         let start = null
         for (const z of text.split(/\r?\n/)) {
@@ -545,7 +572,7 @@ try {
           const w = z.match(/\[player-stream\] Weg des Bildes: (-?\d+(?:\.\d+)?) ms(.*)$/)
           if (w) wege.push({ ms: Number(w[1]), nach, mehr: w[2].replace(/ – .*$/, '') })
           const t = z.match(
-            /\[player-stream\] (Ton nachgeführt: .*?|Ton neu angesetzt.*?|Renderzeit zu früh: .*?|Bild spät an ffmpeg: .*?|Spiegel wandert langsam: .*?)( – .*)?$/
+            /\[player-stream\] (Ton nachgeführt: .*?|Ton neu angesetzt.*?|Renderzeit zu früh: .*?|Bild spät an ffmpeg: .*?|Spiegel wandert langsam: .*?|main-Prozess stockte: .*?)( – .*)?$/
           )
           if (t) meldungen.push(`${nach} s: ${t[1]}`)
         }
