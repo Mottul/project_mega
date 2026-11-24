@@ -374,6 +374,39 @@ try {
   const shot = async (name) => shots && (await w.screenshot({ path: join(shots, `${name}.png`) }))
   await runSteps('Video-Generator: Oberfläche', [
     [
+      'leeres Projekt: kein roter Hinweis, „Video erzeugen“ gesperrt',
+      async () => {
+        await w.setViewportSize({ width: 1500, height: 950 })
+        await w.evaluate(() => {
+          location.hash = '#/tool/video-generator'
+        })
+        // Die Ablagefläche sagt, was zu tun ist; „Noch keine Bilder oder Videos.“ stand bis B5
+        // rot darunter
+        await w.getByText(/hierher ziehen/).waitFor({ timeout: 15_000 })
+        // Rot = Schrift in der Farbe von `text-danger` (Probeelement), nicht ein bestimmter Text
+        const rot = await w.getByTestId('tool-main').evaluate((main) => {
+          const probe = document.createElement('span')
+          probe.className = 'text-danger'
+          document.body.append(probe)
+          const danger = getComputedStyle(probe).color
+          probe.remove()
+          const eigenerText = (el) =>
+            [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim())
+          return [...main.querySelectorAll('*')]
+            .filter(
+              (el) =>
+                el.checkVisibility() && getComputedStyle(el).color === danger && eigenerText(el)
+            )
+            .map((el) => el.textContent.trim())
+        })
+        assert.deepEqual(rot, [], `rote Schrift im leeren Projekt: ${rot.join(' | ')}`)
+        assert.ok(
+          await w.getByRole('button', { name: 'Video erzeugen' }).isDisabled(),
+          '„Video erzeugen“ ist nicht gesperrt'
+        )
+      }
+    ],
+    [
       'Werkzeug öffnet sich, Dateien hinzufügen füllt das Storyboard mit Vorschaubildern',
       async () => {
         await w.setViewportSize({ width: 1500, height: 950 })

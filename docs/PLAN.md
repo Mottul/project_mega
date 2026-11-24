@@ -559,7 +559,6 @@ Kleine Pakete, die man täglich merkt. Unabhängig voneinander, soweit nichts an
 | **B2** | Strg+K: Werkzeug wechseln von überall | M | B1 |
 | **B3** | Netzwerk-Scanner: sinnvoller Adapter vorgewählt | S | – |
 | **B4** | Stopp-Symbole gefüllt | S | – |
-| **B5** | Video-Generator: Leerzustand nicht rot | S | – |
 | **B6** | Startbildschirm: Namen und Beschreibungen ganz lesbar | S | – |
 | **B7** | App-Einstellungen als Dialog mit Reitern | M | – |
 | **B9** | „Über und Diagnose“: Version, Protokoll, Datenordner | M | B7 |
@@ -615,18 +614,6 @@ Stage-Timer steht es direkt über der echten Checkbox „blinkend“.
 
 **So:** `fill-current` an den drei `Square`-Symbolen: `StageTimer.tsx` („Stopp“) und
 `JinglePlayer.tsx` („Stopp (Esc)“ in der Leiste und das kleine am Pad). Sonst nichts.
-
-### B5 – Video-Generator: Leerzustand nicht rot
-
-**Heute:** Ein leeres Projekt zeigt unter der Ablagefläche rot „Noch keine Bilder oder Videos.“
-– der Hinweis `empty` aus `videoGenPlan.ts` hat die Stufe `error`, damit „Video erzeugen“
-gesperrt bleibt.
-
-**So:** In `VideoGenerator.tsx` den Hinweis `empty` aus der **angezeigten** Liste nehmen; für
-die Sperre des Knopfs zählt er weiter. Die Ablagefläche sagt schon, was zu tun ist.
-
-**Abnahme:** `e2e/video-generator.mjs`: im frischen Projekt gibt es keinen roten Hinweis, der
-Knopf „Video erzeugen“ ist gesperrt.
 
 ### B6 – Startbildschirm: Namen und Beschreibungen ganz lesbar
 
@@ -1499,6 +1486,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Breite, auch wenn sie angeheftet ist – die Nadel ist dort ausgegraut, ein Klick in die
   Arbeitsfläche schließt die schwebende und übernimmt vorher ein angefangenes Feld (B8). Erstes
   Release `v0.1.0` am 24. November mit den vier Installern, dazu der Skill `release` (F5).
+  Video-Generator: Ein leeres Projekt zeigt unter der Ablagefläche keinen roten Hinweis mehr,
+  „Video erzeugen“ bleibt trotzdem gesperrt (B5, 24. November).
   Neuer Aufbau am Pilot Stromlast (K5, 24. November): Antwort „Max. Geräte“ über den Feldern,
   Anschluss, Absicherung und Auslastung als Knopfgruppen statt Listen, beide Karten zuklappbar
   mit der Antwort als Kurzfassung, die zweite ab Werk nur nebeneinander offen
