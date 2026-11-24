@@ -105,4 +105,5 @@ Prüfung auf `main`): erst die Schritte hier, dann mergen.
    `@types/node` in `.github/dependabot.yml`.
 6. **Ausliefern:** Ohne `electron-updater` erreicht ein Electron-Upgrade (Sicherheits-Patches in
    Chromium) die Anwender erst mit einem neuen Release – nach dem Merge dem Nutzer eins vorschlagen
-   (Version erhöhen, Tag `v*`; `docs/ENTWICKLUNG.md`, „Release veröffentlichen“).
+   (Skill `release`). Das gilt auch für Patch-Versionen mit Sicherheitskorrekturen: 45.3.2 kam
+   mit dem ersten Release `v0.1.0`.

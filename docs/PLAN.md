@@ -268,7 +268,7 @@ alles andere lässt sich vorziehen.
 | ------ | ------ | ---------------------- |
 | **2 – Muster übertragen** | K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
-| **4 – Sicherheitsnetz** | F5 → S3 · D · F1 · E4 | Erstes Release und Aktualisierung, damit Korrekturen ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
+| **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
 | **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 · ST6 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8); ST6 macht den macOS-Lauf der CI wieder verlässlich |
 | **Laufend** | Update-PRs, [Abnahmen am Gerät](#abnahmen-am-gerät) | montags bzw. wenn das Gerät da ist |
@@ -864,7 +864,7 @@ wurde („Kachel wiederhergestellt“)?
 
 ## F – Mehr Nutzen
 
-Fünf ausgearbeitete Pakete, darunter die Wünsche je Werkzeug und die Verzahnung.
+Vier ausgearbeitete Pakete, darunter die Wünsche je Werkzeug und die Verzahnung.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
@@ -872,7 +872,6 @@ Fünf ausgearbeitete Pakete, darunter die Wünsche je Werkzeug und die Verzahnun
 | **F2** | Show-Datei: OSC, Jingle, Timer, Packliste in der `.mottul` | M je Werkzeug | – |
 | **F3** | Stage-Timer: Schnellstart, bis Uhrzeit, Ablauf einfügen | S–M | besser nach W2 |
 | **F4** | Steuer-Schnittstelle dokumentieren | S | – |
-| **F5** | Erstes Release | S | – |
 
 ### F1 – Sicherung und Umzug auf einen anderen Rechner
 
@@ -918,14 +917,6 @@ Werkzeug Adresse, Befehle mit Feldern und Grenzen (aus den Prüfern: `parseTimer
 OSC und Jingle), `api/state` zum Lesen, je ein Beispiel mit `curl`. Hinweis: ohne
 `Origin`-Kopfzeile schicken (Herkunftsprüfung). Ein Test hält die Liste der Befehle in der
 Doku und im Code gleich.
-
-### F5 – Erstes Release
-
-Es gibt noch keinen Tag `v*`; der Ablauf „Installer bauen“ steht bereit und hängt bei einem
-Tag die vier Installer an ein GitHub Release. Ablauf in `docs/ENTWICKLUNG.md` („Release
-veröffentlichen“): Version in `package.json` per Pull Request erhöhen, nach dem Merge taggen.
-Anlass genug: Ohne Release erreichen die Sicherheits-Korrekturen aus Electron 45.2.1 und die
-vier Show-Punkte niemanden außerhalb der Entwicklung. Dazu der Skill aus H3.
 
 ### Wünsche je Werkzeug
 
@@ -1085,7 +1076,7 @@ Was die App heute schützt, steht in [SICHERHEIT.md](SICHERHEIT.md). Offen:
 | ----- | ------ | ----- | ------- |
 | **S1** | **PIN oder Token für die Fernsteuerungen** (optional): Sie sind ohne Passwort; Befehle werden geprüft, Uploads begrenzt, Websites abgewiesen – wer im selben Netz ist, kann aber steuern. Voraussetzung für die ATEM-Steuerung vom Handy (AT8) | M | – |
 | **S2** | **CSP ohne `'unsafe-inline'`** für Skripte im Produktiv-Build; braucht eine eigene Dev-CSP, weil der Vite-Dev-Server eine Inline-Präambel lädt. (`'unsafe-eval'` ist bereits entfernt.) | M | – |
-| **S3** | **App-Aktualisierung** (`electron-updater` über GitHub Releases): Electron mit Chromium und alle npm-Pakete kommen heute nur mit einem neuen Installer – selbst aktuell halten sich nur ffmpeg und yt-dlp. Die Installer baut die CI schon und legt sie bei einem Tag `v*` als GitHub Release ab („Installer bauen“); `electron-updater` braucht dort zusätzlich die `latest*.yml` und `.blockmap`-Dateien. Windows warnt ohne Signatur beim Installieren, macOS geht nur mit einem Apple-Entwicklerzertifikat | L | F5 |
+| **S3** | **App-Aktualisierung** (`electron-updater` über GitHub Releases): Electron mit Chromium und alle npm-Pakete kommen heute nur mit einem neuen Installer – selbst aktuell halten sich nur ffmpeg und yt-dlp. Die Installer baut die CI schon und legt sie bei einem Tag `v*` als GitHub Release ab („Installer bauen“); `electron-updater` braucht dort zusätzlich die `latest*.yml` und `.blockmap`-Dateien. Windows warnt ohne Signatur beim Installieren, macOS geht nur mit einem Apple-Entwicklerzertifikat | L | – |
 | **S4** | **NDI im Installer:** Die Lizenz erlaubt die Weitergabe mit Auflagen, die die App noch nicht erfüllt – siehe [NDI.md](NDI.md) | M | S3 |
 
 ## E – Aufräumen und Qualität
@@ -1264,8 +1255,6 @@ noch genau einmal da.
 
 Je Skill ein kleiner Pull Request, am besten dann, wenn das Thema das nächste Mal anfällt:
 
-- **`release`** – Version erhöhen, Tag, Ablauf „Installer bauen“, Text des Release, was danach
-  zu prüfen ist (mit F5).
 - **`oberflaeche`** – Änderungen an bestehenden Werkzeugen: die sieben Regeln und die beiden
   Muster aus dem [Leitbild](#leitbild-zwei-muster), dazu Tokens, `Alert` und `STATUS`, `Select`,
   Kontrast im hellen Design, Leerzustände. Am besten mit dem ersten W-Paket.
@@ -1520,7 +1509,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   der PWA, `trimNum` ohne Exponent); der DMX-Dip-Schalter zählt wie die Geräte (Adresse = Summe
   der Schalter, Schalter 1 an = Adresse 1); die Schublade schwebt in Fenstern unter 1100 px
   Breite, auch wenn sie angeheftet ist – die Nadel ist dort ausgegraut, ein Klick in die
-  Arbeitsfläche schließt die schwebende und übernimmt vorher ein angefangenes Feld (B8).
+  Arbeitsfläche schließt die schwebende und übernimmt vorher ein angefangenes Feld (B8). Erstes
+  Release `v0.1.0` am 24. November mit den vier Installern, dazu der Skill `release` (F5).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.
