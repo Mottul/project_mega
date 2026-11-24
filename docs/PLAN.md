@@ -440,7 +440,7 @@ Felder in Akzentfarbe.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | Entscheidung 2 (nur noch: zugeklappt oder Umschalter) |
+| **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | – |
 | **K4** | Rechner merken sich die Eingaben | M | nach K6 (dieselben Rechner) |
 
 Vor jedem Schritt den Skill `rechner-pwa` lesen.
@@ -461,9 +461,8 @@ Verweise darauf gültig bleiben.
 
 ### K6 – Neuer Aufbau der übrigen Rechner
 
-Für alle Rechner einheitlich, entschieden am 24. November 2026. Vor dem Start ist nur noch
-Entscheidung 2 zu klären: die zweite Frage zugeklappt wie im Piloten oder mit einem Umschalter
-oben; was gewählt wird, gilt für alle Rechner. Wie der Pilot an der Stromlast (K5,
+Für alle Rechner einheitlich, entschieden am 24. November 2026 (Entscheidung 2): die zweite
+Frage zugeklappt wie im Piloten, kein Umschalter. Wie der Pilot an der Stromlast (K5,
 `tools/power-load/PowerLoad.tsx`), je Pull Request zwei bis drei Rechner, in der Reihenfolge des
 gemessenen Gewinns:
 
@@ -1361,12 +1360,7 @@ behalten ihre Nummer, damit Verweise darauf stimmen:
 
 1. **Reihenfolge:** die Etappen wie in der [Übersicht](#übersicht-und-reihenfolge) – erst die
    Vorbilder fertig, dann die Muster übertragen? (Ja.)
-2. **Neuer Aufbau der Rechner** (K6): für alle Rechner einheitlich entschieden (24. November
-   2026, siehe unten). Offen ist nur noch die zweite Frage eines Rechners: zugeklappte Karte wie
-   im Piloten an der Stromlast oder ein Umschalter oben wie „Signal“ im Testtongenerator?
-   (Zugeklappt: Im breiten Fenster stehen dann beide Fragen nebeneinander, ein Umschalter zeigt
-   immer nur eine. Der Umschalter passt, wo sich die Möglichkeiten ausschließen – im
-   Testtongenerator spielt immer nur ein Signal.)
+2. **Neuer Aufbau der Rechner** (K6) – entschieden am 24. November 2026, siehe unten.
 3. **Rechner merken sich die Eingaben** (K4) – entschieden am 24. November 2026, siehe unten.
 4. **Heißt die Kategorie weiter „Rechner“?** (Ja.) Mit RTA und Testtongenerator wäre „Rechner &
    Messen“ treffender – das ändert eine Beschriftung in `tools/types.ts` und die Überschriften in
@@ -1397,9 +1391,11 @@ Entschieden – damit nichts neu gefragt wird:
 
 - **Neuer Aufbau für alle Rechner** (24. November 2026, nach dem Pilot an der Stromlast: „PWA
   Apps gefallen mir so. Mit Umschalter fände ich aber auch nicht schlecht. … Definitiv aber alle
-  einheitlich“): Antwort zuerst und Knopfgruppen statt Listen, in allen Rechnern gleich (K6). Ob
-  die zweite Frage zugeklappt wird wie im Piloten oder einen Umschalter bekommt, klärt
-  Entscheidung 2 – auch das dann für alle.
+  einheitlich“, dann „Ja, zugeklappt“): Antwort zuerst, Knopfgruppen statt Listen und die zweite
+  Frage als zugeklappte Karte wie im Piloten – in allen Rechnern gleich (K6). Kein Umschalter: Mit
+  der Karte stehen im breiten Fenster beide Fragen nebeneinander, ein Umschalter zeigt immer nur
+  eine. Er bleibt, wo sich die Möglichkeiten ausschließen (im Testtongenerator spielt immer nur
+  ein Signal).
 - **Rechner merken sich die Eingaben** (24. November 2026, „Rechner sollen sich die Eingaben
   merken“): K4 wie beschrieben, mit „Zurücksetzen“, nach K6.
 - **Arbeitsfläche: zuerst der Video-Generator** (24. November 2026, „Video-Generator als
