@@ -168,6 +168,6 @@ lesen, offene Fragen klären, nach der Umsetzung in WERKZEUGE überführen und l
 Wiederkehrende Abläufe als Projekt-Skills in `.claude/skills/` (`ipc-kanal`, `neues-werkzeug`,
 `abschluss-check`, `electron-e2e`, `fernsteuerung-seite`, `konvertierungs-kern`, `ffmpeg-labor`,
 `review-checkliste`, `abhaengigkeiten`, `aufraeumen`, `projektdatei`, `anleitung-inhalte`,
-`kabelverlauf`, `atem-steuerung`, `rechner-pwa`).
+`kabelverlauf`, `atem-steuerung`, `rechner-pwa`, `release`).
 Neue oder geänderte Funktionen in `docs/WERKZEUGE.md` (neue Tools auch im README-Überblick)
 nachtragen, Erledigtes aus `docs/PLAN.md` streichen. Markdown ist von Prettier ausgenommen.
