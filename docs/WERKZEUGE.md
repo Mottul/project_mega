@@ -964,6 +964,17 @@ Geräte auf einen 10- bis 63-A-Stromkreis passen – wahlweise mit 80 % Auslastu
 Dauerbetrieb. cos φ zählt über 0 bis 1; ein Wert außerhalb ergibt kein Ergebnis (früher wurde er
 still auf 0,01 bis 1 begrenzt), ein leeres Feld rechnet mit 1.
 
+**Aufbau** (Pilot für die übrigen Rechner): zwei Karten, „Last“ und „Geräte pro Stromkreis“, die
+sich zuklappen lassen. Zugeklappt zeigt jede ihre Antwort als Kurzfassung – „3.680 W · 16 A“
+(dreiphasig mit „3∼“ davor, der Strom gilt dann je Leiter) bzw. „7 Geräte je Kreis“. Ab Werk ist
+am Handy und im schmalen Fenster nur „Last“ offen, im breiten Fenster, in dem beide Karten
+nebeneinander stehen, beide; was man selbst auf- und zuklappt, bleibt gemerkt. Am Handy passt die
+Seite so ohne Scrollen (393 × 710: 508 statt 929 px). In „Geräte pro Stromkreis“ steht die Antwort
+„Max. Geräte“ über den Feldern – wer am Handy tippt, sieht sie über der Tastatur –, darunter Strom
+je Gerät und die Summen. Anschluss (1∼ 230 V, 3∼ 400 V), Absicherung (10, 16, 32, 63 A) und
+Auslastung (100 %, 80 % Dauer) wählt man mit einem Tipp; dass 16 A die Schuko-Steckdose und 32
+und 63 A den CEE-Anschluss meinen, sagt das ⓘ.
+
 **Am Drehstrom** zählt „Geräte pro Stromkreis“ je Außenleiter: Jedes Gerät hängt an einem Leiter
 (U ÷ √3, an 400 V rund 230 V), die Absicherung gilt je Leiter – Max. Geräte = 3 × Geräte je
 Leiter. „Strom je Gerät“ und „Summe Strom“ sind der Strom auf einem Außenleiter, „Summe Leistung“

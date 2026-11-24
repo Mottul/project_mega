@@ -900,6 +900,76 @@ try {
       }
     ],
     [
+      'Stromlast (Pilot Muster 2): Antwort zuerst, Wahl per Knopfgruppe, zweite Karte zu und gemerkt',
+      async () => {
+        const id = 'power-load'
+        // Kopf einer zuklappbaren Karte: der Knopf, der mit ihrem Titel beginnt (dahinter die
+        // Kurzfassung)
+        const karte = (w, titel) =>
+          w.getByTestId('tool-content').getByRole('button', { name: new RegExp(`^${titel}`) })
+        const wahl = (w, gruppe, knopf) =>
+          w
+            .getByRole('group', { name: gruppe, exact: true })
+            .getByRole('button', { name: knopf, exact: true })
+        const oben = async (loc) => (await loc.boundingBox()).y
+        // die Antwort der Karte „Geräte pro Stromkreis“ steht über ihrem ersten Feld
+        const antwortZuerst = async (w) => {
+          const antwort = await oben(w.getByText('Max. Geräte', { exact: true }))
+          const feld = await oben(w.getByLabel('Leistung je Gerät', { exact: true }))
+          assert.ok(antwort < feld, `Antwort bei ${antwort} px, erstes Feld bei ${feld} px`)
+        }
+
+        // ab Werk im eigenen Fenster (880 px): Karten nebeneinander, beide offen
+        let w = await openSmall(id)
+        assert.equal((await winInfo(id)).content[0], 880)
+        // zwei zuklappbare Karten (das ⓘ trägt auch aria-expanded, steht aber nicht im Titel)
+        const koepfe = w.getByTestId('tool-content').locator('h2 > button[aria-expanded]')
+        await expectCount(koepfe, 2, 'zuklappbare Karten')
+        await expectAttr(karte(w, 'Last'), 'aria-expanded', 'true', 'Last, breit')
+        const geraete = () => karte(w, 'Geräte pro Stromkreis')
+        await expectAttr(geraete(), 'aria-expanded', 'true', 'Geräte, breit')
+        // keine Liste mehr: Anschluss, Absicherung und Auslastung sind Knopfgruppen
+        assert.equal(await w.locator('select').count(), 0, 'noch eine Liste')
+        await antwortZuerst(w)
+
+        // eine Spalte wie am Handy: ab Werk nur die erste Karte offen, die zweite zeigt ihre
+        // Antwort als Kurzfassung
+        await toolWin(id, 'setContentSize', 393, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        assert.equal((await winInfo(id)).content[0], 393)
+        await expectAttr(geraete(), 'aria-expanded', 'false', 'Geräte, schmal')
+        assert.match(await geraete().textContent(), /7 Geräte je Kreis$/)
+        await expectAttr(karte(w, 'Last'), 'aria-expanded', 'true', 'Last, schmal')
+        assert.match(await karte(w, 'Last').textContent(), /3\.680 W · 16 A$/)
+        await assertFits(w, id)
+
+        // aufklappen: Antwort zuerst; jede Wahl ein Tipp (K7: 500 W an 3∼ 32 A = 42 Geräte)
+        await geraete().click()
+        await expectAttr(geraete(), 'aria-expanded', 'true', 'Geräte, aufgeklappt')
+        await antwortZuerst(w)
+        const max = readout(w, 'Max. Geräte')
+        assert.equal(await max.textContent(), '7')
+        await wahl(w, 'Anschluss', '3∼ 400 V').click()
+        await expectAttr(wahl(w, 'Anschluss', '3∼ 400 V'), 'aria-pressed', 'true', '3∼')
+        await wahl(w, 'Absicherung', '32 A').click()
+        assert.ok(await waitFor(async () => (await max.textContent()) === '42'), 'nicht 42')
+        await wahl(w, 'Auslastung', '80 % Dauer').click()
+        assert.ok(await waitFor(async () => (await max.textContent()) === '33'), 'nicht 33')
+        assert.match(await geraete().textContent(), /33 Geräte je Kreis$/)
+        assert.match(await karte(w, 'Last').textContent(), /3∼ · 11\.085 W · 16 A$/)
+
+        // Fenster zu und wieder auf: die aufgeklappte Karte ist noch offen
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        await expectAttr(geraete(), 'aria-expanded', 'true', 'Geräte, wieder geöffnet')
+        await assertFits(w, id)
+        // Breite wie ab Werk: „alle kleinen Werkzeuge“ erwartet die Karten nebeneinander
+        await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+      }
+    ],
+    [
       'alle kleinen Werkzeuge: Höhe folgt dem Inhalt, zweispaltig wo vorgesehen, bis 320 px schmal',
       async () => {
         for (const id of SMALL) {

@@ -154,12 +154,16 @@ die Bedienelemente.
   Breite nicht.
 - **Selten Gebrauchtes zugeklappt:** `FoldCard` zeigt zugeklappt eine Zeile mit dem Stand
   („Mittelung schnell“, die stärkste Feedback-Spitze in Rot). Welche Karten offen sind, bleibt
-  gemerkt.
+  gemerkt. Ein Rechner mit zwei Fragen (Pilot Stromlast, K5) klappt beide Karten so und zeigt
+  zugeklappt die Antwort („7 Geräte je Kreis“); die zweite ist ab Werk nur offen, wenn sie neben
+  der ersten steht (`defaultOpen="nebeneinander"`) – am Handy zu, im breiten Fenster offen.
 - **Passt aufs Handy:** Bei 393 × 710 steht das Wichtige ohne Scrollen da – der
   Testtongenerator ganz, beim RTA Messen, Pegel, Spektrum und dessen Bedienung.
 - **Meldungen in der Seite** (`Alert`), der Stand bleibt gemerkt, Erklärungen hinter dem ⓘ.
 - **Bausteine:** `tools/_calc/ui.tsx` und `components/ui/segmented.tsx`; Regeln fürs Handy im
-  Skill `rechner-pwa`.
+  Skill `rechner-pwa`. Vorbild für einen Rechner: `tools/power-load/PowerLoad.tsx` (Antwort
+  zuerst, Knopfgruppen, zwei zuklappbare Karten), für die Abnahme der Schritt „Stromlast (Pilot
+  Muster 2)“ in `e2e/layout.mjs`.
 
 **Gemessen am 14. November 2026** in der PWA bei 393 × 710 (sichtbar unter der Kopfzeile: 657 px,
 ohne Tastatur):
@@ -170,7 +174,7 @@ ohne Tastatur):
 | RTA | 824 px (+167) | Kopf mit Messen, Pegel und Spektrum; vier zugeklappte Karten (je 64) | zehn, in den Karten | Vorbild; Listen → K6 |
 | Rigging-Last | 1281 px (+624; seit K3 die Winkel-Warnung mit Titel, vorher 1209) | Traverse 447, Bridle 723 | – | K6 |
 | Kameraobjektiv | 1071 px (+414) | Kamera 423, Motiv 601 | Sensor (8), Telekonverter (4) | K6 |
-| Stromlast & Absicherung | 929 px (+272) | Last 315, Geräte je Stromkreis 519 | Anschluss (2), Absicherung (4), Auslastung (2) | **K5 – Pilot** |
+| Stromlast & Absicherung | passt: 508 px (vor K5 929, +272) | Last 362 offen, Geräte je Stromkreis 50 zugeklappt (offen 524; vor K5 315 und 519) | – (vor K5 Anschluss (2), Absicherung (4), Auslastung (2)) | Pilot (K5, 24. November 2026) – Entscheidung 2 |
 | Timecode-Rechner | 749 px (+92) | Umrechnen 321, Dauer 381 | Bildrate (10) | K6 |
 | Beamer-Lumen | 741 px (+84) | Projektion 423, Vorhandener Beamer 271 | Umgebungslicht (4) | K6 |
 | Audio-Delay & SPL | 695 px (+38) | Delay 367, Pegel über Distanz 281 | – | K6 |
@@ -178,11 +182,12 @@ ohne Tastatur):
 | DMX-Dip-Schalter | passt | eine (287; vor K3 mit der Zeile „Adresse“ 389) | – | nichts |
 | Kreisrechner | passt | eine (267) | – | nichts |
 
-**Wo die Antwort steht:** In den Rechnern steht das hervorgehobene Ergebnis unter den Feldern. Bei
-Stromlast („Max. Geräte“), Rigging („Kraft je Strang“) und Kameraobjektiv (Bildausschnitt) liegt
-es damit unter dem Rand des Bildschirms (Unterkante bei 757, 795 und 797 px von 710), bei
-Audio-Delay („Pegel in Ziel-Distanz“) halb. Mit offener Tastatur bleibt noch weniger: Wer tippt,
-sieht die Antwort nicht – am Gerät zu prüfen.
+**Wo die Antwort steht:** In den Rechnern steht das hervorgehobene Ergebnis unter den Feldern –
+außer in der Stromlast, die seit K5 die Antwort über die Felder stellt (vorher endete „Max.
+Geräte“ bei 757 px von 710). Bei Rigging („Kraft je Strang“) und Kameraobjektiv (Bildausschnitt)
+liegt es damit unter dem Rand des Bildschirms (Unterkante bei 795 und 797 px), bei Audio-Delay
+(„Pegel in Ziel-Distanz“) halb. Mit offener Tastatur bleibt noch weniger: Wer tippt, sieht die
+Antwort nicht – am Gerät zu prüfen.
 
 ## So wird ein Paket umgesetzt
 
@@ -266,7 +271,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **2 – Muster übertragen** | K5 → K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und sechs Rechner |
+| **2 – Muster übertragen** | K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und fünf Rechner |
 | **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
@@ -435,8 +440,7 @@ Felder in Akzentfarbe.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **K5** | Neuer Aufbau am Pilot: Stromlast & Absicherung | M | – |
-| **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | K5, Entscheidung 2 |
+| **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | Entscheidung 2 |
 | **K4** | Rechner merken sich die Eingaben | M | Entscheidung 3 |
 
 Vor jedem Schritt den Skill `rechner-pwa` lesen.
@@ -450,53 +454,28 @@ Verweise darauf gültig bleiben.
 
 | Nr. | Befund | Fundstelle | Paket |
 | --- | ------ | ---------- | ----- |
-| 6 | Auswahl aus wenigen Möglichkeiten ist mal eine Liste (zwei Tipps, Optionen verdeckt), mal eine Knopfgruppe: in der Stromlast Anschluss, Absicherung und Auslastung, im RTA die Listen in den Karten, dazu Umgebungslicht (Beamer-Lumen), Telekonverter (Kameraobjektiv), Seitenverhältnis (Projektionsverhältnis) und Bildrate (Timecode). Die Bausteine `ChoiceField` und `Segmented` gibt es | `PowerLoad.tsx`, `RtaCards.tsx`, `ProjectorLumen.tsx`, `CameraLens.tsx`, `ThrowRatio.tsx`, `Timecode.tsx` | K5, K6 |
+| 6 | Auswahl aus wenigen Möglichkeiten ist mal eine Liste (zwei Tipps, Optionen verdeckt), mal eine Knopfgruppe: im RTA die Listen in den Karten, dazu Umgebungslicht (Beamer-Lumen), Telekonverter (Kameraobjektiv), Seitenverhältnis (Projektionsverhältnis) und Bildrate (Timecode). Die Bausteine `ChoiceField` und `Segmented` gibt es; die Stromlast nutzt sie seit K5 | `RtaCards.tsx`, `ProjectorLumen.tsx`, `CameraLens.tsx`, `ThrowRatio.tsx`, `Timecode.tsx` | K6 |
 | 11 | Alle Eingaben sind weg, sobald das Fenster zugeht oder das Handy die PWA aus dem Speicher wirft; es erscheinen wieder die Beispielwerte (der Testtongenerator merkt sich seinen Stand schon) | alle Rechner (`useState`) | K4 |
-| 17 | Sechs Rechner sind am Handy höher als der Bildschirm, und die Antwort steht unter den Feldern – bei dreien unter dem Rand | Messung im [Leitbild](#muster-2-kleines-werkzeug) | K5, K6 |
+| 17 | Fünf Rechner sind am Handy höher als der Bildschirm, und die Antwort steht unter den Feldern – bei zweien unter dem Rand (die Stromlast passt seit K5) | Messung im [Leitbild](#muster-2-kleines-werkzeug) | K6 |
 | 18 | „Frames (gesamt)“ im Timecode-Rechner rundet Bruchteile still: „1,5“ rechnet mit Frame 2, das Feld behält „1,5“ (gefunden in K3, festgehalten im Test „auf ganze gerundet“). Rot markieren wie andere Werte, mit denen nicht gerechnet wird? | `timecode/tc.ts` (`framesFrom`) | K6 |
-
-### K5 – Neuer Aufbau am Pilot: Stromlast & Absicherung
-
-Die drei Griffe des Musters 2 an einem Rechner, zum Ansehen und Entscheiden. Stromlast, weil dort
-alle drei wirken.
-
-**Heute** (`PowerLoad.tsx`, gemessen bei 393 × 710): Die Seite ist 929 px hoch, sichtbar sind
-657 px. Zwei Karten stehen untereinander – „Last“ (315 px) und „Geräte pro Stromkreis“ (519 px).
-Anschluss, Absicherung und Auslastung sind Listen mit zwei bis vier Einträgen. Die Antwort „Max.
-Geräte“ steht ganz unten und endet bei 757 px, also unter dem Rand.
-
-**So:**
-
-1. **Antwort zuerst:** In der Karte „Geräte pro Stromkreis“ steht die Antwort (`Readout` mit `big`
-   und `accent`) als erste Zeile unter dem Titel, darunter die Felder, darunter die Nebenwerte
-   (Strom je Gerät, Summen). Am Handy steht sie so über den Feldern, in die man tippt. In der
-   Karte „Last“ sind Leistung und Strom verknüpfte Felder – dort gibt es keine eigene Antwort,
-   sie bleibt, wie sie ist.
-2. **Wählen mit einem Tipp:** Anschluss („1∼ 230 V“, „3∼ 400 V“) und Auslastung („100 %“, „80 %
-   Dauer“) als `ChoiceField`; die Absicherung (10, 16, 32, 63 A) als Knopfgruppe in ganzer Breite
-   (`FieldBlock` mit `Segmented`). Was die Liste heute dazusagt („Schuko“, „CEE“), steht hinter
-   dem ⓘ.
-3. **Zweite Frage zugeklappt:** Beide Karten werden `FoldCard`. Zugeklappt zeigt jede ihre Antwort
-   als Kurzfassung („3.680 W · 16 A“, „7 Geräte je Kreis“). Ab Werk ist am Handy die erste
-   offen, im breiten Fenster am Rechner (zwei Karten nebeneinander) beide; was man auf- und
-   zuklappt, bleibt gemerkt.
-
-Neue Bausteine braucht es dafür nicht – `FoldCard`, `FieldBlock`, `ChoiceField` und `Segmented`
-sind da. Fehlt doch etwas, kommt es nach `tools/_calc/ui.tsx` und in den Skill `rechner-pwa`.
-
-**Abnahme:** In der PWA bei 393 × 710 (messen per `getBoundingClientRect`, Skill `rechner-pwa`):
-Die Seite ist im Auslieferungszustand höchstens 657 px hoch; die Antwort einer offenen Karte liegt
-über ihrem ersten Feld; es gibt keine Liste (`select`) mehr. E2E in `e2e/layout.mjs`: Stromlast
-öffnen, die zweite Karte trägt `aria-expanded="false"` und zeigt ihre Kurzfassung; aufklappen,
-Fenster schließen und wieder öffnen – sie ist noch offen. Die Tests des Rechenkerns
-(`power-load/math.test.ts`) bleiben unverändert grün; `npm run pwa:build`.
-
-**Danach:** Matthias sieht sich den Pilot am Rechner und am Handy an und entscheidet, ob die
-übrigen Rechner so folgen (Entscheidung 2).
 
 ### K6 – Neuer Aufbau der übrigen Rechner
 
-Wie der Pilot, je Pull Request zwei bis drei Rechner, in der Reihenfolge des gemessenen Gewinns.
+Nur nach Entscheidung 2. Wie der Pilot an der Stromlast (K5, `tools/power-load/PowerLoad.tsx`),
+je Pull Request zwei bis drei Rechner, in der Reihenfolge des gemessenen Gewinns:
+
+1. **Antwort zuerst:** In der Karte mit einer eigenen Antwort steht sie (`Readout` mit `big` und
+   `accent`) als erste Zeile unter Titel und Frage, darunter die Felder, darunter die Nebenwerte.
+   Karten aus verknüpften Feldern („Last“) haben keine eigene Antwort und bleiben, wie sie sind.
+2. **Wählen mit einem Tipp:** Knopfgruppen statt Listen – in der Stromlast `ChoiceField` für
+   Anschluss und Auslastung (je zwei), die Absicherung (vier Werte) in ganzer Breite (`FieldBlock`
+   mit `Segmented`). Was die Liste dazusagte, steht hinter dem ⓘ. Ein `ChoiceField` mit zwei
+   Knöpfen wie „1∼ 230 V“ passt am Handy nicht neben die Beschriftung und rückt darunter, in
+   ganzer Breite; im breiten Fenster bleibt es eine Zeile.
+3. **Zweite Frage zugeklappt:** Beide Karten `FoldCard` mit der Antwort als Kurzfassung („–“ ohne
+   Ergebnis), die erste `defaultOpen`, die zweite `defaultOpen="nebeneinander"`: ab Werk am Handy
+   zu, im breiten Fenster offen; gemerkt wird, was man selbst klappt.
+
 Die Fensterbreiten in `src/shared/toolWindows.ts` bleiben; ob zweispaltige Fenster noch nötig
 sind, zeigt der Pilot.
 
@@ -511,10 +490,13 @@ sind, zeigt der Pilot.
 | RTA | In den zugeklappten Karten werden Listen mit bis zu vier kurzen Möglichkeiten Knopfgruppen in ganzer Breite (`FieldBlock` mit `Segmented`): Kanal, Kalibrator, Mittelung, Spitzen, Pegelmesser, Skala, Farbe, Spektrogramm, Empfindlichkeit. „Eingang“ bleibt eine Liste. `e2e/rta.mjs` wählt Spektrogramm, Kanal und Mittelung heute per `selectOption` und zieht mit |
 | DMX-Dip-Schalter, Kreisrechner | nichts – beide passen und haben eine Karte |
 
-**Abnahme** je Rechner wie in K5: Seite im Auslieferungszustand höchstens 657 px hoch, Antwort
-über dem ersten Feld der offenen Karte, ein Schritt in `e2e/layout.mjs`, Tests der Rechenkerne grün,
-`npm run pwa:build`. Die neuen Maße in den Skill `rechner-pwa`, die Beschreibung nach
-`docs/WERKZEUGE.md`.
+**Abnahme** je Rechner wie beim Pilot: In der PWA bei 393 × 710 ist die Seite im
+Auslieferungszustand höchstens 657 px hoch (messen per `getBoundingClientRect`, Skill
+`rechner-pwa`), die Antwort einer offenen Karte liegt über ihrem ersten Feld, keine Liste mit bis
+zu vier Möglichkeiten mehr; ein Schritt in `e2e/layout.mjs` wie „Stromlast (Pilot Muster 2)“
+(zweite Karte breit offen, schmal zu mit Kurzfassung, aufgeklappt gemerkt), zuerst rot gegen den
+alten Build; Tests der Rechenkerne unverändert grün, `npm run pwa:build`. Die neuen Maße in den
+Skill `rechner-pwa`, die Beschreibung nach `docs/WERKZEUGE.md`.
 
 ### K4 – Rechner merken sich die Eingaben
 
@@ -1312,8 +1294,13 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
   −5 °C im Audio-Delay: „Temperatur“ hat `signed` (die volle Tastatur, `inputMode="text"` statt
   `decimal`, weil die Dezimaltastatur des iPhones kein Minus hat). Ist das Minus am iPhone ohne
   Suchen zu erreichen, und taugt die Tastatur auch unter Android? Wenn nicht, bekommt `NumField`
-  statt der vollen Tastatur einen Knopf „±“ am Feld (neues Paket). **Nach K5:** Bleibt die
-  Antwort der Stromlast beim Tippen über der Tastatur sichtbar?
+  statt der vollen Tastatur einen Knopf „±“ am Feld (neues Paket).
+- **Seit K5, Stromlast (Pilot für Entscheidung 2):** Am Handy ist ab Werk nur „Last“ offen,
+  „Geräte pro Stromkreis“ zeigt zugeklappt „7 Geräte je Kreis“ – passt die Seite ohne Scrollen?
+  Aufklappen und in „Leistung je Gerät“ tippen: Bleibt die Antwort „Max. Geräte“ über der
+  Tastatur sichtbar? Anschluss, Absicherung und Auslastung per Knopf, App schließen und wieder
+  öffnen – die aufgeklappte Karte ist noch offen. Am Rechner im breiten Fenster: beide Karten
+  offen nebeneinander.
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1378,9 +1365,10 @@ Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestä
 
 1. **Reihenfolge:** die Etappen wie in der [Übersicht](#übersicht-und-reihenfolge) – erst die
    Vorbilder fertig, dann die Muster übertragen? (Ja.)
-2. **Neuer Aufbau der Rechner** (K5, K6): Antwort zuerst, Wahl als Knopfgruppen, zweite Karte
-   zugeklappt – nach dem Pilot an der Stromlast für alle Rechner übernehmen? (Entscheidung nach
-   dem Pilot; die Alternative zur zugeklappten Karte wäre ein Umschalter oben, wie „Signal“ im
+2. **Neuer Aufbau der Rechner** (K6): Antwort zuerst, Wahl als Knopfgruppen, zweite Karte
+   zugeklappt – für alle Rechner übernehmen? Der Pilot an der Stromlast steht seit dem
+   24. November 2026 (K5) zum Ansehen am Rechner und am Handy bereit. (Entscheidung nach dem
+   Ansehen; die Alternative zur zugeklappten Karte wäre ein Umschalter oben, wie „Signal“ im
    Testtongenerator.)
 3. **Sollen sich die Rechner ihre Eingaben merken** (K4)? (Ja, mit „Zurücksetzen“.)
 4. **Heißt die Kategorie weiter „Rechner“?** (Ja.) Mit RTA und Testtongenerator wäre „Rechner &
@@ -1511,6 +1499,11 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Breite, auch wenn sie angeheftet ist – die Nadel ist dort ausgegraut, ein Klick in die
   Arbeitsfläche schließt die schwebende und übernimmt vorher ein angefangenes Feld (B8). Erstes
   Release `v0.1.0` am 24. November mit den vier Installern, dazu der Skill `release` (F5).
+  Neuer Aufbau am Pilot Stromlast (K5, 24. November): Antwort „Max. Geräte“ über den Feldern,
+  Anschluss, Absicherung und Auslastung als Knopfgruppen statt Listen, beide Karten zuklappbar
+  mit der Antwort als Kurzfassung, die zweite ab Werk nur nebeneinander offen
+  (`FoldCard` mit `defaultOpen="nebeneinander"`, `CalcPage` misst seine Spalten) – am Handy
+  508 statt 929 px.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.
