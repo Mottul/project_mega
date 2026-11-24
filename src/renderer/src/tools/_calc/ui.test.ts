@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseDecimal } from '@renderer/components/ui/decimal-field'
-import { parseNum, parseOptional, trimNum } from './ui'
+import { parseNum, parseOptional, spaltenZahl, trimNum } from './ui'
 
 // parseNum ist die Grenze zwischen Zahl und Fehleingabe: Was es nicht liest, umrandet NumField
 // rot. Dieselbe Funktion liest DecimalField (parseDecimal) – beide nehmen dasselbe an.
@@ -94,5 +94,25 @@ describe('parseOptional – Felder, die leer mit einer Vorgabe rechnen', () => {
     for (const t of ['abc', '-', '1,2,3', '1e3']) {
       expect(parseOptional(t), JSON.stringify(t)).toBeNaN()
     }
+  })
+})
+
+// Ob die Karten einer Rechner-Seite nebeneinander stehen, entscheidet über „ab Werk offen“ der
+// zweiten Karte (FoldCard, „nebeneinander“) – gemessen am Raster, nicht an der Fensterbreite.
+describe('spaltenZahl', () => {
+  it('zählt die Spalten aus grid-template-columns', () => {
+    expect(spaltenZahl('406px 406px')).toBe(2)
+    expect(spaltenZahl('329px')).toBe(1)
+    expect(spaltenZahl('300.5px 300.5px 300.5px')).toBe(3)
+  })
+
+  it('leere Spalten von auto-fit (0px) zählen nicht', () => {
+    expect(spaltenZahl('406px 0px')).toBe(1)
+    expect(spaltenZahl('0px 0px')).toBe(1)
+  })
+
+  it('ohne Raster eine Spalte', () => {
+    expect(spaltenZahl('none')).toBe(1)
+    expect(spaltenZahl('')).toBe(1)
   })
 })

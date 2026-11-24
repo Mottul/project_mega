@@ -169,7 +169,9 @@ Git), `vendor/` (optionales NDI-Binding) und `docs/`.
   Schließt das Hauptfenster, gehen sie mit. Was auch verdeckt weiterlaufen muss (RTA misst,
   Testtongenerator spielt), trägt in `SMALL_TOOLS` `background: true`: Sein Fenster wird im
   Hintergrund nicht gedrosselt (`runsInBackground`). Die kleinen Werkzeuge bauen auf
-  `tools/_calc/ui` (Karten im auto-fit-Raster, Zeilen per `FieldRow` mit Umbruch unter ~330 px,
+  `tools/_calc/ui` (Karten im auto-fit-Raster – `CalcPage` misst, ob sie nebeneinander stehen;
+  zuklappbare Karten per `FoldCard`, eine zweite Frage mit `defaultOpen="nebeneinander"` ist ab
+  Werk nur dann offen –, Zeilen per `FieldRow` mit Umbruch unter ~330 px,
   Ergebnis-Kacheln, `hint` = ⓘ, verknüpfte Felder per `useLinkedFields`; Auswahl bis vier kurze
   Möglichkeiten als Knopfgruppe `ChoiceField`, sonst `SelectField`; `RangeField`, `QuickPick`,
   `RunButton` für Start und Stopp). `NumField` umrandet selbst rot und mit `aria-invalid`, was

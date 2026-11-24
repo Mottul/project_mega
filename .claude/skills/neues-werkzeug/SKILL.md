@@ -63,7 +63,9 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      (`src/shared/toolWindows.ts`) eintragen – es öffnet sich dann immer im eigenen Fenster, die
      Höhe folgt dem Inhalt. Breite `ONE_COLUMN`; zwei Bereiche, die einspaltig höher als ~800 px
      wären, `TWO_COLUMNS` (stehen dann nebeneinander). Bausteine aus `tools/_calc/ui`:
-     `CalcPage` (`note` nur für Sicherheitshinweise), `SectionCard` mit EINER kurzen `desc`-Zeile,
+     `CalcPage` (`note` nur für Sicherheitshinweise), `SectionCard` mit EINER kurzen `desc`-Zeile
+     (zwei Fragen: zuklappbare `FoldCard`s wie in der Stromlast, dem Pilot des neuen Aufbaus –
+     Antwort als `summary` und als erste Zeile der Karte, die zweite `defaultOpen="nebeneinander"`),
      Formeln/Hintergrund/Beispiel als `hint` (ⓘ) an Karte, Feld oder Ergebnis – keine Absätze;
      Zeilen aus `FieldRow` (Beschriftung links, beliebiges Element rechts): `NumField` (umrandet
      selbst rot und mit `aria-invalid`, was `parseNum` nicht liest – leer ist nie ein Fehler;

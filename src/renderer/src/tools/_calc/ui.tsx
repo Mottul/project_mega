@@ -14,10 +14,22 @@
 // - Bedienfelder in ganzer Breite (Testtongenerator): `FieldBlock` – Beschriftung darüber, der
 //   Wert rechts daneben; so stehen Knopfgruppen, Schieber und Schnellwahl bündig untereinander.
 // - Selten Gebrauchtes (Einstellungen des RTA) in `FoldCard`: zugeklappt nur eine Zeile mit der
-//   Kurzfassung – beim ersten Öffnen erschlägt die Seite nicht.
+//   Kurzfassung – beim ersten Öffnen erschlägt die Seite nicht. Die zweite Frage eines Rechners
+//   (Stromlast: „Geräte pro Stromkreis“) ist ab Werk nur offen, wenn ihre Karte neben der ersten
+//   steht (`defaultOpen="nebeneinander"`); am Handy zeigt sie zugeklappt ihre Antwort.
 // - Nichts bleibt stumm: Eine Fehleingabe ist rot umrandet (`NumField`), der Status eines
 //   Ergebnisses steht in Farbe und Symbol der App (`Readout` mit `tone`) statt als ✓/✗ im Text.
-import { Children, createContext, useContext, useId, useState, type ReactNode } from 'react'
+import {
+  Children,
+  createContext,
+  useContext,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject
+} from 'react'
 import { ChevronDown, Square, type LucideIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
@@ -27,13 +39,48 @@ import { Input } from '@renderer/components/ui/input'
 import { Segmented, segmentButtonClass, segmentGroupClass } from '@renderer/components/ui/segmented'
 import { Select } from '@renderer/components/ui/select'
 import { STATUS, type StatusTone } from '@renderer/components/ui/status'
-import { flag, usePersistentState } from '@renderer/lib/usePersistentState'
+import { flag, usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
 import { cn } from '@renderer/lib/utils'
+
+/**
+ * Wie viele Spalten das Raster der Rechner-Seite gerade hat: ab 2 stehen die Karten
+ * nebeneinander (breites Fenster am Rechner), mit 1 untereinander (Handy, schmales Fenster).
+ */
+const Spalten = createContext(1)
+
+/**
+ * Spalten aus dem berechneten `grid-template-columns` des Rasters („406px 406px“ -> 2). auto-fit
+ * legt Spalten ohne Karte auf 0px – die zählen nicht, ebenso „none“ (kein Raster).
+ */
+export function spaltenZahl(template: string): number {
+  return Math.max(1, template.split(' ').filter((t) => parseFloat(t) > 0).length)
+}
+
+/**
+ * Spalten des Rasters, gemessen statt aus der Fensterbreite geschätzt: Der Kompaktmodus
+ * verkleinert die Karten, nicht das Fenster. Vor dem Zeichnen gemessen – eine Karte, die nur
+ * nebeneinander ab Werk offen ist, erschiene sonst im ersten Bild zugeklappt.
+ */
+function useSpalten(ref: RefObject<HTMLElement>): number {
+  const [n, setN] = useState(1)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = (): void => setN(spaltenZahl(getComputedStyle(el).gridTemplateColumns))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return n
+}
 
 /**
  * Zentrierte Rechner-Seite. Mehrere Karten stehen nebeneinander, sobald zwei je 22rem breit
  * Platz haben; `note` steht darunter über die ganze Breite (Sicherheitshinweise), `head` darüber
- * (eine Anzeige, die die volle Breite braucht – das Spektrum des RTA).
+ * (eine Anzeige, die die volle Breite braucht – das Spektrum des RTA). Wie viele Karten gerade
+ * nebeneinander stehen, erfahren die Karten über `Spalten` (`FoldCard`, „nebeneinander“).
  */
 export function CalcPage({
   children,
@@ -45,11 +92,16 @@ export function CalcPage({
   head?: ReactNode
 }): JSX.Element {
   const multi = Children.toArray(children).length > 1
+  const raster = useRef<HTMLDivElement>(null)
+  const spalten = useSpalten(raster)
   return (
     <div className={cn('mx-auto space-y-4 p-4 sm:p-6', multi || head ? 'max-w-5xl' : 'max-w-2xl')}>
       {head}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] items-start gap-4 sm:gap-5">
-        {children}
+      <div
+        ref={raster}
+        className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] items-start gap-4 sm:gap-5"
+      >
+        <Spalten.Provider value={spalten}>{children}</Spalten.Provider>
       </div>
       {note && <CalcNote>{note}</CalcNote>}
     </div>
@@ -82,10 +134,18 @@ export function SectionCard({
 }
 
 /**
+ * Gemerkter Zustand einer `FoldCard`: auf, zu oder – noch nie selbst geklappt – `null`, dann gilt
+ * „ab Werk“. Gespeichert wie bisher als '1'/'0' (`flag`).
+ */
+const geklappt: Codec<boolean | null> = { parse: flag.parse, format: (v) => (v ? '1' : '0') }
+
+/**
  * Karte, die sich auf- und zuklappen lässt: zugeklappt nur der Titel und rechts die Kurzfassung
- * der Werte (`summary`), aufgeklappt wie `SectionCard`. Der Zustand wird je `id` gemerkt
- * (Bedien-Kleinigkeit). Der Titel ist eine Überschrift mit einem Knopf darin – so finden
- * Vorlesewerkzeuge die Karten wie die übrigen; das ⓘ steht im Inhalt, ein Knopf im Knopf geht nicht.
+ * der Werte (`summary`), aufgeklappt wie `SectionCard`. Gemerkt wird je `id`, was man selbst
+ * auf- oder zuklappt (Bedien-Kleinigkeit); bis dahin gilt `defaultOpen` – mit „nebeneinander“
+ * auch dann, wenn das Fenster danach breiter oder schmaler wird. Der Titel ist eine Überschrift
+ * mit einem Knopf darin – so finden Vorlesewerkzeuge die Karten wie die übrigen; das ⓘ steht im
+ * Inhalt, ein Knopf im Knopf geht nicht.
  */
 export function FoldCard({
   id,
@@ -103,10 +163,17 @@ export function FoldCard({
   summary?: ReactNode
   desc?: string
   hint?: string
-  defaultOpen?: boolean
+  /**
+   * Ab Werk offen? „nebeneinander“: nur, solange die Karte neben einer anderen steht (breites
+   * Fenster) – untereinander (Handy) zeigt sie zugeklappt nur ihre Kurzfassung.
+   */
+  defaultOpen?: boolean | 'nebeneinander'
   children: ReactNode
 }): JSX.Element {
-  const [open, setOpen] = usePersistentState(`panel:${id}`, defaultOpen, flag)
+  const nebeneinander = useContext(Spalten) > 1
+  const abWerk = defaultOpen === 'nebeneinander' ? nebeneinander : defaultOpen
+  const [gemerkt, setGemerkt] = usePersistentState(`panel:${id}`, null, geklappt)
+  const open = gemerkt ?? abWerk
   const bodyId = useId()
   return (
     <Card className="overflow-hidden">
@@ -115,7 +182,7 @@ export function FoldCard({
           type="button"
           aria-expanded={open}
           aria-controls={open ? bodyId : undefined}
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => setGemerkt((g) => !(g ?? abWerk))}
           className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70 sm:px-5"
         >
           <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">

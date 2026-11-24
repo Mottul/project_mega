@@ -80,6 +80,19 @@ Leitbild und Teil K.
   bleiben am Handy kaum 150 px: Gruppen stehen einspaltig, Knöpfe ragen heraus.
 - **Selten Gebrauchtes zuklappen** (`FoldCard`, Kurzfassung im Kopf, Zustand gemerkt): Der RTA
   zeigt zuerst nur Messen, Pegel und Spektrum – alles offen erschlug am Handy.
+- **Rechner mit zwei Fragen** (Pilot Stromlast, K5 – Vorbild `tools/power-load/PowerLoad.tsx`):
+  beide Karten `FoldCard`, `summary` = die Antwort der Karte („7 Geräte je Kreis“, „–“ ohne
+  Ergebnis; ändert eine Wahl ihre Bedeutung, sagt die Kurzfassung es: „3∼ · 11.085 W · 16 A“).
+  Die erste `defaultOpen`, die zweite `defaultOpen="nebeneinander"`: offen nur, solange die Karten
+  nebeneinander stehen – `CalcPage` misst die Spalten seines Rasters (`spaltenZahl`, vor dem
+  Zeichnen) statt die Fensterbreite zu schätzen. Gemerkt wird erst, was man selbst klappt
+  (`panel:<id>`); bis dahin folgt die Karte den Spalten, auch beim Ziehen am Fenster. In der Karte
+  steht die Antwort (`Readout` mit `big` und `accent`) als erste Zeile, darunter die Felder,
+  darunter die Nebenwerte – wer am Handy tippt, sieht sie über der Tastatur. Am Handy (393 × 710)
+  ist die Stromlast so ab Werk 508 px hoch statt 929; beide Karten offen 982.
+- Ein `ChoiceField` mit zwei Knöpfen wie „1∼ 230 V“ oder „80 % Dauer“ passt am Handy nicht neben
+  die Beschriftung (10rem): Es rückt darunter, in ganzer Breite – wie ein `FieldBlock`. Im
+  breiten Fenster bleibt es eine Zeile.
 - Höhe prüfen, nicht schätzen: Handy im Browser ≈ 393 × 710 (Kopf- und Fußleiste des Browsers
   abgezogen), Inhalt per `getBoundingClientRect` messen (Testtongenerator: passt ohne Scrollen).
 - **Tastaturen:** `inputMode="decimal"` hat am iPhone kein Minus (WebKit-Fehler 193825) – Felder
@@ -142,14 +155,24 @@ Leitbild und Teil K.
      Eingabe. Werte und `aria-invalid` per JavaScript lesen, für ein Bild kurz warten und neu
      aufnehmen. Eingaben per JavaScript brauchen den nativen `value`-Setter und ein
      `input`-Ereignis, sonst merkt React nichts.
+   - **Auslieferungszustand messen:** Aufgeklappte Karten merkt sich der Browser-Bereich
+     (`localStorage`, Schlüssel `panel:<id>`, z. B. `panel:power-load:geraete`) – vor der Messung
+     entfernen und neu laden. Die Breite 393 schaltet dort auch den groben Zeiger ein
+     (`pointer: coarse`): Knopfgruppen sind dann höher als im Fenster der App.
    - **Ansehen ohne Build:** `npm run pwa:dev` (Port 5180) registriert keinen Service Worker und
      zeigt Änderungen sofort – gut, um einen Baustein, den noch kein Rechner nutzt, vorübergehend
      in einen einzusetzen und anzusehen (K2: `tone` an der Bewertung im Beamer-Lumen; danach
      zurücknehmen). Abnahme bleibt der gebaute Stand.
 3. In der App: `e2e/layout.mjs` (kleines Fenster, 320 px ohne Querscrollen, ab Werk kein Feld als
    Fehleingabe markiert; lesbar, aber nicht rechenbar – Gain 0, Eigengewicht −10 – ist rot und
-   ergibt „–“; Tastaturen von Timecode und Temperatur; Schalter des DMX-Dip-Schalters) und das
-   E2E des Werkzeugs. Ein Ergebnis liest dort `readout(fenster, 'Lumen-Bedarf')`.
+   ergibt „–“; Tastaturen von Timecode und Temperatur; Schalter des DMX-Dip-Schalters; Stromlast
+   als Vorbild für den neuen Aufbau: bei 880 px beide Karten offen nebeneinander, bei 393 px die
+   zweite zu mit Kurzfassung, aufgeklappt nach Schließen und Öffnen noch offen, Antwort über dem
+   ersten Feld, keine `select`) und das E2E des Werkzeugs. Ein Ergebnis liest dort
+   `readout(fenster, 'Lumen-Bedarf')`, den Kopf einer zuklappbaren Karte
+   `getByRole('button', { name: /^Titel/ })` (der Name endet mit der Kurzfassung). Wer die Breite
+   eines Fensters verstellt, stellt sie vor dem Schließen zurück – sie bleibt gemerkt, und der
+   Schritt „alle kleinen Werkzeuge“ erwartet die zweispaltigen Rechner in voller Breite.
    - **Baustein ändert sein Aussehen nach dem Inhalt** (`NumField` rot): alle kleinen Werkzeuge
      im Auslieferungszustand vorher und nachher als HTML vergleichen (Skill `aufraeumen`). In K2
      fand das die Timecode-Felder – sie führen hh:mm:ss:ff in einem `NumField` und wären ab Werk
