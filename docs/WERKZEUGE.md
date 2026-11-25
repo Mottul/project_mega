@@ -591,7 +591,13 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 - **Projektionsverhältnis:** Throw Ratio, Bildmaße und Projektionsabstand – das passende
   Beamer-Objektiv wählen.
 - **Kameraobjektiv:** aus Brennweite, Sensor, Telekonverter und Entfernung der Bildausschnitt –
-  wie viel einer Person bei maximalem Zoom ins Bild passt, mit Visualisierung.
+  wie viel einer Person bei maximalem Zoom ins Bild passt, mit Visualisierung. Aufbau wie die
+  Stromlast: „Kamera & Objektiv“ stellt man einmal ein; zugeklappt zeigt die Karte Sensor und
+  Brennweite („Vollformat · 200 mm“, mit Telekonverter „· 2×“) und ist am Handy ab Werk zu, im
+  breiten Fenster offen. In „Motiv & Bildausschnitt“ steht die Antwort über den Feldern,
+  zugeklappt zeigt die Karte sie als „Totale · 100 %“. Den Telekonverter (keiner, 1,4×, 1,7×, 2×)
+  wählt man mit einem Tipp, den Sensor weiter aus der Liste. Am Handy ist die Zeichnung kleiner –
+  so passt die Seite ohne Scrollen (393 × 710: 610 statt 1071 px).
 - **Beamer-Lumen:** Lumen-Bedarf aus Bildgröße und Umgebungslicht – und ob der vorhandene Beamer
   reicht: „ausreichend“ in Grün oder „zu dunkel“ in Rot, mit dem Symbol der Statusstufe. Ein
   leerer Leinwand-Gain rechnet mit 1; ein Gain von 0 oder darunter ergibt keinen Lumen-Bedarf.
@@ -968,8 +974,9 @@ still auf 0,01 bis 1 begrenzt), ein leeres Feld rechnet mit 1.
 sich zuklappen lassen. Zugeklappt zeigt jede ihre Antwort als Kurzfassung – „3.680 W · 16 A“
 (dreiphasig mit „3∼“ davor, der Strom gilt dann je Leiter) bzw. „7 Geräte je Kreis“. Ab Werk ist
 am Handy und im schmalen Fenster nur „Last“ offen, im breiten Fenster, in dem beide Karten
-nebeneinander stehen, beide; was man selbst auf- und zuklappt, bleibt gemerkt. Am Handy passt die
-Seite so ohne Scrollen (393 × 710: 508 statt 929 px). In „Geräte pro Stromkreis“ steht die Antwort
+nebeneinander stehen, beide; was man selbst auf- und zuklappt, bleibt gemerkt. Passen Titel und
+Kurzfassung nicht in eine Zeile (am Handy, im schmalen Fenster), steht die Kurzfassung unter dem
+Titel. Am Handy passt die Seite so ohne Scrollen (393 × 710: 508 statt 929 px). In „Geräte pro Stromkreis“ steht die Antwort
 „Max. Geräte“ über den Feldern – wer am Handy tippt, sieht sie über der Tastatur –, darunter Strom
 je Gerät und die Summen. Anschluss (1∼ 230 V, 3∼ 400 V), Absicherung (10, 16, 32, 63 A) und
 Auslastung (100 %, 80 % Dauer) wählt man mit einem Tipp; dass 16 A die Schuko-Steckdose und 32
@@ -989,6 +996,12 @@ mit Warnstufen: ab 45° zur Senkrechten der Hinweis „Flacher Winkel“, ab 60�
 anschlagen“. Ein leeres Eigengewicht zählt als 0, ein negatives ergibt kein Ergebnis. Richtwerte –
 ersetzt keinen Sachkundigen.
 
+**Aufbau** wie die Stromlast: „Traverse auf zwei Punkten“ und „Bridle (2 Stränge)“ lassen sich
+zuklappen und zeigen dann ihre Antwort – „A 115 kg · B 85 kg“ bzw. „141 kg je Strang · 45°“. Am
+Handy ist ab Werk nur die Traverse offen, im breiten Fenster beide nebeneinander; was man selbst
+klappt, bleibt gemerkt. In jeder Karte steht die Antwort über den Feldern, die Winkel-Warnung
+direkt darunter. Am Handy passt die Seite so ohne Scrollen (393 × 710: 631 statt 1281 px).
+
 ## Rechner
 
 - **Kreisrechner:** Durchmesser, Radius, Umfang und Fläche – einen Wert eingeben, den Rest
@@ -999,7 +1012,14 @@ ersetzt keinen Sachkundigen.
 - **Timecode-Rechner:** SMPTE-Timecode ↔ Frames ↔ Echtzeit, inklusive Drop-Frame (29,97/59,94),
   und Dauer zwischen In und Out. Timecodes lassen sich auch nur aus Ziffern tippen, paarweise von
   rechts gelesen: „1020312“ ist 01:02:03:12, ein oder zwei Ziffern sind Frames. Am Handy öffnen
-  die Felder dafür die Zifferntastatur (sie hat keinen Doppelpunkt).
+  die Felder dafür die Zifferntastatur (sie hat keinen Doppelpunkt). „Frames (gesamt)“ zählt nur
+  ganze Frames: „1,5“ ist rot und ergibt nichts (früher rechnete es still mit Frame 2); die
+  Echtzeit in Sekunden rundet auf das nächste Bild. Die Framerate wählt man mit
+  einem Tipp aus zehn Knöpfen (23,976 bis 60, „DF“ heißt Drop-Frame; was die Liste früher
+  dazusagte, steht hinter dem ⓘ). Aufbau wie die Stromlast: Beide Karten lassen sich zuklappen;
+  „Dauer zwischen zwei Timecodes“ ist ab Werk nur offen, wenn die Karten nebeneinander stehen,
+  und zeigt zugeklappt die Dauer („00:05:30:00“), „Timecode ↔ Frames ↔ Echtzeit“ den Timecode
+  mit seiner Framerate. Offen steht die Dauer über den Feldern. Am Handy 569 statt 749 px.
 
 ### RTA (Echtzeit-Analysator)
 

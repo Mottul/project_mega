@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { Segmented } from '@renderer/components/ui/segmented'
 import {
   CalcPage,
+  FieldBlock,
+  FoldCard,
   NumField,
   Readout,
-  SectionCard,
-  SelectField,
   fmt,
   parseNum,
   trimNum,
@@ -20,17 +21,37 @@ import {
   parseTc,
   tcToFrames,
   TC_RATES,
-  type TcField
+  type TcField,
+  type TcRate
 } from './tc'
 import { Alert } from '@renderer/components/ui/alert'
 
 // SMPTE-Timecode-Rechner: Timecode <-> Frames <-> Echtzeit (verknüpfte Felder,
 // das zuletzt bearbeitete ist die Quelle) + Differenz/Dauer zwischen zwei
 // Timecodes. Drop-Frame (29,97/59,94) wird korrekt behandelt.
+// Aufbau nach Muster 2 (Gesamtplan, K6 wie der Pilot Stromlast): Beide Fragen sind zuklappbare
+// Karten mit ihrer Antwort als Kurzfassung; ab Werk ist nur die erste offen, „Dauer“ zeigt
+// zugeklappt die Dauer – offen ist sie ab Werk nur, wenn die Karten nebeneinander stehen (im
+// 520 px breiten Fenster stehen sie untereinander). Die Framerate ist eine Knopfgruppe: ein
+// Tipp, alle zehn sichtbar.
 
 // ⓘ der Timecode-Felder: Am Handy gibt es nur die Zifferntastatur (ohne Doppelpunkt)
 const TC_HINT =
   'hh:mm:ss:ff oder nur Ziffern, gelesen paarweise von rechts: 1020312 = 01:02:03:12. Ein oder zwei Ziffern sind Frames.'
+
+// Was die Liste dazusagte („25 fps (PAL/EBU)“), steht hinter dem ⓘ
+const RATE_HINT =
+  'Bilder je Sekunde (fps): 23,976 = 24 ÷ 1,001, 24 Film, 25 PAL/EBU, 29,97 NTSC. DF = Drop-Frame: lässt Frame-NUMMERN aus, keine Bilder – Schreibweise mit Semikolon (hh:mm:ss;ff). 1 h Drop-Frame-Timecode ≙ 3599,996 s Echtzeit; Non-Drop läuft der Uhr je Stunde 3,6 s davon.'
+
+/** Kurzer Name einer Bildrate für ihren Knopf („29,97 DF“) – lesbar auch bei 320 px Breite */
+function rateButton(rate: TcRate): string {
+  return `${fmt(rate.exact, 3)}${rate.drop ? ' DF' : ''}`
+}
+
+/** Kurzfassung der Karte „Umrechnen“: der Timecode und die Bildrate, mit der er zählt */
+function convertSummary(tc: string, rate: TcRate): string {
+  return tc === '' ? '–' : `${tc} · ${rateButton(rate)}${rate.drop ? '' : ' fps'}`
+}
 
 export function Timecode(): JSX.Element {
   const [rateKey, setRateKey] = useState('25')
@@ -68,22 +89,22 @@ export function Timecode(): JSX.Element {
 
   return (
     <CalcPage>
-      <SectionCard
+      <FoldCard
+        id="timecode:umrechnen"
         title="Timecode ↔ Frames ↔ Echtzeit"
+        summary={convertSummary(vals.tc, rate)}
         desc="Ein Feld eingeben – die übrigen folgen."
+        defaultOpen
       >
-        <SelectField
-          label="Framerate"
-          hint="Drop-Frame (29,97 und 59,94 fps) lässt Frame-NUMMERN aus, keine Bilder – Schreibweise mit Semikolon (hh:mm:ss;ff). 1 h Drop-Frame-Timecode ≙ 3599,996 s Echtzeit; Non-Drop läuft der Uhr je Stunde 3,6 s davon."
-          value={rateKey}
-          onChange={setRateKey}
-        >
-          {TC_RATES.map((r) => (
-            <option key={r.key} value={r.key}>
-              {r.label}
-            </option>
-          ))}
-        </SelectField>
+        <FieldBlock label="Framerate" hint={RATE_HINT}>
+          <Segmented
+            label="Framerate"
+            value={rateKey}
+            options={TC_RATES.map((r) => ({ value: r.key, label: rateButton(r) }))}
+            onChange={setRateKey}
+            wrap={4.5}
+          />
+        </FieldBlock>
         {/* Timecodes lesen mit parseTc (ungültig = rot) und öffnen am Handy die Zifferntastatur */}
         <NumField
           label="Timecode"
@@ -109,13 +130,18 @@ export function Timecode(): JSX.Element {
             Ungültiger Timecode – hh:mm:ss:ff oder nur Ziffern, Frames unter {rate.nominal}.
           </Alert>
         )}
-      </SectionCard>
+      </FoldCard>
 
-      <SectionCard
+      <FoldCard
+        id="timecode:dauer"
         title="Dauer zwischen zwei Timecodes"
+        summary={diffTc || '–'}
         desc="Zum Beispiel die Clip-Länge aus In- und Out-Punkt (B − A)."
         hint={`Timecodes A und B: ${TC_HINT}`}
+        defaultOpen="nebeneinander"
       >
+        {/* die Antwort zuerst, darunter die Felder, darunter die Nebenwerte */}
+        <Readout label="Dauer (Timecode)" value={diffTc} big accent />
         <NumField
           label="Timecode A (In)"
           placeholder="hh:mm:ss:ff"
@@ -133,14 +159,13 @@ export function Timecode(): JSX.Element {
           onChange={setTcB}
         />
         <ReadoutGrid>
-          <Readout label="Dauer (Timecode)" value={diffTc} big accent />
           <Readout label="Frames" value={diffFrames != null ? fmt(diffFrames, 0) : ''} />
+          <Readout
+            label="Echtzeit"
+            value={diffFrames != null ? formatRealtime(framesToSeconds(diffFrames, rate)) : ''}
+          />
         </ReadoutGrid>
-        <Readout
-          label="Echtzeit"
-          value={diffFrames != null ? formatRealtime(framesToSeconds(diffFrames, rate)) : ''}
-        />
-      </SectionCard>
+      </FoldCard>
     </CalcPage>
   )
 }

@@ -133,8 +133,10 @@ export type TcField = 'tc' | 'frames' | 'real'
 
 /**
  * Quelle der verknüpften Felder -> Framenummer. Der Timecode kommt als Text (parseTc; ungültig
- * markiert das Feld selbst), „Frames (gesamt)“ und „Echtzeit“ (s) als Zahl ab 0 – Frames auf
- * ganze gerundet. Negativ: keine Framenummer, das Feld steht in `invalid` (rot).
+ * markiert das Feld selbst), „Frames (gesamt)“ und „Echtzeit“ (s) als Zahl ab 0. Frames zählen
+ * nur ganz: „1,5“ rechnete früher still mit Frame 2 (Befund 18, entschieden am 24. November
+ * 2026: rot). Die Echtzeit rundet auf das nächste Bild – Sekunden sind selten ganze Bilder.
+ * Negativ oder gebrochen: keine Framenummer, das Feld steht in `invalid` (rot).
  */
 export function framesFrom(
   source: { field: 'tc'; text: string } | { field: 'frames' | 'real'; value: number | null },
@@ -146,9 +148,11 @@ export function framesFrom(
   }
   const { field, value } = source
   if (value == null) return { frames: null, invalid: [] }
-  if (!(value >= 0)) return { frames: null, invalid: [field] }
+  if (!(value >= 0) || (field === 'frames' && !Number.isInteger(value))) {
+    return { frames: null, invalid: [field] }
+  }
   return {
-    frames: field === 'frames' ? Math.round(value) : secondsToFrames(value, rate),
+    frames: field === 'frames' ? value : secondsToFrames(value, rate),
     invalid: []
   }
 }

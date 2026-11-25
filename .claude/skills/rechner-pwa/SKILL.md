@@ -38,7 +38,8 @@ Leitbild und Teil K.
   mit `framesFrom`). Zahlen hinein, Zahlen oder `null` heraus – auch Entscheidungen (Warnstufe
   des Bridle, „reicht der Beamer“, Last außerhalb der Spannweite) und **welche Eingaben nicht
   rechenbar sind:** Jedes Ergebnis trägt `invalid`, die Eingaben mit lesbarem, aber unbrauchbarem
-  Wert (negativ, nicht über 0, cos φ außerhalb von 0 bis 1, Lastposition hinter B). Die
+  Wert (negativ, nicht über 0, cos φ außerhalb von 0 bis 1, Lastposition hinter B, eine
+  gebrochene Framezahl). Die
   Komponente liest nur Text (`parseNum`), reicht `invalid` an die Felder weiter
   (`invalid={r.invalid.includes('gain')}`) und zeigt an (`fmt`, `trimNum`); die Anzeige-Rundung
   bleibt dort. So prüft Vitest ohne DOM, was am Handy steht.
@@ -54,9 +55,10 @@ Leitbild und Teil K.
   unlesbar `NaN` (kein Ergebnis, `invalid`). Mit `parseNum` rechnete ein Tippfehler still mit
   der Vorgabe.
 - Eine Änderung an Formel, Grenze oder Ersetzung beginnt mit dem Test: den Test, der das alte
-  Verhalten festhält, zuerst umschreiben und rot sehen, dann rechnen (so K7 und K3 – Gain ≤ 0
+  Verhalten festhält, zuerst umschreiben und rot sehen, dann rechnen (so K7, K3 und K6 – Gain ≤ 0
   rechnete still mit 1, cos φ wurde auf 0,01 bis 1 begrenzt, ein negatives Eigengewicht senkte
-  die Kräfte).
+  die Kräfte, „1,5“ Frames rechneten still mit Frame 2). Ob still ersetzt oder rot wird,
+  entscheidet Matthias (Befund 18: „Ja, rot markieren“) – erst fragen, dann bauen.
 - Neben den Vorgabewerten eine Eigenschaft prüfen, die immer gelten muss – in einer Schleife über
   viele Eingaben (Stromlast: kein Leiter über Absicherung × Auslastung, ein Gerät mehr je Leiter
   passte nicht).
@@ -89,7 +91,21 @@ Leitbild und Teil K.
   (`panel:<id>`); bis dahin folgt die Karte den Spalten, auch beim Ziehen am Fenster. In der Karte
   steht die Antwort (`Readout` mit `big` und `accent`) als erste Zeile, darunter die Felder,
   darunter die Nebenwerte – wer am Handy tippt, sieht sie über der Tastatur. Am Handy (393 × 710)
-  ist die Stromlast so ab Werk 508 px hoch statt 929; beide Karten offen 982.
+  ist die Stromlast so ab Werk 508 px hoch statt 929; beide Karten offen 982. Seit K6 ebenso
+  Rigging 631 statt 1281 (offen 1315), Kameraobjektiv 610 statt 1071 (offen 1064) und Timecode
+  569 statt 749 (offen 927).
+  - **Ist die erste Karte nur Einstellung** (Kameraobjektiv: „Kamera & Objektiv“), ist sie die
+    zugeklappte: `defaultOpen="nebeneinander"` an ihr, die Frage dahinter `defaultOpen`; die
+    Kurzfassung nennt dann die Einstellung („Vollformat · 200 mm · 2×“), nicht eine Antwort.
+  - **Titel und Kurzfassung passen am Handy oft nicht in eine Zeile** („Traverse auf zwei
+    Punkten“ mit „A 115 kg · B 85 kg“): `FoldCard` rückt die Kurzfassung dann unter den Titel –
+    abgeschnitten („7 Geräte je Kr…“, die Stromlast bei 320 px) sagte sie die Antwort nicht mehr.
+    Jeder solche Kopf kostet 11 px Höhe; bei 393 und 320 px ansehen.
+  - **Eine große Zeichnung** (Bildausschnitt des Kameraobjektivs) ist am Handy kleiner
+    (`h-44 sm:h-64`): Mit voller Höhe war die Seite 726 px hoch, 69 zu viel.
+  - **Viele Möglichkeiten als Knopfgruppe** (Bildrate, zehn): `Segmented` mit `wrap={4.5}` –
+    bei 393 px drei Reihen, bei 320 px vier, alle Beschriftungen lesbar. Kurz und aus den Daten
+    gebildet („29,97 DF“ aus `exact` und `drop`), was die Liste dazusagte, hinter dem ⓘ.
 - Ein `ChoiceField` mit zwei Knöpfen wie „1∼ 230 V“ oder „80 % Dauer“ passt am Handy nicht neben
   die Beschriftung (10rem): Es rückt darunter, in ganzer Breite – wie ein `FieldBlock`. Im
   breiten Fenster bleibt es eine Zeile.
@@ -168,11 +184,17 @@ Leitbild und Teil K.
    ergibt „–“; Tastaturen von Timecode und Temperatur; Schalter des DMX-Dip-Schalters; Stromlast
    als Vorbild für den neuen Aufbau: bei 880 px beide Karten offen nebeneinander, bei 393 px die
    zweite zu mit Kurzfassung, aufgeklappt nach Schließen und Öffnen noch offen, Antwort über dem
-   ersten Feld, keine `select`) und das E2E des Werkzeugs. Ein Ergebnis liest dort
-   `readout(fenster, 'Lumen-Bedarf')`, den Kopf einer zuklappbaren Karte
-   `getByRole('button', { name: /^Titel/ })` (der Name endet mit der Kurzfassung). Wer die Breite
-   eines Fensters verstellt, stellt sie vor dem Schließen zurück – sie bleibt gemerkt, und der
-   Schritt „alle kleinen Werkzeuge“ erwartet die zweispaltigen Rechner in voller Breite.
+   ersten Feld, keine `select`; ebenso je ein Schritt für die Rechner aus K6) und das E2E des
+   Werkzeugs. Ein Ergebnis liest dort `readout(fenster, 'Lumen-Bedarf')`, den Kopf einer
+   zuklappbaren Karte `kartenKopf(fenster, 'Titel')` (der Name endet mit der Kurzfassung), einen
+   Knopf einer Knopfgruppe `knopf(fenster, 'Gruppe', 'Knopf')`; dazu `antwortZuerst`,
+   `keineKurzeListe` und `mitBreite` (Breite setzen, schließen, wieder öffnen). Ein schmales
+   Fenster (Timecode, 520 px) zieht der Schritt für „breit offen“ live auf 880 px – die Karte
+   folgt den Spalten. Wer die Breite eines Fensters verstellt, stellt sie vor dem Schließen
+   zurück – sie bleibt gemerkt, und der Schritt „alle kleinen Werkzeuge“ erwartet die
+   zweispaltigen Rechner in voller Breite. Ein Feld in einer Karte, die im 520-px-Fenster ab
+   Werk zu ist („Timecode A“), findet ein Schritt nicht: ein Feld der offenen Karte nehmen oder
+   die Karte aufklappen – sie bleibt dann für spätere Schritte offen.
    - **Baustein ändert sein Aussehen nach dem Inhalt** (`NumField` rot): alle kleinen Werkzeuge
      im Auslieferungszustand vorher und nachher als HTML vergleichen (Skill `aufraeumen`). In K2
      fand das die Timecode-Felder – sie führen hh:mm:ss:ff in einem `NumField` und wären ab Werk
