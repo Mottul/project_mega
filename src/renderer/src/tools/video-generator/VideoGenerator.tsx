@@ -112,6 +112,9 @@ export function VideoGenerator(): JSX.Element {
       !(musicLoading && (h.id === 'music-unreadable' || h.id === 'music-short'))
   )
   const errors = hints.filter((h) => h.level === 'error')
+  // Leeres Projekt: Die Ablagefläche sagt schon, was zu tun ist – kein roter Hinweis darunter.
+  // Für die Sperre von „Video erzeugen“ zählt er weiter (errors).
+  const shownHints = hints.filter((h) => h.id !== 'empty')
   const ffmpegMissing = caps !== null && !caps.ffmpegFound
   const ready = !loading.length && !musicLoading && !errors.length && !ffmpegMissing
   const canStart = elements.length > 0 && ready && busy === null
@@ -406,9 +409,9 @@ export function VideoGenerator(): JSX.Element {
                 <Loader2 className="size-3 animate-spin" /> Analyse läuft ({loading.length} offen) …
               </p>
             )}
-            {hints.length > 0 && (
+            {shownHints.length > 0 && (
               <ul className="space-y-1">
-                {hints.map((h, i) => {
+                {shownHints.map((h, i) => {
                   const st = LEVEL_STYLE[h.level]
                   return (
                     <li
