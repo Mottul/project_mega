@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { Segmented } from '@renderer/components/ui/segmented'
 import {
   CalcPage,
+  FieldBlock,
   NumField,
   Readout,
   SectionCard,
-  SelectField,
   fmt,
   parseNum,
   trimNum,
@@ -42,13 +43,16 @@ export function ThrowRatio(): JSX.Element {
         title="Leinwand"
         desc="Seitenverhältnis wählen, ein Maß eingeben – die übrigen folgen."
       >
-        <SelectField label="Seitenverhältnis" value={aspectKey} onChange={setAspectKey}>
-          {ASPECTS.map((a) => (
-            <option key={a.key} value={a.key}>
-              {a.label}
-            </option>
-          ))}
-        </SelectField>
+        {/* sechs kurze Möglichkeiten: Knopfgruppe statt Liste, bei schmalem Fenster in Reihen */}
+        <FieldBlock label="Seitenverhältnis" hint="2,35 : 1 heißt auch Cinemascope.">
+          <Segmented
+            label="Seitenverhältnis"
+            value={aspectKey}
+            options={ASPECTS.map((a) => ({ value: a.key, label: a.label }))}
+            onChange={setAspectKey}
+            wrap={4}
+          />
+        </FieldBlock>
         <NumField
           label="Bildbreite"
           unit="m"

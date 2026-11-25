@@ -594,7 +594,8 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 ### Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen
 
 - **Projektionsverhältnis:** Throw Ratio, Bildmaße und Projektionsabstand – das passende
-  Beamer-Objektiv wählen.
+  Beamer-Objektiv wählen. Das Seitenverhältnis wählt man mit einem Tipp aus sechs Knöpfen (am
+  Handy zwei Reihen); dass 2,35 : 1 auch Cinemascope heißt, sagt das ⓘ.
 - **Kameraobjektiv:** aus Brennweite, Sensor, Telekonverter und Entfernung der Bildausschnitt –
   wie viel einer Person bei maximalem Zoom ins Bild passt, mit Visualisierung. Aufbau wie die
   Stromlast: „Kamera & Objektiv“ stellt man einmal ein; zugeklappt zeigt die Karte Sensor und
@@ -606,6 +607,12 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 - **Beamer-Lumen:** Lumen-Bedarf aus Bildgröße und Umgebungslicht – und ob der vorhandene Beamer
   reicht: „ausreichend“ in Grün oder „zu dunkel“ in Rot, mit dem Symbol der Statusstufe. Ein
   leerer Leinwand-Gain rechnet mit 1; ein Gain von 0 oder darunter ergibt keinen Lumen-Bedarf.
+  Aufbau wie die Stromlast: Das Umgebungslicht (Dunkel, Gedimmt, Hell, Tageslicht) wählt man mit
+  einem Tipp, darunter steht, wofür die gewählte Stufe gedacht ist und welche Helligkeit sie
+  anstrebt („Vortragssaal · Ziel 400 lx“). Der Lumen-Bedarf steht über den Feldern. „Vorhandener
+  Beamer“ lässt sich zuklappen und zeigt dann Lichtstrom und Bewertung („6.500 lm ·
+  ausreichend“); ab Werk ist die Karte nur offen, wenn die Karten nebeneinander stehen, und
+  zeigt offen die Bewertung über dem Feld. Am Handy 558 statt 741 px.
 
 ## Medien & Bibliothek
 
@@ -1015,7 +1022,10 @@ direkt darunter. Am Handy passt die Seite so ohne Scrollen (393 × 710: 631 stat
   berechnen.
 - **Audio-Delay & SPL:** Lautsprecher-Laufzeit aus der Distanz und Pegelabfall über die
   Entfernung. Die Temperatur darf negativ sein – am Handy öffnet ihr Feld deshalb die volle
-  Tastatur (der Dezimaltastatur des iPhones fehlt das Minus); leer rechnet sie mit 20 °C.
+  Tastatur (der Dezimaltastatur des iPhones fehlt das Minus); leer rechnet sie mit 20 °C. Aufbau
+  wie die Stromlast: Beide Karten lassen sich zuklappen und zeigen dann ihre Werte („10 m ·
+  29,1 ms“ bzw. „80 dB in 10 m“); „Pegel über Distanz“ ist ab Werk nur offen, wenn die Karten
+  nebeneinander stehen, und zeigt offen den Pegel über den Feldern. Am Handy 476 statt 695 px.
 - **Timecode-Rechner:** SMPTE-Timecode ↔ Frames ↔ Echtzeit, inklusive Drop-Frame (29,97/59,94),
   und Dauer zwischen In und Out. Timecodes lassen sich auch nur aus Ziffern tippen, paarweise von
   rechts gelesen: „1020312“ ist 01:02:03:12, ein oder zwei Ziffern sind Frames. Am Handy öffnen

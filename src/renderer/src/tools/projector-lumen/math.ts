@@ -2,11 +2,12 @@
 // Faustformel aus dem Verleih-Alltag: Ziel-Beleuchtungsstärke auf der Leinwand je nach
 // Umgebungslicht, dann Lumen = Ziel-Lux × Bildfläche ÷ Gain.
 
-export const AMBIENT: { key: string; label: string; lux: number }[] = [
-  { key: 'dark', label: 'Dunkel (Kino, abgedunkelt)', lux: 250 },
-  { key: 'dim', label: 'Gedimmt (Vortragssaal)', lux: 400 },
-  { key: 'bright', label: 'Hell (Konferenzraum, Messe)', lux: 650 },
-  { key: 'daylight', label: 'Tageslicht (Schaufenster, Zelt)', lux: 1100 }
+/** Stufen des Umgebungslichts: `name` auf dem Knopf, `where` als Erklärung der gewählten Stufe */
+export const AMBIENT: { key: string; name: string; where: string; lux: number }[] = [
+  { key: 'dark', name: 'Dunkel', where: 'Kino, abgedunkelt', lux: 250 },
+  { key: 'dim', name: 'Gedimmt', where: 'Vortragssaal', lux: 400 },
+  { key: 'bright', name: 'Hell', where: 'Konferenzraum, Messe', lux: 650 },
+  { key: 'daylight', name: 'Tageslicht', where: 'Schaufenster, Zelt', lux: 1100 }
 ]
 
 /** Ziel-Beleuchtungsstärke (lx) einer Stufe aus `AMBIENT`; unbekannt -> 400 lx (gedimmt). */

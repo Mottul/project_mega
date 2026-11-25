@@ -92,8 +92,14 @@ Leitbild und Teil K.
   steht die Antwort (`Readout` mit `big` und `accent`) als erste Zeile, darunter die Felder,
   darunter die Nebenwerte – wer am Handy tippt, sieht sie über der Tastatur. Am Handy (393 × 710)
   ist die Stromlast so ab Werk 508 px hoch statt 929; beide Karten offen 982. Seit K6 ebenso
-  Rigging 631 statt 1281 (offen 1315), Kameraobjektiv 610 statt 1071 (offen 1064) und Timecode
-  569 statt 749 (offen 927).
+  Rigging 631 statt 1281 (offen 1315), Kameraobjektiv 610 statt 1071 (offen 1064), Timecode
+  569 statt 749 (offen 927), Beamer-Lumen 558 statt 741 (offen 758) und Audio-Delay 476 statt
+  695 (offen 718). Das Projektionsverhältnis bekam nur die Knopfgruppe (Seitenverhältnis, sechs
+  Werte, `wrap={4}`: bei 393 und 320 px zwei Reihen zu je drei) und ist damit 631 statt 556 hoch.
+  - **Stufen mit Erklärung** (Umgebungslicht im Beamer-Lumen): kurze Namen auf den Knöpfen
+    („Gedimmt“), die Erklärung der gewählten Stufe als Zeile darunter („Vortragssaal · Ziel
+    400 lx“) – wie die Signale ohne eigene Felder im Testtongenerator. Name und Erklärung stehen
+    getrennt in den Daten des Kerns (`name`, `where`), nicht aus einer Beschriftung geschnitten.
   - **Ist die erste Karte nur Einstellung** (Kameraobjektiv: „Kamera & Objektiv“), ist sie die
     zugeklappte: `defaultOpen="nebeneinander"` an ihr, die Frage dahinter `defaultOpen`; die
     Kurzfassung nennt dann die Einstellung („Vollformat · 200 mm · 2×“), nicht eine Antwort.
