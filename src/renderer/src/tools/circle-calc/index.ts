@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const circleCalcTool: ToolModule = {
   id: 'circle-calc',
   name: 'Kreisrechner',
-  description:
-    'Durchmesser, Radius, Umfang und Fläche eines Kreises – einen Wert eingeben, Rest berechnen.',
+  description: 'Durchmesser, Umfang und Fläche',
   icon: Circle,
   category: 'calc',
   keywords: [

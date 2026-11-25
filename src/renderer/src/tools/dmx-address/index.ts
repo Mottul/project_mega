@@ -5,7 +5,7 @@ import type { ToolModule } from '../types'
 export const dmxAddressTool: ToolModule = {
   id: 'dmx-address',
   name: 'DMX-Dip-Schalter',
-  description: 'DMX-Startadresse in Dip-Schalter umrechnen und zurück (Binär, 9 Schalter, 1–511).',
+  description: 'DMX-Adresse ↔ Dip-Schalter',
   icon: Binary,
   category: 'control',
   keywords: [
@@ -18,7 +18,8 @@ export const dmxAddressTool: ToolModule = {
     'binary',
     'licht',
     'lighting',
-    '512'
+    '512',
+    'startadresse'
   ],
   component: lazy(() => import('./DmxAddress').then((m) => ({ default: m.DmxAddress })))
 }

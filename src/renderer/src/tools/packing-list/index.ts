@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const packingListTool: ToolModule = {
   id: 'packing-list',
   name: 'Packliste',
-  description:
-    'Material-Checkliste mit Mengen – aus der LED-Wall-Konfiguration befüllbar, als PDF.',
+  description: 'Material-Checkliste, auch aus der LED-Wall',
   icon: ListChecks,
   category: 'rigging',
   keywords: [
@@ -17,7 +16,9 @@ export const packingListTool: ToolModule = {
     'verladung',
     'case',
     'inventar',
-    'pdf'
+    'pdf',
+    'mengen',
+    'konfiguration'
   ],
   component: lazy(() => import('./PackingList').then((m) => ({ default: m.PackingList })))
 }

@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const cameraLensTool: ToolModule = {
   id: 'camera-lens',
   name: 'Kameraobjektiv',
-  description:
-    'Brennweite, Sensor & Entfernung → Bildausschnitt: wie viel einer Person bei maximalem Zoom ins Bild passt.',
+  description: 'Bildausschnitt aus Brennweite und Entfernung',
   icon: Camera,
   category: 'visual',
   keywords: [
@@ -24,7 +23,8 @@ export const cameraLensTool: ToolModule = {
     'fov',
     'entfernung',
     'ptz',
-    'tele'
+    'tele',
+    'person'
   ],
   component: lazy(() => import('./CameraLens').then((m) => ({ default: m.CameraLens })))
 }

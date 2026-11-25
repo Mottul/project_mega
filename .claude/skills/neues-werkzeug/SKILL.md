@@ -13,7 +13,12 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
    `visual`, `media`, `rigging`, `calc` – Beschriftung in `tools/types.ts`).
 2. **`index.ts`** mit `ToolModule`: `id`, `name`, `description`, `icon` (lucide-react), `category`,
    `keywords` (reichlich Synonyme und deutsche/englische Suchwörter), `component` per
-   `lazy(() => import('./X').then((m) => ({ default: m.X })))`.
+   `lazy(() => import('./X').then((m) => ({ default: m.X })))`. **`description` höchstens 50
+   Zeichen**, das Wichtigste zuerst (Muster „Testbilder und Testton für Beamer und LED“): Die
+   mittlere Kachel zeigt zwei Zeilen zu knapp 30 Zeichen, sonst endet der Satz mit „…“
+   (`tools/registry.test.ts` prüft es). Alles Weitere – Formate, Gerätenamen, Funktionen – in die
+   `keywords`, die Suche liest beides. Ein Wort im `name` mit 12 und mehr Buchstaben braucht
+   seinen Wortteil in `TAILS` (`launcher/text.ts`), sonst trennt die Kachel es nicht sauber.
 3. **Eintragen** in `src/renderer/src/tools/registry.ts` (Import + Array `tools`) – die einzige
    Stelle, kein weiterer Menüpunkt nötig.
 4. **Oberfläche nach dem Werkzeug-Muster** (`components/ToolShell.tsx`, Vorbild `tools/stage-timer/`).

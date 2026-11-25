@@ -5,7 +5,7 @@ import type { ToolModule } from '../types'
 export const toneGeneratorTool: ToolModule = {
   id: 'tone-generator',
   name: 'Testtongenerator',
-  description: 'Sinus, Rauschen, Sweep, Metronom und Kanaltests – auch am Handy.',
+  description: 'Sinus, Rauschen, Sweep, Metronom, Kanaltest',
   icon: AudioWaveform,
   category: 'calc',
   keywords: [
@@ -46,7 +46,9 @@ export const toneGeneratorTool: ToolModule = {
     'glits',
     'einmessen',
     'pa',
-    'lautsprecher'
+    'lautsprecher',
+    'kanaltests',
+    'handy'
   ],
   component: lazy(() => import('./ToneGenerator').then((m) => ({ default: m.ToneGenerator })))
 }

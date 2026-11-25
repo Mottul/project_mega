@@ -27,25 +27,33 @@ export function tileGridStyle(size: LauncherTileSize): CSSProperties {
   }
 }
 
+// Name höchstens zwei Zeilen (darüber „…“). Mittel und groß reservieren beide Zeilen, ebenso
+// die Beschreibung ihre volle Zeilenzahl: Kürzere Texte machen eine Kachel nicht niedriger
+// (gleiche Höhe auch über Kategorien hinweg). Beschreibungen sind deshalb höchstens 50 Zeichen
+// lang (tools/registry.test.ts); was nicht hineinpasst, steht in den Stichworten der Suche.
 const SIZE: Record<
   LauncherTileSize,
   { pad: string; box: string; icon: string; title: string; desc: string | null }
 > = {
-  small: { pad: 'p-2.5', box: 'size-8', icon: 'size-4', title: 'text-sm', desc: null },
-  // Beschreibung reserviert immer ihre volle Zeilenzahl: kurze Texte machen die Kachel nicht
-  // niedriger (gleiche Höhe auch über Kategorien hinweg)
+  small: {
+    pad: 'p-2.5',
+    box: 'size-8',
+    icon: 'size-4',
+    title: 'text-[13px] leading-tight',
+    desc: null
+  },
   medium: {
     pad: 'p-4',
     box: 'size-9',
     icon: 'size-5',
-    title: 'text-sm',
+    title: 'min-h-[2lh] text-sm',
     desc: 'mt-0.5 line-clamp-2 min-h-[2lh] text-xs'
   },
   large: {
     pad: 'p-5',
     box: 'size-11',
     icon: 'size-6',
-    title: 'text-base',
+    title: 'min-h-[2lh] text-base',
     desc: 'mt-1 line-clamp-3 min-h-[3lh] text-sm'
   }
 }
@@ -178,22 +186,22 @@ export function ToolCard({
           <Icon className={s.icon} />
         </div>
         <div className="min-w-0 flex-1">
-          {/* rechts Platz für den Stern; min-w-0 -> Kürzen greift auch in schmalen Spalten */}
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 pr-7">
-            {/* Name und Fenster-Zeichen bleiben in einer Zeile (der Name kürzt sich), sonst
-                bräche das Zeichen um und die Kachel würde höher als die anderen */}
+          {/* rechts Platz für den Stern; min-w-0 -> Umbrechen greift auch in schmalen Spalten.
+              Schriftgröße hier, damit „lh“ (reservierte Zeilen) die Zeile des Namens misst;
+              content-start: ein einzeiliger Name steht oben, die zweite Zeile bleibt frei */}
+          <div
+            className={cn(
+              'flex min-w-0 flex-wrap content-start items-center gap-1.5 pr-7',
+              s.title
+            )}
+          >
+            {/* Name und Fenster-Zeichen bleiben nebeneinander (der Name bricht in sich um),
+                sonst rutschte das Zeichen in eine eigene Zeile und die Kachel würde höher */}
             <span className="flex min-w-0 max-w-full items-center gap-1.5">
-              <h3
-                className={cn(
-                  'min-w-0 font-medium',
-                  s.title,
-                  // klein: Name darf zweizeilig sein (sonst bliebe nur „Video-Pla…")
-                  s.desc
-                    ? 'max-w-full truncate'
-                    : 'line-clamp-2 hyphens-auto break-words text-[13px] leading-tight'
-                )}
-              >
-                {s.desc ? tool.name : softHyphenate(tool.name)}
+              {/* zwei Zeilen statt „LED-Wall-Konfigura…“; weiche Trennstellen in langen Wörtern,
+                  weil Chromium unter Windows und Linux nicht selbst trennt (text.ts) */}
+              <h3 className="line-clamp-2 min-w-0 hyphens-auto break-words font-medium">
+                {softHyphenate(tool.name)}
               </h3>
               {small && (
                 // nur fürs Auge: der Name der Kachel kommt aus aria-label
@@ -214,11 +222,9 @@ export function ToolCard({
             )}
           </div>
           {s.desc ? (
-            // sortierbar: rechts unten Platz für die Pfeile lassen
-            <p
-              id={`tool-desc-${tool.id}`}
-              className={cn(s.desc, 'text-muted-foreground', move && 'pr-11')}
-            >
+            // ohne Platz für die Pfeile (Sortieren): Der kostete in den Favoriten ein Viertel
+            // der Zeile, Beschreibungen endeten dort mit „…“ – die Pfeile schweben jetzt darüber
+            <p id={`tool-desc-${tool.id}`} className={cn(s.desc, 'text-muted-foreground')}>
               {tool.description}
             </p>
           ) : (
@@ -228,15 +234,10 @@ export function ToolCard({
           )}
         </div>
       </div>
-      {/* Sortieren ohne Ziehen (Tastatur, Touch): erscheint bei Hover/Fokus */}
+      {/* Sortieren ohne Ziehen (Tastatur, Touch): erscheint bei Hover/Fokus, mit Fläche lesbar
+          über dem Ende von Name (klein) bzw. Beschreibung – für sie ist kein Platz reserviert */}
       {move && (
-        <div
-          className={cn(
-            'absolute bottom-1 right-1.5 flex items-center gap-0.5 rounded-md opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100',
-            // kleine Kacheln haben keinen freien Rand -> lesbar über dem Namen
-            !s.desc && 'bg-card/90 shadow-sm'
-          )}
-        >
+        <div className="absolute bottom-1 right-1.5 flex items-center gap-0.5 rounded-md bg-card/90 opacity-0 shadow-sm transition-opacity focus-within:opacity-100 group-hover:opacity-100">
           {(
             [
               [-1, move.canPrev, ChevronLeft, 'Nach vorne'],

@@ -60,14 +60,19 @@ Jedes Werkzeug ist gleich aufgebaut:
   „angeheftet“ bleibt gemerkt und gilt wieder, sobald das Fenster breiter ist. Offen/angeheftet
   merkt sich jedes Werkzeug.
 
-- **Suche** über Name, Beschreibung und Stichworte; mehrere Begriffe grenzen weiter ein.
+- **Suche** über Name, Beschreibung und Stichworte; mehrere Begriffe grenzen weiter ein. Die
+  Stichworte enthalten auch, was in der kurzen Beschreibung keinen Platz hat (etwa „ProRes“,
+  „MadMapper“, „PTZ“).
 - **Ansicht „Alle“ oder „Favoriten“.** Der Stern an einer Kachel macht ein Werkzeug zum Favoriten.
 - **Favoriten-Kategorien:** selbst benannt, frei angeordnet und mit eigener Breite (ganze Zeile,
   ¾, ⅔, ½, ⅓, ¼) – so stehen eine bis vier Kategorien nebeneinander. Kacheln und Kategorien
   lassen sich ziehen oder mit den Pfeil-Knöpfen (auch per Tastatur) verschieben, eine Kategorie
   alphabetisch sortieren. Eine Kachel aus „Alle“ in eine Kategorie zu ziehen macht sie zum
   Favoriten. Beim Löschen einer Kategorie wandern ihre Werkzeuge in die Nachbar-Kategorie.
-- **Kachelgröße** klein, mittel oder groß.
+- **Kachelgröße** klein, mittel oder groß. Namen und Beschreibungen sind bei mittleren und großen
+  Kacheln ganz zu lesen: Ein langer Name bricht in eine zweite Zeile um („LED-Wall-“ /
+  „Konfigurator“, „Projektions-“ / „verhältnis“), die Beschreibung ist ein kurzer Satz. Kleine
+  Kacheln zeigen die Beschreibung beim Darüberfahren.
 - **Was gerade läuft**, zeigt die Kachel mit pulsierendem Punkt: laufende Konvertierungen,
   Downloads, Timer, offene Ausgaben von Player und Stage-Timer (Fenster oder NDI) – und ob die
   Handy-Fernsteuerung des Werkzeugs aktiv ist. Alle Kacheln einer Größe sind gleich hoch, auch

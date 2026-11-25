@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const videoPlayerTool: ToolModule = {
   id: 'video-player',
   name: 'Video-Player',
-  description:
-    'Playlist-Player für LED-Wände/Beamer – Medien auf Wand-Auflösung einbacken (Fit-Modi, GPU), Vollbild-Ausgabe, Play/Pause/Skip/Seek/Loop/Shuffle.',
+  description: 'Playlist-Player für LED-Wand und Beamer',
   icon: PlaySquare,
   category: 'playback',
   keywords: [
@@ -23,7 +22,15 @@ export const videoPlayerTool: ToolModule = {
     'vollbild',
     'blur',
     'fit',
-    'konvertieren'
+    'konvertieren',
+    'einbacken',
+    'auflösung',
+    'gpu',
+    'ausgabe',
+    'pause',
+    'skip',
+    'seek',
+    'shuffle'
   ],
   component: lazy(() => import('./VideoPlayer').then((m) => ({ default: m.VideoPlayer })))
 }

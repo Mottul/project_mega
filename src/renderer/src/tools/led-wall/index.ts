@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const ledWallTool: ToolModule = {
   id: 'led-wall',
   name: 'LED-Wall-Konfigurator',
-  description:
-    'Wand planen: Auflösung, 16:9, Strom, Ballast, Signal-/Strom-Verkabelung, Curving (uS2+) – mit PDF-Doku.',
+  description: 'Wand planen: Auflösung, Strom, Verkabelung',
   icon: Grid3x3,
   category: 'visual',
   keywords: [
@@ -22,7 +21,11 @@ export const ledWallTool: ToolModule = {
     'verkabelung',
     'us2',
     'auflösung',
-    'aufloesung'
+    'aufloesung',
+    '16:9',
+    'signal',
+    'pdf',
+    'doku'
   ],
   component: lazy(() => import('./LedWall').then((m) => ({ default: m.LedWall })))
 }
