@@ -156,7 +156,10 @@ die Bedienelemente.
   („Mittelung schnell“, die stärkste Feedback-Spitze in Rot). Welche Karten offen sind, bleibt
   gemerkt. Ein Rechner mit zwei Fragen (Pilot Stromlast, K5) klappt beide Karten so und zeigt
   zugeklappt die Antwort („7 Geräte je Kreis“); die zweite ist ab Werk nur offen, wenn sie neben
-  der ersten steht (`defaultOpen="nebeneinander"`) – am Handy zu, im breiten Fenster offen.
+  der ersten steht (`defaultOpen="nebeneinander"`) – am Handy zu, im breiten Fenster offen. So
+  sind seit K6 alle Rechner mit zwei Fragen gebaut; ist die erste Karte nur Einstellung
+  (Kameraobjektiv), ist sie die zugeklappte. Ausnahme: das Projektionsverhältnis, dessen Karten
+  offen bleiben (entschieden am 25. November 2026).
 - **Passt aufs Handy:** Bei 393 × 710 steht das Wichtige ohne Scrollen da – der
   Testtongenerator ganz, beim RTA Messen, Pegel, Spektrum und dessen Bedienung.
 - **Meldungen in der Seite** (`Alert`), der Stand bleibt gemerkt, Erklärungen hinter dem ⓘ.
@@ -171,7 +174,7 @@ ohne Tastatur):
 | Werkzeug | Höhe der Seite | Karten (Höhe in px) | Listen (Einträge) | Folge |
 | -------- | -------------- | ------------------- | ----------------- | ----- |
 | Testtongenerator | passt | eine (603) | – | Vorbild |
-| RTA | 824 px (+167) | Kopf mit Messen, Pegel und Spektrum; vier zugeklappte Karten (je 64) | zehn, in den Karten | Vorbild; Listen → K6 |
+| RTA | 824 px (+167; Messen, Pegel und Spektrum stehen oben ohne Scrollen) | Kopf mit Messen, Pegel und Spektrum; vier zugeklappte Karten (je 64; offen Anzeige 594, Eingang 463, Feedback 274 – vor K6 390, 395, 240) | eine: Eingang (vor K6 zehn, in den Karten) | Vorbild; K6 erledigt (26. November 2026) |
 | Rigging-Last | passt: 631 px (vor K6 1281, +624) | Traverse 469 offen, Bridle 50 zugeklappt (offen 1315; vor K6 447 und 723) | – | K6 erledigt (25. November 2026) |
 | Kameraobjektiv | passt: 610 px (vor K6 1071, +414) | Kamera 50 zugeklappt, Motiv 512 offen (offen 1064; vor K6 423 und 601) | Sensor (8) (vor K6 auch Telekonverter (4)) | K6 erledigt (25. November 2026) |
 | Stromlast & Absicherung | passt: 508 px (vor K5 929, +272) | Last 362 offen, Geräte je Stromkreis 50 zugeklappt (offen 524; vor K5 315 und 519) | – (vor K5 Anschluss (2), Absicherung (4), Auslastung (2)) | Pilot (K5, 24. November 2026), Vorbild für K6 |
@@ -270,7 +273,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **2 – Muster übertragen** | K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und fünf Rechner |
+| **2 – Muster übertragen** | K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge (die Rechner passen seit K6 aufs Handy) |
 | **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
@@ -424,8 +427,9 @@ Auftrag.
 
 ## K – Kleine Werkzeuge
 
-Das [Muster 2](#muster-2-kleines-werkzeug) für die Rechner – und was ihnen unabhängig vom Aufbau
-fehlt: ein Gedächtnis für die Eingaben. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
+Das [Muster 2](#muster-2-kleines-werkzeug) haben seit K6 alle Rechner (siehe
+[Erledigt](#erledigt--nicht-neu-planen)); offen ist, was ihnen unabhängig vom Aufbau fehlt: ein
+Gedächtnis für die Eingaben. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
 Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator,
 Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im
 eigenen kleinen Fenster (Höhe folgt dem Inhalt, schmal bis 320 px) und läuft unverändert in der PWA
@@ -439,8 +443,7 @@ Felder in Akzentfarbe.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | – |
-| **K4** | Rechner merken sich die Eingaben | M | nach K6 (dieselben Rechner) |
+| **K4** | Rechner merken sich die Eingaben | M | – |
 
 Vor jedem Schritt den Skill `rechner-pwa` lesen.
 
@@ -448,48 +451,12 @@ Vor jedem Schritt den Skill `rechner-pwa` lesen.
 
 Am Code geprüft am 13. November 2026, die Maße am 14. November; vor jedem Schritt erst nachsehen,
 ob die Stelle noch so aussieht. Die Nummern stammen aus dem ersten Plan (1 ist mit K1 erledigt,
-13 mit K2, 2, 4, 5, 7, 8, 9 und 14 mit K3, 3, 10, 12, 15 und 16 mit dem Testtongenerator, 17
-und 18 mit K6), damit Verweise darauf gültig bleiben.
+13 mit K2, 2, 4, 5, 7, 8, 9 und 14 mit K3, 3, 10, 12, 15 und 16 mit dem Testtongenerator, 6,
+17 und 18 mit K6), damit Verweise darauf gültig bleiben.
 
 | Nr. | Befund | Fundstelle | Paket |
 | --- | ------ | ---------- | ----- |
-| 6 | Auswahl aus wenigen Möglichkeiten ist mal eine Liste (zwei Tipps, Optionen verdeckt), mal eine Knopfgruppe: im RTA die Listen in den Karten. Die Bausteine `ChoiceField` und `Segmented` gibt es; die Stromlast nutzt sie seit K5, Kameraobjektiv (Telekonverter), Timecode (Bildrate), Beamer-Lumen (Umgebungslicht) und Projektionsverhältnis (Seitenverhältnis) seit K6 | `RtaCards.tsx` | K6 |
 | 11 | Alle Eingaben sind weg, sobald das Fenster zugeht oder das Handy die PWA aus dem Speicher wirft; es erscheinen wieder die Beispielwerte (der Testtongenerator merkt sich seinen Stand schon) | alle Rechner (`useState`) | K4 |
-
-### K6 – Neuer Aufbau der übrigen Rechner
-
-Für alle Rechner einheitlich, entschieden am 24. November 2026 (Entscheidung 2): die zweite
-Frage zugeklappt wie im Piloten, kein Umschalter. Wie der Pilot an der Stromlast (K5,
-`tools/power-load/PowerLoad.tsx`), je Pull Request zwei bis drei Rechner, in der Reihenfolge des
-gemessenen Gewinns:
-
-1. **Antwort zuerst:** In der Karte mit einer eigenen Antwort steht sie (`Readout` mit `big` und
-   `accent`) als erste Zeile unter Titel und Frage, darunter die Felder, darunter die Nebenwerte.
-   Karten aus verknüpften Feldern („Last“) haben keine eigene Antwort und bleiben, wie sie sind.
-2. **Wählen mit einem Tipp:** Knopfgruppen statt Listen – in der Stromlast `ChoiceField` für
-   Anschluss und Auslastung (je zwei), die Absicherung (vier Werte) in ganzer Breite (`FieldBlock`
-   mit `Segmented`). Was die Liste dazusagte, steht hinter dem ⓘ. Ein `ChoiceField` mit zwei
-   Knöpfen wie „1∼ 230 V“ passt am Handy nicht neben die Beschriftung und rückt darunter, in
-   ganzer Breite; im breiten Fenster bleibt es eine Zeile.
-3. **Zweite Frage zugeklappt:** Beide Karten `FoldCard` mit der Antwort als Kurzfassung („–“ ohne
-   Ergebnis), die erste `defaultOpen`, die zweite `defaultOpen="nebeneinander"`: ab Werk am Handy
-   zu, im breiten Fenster offen; gemerkt wird, was man selbst klappt.
-
-Die Fensterbreiten in `src/shared/toolWindows.ts` bleiben; ob zweispaltige Fenster noch nötig
-sind, zeigt der Pilot.
-
-| Rechner | Was sich ändert |
-| ------- | --------------- |
-| RTA | In den zugeklappten Karten werden Listen mit bis zu vier kurzen Möglichkeiten Knopfgruppen in ganzer Breite (`FieldBlock` mit `Segmented`): Kanal, Kalibrator, Mittelung, Spitzen, Pegelmesser, Skala, Farbe, Spektrogramm, Empfindlichkeit. „Eingang“ bleibt eine Liste. `e2e/rta.mjs` wählt Spektrogramm, Kanal und Mittelung heute per `selectOption` und zieht mit |
-| DMX-Dip-Schalter, Kreisrechner | nichts – beide passen und haben eine Karte |
-
-**Abnahme** je Rechner wie beim Pilot: In der PWA bei 393 × 710 ist die Seite im
-Auslieferungszustand höchstens 657 px hoch (messen per `getBoundingClientRect`, Skill
-`rechner-pwa`), die Antwort einer offenen Karte liegt über ihrem ersten Feld, keine Liste mit bis
-zu vier Möglichkeiten mehr; ein Schritt in `e2e/layout.mjs` wie „Stromlast (Pilot Muster 2)“
-(zweite Karte breit offen, schmal zu mit Kurzfassung, aufgeklappt gemerkt), zuerst rot gegen den
-alten Build; Tests der Rechenkerne unverändert grün, `npm run pwa:build`. Die neuen Maße in den
-Skill `rechner-pwa`, die Beschreibung nach `docs/WERKZEUGE.md`.
 
 ### K4 – Rechner merken sich die Eingaben
 
@@ -1006,7 +973,7 @@ Vorbild ist `VideoPlayer.tsx`, das so von 1.765 auf unter 300 Zeilen kam.
 **So:** Skill `aufraeumen` (Helfer `teilen.mjs`, Pixelvergleich `pixel.mjs`): je Datei ein Pull
 Request, **ohne sichtbare Änderung** – das E2E des Werkzeugs und der Pixelvergleich vor und
 nach dem Umbau sind die Abnahme. `StageTimer.tsx` erst nach dem Umbau auf die Arbeitsfläche
-(Paket W2), `Rta.tsx` erst nach K6 – sonst wird zweimal umgebaut.
+(Paket W2) – sonst wird zweimal umgebaut.
 
 ### E2 – `shared/types.ts` nach Bereichen teilen
 
@@ -1230,9 +1197,9 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
   Stromlast – am Handy ist ab Werk nur die Frage offen (beim Kameraobjektiv „Motiv &
   Bildausschnitt“; „Kamera & Objektiv“ ist zu und zeigt „Vollformat · 200 mm“), die zweite Karte
   zeigt zugeklappt ihre Antwort. Passt jede Seite ohne Scrollen? Aufklappen und tippen: Bleibt
-  die Antwort über der Tastatur sichtbar? Telekonverter, Framerate, Umgebungslicht und
-  Seitenverhältnis (Projektionsverhältnis) per Knopf – sind die zehn Framerates auf dem Handy
-  lesbar und gut zu treffen?
+  die Antwort über der Tastatur sichtbar? Telekonverter, Framerate, Umgebungslicht,
+  Seitenverhältnis (Projektionsverhältnis) und die Einstellungen in den Karten des RTA per Knopf –
+  sind die zehn Framerates auf dem Handy lesbar und gut zu treffen?
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1458,7 +1425,12 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Anschluss, Absicherung und Auslastung als Knopfgruppen statt Listen, beide Karten zuklappbar
   mit der Antwort als Kurzfassung, die zweite ab Werk nur nebeneinander offen
   (`FoldCard` mit `defaultOpen="nebeneinander"`, `CalcPage` misst seine Spalten) – am Handy
-  508 statt 929 px.
+  508 statt 929 px. Derselbe Aufbau in den übrigen Rechnern (K6, 25. und 26. November): Rigging,
+  Kameraobjektiv, Timecode, Beamer-Lumen und Audio-Delay mit der Antwort zuerst und der zweiten
+  Frage zugeklappt, alle passen ab Werk aufs Handy (vorher bis zu 1281 px); Knopfgruppen statt
+  Listen, auch im Projektionsverhältnis und in den Karten des RTA (nur „Eingang“ bleibt eine
+  Liste); passen Titel und Kurzfassung nicht in eine Zeile, steht die Kurzfassung darunter;
+  „Frames (gesamt)“ zählt nur ganze Frames (Befund 18).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

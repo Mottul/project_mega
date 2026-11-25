@@ -1047,7 +1047,10 @@ Messmikrofon), am Handy in der Web-App.
   direkt darunter Ansicht, Bewertung, Auflösung, Einfrieren und Zurücksetzen. Die Einstellungen
   (Feedback-Finder, Referenzen, Eingang & Kalibrierung, Anzeige) stehen in Karten darunter, die
   zugeklappt nur eine Zeile mit dem Stand zeigen – beim ersten Öffnen ist alles zu; welche offen
-  sind, bleibt gemerkt.
+  sind, bleibt gemerkt. In den Karten wählt man mit einem Tipp: Empfindlichkeit, Kanal,
+  Kalibrator, Mittelung, Spitzen, Pegelmesser, Skala, Farbe und Spektrogramm sind Knopfgruppen in
+  ganzer Breite (am schmalen Handy brechen vier Knöpfe in zwei Reihen um); nur der Eingang bleibt
+  eine Liste, weil es beliebig viele Geräte mit langen Namen gibt.
 - **Messen** startet das Mikrofon ohne die Sprachfilter der Geräte (Echo- und Rauschunterdrückung,
   automatischer Pegel); filtert ein Gerät trotzdem, steht das in der Statuszeile.
 - **Spektrum** als Bänder (1/1, 1/3, 1/6 oder 1/12 Oktave nach IEC 61260) und als feine Kurve
@@ -1066,7 +1069,7 @@ Messmikrofon), am Handy in der Web-App.
 - **Spektrogramm** unter dem Spektrum (Anzeige → Spektrogramm), Farbe = Pegel, eine Zeile je
   0,1 s (gut 15 s Verlauf): **Wasserfall** – Frequenz waagrecht auf derselben Achse wie das
   Spektrum, eine Linie steht also genau unter ihrer Spitze, die Zeit läuft nach unten; oder
-  **Zeitachse waagrecht** – Zeit nach links, Frequenz senkrecht. Beide mit Oktav-Gitter und
+  **Zeitachse** – Zeit waagrecht nach links, Frequenz senkrecht. Beide mit Oktav-Gitter und
   Beschriftung; Zeiger bzw. Finger zeigt Frequenz, Note, Pegel und wie lange es her ist, das
   Fadenkreuz des Spektrums läuft durch den Wasserfall weiter.
 - **Referenzen:** die aktuelle Kurve merken (bis zu sechs, benennbar, ein-/ausblendbar) und

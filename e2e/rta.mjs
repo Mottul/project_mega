@@ -99,6 +99,10 @@ async function openCard(w, title) {
   if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click()
 }
 
+/** Knopf einer Knopfgruppe in den Karten – seit K6 statt einer Liste (nur „Eingang“ ist eine) */
+const knopf = (w, gruppe, name) =>
+  w.getByRole('group', { name: gruppe, exact: true }).getByRole('button', { name, exact: true })
+
 /** Wert einer Pegelkachel (Beschriftung z. B. „LZF“; gefunden über ihr ⓘ) */
 async function readout(w, label) {
   const tile = w
@@ -295,7 +299,7 @@ try {
         'Wasserfall: 1-kHz-Linie genau unter der Spitze, Ablesung mit Frequenz, Pegel und Zeit',
         async () => {
           await openCard(w, 'Anzeige')
-          await w.getByLabel('Spektrogramm', { exact: true }).selectOption('waterfall')
+          await knopf(w, 'Spektrogramm', 'Wasserfall').click()
           const spectro = w.getByTestId('rta-spectro')
           await spectro.waitFor()
           // erst eine Weile Zeilen sammeln (eine je 100 ms)
@@ -323,7 +327,7 @@ try {
       [
         'Zeitachse waagrecht: 1 kHz in der neuesten Spalte hell, 630 Hz dunkel; aus schaltet ab',
         async () => {
-          await w.getByLabel('Spektrogramm', { exact: true }).selectOption('timeline')
+          await knopf(w, 'Spektrogramm', 'Zeitachse').click()
           await new Promise((r) => setTimeout(r, 1500))
           assert.ok(
             await waitFor(async () => {
@@ -333,7 +337,7 @@ try {
             }, 5_000),
             `Zeitachse 1 kHz ${await spectroBrightness(w, 'timeline', 1000)}, 630 Hz ${await spectroBrightness(w, 'timeline', 630)}`
           )
-          await w.getByLabel('Spektrogramm', { exact: true }).selectOption('off')
+          await knopf(w, 'Spektrogramm', 'Aus').click()
           assert.equal(await w.getByTestId('rta-spectro').count(), 0)
         }
       ],
@@ -363,7 +367,7 @@ try {
           // vor dem Start aufklappen: der Wechsel soll mitten in den Start fallen
           await openCard(w, 'Eingang & Kalibrierung')
           await w.getByRole('button', { name: 'Messen' }).click()
-          await w.getByLabel('Kanal', { exact: true }).selectOption('left')
+          await knopf(w, 'Kanal', 'Links').click()
           await w.getByRole('button', { name: 'Stopp' }).waitFor()
           assert.ok(
             await waitFor(
@@ -376,7 +380,7 @@ try {
           assert.equal(await live(), 1, 'offene Mikrofone nach überholtem Start')
           await w.getByRole('button', { name: 'Stopp' }).click()
           assert.ok(await waitFor(async () => (await live()) === 0, 5_000), 'Mikrofon bleibt offen')
-          await w.getByLabel('Kanal', { exact: true }).selectOption('mix')
+          await knopf(w, 'Kanal', 'Summe L+R').click()
           await w.getByRole('button', { name: 'Messen' }).click()
           await w.getByRole('button', { name: 'Stopp' }).waitFor()
         }
@@ -430,7 +434,7 @@ try {
           'Terzen 63 Hz … 4 kHz flach (±1,5 dB um den Mittelwert, Mittelung unendlich)',
           async () => {
             await openCard(w, 'Anzeige')
-            await w.getByLabel('Mittelung', { exact: true }).selectOption('inf')
+            await knopf(w, 'Mittelung', 'Unendlich').click()
             await w.getByRole('button', { name: 'Messen' }).click()
             await w.getByRole('button', { name: 'Stopp' }).waitFor()
             await new Promise((r) => setTimeout(r, 5000))
