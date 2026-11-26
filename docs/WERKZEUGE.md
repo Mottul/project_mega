@@ -101,7 +101,12 @@ Jedes Werkzeug ist gleich aufgebaut:
   Distanz, ein Gain von 0, ein cos φ über 1. Was davon abhängt, zeigt dann „–“; nichts wird still
   durch einen anderen Wert ersetzt. Ein leeres Feld ist kein Fehler; rechnet es leer mit einer
   Vorgabe (Gain 1, cos φ 1, 20 °C, Eigengewicht 0), steht sie grau im Feld. Hervorgehoben ist je
-  Bereich nur die Antwort auf seine Frage.
+  Bereich nur die Antwort auf seine Frage. **Die Rechner merken sich die Eingaben** – auch die
+  Wahl per Knopf und welches verknüpfte Feld man zuletzt getippt hat: Nach dem Schließen des
+  Fensters (am Handy auch, wenn das System die Web-App aus dem Speicher wirft) steht da, was man
+  zuletzt eingegeben hat. Weicht etwas von den Beispielwerten ab, steht unter den Bereichen
+  **„Zurücksetzen“** und holt sie zurück. RTA und Testtongenerator merken sich ihren Stand
+  ohnehin selbst.
 - **Kundenansicht:** „Kundenansicht“ in der Kopfleiste eines Werkzeugs sperrt es
   sofort und öffnet es auch bei jedem weiteren App-Start direkt – ohne „Zurück“ und ohne heikle
   Einstellungen (der Video-Player verbirgt z. B. Wand/Auflösung, Encoder, Lautheit und Idle-Bild,

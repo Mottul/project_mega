@@ -1,13 +1,18 @@
-import { useState } from 'react'
 import { cn } from '@renderer/lib/utils'
 import { CalcPage, NumField, Readout, SectionCard, parseNum } from '../_calc/ui'
+import { useCalcFields, type CalcSpec } from '../_calc/useCalcFields'
 import { dmxAddress, dmxBinary, dmxSwitches, dmxToggle, switchValue } from './math'
 
 // DMX-Startadresse <-> Dip-Schalter. Die Adresse ist die Summe der eingeschalteten Werte
 // (Schalter 1 an = Adresse 1); die Umrechnung steht in math.ts.
 
+/** Gemerkt (K4): die Startadresse als Text – die Schalter folgen aus ihr */
+const FELDER = { adresse: '1' } satisfies CalcSpec<string>
+
 export function DmxAddress(): JSX.Element {
-  const [addrRaw, setAddrRaw] = useState('1')
+  const f = useCalcFields('dmx-address', FELDER)
+  const addrRaw = f.v.adresse
+  const setAddrRaw = (v: string): void => f.set('adresse', v)
 
   const addr = dmxAddress(parseNum(addrRaw))
 
@@ -24,7 +29,7 @@ export function DmxAddress(): JSX.Element {
   const bits = dmxSwitches(addr)
 
   return (
-    <CalcPage>
+    <CalcPage onReset={f.changed ? f.reset : undefined}>
       <SectionCard
         title="DMX-Adresse ↔ Dip-Schalter"
         desc="Startadresse eingeben oder Schalter umlegen – beides bleibt gleich."

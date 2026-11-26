@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Segmented } from '@renderer/components/ui/segmented'
 import {
   CalcPage,
@@ -11,7 +10,17 @@ import {
   parseOptional,
   trimNum
 } from '../_calc/ui'
+import { useCalcFields, type CalcSpec } from '../_calc/useCalcFields'
 import { AMBIENT, DEFAULT_GAIN, ambientLux, projectorLumen, type LumenField } from './math'
+
+/** Gemerkt (K4): alle Eingaben; das Umgebungslicht nur als eine seiner Stufen */
+const FELDER = {
+  breite: '4',
+  hoehe: '2,25',
+  licht: { vorgabe: 'dim', erlaubt: AMBIENT.map((a) => a.key) },
+  gain: '1',
+  beamer: ''
+} satisfies CalcSpec<string>
 
 // Beamer-Helligkeit: Wieviel ANSI-Lumen braucht die Projektion? Die Faustformel (Ziel-Lux je
 // Umgebungslicht × Bildfläche ÷ Gain) steht in math.ts.
@@ -29,11 +38,13 @@ function beamerSummary(have: number | null, enough: boolean | null): string {
 }
 
 export function ProjectorLumen(): JSX.Element {
-  const [wRaw, setWRaw] = useState('4')
-  const [hRaw, setHRaw] = useState('2,25')
-  const [ambient, setAmbient] = useState('dim')
-  const [gainRaw, setGainRaw] = useState('1')
-  const [haveRaw, setHaveRaw] = useState('')
+  const f = useCalcFields('projector-lumen', FELDER)
+  const { breite: wRaw, hoehe: hRaw, licht: ambient, gain: gainRaw, beamer: haveRaw } = f.v
+  const setWRaw = (v: string): void => f.set('breite', v)
+  const setHRaw = (v: string): void => f.set('hoehe', v)
+  const setAmbient = (v: string): void => f.set('licht', v)
+  const setGainRaw = (v: string): void => f.set('gain', v)
+  const setHaveRaw = (v: string): void => f.set('beamer', v)
 
   const have = parseNum(haveRaw)
   const { area, needed, achievedLux, enough, invalid } = projectorLumen({
@@ -45,11 +56,11 @@ export function ProjectorLumen(): JSX.Element {
     have
   })
   // rot ist, womit der Rechenkern nicht rechnet (nicht über 0)
-  const bad = (f: LumenField): boolean => invalid.includes(f)
+  const bad = (field: LumenField): boolean => invalid.includes(field)
   const stufe = AMBIENT.find((a) => a.key === ambient)
 
   return (
-    <CalcPage>
+    <CalcPage onReset={f.changed ? f.reset : undefined}>
       <FoldCard
         id="projector-lumen:projektion"
         title="Projektion"

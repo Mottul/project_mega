@@ -275,7 +275,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **2 – Muster übertragen** | K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge (die Rechner passen seit K6 aufs Handy) |
+| **2 – Muster übertragen** | W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge (die Rechner passen seit K6 aufs Handy) |
 | **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
@@ -398,9 +398,10 @@ Auftrag.
 
 ## K – Kleine Werkzeuge
 
-Das [Muster 2](#muster-2-kleines-werkzeug) haben seit K6 alle Rechner (siehe
-[Erledigt](#erledigt--nicht-neu-planen)); offen ist, was ihnen unabhängig vom Aufbau fehlt: ein
-Gedächtnis für die Eingaben. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
+Das [Muster 2](#muster-2-kleines-werkzeug) haben seit K6 alle Rechner, seit K4 merken sie sich
+die Eingaben (siehe [Erledigt](#erledigt--nicht-neu-planen)); ein offenes Paket gibt es hier
+nicht mehr – was für jedes weitere kleine Werkzeug gilt, steht unter den Regeln, Ideen unter
+„Später möglich“. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
 Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator,
 Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im
 eigenen kleinen Fenster (Höhe folgt dem Inhalt, schmal bis 320 px) und läuft unverändert in der PWA
@@ -412,47 +413,9 @@ beginnt dort.
 Was bleibt: eine kurze Zeile je Karte, alles Weitere hinter dem ⓘ, Zahlen mit Komma, berechnete
 Felder in Akzentfarbe.
 
-| Paket | Inhalt | Größe | Braucht |
-| ----- | ------ | ----- | ------- |
-| **K4** | Rechner merken sich die Eingaben | M | – |
+Vor jeder Arbeit an einem kleinen Werkzeug den Skill `rechner-pwa` lesen.
 
-Vor jedem Schritt den Skill `rechner-pwa` lesen.
-
-### Befunde
-
-Am Code geprüft am 13. November 2026, die Maße am 14. November; vor jedem Schritt erst nachsehen,
-ob die Stelle noch so aussieht. Die Nummern stammen aus dem ersten Plan (1 ist mit K1 erledigt,
-13 mit K2, 2, 4, 5, 7, 8, 9 und 14 mit K3, 3, 10, 12, 15 und 16 mit dem Testtongenerator, 6,
-17 und 18 mit K6), damit Verweise darauf gültig bleiben.
-
-| Nr. | Befund | Fundstelle | Paket |
-| --- | ------ | ---------- | ----- |
-| 11 | Alle Eingaben sind weg, sobald das Fenster zugeht oder das Handy die PWA aus dem Speicher wirft; es erscheinen wieder die Beispielwerte (der Testtongenerator merkt sich seinen Stand schon) | alle Rechner (`useState`) | K4 |
-
-### K4 – Rechner merken sich die Eingaben
-
-Entschieden am 24. November 2026; nach K6, weil beide dieselben Rechner anfassen. **Heute:**
-Befund 11. **So:**
-
-```text
-src/renderer/src/tools/_calc/useCalcFields.ts        gemerkte Felder eines Rechners
-src/renderer/src/tools/_calc/useCalcFields.test.ts   Prüfung beim Lesen
-```
-
-- Je Rechner ein Eintrag über `usePersistentState` (das ist der Ort für Bedien-Kleinigkeiten),
-  Schlüssel `calc:<kennung>`: alle Eingaben als Text, bei verknüpften Feldern auch, welches die
-  Quelle ist. Beim Lesen geprüft: nur bekannte Felder, nur Text bis 40 Zeichen, sonst die
-  Vorgabe – rein und getestet.
-- `useLinkedFields` nimmt den gemerkten Stand wahlweise entgegen; ohne bleibt es wie heute.
-- **„Zurücksetzen“** unter den Karten (`CalcPage`), nur sichtbar, wenn etwas von der Vorgabe
-  abweicht: stellt die Beispielwerte wieder her.
-- Nicht für RTA und Testtongenerator – die haben ihren Store.
-
-**Abnahme:** Unit-Test der Prüfung (Unsinn, fehlende und fremde Felder). E2E in
-`e2e/layout.mjs`: Kreisrechner, Durchmesser 3 tippen, Fenster schließen, wieder öffnen – 3
-steht da; „Zurücksetzen“ – 1 steht da, der Knopf ist weg. `npm run pwa:build`.
-
-### Regeln für alle K-Pakete
+### Regeln für die kleinen Werkzeuge
 
 - **Kein `api`, keine Einstellungen, kein Toast** in einem kleinen Werkzeug (Skill
   `rechner-pwa`) – der PWA-Build bricht sonst ab. Meldungen als `Alert` in der Seite.
@@ -1177,6 +1140,9 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
   die Antwort über der Tastatur sichtbar? Telekonverter, Framerate, Umgebungslicht,
   Seitenverhältnis (Projektionsverhältnis) und die Einstellungen in den Karten des RTA per Knopf –
   sind die zehn Framerates auf dem Handy lesbar und gut zu treffen?
+- **Seit K4, alle Rechner:** Werte eintippen, die Web-App ganz schließen (aus der Übersicht der
+  offenen Apps wischen) und wieder öffnen – stehen die Werte noch da? „Zurücksetzen“ unter den
+  Karten holt die Beispielwerte und verschwindet.
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1416,7 +1382,9 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Frage zugeklappt, alle passen ab Werk aufs Handy (vorher bis zu 1281 px); Knopfgruppen statt
   Listen, auch im Projektionsverhältnis und in den Karten des RTA (nur „Eingang“ bleibt eine
   Liste); passen Titel und Kurzfassung nicht in eine Zeile, steht die Kurzfassung darunter;
-  „Frames (gesamt)“ zählt nur ganze Frames (Befund 18).
+  „Frames (gesamt)“ zählt nur ganze Frames (Befund 18). Die Rechner merken sich die Eingaben
+  (K4, 26. November: `useCalcFields`, je Rechner `calc:<kennung>`, beim Lesen geprüft), unter
+  den Karten holt „Zurücksetzen“ die Beispielwerte.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

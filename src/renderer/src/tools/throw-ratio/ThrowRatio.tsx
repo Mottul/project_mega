@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Segmented } from '@renderer/components/ui/segmented'
 import {
   CalcPage,
@@ -11,6 +10,7 @@ import {
   trimNum,
   useLinkedFields
 } from '../_calc/ui'
+import { useCalcFields, type CalcSpec } from '../_calc/useCalcFields'
 import { Alert } from '@renderer/components/ui/alert'
 import {
   ASPECTS,
@@ -25,20 +25,30 @@ import {
 // des passenden Objektivs: oben die Leinwandmaße (Seitenverhältnis + ein Maß),
 // unten Throw Ratio <-> Projektionsabstand verknüpft. Gerechnet wird in math.ts.
 
+/** Gemerkt (K4): Seitenverhältnis und je Karte Quelle und Text der verknüpften Felder */
+const FELDER = {
+  seiten: { vorgabe: '16:9', erlaubt: ASPECTS.map((a) => a.key) },
+  leinwandQuelle: { vorgabe: 'w', erlaubt: ['w', 'h', 'diag'] satisfies SizeField[] },
+  leinwand: '5',
+  objektivQuelle: { vorgabe: 'dist', erlaubt: ['tr', 'dist'] satisfies ThrowField[] },
+  objektiv: '8'
+} satisfies CalcSpec<string>
+
 export function ThrowRatio(): JSX.Element {
-  const [aspectKey, setAspectKey] = useState('16:9')
-  const size = useLinkedFields<SizeField>('w', '5')
-  const lens = useLinkedFields<ThrowField>('dist', '8')
+  const f = useCalcFields('throw-ratio', FELDER)
+  const aspectKey = f.v.seiten
+  const size = useLinkedFields<SizeField>('w', '5', f.linked('leinwandQuelle', 'leinwand'))
+  const lens = useLinkedFields<ThrowField>('dist', '8', f.linked('objektivQuelle', 'objektiv'))
 
   const screen = screenSize(size.driver, parseNum(size.raw), aspectRatio(aspectKey))
   const { w, h, diag, area } = screen
   const ratio = throwFrom(lens.driver, parseNum(lens.raw), w)
   // rot ist nur eine Quelle, die der Rechenkern nicht rechnet (nicht über 0)
-  const badSize = (f: SizeField): boolean => screen.invalid.includes(f)
-  const badLens = (f: ThrowField): boolean => ratio.invalid.includes(f)
+  const badSize = (field: SizeField): boolean => screen.invalid.includes(field)
+  const badLens = (field: ThrowField): boolean => ratio.invalid.includes(field)
 
   return (
-    <CalcPage>
+    <CalcPage onReset={f.changed ? f.reset : undefined}>
       <SectionCard
         title="Leinwand"
         desc="Seitenverhältnis wählen, ein Maß eingeben – die übrigen folgen."
@@ -49,7 +59,7 @@ export function ThrowRatio(): JSX.Element {
             label="Seitenverhältnis"
             value={aspectKey}
             options={ASPECTS.map((a) => ({ value: a.key, label: a.label }))}
-            onChange={setAspectKey}
+            onChange={(v) => f.set('seiten', v)}
             wrap={4}
           />
         </FieldBlock>

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Segmented } from '@renderer/components/ui/segmented'
 import {
   CalcPage,
@@ -13,6 +12,7 @@ import {
   trimNum,
   useLinkedFields
 } from '../_calc/ui'
+import { useCalcFields, type CalcSpec } from '../_calc/useCalcFields'
 import {
   DEFAULT_PF,
   devicesPerCircuit,
@@ -47,6 +47,18 @@ const RESERVES = [
   { value: '0.8', label: '80 % Dauer' }
 ]
 
+/** Gemerkt (K4): alle Eingaben; Anschluss, Absicherung und Auslastung nur als einer ihrer Knöpfe */
+const FELDER = {
+  anschluss: { vorgabe: '1', erlaubt: PHASES.map((p) => p.value) },
+  spannung: '230',
+  cosPhi: '1',
+  lastQuelle: { vorgabe: 'i', erlaubt: ['p', 'i'] satisfies LoadField[] },
+  last: '16',
+  geraet: '500',
+  absicherung: { vorgabe: '16', erlaubt: BREAKERS.map((b) => b.value) },
+  auslastung: { vorgabe: '1', erlaubt: RESERVES.map((r) => r.value) }
+} satisfies CalcSpec<string>
+
 /** Kurzfassung der Karte „Last“: ihre Antwort; dreiphasig mit „3∼“, der Strom gilt dann je Leiter */
 function loadSummary(phase: Phase, p: number | null, i: number | null): string {
   if (p == null || i == null) return '–'
@@ -59,13 +71,17 @@ function devicesSummary(n: number | null): string {
 }
 
 export function PowerLoad(): JSX.Element {
-  const [phase, setPhase] = useState<Phase>('1')
-  const [uRaw, setURaw] = useState('230')
-  const [pfRaw, setPfRaw] = useState('1')
-  const load = useLinkedFields<LoadField>('i', '16')
-  const [devRaw, setDevRaw] = useState('500')
-  const [breaker, setBreaker] = useState('16')
-  const [reserve, setReserve] = useState('1')
+  const f = useCalcFields('power-load', FELDER)
+  // die gemerkte Wahl ist geprüft (nur Werte aus PHASES), deshalb darf sie als Phase gelten
+  const phase = f.v.anschluss as Phase
+  const { spannung: uRaw, cosPhi: pfRaw, geraet: devRaw } = f.v
+  const { absicherung: breaker, auslastung: reserve } = f.v
+  const setURaw = (v: string): void => f.set('spannung', v)
+  const setPfRaw = (v: string): void => f.set('cosPhi', v)
+  const setDevRaw = (v: string): void => f.set('geraet', v)
+  const setBreaker = (v: string): void => f.set('absicherung', v)
+  const setReserve = (v: string): void => f.set('auslastung', v)
+  const load = useLinkedFields<LoadField>('i', '16', f.linked('lastQuelle', 'last'))
 
   // cos φ: leer rechnet mit 1, unlesbar gar nicht (parseOptional)
   const supply = { phase, u: parseNum(uRaw), pf: parseOptional(pfRaw) }
@@ -73,14 +89,14 @@ export function PowerLoad(): JSX.Element {
   const last = loadFrom(supply, load.driver, parseNum(load.raw))
   const { p, i, apparent } = last
   // rot ist, womit der Rechenkern nicht rechnet (U nicht über 0, cos φ außerhalb von 0 bis 1 …)
-  const bad = (f: SupplyField | LoadField): boolean => last.invalid.includes(f)
+  const bad = (field: SupplyField | LoadField): boolean => last.invalid.includes(field)
 
   function switchPhase(pNew: Phase): void {
-    setPhase(pNew)
     // Spannung auf den jeweils üblichen Standard setzen (frei überschreibbar).
-    if ((pNew === '3' && uRaw === '230') || (pNew === '1' && uRaw === '400')) {
-      setURaw(pNew === '3' ? '400' : '230')
-    }
+    const standard = (pNew === '3' && uRaw === '230') || (pNew === '1' && uRaw === '400')
+    f.patch(
+      standard ? { anschluss: pNew, spannung: pNew === '3' ? '400' : '230' } : { anschluss: pNew }
+    )
   }
 
   // Geräte pro Absicherung.
@@ -92,7 +108,10 @@ export function PowerLoad(): JSX.Element {
   )
 
   return (
-    <CalcPage note="Richtwerte ohne Anlaufströme und Leitungslängen – im Zweifel Herstellerangaben und Elektrofachkraft heranziehen.">
+    <CalcPage
+      note="Richtwerte ohne Anlaufströme und Leitungslängen – im Zweifel Herstellerangaben und Elektrofachkraft heranziehen."
+      onReset={f.changed ? f.reset : undefined}
+    >
       <FoldCard
         id="power-load:last"
         title="Last"

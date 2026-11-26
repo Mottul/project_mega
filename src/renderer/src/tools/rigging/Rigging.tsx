@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   CalcPage,
   FoldCard,
@@ -10,6 +9,7 @@ import {
   parseOptional,
   trimNum
 } from '../_calc/ui'
+import { useCalcFields, type CalcSpec } from '../_calc/useCalcFields'
 import { Alert } from '@renderer/components/ui/alert'
 import { STATUS } from '@renderer/components/ui/status'
 import { DEFAULT_OWN, bridle, kgToKn, trussLoads, type BridleField, type TrussField } from './math'
@@ -39,17 +39,31 @@ function bridleSummary(legForce: number | null, betaDeg: number | null): string 
     : `${fmt(legForce, 0)} kg je Strang · ${fmt(betaDeg, 0)}°`
 }
 
+/** Gemerkt (K4): alle Eingaben beider Karten */
+const FELDER = {
+  spannweite: '8',
+  position: '3',
+  punktlast: '120',
+  eigengewicht: '10',
+  bridleLast: '200',
+  hoehe: '2',
+  abstand: '4'
+} satisfies CalcSpec<string>
+
 export function Rigging(): JSX.Element {
+  const f = useCalcFields('rigging', FELDER)
   // Traverse
-  const [spanRaw, setSpanRaw] = useState('8')
-  const [posRaw, setPosRaw] = useState('3')
-  const [loadRaw, setLoadRaw] = useState('120')
-  const [ownRaw, setOwnRaw] = useState('10')
+  const { spannweite: spanRaw, position: posRaw, punktlast: loadRaw, eigengewicht: ownRaw } = f.v
+  const setSpanRaw = (v: string): void => f.set('spannweite', v)
+  const setPosRaw = (v: string): void => f.set('position', v)
+  const setLoadRaw = (v: string): void => f.set('punktlast', v)
+  const setOwnRaw = (v: string): void => f.set('eigengewicht', v)
 
   // Bridle
-  const [bLoadRaw, setBLoadRaw] = useState('200')
-  const [heightRaw, setHeightRaw] = useState('2')
-  const [widthRaw, setWidthRaw] = useState('4')
+  const { bridleLast: bLoadRaw, hoehe: heightRaw, abstand: widthRaw } = f.v
+  const setBLoadRaw = (v: string): void => f.set('bridleLast', v)
+  const setHeightRaw = (v: string): void => f.set('hoehe', v)
+  const setWidthRaw = (v: string): void => f.set('abstand', v)
 
   const truss = trussLoads(
     parseNum(spanRaw),
@@ -62,11 +76,14 @@ export function Rigging(): JSX.Element {
   const b = bridle(parseNum(bLoadRaw), parseNum(heightRaw), parseNum(widthRaw))
   const { betaDeg, spreadDeg, factor, legForce, legLen, level } = b
   // rot ist, womit der Rechenkern nicht rechnet
-  const badTruss = (f: TrussField): boolean => truss.invalid.includes(f)
-  const badBridle = (f: BridleField): boolean => b.invalid.includes(f)
+  const badTruss = (field: TrussField): boolean => truss.invalid.includes(field)
+  const badBridle = (field: BridleField): boolean => b.invalid.includes(field)
 
   return (
-    <CalcPage note="Statische Richtwerte ohne Dynamik-, Sicherheits- und Anschlagmittel-Faktoren – Auslegung und Abnahme gehören in die Hände eines Sachkundigen (DGUV V 17/18, SQ Q2).">
+    <CalcPage
+      note="Statische Richtwerte ohne Dynamik-, Sicherheits- und Anschlagmittel-Faktoren – Auslegung und Abnahme gehören in die Hände eines Sachkundigen (DGUV V 17/18, SQ Q2)."
+      onReset={f.changed ? f.reset : undefined}
+    >
       <FoldCard
         id="rigging:traverse"
         title="Traverse auf zwei Punkten"

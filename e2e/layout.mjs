@@ -72,6 +72,14 @@ async function mitBreite(id, breite) {
   assert.equal((await winInfo(id)).content[0], breite)
   return w
 }
+/** Die Rechner merken sich die Eingaben (K4): Wer Werte verstellt, holt am Ende die
+ *  Beispielwerte zurück – spätere Schritte erwarten den Auslieferungszustand. Der Knopf muss da
+ *  sein (der Schritt hat etwas geändert) und danach verschwinden. */
+async function zuruecksetzen(w) {
+  const knopf = w.getByRole('button', { name: 'Zurücksetzen', exact: true })
+  await knopf.click()
+  await knopf.waitFor({ state: 'detached', timeout: 5_000 })
+}
 /** Kleine Werkzeuge (shared/toolWindows: SMALL_TOOLS) und die zweispaltig geöffneten */
 const SMALL = [
   'circle-calc',
@@ -87,6 +95,9 @@ const SMALL = [
   'tone-generator'
 ]
 const TWO_COLUMNS = ['power-load', 'camera-lens', 'rigging', 'rta']
+/** Die Rechner, die sich ihre Eingaben merken (K4) – alle kleinen Werkzeuge außer RTA und
+ *  Testtongenerator, die ihren eigenen Store haben */
+const MERKEN = SMALL.filter((id) => id !== 'rta' && id !== 'tone-generator')
 
 /**
  * Fenster eines kleinen Werkzeugs im main: eine BrowserWindow-Methode aufrufen
@@ -812,6 +823,7 @@ try {
         assert.equal(await field('Umfang U').getAttribute('title'), null)
         await field('Umfang U').fill('31,4159')
         assert.ok(await waitFor(async () => (await field('Radius r').inputValue()) === '5'))
+        await zuruecksetzen(w)
         await closeToolWindow('circle-calc')
       }
     ],
@@ -830,6 +842,7 @@ try {
         await field('Radius r').fill('2,5')
         await expectAttr(field('Radius r'), 'aria-invalid', null, 'Radius 2,5')
         assert.ok(await waitFor(async () => (await field('Durchmesser d').inputValue()) === '5'))
+        await zuruecksetzen(w)
         await closeToolWindow('circle-calc')
         // eigene Schreibweise: Timecodes liest das Feld mit parseTc (25 fps: Frames 0 bis 24) –
         // das Feld der ersten Karte, die zweite („Dauer“) ist im schmalen Fenster ab Werk zu
@@ -840,6 +853,7 @@ try {
         await expectAttr(tcFeld, 'aria-invalid', 'true', 'Timecode „01:00:00:25“')
         await tcFeld.fill('01:00:00:24')
         await expectAttr(tcFeld, 'aria-invalid', null, 'Timecode „01:00:00:24“')
+        await zuruecksetzen(tc)
         await closeToolWindow('timecode')
       }
     ],
@@ -864,6 +878,7 @@ try {
         assert.ok(await waitFor(async () => /^3\.600/.test(await bedarf.textContent())))
         // die Bewertung (Statusstufen) prüft der Schritt „Beamer-Lumen (K6)“: Ihre Karte ist
         // im 520-px-Fenster ab Werk zu
+        await zuruecksetzen(w)
         await closeToolWindow('projector-lumen')
 
         // Rigging: negatives Eigengewicht senkte früher die Kräfte; leer zählt es als 0
@@ -879,6 +894,7 @@ try {
         const warnung = r.getByRole('status').filter({ hasText: 'Flacher Winkel' })
         await warnung.waitFor({ timeout: 5_000 })
         assert.ok(!(await warnung.textContent()).includes('⚠'), await warnung.textContent())
+        await zuruecksetzen(r)
         await closeToolWindow('rigging')
       }
     ],
@@ -904,6 +920,7 @@ try {
         await frames.fill('1,5')
         await expectAttr(frames, 'aria-invalid', 'true', 'Frames „1,5“')
         assert.equal(await tc.inputValue(), '', 'Timecode bei Frames „1,5“')
+        await zuruecksetzen(w)
         await closeToolWindow('timecode')
 
         const a = await openSmall('audio-delay')
@@ -912,6 +929,7 @@ try {
         assert.equal(await temp.getAttribute('inputmode'), 'text')
         await temp.fill('-5')
         await expectAttr(temp, 'aria-invalid', null, 'Temperatur „-5“')
+        await zuruecksetzen(a)
         await closeToolWindow('audio-delay')
       }
     ],
@@ -936,6 +954,7 @@ try {
         assert.ok(await waitFor(async () => (await adresse.inputValue()) === ''), 'alle aus')
         // kein zweites Ergebnis „Adresse“ unter den Schaltern
         assert.equal(await w.getByText('Adresse', { exact: true }).count(), 0)
+        await zuruecksetzen(w)
         await closeToolWindow('dmx-address')
       }
     ],
@@ -1005,6 +1024,7 @@ try {
         await expectAttr(geraete(), 'aria-expanded', 'true', 'Geräte, wieder geöffnet')
         await assertFits(w, id)
         // Breite wie ab Werk: „alle kleinen Werkzeuge“ erwartet die Karten nebeneinander
+        await zuruecksetzen(w)
         await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
         await closeToolWindow(id)
       }
@@ -1049,6 +1069,7 @@ try {
         await expectAttr(bridle(), 'aria-expanded', 'true', 'Bridle, wieder geöffnet')
         await assertFits(w, id)
         // Breite wie ab Werk: „alle kleinen Werkzeuge“ erwartet die Karten nebeneinander
+        await zuruecksetzen(w)
         await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
         await closeToolWindow(id)
       }
@@ -1093,6 +1114,7 @@ try {
         w = await openSmall(id)
         await expectAttr(kamera(), 'aria-expanded', 'true', 'Kamera, wieder geöffnet')
         await assertFits(w, id)
+        await zuruecksetzen(w)
         await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
         await closeToolWindow(id)
       }
@@ -1140,6 +1162,7 @@ try {
         w = await openSmall(id)
         await expectAttr(dauer(), 'aria-expanded', 'true', 'Dauer, wieder geöffnet')
         await assertFits(w, id)
+        await zuruecksetzen(w)
         await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
         await closeToolWindow(id)
       }
@@ -1197,6 +1220,7 @@ try {
         w = await openSmall(id)
         await expectAttr(beamer(), 'aria-expanded', 'true', 'Beamer, wieder geöffnet')
         await assertFits(w, id)
+        await zuruecksetzen(w)
         await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
         await closeToolWindow(id)
       }
@@ -1235,6 +1259,7 @@ try {
         w = await openSmall(id)
         await expectAttr(pegel(), 'aria-expanded', 'true', 'Pegel, wieder geöffnet')
         await assertFits(w, id)
+        await zuruecksetzen(w)
         await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
         await closeToolWindow(id)
       }
@@ -1265,6 +1290,7 @@ try {
           `Reihen bei 320 px: ${JSON.stringify(await reihen())}`
         )
         await assertFits(w, id)
+        await zuruecksetzen(w)
         await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
         await closeToolWindow(id)
       }
@@ -1316,6 +1342,45 @@ try {
       }
     ],
     [
+      'Rechner merken sich die Eingaben (K4): Fenster zu und wieder auf, „Zurücksetzen“ holt die Beispielwerte',
+      async () => {
+        let id = 'circle-calc'
+        let w = await openSmall(id)
+        const feld = (label) => w.getByLabel(label, { exact: true })
+        const zurueck = () => w.getByRole('button', { name: 'Zurücksetzen', exact: true })
+        // Beispielwert, „Zurücksetzen“ erst, wenn etwas abweicht
+        assert.equal(await feld('Durchmesser d').inputValue(), '1')
+        assert.equal(await zurueck().count(), 0, '„Zurücksetzen“ ab Werk')
+        await feld('Durchmesser d').fill('3')
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        assert.equal(await feld('Durchmesser d').inputValue(), '3', 'Durchmesser nach dem Öffnen')
+        // die Quelle ist mitgemerkt: Der Radius folgt dem Durchmesser
+        assert.equal(await feld('Radius r').inputValue(), '1,5')
+        await zurueck().click()
+        assert.ok(await waitFor(async () => (await feld('Durchmesser d').inputValue()) === '1'))
+        await expectCount(zurueck(), 0, '„Zurücksetzen“ nach dem Zurücksetzen')
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        assert.equal(await feld('Durchmesser d').inputValue(), '1', 'nach Zurücksetzen und Öffnen')
+        await closeToolWindow(id)
+
+        // eine Wahl, die ein Feld mit umstellt (Stromlast: 3∼ setzt 400 V), bleibt ebenso
+        id = 'power-load'
+        w = await openSmall(id)
+        await knopf(w, 'Anschluss', '3∼ 400 V').click()
+        assert.ok(await waitFor(async () => (await feld('Spannung U').inputValue()) === '400'))
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        assert.equal(await knopf(w, 'Anschluss', '3∼ 400 V').getAttribute('aria-pressed'), 'true')
+        assert.equal(await feld('Spannung U').inputValue(), '400')
+        await zuruecksetzen(w)
+        assert.equal(await knopf(w, 'Anschluss', '1∼ 230 V').getAttribute('aria-pressed'), 'true')
+        assert.equal(await feld('Spannung U').inputValue(), '230')
+        await closeToolWindow(id)
+      }
+    ],
+    [
       'alle kleinen Werkzeuge: Höhe folgt dem Inhalt, zweispaltig wo vorgesehen, bis 320 px schmal',
       async () => {
         for (const id of SMALL) {
@@ -1325,6 +1390,13 @@ try {
           // ab Werk ist kein Feld als Fehleingabe markiert (auch kein Timecode)
           const rot = await w.locator('[aria-invalid="true"]').count()
           assert.equal(rot, 0, `${id}: ${rot} Feld(er) ab Werk als Fehleingabe markiert`)
+          // und kein Rechner weicht von den Beispielwerten ab – jeder frühere Schritt hat
+          // zurückgesetzt (RTA und Testtongenerator merken sich nichts über K4; der RTA hat
+          // einen eigenen Knopf „Zurücksetzen“ für Mittelung und Spitzen)
+          if (MERKEN.includes(id)) {
+            const abweichend = w.getByRole('button', { name: 'Zurücksetzen', exact: true })
+            assert.equal(await abweichend.count(), 0, `${id}: gemerkte Eingaben statt Vorgaben`)
+          }
           if (TWO_COLUMNS.includes(id)) {
             const tops = await w
               .getByTestId('tool-content')
