@@ -595,7 +595,10 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
 
 - **Projektionsverhältnis:** Throw Ratio, Bildmaße und Projektionsabstand – das passende
   Beamer-Objektiv wählen. Das Seitenverhältnis wählt man mit einem Tipp aus sechs Knöpfen (am
-  Handy zwei Reihen); dass 2,35 : 1 auch Cinemascope heißt, sagt das ⓘ.
+  Handy zwei Reihen); dass 2,35 : 1 auch Cinemascope heißt, sagt das ⓘ. Aufbau wie die
+  Stromlast: Beide Karten lassen sich zuklappen und zeigen dann ihre Werte – „16 : 9 · 5 ×
+  2,81 m“ bzw. „TR 1,6 · 8 m“; „Objektiv & Abstand“ ist ab Werk nur offen, wenn die Karten
+  nebeneinander stehen. Am Handy 522 px.
 - **Kameraobjektiv:** aus Brennweite, Sensor, Telekonverter und Entfernung der Bildausschnitt –
   wie viel einer Person bei maximalem Zoom ins Bild passt, mit Visualisierung. Aufbau wie die
   Stromlast: „Kamera & Objektiv“ stellt man einmal ein; zugeklappt zeigt die Karte Sensor und

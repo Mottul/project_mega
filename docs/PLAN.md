@@ -160,8 +160,7 @@ die Bedienelemente.
   zugeklappt die Antwort („7 Geräte je Kreis“); die zweite ist ab Werk nur offen, wenn sie neben
   der ersten steht (`defaultOpen="nebeneinander"`) – am Handy zu, im breiten Fenster offen. So
   sind seit K6 alle Rechner mit zwei Fragen gebaut; ist die erste Karte nur Einstellung
-  (Kameraobjektiv), ist sie die zugeklappte. Ausnahme: das Projektionsverhältnis, dessen Karten
-  offen bleiben (entschieden am 25. November 2026).
+  (Kameraobjektiv), ist sie die zugeklappte.
 - **Passt aufs Handy:** Bei 393 × 710 steht das Wichtige ohne Scrollen da – der
   Testtongenerator ganz, beim RTA Messen, Pegel, Spektrum und dessen Bedienung.
 - **Meldungen in der Seite** (`Alert`), der Stand bleibt gemerkt, Erklärungen hinter dem ⓘ.
@@ -183,7 +182,7 @@ ohne Tastatur):
 | Timecode-Rechner | passt: 569 px (vor K6 749, +92) | Umrechnen 461 offen, Dauer 61 zugeklappt (offen 927; vor K6 321 und 381) | – (vor K6 Bildrate (10)) | K6 erledigt (25. November 2026) |
 | Beamer-Lumen | passt: 558 px (vor K6 741, +84) | Projektion 460 offen, Vorhandener Beamer 50 zugeklappt (offen 758; vor K6 423 und 271) | – (vor K6 Umgebungslicht (4)) | K6 erledigt (25. November 2026) |
 | Audio-Delay & SPL | passt: 476 px (vor K6 695, +38) | Delay 378 offen, Pegel über Distanz 50 zugeklappt (offen 718; vor K6 367 und 281) | – | K6 erledigt (25. November 2026) |
-| Projektionsverhältnis | passt: 631 px (vor K6 556) | Leinwand 413, Objektiv 171 (vor K6 337 und 171) | – (vor K6 Seitenverhältnis (6)) | K6 erledigt (25. November 2026), nur die Liste |
+| Projektionsverhältnis | passt: 522 px (vor K6 556; mit beiden Karten offen 654) | Leinwand 424 offen, Objektiv 50 zugeklappt (vor K6 337 und 171) | – (vor K6 Seitenverhältnis (6)) | K6 erledigt (26. November 2026) |
 | DMX-Dip-Schalter | passt | eine (287; vor K3 mit der Zeile „Adresse“ 389) | – | nichts |
 | Kreisrechner | passt | eine (267) | – | nichts |
 
@@ -275,7 +274,7 @@ alles andere lässt sich vorziehen.
 
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
-| **2 – Muster übertragen** | K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge (die Rechner passen seit K6 aufs Handy) |
+| **2 – Muster übertragen** | K4 · W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen vier große Werkzeuge (den Video-Generator hat W1 umgebaut, die Rechner passen seit K6 aufs Handy) |
 | **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
@@ -1170,10 +1169,10 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
   Tastatur sichtbar? Anschluss, Absicherung und Auslastung per Knopf, App schließen und wieder
   öffnen – die aufgeklappte Karte ist noch offen. Am Rechner im breiten Fenster: beide Karten
   offen nebeneinander.
-- **Seit K6, Rigging, Kameraobjektiv, Timecode, Beamer-Lumen und Audio-Delay:** wie die
-  Stromlast – am Handy ist ab Werk nur die Frage offen (beim Kameraobjektiv „Motiv &
-  Bildausschnitt“; „Kamera & Objektiv“ ist zu und zeigt „Vollformat · 200 mm“), die zweite Karte
-  zeigt zugeklappt ihre Antwort. Passt jede Seite ohne Scrollen? Aufklappen und tippen: Bleibt
+- **Seit K6, Rigging, Kameraobjektiv, Timecode, Beamer-Lumen, Audio-Delay und
+  Projektionsverhältnis:** wie die Stromlast – am Handy ist ab Werk nur die Frage offen (beim
+  Kameraobjektiv „Motiv & Bildausschnitt“; „Kamera & Objektiv“ ist zu und zeigt „Vollformat ·
+  200 mm“), die zweite Karte zeigt zugeklappt ihre Antwort („TR 1,6 · 8 m“). Passt jede Seite ohne Scrollen? Aufklappen und tippen: Bleibt
   die Antwort über der Tastatur sichtbar? Telekonverter, Framerate, Umgebungslicht,
   Seitenverhältnis (Projektionsverhältnis) und die Einstellungen in den Karten des RTA per Knopf –
   sind die zehn Framerates auf dem Handy lesbar und gut zu treffen?
@@ -1271,10 +1270,11 @@ behalten ihre Nummer, damit Verweise darauf stimmen:
 
 Entschieden – damit nichts neu gefragt wird:
 
-- **Projektionsverhältnis: beide Karten bleiben offen** (25. November 2026, „Nein, offen
-  lassen“): „Leinwand“ und „Objektiv & Abstand“ werden keine zuklappbaren Karten, auch nicht
-  „einheitlich“ mit den übrigen Rechnern – die Seite passt mit beiden offen aufs Handy (631 von
-  657 px). Mit K6 kam dort nur die Knopfgruppe für das Seitenverhältnis.
+- **Projektionsverhältnis: zuklappbar wie alle Rechner** (26. November 2026, „Ja, zuklappbar“):
+  „Leinwand“ und „Objektiv & Abstand“ sind zuklappbare Karten wie im Piloten; am Handy und im
+  520 px breiten Fenster ist „Objektiv & Abstand“ ab Werk zu und zeigt „TR 1,6 · 8 m“, dazu die
+  Knopfgruppe für das Seitenverhältnis. Die Antwort vom 25. November („Nein, offen lassen“) war
+  doppeldeutig beschriftet und gilt nicht mehr.
 - **Timecode: „Frames (gesamt)“ zählt nur ganze Frames** (24. November 2026, „Ja, rot
   markieren“; früher Befund 18): Eine gebrochene Framezahl wie „1,5“ ist rot und ergibt kein
   Ergebnis, wie jeder Wert, mit dem nicht gerechnet wird. Vorher rechnete der Rechner still mit
@@ -1413,9 +1413,9 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   (`FoldCard` mit `defaultOpen="nebeneinander"`, `CalcPage` misst seine Spalten) – am Handy
   508 statt 929 px. Derselbe Aufbau in den übrigen Rechnern (K6, 25. und 26. November): Rigging,
   Kameraobjektiv, Timecode, Beamer-Lumen und Audio-Delay mit der Antwort zuerst und der zweiten
-  Frage zugeklappt, alle passen ab Werk aufs Handy (vorher bis zu 1281 px); Knopfgruppen statt
-  Listen, auch im Projektionsverhältnis und in den Karten des RTA (nur „Eingang“ bleibt eine
-  Liste); passen Titel und Kurzfassung nicht in eine Zeile, steht die Kurzfassung darunter;
+  Frage zugeklappt, das Projektionsverhältnis mit zugeklapptem „Objektiv & Abstand“, alle passen
+  ab Werk aufs Handy (vorher bis zu 1281 px); Knopfgruppen statt Listen, auch im
+  Projektionsverhältnis und in den Karten des RTA (nur „Eingang“ bleibt eine Liste); passen Titel und Kurzfassung nicht in eine Zeile, steht die Kurzfassung darunter;
   „Frames (gesamt)“ zählt nur ganze Frames (Befund 18).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
