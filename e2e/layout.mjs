@@ -34,6 +34,44 @@ async function expectAttr(locator, name, value, what) {
  *  „–“ ohne Ergebnis, sonst Zahl und Einheit („3.600lm“) */
 const readout = (w, label) =>
   w.getByText(label, { exact: true }).locator('xpath=following-sibling::span[1]')
+/** Text wörtlich in einem regulären Ausdruck („Bridle (2 Stränge)“) */
+const woertlich = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/** Kopf einer zuklappbaren Karte (`FoldCard`) eines Rechners: der Knopf, der mit ihrem Titel
+ *  beginnt – dahinter steht die Kurzfassung */
+const kartenKopf = (w, titel) =>
+  w.getByTestId('tool-content').getByRole('button', { name: new RegExp('^' + woertlich(titel)) })
+/** Knopf einer Knopfgruppe (`Segmented`) eines Rechners */
+const knopf = (w, gruppe, name) =>
+  w.getByRole('group', { name: gruppe, exact: true }).getByRole('button', { name, exact: true })
+/** Oberkante eines Elements im Fenster (px) */
+const oberkante = async (loc) => (await loc.boundingBox()).y
+/** Die Antwort einer Karte (Beschriftung ihres `Readout`; mit ⓘ als Teiltext, das ⓘ zählt
+ *  sonst mit) steht über ihrem ersten Feld */
+async function antwortZuerst(w, antwort, feld, { mitInfo = false } = {}) {
+  const a = await oberkante(w.getByText(antwort, { exact: !mitInfo }))
+  const f = await oberkante(w.getByLabel(feld, { exact: true }))
+  assert.ok(a < f, `${antwort} bei ${a} px, erstes Feld „${feld}“ bei ${f} px`)
+}
+/** Zuklappbare Karten des Rechners (das ⓘ trägt auch aria-expanded, steht aber nicht im Titel) */
+const kartenKoepfe = (w) => w.getByTestId('tool-content').locator('h2 > button[aria-expanded]')
+/** Keine Liste mit bis zu vier Möglichkeiten (die sind Knopfgruppen) – je Liste die Zahl der
+ *  Einträge, wenn eine zu kurz ist */
+async function keineKurzeListe(w, id) {
+  const eintraege = await w.locator('select').evaluateAll((els) => els.map((e) => e.length))
+  assert.ok(
+    eintraege.every((n) => n > 4),
+    `${id}: Liste mit bis zu vier Möglichkeiten (${eintraege})`
+  )
+}
+/** Breite eines kleinen Fensters setzen, schließen und wieder öffnen – es öffnet in der
+ *  gemerkten Breite, die Karten im Zustand „ab Werk“ für diese Breite */
+async function mitBreite(id, breite) {
+  await toolWin(id, 'setContentSize', breite, (await winInfo(id)).content[1])
+  await closeToolWindow(id)
+  const w = await openSmall(id)
+  assert.equal((await winInfo(id)).content[0], breite)
+  return w
+}
 /** Kleine Werkzeuge (shared/toolWindows: SMALL_TOOLS) und die zweispaltig geöffneten */
 const SMALL = [
   'circle-calc',
@@ -793,14 +831,15 @@ try {
         await expectAttr(field('Radius r'), 'aria-invalid', null, 'Radius 2,5')
         assert.ok(await waitFor(async () => (await field('Durchmesser d').inputValue()) === '5'))
         await closeToolWindow('circle-calc')
-        // eigene Schreibweise: Timecodes liest das Feld mit parseTc (25 fps: Frames 0 bis 24)
+        // eigene Schreibweise: Timecodes liest das Feld mit parseTc (25 fps: Frames 0 bis 24) –
+        // das Feld der ersten Karte, die zweite („Dauer“) ist im schmalen Fenster ab Werk zu
         const tc = await openSmall('timecode')
-        const tcA = tc.getByLabel('Timecode A (In)', { exact: true })
-        assert.equal(await tcA.getAttribute('aria-invalid'), null)
-        await tcA.fill('01:00:00:25')
-        await expectAttr(tcA, 'aria-invalid', 'true', 'Timecode A „01:00:00:25“')
-        await tcA.fill('01:00:00:24')
-        await expectAttr(tcA, 'aria-invalid', null, 'Timecode A „01:00:00:24“')
+        const tcFeld = tc.getByLabel('Timecode', { exact: true })
+        assert.equal(await tcFeld.getAttribute('aria-invalid'), null)
+        await tcFeld.fill('01:00:00:25')
+        await expectAttr(tcFeld, 'aria-invalid', 'true', 'Timecode „01:00:00:25“')
+        await tcFeld.fill('01:00:00:24')
+        await expectAttr(tcFeld, 'aria-invalid', null, 'Timecode „01:00:00:24“')
         await closeToolWindow('timecode')
       }
     ],
@@ -864,6 +903,10 @@ try {
         // negative Frames sind lesbar, aber nicht rechenbar
         await frames.fill('-5')
         await expectAttr(frames, 'aria-invalid', 'true', 'Frames „-5“')
+        // gebrochene ebenso (Befund 18: „1,5“ rechnete früher still mit Frame 2)
+        await frames.fill('1,5')
+        await expectAttr(frames, 'aria-invalid', 'true', 'Frames „1,5“')
+        assert.equal(await tc.inputValue(), '', 'Timecode bei Frames „1,5“')
         await closeToolWindow('timecode')
 
         const a = await openSmall('audio-delay')
@@ -966,6 +1009,141 @@ try {
         await assertFits(w, id)
         // Breite wie ab Werk: „alle kleinen Werkzeuge“ erwartet die Karten nebeneinander
         await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+      }
+    ],
+    [
+      'Rigging-Last (K6 wie der Pilot): breit beide Karten offen, schmal „Bridle“ zu mit Antwort',
+      async () => {
+        // ab Werk 880 px, beide Karten offen nebeneinander
+        const id = 'rigging'
+        let w = await openSmall(id)
+        await expectCount(kartenKoepfe(w), 2, `${id}: zuklappbare Karten`)
+        const traverse = () => kartenKopf(w, 'Traverse auf zwei Punkten')
+        const bridle = () => kartenKopf(w, 'Bridle (2 Stränge)')
+        await expectAttr(traverse(), 'aria-expanded', 'true', 'Traverse, breit')
+        await expectAttr(bridle(), 'aria-expanded', 'true', 'Bridle, breit')
+        await keineKurzeListe(w, id)
+        // die Antwort zuerst, die Winkel-Warnung (Vorgabe 45°) direkt darunter
+        await antwortZuerst(w, 'Punkt A', 'Spannweite A–B')
+        await antwortZuerst(w, 'Kraft je Strang', 'Last')
+        const flach = await oberkante(w.getByText('Flacher Winkel', { exact: true }))
+        assert.ok(flach > (await oberkante(w.getByText('Kraft je Strang', { exact: true }))))
+        assert.ok(flach < (await oberkante(w.getByLabel('Last', { exact: true }))), 'Warnung')
+
+        // eine Spalte wie am Handy: nur die erste Karte offen, die zweite sagt ihre Antwort
+        w = await mitBreite(id, 393)
+        await expectAttr(bridle(), 'aria-expanded', 'false', 'Bridle, schmal')
+        assert.match(await bridle().textContent(), /141 kg je Strang · 45°$/)
+        await expectAttr(traverse(), 'aria-expanded', 'true', 'Traverse, schmal')
+        assert.match(await traverse().textContent(), /A 115 kg · B 85 kg$/)
+        await assertFits(w, id)
+        // aufklappen: Antwort zuerst; flacher angeschlagen wird die Warnung rot (63°)
+        await bridle().click()
+        await expectAttr(bridle(), 'aria-expanded', 'true', 'Bridle, aufgeklappt')
+        await antwortZuerst(w, 'Kraft je Strang', 'Last')
+        await w.getByLabel('Punktabstand', { exact: true }).fill('8')
+        await w.getByText('So nicht anschlagen', { exact: true }).waitFor({ timeout: 5_000 })
+        assert.match(await readout(w, 'Kraft je Strang').textContent(), /^223,6/)
+        assert.match(await bridle().textContent(), /224 kg je Strang · 63°$/)
+        // Fenster zu und wieder auf: die aufgeklappte Karte ist noch offen
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        await expectAttr(bridle(), 'aria-expanded', 'true', 'Bridle, wieder geöffnet')
+        await assertFits(w, id)
+        // Breite wie ab Werk: „alle kleinen Werkzeuge“ erwartet die Karten nebeneinander
+        await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+      }
+    ],
+    [
+      'Kameraobjektiv (K6): Telekonverter per Knopf, schmal „Kamera & Objektiv“ zu, Antwort zuerst',
+      async () => {
+        // „Kamera & Objektiv“ stellt man einmal ein – am Handy zu, mit Sensor und Brennweite als
+        // Kurzfassung; die Frage ist „Motiv & Bildausschnitt“
+        const id = 'camera-lens'
+        let w = await openSmall(id)
+        await expectCount(kartenKoepfe(w), 2, `${id}: zuklappbare Karten`)
+        const kamera = () => kartenKopf(w, 'Kamera & Objektiv')
+        const motiv = () => kartenKopf(w, 'Motiv & Bildausschnitt')
+        await expectAttr(kamera(), 'aria-expanded', 'true', 'Kamera, breit')
+        await expectAttr(motiv(), 'aria-expanded', 'true', 'Motiv, breit')
+        // der Sensor bleibt eine Liste (acht Einträge), der Telekonverter ist eine Knopfgruppe
+        await keineKurzeListe(w, id)
+        assert.equal(await knopf(w, 'Telekonverter', 'keiner').getAttribute('aria-pressed'), 'true')
+        await antwortZuerst(w, 'Totale (ganze Person + Luft)', 'Entfernung zur Person', {
+          mitInfo: true
+        })
+
+        w = await mitBreite(id, 393)
+        await expectAttr(kamera(), 'aria-expanded', 'false', 'Kamera, schmal')
+        assert.match(await kamera().textContent(), /Vollformat · 200 mm$/)
+        await expectAttr(motiv(), 'aria-expanded', 'true', 'Motiv, schmal')
+        assert.match(await motiv().textContent(), /Totale · 100 %$/)
+        await assertFits(w, id)
+        // ein Tipp auf „2×“: 400 mm, ab dem Knie – beide Kurzfassungen ziehen mit
+        await kamera().click()
+        await expectAttr(kamera(), 'aria-expanded', 'true', 'Kamera, aufgeklappt')
+        await knopf(w, 'Telekonverter', '2×').click()
+        await expectAttr(knopf(w, 'Telekonverter', '2×'), 'aria-pressed', 'true', '2×')
+        assert.ok(
+          await waitFor(async () => /Vollformat · 200 mm · 2×$/.test(await kamera().textContent())),
+          await kamera().textContent()
+        )
+        assert.match(await readout(w, 'Effektive Brennweite').textContent(), /^400/)
+        assert.match(await motiv().textContent(), /Amerikanisch · 86 %$/)
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        await expectAttr(kamera(), 'aria-expanded', 'true', 'Kamera, wieder geöffnet')
+        await assertFits(w, id)
+        await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+      }
+    ],
+    [
+      'Timecode-Rechner (K6): Framerate per Knopf, „Dauer“ zu, solange die Karten untereinander stehen',
+      async () => {
+        // ab Werk ein schmales Fenster (520 px): Die Karten stehen untereinander, „Dauer“ ist
+        // zu; erst nebeneinander ist sie ab Werk offen
+        const id = 'timecode'
+        let w = await openSmall(id)
+        assert.equal((await winInfo(id)).content[0], 520)
+        await expectCount(kartenKoepfe(w), 2, `${id}: zuklappbare Karten`)
+        const umrechnen = () => kartenKopf(w, 'Timecode ↔ Frames ↔ Echtzeit')
+        const dauer = () => kartenKopf(w, 'Dauer zwischen zwei Timecodes')
+        await expectAttr(umrechnen(), 'aria-expanded', 'true', 'Umrechnen, 520 px')
+        await expectAttr(dauer(), 'aria-expanded', 'false', 'Dauer, 520 px')
+        assert.match(await dauer().textContent(), /00:05:30:00$/)
+        // die zehn Bildraten als Knopfgruppe statt als Liste
+        assert.equal(await w.locator('select').count(), 0, `${id}: noch eine Liste`)
+        assert.equal(await knopf(w, 'Framerate', '25').getAttribute('aria-pressed'), 'true')
+        // breiter gezogen: nebeneinander, die zweite Karte folgt und geht auf
+        await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await expectAttr(dauer(), 'aria-expanded', 'true', 'Dauer, 880 px')
+        await antwortZuerst(w, 'Dauer (Timecode)', 'Timecode A (In)')
+
+        w = await mitBreite(id, 393)
+        await expectAttr(dauer(), 'aria-expanded', 'false', 'Dauer, schmal')
+        assert.match(await umrechnen().textContent(), /01:00:00:00 · 25 fps$/)
+        await assertFits(w, id)
+        await dauer().click()
+        await expectAttr(dauer(), 'aria-expanded', 'true', 'Dauer, aufgeklappt')
+        await antwortZuerst(w, 'Dauer (Timecode)', 'Timecode A (In)')
+        // Drop-Frame per Tipp: Semikolon, 01:00:00;00 sind 107.892 Frames
+        await knopf(w, 'Framerate', '29,97 DF').click()
+        assert.ok(
+          await waitFor(async () =>
+            /01:00:00;00 · 29,97 DF$/.test(await umrechnen().textContent())
+          ),
+          await umrechnen().textContent()
+        )
+        assert.equal(await w.getByLabel('Frames (gesamt)', { exact: true }).inputValue(), '107892')
+        assert.match(await dauer().textContent(), /00:05:30;00$/)
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        await expectAttr(dauer(), 'aria-expanded', 'true', 'Dauer, wieder geöffnet')
+        await assertFits(w, id)
+        await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
         await closeToolWindow(id)
       }
     ],

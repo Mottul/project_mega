@@ -183,9 +183,23 @@ describe('framesFrom – Quelle der verknüpften Felder → Framenummer', () => 
     })
   })
 
-  it('Frames gesamt: auf ganze gerundet', () => {
-    expect(framesFrom({ field: 'frames', value: 90000 }, R25).frames).toBe(90000)
-    expect(framesFrom({ field: 'frames', value: 1.5 }, R25).frames).toBe(2)
+  it('Frames gesamt: nur ganze – gebrochen ist rot statt still gerundet (Befund 18)', () => {
+    expect(framesFrom({ field: 'frames', value: 90000 }, R25)).toEqual({
+      frames: 90000,
+      invalid: []
+    })
+    // früher rechnete „1,5“ still mit Frame 2, das Feld behielt „1,5“
+    expect(framesFrom({ field: 'frames', value: 1.5 }, R25)).toEqual({
+      frames: null,
+      invalid: ['frames']
+    })
+    expect(framesFrom({ field: 'frames', value: 0.25 }, R25).invalid).toEqual(['frames'])
+  })
+
+  it('Echtzeit rundet weiter auf das nächste Bild – Sekunden sind selten ganze Bilder', () => {
+    // 1,5 s bei 25 fps = 37,5 Bilder -> 38; 0,01 s -> Bild 0
+    expect(framesFrom({ field: 'real', value: 1.5 }, R25)).toEqual({ frames: 38, invalid: [] })
+    expect(framesFrom({ field: 'real', value: 0.01 }, R25)).toEqual({ frames: 0, invalid: [] })
   })
 
   it('Echtzeit in Sekunden', () => {

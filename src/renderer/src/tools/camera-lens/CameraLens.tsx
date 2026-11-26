@@ -1,9 +1,12 @@
 import { useState } from 'react'
+import { Segmented } from '@renderer/components/ui/segmented'
+import { cn } from '@renderer/lib/utils'
 import {
   CalcPage,
+  FieldBlock,
+  FoldCard,
   NumField,
   Readout,
-  SectionCard,
   SelectField,
   fmt,
   parseNum,
@@ -16,23 +19,52 @@ import { framingLabel, lensView, type LensField } from './optics'
 // wie viel einer Person bei maximalem Zoom ins Bild passt. Lochkamera-Näherung
 // (Sichtfeld = Entfernung · Sensormaß ÷ Brennweite); dieselbe Dreiecks-Mathematik
 // wie der Throw-Ratio-Rechner, nur kameraseitig. Gerechnet wird in optics.ts (lensView).
+// Aufbau nach Muster 2 (Gesamtplan, K6): „Kamera & Objektiv“ stellt man einmal ein – am Handy
+// ist die Karte ab Werk zu und zeigt Sensor und Brennweite; „Motiv & Bildausschnitt“ ist die
+// Frage, ihre Antwort steht über den Feldern. Im breiten Fenster stehen beide offen nebeneinander.
 
-const SENSORS: { key: string; label: string; w: number; h: number }[] = [
-  { key: 'ff', label: 'Vollformat (Kleinbild)', w: 36, h: 24 },
-  { key: 'apsc', label: 'APS-C (Nikon/Sony, 1,5×)', w: 23.5, h: 15.6 },
-  { key: 'apsc-c', label: 'APS-C (Canon, 1,6×)', w: 22.3, h: 14.9 },
-  { key: 's35', label: 'Super 35 (Cine)', w: 24.89, h: 18.66 },
-  { key: 'mft', label: 'MFT / Four Thirds (2×)', w: 17.3, h: 13 },
-  { key: '1in', label: '1 Zoll', w: 13.2, h: 8.8 },
-  { key: 's16', label: 'Super 16', w: 12.52, h: 7.41 }
+/** `short`: Name in der Kurzfassung der zugeklappten Karte */
+const SENSORS: { key: string; label: string; short: string; w: number; h: number }[] = [
+  { key: 'ff', label: 'Vollformat (Kleinbild)', short: 'Vollformat', w: 36, h: 24 },
+  { key: 'apsc', label: 'APS-C (Nikon/Sony, 1,5×)', short: 'APS-C 1,5×', w: 23.5, h: 15.6 },
+  { key: 'apsc-c', label: 'APS-C (Canon, 1,6×)', short: 'APS-C 1,6×', w: 22.3, h: 14.9 },
+  { key: 's35', label: 'Super 35 (Cine)', short: 'Super 35', w: 24.89, h: 18.66 },
+  { key: 'mft', label: 'MFT / Four Thirds (2×)', short: 'MFT', w: 17.3, h: 13 },
+  { key: '1in', label: '1 Zoll', short: '1 Zoll', w: 13.2, h: 8.8 },
+  { key: 's16', label: 'Super 16', short: 'Super 16', w: 12.52, h: 7.41 }
 ]
 
+// Was die Liste dazusagte („2× Telekonverter (Doppler)“), steht hinter dem ⓘ
 const TELECONV: { key: string; label: string; f: number }[] = [
-  { key: '1', label: 'keiner (1×)', f: 1 },
-  { key: '1.4', label: '1,4× Telekonverter', f: 1.4 },
-  { key: '1.7', label: '1,7× Telekonverter', f: 1.7 },
-  { key: '2', label: '2× Telekonverter (Doppler)', f: 2 }
+  { key: '1', label: 'keiner', f: 1 },
+  { key: '1.4', label: '1,4×', f: 1.4 },
+  { key: '1.7', label: '1,7×', f: 1.7 },
+  { key: '2', label: '2×', f: 2 }
 ]
+
+/**
+ * Kurzfassung der Karte „Kamera & Objektiv“: Sensor, Brennweite und – falls einer dran ist – der
+ * Telekonverter („Vollformat · 200 mm · 2×“); „–“, solange damit nicht zu rechnen ist.
+ */
+function cameraSummary(
+  sensorKey: string,
+  input: { sensorW: number | null; sensorH: number | null; focal: number | null },
+  tele: { f: number; label: string },
+  equiv: number | null
+): string {
+  const { sensorW, sensorH, focal } = input
+  if (equiv == null || sensorW == null || sensorH == null || focal == null) return '–'
+  const sensor =
+    SENSORS.find((s) => s.key === sensorKey)?.short ?? `${fmt(sensorW, 2)} × ${fmt(sensorH, 2)} mm`
+  return `${sensor} · ${fmt(focal, 1)} mm${tele.f !== 1 ? ` · ${tele.label}` : ''}`
+}
+
+/** Kurzfassung der Karte „Motiv & Bildausschnitt“: Einstellungsgröße und Anteil im Bild */
+function framingSummary(ratio: number | null, visiblePct: number | null): string {
+  if (ratio == null || visiblePct == null) return '–'
+  // ohne die Erklärung in Klammern: „Totale (ganze Person + Luft)“ -> „Totale“
+  return `${framingLabel(ratio).split(' (')[0]} · ${fmt(visiblePct, 0)} %`
+}
 
 export function CameraLens(): JSX.Element {
   const [sensorKey, setSensorKey] = useState('ff')
@@ -52,11 +84,15 @@ export function CameraLens(): JSX.Element {
     }
   }
 
-  const tc = TELECONV.find((t) => t.key === tcKey)?.f ?? 1
-  const { focalEff, equiv, aovH, aovV, fovW, fovH, ratio, visiblePct, aspect, invalid } = lensView({
+  const tele = TELECONV.find((t) => t.key === tcKey) ?? TELECONV[0]
+  const tc = tele.f
+  const camera = {
     sensorW: parseNum(sensorWRaw),
     sensorH: parseNum(sensorHRaw),
-    focal: parseNum(focalRaw),
+    focal: parseNum(focalRaw)
+  }
+  const { focalEff, equiv, aovH, aovV, fovW, fovH, ratio, visiblePct, aspect, invalid } = lensView({
+    ...camera,
     teleconverter: tc,
     dist: parseNum(distRaw),
     person: parseNum(personRaw)
@@ -66,9 +102,12 @@ export function CameraLens(): JSX.Element {
 
   return (
     <CalcPage>
-      <SectionCard
+      <FoldCard
+        id="camera-lens:kamera"
         title="Kamera & Objektiv"
+        summary={cameraSummary(sensorKey, camera, tele, equiv)}
         desc="Sensor, Brennweite und ggf. Telekonverter wählen."
+        defaultOpen="nebeneinander"
       >
         <SelectField
           label="Sensor"
@@ -111,18 +150,17 @@ export function CameraLens(): JSX.Element {
           value={focalRaw}
           onChange={setFocalRaw}
         />
-        <SelectField
+        <FieldBlock
           label="Telekonverter"
           hint="Verlängert die Brennweite um seinen Faktor (ein 2×-Konverter heißt auch „Doppler“) und kostet Licht: 1,4× eine, 2× zwei Blendenstufen."
-          value={tcKey}
-          onChange={setTcKey}
         >
-          {TELECONV.map((t) => (
-            <option key={t.key} value={t.key}>
-              {t.label}
-            </option>
-          ))}
-        </SelectField>
+          <Segmented
+            label="Telekonverter"
+            value={tcKey}
+            options={TELECONV.map((t) => ({ value: t.key, label: t.label }))}
+            onChange={setTcKey}
+          />
+        </FieldBlock>
         {tc !== 1 && <Readout label="Effektive Brennweite" value={fmt(focalEff, 0)} unit="mm" />}
         <Readout
           label="KB-Äquivalent"
@@ -136,13 +174,25 @@ export function CameraLens(): JSX.Element {
           value={aovH != null && aovV != null ? `${fmt(aovH, 1)} × ${fmt(aovV, 1)}` : ''}
           unit="°"
         />
-      </SectionCard>
+      </FoldCard>
 
-      <SectionCard
+      <FoldCard
+        id="camera-lens:motiv"
         title="Motiv & Bildausschnitt"
+        summary={framingSummary(ratio, visiblePct)}
         desc="Wie viel der Person passt bei maximalem Zoom ins Bild?"
         hint="Näherung (Lochkamera): Sichtfeld = Entfernung × Sensormaß ÷ Brennweite. Beispiel: 200 mm an Vollformat in 25 m ergibt ein etwa 3 m hohes Sichtfeld – die ganze Person passt; mit 2×-Konverter (400 mm) bleiben etwa 1,5 m, also ab der Hüfte aufwärts."
+        defaultOpen
       >
+        {/* die Antwort zuerst, darunter die Felder, darunter Sichtfeld und Bild */}
+        <Readout
+          label={ratio != null ? framingLabel(ratio) : 'Bildausschnitt'}
+          hint="Anteil der Körperhöhe, der ins Bild passt – mit der Kamera mittig auf die Person gerichtet."
+          value={visiblePct != null ? fmt(visiblePct, 0) : ''}
+          unit="% im Bild"
+          accent
+          big
+        />
         <NumField
           label="Entfernung zur Person"
           unit="m"
@@ -162,19 +212,15 @@ export function CameraLens(): JSX.Element {
           value={fovW != null && fovH != null ? `${fmt(fovW, 2)} × ${fmt(fovH, 2)}` : ''}
           unit="m (B × H)"
         />
-        <Readout
-          label={ratio != null ? framingLabel(ratio) : 'Bildausschnitt'}
-          hint="Anteil der Körperhöhe, der ins Bild passt – mit der Kamera mittig auf die Person gerichtet."
-          value={visiblePct != null ? fmt(visiblePct, 0) : ''}
-          unit="% im Bild"
-          accent
-          big
-        />
         <FramingView ratio={ratio} aspect={aspect} />
-      </SectionCard>
+      </FoldCard>
     </CalcPage>
   )
 }
+
+/** Höhe der Zeichnung: am Handy kleiner – mit der vollen Höhe war die Seite 726 px hoch, der
+ *  Bildschirm zeigt 657 */
+const viewH = 'h-44 sm:h-64'
 
 /** Silhouette + Kamerarahmen: zeigt, welcher (mittig zentrierte) Anteil der Person
  *  bei maximalem Zoom ins Bild fällt. Rahmenhöhe = Sichtfeldhöhe in Personenhöhen (`ratio`),
@@ -188,7 +234,12 @@ function FramingView({
 }): JSX.Element {
   if (ratio == null || aspect == null) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-md border border-dashed border-border text-center text-xs text-muted-foreground">
+      <div
+        className={cn(
+          'flex items-center justify-center rounded-md border border-dashed border-border text-center text-xs text-muted-foreground',
+          viewH
+        )}
+      >
         Sensor, Brennweite, Entfernung und Personengröße eingeben.
       </div>
     )
@@ -249,7 +300,11 @@ function FramingView({
 
   return (
     <div className="flex justify-center rounded-md border border-border bg-muted/20 p-3 text-muted-foreground">
-      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="h-64 w-auto" style={{ overflow: 'hidden' }}>
+      <svg
+        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        className={cn('w-auto', viewH)}
+        style={{ overflow: 'hidden' }}
+      >
         <defs>
           <clipPath id="camframe">
             <rect x={fx} y={fy} width={frameW} height={frameH} />

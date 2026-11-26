@@ -141,7 +141,8 @@ const geklappt: Codec<boolean | null> = { parse: flag.parse, format: (v) => (v ?
 
 /**
  * Karte, die sich auf- und zuklappen lässt: zugeklappt nur der Titel und rechts die Kurzfassung
- * der Werte (`summary`), aufgeklappt wie `SectionCard`. Gemerkt wird je `id`, was man selbst
+ * der Werte (`summary`; passt beides nicht in eine Zeile, steht sie unter dem Titel),
+ * aufgeklappt wie `SectionCard`. Gemerkt wird je `id`, was man selbst
  * auf- oder zuklappt (Bedien-Kleinigkeit); bis dahin gilt `defaultOpen` – mit „nebeneinander“
  * auch dann, wenn das Fenster danach breiter oder schmaler wird. Der Titel ist eine Überschrift
  * mit einem Knopf darin – so finden Vorlesewerkzeuge die Karten wie die übrigen; das ⓘ steht im
@@ -185,11 +186,18 @@ export function FoldCard({
           onClick={() => setGemerkt((g) => !(g ?? abWerk))}
           className="flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70 sm:px-5"
         >
-          <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-            {title}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-right text-xs text-muted-foreground">
-            {summary}
+          {/* Titel links, Kurzfassung rechts. Reicht die Zeile nicht (Handy, schmales Fenster),
+              rückt die Kurzfassung unter den Titel – abgeschnitten sagte sie die Antwort nicht
+              mehr („141 kg je Str…“) */}
+          <span className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+              {title}
+            </span>
+            {summary != null && (
+              <span className="min-w-0 max-w-full truncate text-xs text-muted-foreground">
+                {summary}
+              </span>
+            )}
           </span>
           <ChevronDown
             className={cn(
