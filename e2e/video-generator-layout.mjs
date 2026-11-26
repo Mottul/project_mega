@@ -341,6 +341,40 @@ try {
       }
     ],
     [
+      'Dateien ins Storyboard ziehen: Rahmen über dem ganzen Feld, nach dem Loslassen über einer Kachel sofort weg',
+      async () => {
+        await fenster(1366, 768)
+        const rahmen = () => page.getByTestId('feld-storyboard').getByTestId('ablage-rahmen')
+        // Ereignisse wie aus dem Explorer (Typ „Files“) an die erste Kachel – Playwright kann keine
+        // Dateien des Systems ziehen; `api.pathForFile` liefert dafür einen leeren Pfad, es wird
+        // also nichts eingefügt (Skill electron-e2e, „Dateien hineinziehen nachstellen“)
+        const ziehe = (arten) =>
+          page.evaluate((arten) => {
+            const kachel = document.querySelector(
+              '[data-testid="feld-storyboard"] button[draggable="true"]'
+            )
+            const dt = new DataTransfer()
+            dt.items.add(new File(['x'], 'Probe.jpg', { type: 'image/jpeg' }))
+            for (const art of arten)
+              kachel.dispatchEvent(
+                new DragEvent(art, { bubbles: true, cancelable: true, dataTransfer: dt })
+              )
+          }, arten)
+        await ziehe(['dragenter', 'dragover'])
+        assert.ok(
+          await waitFor(async () => (await rahmen().count()) === 1, 2_000),
+          'kein gestrichelter Rahmen über dem Storyboard'
+        )
+        // Die Kachel nimmt das Loslassen selbst (Einfügen an dieser Stelle) und lässt es zum Feld
+        // weiterlaufen: Der Rahmen geht sofort weg. Hielte sie es an, stünde er noch, bis eine
+        // Sekunde lang kein dragover mehr kommt
+        await ziehe(['drop'])
+        await sleep(150)
+        assert.equal(await rahmen().count(), 0, 'Rahmen steht nach dem Loslassen noch')
+        assert.equal(await kacheln().count(), 12, 'beim Loslassen wurde etwas eingefügt')
+      }
+    ],
+    [
       'Aufträge: ohne Auftrag kein Feld; vier gescheiterte – höchstens drei Zeilen hoch, die Liste scrollt in sich, bei 1024 × 600 scrollt die Seite nicht',
       async () => {
         await fenster(1024, 600)

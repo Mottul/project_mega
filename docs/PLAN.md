@@ -1051,6 +1051,13 @@ nicht per Import aus `beenden/laufend.ts` (Kreis in den Importen).
   und „RTA (Echtzeit-Analysator)“. Neben Symbol, Platz für den Stern (`pr-7`) und dem
   Fenster-Zeichen der kleinen Werkzeuge bleiben dem Namen rund 60 px (`ToolCard.tsx`). Mittlere
   und große Kacheln sind seit B6 ganz lesbar. Gefunden in B6 am 24. November 2026.
+- **Video-Generator, Storyboard: Die Einfüge-Markierung flackert beim Ziehen.** Hält man eine
+  Kachel über einer anderen, springt der Balken bei jedem `dragover` zwischen „vor dieser Kachel“
+  und „am Ende“ (gemessen über Kachel 3: 12 zu 13 Proben), weil Kachel und Liste beide `over`
+  aufrufen (`Storyboard.tsx`) – die Liste überschreibt die Kachel. Eingefügt wird trotzdem an der
+  richtigen Stelle. Abhilfe wie beim Loslassen seit W1: `over` tut nichts, wenn ein inneres Ziel
+  das Ereignis schon genommen hat (`defaultPrevented`); E2E mit echtem Zug über `page.mouse`.
+  Älter als W1, gefunden dort am 26. November 2026.
 
 ### E7 – Tests für Player-Zustand, yt-dlp und Fernsteuer-Parser
 
