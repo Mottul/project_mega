@@ -1,9 +1,23 @@
 // Storyboard: Elemente in Abspielreihenfolge – Kacheln mit Vorschaubild oder Liste (100+
-// Fotos), dazwischen der Übergang, darunter ein Zeitlineal. Auswahl per Klick (Strg/Umschalt
-// für mehrere), Umsortieren durch Ziehen (auch mehrere zugleich), Dateien lassen sich an eine
-// Position ziehen.
+// Fotos), dazwischen der Übergang. Auswahl per Klick (Strg/Umschalt für mehrere), Umsortieren
+// durch Ziehen (auch mehrere zugleich), Dateien lassen sich an eine Position ziehen. Es steht im
+// Feld „Storyboard“ (StoryboardFeld.tsx) und scrollt dort in sich; das Zeitlineal (Ruler) steht
+// im Fuß des Felds und bleibt so beim Scrollen sichtbar.
+//
+// Das gewählte Element bleibt im sichtbaren Teil des Felds: nach der Wahl (auch über Zeitlineal,
+// Hinweis oder Alt+←/→) und wenn das Feld seine Größe ändert (Schublade auf, Fenster schmaler –
+// die Kacheln brechen neu um). Sonst sähe man nach dem Öffnen der Schublade „Auswahl“ das Element
+// nicht mehr, das man gerade einstellt.
 
-import { useRef, useState, type DragEvent, type MouseEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type MouseEvent
+} from 'react'
 import {
   AlertTriangle,
   Film,
@@ -24,6 +38,17 @@ import { basename, fmtDuration } from './presets'
 const DRAG_TYPE = 'text/x-vgen-ids'
 const transitionLabel = new Map(VGEN_TRANSITIONS.map((t) => [t.kind, t.label]))
 
+/**
+ * Nur das Feld scrollen, nicht die Arbeitsfläche darum (die scrollt in der Stufe schmal selbst –
+ * die Vorschau liefe sonst aus dem Bild). `container` kennt Chromium seit Version 140, lib.dom
+ * noch nicht (wie in der Playlist des Players).
+ */
+const NUR_IM_FELD = {
+  block: 'nearest',
+  inline: 'nearest',
+  container: 'nearest'
+} as ScrollIntoViewOptions
+
 export interface StoryboardProps {
   elements: VgenElement[]
   plan: VgenPlan | null
@@ -43,6 +68,28 @@ export function Storyboard(p: StoryboardProps): JSX.Element {
   const [dropAt, setDropAt] = useState<string | 'end' | null>(null)
   const byId = new Map(p.plan?.elements.map((e) => [e.id, e]) ?? [])
   const fps = p.plan?.fps ?? 25
+  const rootRef = useRef<HTMLDivElement>(null)
+  // Ein Element wird gezogen: Dann rückt nichts nach – die Kachel liefe unter dem Zeiger weg
+  const zieht = useRef(false)
+  const einzeln = p.selected.length === 1 ? p.selected[0] : null
+  const platz = einzeln ? p.elements.findIndex((x) => x.id === einzeln) : -1
+
+  const zeigeGewaehltes = useCallback((): void => {
+    if (!einzeln || zieht.current) return
+    rootRef.current
+      ?.querySelector<HTMLElement>(`[data-element-id="${CSS.escape(einzeln)}"]`)
+      ?.scrollIntoView(NUR_IM_FELD)
+  }, [einzeln])
+  // neue Wahl, neuer Platz (Alt+←/→, Sortieren), andere Ansicht
+  useLayoutEffect(zeigeGewaehltes, [zeigeGewaehltes, platz, p.view])
+  // das Feld wird schmaler oder breiter: Die Kacheln brechen neu um
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => zeigeGewaehltes())
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [zeigeGewaehltes])
 
   function click(e: MouseEvent, id: string): void {
     if (e.shiftKey && anchor.current) {
@@ -61,6 +108,7 @@ export function Storyboard(p: StoryboardProps): JSX.Element {
   }
 
   function dragStart(e: DragEvent, id: string): void {
+    zieht.current = true
     const ids = p.selected.includes(id) ? p.selected : [id]
     if (!p.selected.includes(id)) p.onSelect([id])
     e.dataTransfer.setData(DRAG_TYPE, JSON.stringify(ids))
@@ -68,8 +116,11 @@ export function Storyboard(p: StoryboardProps): JSX.Element {
   }
 
   function drop(e: DragEvent, beforeId: string | null): void {
+    // Die Kachel darunter hat das Loslassen schon genommen – nicht noch einmal am Ende einfügen.
+    // Das Ereignis läuft weiter: Das Feld räumt seinen gestrichelten Rahmen weg und nimmt die
+    // Dateien nicht ein zweites Mal (useDateiAblage prüft dasselbe).
+    if (e.defaultPrevented) return
     e.preventDefault()
-    e.stopPropagation()
     setDropAt(null)
     const moving = e.dataTransfer.getData(DRAG_TYPE)
     if (moving) {
@@ -96,8 +147,15 @@ export function Storyboard(p: StoryboardProps): JSX.Element {
 
   return (
     <div
+      ref={rootRef}
       tabIndex={0}
-      className="space-y-3 outline-none"
+      className="outline-none"
+      onDragEnd={() => {
+        zieht.current = false
+      }}
+      onDropCapture={() => {
+        zieht.current = false
+      }}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return
         if ((e.key === 'Delete' || e.key === 'Backspace') && p.selected.length) {
@@ -179,9 +237,6 @@ export function Storyboard(p: StoryboardProps): JSX.Element {
           ))}
         </div>
       )}
-      {p.plan && p.plan.totalFrames > 0 && (
-        <Ruler plan={p.plan} selected={p.selected} onSelect={(id) => p.onSelect([id])} />
-      )}
     </div>
   )
 }
@@ -245,6 +300,7 @@ function Tile(p: ItemProps): JSX.Element {
       <button
         type="button"
         draggable
+        data-element-id={p.el.id}
         onClick={p.onClick}
         onDragStart={p.onDragStart}
         onDragOver={p.onDragOver}
@@ -334,6 +390,7 @@ function Row(p: ItemProps & { last: boolean; loop: boolean }): JSX.Element {
       role="button"
       tabIndex={-1}
       draggable
+      data-element-id={p.el.id}
       onClick={p.onClick}
       onDragStart={p.onDragStart}
       onDragOver={p.onDragOver}
@@ -369,7 +426,8 @@ function Row(p: ItemProps & { last: boolean; loop: boolean }): JSX.Element {
 
 /* -------------------------------- Zeitlineal ------------------------------- */
 
-function Ruler({
+/** Zeitlineal: die Elemente auf der Zeitachse, ein Klick wählt – steht im Fuß des Felds */
+export function Ruler({
   plan,
   selected,
   onSelect

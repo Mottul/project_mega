@@ -7,6 +7,11 @@
 // einem Kind zum nächsten kommt erst das Betreten, dann das Verlassen – so flackert der Rahmen
 // nicht. Verschwindet ein Element unter dem Zeiger, fehlt sein Verlassen; dann gilt das Ziehen als
 // beendet, sobald `dragover` ausbleibt (Chromium meldet es laufend, auch ohne Bewegung).
+//
+// Ein Ziel im Feld darf die Dateien selbst nehmen (das Storyboard des Video-Generators fügt sie an
+// der Stelle ein, über der sie losgelassen werden): Es ruft `preventDefault()` und lässt das
+// Ereignis weiterlaufen – das Feld räumt dann nur den Rahmen weg und nimmt sie nicht zum zweiten
+// Mal. Hielte das Ziel das Ereignis an, bliebe der Rahmen stehen, bis `dragover` ausbleibt.
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 
@@ -67,9 +72,10 @@ export function useDateiAblage(annehmen: (dateien: File[]) => void): DateiAblage
     },
     onDrop: (e) => {
       if (!hatDateien(e)) return
+      const schonGenommen = e.defaultPrevented
       e.preventDefault()
       aus()
-      annehmen(Array.from(e.dataTransfer.files))
+      if (!schonGenommen) annehmen(Array.from(e.dataTransfer.files))
     }
   }
 }

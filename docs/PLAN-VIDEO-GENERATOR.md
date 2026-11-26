@@ -2,8 +2,9 @@
 
 **Entwurf zum Video-Generator** – Verfahren, geprüfte ffmpeg-Befehle, Messwerte und Stolpersteine.
 **Was offen ist und wann es drankommt, steht im [Gesamtplan](PLAN.md#vg--video-generator)**: Paket
-VG3 (Phase 3: Titel, Logo, LUT, Vorlagen), VG4 (zwei offene Messungen) und W1 (Storyboard und
-Vorschau gleichzeitig sichtbar).
+VG3 (Phase 3: Titel, Logo, LUT, Vorlagen) und VG4 (zwei offene Messungen). Seit W1 (25. November
+2026) ist die Oberfläche eine Arbeitsfläche: Storyboard links, rechts die Vorschau über den
+Aufträgen – siehe [Bedienung](#bedienung).
 
 **Status:** Phase 0 und 1 umgesetzt (8. Oktober 2026, Branch `video-generator`), Phase 2 ebenso
 (8. Oktober 2026, Branch `video-generator-phase2`, siehe [Umsetzung Phase 2](#umsetzung-phase-2))
@@ -119,11 +120,17 @@ Diashow, Loop und einfacher Montage.
 
 ## Bedienung
 
-- **Oben: Storyboard** – Kachelreihe in Abspielreihenfolge mit Vorschaubildern; zwischen den
-  Kacheln ein anklickbares Übergangs-Symbol; Zeitlineal und Gesamtdauer. Listenansicht für viele
-  Elemente (100+ Fotos).
-- **Mitte: Vorschau** des gewählten Elements – in Phase 1 als Standbild (bei Videos am Start-
-  bzw. Endpunkt), ab Phase 2 live mit Play.
+Seit W1 (25. November 2026) drei Felder einer Arbeitsfläche nach dem Muster des Video-Players
+(Gesamtplan, „Muster 1: Arbeitsfläche“; Skizzen `docs/bilder/video-generator-layout-breit.svg`
+und `…-mittel.svg`) – die Seite scrollt nicht:
+
+- **Links: Storyboard** – Kachelreihe in Abspielreihenfolge mit Vorschaubildern; zwischen den
+  Kacheln ein anklickbares Übergangs-Symbol; Gesamtdauer im Kopf, Zeitlineal und Hinweise im Fuß.
+  Listenansicht für viele Elemente (100+ Fotos). Scrollt in sich, das gewählte Element bleibt
+  sichtbar.
+- **Rechts: Vorschau** – live mit Play, Ken-Burns-Rahmen auf dem gewählten Foto, gerechnete
+  Vorschau; beim Video der Ausschnitt darunter.
+- **Rechts unten: Aufträge** – nur, solange es welche gibt; eine Zeile je Auftrag.
 - **Seiten-Panel** (`ToolShell`/`PanelSection` wie die anderen Werkzeuge):
   - **Ausgabe:** Größe, Bildrate, Format, Qualität, Schleife, Zieldatei.
   - **Vorgaben:** Bilddauer, Übergang, Ken Burns, Einpassen.
