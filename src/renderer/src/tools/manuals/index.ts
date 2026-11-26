@@ -5,9 +5,20 @@ import type { ToolModule } from '../types'
 export const manualsTool: ToolModule = {
   id: 'manuals',
   name: 'Manuals-Bibliothek',
-  description: 'Geräte-Handbücher importieren und per Volltextsuche offline durchsuchen.',
+  description: 'Handbücher offline durchsuchen',
   icon: BookOpen,
   category: 'media',
-  keywords: ['manual', 'handbuch', 'pdf', 'suche', 'bibliothek', 'doku', 'datenblatt'],
+  keywords: [
+    'manual',
+    'handbuch',
+    'pdf',
+    'suche',
+    'bibliothek',
+    'doku',
+    'datenblatt',
+    'geräte-handbücher',
+    'importieren',
+    'volltextsuche'
+  ],
   component: lazy(() => import('./ManualsLibrary').then((m) => ({ default: m.ManualsLibrary })))
 }

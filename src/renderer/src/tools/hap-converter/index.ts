@@ -7,8 +7,7 @@ import type { ToolModule } from '../types'
 export const hapConverterTool: ToolModule = {
   id: 'hap-converter',
   name: 'Video-Konverter',
-  description:
-    'Clips passend fürs Zielsystem: HAP für Medienserver, H.264 für Player-Boxen, ProRes für QLab – mit Deinterlace, Bildraten-Raster und HDR → SDR.',
+  description: 'Clips fürs Zielsystem: HAP, H.264, ProRes',
   icon: FileCog,
   category: 'media',
   keywords: [
@@ -29,7 +28,12 @@ export const hapConverterTool: ToolModule = {
     'resolume',
     'qlab',
     'usb',
-    'deinterlace'
+    'deinterlace',
+    'medienserver',
+    'player-boxen',
+    'bildraten-raster',
+    'hdr',
+    'sdr'
   ],
   component: lazy(() => import('./VideoConverter').then((m) => ({ default: m.VideoConverter })))
 }

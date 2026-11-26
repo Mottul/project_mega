@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const riggingTool: ToolModule = {
   id: 'rigging',
   name: 'Rigging-Last',
-  description:
-    'Auflagerkräfte einer Traverse (2 Punkte) und Strangkräfte im Bridle nach Anschlagwinkel.',
+  description: 'Auflager- und Bridle-Kräfte an der Traverse',
   icon: Weight,
   category: 'rigging',
   keywords: [
@@ -21,7 +20,10 @@ export const riggingTool: ToolModule = {
     'anschlagmittel',
     'stropp',
     'winkel',
-    'kn'
+    'kn',
+    'auflagerkräfte',
+    'strangkräfte',
+    'anschlagwinkel'
   ],
   component: lazy(() => import('./Rigging').then((m) => ({ default: m.Rigging })))
 }

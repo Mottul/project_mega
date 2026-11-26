@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const testPatternsTool: ToolModule = {
   id: 'test-patterns',
   name: 'Testbildgenerator',
-  description:
-    'Testbilder für Beamer/LED-Wände/Displays – Vollbild auf gewähltem Monitor, PNG- und Video-Export.',
+  description: 'Testbilder und Testton für Beamer und LED',
   icon: Grid2x2,
   category: 'playback',
   keywords: [
@@ -23,7 +22,11 @@ export const testPatternsTool: ToolModule = {
     'led',
     'beamer',
     'monitor',
-    'pixelfehler'
+    'pixelfehler',
+    'displays',
+    'vollbild',
+    'png',
+    'video-export'
   ],
   component: lazy(() => import('./TestPatterns').then((m) => ({ default: m.TestPatterns })))
 }

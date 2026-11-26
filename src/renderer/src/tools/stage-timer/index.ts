@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const stageTimerTool: ToolModule = {
   id: 'stage-timer',
   name: 'Stage-Timer & Uhr',
-  description:
-    'Sprechzeit-Timer mit Abschnitten, Farbwarnung, Bühnen-Nachrichten und Vollbild-Anzeige – oder große Uhr mit Sekunden.',
+  description: 'Sprechzeit-Timer und Uhr für die Bühne',
   icon: Timer,
   category: 'playback',
   keywords: [
@@ -22,7 +21,12 @@ export const stageTimerTool: ToolModule = {
     'buehne',
     'stage',
     'nachricht',
-    'vortrag'
+    'vortrag',
+    'abschnitte',
+    'farbwarnung',
+    'nachrichten',
+    'vollbild',
+    'anzeige'
   ],
   component: lazy(() => import('./StageTimer').then((m) => ({ default: m.StageTimer })))
 }

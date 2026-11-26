@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const novastarTool: ToolModule = {
   id: 'novastar',
   name: 'NovaStar-Steuerung',
-  description:
-    'NovaPro UHD Jr & Co. über Netzwerk (TCP) steuern: Helligkeit, Fade-to-Black, Roh-Befehle. Vorabversion.',
+  description: 'LED-Prozessor steuern: Helligkeit, Presets',
   icon: MonitorCog,
   category: 'control',
   keywords: [
@@ -21,7 +20,10 @@ export const novastarTool: ToolModule = {
     'fade to black',
     'ftb',
     'blackout',
-    'tcp'
+    'tcp',
+    'netzwerk',
+    'roh-befehle',
+    'vorabversion'
   ],
   component: lazy(() => import('./Novastar').then((m) => ({ default: m.Novastar })))
 }

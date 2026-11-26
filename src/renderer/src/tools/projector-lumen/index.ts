@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const projectorLumenTool: ToolModule = {
   id: 'projector-lumen',
   name: 'Beamer-Lumen',
-  description:
-    'Lumen-Bedarf aus Bildgröße und Umgebungslicht – und ob der vorhandene Beamer reicht.',
+  description: 'Wie viel Lumen die Bildgröße braucht',
   icon: Lightbulb,
   category: 'visual',
   keywords: [
@@ -18,7 +17,9 @@ export const projectorLumenTool: ToolModule = {
     'lux',
     'leinwand',
     'gain',
-    'projektion'
+    'projektion',
+    'lumen-bedarf',
+    'umgebungslicht'
   ],
   component: lazy(() => import('./ProjectorLumen').then((m) => ({ default: m.ProjectorLumen })))
 }

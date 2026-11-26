@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const atemControlTool: ToolModule = {
   id: 'atem-control',
   name: 'ATEM-Steuerung',
-  description:
-    'Blackmagic-ATEM-Mischer vom Laptop bedienen: Programm, Vorschau, Cut, Auto, Hebel und Fade to Black. Mit Probebetrieb ohne Gerät.',
+  description: 'Blackmagic-Mischer vom Laptop bedienen',
   icon: SlidersVertical,
   category: 'control',
   keywords: [

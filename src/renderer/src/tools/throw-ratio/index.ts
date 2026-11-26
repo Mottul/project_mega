@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const throwRatioTool: ToolModule = {
   id: 'throw-ratio',
   name: 'Projektionsverhältnis',
-  description:
-    'Throw Ratio, Bildmaße und Projektionsabstand – das passende Beamer-Objektiv wählen.',
+  description: 'Abstand, Bildgröße und Objektiv des Beamers',
   icon: Projector,
   category: 'visual',
   keywords: [
@@ -19,7 +18,9 @@ export const throwRatioTool: ToolModule = {
     'abstand',
     'bildbreite',
     'leinwand',
-    'distanz'
+    'distanz',
+    'bildmaße',
+    'projektionsabstand'
   ],
   component: lazy(() => import('./ThrowRatio').then((m) => ({ default: m.ThrowRatio })))
 }
