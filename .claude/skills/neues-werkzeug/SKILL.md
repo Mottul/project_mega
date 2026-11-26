@@ -107,7 +107,10 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      `NumberField`; für Inhalte, die leer sein dürfen und eine Vorschau live mitziehen sollen,
      `TextArea`/`LiveInput` aus `components/ui/textarea`), Auswahllisten nur als `<Select>` (Größe `sm` in Leisten, `xs` in dichten
      Zeilen – nie ein rohes `<select>` mit eigenen Klassen), Farben nur über Tailwind-Tokens
-     (`primary`, `border` …; Rot ist „live“).
+     (`primary`, `border` …; Rot ist „live“). Ein leeres Werkzeug ist kein Fehler: Der
+     Leerzustand sagt, was zu tun ist, und ist nie rot; was ohne Inhalt nichts tun kann, ist
+     gesperrt (Video-Generator: Der Hinweis `empty` des Plans sperrt „Video erzeugen“, angezeigt
+     wird er nicht – B5).
      Seiten oder Ansichten eines Werkzeugs: `Reiter` aus `components/ui/reiter`.
      Tastenkürzel für das ganze Werkzeug: rein prüfen (Muster `atem-control/tastatur.ts`), nie in
      Textfeldern, den Fokus nach Mausklicks abgeben (Skill `review-checkliste`, Fenster). Die App

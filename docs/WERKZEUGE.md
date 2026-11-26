@@ -667,6 +667,8 @@ LED-Wand.
 - **Elemente:** Fotos (JPG, PNG, WebP, BMP, TIFF), Videos und GIFs (als Schleife über die
   Standzeit) per Ziehen – auch an eine bestimmte Stelle –, Dialog oder Ordner. Fotos werden mit
   ihrer EXIF-Drehung gelesen. Fehlt eine Datei, ist das Element rot und „Video erzeugen“ gesperrt.
+  Im leeren Projekt sagt die Ablagefläche, was zu tun ist – ohne roten Hinweis; „Video erzeugen“
+  bleibt gesperrt, bis etwas darin liegt.
 - **Storyboard** in Abspielreihenfolge mit Vorschaubildern, Übergang zwischen den Kacheln und
   Zeitlineal; bei vielen Fotos als Liste. Reihenfolge per Ziehen (auch mehrere zugleich), Pfeilen
   oder Alt+←/→; sortieren nach Name (natürlich: „2“ vor „10“), Aufnahmedatum oder Typ; „Mischen“

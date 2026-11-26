@@ -174,7 +174,7 @@ ohne Tastatur):
 | RTA | 824 px (+167) | Kopf mit Messen, Pegel und Spektrum; vier zugeklappte Karten (je 64) | zehn, in den Karten | Vorbild; Listen → K6 |
 | Rigging-Last | 1281 px (+624; seit K3 die Winkel-Warnung mit Titel, vorher 1209) | Traverse 447, Bridle 723 | – | K6 |
 | Kameraobjektiv | 1071 px (+414) | Kamera 423, Motiv 601 | Sensor (8), Telekonverter (4) | K6 |
-| Stromlast & Absicherung | passt: 508 px (vor K5 929, +272) | Last 362 offen, Geräte je Stromkreis 50 zugeklappt (offen 524; vor K5 315 und 519) | – (vor K5 Anschluss (2), Absicherung (4), Auslastung (2)) | Pilot (K5, 24. November 2026) – Entscheidung 2 |
+| Stromlast & Absicherung | passt: 508 px (vor K5 929, +272) | Last 362 offen, Geräte je Stromkreis 50 zugeklappt (offen 524; vor K5 315 und 519) | – (vor K5 Anschluss (2), Absicherung (4), Auslastung (2)) | Pilot (K5, 24. November 2026), Vorbild für K6 |
 | Timecode-Rechner | 749 px (+92) | Umrechnen 321, Dauer 381 | Bildrate (10) | K6 |
 | Beamer-Lumen | 741 px (+84) | Projektion 423, Vorhandener Beamer 271 | Umgebungslicht (4) | K6 |
 | Audio-Delay & SPL | 695 px (+38) | Delay 367, Pegel über Distanz 281 | – | K6 |
@@ -272,7 +272,7 @@ alles andere lässt sich vorziehen.
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
 | **2 – Muster übertragen** | K6 → K4 · W1 → W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen fünf große Werkzeuge und fünf Rechner |
-| **3 – Täglich spürbar** | B1 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
+| **3 – Täglich spürbar** | B2 bis B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
 | **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 · ST6 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8); ST6 macht den macOS-Lauf der CI wieder verlässlich |
@@ -440,8 +440,8 @@ Felder in Akzentfarbe.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | Entscheidung 2 |
-| **K4** | Rechner merken sich die Eingaben | M | Entscheidung 3 |
+| **K6** | Neuer Aufbau der übrigen Rechner, Listen des RTA als Knopfgruppen | M je zwei bis drei Rechner | – |
+| **K4** | Rechner merken sich die Eingaben | M | nach K6 (dieselben Rechner) |
 
 Vor jedem Schritt den Skill `rechner-pwa` lesen.
 
@@ -461,8 +461,10 @@ Verweise darauf gültig bleiben.
 
 ### K6 – Neuer Aufbau der übrigen Rechner
 
-Nur nach Entscheidung 2. Wie der Pilot an der Stromlast (K5, `tools/power-load/PowerLoad.tsx`),
-je Pull Request zwei bis drei Rechner, in der Reihenfolge des gemessenen Gewinns:
+Für alle Rechner einheitlich, entschieden am 24. November 2026 (Entscheidung 2): die zweite
+Frage zugeklappt wie im Piloten, kein Umschalter. Wie der Pilot an der Stromlast (K5,
+`tools/power-load/PowerLoad.tsx`), je Pull Request zwei bis drei Rechner, in der Reihenfolge des
+gemessenen Gewinns:
 
 1. **Antwort zuerst:** In der Karte mit einer eigenen Antwort steht sie (`Readout` mit `big` und
    `accent`) als erste Zeile unter Titel und Frage, darunter die Felder, darunter die Nebenwerte.
@@ -500,7 +502,8 @@ Skill `rechner-pwa`, die Beschreibung nach `docs/WERKZEUGE.md`.
 
 ### K4 – Rechner merken sich die Eingaben
 
-Nur nach Entscheidung 3. **Heute:** Befund 11. **So:**
+Entschieden am 24. November 2026; nach K6, weil beide dieselben Rechner anfassen. **Heute:**
+Befund 11. **So:**
 
 ```text
 src/renderer/src/tools/_calc/useCalcFields.ts        gemerkte Felder eines Rechners
@@ -556,11 +559,9 @@ Kleine Pakete, die man täglich merkt. Unabhängig voneinander, soweit nichts an
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **B1** | Suche: Enter öffnet den ersten Treffer | S | – |
-| **B2** | Strg+K: Werkzeug wechseln von überall | M | B1 |
+| **B2** | Strg+K: Werkzeug wechseln von überall | M | – |
 | **B3** | Netzwerk-Scanner: sinnvoller Adapter vorgewählt | S | – |
 | **B4** | Stopp-Symbole gefüllt | S | – |
-| **B5** | Video-Generator: Leerzustand nicht rot | S | – |
 | **B7** | App-Einstellungen als Dialog mit Reitern | M | – |
 | **B9** | „Über und Diagnose“: Version, Protokoll, Datenordner | M | B7 |
 | **B10** | Mini-Manual: Schritt-Texte ganz sichtbar | S | – |
@@ -569,25 +570,17 @@ Kleine Pakete, die man täglich merkt. Unabhängig voneinander, soweit nichts an
 | **B13** | Helles Design: Akzent als Schrift lesbar | S | – |
 | **B14** | Bibliothek des Players: Zustände auf Deutsch, Knöpfe per Tastatur, „Bibliothek leeren“ nennt die Playlist | S | – |
 
-### B1 – Suche: Enter öffnet den ersten Treffer
-
-**Heute:** Das Suchfeld am Startbildschirm (`launcher/Launcher.tsx`) filtert nur. Wer „tim“
-tippt und Enter drückt, öffnet nichts.
-
-**So:** `onKeyDown` am Feld: Enter öffnet den ersten sichtbaren Treffer – in der Reihenfolge der
-Anzeige (erst Favoriten-Kategorien, dann die Kategorien von oben nach unten), auf demselben Weg
-wie ein Klick auf die Kachel (kleine Werkzeuge im eigenen Fenster). Ohne Suchtext passiert
-nichts. Die Reihenfolge als reine Funktion neben `matches()`.
-
-**Abnahme:** Schritt in `e2e/smoke.mjs`: „medien-info“ tippen, Enter – die Route ist
-`/tool/media-info`. Unit-Test für die Reihenfolge.
-
 ### B2 – Strg+K: Werkzeug wechseln von überall
 
 **So:** Strg+K (macOS Cmd+K) öffnet in jedem Fenster mit Kopfleiste ein kleines Suchfeld über
-der Seite: tippen, Pfeiltasten, Enter öffnet, Esc schließt. Gleiche Suche und Reihenfolge wie
-B1. Nicht in der Kundenansicht, nicht in Ausgabefenstern, nicht in den Fenstern der kleinen
-Werkzeuge. Ausgewertet im Renderer (`keydown`), nicht im main – die App hat kein Programm-Menü.
+der Seite: tippen, Pfeiltasten, Enter öffnet, Esc schließt. Gleiche Suche wie am Startbildschirm
+(`matches()` in `launcher/Launcher.tsx`, dafür in ein eigenes Modul gezogen), die Treffer in der
+Reihenfolge der Anzeige dort (erst Favoriten-Kategorien, dann die Kategorien von oben nach unten)
+– als reine Funktion mit Unit-Test; geöffnet wird auf demselben Weg wie mit einem Klick auf die
+Kachel (kleine Werkzeuge im eigenen Fenster). Das Suchfeld des Startbildschirms bleibt, wie es
+ist (B1 ist gestrichen). Nicht in der Kundenansicht, nicht in Ausgabefenstern, nicht in den
+Fenstern der kleinen Werkzeuge. Ausgewertet im Renderer (`keydown`), nicht im main – die App hat
+kein Programm-Menü.
 
 **Vorher prüfen:** Belegt ein Werkzeug Strg+K schon? (`grep -rn "'k'" src/renderer`: die
 Kundenansicht nutzt Strg+**Shift**+K.)
@@ -615,18 +608,6 @@ Stage-Timer steht es direkt über der echten Checkbox „blinkend“.
 
 **So:** `fill-current` an den drei `Square`-Symbolen: `StageTimer.tsx` („Stopp“) und
 `JinglePlayer.tsx` („Stopp (Esc)“ in der Leiste und das kleine am Pad). Sonst nichts.
-
-### B5 – Video-Generator: Leerzustand nicht rot
-
-**Heute:** Ein leeres Projekt zeigt unter der Ablagefläche rot „Noch keine Bilder oder Videos.“
-– der Hinweis `empty` aus `videoGenPlan.ts` hat die Stufe `error`, damit „Video erzeugen“
-gesperrt bleibt.
-
-**So:** In `VideoGenerator.tsx` den Hinweis `empty` aus der **angezeigten** Liste nehmen; für
-die Sperre des Knopfs zählt er weiter. Die Ablagefläche sagt schon, was zu tun ist.
-
-**Abnahme:** `e2e/video-generator.mjs`: im frischen Projekt gibt es keinen roten Hinweis, der
-Knopf „Video erzeugen“ ist gesperrt.
 
 ### B7 – App-Einstellungen als Dialog mit Reitern
 
@@ -1248,7 +1229,7 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
   `decimal`, weil die Dezimaltastatur des iPhones kein Minus hat). Ist das Minus am iPhone ohne
   Suchen zu erreichen, und taugt die Tastatur auch unter Android? Wenn nicht, bekommt `NumField`
   statt der vollen Tastatur einen Knopf „±“ am Feld (neues Paket).
-- **Seit K5, Stromlast (Pilot für Entscheidung 2):** Am Handy ist ab Werk nur „Last“ offen,
+- **Seit K5, Stromlast (Pilot, Vorbild für K6):** Am Handy ist ab Werk nur „Last“ offen,
   „Geräte pro Stromkreis“ zeigt zugeklappt „7 Geräte je Kreis“ – passt die Seite ohne Scrollen?
   Aufklappen und in „Leistung je Gerät“ tippen: Bleibt die Antwort „Max. Geräte“ über der
   Tastatur sichtbar? Anschluss, Absicherung und Auslastung per Knopf, App schließen und wieder
@@ -1314,22 +1295,19 @@ während VLC zuschaut – fängt sich das Bild nach dem kurzen Neustart von ffmp
 
 ## Entscheidungen
 
-Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestätigst:
+Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestätigst. Entschiedene
+behalten ihre Nummer, damit Verweise darauf stimmen:
 
 1. **Reihenfolge:** die Etappen wie in der [Übersicht](#übersicht-und-reihenfolge) – erst die
    Vorbilder fertig, dann die Muster übertragen? (Ja.)
-2. **Neuer Aufbau der Rechner** (K6): Antwort zuerst, Wahl als Knopfgruppen, zweite Karte
-   zugeklappt – für alle Rechner übernehmen? Der Pilot an der Stromlast steht seit dem
-   24. November 2026 (K5) zum Ansehen am Rechner und am Handy bereit. (Entscheidung nach dem
-   Ansehen; die Alternative zur zugeklappten Karte wäre ein Umschalter oben, wie „Signal“ im
-   Testtongenerator.)
-3. **Sollen sich die Rechner ihre Eingaben merken** (K4)? (Ja, mit „Zurücksetzen“.)
+2. **Neuer Aufbau der Rechner** (K6) – entschieden am 24. November 2026, siehe unten.
+3. **Rechner merken sich die Eingaben** (K4) – entschieden am 24. November 2026, siehe unten.
 4. **Heißt die Kategorie weiter „Rechner“?** (Ja.) Mit RTA und Testtongenerator wäre „Rechner &
    Messen“ treffender – das ändert eine Beschriftung in `tools/types.ts` und die Überschriften in
    Doku und README.
-5. **Arbeitsfläche für weitere Werkzeuge:** W1 bis W5 in dieser Reihenfolge – Video-Generator,
-   Stage-Timer, Testbildgenerator, NovaStar, Mini-Manual? (Ja; der Stage-Timer zuerst, wenn die
-   Show-Werkzeuge Vorrang haben.)
+5. **Arbeitsfläche für weitere Werkzeuge** – entschieden am 24. November 2026: W1
+   (Video-Generator) zuerst, siehe unten. Für W2 bis W5 gilt die Reihenfolge der Tabelle unter
+   [W](#w--arbeitsfläche-für-weitere-werkzeuge) als Vorschlag.
 6. **Verbundene Geräte wach halten?** Eine offene Verbindung zu ATEM, NovaStar oder OSC hält den
    Rechner heute nicht wach und steht auch nicht in „Wirklich beenden?“. Wenn ja: ein Feld mehr
    in `LaufendStand` (`services/beenden/`), dann fragt das Beenden danach und der Rechner bleibt
@@ -1351,6 +1329,17 @@ Offen. In Klammern steht jeweils der Vorschlag; er gilt erst, wenn du ihn bestä
 
 Entschieden – damit nichts neu gefragt wird:
 
+- **Neuer Aufbau für alle Rechner** (24. November 2026, nach dem Pilot an der Stromlast: „PWA
+  Apps gefallen mir so. Mit Umschalter fände ich aber auch nicht schlecht. … Definitiv aber alle
+  einheitlich“, dann „Ja, zugeklappt“): Antwort zuerst, Knopfgruppen statt Listen und die zweite
+  Frage als zugeklappte Karte wie im Piloten – in allen Rechnern gleich (K6). Kein Umschalter: Mit
+  der Karte stehen im breiten Fenster beide Fragen nebeneinander, ein Umschalter zeigt immer nur
+  eine. Er bleibt, wo sich die Möglichkeiten ausschließen (im Testtongenerator spielt immer nur
+  ein Signal).
+- **Rechner merken sich die Eingaben** (24. November 2026, „Rechner sollen sich die Eingaben
+  merken“): K4 wie beschrieben, mit „Zurücksetzen“, nach K6.
+- **Arbeitsfläche: zuerst der Video-Generator** (24. November 2026, „Video-Generator als
+  Nächstes skizzieren“): W1 beginnt mit Messung und Skizze.
 - **DMX-Dip-Schalter: Adresse = Summe der eingeschalteten Werte** (16. November 2026, Rückmeldung
   von Matthias: Adresse 1 ist an den Geräten Schalter 1 an). Vorher rechnete der Rechner Summe + 1
   (alle aus = Adresse 1). Mit neun Schaltern reicht es bis 511; Adresse 512 braucht einen zehnten
@@ -1377,7 +1366,8 @@ Entschieden – damit nichts neu gefragt wird:
   Bibliothek gelöscht wird. Umgesetzt in P8.
 - **Die beiden Muster übertragen** (14. November 2026): Der Aufbau von Testtongenerator und RTA
   und der neue Video-Player haben die Bedienung deutlich verbessert; sie sollen auf andere
-  Werkzeuge angewendet werden. Wie weit, entscheiden die Punkte 2 und 5.
+  Werkzeuge angewendet werden. Wie weit, entscheiden die Punkte 2 und 5 (seit 24. November: alle
+  Rechner, als Erstes die Arbeitsfläche des Video-Generators).
 - **Video-Player** (13. November 2026, „passt alles so“): Übergang und Bild-Standzeit in die
   Schublade (am Handy bleiben sie auf der Steuerseite); Löschen mit Rückfrage statt
   „Rückgängig“; Reihenfolge der Felder Bibliothek · Playlist · Bühne; stumm ab Werk bleibt, die
@@ -1411,6 +1401,9 @@ Regeln, die über die einzelnen Pakete hinaus gelten:
 
 Bewusst nicht geplant:
 
+- **Startbildschirm: Enter im Suchfeld öffnet den ersten Treffer** (früher B1; 24. November
+  2026, „B1 nein (find ich nicht so sinnvoll)“). Strg+K (B2) bleibt als Vorschlag und bringt die
+  Reihenfolge der Treffer selbst mit.
 - **Video-Generator:** Schnitt-Editor (Clips teilen, mehrere Ausschnitte je Clip, Schnittmarken,
   mehrere Spuren) – dafür gibt es Schnittprogramme.
 - **Mini-Manual:** DOCX-Export, englische Ausgabe, „Sie“-Form; Rich-Text- oder WYSIWYG-Editor;
@@ -1452,6 +1445,8 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Breite, auch wenn sie angeheftet ist – die Nadel ist dort ausgegraut, ein Klick in die
   Arbeitsfläche schließt die schwebende und übernimmt vorher ein angefangenes Feld (B8). Erstes
   Release `v0.1.0` am 24. November mit den vier Installern, dazu der Skill `release` (F5).
+  Video-Generator: Ein leeres Projekt zeigt unter der Ablagefläche keinen roten Hinweis mehr,
+  „Video erzeugen“ bleibt trotzdem gesperrt (B5, 24. November).
   Neuer Aufbau am Pilot Stromlast (K5, 24. November): Antwort „Max. Geräte“ über den Feldern,
   Anschluss, Absicherung und Auslastung als Knopfgruppen statt Listen, beide Karten zuklappbar
   mit der Antwort als Kurzfassung, die zweite ab Werk nur nebeneinander offen
