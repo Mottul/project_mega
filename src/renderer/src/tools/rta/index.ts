@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const rtaTool: ToolModule = {
   id: 'rta',
   name: 'RTA (Echtzeit-Analysator)',
-  description:
-    'Spektrum übers Mikrofon in Terzen bis 1/12 Oktave, Pegel in dB(A/C), Referenzkurven und Feedback-Finder – auch am Handy.',
+  description: 'Spektrum und Pegel übers Mikrofon',
   icon: ChartColumnBig,
   category: 'calc',
   keywords: [
@@ -37,7 +36,11 @@ export const rtaTool: ToolModule = {
     'kalibrieren',
     'spektrogramm',
     'wasserfall',
-    'eq'
+    'eq',
+    'terzen',
+    'referenzkurven',
+    'feedback-finder',
+    'handy'
   ],
   component: lazy(() => import('./Rta').then((m) => ({ default: m.Rta })))
 }

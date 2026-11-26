@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const jinglePlayerTool: ToolModule = {
   id: 'jingle-player',
   name: 'Jingle-Player',
-  description:
-    'Kurze Audios auf belegbaren Pads (Auftrittsmusik/Stinger) – Hotkeys, Ausgabegerät, Fade.',
+  description: 'Kurze Audios auf Pads, mit Hotkeys',
   icon: Music,
   category: 'playback',
   keywords: [
@@ -19,7 +18,9 @@ export const jinglePlayerTool: ToolModule = {
     'walk-in',
     'sample',
     'hotkey',
-    'einspieler'
+    'einspieler',
+    'ausgabegerät',
+    'fade'
   ],
   component: lazy(() => import('./JinglePlayer').then((m) => ({ default: m.JinglePlayer })))
 }

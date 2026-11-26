@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const oscControlTool: ToolModule = {
   id: 'osc-control',
   name: 'OSC-Steuerung',
-  description:
-    'Frei belegbares Steuerpult (Fader/Taster/XY/Farbe), das OSC an MadMapper & Co. sendet – mit Feedback-Monitor.',
+  description: 'Frei belegbares Pult, sendet OSC',
   icon: SlidersVertical,
   category: 'control',
   keywords: [
@@ -23,7 +22,12 @@ export const oscControlTool: ToolModule = {
     'control',
     'surface',
     'pult',
-    'udp'
+    'udp',
+    'steuerpult',
+    'taster',
+    'xy',
+    'farbe',
+    'feedback-monitor'
   ],
   component: lazy(() => import('./OscControl').then((m) => ({ default: m.OscControl })))
 }

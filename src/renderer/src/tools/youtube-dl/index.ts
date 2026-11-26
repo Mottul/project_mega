@@ -5,7 +5,7 @@ import type { ToolModule } from '../types'
 export const youtubeDlTool: ToolModule = {
   id: 'youtube-dl',
   name: 'YouTube-Downloader',
-  description: 'Videos/Audio per yt-dlp herunterladen (MP4/MP3/M4A), mit Auflösungswahl und Queue.',
+  description: 'Videos und Audio mit yt-dlp laden',
   icon: Youtube,
   category: 'media',
   keywords: [
@@ -18,7 +18,10 @@ export const youtubeDlTool: ToolModule = {
     'mp3',
     'mp4',
     'clip',
-    'herunterladen'
+    'herunterladen',
+    'm4a',
+    'auflösungswahl',
+    'queue'
   ],
   component: lazy(() =>
     import('./YoutubeDownloader').then((m) => ({ default: m.YoutubeDownloader }))

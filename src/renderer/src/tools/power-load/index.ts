@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const powerLoadTool: ToolModule = {
   id: 'power-load',
   name: 'Stromlast & Absicherung',
-  description:
-    'Leistung ↔ Strom (1∼/3∼) und wie viele Geräte auf einen 16/32/63-A-Stromkreis passen.',
+  description: 'Leistung ↔ Strom, Geräte je Stromkreis',
   icon: PlugZap,
   category: 'rigging',
   keywords: [
@@ -21,7 +20,10 @@ export const powerLoadTool: ToolModule = {
     'cee',
     'schuko',
     'phase',
-    'power'
+    'power',
+    '16 a',
+    '32 a',
+    '63 a'
   ],
   component: lazy(() => import('./PowerLoad').then((m) => ({ default: m.PowerLoad })))
 }

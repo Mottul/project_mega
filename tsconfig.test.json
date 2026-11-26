@@ -8,13 +8,16 @@
     "noEmit": true,
     "types": ["node"]
   },
-  // index.d.ts: Tests, die Module mit `window.api` mitziehen (z. B. über lib/projectFile)
+  // index.d.ts: Tests, die Module mit `window.api` mitziehen (z. B. über lib/projectFile);
+  // vite-env.d.ts: Tests, die Vite-Importe wie `?worker` mitziehen (tools/registry.test.ts lädt
+  // über die Registry alle Werkzeuge, darunter den PDF-Betrachter)
   "include": [
     "src/**/*.test.ts",
     "src/**/*.test.tsx",
     "src/**/*.spec.ts",
     "src/**/*.spec.tsx",
-    "src/preload/index.d.ts"
+    "src/preload/index.d.ts",
+    "src/renderer/src/vite-env.d.ts"
   ],
   "exclude": []
 }

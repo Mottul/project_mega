@@ -535,7 +535,8 @@ steht da; „Zurücksetzen“ – 1 steht da, der Knopf ist weg. `npm run pwa:bu
 - **`tools/rta/testSignals.ts` nicht mit dem Rauschen des Ton-Kerns zusammenlegen:** andere
   Verteilung, die Tests des RTA hängen an den Zahlen.
 - **`Rta.tsx` nicht nebenbei teilen** (E1) und **keine Beschreibungen vorhandener Werkzeuge
-  ändern** (B6).
+  ändern** – sie sind seit B6 auf die Kachel zugeschnitten (höchstens 50 Zeichen, prüft
+  `tools/registry.test.ts`).
 - **Namen der PWA im Code lassen:** „Rechner-PWA“, `out-pwa`, der Cache-Name im Service Worker
   (ein neuer ließe die alten Caches auf den Handys liegen). Geändert werden nur sichtbare Texte.
 
@@ -561,7 +562,6 @@ Kleine Pakete, die man täglich merkt. Unabhängig voneinander, soweit nichts an
 | **B2** | Strg+K: Werkzeug wechseln von überall | M | – |
 | **B3** | Netzwerk-Scanner: sinnvoller Adapter vorgewählt | S | – |
 | **B4** | Stopp-Symbole gefüllt | S | – |
-| **B6** | Startbildschirm: Namen und Beschreibungen ganz lesbar | S | – |
 | **B7** | App-Einstellungen als Dialog mit Reitern | M | – |
 | **B9** | „Über und Diagnose“: Version, Protokoll, Datenordner | M | B7 |
 | **B10** | Mini-Manual: Schritt-Texte ganz sichtbar | S | – |
@@ -608,58 +608,6 @@ Stage-Timer steht es direkt über der echten Checkbox „blinkend“.
 
 **So:** `fill-current` an den drei `Square`-Symbolen: `StageTimer.tsx` („Stopp“) und
 `JinglePlayer.tsx` („Stopp (Esc)“ in der Leiste und das kleine am Pad). Sonst nichts.
-
-### B6 – Startbildschirm: Namen und Beschreibungen ganz lesbar
-
-**Heute:** Bei mittlerer Kachelgröße (Vorgabe) werden Namen abgeschnitten
-(„LED-Wall-Konfigura…“, „Projektionsverhä…“, „Stromlast & Absi…“), Beschreibungen brechen
-mitten im Satz ab. Eine mittlere Kachel hat für die Beschreibung zwei Zeilen zu etwa 26
-Zeichen.
-
-**So:**
-
-- `ToolCard.tsx`: Auch bei mittleren und großen Kacheln darf der Name zwei Zeilen haben
-  (`line-clamp-2` mit `softHyphenate` wie heute bei den kleinen), mit reservierter Höhe für
-  zwei Zeilen, damit alle Kacheln gleich hoch bleiben.
-- Beschreibungen (`description` in `tools/<id>/index.ts`) auf höchstens 50 Zeichen kürzen, das
-  Wichtigste zuerst. **Begriffe, die dabei wegfallen, wandern in `keywords`** – die Suche liest
-  beides.
-
-| Werkzeug | Neue Beschreibung |
-| -------- | ----------------- |
-| Video-Player | Playlist-Player für LED-Wand und Beamer |
-| Jingle-Player | Kurze Audios auf Pads, mit Hotkeys |
-| Stage-Timer & Uhr | Sprechzeit-Timer und Uhr für die Bühne |
-| Testbildgenerator | Testbilder und Testton für Beamer und LED |
-| OSC-Steuerung | Frei belegbares Pult, sendet OSC |
-| NovaStar-Steuerung | LED-Prozessor steuern: Helligkeit, Presets |
-| ATEM-Steuerung | Blackmagic-Mischer vom Laptop bedienen |
-| Netzwerk-Scanner | Geräte im Netz finden: IP, Hersteller, Typ |
-| DMX-Dip-Schalter | DMX-Adresse ↔ Dip-Schalter |
-| LED-Wall-Konfigurator | Wand planen: Auflösung, Strom, Verkabelung |
-| Projektionsverhältnis | Abstand, Bildgröße und Objektiv des Beamers |
-| Kameraobjektiv | Bildausschnitt aus Brennweite und Entfernung |
-| Beamer-Lumen | Wie viel Lumen die Bildgröße braucht |
-| Video-Konverter | Clips fürs Zielsystem: HAP, H.264, ProRes |
-| Video-Generator | Bilder und Videos zu einem Video |
-| Medien-Info | Eckdaten und Show-Check für Videodateien |
-| Manuals-Bibliothek | Handbücher offline durchsuchen |
-| YouTube-Downloader | Videos und Audio mit yt-dlp laden |
-| Packliste | Material-Checkliste, auch aus der LED-Wall |
-| Mini-Manual | Kurz-Anleitung und Fehlersuche als PDF |
-| Stromlast & Absicherung | Leistung ↔ Strom, Geräte je Stromkreis |
-| Rigging-Last | Auflager- und Bridle-Kräfte an der Traverse |
-| Kreisrechner | Durchmesser, Umfang und Fläche |
-| Audio-Delay & SPL | Laufzeit und Pegelabfall über die Distanz |
-| RTA (Echtzeit-Analysator) | Spektrum und Pegel übers Mikrofon |
-| Testtongenerator | Sinus, Rauschen, Sweep, Metronom, Kanaltest |
-| Timecode-Rechner | Timecode ↔ Frames ↔ Echtzeit |
-
-**Abnahme:** `e2e/smoke.mjs` („Alle Kacheln gleich hoch“) bleibt grün; neuer Schritt: bei
-1366 × 768 und mittlerer Größe ist kein Name abgeschnitten (`scrollWidth` gleich `clientWidth`
-bzw. nicht mehr als zwei Zeilen). Unit-Test über die Registry: Jede Beschreibung hat höchstens
-50 Zeichen, und die Suche nach „prores“, „hap“, „madmapper“, „ptz“ und „handbuch“ findet weiter
-das jeweilige Werkzeug. Die PWA zeigt dieselben Beschreibungen – `npm run pwa:build`.
 
 ### B7 – App-Einstellungen als Dialog mit Reitern
 
@@ -1132,6 +1080,11 @@ nicht per Import aus `beenden/laufend.ts` (Kreis in den Importen).
   Stufe 2 des Streams auch beim Stream, aber nicht bei NDI (der Stage-Timer schon). Wie dort
   `ndiActive` in den Player-Zustand (`playerState.ts`, `useToolActivity.ts`). Gefunden am
   21. November 2026.
+- **Startbildschirm, kleine Kacheln:** Namen sind auch zweizeilig abgeschnitten, bei 1366 × 768
+  „DMX-Dip-Schalter“, „Projektionsverhältnis“, „Stromlast & Absicherung“, „Audio-Delay & SPL“
+  und „RTA (Echtzeit-Analysator)“. Neben Symbol, Platz für den Stern (`pr-7`) und dem
+  Fenster-Zeichen der kleinen Werkzeuge bleiben dem Namen rund 60 px (`ToolCard.tsx`). Mittlere
+  und große Kacheln sind seit B6 ganz lesbar. Gefunden in B6 am 24. November 2026.
 
 ### E7 – Tests für Player-Zustand, yt-dlp und Fernsteuer-Parser
 
@@ -1520,7 +1473,9 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Handy, Bühnen-Anzeige im Browser, Start und Stopp über `registerRemoteControl()`.
 - **Oberfläche:** gleiche Kopfleiste, Ausgabe-Leiste und Schublade in allen großen Werkzeugen;
   die kleinen Werkzeuge im eigenen Fenster und als PWA; Statusfarben als Tokens, eine Hinweisbox
-  (`Alert`), eine Status-Tabelle; Startbildschirm mit Favoriten, Kachelgröße und Ausgabe-Status.
+  (`Alert`), eine Status-Tabelle; Startbildschirm mit Favoriten, Kachelgröße und Ausgabe-Status;
+  dort seit B6 (24. November 2026) Namen und Beschreibungen ganz lesbar: Name bis zwei Zeilen,
+  Beschreibung höchstens 50 Zeichen, was wegfiel, in den Stichworten der Suche.
 - **Aufgeräumt:** `main/services` nach Bereichen, Fensterlogik aus `main/index.ts`, der
   IPC-Vertrag als einzige Quelle, `VideoPlayer.tsx` von 1.765 auf unter 300 Zeilen,
   `OscControl.tsx` von 3.276 auf 387.

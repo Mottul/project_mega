@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const mediaInfoTool: ToolModule = {
   id: 'media-info',
   name: 'Medien-Info',
-  description:
-    'Video-Eckdaten per ffprobe: Auflösung, fps, Codec, Bitrate, Ton – mit Show-Check (Ampel) und Playlist-Vergleich.',
+  description: 'Eckdaten und Show-Check für Videodateien',
   icon: FileSearch,
   category: 'media',
   keywords: [
@@ -39,7 +38,10 @@ export const mediaInfoTool: ToolModule = {
     'timecode',
     'fat32',
     'usb',
-    'led'
+    'led',
+    'ton',
+    'ampel',
+    'playlist-vergleich'
   ],
   component: lazy(() => import('./MediaInfo').then((m) => ({ default: m.MediaInfo })))
 }

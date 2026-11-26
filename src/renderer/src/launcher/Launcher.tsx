@@ -15,6 +15,7 @@ import { CATEGORY_LABELS, type ToolModule } from '@renderer/tools/types'
 import type { LauncherTileSize, ToolCategoryId } from '@shared/types'
 import { FavoritesBoard, type DragItem } from './FavoritesBoard'
 import { flatten } from './favoriteGroups'
+import { matches } from './suche'
 import { ToolCard, tileGridStyle, type TileDrag, type TileDrop, type TileMove } from './ToolCard'
 import { useLauncherPrefs } from './useLauncherPrefs'
 import { useToolActivity } from './useToolActivity'
@@ -35,15 +36,6 @@ const TILE_SIZES: { value: LauncherTileSize; label: string; Icon: typeof Square 
   { value: 'medium', label: 'Mittlere Kacheln', Icon: Grid2x2 },
   { value: 'large', label: 'Große Kacheln', Icon: Square }
 ]
-
-function matches(tool: ToolModule, q: string): boolean {
-  if (!q) return true
-  const hay = [tool.name, tool.description, ...(tool.keywords ?? [])].join(' ').toLowerCase()
-  return q
-    .toLowerCase()
-    .split(/\s+/)
-    .every((term) => hay.includes(term))
-}
 
 /** Umschalter aus mehreren Knöpfen (Ansicht, Kachelgröße). */
 function Segmented<T extends string | boolean>({

@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const netscanTool: ToolModule = {
   id: 'netscan',
   name: 'Netzwerk-Scanner',
-  description:
-    'Geräte im lokalen Netz finden (LED-Prozessoren, ATEM/Video-Mischer, PTZ-Kameras, Projektoren …) mit IP, Hersteller und Typ.',
+  description: 'Geräte im Netz finden: IP, Hersteller, Typ',
   icon: Radar,
   category: 'control',
   keywords: [
@@ -29,7 +28,11 @@ export const netscanTool: ToolModule = {
     'camera',
     'novastar',
     'onvif',
-    'rtsp'
+    'rtsp',
+    'led-prozessoren',
+    'video-mischer',
+    'ptz-kameras',
+    'projektoren'
   ],
   component: lazy(() => import('./NetScan').then((m) => ({ default: m.NetScan })))
 }

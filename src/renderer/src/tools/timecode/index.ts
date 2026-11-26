@@ -5,7 +5,7 @@ import type { ToolModule } from '../types'
 export const timecodeTool: ToolModule = {
   id: 'timecode',
   name: 'Timecode-Rechner',
-  description: 'SMPTE-Timecode ↔ Frames ↔ Echtzeit (inkl. Drop-Frame) und Dauer zwischen In/Out.',
+  description: 'Timecode ↔ Frames ↔ Echtzeit',
   icon: Clapperboard,
   category: 'calc',
   keywords: [
@@ -21,7 +21,9 @@ export const timecodeTool: ToolModule = {
     '29.97',
     '23.976',
     'dauer',
-    'in out'
+    'in out',
+    'drop-frame',
+    'in/out'
   ],
   component: lazy(() => import('./Timecode').then((m) => ({ default: m.Timecode })))
 }

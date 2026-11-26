@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const miniManualTool: ToolModule = {
   id: 'mini-manual',
   name: 'Mini-Manual',
-  description:
-    'Kurz-Anleitungen für die Leute vor Ort: Bedienung, Fehlersuche Schritt für Schritt, Kurzkarte – als PDF.',
+  description: 'Kurz-Anleitung und Fehlersuche als PDF',
   icon: BookOpenCheck,
   category: 'rigging',
   keywords: [
@@ -22,7 +21,10 @@ export const miniManualTool: ToolModule = {
     'led-wand',
     'led wall',
     'pdf',
-    'lehrling'
+    'lehrling',
+    'kurz-anleitungen',
+    'vor ort',
+    'schritt für schritt'
   ],
   component: lazy(() => import('./MiniManual').then((m) => ({ default: m.MiniManual })))
 }

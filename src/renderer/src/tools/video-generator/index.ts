@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const videoGeneratorTool: ToolModule = {
   id: 'video-generator',
   name: 'Video-Generator',
-  description:
-    'Bilder und Videos zu einem Video: Diashow mit Ken Burns, Übergängen, Musik und nahtloser Schleife.',
+  description: 'Bilder und Videos zu einem Video',
   icon: Images,
   category: 'media',
   keywords: [
@@ -27,7 +26,9 @@ export const videoGeneratorTool: ToolModule = {
     'zusammenschnitt',
     'gala',
     'hochzeit',
-    'video erstellen'
+    'video erstellen',
+    'übergängen',
+    'nahtlos'
   ],
   component: lazy(() => import('./VideoGenerator').then((m) => ({ default: m.VideoGenerator })))
 }

@@ -5,8 +5,7 @@ import type { ToolModule } from '../types'
 export const audioDelayTool: ToolModule = {
   id: 'audio-delay',
   name: 'Audio-Delay & SPL',
-  description:
-    'Lautsprecher-Laufzeit (Delay) aus Distanz und Schalldruck-Abfall über die Entfernung.',
+  description: 'Laufzeit und Pegelabfall über die Distanz',
   icon: AudioLines,
   category: 'calc',
   keywords: [
@@ -20,7 +19,9 @@ export const audioDelayTool: ToolModule = {
     'lautsprecher',
     'schall',
     'distanz',
-    'delayline'
+    'delayline',
+    'schalldruck',
+    'entfernung'
   ],
   component: lazy(() => import('./AudioDelay').then((m) => ({ default: m.AudioDelay })))
 }
