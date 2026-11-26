@@ -111,8 +111,11 @@ Leitbild und Teil K.
   ist die Stromlast so ab Werk 508 px hoch statt 929; beide Karten offen 982. Seit K6 ebenso
   Rigging 631 statt 1281 (offen 1315), Kameraobjektiv 610 statt 1071 (offen 1064), Timecode
   569 statt 749 (offen 927), Beamer-Lumen 558 statt 741 (offen 758) und Audio-Delay 476 statt
-  695 (offen 718). Das Projektionsverhältnis bekam nur die Knopfgruppe (Seitenverhältnis, sechs
-  Werte, `wrap={4}`: bei 393 und 320 px zwei Reihen zu je drei) und ist damit 631 statt 556 hoch.
+  695 (offen 718). Das Projektionsverhältnis ebenso (entschieden am 26. November 2026, „Ja,
+  zuklappbar“ – zuerst hatte es nur die Knopfgruppe und blieb offen): 522 statt 556 (offen 654);
+  die Knopfgruppe fürs Seitenverhältnis (sechs Werte, `wrap={4}`) steht bei 393 und 320 px in
+  zwei Reihen zu je drei. Beide Karten bestehen aus verknüpften Feldern, die Kurzfassung nennt
+  ihre Werte („TR 1,6 · 8 m“).
   - **Stufen mit Erklärung** (Umgebungslicht im Beamer-Lumen): kurze Namen auf den Knöpfen
     („Gedimmt“), die Erklärung der gewählten Stufe als Zeile darunter („Vortragssaal · Ziel
     400 lx“) – wie die Signale ohne eigene Felder im Testtongenerator. Name und Erklärung stehen

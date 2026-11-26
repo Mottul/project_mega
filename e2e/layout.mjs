@@ -1265,20 +1265,44 @@ try {
       }
     ],
     [
-      'Projektionsverhältnis (K6): Seitenverhältnis per Knopf statt Liste, bei 320 px in Reihen',
+      'Projektionsverhältnis (K6): Seitenverhältnis per Knopf, „Objektiv & Abstand“ zu, solange die Karten untereinander stehen',
       async () => {
+        // ab Werk 520 px: Die Karten stehen untereinander, „Objektiv & Abstand“ ist zu und sagt
+        // seine Werte (zuklappbar wie alle Rechner, entschieden am 26. November 2026)
         const id = 'throw-ratio'
-        const w = await openSmall(id)
+        let w = await openSmall(id)
+        assert.equal((await winInfo(id)).content[0], 520)
+        await expectCount(kartenKoepfe(w), 2, `${id}: zuklappbare Karten`)
+        const leinwand = () => kartenKopf(w, 'Leinwand')
+        const objektiv = () => kartenKopf(w, 'Objektiv & Abstand')
+        await expectAttr(leinwand(), 'aria-expanded', 'true', 'Leinwand, 520 px')
+        await expectAttr(objektiv(), 'aria-expanded', 'false', 'Objektiv, 520 px')
+        assert.match(await objektiv().textContent(), /TR 1,6 · 8 m$/)
+        assert.match(await leinwand().textContent(), /16 : 9 · 5 × 2,81 m$/)
         assert.equal(await w.locator('select').count(), 0, `${id}: noch eine Liste`)
         const seiten = (name) => knopf(w, 'Seitenverhältnis', name)
         assert.equal(await seiten('16 : 9').getAttribute('aria-pressed'), 'true')
         // „(Cinemascope)“ steht hinter dem ⓘ, der Knopf bleibt kurz
         assert.equal(await seiten('2,35 : 1').count(), 1)
-        // ein Tipp auf 4 : 3: 5 m breit -> 3,75 m hoch
+        // breiter gezogen: nebeneinander, die zweite Karte folgt und geht auf
+        await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await expectAttr(objektiv(), 'aria-expanded', 'true', 'Objektiv, 880 px')
+
+        // so schmal wie das Handy: wieder zu, aufgeklappt bleibt sie nach Schließen und Öffnen offen
+        w = await mitBreite(id, 393)
+        await expectAttr(objektiv(), 'aria-expanded', 'false', 'Objektiv, schmal')
+        await assertFits(w, id)
+        await objektiv().click()
+        await expectAttr(objektiv(), 'aria-expanded', 'true', 'Objektiv, aufgeklappt')
+        // ein Tipp auf 4 : 3: 5 m breit -> 3,75 m hoch; die Kurzfassung der Leinwand zieht mit
         await seiten('4 : 3').click()
         await expectAttr(seiten('4 : 3'), 'aria-pressed', 'true', '4 : 3')
         const hoehe = w.getByLabel('Bildhöhe', { exact: true })
         assert.ok(await waitFor(async () => (await hoehe.inputValue()) === '3,75'), 'Bildhöhe')
+        assert.match(await leinwand().textContent(), /4 : 3 · 5 × 3,75 m$/)
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        await expectAttr(objektiv(), 'aria-expanded', 'true', 'Objektiv, wieder geöffnet')
         // so schmal wie das schmalste Fenster: zwei Reihen zu je drei Knöpfen
         await toolWin(id, 'setContentSize', 320, (await winInfo(id)).content[1])
         const reihen = async () =>

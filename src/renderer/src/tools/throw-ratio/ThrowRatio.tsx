@@ -2,9 +2,9 @@ import { Segmented } from '@renderer/components/ui/segmented'
 import {
   CalcPage,
   FieldBlock,
+  FoldCard,
   NumField,
   Readout,
-  SectionCard,
   fmt,
   parseNum,
   trimNum,
@@ -24,6 +24,21 @@ import {
 // Projektionsverhältnis (Throw Ratio = Abstand ÷ Bildbreite). Hilft beim Wählen
 // des passenden Objektivs: oben die Leinwandmaße (Seitenverhältnis + ein Maß),
 // unten Throw Ratio <-> Projektionsabstand verknüpft. Gerechnet wird in math.ts.
+// Aufbau wie in allen Rechnern (Gesamtplan, K6; entschieden am 26. November 2026): Beide Karten
+// lassen sich zuklappen und zeigen dann ihre Werte; „Objektiv & Abstand“ ist ab Werk nur offen,
+// wenn die Karten nebeneinander stehen (im 520 px breiten Fenster und am Handy untereinander).
+// Beide Karten bestehen aus verknüpften Feldern – eine eigene Antwort über den Feldern gibt es
+// nicht.
+
+/** Kurzfassung der Karte „Leinwand“: Seitenverhältnis und Bildmaße */
+function screenSummary(aspect: string, w: number | null, h: number | null): string {
+  return w == null || h == null ? '–' : `${aspect} · ${fmt(w)} × ${fmt(h)} m`
+}
+
+/** Kurzfassung der Karte „Objektiv & Abstand“: Throw Ratio und Projektionsabstand */
+function lensSummary(tr: number | null, dist: number | null): string {
+  return tr == null || dist == null ? '–' : `TR ${fmt(tr)} · ${fmt(dist)} m`
+}
 
 /** Gemerkt (K4): Seitenverhältnis und je Karte Quelle und Text der verknüpften Felder */
 const FELDER = {
@@ -47,11 +62,16 @@ export function ThrowRatio(): JSX.Element {
   const badSize = (field: SizeField): boolean => screen.invalid.includes(field)
   const badLens = (field: ThrowField): boolean => ratio.invalid.includes(field)
 
+  const aspectLabel = ASPECTS.find((a) => a.key === aspectKey)?.label ?? aspectKey
+
   return (
     <CalcPage onReset={f.changed ? f.reset : undefined}>
-      <SectionCard
+      <FoldCard
+        id="throw-ratio:leinwand"
         title="Leinwand"
+        summary={screenSummary(aspectLabel, w, h)}
         desc="Seitenverhältnis wählen, ein Maß eingeben – die übrigen folgen."
+        defaultOpen
       >
         {/* sechs kurze Möglichkeiten: Knopfgruppe statt Liste, bei schmalem Fenster in Reihen */}
         <FieldBlock label="Seitenverhältnis" hint="2,35 : 1 heißt auch Cinemascope.">
@@ -82,12 +102,15 @@ export function ThrowRatio(): JSX.Element {
           {...size.bind('diag', trimNum(diag, 3))}
         />
         <Readout label="Bildfläche" value={fmt(area)} unit="m²" />
-      </SectionCard>
+      </FoldCard>
 
-      <SectionCard
+      <FoldCard
+        id="throw-ratio:objektiv"
         title="Objektiv & Abstand"
+        summary={lensSummary(ratio.tr, ratio.dist)}
         desc="Throw Ratio oder Abstand eingeben – das andere folgt."
         hint="Throw Ratio (TR) = Projektionsabstand ÷ Bildbreite. Passend ist ein Objektiv, dessen TR-Bereich den Wert abdeckt. Beispiel: 5 m Bildbreite aus 8 m Abstand ergibt TR 1,6 – ein Objektiv mit 1,2–1,8 passt."
+        defaultOpen="nebeneinander"
       >
         <NumField
           label="Throw Ratio"
@@ -101,7 +124,7 @@ export function ThrowRatio(): JSX.Element {
           {...lens.bind('dist', trimNum(ratio.dist, 3))}
         />
         {w == null && <Alert tone="warning">Zuerst die Bildbreite der Leinwand festlegen.</Alert>}
-      </SectionCard>
+      </FoldCard>
     </CalcPage>
   )
 }
