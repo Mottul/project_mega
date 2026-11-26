@@ -81,7 +81,11 @@ Leitbild und Teil K.
   Beschriftung darüber, Wert rechts daneben. Neben einer Beschriftung links (`FieldRow`, 10rem)
   bleiben am Handy kaum 150 px: Gruppen stehen einspaltig, Knöpfe ragen heraus.
 - **Selten Gebrauchtes zuklappen** (`FoldCard`, Kurzfassung im Kopf, Zustand gemerkt): Der RTA
-  zeigt zuerst nur Messen, Pegel und Spektrum – alles offen erschlug am Handy.
+  zeigt zuerst nur Messen, Pegel und Spektrum – alles offen erschlug am Handy. In seinen Karten
+  sind die Einstellungen seit K6 Knopfgruppen in ganzer Breite (`ChoiceBlock` in
+  `rta/RtaCards.tsx`: `FieldBlock` mit `Segmented`, ab drei Möglichkeiten `wrap={4.75}` – bei
+  393 px eine Reihe, bei 320 px brechen vier in zwei um); nur „Eingang“ bleibt eine Liste, weil
+  es beliebig viele Geräte mit langen Namen gibt.
 - **Rechner mit zwei Fragen** (Pilot Stromlast, K5 – Vorbild `tools/power-load/PowerLoad.tsx`):
   beide Karten `FoldCard`, `summary` = die Antwort der Karte („7 Geräte je Kreis“, „–“ ohne
   Ergebnis; ändert eine Wahl ihre Bedeutung, sagt die Kurzfassung es: „3∼ · 11.085 W · 16 A“).

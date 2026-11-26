@@ -1270,6 +1270,52 @@ try {
       }
     ],
     [
+      'RTA (K6): Einstellungen in den Karten per Knopf statt Liste – nur „Eingang“ bleibt eine Liste',
+      async () => {
+        const id = 'rta'
+        const w = await openSmall(id)
+        // die Karten unter dem Spektrum aufklappen (ab Werk zu; der Zustand bleibt gemerkt)
+        for (const titel of ['Feedback-Finder', 'Eingang & Kalibrierung', 'Anzeige']) {
+          const kopf = kartenKopf(w, titel)
+          if ((await kopf.getAttribute('aria-expanded')) !== 'true') await kopf.click()
+          await expectAttr(kopf, 'aria-expanded', 'true', titel)
+        }
+        // nur der Eingang ist eine Liste: Geräte gibt es beliebig viele, mit langen Namen
+        const listen = await w
+          .locator('select')
+          .evaluateAll((els) => els.map((e) => e.labels?.[0]?.textContent ?? '?'))
+        assert.deepEqual(listen, ['Eingang'], `Listen: ${listen}`)
+        const gruppen = ['Empfindlichkeit', 'Kanal', 'Kalibrator', 'Mittelung', 'Spitzen']
+        gruppen.push('Pegelmesser', 'Skala', 'Farbe', 'Spektrogramm')
+        for (const g of gruppen) {
+          await expectCount(w.getByRole('group', { name: g, exact: true }), 1, `Knopfgruppe ${g}`)
+        }
+        assert.equal(await knopf(w, 'Kalibrator', '94 dB').getAttribute('aria-pressed'), 'true')
+        // ein Tipp, und die Kurzfassung der Karte zieht mit
+        const anzeige = () => kartenKopf(w, 'Anzeige')
+        await knopf(w, 'Mittelung', 'Langsam').click()
+        assert.ok(
+          await waitFor(async () => /Mittelung langsam$/.test(await anzeige().textContent())),
+          await anzeige().textContent()
+        )
+        await knopf(w, 'Mittelung', 'Schnell').click()
+        await expectAttr(knopf(w, 'Mittelung', 'Schnell'), 'aria-pressed', 'true', 'zurück')
+        // vier Knöpfe: im breiten Fenster eine Reihe, bei 320 px zwei – nichts ragt heraus
+        const reihen = async () =>
+          w
+            .getByRole('group', { name: 'Mittelung', exact: true })
+            .evaluate((g) => [...g.children].map((r) => r.children.length))
+        assert.deepEqual(await reihen(), [4])
+        await toolWin(id, 'setContentSize', 320, (await winInfo(id)).content[1])
+        assert.ok(
+          await waitFor(async () => JSON.stringify(await reihen()) === '[2,2]'),
+          `Reihen bei 320 px: ${JSON.stringify(await reihen())}`
+        )
+        await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+      }
+    ],
+    [
       'alle kleinen Werkzeuge: Höhe folgt dem Inhalt, zweispaltig wo vorgesehen, bis 320 px schmal',
       async () => {
         for (const id of SMALL) {

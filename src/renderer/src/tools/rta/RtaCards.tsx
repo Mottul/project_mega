@@ -1,13 +1,17 @@
 // Karten unter dem Spektrum: Feedback-Finder, Referenzkurven, Eingang mit Kalibrierung und
 // Anzeige-Einstellungen. Werte im Store (store.ts), Aktionen über Rückrufe aus Rta.tsx.
+// Wahl aus bis zu vier kurzen Möglichkeiten als Knopfgruppe in ganzer Breite (Gesamtplan, K6):
+// ein Tipp, alles sichtbar. Nur „Eingang“ bleibt eine Liste – die Geräte sind beliebig viele und
+// haben lange Namen.
 
 import { useRef, useState } from 'react'
 import { BookmarkPlus, Eye, EyeOff, FileUp, GitCompareArrows, Trash2, X } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Checkbox } from '@renderer/components/ui/checkbox'
+import { Segmented } from '@renderer/components/ui/segmented'
 import { TextField } from '@renderer/components/ui/text-field'
 import { cn } from '@renderer/lib/utils'
-import { FoldCard, fmt, NumField, parseNum, SelectField, trimNum } from '../_calc/ui'
+import { FieldBlock, FoldCard, fmt, NumField, parseNum, SelectField, trimNum } from '../_calc/ui'
 import type { Averaging, MeterSpeed, PeakMode } from './analysis'
 import { freqText } from './bands'
 import { parseCorrection } from './calibration'
@@ -44,6 +48,40 @@ const AVERAGING: Record<Averaging, string> = {
 
 const set = (patch: Parameters<ReturnType<typeof useRta.getState>['set']>[0]): void =>
   useRta.getState().set(patch)
+
+/**
+ * Mindestbreite eines Knopfs (rem) in Gruppen mit drei oder vier Möglichkeiten: bei 393 px eine
+ * Reihe, bei 320 px brechen vier in zwei Reihen um („Unendlich“ bleibt lesbar). Zwei passen
+ * immer nebeneinander und brechen nicht um.
+ */
+const WRAP = 4.75
+
+/** Knopfgruppe in ganzer Breite mit der Beschriftung darüber (`FieldBlock`) */
+function ChoiceBlock<T extends string>({
+  label,
+  hint,
+  value,
+  options,
+  onChange
+}: {
+  label: string
+  hint?: string
+  value: T
+  options: { value: T; label: string }[]
+  onChange: (v: T) => void
+}): JSX.Element {
+  return (
+    <FieldBlock label={label} hint={hint}>
+      <Segmented
+        label={label}
+        value={value}
+        options={options}
+        onChange={onChange}
+        wrap={options.length > 2 ? WRAP : false}
+      />
+    </FieldBlock>
+  )
+}
 
 function noteText(f: number): string {
   const n = noteOf(f)
@@ -125,16 +163,17 @@ function FeedbackResults({
 }): JSX.Element {
   return (
     <>
-      <SelectField
+      <ChoiceBlock<Sensitivity>
         label="Empfindlichkeit"
         hint="Hoch meldet früher (ab 7 dB über der Umgebung, 0,3 s), niedrig erst Deutliches (14 dB, 0,8 s)."
         value={sensitivity}
-        onChange={(v) => set({ sensitivity: v as Sensitivity })}
-      >
-        <option value="low">Niedrig</option>
-        <option value="mid">Mittel</option>
-        <option value="high">Hoch</option>
-      </SelectField>
+        options={[
+          { value: 'low', label: 'Niedrig' },
+          { value: 'mid', label: 'Mittel' },
+          { value: 'high', label: 'Hoch' }
+        ]}
+        onChange={(v) => set({ sensitivity: v })}
+      />
       <div className="space-y-2" data-testid="rta-feedback">
         {tracks.length === 0 ? (
           <p className="rounded-md border border-dashed border-border px-3 py-3 text-center text-sm text-muted-foreground">
@@ -327,16 +366,17 @@ export function InputCard({
           </option>
         ))}
       </SelectField>
-      <SelectField
+      <ChoiceBlock<Channel>
         label="Kanal"
         hint="Bei Interfaces mit zwei Eingängen: welcher gemessen wird. Summe = Mittel aus beiden."
         value={p.channel}
-        onChange={(v) => set({ channel: v as Channel })}
-      >
-        <option value="mix">Summe L+R</option>
-        <option value="left">Links</option>
-        <option value="right">Rechts</option>
-      </SelectField>
+        options={[
+          { value: 'mix', label: 'Summe L+R' },
+          { value: 'left', label: 'Links' },
+          { value: 'right', label: 'Rechts' }
+        ]}
+        onChange={(v) => set({ channel: v })}
+      />
       <NumField
         label="Offset"
         unit="dB"
@@ -350,14 +390,16 @@ export function InputCard({
           })
         }}
       />
-      <SelectField
+      <ChoiceBlock
         label="Kalibrator"
+        hint="94 dB entsprechen 1 Pa, 114 dB 10 Pa."
         value={String(p.calibratorDb)}
+        options={[
+          { value: '94', label: '94 dB' },
+          { value: '114', label: '114 dB' }
+        ]}
         onChange={(v) => set({ calibratorDb: Number(v) })}
-      >
-        <option value="94">94 dB (1 Pa)</option>
-        <option value="114">114 dB (10 Pa)</option>
-      </SelectField>
+      />
       <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
@@ -429,65 +471,69 @@ export function DisplayCard(): JSX.Element {
       summary={`Mittelung ${AVERAGING[p.averaging]}${spectro}`}
       desc="Wie schnell und wie die Messung gezeigt wird, Spektrogramm."
     >
-      <SelectField
+      <ChoiceBlock<Averaging>
         label="Mittelung"
         hint="Schnell = 125 ms, Langsam = 1 s (exponentiell), Unendlich = Mittel seit Start/Zurücksetzen – für rosa Rauschen am ruhigsten."
         value={p.averaging}
-        onChange={(v) => set({ averaging: v as Averaging })}
-      >
-        {Object.entries(AVERAGING).map(([v, name]) => (
-          <option key={v} value={v}>
-            {name[0].toUpperCase() + name.slice(1)}
-          </option>
-        ))}
-      </SelectField>
-      <SelectField
+        options={(Object.keys(AVERAGING) as Averaging[]).map((v) => ({
+          value: v,
+          label: AVERAGING[v][0].toUpperCase() + AVERAGING[v].slice(1)
+        }))}
+        onChange={(v) => set({ averaging: v })}
+      />
+      <ChoiceBlock<PeakMode>
         label="Spitzen"
         hint="Markiert je Band den höchsten Pegel – gehalten oder langsam fallend (15 dB/s)."
         value={p.peak}
-        onChange={(v) => set({ peak: v as PeakMode })}
-      >
-        <option value="off">Aus</option>
-        <option value="hold">Halten</option>
-        <option value="fall">Fallend</option>
-      </SelectField>
-      <SelectField
+        options={[
+          { value: 'off', label: 'Aus' },
+          { value: 'hold', label: 'Halten' },
+          { value: 'fall', label: 'Fallend' }
+        ]}
+        onChange={(v) => set({ peak: v })}
+      />
+      <ChoiceBlock<MeterSpeed>
         label="Pegelmesser"
         hint="Zeitbewertung nach IEC 61672: Fast 125 ms, Slow 1 s."
         value={p.meter}
-        onChange={(v) => set({ meter: v as MeterSpeed })}
-      >
-        <option value="F">Fast</option>
-        <option value="S">Slow</option>
-      </SelectField>
-      <SelectField
+        options={[
+          { value: 'F', label: 'Fast' },
+          { value: 'S', label: 'Slow' }
+        ]}
+        onChange={(v) => set({ meter: v })}
+      />
+      <ChoiceBlock<ScaleMode>
         label="Skala"
         hint="Automatisch folgt dem Signal; fest zeigt −80 … 0 dBFS bzw. 40 … 120 dB SPL."
         value={p.scale}
-        onChange={(v) => set({ scale: v as ScaleMode })}
-      >
-        <option value="auto">Automatisch</option>
-        <option value="fixed">Fest</option>
-      </SelectField>
-      <SelectField
+        options={[
+          { value: 'auto', label: 'Automatisch' },
+          { value: 'fixed', label: 'Fest' }
+        ]}
+        onChange={(v) => set({ scale: v })}
+      />
+      <ChoiceBlock<RtaFarbe>
         label="Farbe"
         hint="Akzent: wie die App. Neutral: Pegel, Spektrum und Wasserfall in Weiß (im hellen Design Schwarz) – ein ruhiges Bild am Messplatz oder auf einem zweiten Bildschirm."
         value={p.farbe}
-        onChange={(v) => set({ farbe: v as RtaFarbe })}
-      >
-        <option value="akzent">Akzent</option>
-        <option value="neutral">Neutral</option>
-      </SelectField>
-      <SelectField
+        options={[
+          { value: 'akzent', label: 'Akzent' },
+          { value: 'neutral', label: 'Neutral' }
+        ]}
+        onChange={(v) => set({ farbe: v })}
+      />
+      {/* „waagrecht“ stand in der Liste dabei – das ⓘ sagt es */}
+      <ChoiceBlock<SpectroMode>
         label="Spektrogramm"
         hint="Unter dem Spektrum, Farbe = Pegel, eine Zeile je 0,1 s. Wasserfall: Frequenz waagrecht wie im Spektrum darüber (eine Linie steht genau unter ihrer Spitze), Zeit läuft nach unten. Zeitachse: Zeit waagrecht, Frequenz senkrecht. Zeiger bzw. Finger zeigt Frequenz, Note, Pegel und wie lange es her ist."
         value={p.spectrogram}
-        onChange={(v) => set({ spectrogram: v as SpectroMode })}
-      >
-        <option value="off">Aus</option>
-        <option value="waterfall">Wasserfall</option>
-        <option value="timeline">Zeitachse waagrecht</option>
-      </SelectField>
+        options={[
+          { value: 'off', label: 'Aus' },
+          { value: 'waterfall', label: 'Wasserfall' },
+          { value: 'timeline', label: 'Zeitachse' }
+        ]}
+        onChange={(v) => set({ spectrogram: v })}
+      />
     </FoldCard>
   )
 }
