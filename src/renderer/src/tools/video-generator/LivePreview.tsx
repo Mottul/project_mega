@@ -3,6 +3,8 @@
 // Burns aus kenBurnsRect, die Übergänge als CSS-Nachbau von xfade (transitionCss), die Musik aus
 // musicAt (Titelfolge, Überblendungen, Blenden, Absenken). Exakt wie das Ergebnis ist
 // „Vorschau rechnen“; hier zählt, dass man Tempo, Reihenfolge und Wirkung sofort sieht.
+// Die Bühne steht in einem Rahmen, der schrumpft, wenn im Feld die Höhe fehlt (Rahmen.tsx) – der
+// Transport darunter bleibt ganz sichtbar.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Pause, Play, SkipBack, Volume2, VolumeX } from 'lucide-react'
@@ -11,6 +13,7 @@ import type { VgenElement } from '@shared/types'
 import { frameAt, musicAt, outputSegments, type VgenPlan } from '@shared/videoGenPlan'
 import { sourceUrl } from './meta'
 import { basename, fmtDuration } from './presets'
+import { kastenStil, Rahmen, verhaeltnisAus } from './Rahmen'
 import { ElementLayer } from './Stage'
 import { transitionAudio, transitionLook } from './transitionCss'
 
@@ -147,52 +150,53 @@ export function LivePreview({
     : undefined
   const overrideEl = override ? byId.get(override.id) : undefined
   const bg = look?.under ?? plan.background.replace(/^0x/, '#')
+  const verhaeltnis = verhaeltnisAus(plan.width, plan.height)
 
   return (
-    <div className="space-y-2">
-      <div
-        className="relative mx-auto w-full overflow-hidden rounded border border-border"
-        style={{
-          aspectRatio: `${plan.width} / ${plan.height}`,
-          maxWidth: `calc(45vh * ${plan.width / plan.height})`,
-          background: bg
-        }}
-        data-testid="vgen-stage"
-      >
-        {override && overrideEl ? (
-          <ElementLayer
-            el={overrideEl}
-            ep={override}
-            plan={plan}
-            local={0}
-            playing={false}
-            volume={0}
-            sourceTime={sourceOverride?.time}
-          />
-        ) : (
-          state.layers.map((layer, i) => {
-            const ep = plan.elements[layer.index]
-            const el = byId.get(ep.id)
-            if (!el) return null
-            const isB = i === 1
-            // Schlüssel nur die Element-id: nach dem Übergang rückt b an Platz 0 – mit Platz im
-            // Schlüssel würde sein Video neu geladen und hakte an jeder Naht
-            return (
-              <ElementLayer
-                key={ep.id}
-                el={el}
-                ep={ep}
-                plan={plan}
-                local={layer.local}
-                playing={playing}
-                volume={muted || !el.audio ? 0 : isB ? vol.b : state.layers.length > 1 ? vol.a : 1}
-                style={look ? (isB ? look.b : look.a) : undefined}
-              />
-            )
-          })
-        )}
-      </div>
-      <div className="flex items-center gap-2">
+    <div className="flex min-h-0 flex-col gap-2">
+      <Rahmen verhaeltnis={verhaeltnis}>
+        <div
+          className="relative overflow-hidden rounded border border-border"
+          style={{ ...kastenStil(verhaeltnis), background: bg }}
+          data-testid="vgen-stage"
+        >
+          {override && overrideEl ? (
+            <ElementLayer
+              el={overrideEl}
+              ep={override}
+              plan={plan}
+              local={0}
+              playing={false}
+              volume={0}
+              sourceTime={sourceOverride?.time}
+            />
+          ) : (
+            state.layers.map((layer, i) => {
+              const ep = plan.elements[layer.index]
+              const el = byId.get(ep.id)
+              if (!el) return null
+              const isB = i === 1
+              // Schlüssel nur die Element-id: nach dem Übergang rückt b an Platz 0 – mit Platz im
+              // Schlüssel würde sein Video neu geladen und hakte an jeder Naht
+              return (
+                <ElementLayer
+                  key={ep.id}
+                  el={el}
+                  ep={ep}
+                  plan={plan}
+                  local={layer.local}
+                  playing={playing}
+                  volume={
+                    muted || !el.audio ? 0 : isB ? vol.b : state.layers.length > 1 ? vol.a : 1
+                  }
+                  style={look ? (isB ? look.b : look.a) : undefined}
+                />
+              )
+            })
+          )}
+        </div>
+      </Rahmen>
+      <div className="flex shrink-0 items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -241,7 +245,7 @@ export function LivePreview({
           {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
         </Button>
       </div>
-      <p className="truncate text-xs text-muted-foreground">
+      <p className="shrink-0 truncate text-xs text-muted-foreground">
         {overrideEl
           ? `Quelle: ${basename(overrideEl.path)} bei ${fmtDuration(sourceOverride?.time ?? 0)}`
           : currentEl

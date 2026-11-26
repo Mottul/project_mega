@@ -372,6 +372,9 @@ try {
   // Oberfläche: Dateien über den (gestubbten) Dialog, Storyboard, Auswahl, Vorschau, Erzeugen
   const shots = process.env.VGEN_SHOTS ? process.env.VGEN_SHOTS : null
   const shot = async (name) => shots && (await w.screenshot({ path: join(shots, `${name}.png`) }))
+  /** Zahl im Kopf des Storyboards: Anzahl und – nach der Analyse – Gesamtdauer („3 · 12 s“) */
+  const zahl = (text) =>
+    w.getByTestId('feld-storyboard').locator('[data-pane-kopf]').getByText(text, { exact: true })
   await runSteps('Video-Generator: Oberfläche', [
     [
       'leeres Projekt: kein roter Hinweis, „Video erzeugen“ gesperrt',
@@ -413,15 +416,18 @@ try {
         await w.evaluate(() => {
           location.hash = '#/tool/video-generator'
         })
-        await w.getByRole('button', { name: /Bilder & Videos/ }).waitFor({ timeout: 15_000 })
+        const hinzufuegen = w.getByRole('button', { name: /Hinzufügen/ })
+        await hinzufuegen.waitFor({ timeout: 15_000 })
         await ctx.app.evaluate(
           ({ dialog }, files) => {
             dialog.showOpenDialog = async () => ({ canceled: false, filePaths: files })
           },
           [f('quer.jpg'), f('hoch.jpg'), f('clip.mp4')]
         )
-        await w.getByRole('button', { name: /Bilder & Videos/ }).click()
-        await w.getByText('3 Elemente').waitFor({ timeout: 15_000 })
+        // „Bilder & Videos …“ steht im Menü „Hinzufügen“ im Kopf des Felds
+        await hinzufuegen.click()
+        await w.getByRole('menuitem', { name: /Bilder & Videos/ }).click()
+        await zahl(/^3( · |$)/).waitFor({ timeout: 15_000 })
         // Vorschaubilder kommen über media://vgen
         assert.ok(
           await waitFor(() =>
@@ -435,7 +441,7 @@ try {
           'Vorschaubilder fehlen'
         )
         // Gesamtdauer nach der Analyse: 5 s + 5 s + 4 s Video − 2 × 1 s Überblenden = 12 s
-        assert.ok(await waitFor(() => w.getByText('3 Elemente · 12 s').isVisible()), 'Dauer fehlt')
+        assert.ok(await waitFor(() => zahl('3 · 12 s').isVisible()), 'Dauer fehlt')
         await shot('1-storyboard')
       }
     ],
@@ -458,7 +464,7 @@ try {
         await field.fill('7,5')
         await field.press('Enter')
         // 7,5 s = 188 Bilder (187,5 aufgerundet): 188 + 125 + 100 − 50 = 363 Bilder = 14,52 s
-        assert.ok(await waitFor(() => w.getByText('3 Elemente · 14,5 s').isVisible()))
+        assert.ok(await waitFor(() => zahl('3 · 14,5 s').isVisible()))
         await shot('2-auswahl')
       }
     ],
@@ -529,7 +535,7 @@ try {
         await handle.focus()
         for (let i = 0; i < 10; i++) await w.keyboard.press('ArrowRight')
         // 188 + 125 + 75 − 50 = 338 Bilder = 13,52 s
-        assert.ok(await waitFor(() => w.getByText('3 Elemente · 13,5 s').isVisible()))
+        assert.ok(await waitFor(() => zahl('3 · 13,5 s').isVisible()))
         await shot('4-ausschnitt')
       }
     ],
@@ -558,7 +564,8 @@ try {
           dialog.showSaveDialog = async () => ({ canceled: false, filePath: file })
         }, out)
         await w.getByRole('button', { name: 'Video erzeugen' }).click()
-        await w.getByText('Aufträge').waitFor({ timeout: 10_000 })
+        // das Feld „Aufträge“ kommt mit dem ersten Auftrag dazu
+        await w.getByTestId('feld-auftraege').waitFor({ timeout: 10_000 })
         const id = await waitFor(
           async () =>
             (await w.evaluate(() => window.api.videoGen.list())).find((j) =>
@@ -600,7 +607,7 @@ try {
         // Musik 5 + 30 − 2 s Überblendung = 33 s; quer (eigene 7,5 s) und der Clip (3 s) bleiben
         assert.ok(await waitFor(() => w.getByText('Musik 33 s', { exact: false }).isVisible()))
         await w.getByRole('button', { name: /Standzeit an Musik anpassen/ }).click()
-        assert.ok(await waitFor(() => w.getByText('3 Elemente · 33 s').isVisible()))
+        assert.ok(await waitFor(() => zahl('3 · 33 s').isVisible()))
         await shot('7-musik')
       }
     ],

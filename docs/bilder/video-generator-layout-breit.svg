@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 392" width="680" role="img" aria-labelledby="t d" font-family="Segoe UI, system-ui, sans-serif">
+  <title id="t">Video-Generator, breites Fenster: Storyboard links, rechts Vorschau über Aufträgen</title>
+  <desc id="d">Links das Storyboard mit Kacheln und Übergängen, es scrollt in sich; im Kopf Anzahl, Gesamtdauer, Hinzufügen, Ansicht und das Menü mit Sortieren, Mischen und Alle entfernen; im Fuß Zeitlineal und Hinweise, die stehen bleiben. Rechts oben die Vorschau mit Live, Rahmen oder Gerechnet und Vorschau rechnen im Kopf, darunter Bühne, Transport und beim Video der Ausschnitt. Darunter, nur wenn es welche gibt, die Aufträge mit einer Zeile je Auftrag, höchstens drei hoch. Die Seite scrollt nicht.</desc>
+  <style>
+    .f { fill: #fafafa; stroke: #d4d4d8; }
+    .k { fill: #ffffff; stroke: #d4d4d8; }
+    .z { fill: #f4f4f5; stroke: none; }
+    .v { fill: #18181b; stroke: #3f3f46; }
+    .a { fill: #faeeda; stroke: #ba7517; }
+    .af { fill: #ba7517; }
+    .u { fill: none; stroke: #a1a1aa; stroke-dasharray: 3 2; }
+    .t { fill: #18181b; font-size: 12px; }
+    .b { fill: #18181b; font-size: 12px; font-weight: 600; }
+    .s { fill: #52525b; font-size: 11px; }
+    .w { fill: #e4e4e7; font-size: 10.5px; }
+    .n { fill: #ffffff; font-size: 8.5px; }
+    .m { fill: #71717a; font-size: 10.5px; font-style: italic; }
+    .g { fill: #15803d; font-size: 10px; }
+    .l { stroke: #d4d4d8; stroke-width: 1; }
+    @media (prefers-color-scheme: dark) {
+      .f { fill: #18181b; stroke: #3f3f46; }
+      .k { fill: #1f1f23; stroke: #3f3f46; }
+      .z { fill: #27272a; }
+      .v { fill: #09090b; stroke: #52525b; }
+      .a { fill: #633806; stroke: #ef9f27; }
+      .af { fill: #ef9f27; }
+      .u { stroke: #71717a; }
+      .t, .b { fill: #fafafa; }
+      .s { fill: #d4d4d8; }
+      .m { fill: #a1a1aa; }
+      .g { fill: #4ade80; }
+      .l { stroke: #3f3f46; }
+    }
+  </style>
+  <defs>
+    <clipPath id="sb"><rect x="14" y="100" width="380" height="214"/></clipPath>
+    <g id="foto"><rect class="k" width="75" height="66" rx="4"/><rect class="v" width="75" height="42" rx="4"/></g>
+    <g id="chip"><rect class="u" width="30" height="36" rx="4"/><text class="s" x="15" y="16" text-anchor="middle" style="font-size:10px">⇄</text><text class="s" x="15" y="29" text-anchor="middle" style="font-size:9px">1 s</text></g>
+  </defs>
+
+  <rect class="f" x="4" y="4" width="672" height="384" rx="10"/>
+
+  <text class="b" x="18" y="24">Mottulbox</text>
+  <text class="s" x="92" y="24">Start</text>
+  <text class="b" x="130" y="24">Video-Generator</text>
+  <text class="s" x="234" y="24">Einstellungen</text>
+  <text class="s" x="662" y="24" text-anchor="end">Eigenes Fenster · Kundenansicht</text>
+  <path class="l" d="M4 34H676"/>
+
+  <text class="b" x="18" y="52" style="font-size:10.5px">AUFTRAG</text>
+  <rect class="a" x="76" y="42" width="40" height="14" rx="3"/><text class="t" x="96" y="52.5" text-anchor="middle" style="font-size:8.5px;font-weight:600">LÄUFT</text>
+  <rect class="a" x="122" y="40" width="102" height="18" rx="4"/><text class="t" x="173" y="53" text-anchor="middle" style="font-size:11px">▶ Video erzeugen</text>
+  <text class="s" x="662" y="53" text-anchor="end">Gala-Diashow · 58 %</text>
+  <path class="l" d="M4 64H676"/>
+
+  <!-- Storyboard -->
+  <rect class="k" x="14" y="74" width="380" height="304" rx="8"/>
+  <text class="b" x="26" y="94">Storyboard</text><text class="s" x="96" y="94">12 · 48 s</text>
+  <text class="s" x="384" y="94" text-anchor="end">Hinzufügen ▾ · ⊞ ☰ · ⋯</text>
+  <g clip-path="url(#sb)">
+    <use href="#foto" x="26" y="104"/><text class="n" x="30" y="114">1</text><text class="s" x="30" y="157" style="font-size:9.5px">Foto 01.jpg</text><text class="s" x="30" y="167" style="font-size:9px">5 s</text>
+    <use href="#chip" x="105" y="119"/>
+    <use href="#foto" x="141" y="104"/><text class="n" x="145" y="114">2</text><text class="s" x="145" y="157" style="font-size:9.5px">Foto 02.jpg</text><text class="s" x="145" y="167" style="font-size:9px">5 s</text>
+    <use href="#chip" x="220" y="119"/>
+    <use href="#foto" x="256" y="104"/><text class="n" x="260" y="114">3</text><text class="s" x="260" y="157" style="font-size:9.5px">Foto 03.jpg</text><text class="s" x="260" y="167" style="font-size:9px">5 s</text>
+    <use href="#chip" x="335" y="119"/>
+
+    <use href="#foto" x="26" y="180"/><text class="n" x="30" y="190">4</text><text class="s" x="30" y="233" style="font-size:9.5px">Foto 04.jpg</text><text class="s" x="30" y="243" style="font-size:9px">5 s</text>
+    <use href="#chip" x="105" y="195"/>
+    <rect class="a" x="139" y="178" width="79" height="70" rx="5"/><rect class="v" x="141" y="180" width="75" height="42" rx="4"/>
+    <text class="n" x="145" y="190">5</text><text class="b" x="145" y="233" style="font-size:9.5px">Clip Bühne.mp4</text><text class="s" x="145" y="243" style="font-size:9px">4 s · Video</text>
+    <use href="#chip" x="220" y="195"/>
+    <use href="#foto" x="256" y="180"/><text class="n" x="260" y="190">6</text><text class="s" x="260" y="233" style="font-size:9.5px">Foto 06.jpg</text><text class="s" x="260" y="243" style="font-size:9px">5 s</text>
+    <use href="#chip" x="335" y="195"/>
+
+    <use href="#foto" x="26" y="256"/><use href="#chip" x="105" y="271"/>
+    <use href="#foto" x="141" y="256"/><use href="#chip" x="220" y="271"/>
+    <use href="#foto" x="256" y="256"/><use href="#chip" x="335" y="271"/>
+  </g>
+  <rect class="k" x="296" y="300" width="88" height="14" rx="3" style="stroke:none"/>
+  <text class="m" x="382" y="311" text-anchor="end">scrollt in sich</text>
+  <path class="l" d="M14 316H394"/>
+  <rect class="z" x="26" y="322" width="356" height="12" rx="2"/>
+  <rect class="af" x="145" y="322" width="26" height="12"/>
+  <path class="l" d="M55.7 322v12M85.3 322v12M115 322v12M144.7 322v12M174.3 322v12M204 322v12M233.7 322v12M263.3 322v12M293 322v12M322.7 322v12M352.3 322v12"/>
+  <text class="s" x="26" y="345" style="font-size:9px">0 s</text><text class="s" x="100" y="345" style="font-size:9px">10 s</text><text class="s" x="174" y="345" style="font-size:9px">20 s</text><text class="s" x="248" y="345" style="font-size:9px">30 s</text><text class="s" x="322" y="345" style="font-size:9px">40 s</text>
+  <text class="s" x="26" y="359" style="font-size:10px">ⓘ Foto 04.jpg: 640×480 wird stark vergrößert und wirkt weich.</text>
+  <text class="s" x="26" y="372" style="font-size:10px">ⓘ Foto 09.jpg: 640×480 wird stark vergrößert und wirkt weich.</text>
+
+  <!-- Vorschau -->
+  <rect class="k" x="404" y="74" width="262" height="244" rx="8"/>
+  <text class="b" x="416" y="94">Vorschau</text>
+  <rect class="z" x="474" y="83" width="92" height="16" rx="4"/><rect class="k" x="476" y="85" width="34" height="12" rx="3"/>
+  <text class="t" x="493" y="94.5" text-anchor="middle" style="font-size:9.5px">Live</text><text class="s" x="538" y="94.5" text-anchor="middle" style="font-size:9.5px">Gerechnet</text>
+  <rect class="k" x="574" y="83" width="82" height="16" rx="4"/><text class="s" x="615" y="94.5" text-anchor="middle" style="font-size:9.5px">Vorschau rechnen</text>
+  <rect class="v" x="416" y="104" width="238" height="134" rx="4"/>
+  <text class="w" x="535" y="166" text-anchor="middle">Live-Vorschau</text>
+  <text class="w" x="535" y="181" text-anchor="middle">im Seitenverhältnis der Ausgabe</text>
+  <path class="t" d="M418 247v12M430 247l-9 6 9 6z"/>
+  <rect class="z" x="438" y="244" width="18" height="18" rx="4"/><path class="t" d="M444 248l8 5-8 5z"/>
+  <rect class="z" x="462" y="251" width="124" height="4" rx="2"/><rect class="af" x="462" y="251" width="52" height="4" rx="2"/>
+  <text class="s" x="654" y="257" text-anchor="end" style="font-size:10px">20 s / 48 s</text>
+  <text class="s" x="416" y="274" style="font-size:10px">5: Clip Bühne.mp4 · Übergänge nachgebildet</text>
+  <text class="s" x="416" y="289" style="font-size:9.5px;font-weight:600">Ausschnitt des Videos</text>
+  <rect class="a" x="416" y="293" width="238" height="9" rx="3"/><rect class="af" x="416" y="293" width="3" height="9"/><rect class="af" x="651" y="293" width="3" height="9"/>
+  <text class="s" x="416" y="312" style="font-size:9px">Start 0 s</text><text class="s" x="535" y="312" text-anchor="middle" style="font-size:9px">Länge 4 s</text><text class="s" x="654" y="312" text-anchor="end" style="font-size:9px">Ende 4 s von 4 s</text>
+
+  <!-- Aufträge -->
+  <rect class="k" x="404" y="326" width="262" height="52" rx="8"/>
+  <text class="b" x="416" y="343">Aufträge</text><text class="s" x="472" y="343">2 · 1 läuft</text>
+  <text class="s" x="656" y="343" text-anchor="end" style="font-size:10px">Fertige entfernen</text>
+  <text class="t" x="416" y="358" style="font-size:10.5px">Gala-Diashow.mp4</text>
+  <rect class="z" x="534" y="353" width="60" height="5" rx="2.5"/><rect class="af" x="534" y="353" width="35" height="5" rx="2.5"/>
+  <text class="s" x="600" y="358" style="font-size:10px">58 %</text><text class="s" x="652" y="358" text-anchor="middle" style="font-size:10px">✕</text>
+  <text class="t" x="416" y="372" style="font-size:10.5px">Sponsor-Loop.mov</text><text class="g" x="534" y="372">Fertig</text>
+  <rect class="z" x="610" y="363" width="11" height="11" rx="2"/><rect class="z" x="625" y="363" width="11" height="11" rx="2"/><rect class="z" x="640" y="363" width="11" height="11" rx="2"/>
+</svg>

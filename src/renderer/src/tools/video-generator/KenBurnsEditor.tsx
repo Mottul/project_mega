@@ -2,7 +2,8 @@
 // Ziehen verschiebt, die Ecke zoomt um die Mitte; Pfeiltasten und +/− gehen auch (kein
 // Mausrad: das scrollte zugleich die Seite). Jede Änderung wird zum eigenen Rahmen (mode
 // 'custom') und läuft durch clampKenBurnsFrame – dieselbe Klammer wie im Plan, der Rahmen
-// bleibt also immer auf dem Bild.
+// bleibt also immer auf dem Bild. Die Zeichenfläche steht im Rahmen des Felds „Vorschau“
+// (Rahmen.tsx): Ein Hochkantfoto wird kleiner, statt das Feld nach unten zu sprengen.
 
 import { useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { ArrowLeftRight, RotateCcw } from 'lucide-react'
@@ -17,6 +18,7 @@ import {
   type VgenElementPlan,
   type VgenPlan
 } from '@shared/videoGenPlan'
+import { kastenStil, Rahmen, verhaeltnisAus } from './Rahmen'
 import { CanvasContent } from './Stage'
 
 type Which = 'from' | 'to'
@@ -156,40 +158,39 @@ export function KenBurnsEditor({
 
   const a = frames.from
   const b = frames.to
+  const verhaeltnis = verhaeltnisAus(ep.canvas.width, ep.canvas.height)
   return (
-    <div className="space-y-2">
-      <div
-        ref={box}
-        className="relative mx-auto w-full touch-none select-none overflow-hidden rounded border border-border"
-        style={{
-          aspectRatio: `${ep.canvas.width} / ${ep.canvas.height}`,
-          maxWidth: `calc(45vh * ${ep.canvas.width / ep.canvas.height})`,
-          background: plan.background.replace(/^0x/, '#')
-        }}
-        data-testid="vgen-kb-editor"
-      >
-        <CanvasContent el={el} ep={ep} time={0} playing={false} volume={0} />
-        <div className="absolute inset-0 bg-black/35" />
-        <svg
-          className="pointer-events-none absolute inset-0 size-full"
-          viewBox="0 0 1 1"
-          preserveAspectRatio="none"
+    <div className="flex min-h-0 flex-col gap-2">
+      <Rahmen verhaeltnis={verhaeltnis}>
+        <div
+          ref={box}
+          className="relative touch-none select-none overflow-hidden rounded border border-border"
+          style={{ ...kastenStil(verhaeltnis), background: plan.background.replace(/^0x/, '#') }}
+          data-testid="vgen-kb-editor"
         >
-          <line
-            x1={a.cx}
-            y1={a.cy}
-            x2={b.cx}
-            y2={b.cy}
-            stroke="white"
-            strokeWidth={2}
-            strokeDasharray="6 4"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        {frameBox('to', 'Ende')}
-        {frameBox('from', 'Start')}
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
+          <CanvasContent el={el} ep={ep} time={0} playing={false} volume={0} />
+          <div className="absolute inset-0 bg-black/35" />
+          <svg
+            className="pointer-events-none absolute inset-0 size-full"
+            viewBox="0 0 1 1"
+            preserveAspectRatio="none"
+          >
+            <line
+              x1={a.cx}
+              y1={a.cy}
+              x2={b.cx}
+              y2={b.cy}
+              stroke="white"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          {frameBox('to', 'Ende')}
+          {frameBox('from', 'Start')}
+        </div>
+      </Rahmen>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         <p className="min-w-0 flex-1 text-xs text-muted-foreground">
           Rahmen ziehen zum Verschieben, an der Ecke ziehen zum Zoomen (auch Pfeiltasten, +/−).
         </p>

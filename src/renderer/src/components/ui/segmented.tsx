@@ -6,12 +6,21 @@ import { cn } from '@renderer/lib/utils'
 export const segmentGroupClass = 'rounded-md border border-border bg-muted/30 p-0.5'
 
 /**
+ * `sm`: so hoch wie die Knöpfe im Kopf eines Felds (`h-6`, 24 px) – sonst wüchse der Kopf über
+ * 40 px und nähme der Liste darunter Platz (Muster 1 im Leitbild von docs/PLAN.md).
+ */
+export type SegmentSize = 'default' | 'sm'
+
+/**
  * Ein Knopf der Gruppe. Gewählt: Fläche mit feinem Rand – im dunklen Design ist die Karte
  * dunkler als die Gruppe, ohne Rand verschwände die Wahl fast.
  */
-export function segmentButtonClass(selected: boolean): string {
+export function segmentButtonClass(selected: boolean, size: SegmentSize = 'default'): string {
   return cn(
-    'flex items-center justify-center gap-1.5 rounded px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 disabled:cursor-not-allowed [@media(pointer:coarse)]:py-2.5',
+    'flex items-center justify-center rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 disabled:cursor-not-allowed',
+    size === 'sm'
+      ? 'gap-1 px-2 py-0.5 text-xs [@media(pointer:coarse)]:py-1'
+      : 'gap-1.5 px-2.5 py-1.5 text-sm [@media(pointer:coarse)]:py-2.5',
     selected
       ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
       : 'text-muted-foreground hover:text-foreground'
@@ -69,6 +78,7 @@ export function Segmented<T extends string>({
   onChange,
   wrap = false,
   disabled = false,
+  size = 'default',
   className
 }: {
   label: string
@@ -77,6 +87,7 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void
   wrap?: boolean | number
   disabled?: boolean
+  size?: SegmentSize
   className?: string
 }): JSX.Element {
   // in Reihen gleich breit (min-w-0, die Mindestbreite sichert der Umbruch), sonst so breit wie
@@ -90,13 +101,13 @@ export function Segmented<T extends string>({
       title={o.label}
       aria-label={o.iconOnly ? o.label : undefined}
       onClick={() => onChange(o.value)}
-      className={cn(segmentButtonClass(value === o.value), 'flex-1', equal && 'min-w-0 px-1')}
+      className={cn(segmentButtonClass(value === o.value, size), 'flex-1', equal && 'min-w-0 px-1')}
     >
-      {o.Icon && <o.Icon className="size-4 shrink-0" />}
+      {o.Icon && <o.Icon className={cn('shrink-0', size === 'sm' ? 'size-3.5' : 'size-4')} />}
       {!o.iconOnly && o.label}
     </button>
   )
-  const group = cn(segmentGroupClass, disabled && 'opacity-50', className)
+  const group = cn(segmentGroupClass, size === 'sm' && 'p-px', disabled && 'opacity-50', className)
   if (wrap !== false) {
     return (
       <WrappedGroup

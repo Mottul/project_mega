@@ -258,6 +258,30 @@ Aus der Bibliothek des Video-Players (P5, 15.11.2026; im Bild oder im E2E gesehe
   `ablage`). Der Rahmen liegt mit `pointer-events-none` über dem Feld, sonst änderte er selbst, was
   unter dem Zeiger liegt.
 
+Aus dem Video-Generator als Arbeitsfläche (W1, 25.11.2026; gemessen in der gebauten App):
+
+- **Eine `auto`-Zeile im Raster bekommt ihre Höhe vor jeder `fr`-Zeile.** So rechnet CSS Grid:
+  Inhaltsgrößen zuerst, `1fr` verteilt nur den Rest. Die Aufträge (Zeile `auto`) nehmen sich
+  also immer ihre Höhe, die Vorschau darüber (`minmax(0, 1fr)`) muss nachgeben. Was nachgeben
+  soll, steht deshalb in der `fr`-Zeile und schrumpft selbst (Rahmen mit `shrink` und `min-h`,
+  `video-generator/Rahmen.tsx`); was in der `auto`-Zeile steht, bleibt klein (`max-h-20`). Mit
+  den früheren Auftragskarten (78–94 px je Auftrag) wäre die Vorschau bei 1024 × 600 unter ihre
+  Bedienung gerutscht – daher eine Zeile je Auftrag (freigegeben).
+- **Ein Feld, das nur manchmal da ist, bekommt ein Raster ohne seinen Bereich.** Sonst bleibt
+  der Abstand der leeren Zeile stehen (12 px), und die rechte Spalte endet höher als die linke.
+  Im DOM steht es als letztes: Kommt es dazu, bleiben die Felder davor, wie sie sind
+  (`vgenRaster(mitAuftraegen)`).
+- **Verschachtelte Ablageziele: das innere nimmt, ohne anzuhalten.** Das Storyboard fügt Dateien
+  an der Kachel ein, über der sie losgelassen werden, das Feld darum nimmt sie am Ende an. Hielte
+  die Kachel das Ereignis an (`stopPropagation`), bliebe der gestrichelte Rahmen des Felds stehen,
+  bis `dragover` ausbleibt (1 s). Darum ruft das innere Ziel `preventDefault()` und lässt das
+  Ereignis weiterlaufen; jedes äußere prüft `defaultPrevented` und nimmt nicht ein zweites Mal
+  (Storyboard und `useDateiAblage`).
+- **Was man gerade einstellt, bleibt im Feld sichtbar.** Geht die Schublade „Auswahl“ auf, bricht
+  das Storyboard neu um, und das gewählte Element lag unter dem Rand. Nach der Wahl und bei jeder
+  Größenänderung (`ResizeObserver`) `scrollIntoView` mit `container: 'nearest'` – nicht während
+  eines Ziehens, sonst rückte die Kachel unter dem Zeiger weg.
+
 ## Einstellungen und gemerkte Stände
 
 - Ändert eine Option, was ein bestehender Schalter bedeutet (Beispiel: „Kennung“ blendete früher

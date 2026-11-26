@@ -95,10 +95,12 @@ den Transport nicht mehr.
   `components/workAreaRaster.ts` (Stufen und Raster, rein und getestet) und
   `components/ui/menu.tsx` (das Menü „⋯“; seine Liste hängt am `<body>`, weil ein Feld abschneidet,
   was über seinen Rand ragt), `lib/useDateiAblage.ts` (Dateien ins ganze Feld ziehen, `Pane` mit
-  `ablage`). Vorbild für das Raster eines Werkzeugs: `video-player/layout.ts`; für ein Feld mit
+  `ablage`). Vorbild für das Raster eines Werkzeugs: `video-player/layout.ts`, mit einem Feld,
+  das nur manchmal da ist (Aufträge): `video-generator/layout.ts`; für ein Feld mit
   Liste: `video-player/Playlist.tsx`; mit Kacheln, Suche und einer Auftragsliste als Fuß:
-  `video-player/Library.tsx`; für die Abnahme: `e2e/player-layout.mjs`. Anleitung im Skill
-  `neues-werkzeug`, Lehren im Skill `review-checkliste` („Raster und SVG“).
+  `video-player/Library.tsx`; für die Abnahme: `e2e/player-layout.mjs` und
+  `e2e/video-generator-layout.mjs`. Anleitung im Skill `neues-werkzeug`, Lehren im Skill
+  `review-checkliste` („Raster und SVG“).
 - **Nicht für Dokumente:** Werkzeuge, die man von oben nach unten liest – Video-Konverter,
   Medien-Info, Packliste, YouTube-Downloader, Handbücher, Netzwerk-Scanner –, scrollen weiter
   als Seite.
@@ -112,7 +114,7 @@ ist.
 | Werkzeug | 1024 × 600 (zu · an) | 1366 × 768 (zu · an) | 1920 × 1080 (zu · an) | Folge |
 | -------- | -------------------- | -------------------- | --------------------- | ----- |
 | Video-Player | passt · passt (Stufe `mittel`, vorher `schmal`) | passt · passt | passt · passt | Vorbild |
-| Video-Generator (12 Bilder) | +732 · +732 (vorher +1074) | +490 · +639 | +169 · +318 | **W1** |
+| Video-Generator (12 Bilder) | passt · passt (vorher +732 · +732) | passt · passt (vorher +490 · +639) | passt · passt (vorher +169 · +318) | erledigt (W1, 25. November 2026) |
 | Stage-Timer (8 Abschnitte à 5 min) | +114 · +114 (am 14.11. +142 · +771) | passt · passt | passt · passt | **W2** |
 | Testbildgenerator | +124 · +124 (vorher +143) | +57 · +57 | passt · passt | **W3** |
 | NovaStar-Steuerung | +96 · +96 (vorher +112) | passt · passt | passt · passt | **W4** |
@@ -232,7 +234,7 @@ Regeln, die für jedes Paket gelten:
   ein eigener Entwurf (`docs/PLAN-<THEMA>.md`), bevor Code entsteht. Der Entwurf hält fest, wie
   gebaut wird; Stand, Reihenfolge und Entscheidungen bleiben hier.
 - **Größere Änderungen an der Bedienung eines Show-Werkzeugs** beginnen mit einer Skizze und der
-  Freigabe durch Matthias, nicht mit Code – das gilt für W1, W2, W5 und die ATEM-Steuerung.
+  Freigabe durch Matthias, nicht mit Code – das gilt für W2, W5 und die ATEM-Steuerung.
 
 Stolpersteine aus der bisherigen Arbeit:
 
@@ -289,7 +291,6 @@ Reihenfolge des Gewinns. Je Werkzeug ein Pull Request.
 
 | Paket | Werkzeug | Seite zu hoch um (Schublade zu: 1024 · 1366 · 1920) | Größe | Braucht |
 | ----- | -------- | --------------------------------------------------- | ----- | ------- |
-| **W1** | Video-Generator | 732 · 490 · 169 px (12 Bilder) | M–L | Skizze |
 | **W2** | Stage-Timer | 114 px · passt · passt (8 Abschnitte) | M | Skizze |
 | **W3** | Testbildgenerator | 124 · 57 px · passt | S–M | – |
 | **W4** | NovaStar-Steuerung | 96 px · passt · passt | S | – |
@@ -301,9 +302,9 @@ Für jedes W-Paket gilt:
 1. **Erst messen, mit Inhalt,** bei 1024 × 600, 1366 × 768 und 1920 × 1080, Schublade zu und
    angeheftet – und die Messung als E2E-Schritt festhalten, der am alten Stand scheitert. Wo die
    Seite nicht scrollt, gibt es nichts zu tun.
-2. **W1, W2 und W5 beginnen mit einer Skizze** der Felder in den Stufen `breit` und `mittel` (SVG
-   in `docs/bilder/`, wie die beiden Bilder des Players) und der Freigabe durch Matthias. Bei W3
-   und W4 genügt die Beschreibung hier.
+2. **W2 und W5 beginnen mit einer Skizze** der Felder in den Stufen `breit` und `mittel` (SVG
+   in `docs/bilder/`, wie die Bilder des Players und des Video-Generators) und der Freigabe durch
+   Matthias. Bei W3 und W4 genügt die Beschreibung hier.
 3. **Raster als reines Modul** neben dem Werkzeug, mit Test – wie `video-player/layout.ts`. Die
    Felder stehen in jeder Stufe in derselben Reihenfolge; keine Höhen in Pixeln; kein `sm:` oder
    `lg:` für den Aufbau der Felder (die richten sich nach dem Fenster).
@@ -314,36 +315,6 @@ Für jedes W-Paket gilt:
    mit angehefteter Schublade); das Wichtige liegt ganz im Fenster; Listen scrollen in sich; bei
    700 × 600 eine Spalte, die scrollt; der Wechsel der Stufe baut nichts neu auf (Marke am
    Element, wie am `<video>` des Players).
-
-### W1 – Video-Generator
-
-**Heute:** `VideoGenerator.tsx` stapelt drei Karten in einer Seite, die als Ganzes scrollt:
-Hinzufügen und Storyboard (`Storyboard.tsx`) mit den Hinweisen des Plans, darunter die Vorschau
-(`PreviewCard.tsx`), darunter „Aufträge“. Mit zwölf Bildern ist die Seite bei 1366 × 768 um
-490 px zu hoch, selbst bei 1920 × 1080 um 169 px. Wer im Storyboard ordnet, sieht die Vorschau
-nicht; wer die Vorschau ansieht, sieht das gewählte Element nicht.
-
-**So:** drei Felder.
-
-- **Storyboard:** Kopf mit Anzahl und Gesamtdauer, „Hinzufügen“ (Bilder & Videos, Ordner) und der
-  Ansicht; der Inhalt scrollt in sich. Die Hinweise des Plans stehen als Fuß des Felds und
-  bleiben damit sichtbar.
-- **Vorschau** (die Bühne): Vorschau im Seitenverhältnis der Ausgabe, darunter ihre Bedienung;
-  so hoch wie ihr Inhalt (`kappen={false}`).
-- **Aufträge:** nur, wenn es welche gibt; höchstens drei Zeilen hoch, scrollt in sich – wie die
-  Import-Liste des Players.
-
-Vorschlag für das Raster, in der Skizze festzulegen: `breit` und `mittel` Storyboard links,
-rechts Vorschau über Aufträgen (wie Playlist und Bühne im Player); `schmal` Vorschau, Storyboard,
-Aufträge untereinander.
-
-**Nicht tun:** nichts an Plan, Rechenlauf und Store; die Schublade (Ausgabe, Vorgaben, Ton,
-Auswahl) bleibt. Paket B5 (Leerzustand nicht rot) passt dazu, ist aber ein eigener Pull Request.
-
-**Abnahme:** `e2e/video-generator.mjs` legt schon Medien an – dort oder in einem eigenen Skript:
-mit zwölf Elementen scrollt `tool-main` bei keiner der drei Größen; die Vorschau und das gewählte
-Element liegen gleichzeitig im Fenster; der Wechsel der Stufe baut die Live-Vorschau nicht neu
-auf.
 
 ### W2 – Stage-Timer
 
@@ -925,7 +896,6 @@ rechnen“. Offen:
 | **VG4** | Zwei offene Messungen: die 4:4:4-Zwischenstufe für ProRes- und HAP-Ziele (gemessen ist nur `yuv420p`) und der Neustart des Players an der Naht einer nahtlosen Schleife | S–M | erst messen |
 
 - **Später:** Schnitt auf den Takt der Musik, „ein Video je Ordner“.
-- **Die Oberfläche** (Storyboard und Vorschau gleichzeitig sichtbar) ist Paket W1.
 
 ### ST – Stream fürs Heimnetz (Heimkino-Box)
 
@@ -1346,7 +1316,10 @@ Entschieden – damit nichts neu gefragt wird:
 - **Rechner merken sich die Eingaben** (24. November 2026, „Rechner sollen sich die Eingaben
   merken“): K4 wie beschrieben, mit „Zurücksetzen“, nach K6.
 - **Arbeitsfläche: zuerst der Video-Generator** (24. November 2026, „Video-Generator als
-  Nächstes skizzieren“): W1 beginnt mit Messung und Skizze.
+  Nächstes skizzieren“): W1 beginnt mit Messung und Skizze. Die Skizze ist am 25. November 2026
+  freigegeben („Ja, freigeben“), mit drei Punkten über den Plan hinaus: eine Zeile je Auftrag
+  statt der Karten, das Zeitlineal im Fuß des Storyboards bei den Hinweisen, Sortieren, Mischen
+  und „Alle entfernen …“ im Menü „⋯“. Umgesetzt mit W1.
 - **DMX-Dip-Schalter: Adresse = Summe der eingeschalteten Werte** (16. November 2026, Rückmeldung
   von Matthias: Adresse 1 ist an den Geräten Schalter 1 an). Vorher rechnete der Rechner Summe + 1
   (alle aus = Adresse 1). Mit neun Schaltern reicht es bis 511; Adresse 512 braucht einen zehnten
@@ -1437,6 +1410,12 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   nach ✕ am laufenden Eintrag „Danach“; P9: ohne Zufall auch am Ende der Liste – mit Loop „Alle“
   der erste Eintrag, mit Loop „Aus“ hält der Player an) und der Bibliothek (P5: „Importieren“ und
   „⋯“ im Kopf, Suche, Kacheln nach Platz, Import-Liste unten, Löschen fragt);
+  der Video-Generator als Arbeitsfläche nach dem Muster des Players (W1, 25. November: Storyboard
+  links, rechts die Vorschau über den Aufträgen, mit zwölf Elementen scrollt die Seite bei keiner
+  der drei Größen – vorher bis 732 px zu hoch; das gewählte Element bleibt im Storyboard sichtbar;
+  Skizzen `docs/bilder/video-generator-layout-breit.svg` und `…-mittel.svg`, von Matthias
+  freigegeben mit drei Punkten: eine Zeile je Auftrag statt der Karten, das Zeitlineal im Fuß bei
+  den Hinweisen, Sortieren, Mischen und „Alle entfernen …“ im Menü „⋯“);
   Testtongenerator; neuer Aufbau von Testtongenerator und RTA; Rechenkerne mit Tests für sieben
   Rechner (K1: je Rechner `math.ts`, ohne sichtbare Änderung); die Stromlast zählt „Geräte pro
   Stromkreis“ am Drehstrom je Außenleiter (K7); Bausteine für die Rechner (K2: `NumField` umrandet

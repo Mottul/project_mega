@@ -23,6 +23,10 @@ const { app, page } = ctx
 const ffmpeg = findFfmpeg()
 const dir = mkdtempSync(join(tmpdir(), 'mottulbox-e2e-vgen-layout-'))
 const f = (name) => join(dir, name)
+// Bilder zum Ansehen (ein grüner Messtest zeigt nicht, ob etwas mitten im Feld schwebt):
+// VGEN_SHOTS=<Ordner> node e2e/video-generator-layout.mjs
+const shots = process.env.VGEN_SHOTS || null
+const shot = async (name) => shots && (await page.screenshot({ path: join(shots, `${name}.png`) }))
 
 /** Elf Fotos (quer, hoch, zwei kleine) und ein Clip mit Ton als zwölftes Element */
 function testmedien() {
@@ -262,22 +266,14 @@ try {
         await page.evaluate(() => {
           location.hash = '#/tool/video-generator'
         })
-        const hinzu = page.getByRole('button', { name: /Bilder & Videos/ })
-        await hinzu
-          .or(page.getByRole('button', { name: /Hinzufügen/ }))
-          .first()
-          .waitFor({
-            timeout: 15_000
-          })
+        const hinzu = page.getByRole('button', { name: /Hinzufügen/ })
+        await hinzu.waitFor({ timeout: 15_000 })
         await app.evaluate(({ dialog }, files) => {
           dialog.showOpenDialog = async () => ({ canceled: false, filePaths: files })
         }, dateien)
-        // heute ein Knopf im Feld, nach dem Umbau ein Eintrag im Menü „Hinzufügen“
-        if (await hinzu.isVisible()) await hinzu.click()
-        else {
-          await page.getByRole('button', { name: /Hinzufügen/ }).click()
-          await page.getByRole('menuitem', { name: /Bilder & Videos/ }).click()
-        }
+        // „Bilder & Videos …“ im Menü „Hinzufügen“ im Kopf des Storyboards (vor W1 ein Knopf)
+        await hinzu.click()
+        await page.getByRole('menuitem', { name: /Bilder & Videos/ }).click()
         assert.ok(
           await waitFor(async () => (await kacheln().count()) === 12, 30_000),
           `Kacheln: ${await kacheln().count()}`
@@ -286,8 +282,9 @@ try {
         assert.ok(
           await waitFor(() =>
             page
-              .getByText(/12 Elemente · 48 s|12 · 48 s/)
-              .first()
+              .getByTestId('feld-storyboard')
+              .locator('[data-pane-kopf]')
+              .getByText('12 · 48 s', { exact: true })
               .isVisible()
           ),
           'Analyse nicht fertig (Gesamtdauer fehlt)'
@@ -314,6 +311,7 @@ try {
             await waehle(11)
             await schublade(offen, w)
             await sleep(700)
+            await shot(`${w}x${h}-${offen ? 'an' : 'zu'}`)
             allesImBild(await mass())
           }
         ]
@@ -349,6 +347,7 @@ try {
         assert.equal(await page.getByTestId('feld-auftraege').count(), 0, 'Feld ohne Auftrag')
         await gescheiterteAuftraege(4)
         await sleep(500)
+        await shot('1024x600-auftraege')
         const m = await mass()
         keinScrollen(m)
         const liste = await page.evaluate(() => {
@@ -388,6 +387,7 @@ try {
       '700 × 600: eine Spalte, die Arbeitsfläche scrollt, Vorschau vor Storyboard',
       async () => {
         await fenster(700, 600)
+        await shot('700x600')
         const m = await mass()
         assert.equal(m.stufe, 'schmal')
         const scrollt = [m.arbeitsflaeche, m.main].some((s) => s && s.sh > s.ch + 1)

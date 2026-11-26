@@ -1,127 +1,174 @@
-// Aufträge des Video-Generators: Fortschritt in Stufen, Abbrechen, danach in die
-// Player-Bibliothek übernehmen, in der Medien-Info prüfen oder im Ordner zeigen.
+// Feld „Aufträge“ des Video-Generators (Arbeitsfläche, components/WorkArea.tsx) – nur, solange es
+// Aufträge gibt. Eine Zeile je Auftrag: Name, was gerade ist (die Stufe, „Fertig“, der Fehler
+// selbst), Fortschritt und die Knöpfe – Abbrechen, danach in die Player-Bibliothek übernehmen, in
+// der Medien-Info prüfen, im Ordner zeigen. Format, Größe, Bildrate, Stücke und Warnungen stehen
+// im Tooltip der Zeile (layout.ts, auftragZeile). Höchstens drei Zeilen hoch, mehr scrollen in
+// sich – wie die Import-Liste des Players.
+//
+// Eine Zeile statt der früheren Karten (78 bis 94 px je Auftrag) hat Matthias am 25. November 2026
+// freigegeben: Mit den Karten passten Vorschau und Aufträge bei 1024 × 600 nicht übereinander.
 
 import { FileCheck, FolderOpen, ListPlus, X } from 'lucide-react'
-import { Badge, type BadgeTone } from '@renderer/components/ui/badge'
+import { Pane } from '@renderer/components/WorkArea'
 import { Button } from '@renderer/components/ui/button'
 import { Progress } from '@renderer/components/ui/progress'
+import { STATUS } from '@renderer/components/ui/status'
 import { api } from '@renderer/lib/api'
-import { rateText } from '@shared/convertPlan'
-import type { JobStatus, VgenJob } from '@shared/types'
-import { basename, fmtDuration } from './presets'
+import { cn } from '@renderer/lib/utils'
+import type { VgenJob } from '@shared/types'
+import { auftragAktiv, auftraegeZahl, auftragName, auftragZeile, type AuftragTon } from './layout'
 
-const STATUS: Record<JobStatus, { label: string; tone: BadgeTone }> = {
-  queued: { label: 'Wartet', tone: 'neutral' },
-  probing: { label: 'Analyse', tone: 'info' },
-  running: { label: 'Rechnet', tone: 'info' },
-  done: { label: 'Fertig', tone: 'success' },
-  error: { label: 'Fehler', tone: 'danger' },
-  canceled: { label: 'Abgebrochen', tone: 'warning' }
+/** Schriftfarbe der Zustandsangabe – laufend und wartend ruhig, Ergebnisse in ihrer Statusstufe */
+const TON: Record<AuftragTon, string> = {
+  neutral: 'text-muted-foreground',
+  info: STATUS.info.className,
+  success: STATUS.success.className,
+  warning: STATUS.warning.className,
+  danger: STATUS.danger.className
 }
 
-export function JobRow({
+/** Symbol vor der Zustandsangabe – nur für Ergebnisse (fertig, mit Hinweis, Fehler, abgebrochen) */
+const SYMBOL: Partial<Record<AuftragTon, (typeof STATUS)['success']['icon']>> = {
+  success: STATUS.success.icon,
+  warning: STATUS.warning.icon,
+  danger: STATUS.danger.icon
+}
+
+/** Knöpfe der Zeile: so hoch wie die Zeile (24 px) */
+const ZEILEN_KNOPF = 'size-6 shrink-0 text-muted-foreground hover:text-foreground'
+
+export function AuftraegeFeld({
+  jobs,
+  onCheck,
+  onToPlayer,
+  onClearFinished
+}: {
+  /** neueste zuerst */
+  jobs: VgenJob[]
+  /** null = in der Kundenansicht ausgeblendet (Sprung in ein anderes Werkzeug) */
+  onCheck: ((job: VgenJob) => void) | null
+  onToPlayer: (job: VgenJob) => void
+  onClearFinished: () => void
+}): JSX.Element {
+  const fertige = jobs.some((j) => !auftragAktiv(j))
+  return (
+    <Pane
+      area="auftraege"
+      testId="feld-auftraege"
+      title="Aufträge"
+      count={auftraegeZahl(jobs)}
+      scroll={false}
+      actions={
+        fertige ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-muted-foreground hover:text-foreground"
+            onClick={onClearFinished}
+          >
+            Fertige entfernen
+          </Button>
+        ) : undefined
+      }
+    >
+      {/* 3 × 24 px + 2 × 4 px Abstand – ein vierter Auftrag scrollt in der Liste */}
+      <ul
+        data-testid="auftraege-liste"
+        aria-label="Aufträge"
+        className="max-h-20 min-h-0 space-y-1 overflow-y-auto"
+      >
+        {jobs.map((job) => (
+          <JobRow
+            key={job.id}
+            job={job}
+            onCheck={onCheck ? () => onCheck(job) : null}
+            onToPlayer={() => onToPlayer(job)}
+          />
+        ))}
+      </ul>
+    </Pane>
+  )
+}
+
+function JobRow({
   job,
   onCheck,
   onToPlayer
 }: {
   job: VgenJob
-  /** null = in der Kundenansicht ausgeblendet (Sprung in ein anderes Werkzeug) */
   onCheck: (() => void) | null
   onToPlayer: () => void
 }): JSX.Element {
-  const meta = STATUS[job.status]
-  const active = job.status === 'queued' || job.status === 'probing' || job.status === 'running'
-  const facts = [
-    job.formatLabel,
-    `${job.width}×${job.height}`,
-    `${rateText(job.fps)} fps`,
-    job.durationSec !== null ? fmtDuration(job.durationSec) : null,
-    job.encoder
-  ]
-    .filter(Boolean)
-    .join(' · ')
-  const pieces =
-    job.cachedPieces + job.renderedPieces > 0
-      ? `${job.renderedPieces} Stücke gerechnet, ${job.cachedPieces} aus dem Zwischenspeicher`
-      : null
-  const warnings = job.hints.filter((h) => h.level !== 'info')
-
+  const { zustand, ton, info } = auftragZeile(job)
+  const Zeichen = SYMBOL[ton]
+  const aktiv = auftragAktiv(job)
   return (
-    <div className="rounded-md border border-border p-3">
-      <div className="flex items-center gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium" title={job.outputPath}>
-            {basename(job.outputPath)}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">{facts}</p>
-          {active && <p className="text-xs text-muted-foreground">{job.stageText}</p>}
-          {job.status === 'done' && pieces && (
-            <p className="text-xs text-muted-foreground">{pieces}</p>
-          )}
-        </div>
-        <Badge tone={meta.tone}>{meta.label}</Badge>
-        {active && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Abbrechen"
-            title="Abbrechen"
-            onClick={() => void api.videoGen.cancel(job.id)}
-          >
-            <X className="size-4" />
-          </Button>
-        )}
-        {job.status === 'done' && (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="In Player-Bibliothek übernehmen"
-              title="In Player-Bibliothek übernehmen"
-              onClick={onToPlayer}
-            >
-              <ListPlus className="size-4" />
-            </Button>
-            {onCheck && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="In Medien-Info prüfen"
-                title="In Medien-Info prüfen"
-                onClick={onCheck}
-              >
-                <FileCheck className="size-4" />
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Im Ordner zeigen"
-              title="Im Ordner zeigen"
-              onClick={() => void api.showItemInFolder(job.outputPath)}
-            >
-              <FolderOpen className="size-4" />
-            </Button>
-          </>
-        )}
-      </div>
-      {active && (
+    <li className="flex h-6 items-center gap-2 text-xs" title={info}>
+      <span className="min-w-0 max-w-[50%] shrink truncate font-medium">{auftragName(job)}</span>
+      <span className={cn('flex min-w-0 flex-1 items-center gap-1', TON[ton])}>
+        {Zeichen && <Zeichen className="size-3.5 shrink-0" />}
+        <span className="truncate">{zustand}</span>
+      </span>
+      {aktiv && (
         <Progress
           value={job.progress}
           indeterminate={job.status !== 'running' && job.progress === 0}
-          className="mt-2"
+          className="h-1.5 w-16 shrink-0"
         />
       )}
-      {job.status === 'error' && job.error && (
-        <p className="mt-2 text-xs text-danger">{job.error}</p>
+      {job.status === 'running' && (
+        <span className="w-9 shrink-0 text-right tabular-nums text-muted-foreground">
+          {Math.round(job.progress * 100)} %
+        </span>
       )}
-      {job.status === 'done' && warnings.length > 0 && (
-        <ul className="mt-2 space-y-0.5 text-xs text-warning">
-          {warnings.map((h, i) => (
-            <li key={`${h.id}-${i}`}>{h.text}</li>
-          ))}
-        </ul>
+      {aktiv && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={ZEILEN_KNOPF}
+          aria-label="Abbrechen"
+          title="Abbrechen"
+          onClick={() => void api.videoGen.cancel(job.id)}
+        >
+          <X className="size-3.5" />
+        </Button>
       )}
-    </div>
+      {job.status === 'done' && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={ZEILEN_KNOPF}
+            aria-label="In Player-Bibliothek übernehmen"
+            title="In Player-Bibliothek übernehmen"
+            onClick={onToPlayer}
+          >
+            <ListPlus className="size-3.5" />
+          </Button>
+          {onCheck && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={ZEILEN_KNOPF}
+              aria-label="In Medien-Info prüfen"
+              title="In Medien-Info prüfen"
+              onClick={onCheck}
+            >
+              <FileCheck className="size-3.5" />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={ZEILEN_KNOPF}
+            aria-label="Im Ordner zeigen"
+            title="Im Ordner zeigen"
+            onClick={() => void api.showItemInFolder(job.outputPath)}
+          >
+            <FolderOpen className="size-3.5" />
+          </Button>
+        </>
+      )}
+    </li>
   )
 }

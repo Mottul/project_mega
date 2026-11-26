@@ -18,6 +18,7 @@ const all = [
   'atem',
   'rta',
   'video-generator',
+  'video-generator-layout',
   'projektdatei',
   'kabelverlauf',
   'pdf',

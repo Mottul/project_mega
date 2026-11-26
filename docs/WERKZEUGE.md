@@ -670,6 +670,16 @@ Konvertierungen (Kontrolle per ffprobe).
 Bilder und Videos zu **einem** Video – Foto-Diashow (Gala, Hochzeit) oder Sponsor-Loop für die
 LED-Wand.
 
+- **Arbeitsfläche** nach dem Muster des Video-Players: links das **Storyboard**, rechts die
+  **Vorschau**, darunter die **Aufträge**, solange es welche gibt. Die Seite scrollt nicht – auch
+  mit vielen Elementen nicht bei 1024 × 600, 1366 × 768 (auch mit angehefteter Schublade) und
+  1920 × 1080. Das Storyboard scrollt in sich, das gewählte Element bleibt darin sichtbar, auch
+  wenn die Schublade aufgeht oder es über das Zeitlineal gewählt wird. Im Kopf des Storyboards
+  Anzahl und Gesamtdauer („12 · 48 s“), „Hinzufügen“ (Bilder & Videos, Ordner), Kacheln oder
+  Liste und „⋯“ (Sortieren, Mischen, „Alle entfernen …“ mit Rückfrage); im Fuß das Zeitlineal und
+  die Hinweise, die beim Scrollen stehen bleiben. Dateien lassen sich ins ganze Feld ziehen
+  (gestrichelter Rahmen), über einer Kachel losgelassen an diese Stelle. In schmalen Fenstern
+  (unter 760 px Breite) stehen Vorschau, Storyboard und Aufträge untereinander.
 - **Elemente:** Fotos (JPG, PNG, WebP, BMP, TIFF), Videos und GIFs (als Schleife über die
   Standzeit) per Ziehen – auch an eine bestimmte Stelle –, Dialog oder Ordner. Fotos werden mit
   ihrer EXIF-Drehung gelesen. Fehlt eine Datei, ist das Element rot und „Video erzeugen“ gesperrt.
@@ -702,7 +712,9 @@ LED-Wand.
   **„Standzeit an Musik anpassen“** wählt die Standzeit der Bilder so, dass das Video genau so lang
   wird wie die Musik (Bilder mit eigener Standzeit und Videos bleiben, bei Schleife läuft die Musik
   genau einmal je Durchlauf).
-- **Vorschau** (Karte unter dem Storyboard):
+- **Vorschau** (Feld rechts; im Kopf die Art – Live, Rahmen, Gerechnet, in schmaleren Fenstern
+  nur als Symbol – und „Vorschau rechnen“; fehlt die Höhe, wird das Bild kleiner, Transport und
+  Ausschnitt bleiben ganz sichtbar):
   - **Live** spielt das ganze Projekt in der App ab, ohne zu rechnen – Zeitachse, Ken-Burns-Fahrt,
     Einpassen und Musik (Titelfolge, Blenden, Absenken) wie in der Datei; die Übergänge sind in CSS
     nachgebaut (am gebündelten ffmpeg vermessen). Wählt man ein Element, springt der Abspielkopf
@@ -722,9 +734,12 @@ LED-Wand.
   (auch bei 29,97 fps), der Speicherbedarf bleibt unabhängig von der Länge. Vorher wird der
   Platz für die Zwischendateien geprüft (etwa 320 MB je Minute 1080p); der Zwischenspeicher hat
   eine Obergrenze und lässt sich leeren.
-- **Aufträge** mit Fortschritt in Stufen (Analyse, Elemente, Übergänge, Ton, Kodieren) und
-  Abbrechen (eine halbe Datei bleibt nie liegen); danach „In Player-Bibliothek übernehmen“,
-  „In Medien-Info prüfen“, „Im Ordner zeigen“. Der Startbildschirm zeigt „rechnet · x %“.
+- **Aufträge** (Feld unter der Vorschau) – eine Zeile je Auftrag: Name, Stufe (Analyse,
+  Elemente, Übergänge, Ton, Kodieren) mit Fortschritt bzw. „Fertig“ oder der Fehler selbst;
+  Format, Größe, Bildrate, Stücke und Warnungen stehen im Tooltip. Höchstens drei Zeilen hoch,
+  mehr scrollen in sich; „Fertige entfernen“ im Kopf. Abbrechen jederzeit (eine halbe Datei
+  bleibt nie liegen); danach „In Player-Bibliothek übernehmen“, „In Medien-Info prüfen“, „Im
+  Ordner zeigen“. Der Startbildschirm zeigt „rechnet · x %“.
 - Das Projekt wird gemerkt. Aufträge teilen sich die Warteschlange (und GPU-Sitzungen) mit dem
   Video-Konverter.
 

@@ -36,16 +36,22 @@ Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit S
      Öffnen der Schublade alles neu auf. Listen scrollen im Feld (`Pane`, `scroll`), die Seite
      nie; ein Feld, das so hoch wie sein Inhalt sein soll, bekommt `kappen={false}`. Im Kopf
      eines Felds (`actions`) höchstens zwei niedrige Knöpfe (`h-6`, sonst wächst der Kopf über
-     40 px) und das Menü „⋯“ aus `components/ui/menu.tsx`; Vorbild für ein Feld mit Liste
+     40 px) und das Menü „⋯“ aus `components/ui/menu.tsx`; eine Knopfgruppe im Kopf als
+     `Segmented` mit `size="sm"` (so hoch wie `h-6`). Vorbild für ein Feld mit Liste
      (Griff, Pfeil-Knöpfe, laufender Eintrag bleibt sichtbar): `video-player/Playlist.tsx`; für
      ein Feld mit Kacheln nach Platz (`repeat(auto-fill, minmax(…, 1fr))`), Suche, die beim
      Scrollen stehen bleibt, Dateien ins ganze Feld ziehen (`Pane` mit `ablage` aus
-     `lib/useDateiAblage.ts`) und einer Auftragsliste als Fuß (`footer`, nur solange es Aufträge
-     gibt): `video-player/Library.tsx`. Abnahme nach
-     `e2e/player-layout.mjs` (kein Scrollen bei 1024 × 600 – dort schwebt die Schublade, auch
-     offen –, 1366 × 768 auch mit angehefteter Schublade, 1920 × 1080; Wichtiges im Bild; schmal
-     eine Spalte). Werkzeuge, die man wie ein Dokument liest (Listen, Formulare), scrollen weiter
-     als Seite.
+     `lib/useDateiAblage.ts`; ein Ziel im Feld, das selbst annimmt, ruft `preventDefault()` und
+     lässt das Ereignis weiterlaufen) und einer Auftragsliste als Fuß (`footer`, nur solange es
+     Aufträge gibt): `video-player/Library.tsx`. Ein ganzes Feld, das nur manchmal da ist (die
+     Aufträge des Video-Generators): als letztes Kind der `WorkArea` und ein Raster ohne seinen
+     Bereich, solange es fehlt (`vgenRaster` in `video-generator/layout.ts`); ein Bild über
+     Bedienelementen in einem Rahmen, der nur schrumpft (`video-generator/Rahmen.tsx`, wie die
+     Bühne des Players). Abnahme nach `e2e/player-layout.mjs` bzw.
+     `e2e/video-generator-layout.mjs` (kein Scrollen bei 1024 × 600 – dort schwebt die Schublade,
+     auch offen –, 1366 × 768 auch mit angehefteter Schublade, 1920 × 1080; Wichtiges im Bild;
+     schmal eine Spalte). Werkzeuge, die man wie ein Dokument liest (Listen, Formulare), scrollen
+     weiter als Seite.
    - **Bild-Ausgabe auf einen Monitor** (wie Testbild, Player, Timer): in der Leiste
      `useOutputTarget()` + `OutputControls` (`components/OutputControl.tsx`: Monitore und „Als
      Fenster“, Starten/Beenden, „Monitor wechseln“), im main `createOutputWindow()`

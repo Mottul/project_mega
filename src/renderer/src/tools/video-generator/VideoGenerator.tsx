@@ -2,52 +2,43 @@
 // Standzeiten, Übergänge, Ken Burns, Zielgröße, Musik, nahtlose Schleife. Der Plan
 // (shared/videoGenPlan) läuft hier für Gesamtdauer, Lineal und Hinweise genauso wie im main,
 // wo gerechnet wird (Stücke mit Zwischenspeicher, gemeinsame Warteschlange mit dem Konverter).
+//
+// Die Felder Storyboard, Vorschau und Aufträge stehen in einer Arbeitsfläche
+// (components/WorkArea.tsx, Raster in layout.ts): Wer im Storyboard ordnet, sieht die Vorschau –
+// das Storyboard scrollt in sich, die Seite nicht. Hier stehen Zustand und Befehle, die Felder
+// liegen daneben (StoryboardFeld, PreviewPane, JobList).
 
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  FolderOpen,
-  FolderSearch,
-  LayoutGrid,
-  List,
-  Loader2,
-  Play,
-  Shuffle,
-  Trash2,
-  XCircle
-} from 'lucide-react'
+import { Loader2, Play, XCircle } from 'lucide-react'
+import { Alert } from '@renderer/components/ui/alert'
 import { Button } from '@renderer/components/ui/button'
-import { Card } from '@renderer/components/ui/card'
-import { Segmented } from '@renderer/components/ui/segmented'
-import { Select } from '@renderer/components/ui/select'
-import { STATUS } from '@renderer/components/ui/status'
 import { ToolBar, ToolShell } from '@renderer/components/ToolShell'
+import { WorkArea } from '@renderer/components/WorkArea'
 import { FORMAT_OPTIONS } from './presets'
 import { useKiosk } from '@renderer/launcher/kiosk'
 import { api } from '@renderer/lib/api'
 import { useHandoff } from '@renderer/lib/handoff'
 import { toast } from '@renderer/lib/toast'
 import { usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
-import { cn } from '@renderer/lib/utils'
 import { inDenPlayer } from '@renderer/lib/inDenPlayer'
 import { rateText } from '@shared/convertPlan'
 import type { ConvertCapabilities, VgenJob } from '@shared/types'
 import { planVideoGen, type VgenCaps } from '@shared/videoGenPlan'
 import { AudioPanel, DefaultsPanel, OutputPanel, SelectionPanel } from './Inspector'
-import { JobRow } from './JobList'
+import { AuftraegeFeld } from './JobList'
+import { vgenRaster } from './layout'
 import { useVgenMeta } from './meta'
 import { moveMany, nudge, shuffle, sortItems, type SortKey } from './order'
 import { MEDIA_FILTER_EXTENSIONS, fmtDuration, kindForPath } from './presets'
-import { PreviewCard } from './PreviewCard'
-import { Storyboard } from './Storyboard'
+import { PreviewPane } from './PreviewPane'
+import { StoryboardFeld } from './StoryboardFeld'
 import { useVideoGen } from './store'
 
 const viewCodec: Codec<'tiles' | 'list'> = {
   parse: (raw) => (raw === 'tiles' || raw === 'list' ? raw : null),
   format: (v) => v
 }
-
-const LEVEL_STYLE = { error: STATUS.danger, warning: STATUS.warning, info: STATUS.info }
 
 export function VideoGenerator(): JSX.Element {
   const navigate = useNavigate()
@@ -59,7 +50,6 @@ export function VideoGenerator(): JSX.Element {
   const [caps, setCaps] = useState<ConvertCapabilities | null>(null)
   const [jobs, setJobs] = useState<Record<string, VgenJob>>({})
   const [view, setView] = usePersistentState<'tiles' | 'list'>('vgen:view', 'tiles', viewCodec)
-  const [dragOver, setDragOver] = useState(false)
   const [busy, setBusy] = useState<'adding' | 'starting' | null>(null)
   const elements = project.elements
 
@@ -165,6 +155,20 @@ export function VideoGenerator(): JSX.Element {
     useVideoGen.getState().setElements(nudge(elements, selected, dir))
   }
 
+  function mischen(): void {
+    useVideoGen.getState().setElements(shuffle(elements, Math.floor(Math.random() * 2 ** 31)))
+  }
+
+  async function alleEntfernen(): Promise<void> {
+    const ok = await api.confirm({
+      message: `Alle ${elements.length} Elemente entfernen?`,
+      detail: 'Die Dateien selbst bleiben unverändert.',
+      confirmLabel: 'Entfernen',
+      danger: true
+    })
+    if (ok) useVideoGen.getState().clearElements()
+  }
+
   async function start(): Promise<void> {
     setBusy('starting')
     try {
@@ -266,210 +270,67 @@ export function VideoGenerator(): JSX.Element {
         </>
       }
       main={
-        <div className="space-y-4 p-6">
+        <div className="flex h-full min-h-0 flex-col">
           {ffmpegMissing && (
-            <Card className="flex items-start gap-3 border-danger/50 p-4">
-              <XCircle className="mt-0.5 size-5 shrink-0 text-danger" />
-              <p className="text-sm">
-                ffmpeg wurde nicht gefunden – ohne ffmpeg lässt sich kein Video erzeugen.
+            <div className="shrink-0 px-3 pt-3">
+              <Alert tone="danger" icon={XCircle} title="ffmpeg wurde nicht gefunden">
+                Ohne ffmpeg lässt sich kein Video erzeugen.
                 {caps?.error ? ` (${caps.error})` : ''}
-              </p>
-            </Card>
-          )}
-
-          <Card
-            onDragOver={(e) => {
-              e.preventDefault()
-              setDragOver(true)
-            }}
-            onDragLeave={(e) => e.currentTarget === e.target && setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault()
-              setDragOver(false)
-              const paths = Array.from(e.dataTransfer.files)
-                .map((f) => api.pathForFile(f))
-                .filter(Boolean)
-              if (paths.length) void addPaths(paths, null)
-            }}
-            className={cn(
-              'space-y-4 p-5 transition-colors',
-              dragOver && 'border-primary bg-primary/5'
-            )}
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="secondary" onClick={() => void addFiles()} disabled={busy !== null}>
-                <FolderSearch className="size-4" /> Bilder & Videos
-              </Button>
-              <Button variant="secondary" onClick={() => void addFolder()} disabled={busy !== null}>
-                <FolderOpen className="size-4" /> Ordner
-              </Button>
-              {elements.length > 1 && (
-                <>
-                  <Select
-                    aria-label="Sortieren"
-
-                    value=""
-                    onChange={(e) => e.target.value && sortBy(e.target.value as SortKey)}
-                  >
-                    <option value="">Sortieren …</option>
-                    <option value="name">nach Name</option>
-                    <option value="date">nach Aufnahmedatum</option>
-                    <option value="type">nach Typ</option>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    aria-label="Mischen"
-                    title="Mischen (würfelt die Liste einmal sichtbar um)"
-                    onClick={() =>
-                      useVideoGen
-                        .getState()
-                        .setElements(shuffle(elements, Math.floor(Math.random() * 2 ** 31)))
-                    }
-                  >
-                    <Shuffle className="size-4" />
-                  </Button>
-                </>
-              )}
-              {elements.length > 0 && (
-                <>
-                  <Segmented
-                    label="Ansicht"
-                    value={view}
-                    onChange={setView}
-                    options={[
-                      { value: 'tiles', label: 'Kacheln', Icon: LayoutGrid, iconOnly: true },
-                      { value: 'list', label: 'Liste', Icon: List, iconOnly: true }
-                    ]}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Alle entfernen"
-                    title="Alle entfernen"
-                    onClick={() =>
-                      void api
-                        .confirm({
-                          message: `Alle ${elements.length} Elemente entfernen?`,
-                          detail: 'Die Dateien selbst bleiben unverändert.',
-                          confirmLabel: 'Entfernen',
-                          danger: true
-                        })
-                        .then((ok) => ok && useVideoGen.getState().clearElements())
-                    }
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </>
-              )}
-              <div className="flex-1" />
-              {elements.length > 0 && (
-                <span className="text-sm tabular-nums text-muted-foreground">
-                  {elements.length} {elements.length === 1 ? 'Element' : 'Elemente'}
-                  {!loading.length && plan.totalFrames > 0
-                    ? ` · ${fmtDuration(plan.durationSec)}`
-                    : ''}
-                </span>
-              )}
+              </Alert>
             </div>
-
-            {busy === 'adding' && (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> Dateien werden eingelesen …
-              </p>
-            )}
-
-            {elements.length === 0 ? (
-              <p className="rounded-md border border-dashed border-border px-3 py-8 text-center text-sm text-muted-foreground">
-                Bilder, Videos oder Ordner hierher ziehen – oder oben hinzufügen.
-                <br />
-                Ziel: {project.output.width} × {project.output.height},{' '}
-                {rateText(project.output.fps)} fps
-              </p>
-            ) : (
-              <Storyboard
+          )}
+          <div className="min-h-0 flex-1">
+            {/* Reihenfolge der Felder immer gleich – wo sie stehen, sagt das Raster. „Aufträge“
+            als letztes: Kommt das Feld dazu, bleiben Storyboard und Vorschau, wie sie sind. */}
+            <WorkArea raster={vgenRaster(jobList.length > 0)}>
+              <StoryboardFeld
                 elements={elements}
                 plan={plan}
                 meta={meta}
                 selected={selected}
                 view={view}
-                loop={plan.loop}
+                onView={setView}
+                output={project.output}
+                loading={loading.length}
+                hinweise={shownHints}
+                adding={busy === 'adding'}
+                busy={busy !== null}
+                onAddFiles={() => void addFiles()}
+                onAddFolder={() => void addFolder()}
+                onAddPaths={(paths, at) => void addPaths(paths, at)}
+                onSort={sortBy}
+                onShuffle={mischen}
+                onClear={() => void alleEntfernen()}
                 onSelect={(ids) => useVideoGen.getState().select(ids)}
                 onMove={(ids, beforeId) =>
                   useVideoGen.getState().setElements(moveMany(elements, ids, beforeId))
                 }
-                onInsertFiles={(paths, at) => void addPaths(paths, at)}
                 onRemove={(ids) => useVideoGen.getState().remove(ids)}
                 onNudge={onNudge}
               />
-            )}
-
-            {loading.length > 0 && (
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="size-3 animate-spin" /> Analyse läuft ({loading.length} offen) …
-              </p>
-            )}
-            {shownHints.length > 0 && (
-              <ul className="space-y-1">
-                {shownHints.map((h, i) => {
-                  const st = LEVEL_STYLE[h.level]
-                  return (
-                    <li
-                      key={`${h.id}-${i}`}
-                      className={cn('flex items-start gap-2 text-xs', st.className)}
-                    >
-                      <st.icon className="mt-0.5 size-3.5 shrink-0" />
-                      <button
-                        type="button"
-                        className="text-left hover:underline disabled:no-underline"
-                        disabled={!h.elementId}
-                        onClick={() => h.elementId && useVideoGen.getState().select([h.elementId])}
-                      >
-                        {h.text}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </Card>
-
-          {plan.totalFrames > 0 && (
-            <PreviewCard
-              project={project}
-              plan={plan}
-              meta={meta}
-              single={single ?? null}
-              canRender={ready}
-              onKenBurns={(id, kenBurns) =>
-                useVideoGen.getState().updateElements([id], { kenBurns })
-              }
-              onRange={(id, inSec, outSec) =>
-                useVideoGen.getState().updateElements([id], { inSec, outSec })
-              }
-            />
-          )}
-
-          {jobList.length > 0 && (
-            <Card className="space-y-3 p-5">
-              <div className="flex items-center gap-2">
-                <p className="flex-1 text-sm font-medium">Aufträge</p>
-                {jobList.some((j) => ['done', 'error', 'canceled'].includes(j.status)) && (
-                  <Button variant="ghost" size="sm" onClick={() => void clearFinished()}>
-                    Fertige entfernen
-                  </Button>
-                )}
-              </div>
-              {jobList.map((job) => (
-                <JobRow
-                  key={job.id}
-                  job={job}
-                  onCheck={locked ? null : () => showInMediaInfo(job.outputPath)}
-                  onToPlayer={() => void toPlayer(job)}
+              <PreviewPane
+                project={project}
+                plan={plan}
+                meta={meta}
+                single={single ?? null}
+                canRender={ready}
+                onKenBurns={(id, kenBurns) =>
+                  useVideoGen.getState().updateElements([id], { kenBurns })
+                }
+                onRange={(id, inSec, outSec) =>
+                  useVideoGen.getState().updateElements([id], { inSec, outSec })
+                }
+              />
+              {jobList.length > 0 && (
+                <AuftraegeFeld
+                  jobs={jobList}
+                  onCheck={locked ? null : (job) => showInMediaInfo(job.outputPath)}
+                  onToPlayer={(job) => void toPlayer(job)}
+                  onClearFinished={() => void clearFinished()}
                 />
-              ))}
-            </Card>
-          )}
+              )}
+            </WorkArea>
+          </div>
         </div>
       }
     />
