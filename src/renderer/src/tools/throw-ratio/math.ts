@@ -7,7 +7,8 @@ export const ASPECTS: { key: string; label: string; val: number }[] = [
   { key: '4:3', label: '4 : 3', val: 4 / 3 },
   { key: '1:1', label: '1 : 1', val: 1 },
   { key: '21:9', label: '21 : 9', val: 21 / 9 },
-  { key: '2.35:1', label: '2,35 : 1 (Cinemascope)', val: 2.35 }
+  // „Cinemascope“ sagt das ⓘ: Der Knopf bleibt so kurz wie die übrigen
+  { key: '2.35:1', label: '2,35 : 1', val: 2.35 }
 ]
 
 /** Seitenverhältnis (Breite ÷ Höhe) eines Eintrags aus `ASPECTS`; unbekannt -> 16 : 9. */

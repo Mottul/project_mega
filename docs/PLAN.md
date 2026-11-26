@@ -176,18 +176,17 @@ ohne Tastatur):
 | Kameraobjektiv | passt: 610 px (vor K6 1071, +414) | Kamera 50 zugeklappt, Motiv 512 offen (offen 1064; vor K6 423 und 601) | Sensor (8) (vor K6 auch Telekonverter (4)) | K6 erledigt (25. November 2026) |
 | Stromlast & Absicherung | passt: 508 px (vor K5 929, +272) | Last 362 offen, Geräte je Stromkreis 50 zugeklappt (offen 524; vor K5 315 und 519) | – (vor K5 Anschluss (2), Absicherung (4), Auslastung (2)) | Pilot (K5, 24. November 2026), Vorbild für K6 |
 | Timecode-Rechner | passt: 569 px (vor K6 749, +92) | Umrechnen 461 offen, Dauer 61 zugeklappt (offen 927; vor K6 321 und 381) | – (vor K6 Bildrate (10)) | K6 erledigt (25. November 2026) |
-| Beamer-Lumen | 741 px (+84) | Projektion 423, Vorhandener Beamer 271 | Umgebungslicht (4) | K6 |
-| Audio-Delay & SPL | 695 px (+38) | Delay 367, Pegel über Distanz 281 | – | K6 |
-| Projektionsverhältnis | passt | Leinwand 337, Objektiv 171 | Seitenverhältnis (6) | K6, nur die Liste |
+| Beamer-Lumen | passt: 558 px (vor K6 741, +84) | Projektion 460 offen, Vorhandener Beamer 50 zugeklappt (offen 758; vor K6 423 und 271) | – (vor K6 Umgebungslicht (4)) | K6 erledigt (25. November 2026) |
+| Audio-Delay & SPL | passt: 476 px (vor K6 695, +38) | Delay 378 offen, Pegel über Distanz 50 zugeklappt (offen 718; vor K6 367 und 281) | – | K6 erledigt (25. November 2026) |
+| Projektionsverhältnis | passt: 631 px (vor K6 556) | Leinwand 413, Objektiv 171 (vor K6 337 und 171) | – (vor K6 Seitenverhältnis (6)) | K6 erledigt (25. November 2026), nur die Liste |
 | DMX-Dip-Schalter | passt | eine (287; vor K3 mit der Zeile „Adresse“ 389) | – | nichts |
 | Kreisrechner | passt | eine (267) | – | nichts |
 
-**Wo die Antwort steht:** In den Rechnern steht das hervorgehobene Ergebnis unter den Feldern –
-außer in der Stromlast, die seit K5 die Antwort über die Felder stellt (vorher endete „Max.
-Geräte“ bei 757 px von 710), und in Rigging, Kameraobjektiv und Timecode seit K6 (vorher lagen
-„Kraft je Strang“ und der Bildausschnitt unter dem Rand des Bildschirms, Unterkante bei 795 und
-797 px). Bei Audio-Delay („Pegel in Ziel-Distanz“) liegt es halb unter dem Rand. Mit offener
-Tastatur bleibt noch weniger: Wer tippt, sieht die Antwort nicht – am Gerät zu prüfen.
+**Wo die Antwort steht:** In jeder Karte mit eigener Antwort steht das hervorgehobene Ergebnis
+über den Feldern – in der Stromlast seit K5 (vorher endete „Max. Geräte“ bei 757 px von 710), in
+den übrigen Rechnern seit K6 (vorher lagen „Kraft je Strang“ und der Bildausschnitt unter dem
+Rand des Bildschirms, Unterkante bei 795 und 797 px, „Pegel in Ziel-Distanz“ halb). Ob sie mit
+offener Tastatur sichtbar bleibt, ist am Gerät zu prüfen.
 
 ## So wird ein Paket umgesetzt
 
@@ -449,14 +448,13 @@ Vor jedem Schritt den Skill `rechner-pwa` lesen.
 
 Am Code geprüft am 13. November 2026, die Maße am 14. November; vor jedem Schritt erst nachsehen,
 ob die Stelle noch so aussieht. Die Nummern stammen aus dem ersten Plan (1 ist mit K1 erledigt,
-13 mit K2, 2, 4, 5, 7, 8, 9 und 14 mit K3, 3, 10, 12, 15 und 16 mit dem Testtongenerator, 18
-mit K6), damit Verweise darauf gültig bleiben.
+13 mit K2, 2, 4, 5, 7, 8, 9 und 14 mit K3, 3, 10, 12, 15 und 16 mit dem Testtongenerator, 17
+und 18 mit K6), damit Verweise darauf gültig bleiben.
 
 | Nr. | Befund | Fundstelle | Paket |
 | --- | ------ | ---------- | ----- |
-| 6 | Auswahl aus wenigen Möglichkeiten ist mal eine Liste (zwei Tipps, Optionen verdeckt), mal eine Knopfgruppe: im RTA die Listen in den Karten, dazu Umgebungslicht (Beamer-Lumen) und Seitenverhältnis (Projektionsverhältnis). Die Bausteine `ChoiceField` und `Segmented` gibt es; die Stromlast nutzt sie seit K5, Kameraobjektiv (Telekonverter) und Timecode (Bildrate) seit K6 | `RtaCards.tsx`, `ProjectorLumen.tsx`, `ThrowRatio.tsx` | K6 |
+| 6 | Auswahl aus wenigen Möglichkeiten ist mal eine Liste (zwei Tipps, Optionen verdeckt), mal eine Knopfgruppe: im RTA die Listen in den Karten. Die Bausteine `ChoiceField` und `Segmented` gibt es; die Stromlast nutzt sie seit K5, Kameraobjektiv (Telekonverter), Timecode (Bildrate), Beamer-Lumen (Umgebungslicht) und Projektionsverhältnis (Seitenverhältnis) seit K6 | `RtaCards.tsx` | K6 |
 | 11 | Alle Eingaben sind weg, sobald das Fenster zugeht oder das Handy die PWA aus dem Speicher wirft; es erscheinen wieder die Beispielwerte (der Testtongenerator merkt sich seinen Stand schon) | alle Rechner (`useState`) | K4 |
-| 17 | Zwei Rechner sind am Handy höher als der Bildschirm (Beamer-Lumen, Audio-Delay), und die Antwort steht unter den Feldern (Stromlast seit K5, Rigging, Kameraobjektiv und Timecode seit K6 passen und stellen die Antwort zuerst) | Messung im [Leitbild](#muster-2-kleines-werkzeug) | K6 |
 
 ### K6 – Neuer Aufbau der übrigen Rechner
 
@@ -482,9 +480,6 @@ sind, zeigt der Pilot.
 
 | Rechner | Was sich ändert |
 | ------- | --------------- |
-| Beamer-Lumen (+84 px) | Umgebungslicht (vier Werte) als Knopfgruppe mit kurzen Namen, die Erklärung der gewählten Stufe darunter („Vortragssaal · Ziel 400 lx“) – wie die Signale ohne eigene Felder im Testtongenerator; „Vorhandener Beamer“ zuklappbar („6.500 lm · ausreichend“); Lumen-Bedarf zuerst |
-| Audio-Delay & SPL (+38 px) | „Pegel über Distanz“ zuklappbar („80 dB in 10 m“), Antwort zuerst |
-| Projektionsverhältnis | Seitenverhältnis (sechs Werte) als Knopfgruppe mit Umbruch |
 | RTA | In den zugeklappten Karten werden Listen mit bis zu vier kurzen Möglichkeiten Knopfgruppen in ganzer Breite (`FieldBlock` mit `Segmented`): Kanal, Kalibrator, Mittelung, Spitzen, Pegelmesser, Skala, Farbe, Spektrogramm, Empfindlichkeit. „Eingang“ bleibt eine Liste. `e2e/rta.mjs` wählt Spektrogramm, Kanal und Mittelung heute per `selectOption` und zieht mit |
 | DMX-Dip-Schalter, Kreisrechner | nichts – beide passen und haben eine Karte |
 
@@ -1231,12 +1226,13 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
   Tastatur sichtbar? Anschluss, Absicherung und Auslastung per Knopf, App schließen und wieder
   öffnen – die aufgeklappte Karte ist noch offen. Am Rechner im breiten Fenster: beide Karten
   offen nebeneinander.
-- **Seit K6, Rigging, Kameraobjektiv und Timecode:** wie die Stromlast – am Handy ist ab Werk
-  nur die Frage offen (beim Kameraobjektiv „Motiv & Bildausschnitt“; „Kamera & Objektiv“ ist zu
-  und zeigt „Vollformat · 200 mm“), die zweite Karte zeigt zugeklappt ihre Antwort. Passt jede
-  Seite ohne Scrollen? Aufklappen und tippen: Bleibt die Antwort über der Tastatur sichtbar?
-  Telekonverter und Framerate per Knopf – sind die zehn Framerates auf dem Handy lesbar und gut
-  zu treffen?
+- **Seit K6, Rigging, Kameraobjektiv, Timecode, Beamer-Lumen und Audio-Delay:** wie die
+  Stromlast – am Handy ist ab Werk nur die Frage offen (beim Kameraobjektiv „Motiv &
+  Bildausschnitt“; „Kamera & Objektiv“ ist zu und zeigt „Vollformat · 200 mm“), die zweite Karte
+  zeigt zugeklappt ihre Antwort. Passt jede Seite ohne Scrollen? Aufklappen und tippen: Bleibt
+  die Antwort über der Tastatur sichtbar? Telekonverter, Framerate, Umgebungslicht und
+  Seitenverhältnis (Projektionsverhältnis) per Knopf – sind die zehn Framerates auf dem Handy
+  lesbar und gut zu treffen?
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1331,6 +1327,10 @@ behalten ihre Nummer, damit Verweise darauf stimmen:
 
 Entschieden – damit nichts neu gefragt wird:
 
+- **Projektionsverhältnis: beide Karten bleiben offen** (25. November 2026, „Nein, offen
+  lassen“): „Leinwand“ und „Objektiv & Abstand“ werden keine zuklappbaren Karten, auch nicht
+  „einheitlich“ mit den übrigen Rechnern – die Seite passt mit beiden offen aufs Handy (631 von
+  657 px). Mit K6 kam dort nur die Knopfgruppe für das Seitenverhältnis.
 - **Timecode: „Frames (gesamt)“ zählt nur ganze Frames** (24. November 2026, „Ja, rot
   markieren“; früher Befund 18): Eine gebrochene Framezahl wie „1,5“ ist rot und ergibt kein
   Ergebnis, wie jeder Wert, mit dem nicht gerechnet wird. Vorher rechnete der Rechner still mit

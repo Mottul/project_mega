@@ -862,11 +862,8 @@ try {
         await expectAttr(gain, 'aria-invalid', null, 'Gain leer')
         assert.equal(await gain.getAttribute('placeholder'), '1')
         assert.ok(await waitFor(async () => /^3\.600/.test(await bedarf.textContent())))
-        // die Bewertung in den Statusstufen der App, ohne ✓ und ✗ im Text
-        await w.getByLabel('Beamer-Lichtstrom', { exact: true }).fill('6500')
-        const bewertung = readout(w, 'Bewertung')
-        assert.ok(await waitFor(async () => (await bewertung.textContent()) === 'ausreichend'))
-        assert.equal(await bewertung.locator('svg').count(), 1)
+        // die Bewertung (Statusstufen) prüft der Schritt „Beamer-Lumen (K6)“: Ihre Karte ist
+        // im 520-px-Fenster ab Werk zu
         await closeToolWindow('projector-lumen')
 
         // Rigging: negatives Eigengewicht senkte früher die Kräfte; leer zählt es als 0
@@ -1142,6 +1139,131 @@ try {
         await closeToolWindow(id)
         w = await openSmall(id)
         await expectAttr(dauer(), 'aria-expanded', 'true', 'Dauer, wieder geöffnet')
+        await assertFits(w, id)
+        await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+      }
+    ],
+    [
+      'Beamer-Lumen (K6): Umgebungslicht per Knopf mit Erklärung, „Vorhandener Beamer“ zu mit Bewertung',
+      async () => {
+        // ab Werk 520 px: Die Karten stehen untereinander, „Vorhandener Beamer“ ist zu
+        const id = 'projector-lumen'
+        let w = await openSmall(id)
+        assert.equal((await winInfo(id)).content[0], 520)
+        await expectCount(kartenKoepfe(w), 2, `${id}: zuklappbare Karten`)
+        const projektion = () => kartenKopf(w, 'Projektion')
+        const beamer = () => kartenKopf(w, 'Vorhandener Beamer')
+        const erklaerung = () => w.getByTestId('umgebungslicht-text')
+        await expectAttr(projektion(), 'aria-expanded', 'true', 'Projektion, 520 px')
+        await expectAttr(beamer(), 'aria-expanded', 'false', 'Beamer, 520 px')
+        assert.match(await projektion().textContent(), /3\.600 lm$/)
+        // ohne Beamer keine Bewertung: Die Kurzfassung sagt „–“
+        assert.match(await beamer().textContent(), /–$/)
+        // Umgebungslicht per Knopf statt Liste, die Erklärung der gewählten Stufe darunter
+        assert.equal(await w.locator('select').count(), 0, `${id}: noch eine Liste`)
+        assert.equal(
+          await knopf(w, 'Umgebungslicht', 'Gedimmt').getAttribute('aria-pressed'),
+          'true'
+        )
+        assert.equal(await erklaerung().textContent(), 'Vortragssaal · Ziel 400 lx')
+        await antwortZuerst(w, 'Lumen-Bedarf', 'Bildbreite')
+        // breiter gezogen: nebeneinander, die zweite Karte folgt und geht auf
+        await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await expectAttr(beamer(), 'aria-expanded', 'true', 'Beamer, 880 px')
+        await antwortZuerst(w, 'Bewertung', 'Beamer-Lichtstrom')
+
+        w = await mitBreite(id, 393)
+        await expectAttr(beamer(), 'aria-expanded', 'false', 'Beamer, schmal')
+        await assertFits(w, id)
+        await beamer().click()
+        await expectAttr(beamer(), 'aria-expanded', 'true', 'Beamer, aufgeklappt')
+        await antwortZuerst(w, 'Bewertung', 'Beamer-Lichtstrom')
+        // die Bewertung in den Statusstufen der App, ohne ✓ und ✗ im Text
+        await w.getByLabel('Beamer-Lichtstrom', { exact: true }).fill('6500')
+        const bewertung = readout(w, 'Bewertung')
+        assert.ok(await waitFor(async () => (await bewertung.textContent()) === 'ausreichend'))
+        assert.equal(await bewertung.locator('svg').count(), 1)
+        assert.match(await beamer().textContent(), /6\.500 lm · ausreichend$/)
+        // ein Tipp auf „Tageslicht“: 1.100 lx × 9 m² = 9.900 lm – der Beamer ist zu dunkel
+        await knopf(w, 'Umgebungslicht', 'Tageslicht').click()
+        await expectAttr(knopf(w, 'Umgebungslicht', 'Tageslicht'), 'aria-pressed', 'true', 'Tag')
+        assert.equal(await erklaerung().textContent(), 'Schaufenster, Zelt · Ziel 1.100 lx')
+        assert.ok(await waitFor(async () => (await bewertung.textContent()) === 'zu dunkel'))
+        assert.match(await readout(w, 'Lumen-Bedarf').textContent(), /^9\.900/)
+        assert.match(await beamer().textContent(), /6\.500 lm · zu dunkel$/)
+        // Fenster zu und wieder auf: die aufgeklappte Karte ist noch offen
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        await expectAttr(beamer(), 'aria-expanded', 'true', 'Beamer, wieder geöffnet')
+        await assertFits(w, id)
+        await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+      }
+    ],
+    [
+      'Audio-Delay & SPL (K6): „Pegel über Distanz“ zu mit Antwort, offen die Antwort zuerst',
+      async () => {
+        const id = 'audio-delay'
+        let w = await openSmall(id)
+        assert.equal((await winInfo(id)).content[0], 520)
+        await expectCount(kartenKoepfe(w), 2, `${id}: zuklappbare Karten`)
+        const delay = () => kartenKopf(w, 'Delay (Laufzeit)')
+        const pegel = () => kartenKopf(w, 'Pegel über Distanz')
+        await expectAttr(delay(), 'aria-expanded', 'true', 'Delay, 520 px')
+        await expectAttr(pegel(), 'aria-expanded', 'false', 'Pegel, 520 px')
+        assert.match(await delay().textContent(), /10 m · 29,1 ms$/)
+        assert.match(await pegel().textContent(), /80 dB in 10 m$/)
+        await toolWin(id, 'setContentSize', 880, (await winInfo(id)).content[1])
+        await expectAttr(pegel(), 'aria-expanded', 'true', 'Pegel, 880 px')
+        await antwortZuerst(w, 'Pegel in Ziel-Distanz', 'Pegel (Referenz)')
+
+        w = await mitBreite(id, 393)
+        await expectAttr(pegel(), 'aria-expanded', 'false', 'Pegel, schmal')
+        await assertFits(w, id)
+        await pegel().click()
+        await expectAttr(pegel(), 'aria-expanded', 'true', 'Pegel, aufgeklappt')
+        await antwortZuerst(w, 'Pegel in Ziel-Distanz', 'Pegel (Referenz)')
+        // doppelte Entfernung, 6 dB weniger
+        await w.getByLabel('Ziel-Distanz', { exact: true }).fill('20')
+        assert.ok(
+          await waitFor(async () => /74 dB in 20 m$/.test(await pegel().textContent())),
+          await pegel().textContent()
+        )
+        assert.match(await readout(w, 'Pegel in Ziel-Distanz').textContent(), /^74/)
+        await closeToolWindow(id)
+        w = await openSmall(id)
+        await expectAttr(pegel(), 'aria-expanded', 'true', 'Pegel, wieder geöffnet')
+        await assertFits(w, id)
+        await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
+        await closeToolWindow(id)
+      }
+    ],
+    [
+      'Projektionsverhältnis (K6): Seitenverhältnis per Knopf statt Liste, bei 320 px in Reihen',
+      async () => {
+        const id = 'throw-ratio'
+        const w = await openSmall(id)
+        assert.equal(await w.locator('select').count(), 0, `${id}: noch eine Liste`)
+        const seiten = (name) => knopf(w, 'Seitenverhältnis', name)
+        assert.equal(await seiten('16 : 9').getAttribute('aria-pressed'), 'true')
+        // „(Cinemascope)“ steht hinter dem ⓘ, der Knopf bleibt kurz
+        assert.equal(await seiten('2,35 : 1').count(), 1)
+        // ein Tipp auf 4 : 3: 5 m breit -> 3,75 m hoch
+        await seiten('4 : 3').click()
+        await expectAttr(seiten('4 : 3'), 'aria-pressed', 'true', '4 : 3')
+        const hoehe = w.getByLabel('Bildhöhe', { exact: true })
+        assert.ok(await waitFor(async () => (await hoehe.inputValue()) === '3,75'), 'Bildhöhe')
+        // so schmal wie das schmalste Fenster: zwei Reihen zu je drei Knöpfen
+        await toolWin(id, 'setContentSize', 320, (await winInfo(id)).content[1])
+        const reihen = async () =>
+          w
+            .getByRole('group', { name: 'Seitenverhältnis', exact: true })
+            .evaluate((g) => [...g.children].map((r) => r.children.length))
+        assert.ok(
+          await waitFor(async () => JSON.stringify(await reihen()) === '[3,3]'),
+          `Reihen bei 320 px: ${JSON.stringify(await reihen())}`
+        )
         await assertFits(w, id)
         await toolWin(id, 'setContentSize', 520, (await winInfo(id)).content[1])
         await closeToolWindow(id)
