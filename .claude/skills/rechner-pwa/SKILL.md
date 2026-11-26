@@ -16,9 +16,10 @@ Leitbild und Teil K.
 ## Was ein kleines Werkzeug nicht darf
 
 - **Kein `api`, keine Einstellungen** (`lib/api`, `lib/settings`, `electron`): Der PWA-Build bricht
-  ab (`src/pwa/build/plugin.ts`). Gemerktes in einen eigenen zustand-Store (`debouncedStorage`,
-  `version`, `syncAcrossWindows`; Muster `tools/tone-generator/store.ts`) – den Stand beim Laden
-  prüfen wie fremde Eingabe.
+  ab (`src/pwa/build/plugin.ts`). Die Eingaben eines Rechners merkt `useCalcFields` (siehe
+  „Rechnen“); einen größeren Stand ein eigener zustand-Store (`debouncedStorage`, `version`,
+  `syncAcrossWindows`; Muster `tools/tone-generator/store.ts`) – beides beim Laden prüfen wie
+  fremde Eingabe.
 - **Keine Toasts:** Die PWA zeigt keine. Meldungen als `Alert` in der Seite.
 - **Was die App von außen einhängt, bleibt in der PWA still:** „läuft“ (`useAktivMelden`, Melder
   aus `main.tsx`) und gescheitertes Speichern (`setStorageErrorHandler`). Neues dieser Art
@@ -32,6 +33,18 @@ Leitbild und Teil K.
   Handy als „Neue Version bereit“.
 
 ## Rechnen
+
+- **Eingaben merken** (K4, `tools/_calc/useCalcFields.ts`): je Rechner eine Konstante `FELDER`
+  außerhalb der Komponente – Feld → Vorgabe als Text, bei einer Auswahl und der Quelle
+  verknüpfter Felder `{ vorgabe, erlaubt }` (`erlaubt` aus der Liste der Knöpfe ableiten, z. B.
+  `TC_RATES.map((r) => r.key)`). `const f = useCalcFields('<id>', FELDER)` liefert `f.v` (Text
+  je Feld), `f.set`, `f.patch` (eine Wahl, die ein Feld mit umstellt: Anschluss → Spannung,
+  Sensor → Maße), `f.bind(feld)` für ein `NumField`, `f.linked(quelle, text)` als drittes
+  Argument von `useLinkedFields` und `<CalcPage onReset={f.changed ? f.reset : undefined}>` für
+  „Zurücksetzen“. Gespeichert unter `calc:<id>` (localStorage, auch in der PWA); gelesen wird
+  geprüft – nur bekannte Felder, Text bis 40 Zeichen, eine Auswahl nur mit ihren Werten, sonst
+  die Vorgabe (`readCalcFields`, getestet). Ein neues Feld braucht nur einen Eintrag in `FELDER`;
+  ein alter Stand ohne es nimmt die Vorgabe.
 
 - **Rechenkern je Rechner:** `math.ts` neben der Komponente, mit `math.test.ts` (Vorbild
   `tools/rigging/math.ts`; beim Kameraobjektiv `optics.ts` mit `lensView`, beim Timecode `tc.ts`
@@ -185,9 +198,10 @@ Leitbild und Teil K.
      aufnehmen. Eingaben per JavaScript brauchen den nativen `value`-Setter und ein
      `input`-Ereignis, sonst merkt React nichts.
    - **Auslieferungszustand messen:** Aufgeklappte Karten merkt sich der Browser-Bereich
-     (`localStorage`, Schlüssel `panel:<id>`, z. B. `panel:power-load:geraete`) – vor der Messung
-     entfernen und neu laden. Die Breite 393 schaltet dort auch den groben Zeiger ein
-     (`pointer: coarse`): Knopfgruppen sind dann höher als im Fenster der App.
+     (`localStorage`, Schlüssel `panel:<id>`, z. B. `panel:power-load:geraete`), seit K4 auch die
+     Eingaben (`calc:<id>`) – beides vor der Messung entfernen und neu laden. Die Breite 393
+     schaltet dort auch den groben Zeiger ein (`pointer: coarse`): Knopfgruppen sind dann höher
+     als im Fenster der App.
    - **Ansehen ohne Build:** `npm run pwa:dev` (Port 5180) registriert keinen Service Worker und
      zeigt Änderungen sofort – gut, um einen Baustein, den noch kein Rechner nutzt, vorübergehend
      in einen einzusetzen und anzusehen (K2: `tone` an der Bewertung im Beamer-Lumen; danach
@@ -207,7 +221,13 @@ Leitbild und Teil K.
    zurück – sie bleibt gemerkt, und der Schritt „alle kleinen Werkzeuge“ erwartet die
    zweispaltigen Rechner in voller Breite. Ein Feld in einer Karte, die im 520-px-Fenster ab
    Werk zu ist („Timecode A“), findet ein Schritt nicht: ein Feld der offenen Karte nehmen oder
-   die Karte aufklappen – sie bleibt dann für spätere Schritte offen.
+   die Karte aufklappen – sie bleibt dann für spätere Schritte offen. **Seit K4 bleiben auch die
+   Eingaben:** Wer in einem Schritt Werte eines Rechners verstellt, endet mit
+   `zuruecksetzen(fenster)` (klickt „Zurücksetzen“ und wartet, bis der Knopf weg ist) – sonst
+   sähe ein späterer Schritt den eigenen Stand statt der Beispielwerte (eine Fehleingabe wäre in
+   „alle kleinen Werkzeuge“ rot). Dieser Schritt prüft deshalb auch, dass kein Rechner
+   „Zurücksetzen“ zeigt – nur die aus `MERKEN`: Der RTA hat einen eigenen Knopf dieses Namens
+   (Mittelung und Spitzen neu beginnen).
    - **Baustein ändert sein Aussehen nach dem Inhalt** (`NumField` rot): alle kleinen Werkzeuge
      im Auslieferungszustand vorher und nachher als HTML vergleichen (Skill `aufraeumen`). In K2
      fand das die Timecode-Felder – sie führen hh:mm:ss:ff in einem `NumField` und wären ab Werk

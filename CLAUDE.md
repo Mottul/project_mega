@@ -57,8 +57,9 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   Kleine Werkzeuge (Rechner) öffnen sich immer im eigenen, kleinen Fenster: Eintrag mit Breite in
   `SMALL_TOOLS` (`shared/toolWindows.ts`; läuft es auch verdeckt weiter, `background: true`), die
   Höhe folgt dem Inhalt; Bausteine aus `tools/_calc/ui` (Erklärungen per `hint` hinter das ⓘ,
-  Zahlen mit Komma, verknüpfte Felder per `useLinkedFields`, Auswahl bis vier kurze
-  Möglichkeiten als Knopfgruppe `ChoiceField`, Start/Stopp per `RunButton`). Fenster:
+  Zahlen mit Komma, verknüpfte Felder per `useLinkedFields`, die Eingaben gemerkt per
+  `useCalcFields`, Auswahl bis vier kurze Möglichkeiten als Knopfgruppe `ChoiceField`,
+  Start/Stopp per `RunButton`). Fenster:
   `main/services/windows/appWindows.ts` (`createWindow`), `smallToolWindows.ts` (kleine
   Werkzeuge), Hauptfenster in `main/index.ts`.
 - **Rechner-PWA** (`src/pwa/`, `vite.pwa.config.ts`): die kleinen Werkzeuge zusätzlich als

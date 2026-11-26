@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { cn } from '@renderer/lib/utils'
 import {
@@ -12,6 +11,7 @@ import {
   parseNum,
   trimNum
 } from '../_calc/ui'
+import { useCalcFields, type CalcSpec } from '../_calc/useCalcFields'
 import { framingLabel, lensView, type LensField } from './optics'
 
 // Kameraobjektiv-Rechner: aus Brennweite, Sensor, optionalem Telekonverter
@@ -66,22 +66,31 @@ function framingSummary(ratio: number | null, visiblePct: number | null): string
   return `${framingLabel(ratio).split(' (')[0]} · ${fmt(visiblePct, 0)} %`
 }
 
+/** Gemerkt (K4): alle Eingaben; Sensor und Telekonverter nur als einer ihrer Einträge */
+const FELDER = {
+  sensor: { vorgabe: 'ff', erlaubt: [...SENSORS.map((s) => s.key), 'custom'] },
+  sensorBreite: '36',
+  sensorHoehe: '24',
+  brennweite: '200',
+  konverter: { vorgabe: '1', erlaubt: TELECONV.map((t) => t.key) },
+  entfernung: '25',
+  person: '1,75'
+} satisfies CalcSpec<string>
+
 export function CameraLens(): JSX.Element {
-  const [sensorKey, setSensorKey] = useState('ff')
-  const [sensorWRaw, setSensorWRaw] = useState('36')
-  const [sensorHRaw, setSensorHRaw] = useState('24')
-  const [focalRaw, setFocalRaw] = useState('200')
-  const [tcKey, setTcKey] = useState('1')
-  const [distRaw, setDistRaw] = useState('25')
-  const [personRaw, setPersonRaw] = useState('1,75')
+  const f = useCalcFields('camera-lens', FELDER)
+  const { sensor: sensorKey, sensorBreite: sensorWRaw, sensorHoehe: sensorHRaw } = f.v
+  const { brennweite: focalRaw, konverter: tcKey, entfernung: distRaw, person: personRaw } = f.v
+  const setFocalRaw = (v: string): void => f.set('brennweite', v)
+  const setTcKey = (v: string): void => f.set('konverter', v)
+  const setDistRaw = (v: string): void => f.set('entfernung', v)
+  const setPersonRaw = (v: string): void => f.set('person', v)
 
   function pickSensor(key: string): void {
-    setSensorKey(key)
     const s = SENSORS.find((x) => x.key === key)
-    if (s) {
-      setSensorWRaw(trimNum(s.w))
-      setSensorHRaw(trimNum(s.h))
-    }
+    f.patch(
+      s ? { sensor: key, sensorBreite: trimNum(s.w), sensorHoehe: trimNum(s.h) } : { sensor: key }
+    )
   }
 
   const tele = TELECONV.find((t) => t.key === tcKey) ?? TELECONV[0]
@@ -98,10 +107,10 @@ export function CameraLens(): JSX.Element {
     person: parseNum(personRaw)
   })
   // rot ist, womit der Rechenkern nicht rechnet (nicht über 0)
-  const bad = (f: LensField): boolean => invalid.includes(f)
+  const bad = (field: LensField): boolean => invalid.includes(field)
 
   return (
-    <CalcPage>
+    <CalcPage onReset={f.changed ? f.reset : undefined}>
       <FoldCard
         id="camera-lens:kamera"
         title="Kamera & Objektiv"
@@ -128,8 +137,7 @@ export function CameraLens(): JSX.Element {
           invalid={bad('sensorW')}
           value={sensorWRaw}
           onChange={(v) => {
-            setSensorWRaw(v)
-            setSensorKey('custom')
+            f.patch({ sensorBreite: v, sensor: 'custom' })
           }}
         />
         <NumField
@@ -138,8 +146,7 @@ export function CameraLens(): JSX.Element {
           invalid={bad('sensorH')}
           value={sensorHRaw}
           onChange={(v) => {
-            setSensorHRaw(v)
-            setSensorKey('custom')
+            f.patch({ sensorHoehe: v, sensor: 'custom' })
           }}
         />
         <NumField

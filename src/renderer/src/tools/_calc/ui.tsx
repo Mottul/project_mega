@@ -30,7 +30,7 @@ import {
   type ReactNode,
   type RefObject
 } from 'react'
-import { ChevronDown, Square, type LucideIcon } from 'lucide-react'
+import { ChevronDown, RotateCcw, Square, type LucideIcon } from 'lucide-react'
 import { Button } from '@renderer/components/ui/button'
 import { Card } from '@renderer/components/ui/card'
 import { parseDecimal } from '@renderer/components/ui/decimal-field'
@@ -41,6 +41,7 @@ import { Select } from '@renderer/components/ui/select'
 import { STATUS, type StatusTone } from '@renderer/components/ui/status'
 import { flag, usePersistentState, type Codec } from '@renderer/lib/usePersistentState'
 import { cn } from '@renderer/lib/utils'
+import type { LinkedState } from './useCalcFields'
 
 /**
  * Wie viele Spalten das Raster der Rechner-Seite gerade hat: ab 2 stehen die Karten
@@ -81,15 +82,19 @@ function useSpalten(ref: RefObject<HTMLElement>): number {
  * Platz haben; `note` steht darunter über die ganze Breite (Sicherheitshinweise), `head` darüber
  * (eine Anzeige, die die volle Breite braucht – das Spektrum des RTA). Wie viele Karten gerade
  * nebeneinander stehen, erfahren die Karten über `Spalten` (`FoldCard`, „nebeneinander“).
+ * `onReset`: „Zurücksetzen“ unter den Karten – der Rechner übergibt es nur, solange eine Eingabe
+ * von den Beispielwerten abweicht (`useCalcFields`).
  */
 export function CalcPage({
   children,
   note,
-  head
+  head,
+  onReset
 }: {
   children: ReactNode
   note?: ReactNode
   head?: ReactNode
+  onReset?: () => void
 }): JSX.Element {
   const multi = Children.toArray(children).length > 1
   const raster = useRef<HTMLDivElement>(null)
@@ -103,6 +108,13 @@ export function CalcPage({
       >
         <Spalten.Provider value={spalten}>{children}</Spalten.Provider>
       </div>
+      {onReset && (
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={onReset}>
+            <RotateCcw className="size-4" /> Zurücksetzen
+          </Button>
+        </div>
+      )}
       {note && <CalcNote>{note}</CalcNote>}
     </div>
   )
@@ -324,24 +336,32 @@ interface LinkedFieldProps {
  * Feld ist die Quelle (`driver`, Eingabe `raw`), die übrigen zeigen ihren berechneten Wert.
  * `bind(feld, berechnet)` liefert die Props eines NumField: Tippen macht das Feld zur Quelle; der
  * Fokus auf einem berechneten Feld übernimmt dessen Wert als Eingabe – so springt nichts.
+ * `gemerkt` (aus `useCalcFields`): Quelle und Eingabe kommen von dort und bleiben über das
+ * Schließen hinaus; ohne gilt `first`/`initial`, solange das Fenster offen ist.
  */
 export function useLinkedFields<F extends string>(
   first: F,
-  initial: string
+  initial: string,
+  gemerkt?: LinkedState<F>
 ): { driver: F; raw: string; bind: (field: F, computed: string) => LinkedFieldProps } {
-  const [driver, setDriver] = useState<F>(first)
-  const [raw, setRaw] = useState(initial)
+  const [ownDriver, setOwnDriver] = useState<F>(first)
+  const [ownRaw, setOwnRaw] = useState(initial)
+  const driver = gemerkt ? gemerkt.driver : ownDriver
+  const raw = gemerkt ? gemerkt.raw : ownRaw
+  const setze = (d: F, r: string): void => {
+    if (gemerkt) gemerkt.set(d, r)
+    else {
+      setOwnDriver(d)
+      setOwnRaw(r)
+    }
+  }
   const bind = (field: F, computed: string): LinkedFieldProps => ({
     value: field === driver ? raw : computed,
     derived: field !== driver,
-    onChange: (v) => {
-      setDriver(field)
-      setRaw(v)
-    },
+    onChange: (v) => setze(field, v),
     onFocus: () => {
       if (field === driver) return
-      setDriver(field)
-      setRaw(computed)
+      setze(field, computed)
     }
   })
   return { driver, raw, bind }

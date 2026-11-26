@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   CalcPage,
   FoldCard,
@@ -11,6 +10,7 @@ import {
   ReadoutGrid,
   useLinkedFields
 } from '../_calc/ui'
+import { useCalcFields, type CalcSpec } from '../_calc/useCalcFields'
 import {
   DEFAULT_TEMP,
   delayFrom,
@@ -39,13 +39,20 @@ function splSummary(level: number | null, targetDist: number | null): string {
     : `${fmt(level, 1)} dB in ${fmt(targetDist, 2)} m`
 }
 
-export function AudioDelay(): JSX.Element {
-  const [tempRaw, setTempRaw] = useState('20')
-  const delay = useLinkedFields<DelayField>('dist', '10')
+/** Gemerkt (K4): alle Eingaben, beim Delay auch, welches Feld die Quelle ist */
+const FELDER = {
+  temperatur: '20',
+  delayQuelle: { vorgabe: 'dist', erlaubt: ['dist', 'delay'] satisfies DelayField[] },
+  delay: '10',
+  pegel: '100',
+  referenz: '1',
+  ziel: '10'
+} satisfies CalcSpec<string>
 
-  const [splRaw, setSplRaw] = useState('100')
-  const [dRefRaw, setDRefRaw] = useState('1')
-  const [dTgtRaw, setDTgtRaw] = useState('10')
+export function AudioDelay(): JSX.Element {
+  const f = useCalcFields('audio-delay', FELDER)
+  const delay = useLinkedFields<DelayField>('dist', '10', f.linked('delayQuelle', 'delay'))
+  const { temperatur: tempRaw, pegel: splRaw, referenz: dRefRaw, ziel: dTgtRaw } = f.v
 
   // leer rechnet mit 20 °C, unlesbar gar nicht (parseOptional)
   const c = speedOfSound(parseOptional(tempRaw)) // m/s
@@ -53,11 +60,11 @@ export function AudioDelay(): JSX.Element {
   const targetDist = parseNum(dTgtRaw)
   const spl = splAtDistance(parseNum(splRaw), parseNum(dRefRaw), targetDist)
   // rot ist, womit der Rechenkern nicht rechnet (negativ, Distanz nicht über 0)
-  const badDelay = (f: DelayField): boolean => d.invalid.includes(f)
-  const badSpl = (f: SplField): boolean => spl.invalid.includes(f)
+  const badDelay = (field: DelayField): boolean => d.invalid.includes(field)
+  const badSpl = (field: SplField): boolean => spl.invalid.includes(field)
 
   return (
-    <CalcPage>
+    <CalcPage onReset={f.changed ? f.reset : undefined}>
       <FoldCard
         id="audio-delay:delay"
         title="Delay (Laufzeit)"
@@ -72,8 +79,7 @@ export function AudioDelay(): JSX.Element {
           unit="°C"
           signed
           placeholder={trimNum(DEFAULT_TEMP)}
-          value={tempRaw}
-          onChange={setTempRaw}
+          {...f.bind('temperatur')}
         />
         <NumField
           label="Distanz"
@@ -103,20 +109,18 @@ export function AudioDelay(): JSX.Element {
       >
         {/* die Antwort zuerst, darunter die Felder */}
         <Readout label="Pegel in Ziel-Distanz" value={fmt(spl.level, 1)} unit="dB" big accent />
-        <NumField label="Pegel (Referenz)" unit="dB" value={splRaw} onChange={setSplRaw} />
+        <NumField label="Pegel (Referenz)" unit="dB" {...f.bind('pegel')} />
         <NumField
           label="Referenz-Distanz"
           unit="m"
           invalid={badSpl('refDist')}
-          value={dRefRaw}
-          onChange={setDRefRaw}
+          {...f.bind('referenz')}
         />
         <NumField
           label="Ziel-Distanz"
           unit="m"
           invalid={badSpl('targetDist')}
-          value={dTgtRaw}
-          onChange={setDTgtRaw}
+          {...f.bind('ziel')}
         />
       </FoldCard>
     </CalcPage>

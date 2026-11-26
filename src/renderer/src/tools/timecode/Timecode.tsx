@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Segmented } from '@renderer/components/ui/segmented'
 import {
   CalcPage,
@@ -24,7 +23,17 @@ import {
   type TcField,
   type TcRate
 } from './tc'
+import { useCalcFields, type CalcSpec } from '../_calc/useCalcFields'
 import { Alert } from '@renderer/components/ui/alert'
+
+/** Gemerkt (K4): Framerate, Quelle und Text der verknüpften Felder, In- und Out-Punkt */
+const FELDER = {
+  rate: { vorgabe: '25', erlaubt: TC_RATES.map((r) => r.key) },
+  quelle: { vorgabe: 'tc', erlaubt: ['tc', 'frames', 'real'] satisfies TcField[] },
+  eingabe: '01:00:00:00',
+  in: '01:00:00:00',
+  out: '01:05:30:00'
+} satisfies CalcSpec<string>
 
 // SMPTE-Timecode-Rechner: Timecode <-> Frames <-> Echtzeit (verknüpfte Felder,
 // das zuletzt bearbeitete ist die Quelle) + Differenz/Dauer zwischen zwei
@@ -54,11 +63,13 @@ function convertSummary(tc: string, rate: TcRate): string {
 }
 
 export function Timecode(): JSX.Element {
-  const [rateKey, setRateKey] = useState('25')
-  const { driver, raw, bind } = useLinkedFields<TcField>('tc', '01:00:00:00')
-
-  const [tcA, setTcA] = useState('01:00:00:00')
-  const [tcB, setTcB] = useState('01:05:30:00')
+  const f = useCalcFields('timecode', FELDER)
+  const { rate: rateKey, in: tcA, out: tcB } = f.v
+  const { driver, raw, bind } = useLinkedFields<TcField>(
+    'tc',
+    '01:00:00:00',
+    f.linked('quelle', 'eingabe')
+  )
 
   const rate = TC_RATES.find((r) => r.key === rateKey) ?? TC_RATES[2]
   // Ein Timecode ist keine Dezimalzahl: Seine Felder lesen mit parseTc, sonst wären sie rot
@@ -70,7 +81,7 @@ export function Timecode(): JSX.Element {
     rate
   )
   const { frames } = src
-  const bad = (f: TcField): boolean => src.invalid.includes(f)
+  const bad = (field: TcField): boolean => src.invalid.includes(field)
 
   const vals: Record<TcField, string> = {
     tc: frames != null ? formatTc(framesToTc(frames, rate), rate) : '',
@@ -88,7 +99,7 @@ export function Timecode(): JSX.Element {
       : ''
 
   return (
-    <CalcPage>
+    <CalcPage onReset={f.changed ? f.reset : undefined}>
       <FoldCard
         id="timecode:umrechnen"
         title="Timecode ↔ Frames ↔ Echtzeit"
@@ -101,7 +112,7 @@ export function Timecode(): JSX.Element {
             label="Framerate"
             value={rateKey}
             options={TC_RATES.map((r) => ({ value: r.key, label: rateButton(r) }))}
-            onChange={setRateKey}
+            onChange={(v) => f.set('rate', v)}
             wrap={4.5}
           />
         </FieldBlock>
@@ -148,7 +159,7 @@ export function Timecode(): JSX.Element {
           digits
           parse={readTc}
           value={tcA}
-          onChange={setTcA}
+          onChange={(v) => f.set('in', v)}
         />
         <NumField
           label="Timecode B (Out)"
@@ -156,7 +167,7 @@ export function Timecode(): JSX.Element {
           digits
           parse={readTc}
           value={tcB}
-          onChange={setTcB}
+          onChange={(v) => f.set('out', v)}
         />
         <ReadoutGrid>
           <Readout label="Frames" value={diffFrames != null ? fmt(diffFrames, 0) : ''} />
