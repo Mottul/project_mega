@@ -234,12 +234,18 @@ Leitbild und Teil K.
   zeigt unten die ersten sieben Zeichen. **Nie Datum, Uhrzeit oder Commit in den Build
   schreiben:** Dann wäre jeder Build eine neue Version, und die Handys meldeten „Neue Version
   bereit“, obwohl sich nichts geändert hat.
-- **Der Hash läuft über die Dateien nach Namen sortiert:** Die Reihenfolge von Bundle und
-  Ordnerliste hängt vom System ab (Windows liefert Ordner sortiert, Linux in der CI nicht).
-  Unsortiert zeigte ein Build unter Windows mit demselben Inhalt eine andere Kennung als die
-  veröffentlichte (6e44429 gegen 66c81dd, 27. November 2026). Seither gilt: Ein lokaler Build von
-  main zeigt dieselbe Kennung wie das Handy – so lässt sich prüfen, welche Fassung dort läuft
-  (veröffentlicht: `mottulbox-version` in https://mottul.github.io/project_mega/ lesen).
+- **Ein lokaler Build von main zeigt dieselbe Kennung wie das Handy** – so lässt sich prüfen,
+  welche Fassung dort läuft (veröffentlicht: `mottulbox-version` in
+  https://mottul.github.io/project_mega/ lesen). Seit 27. November 2026 Byte für Byte geprüft
+  (`index.html` und `sw.js` gleich). Dafür sind zwei Dinge nötig: Der Hash läuft nach
+  Dateinamen sortiert (`buildHash.ts`; die Reihenfolge von Bundle und Ordnerliste hängt vom
+  System ab), und `index.html` bekommt LF-Zeilenenden, bevor Vite sie verarbeitet (`lineEnds` in
+  `plugin.ts`). Unter Windows hat sie aus der Arbeitskopie CRLF, und Vite lässt beim Herausnehmen
+  des `<script>` aus dem `<body>` ein einzelnes CR stehen – erst danach umgestellt, blieb ein
+  Byte Unterschied.
+- **CR sieht man in Git Bash nicht:** `grep $'\r'` und `diff` übersahen die CRLF-Zeilenenden
+  (1536 gegen 1507 Bytes, „gleich“ laut `diff`). Dateien aus verschiedenen Systemen mit `cmp`
+  oder `od -c` vergleichen, nicht mit `grep` oder `diff`.
 - **Jede sichtbare Änderung an der Handy-App bekommt im selben Pull Request einen Eintrag** in
   `src/pwa/neuigkeiten.ts` (Seite „Was ist neu“): neuester Tag zuerst, Datum = Tag der
   Veröffentlichung (Merge auf main; am selben Tag in den vorhandenen Eintrag), ein bis drei

@@ -13,7 +13,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import type { Plugin } from 'vite'
 import { PWA_BACKGROUND } from '../colors'
-import { buildVersion, type BuildDatei } from './buildHash'
+import { buildVersion, lfText, type BuildDatei } from './buildHash'
 import { SW_FILE, serviceWorkerSource } from './serviceWorker'
 import { inSources } from './sources'
 import { insertVersionMeta } from './version'
@@ -104,6 +104,15 @@ export function pwaPlugins({
     }
   }
 
+  // index.html kommt aus der Arbeitskopie: unter Windows mit CRLF (Git mit autocrlf), in der CI
+  // mit LF. Vor Vites eigener Verarbeitung vereinheitlichen – danach ginge es nicht sauber: Vite
+  // nimmt das <script> aus dem <body> und lässt bei CRLF ein einzelnes CR stehen. Ohne das zeigte
+  // ein Build unter Windows mit demselben Inhalt eine andere Kennung als das Handy.
+  const lineEnds: Plugin = {
+    name: 'mottulbox-pwa-lf',
+    transformIndexHtml: { order: 'pre', handler: (html) => lfText(html) }
+  }
+
   let publicDir = ''
   const output: Plugin = {
     name: 'mottulbox-pwa-output',
@@ -115,6 +124,10 @@ export function pwaPlugins({
     },
     generateBundle(_options, bundle) {
       this.emitFile({ type: 'asset', fileName: MANIFEST_FILE, source: manifest() })
+      const html = bundle['index.html']
+      if (html?.type !== 'asset') this.error('Rechner-PWA: index.html fehlt im Build')
+      // Als Text (lineEnds hat die Zeilenenden schon vereinheitlicht)
+      const htmlText = lfText(html.source)
       // Alles Erzeugte samt public/ (Icons) vorladen; Quellkarten braucht offline niemand
       const dateien: BuildDatei[] = []
       for (const [f, item] of Object.entries(bundle)) {
@@ -127,12 +140,7 @@ export function pwaPlugins({
       const files = dateien.map(([f]) => f).sort()
       const version = buildVersion(dateien)
       // Erst nach dem Hash eintragen: index.html ändert sich so nur, wenn sich der Build ändert
-      const html = bundle['index.html']
-      if (html?.type !== 'asset') this.error('Rechner-PWA: index.html fehlt im Build')
-      html.source = insertVersionMeta(
-        typeof html.source === 'string' ? html.source : new TextDecoder().decode(html.source),
-        version
-      )
+      html.source = insertVersionMeta(htmlText, version)
       this.emitFile({
         type: 'asset',
         fileName: SW_FILE,
@@ -141,5 +149,5 @@ export function pwaPlugins({
     }
   }
 
-  return [guard, covered, output]
+  return [guard, covered, lineEnds, output]
 }

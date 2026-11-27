@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildVersion, type BuildDatei } from './buildHash'
+import { buildVersion, lfText, type BuildDatei } from './buildHash'
 
 const BUILD: BuildDatei[] = [
   ['index.html', '<!doctype html><title>MottulBox</title>'],
@@ -33,6 +33,15 @@ describe('Kennung der Version aus dem Build', () => {
   it('verbindet keine zwei Dateilisten zum selben Text', () => {
     expect(buildVersion([['a', 'bc']])).not.toBe(buildVersion([['ab', 'c']]))
     expect(buildVersion([['a', 'b'], ['c', 'd']])).not.toBe(buildVersion([['a', 'bc'], ['', 'd']]))
+  })
+
+  it('index.html aus Windows (CRLF) und aus der CI (LF) ergibt dieselbe Kennung', () => {
+    const lf = '<!doctype html>\n<html>\n  <head></head>\n</html>\n'
+    const crlf = lf.replace(/\n/g, '\r\n')
+    expect(lfText(crlf)).toBe(lf)
+    expect(lfText(new TextEncoder().encode(crlf))).toBe(lf)
+    expect(lfText(lf)).toBe(lf)
+    expect(buildVersion([['index.html', lfText(crlf)]])).toBe(buildVersion([['index.html', lf]]))
   })
 
   it('Text und dieselben Bytes ergeben dieselbe Kennung (index.html kommt als Text oder Bytes)', () => {
