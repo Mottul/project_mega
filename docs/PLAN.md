@@ -1056,10 +1056,11 @@ nicht per Import aus `beenden/laufend.ts` (Kreis in den Importen).
   `docs/WERKZEUGE.md` die richtige Zahl (27). Offen: `scripts/check-doc-refs.mjs` um eine
   Prüfung ergänzen – die Zahl vor „Werkzeuge“ in beiden Dateien gleicht der Zahl der Einträge
   in `tools/registry.ts`, sonst läuft sie beim nächsten Werkzeug wieder auseinander.
-- **Liegengebliebener Worktree** `.claude/worktrees/wonderful-taussig-0eac94` (1,8 GB, Branch
-  `electron-45-pruefung`, Stand ist in main): nur auf ausdrücklichen Wunsch entfernen
-  (Entscheidung 8). Ebenso liegt seit #243 der Worktree von Stufe 1 des Streams unter
-  .claude/worktrees/stream-stufe1 (ohne Branch, Stand ist in main).
+- **Liegengebliebener Worktree:** Seit #243 liegt der Worktree von Stufe 1 des Streams unter
+  .claude/worktrees/stream-stufe1 (ohne Branch, Stand ist in main). Sein `node_modules` ist eine
+  Verknüpfung (Junction) auf das `node_modules` des Projektordners – vor dem Entfernen erst die
+  Verknüpfung mit `cmd /c rmdir` lösen, sonst kann das Löschen den gemeinsamen Ordner treffen.
+  Der Worktree von Electron 45 ist entfernt (Entscheidung 8).
 - **Startbildschirm, Video-Player:** Die Kachel zeigt „Ausgabe“ beim Ausgabefenster und seit
   Stufe 2 des Streams auch beim Stream, aber nicht bei NDI (der Stage-Timer schon). Wie dort
   `ndiActive` in den Player-Zustand (`playerState.ts`, `useToolActivity.ts`). Gefunden am
@@ -1321,8 +1322,9 @@ behalten ihre Nummer, damit Verweise darauf stimmen:
    wach. (Offen.)
 7. **Ordner `Beispiele/`:** ignorieren oder einchecken (E6)? (Ignorieren; die OBS-Datei darin
    kommt anonymisiert als Test-Fixture ins Repo, sobald MM3 den OBS-Import baut.)
-8. **Worktree `wonderful-taussig-0eac94`** (1,8 GB, Branch `electron-45-pruefung`, Stand ist in
-   main) löschen? (Offen – nur auf ausdrücklichen Wunsch.)
+8. **Worktree `wonderful-taussig-0eac94`** – entschieden am 27. November 2026 („Ja,
+   archivieren“): mit seiner Sitzung archiviert, Worktree (1,8 GB) und Branch
+   `electron-45-pruefung` gelöscht; der Stand war ganz in main.
 9. **ATEM: Darf die Animation einen Makro-Platz belegen?** (Ja, ein freier von hinten.)
 10. **ATEM: wofür zuerst** – für den Laptop neben dem Mischer oder als Bedienung vom Tablet? Beim
     Tablet rücken S1 (PIN) und AT8 nach vorn. (Laptop.)
