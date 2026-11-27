@@ -209,11 +209,18 @@ Leitbild und Teil K.
 
 ## Version und „Was ist neu“
 
-- **Die Kennung einer Version ist der Hash über den Build** (`src/pwa/build/plugin.ts`, derselbe
-  wie im Cache-Namen des Workers). Der Build schreibt ihn als `<meta name="mottulbox-version">`
-  in `index.html` (`src/pwa/build/version.ts`), die Startseite zeigt unten die ersten sieben
-  Zeichen. **Nie Datum, Uhrzeit oder Commit in den Build schreiben:** Dann wäre jeder Build eine
-  neue Version, und die Handys meldeten „Neue Version bereit“, obwohl sich nichts geändert hat.
+- **Die Kennung einer Version ist der Hash über den Build** (`src/pwa/build/buildHash.ts`,
+  derselbe wie im Cache-Namen des Workers). Der Build schreibt ihn als
+  `<meta name="mottulbox-version">` in `index.html` (`src/pwa/build/version.ts`), die Startseite
+  zeigt unten die ersten sieben Zeichen. **Nie Datum, Uhrzeit oder Commit in den Build
+  schreiben:** Dann wäre jeder Build eine neue Version, und die Handys meldeten „Neue Version
+  bereit“, obwohl sich nichts geändert hat.
+- **Der Hash läuft über die Dateien nach Namen sortiert:** Die Reihenfolge von Bundle und
+  Ordnerliste hängt vom System ab (Windows liefert Ordner sortiert, Linux in der CI nicht).
+  Unsortiert zeigte ein Build unter Windows mit demselben Inhalt eine andere Kennung als die
+  veröffentlichte (6e44429 gegen 66c81dd, 27. November 2026). Seither gilt: Ein lokaler Build von
+  main zeigt dieselbe Kennung wie das Handy – so lässt sich prüfen, welche Fassung dort läuft
+  (veröffentlicht: `mottulbox-version` in https://mottul.github.io/project_mega/ lesen).
 - **Jede sichtbare Änderung an der Handy-App bekommt im selben Pull Request einen Eintrag** in
   `src/pwa/neuigkeiten.ts` (Seite „Was ist neu“): neuester Tag zuerst, Datum = Tag der
   Veröffentlichung (Merge auf main; am selben Tag in den vorhandenen Eintrag), ein bis drei
