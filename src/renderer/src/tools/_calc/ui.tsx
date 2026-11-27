@@ -83,28 +83,42 @@ function useSpalten(ref: RefObject<HTMLElement>): number {
  * (eine Anzeige, die die volle Breite braucht – das Spektrum des RTA). Wie viele Karten gerade
  * nebeneinander stehen, erfahren die Karten über `Spalten` (`FoldCard`, „nebeneinander“).
  * `onReset`: „Zurücksetzen“ unter den Karten – der Rechner übergibt es nur, solange eine Eingabe
- * von den Beispielwerten abweicht (`useCalcFields`).
+ * von den Beispielwerten abweicht (`useCalcFields`). `className` und `rasterClassName` ergänzen
+ * Rahmen und Raster der Karten (RTA quer: Seite füllt das Fenster, Karten als Schublade).
  */
 export function CalcPage({
   children,
   note,
   head,
-  onReset
+  onReset,
+  className,
+  rasterClassName
 }: {
   children: ReactNode
   note?: ReactNode
   head?: ReactNode
   onReset?: () => void
+  className?: string
+  rasterClassName?: string
 }): JSX.Element {
   const multi = Children.toArray(children).length > 1
   const raster = useRef<HTMLDivElement>(null)
   const spalten = useSpalten(raster)
   return (
-    <div className={cn('mx-auto space-y-4 p-4 sm:p-6', multi || head ? 'max-w-5xl' : 'max-w-2xl')}>
+    <div
+      className={cn(
+        'mx-auto space-y-4 p-4 sm:p-6',
+        multi || head ? 'max-w-5xl' : 'max-w-2xl',
+        className
+      )}
+    >
       {head}
       <div
         ref={raster}
-        className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] items-start gap-4 sm:gap-5"
+        className={cn(
+          'grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] items-start gap-4 sm:gap-5',
+          rasterClassName
+        )}
       >
         <Spalten.Provider value={spalten}>{children}</Spalten.Provider>
       </div>

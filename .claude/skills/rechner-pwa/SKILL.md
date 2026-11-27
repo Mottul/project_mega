@@ -193,6 +193,21 @@ Leitbild und Teil K.
   sichtbar 390 statt 337 px, dafür 48 px Breite. Bei Stromlast und Kameraobjektiv rücken dadurch
   Knopfgruppen unter ihre Beschriftung (Seite 6 bzw. 36 px höher); mehr sichtbar bleibt trotzdem
   überall. Mit nachgestellter Notch (59 px je Seite) steht die Stromlast einspaltig.
+- **Ein Werkzeug mit eigener Queranordnung** (RTA, K10 – Skizzen `docs/bilder/rta-quer-handy.svg`
+  und `…-fenster.svg`): Variante `quer:` aus `tailwind.config.js` (`theme.extend.screens`, dieselbe
+  Grenze wie oben – als Bildschirm, damit sie im CSS hinter `sm:` steht und gewinnt). Gilt in
+  der PWA und im Fenster der App. Derselbe Baum, nur anders angeordnet: hochkant sind die Gruppen
+  `contents` (Reihenfolge per `order`, Abstände per `gap`), quer ein Raster aus zwei Spalten und
+  zwei Reihen – links Spektrum und Wasserfall über beide Reihen (`quer:flex-[3]`/`[2]`,
+  Zeichenflächen `quer:h-full`), rechts oben Start und Pegel, darunter die Bedienung (14rem); die
+  Karten als Schublade (`rasterClassName` an `CalcPage`, Knopf „Einstellungen“). Im Baum steht
+  jedes Element vor bzw. nach den Zeichenflächen wie vorher – sonst glättet Chromium die Schrift
+  anders (Subpixel statt Graustufen), und hochkant ist der RTA nicht mehr pixelgleich. **Höhe der Spalte nachrechnen:** quer am Handy 390 px, am iPhone geht unten
+  der Home-Balken ab (`pwa-safe-bottom`, rund 21 px), im Fenster der App 844 × 390 die Kopfleiste
+  (45 px); Knopfgruppen sind mit grobem Zeiger 46 px hoch. Drei Pegelkacheln (64 px) passten
+  nicht mehr – sie stehen quer als Zeile unter dem Wasserfall (`PegelZeile`). Im Fenster der App
+  füllt die Seite quer das Fenster: `data-fuellt-quer` am Werkzeug, die Messhülle in `ToolHost`
+  wird dann `h-full` – sonst spränge das Fenster auf die Höhe des Inhalts zurück.
 - **Vollbild** (`src/pwa/vollbild.ts`, Menü „Darstellung“): nur wo `document.fullscreenEnabled
   === true` – am iPhone fehlt die Eigenschaft, obwohl die DOM-Typen sie versprechen. Eingeschaltet
   wird aus dem Tipp heraus (`requestFullscreen({ navigationUI: 'hide' })`), der Zustand kommt nur
@@ -206,6 +221,8 @@ Leitbild und Teil K.
   Claude-App. `requestFullscreen`, `exitFullscreen` und `fullscreenElement` per JavaScript
   ersetzen (der Ersatz löst `fullscreenchange` aus) und die Wahl im Menü lesen; ohne
   `fullscreenEnabled` (am Prototyp auf `undefined` setzen, Seite wechseln) fehlt der Eintrag.
+  Eine Queranordnung wie beim RTA zusätzlich unsichtbar aufnehmen (Skill `aufraeumen`, „Ohne
+  sichtbare Fenster“: 844 × 390 mit Touch-Emulation) – und hochkant vorher/nachher vergleichen.
 
 ## Version und „Was ist neu“
 

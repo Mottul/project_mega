@@ -275,7 +275,7 @@ alles andere lässt sich vorziehen.
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
 | **2 – Muster übertragen** | W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen vier große Werkzeuge (den Video-Generator hat W1 umgebaut, die Rechner passen seit K6 aufs Handy) |
-| **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 · K10 | Kleine Pakete, die man bei jeder Benutzung merkt; K10 macht den RTA im Querformat brauchbar |
+| **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F18 · F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
 | **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 · ST6 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8); ST6 macht den macOS-Lauf der CI wieder verlässlich |
@@ -398,10 +398,10 @@ Auftrag.
 ## K – Kleine Werkzeuge
 
 Das [Muster 2](#muster-2-kleines-werkzeug) haben seit K6 alle Rechner, seit K4 merken sie sich
-die Eingaben, seit K9 fällt am Handy quer die Kopfzeile weg (siehe
-[Erledigt](#erledigt--nicht-neu-planen)). Offen ist K10: der RTA im Querformat (gewünscht am
-26. November 2026). Was für jedes weitere kleine Werkzeug gilt, steht
-unter den Regeln, Ideen unter „Später möglich“. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
+die Eingaben, seit K9 fällt am Handy quer die Kopfzeile weg, seit K10 hat der RTA ein
+Querformat (siehe [Erledigt](#erledigt--nicht-neu-planen)). Offen ist zurzeit kein K-Paket. Was
+für jedes weitere kleine Werkzeug gilt, steht unter den Regeln, Ideen unter „Später möglich“.
+Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
 Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator,
 Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im
 eigenen kleinen Fenster (Höhe folgt dem Inhalt, schmal bis 320 px) und läuft unverändert in der PWA
@@ -414,37 +414,6 @@ Was bleibt: eine kurze Zeile je Karte, alles Weitere hinter dem ⓘ, Zahlen mit 
 Felder in Akzentfarbe.
 
 Vor jeder Arbeit an einem kleinen Werkzeug den Skill `rechner-pwa` lesen.
-
-| Paket | Inhalt | Größe | Braucht |
-| ----- | ------ | ----- | ------- |
-| **K10** | RTA im Querformat | M | Skizze (E1 für `Rta.tsx` ist erledigt) |
-
-### K10 – RTA im Querformat
-
-**Wunsch** (Matthias, 26. November 2026): „RTA würde aber sehr profitieren von einem Querformat.
-Dafür müsste dann die Anzeige der Balken und des Wasserfalls angepasst werden.“
-
-**Heute:** `Rta.tsx` stellt Spektrum (`h-56`, ab `sm` `h-72`), Spektrogramm (Wasserfall
-`h-40`/`h-48`, Zeitachse `h-28`/`h-32`; beide in `RtaSpektrum.tsx`) und die Bedienung
-(`RtaBedienung.tsx`) untereinander, darunter die Karten (`RtaCards.tsx`); gemessen und
-gezeichnet wird in `useRtaMessung.ts`. Quer bleiben einem Handy rund 390 px Höhe, auch ohne
-Kopfzeile – sie fällt dort seit K9 weg, dafür steht links eine 48 px breite Leiste mit dem runden
-„←“ (`pwa.css`). Spektrum, Wasserfall und Bedienung passen so nicht gemeinsam auf den Schirm
-(gemessen bei 844 × 390: Seite 722 px hoch, sichtbar 390).
-
-**So:** erst eine Skizze (Handy quer um 844 × 390, dazu das kleine Fenster der App breit und
-niedrig), freigegeben von Matthias, dann bauen. Richtung: Das Spektrum nimmt die Höhe, der
-Wasserfall steht daneben oder wird per Knopf umgeschaltet, die Bedienung (Messen, Einfrieren,
-Ansicht, Bewertung) schmal an einer Seite; die Karten bleiben erreichbar, ohne dass das Spektrum
-wegscrollt. Hochkant bleibt der RTA, wie er ist.
-
-**Braucht:** die Freigabe der Skizze. E1 für `Rta.tsx` ist erledigt (27. November 2026, ohne
-sichtbare Änderung geteilt) – gebaut wird auf den neuen Teilen.
-
-**Abnahme:** `e2e/rta.mjs` mit dem Fenster des RTA quer (z. B. 844 × 390): Spektrum und
-Wasserfall liegen ganz im Fenster, die Seite scrollt nicht, Fadenkreuz und Ablesung wie
-hochkant; die bisherigen Schritte bleiben grün. Am Handy quer: messen, einfrieren, Fadenkreuz im
-Wasserfall.
 
 ### Regeln für die kleinen Werkzeuge
 
@@ -1227,6 +1196,11 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
   zeigt das Menü „Aus“, und die Ränder stimmen. Am iPhone fehlt der Eintrag „Vollbild“. Offen
   dazu: Steht installiert am iPhone quer über dem Inhalt ein leerer Streifen? Dann ist es der
   Zuschlag von 1rem aus K8, der quer ohne Statusleiste vielleicht entfallen kann (neues Paket).
+- **Seit K10, RTA quer am iPhone und unter Android:** messen, einfrieren und wieder weiter, das
+  Fadenkreuz mit dem Finger durchs Spektrum und den Wasserfall ziehen (Ablesung wie hochkant);
+  während der Messung drehen – sie zeichnet weiter. Passt die Spalte rechts samt „Einstellungen“
+  auch mit dem Home-Balken des iPhones, ohne dass sie scrollt? „Einstellungen“ öffnen, in der
+  Schublade scrollen und eine Karte bedienen, daneben tippen – sie geht zu.
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1493,7 +1467,13 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   selben Tag). Am Handy quer fällt die Kopfzeile einer Rechner-Seite von selbst weg, links bleibt
   eine schmale Leiste mit dem runden „←“ (per CSS, Drehen baut nichts neu auf; quer sichtbar 390
   statt 337 px), unter Android schaltet „Darstellung“ Vollbild ein und aus – am iPhone gibt es
-  das nicht (K9, 27. November, gewünscht am 26.).
+  das nicht (K9, 27. November, gewünscht am 26.). Der RTA hat ein Querformat (K10, 27. November,
+  gewünscht am 26.; Skizzen `docs/bilder/rta-quer-handy.svg` und `…-fenster.svg`, von Matthias
+  freigegeben): Am Handy quer und im niedrig gezogenen Fenster stehen links Spektrum und
+  Wasserfall auf derselben Frequenzachse in voller Höhe, darunter Leq, Max und Spitze als Zeile,
+  rechts die Bedienung als schmale Spalte; „Einstellungen“ schiebt die Karten als Schublade über
+  das Spektrum. Nichts scrollt (vorher 722 px Seite bei 390 sichtbar), Drehen baut nichts neu
+  auf; hochkant ist der RTA pixelgleich wie vorher.
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

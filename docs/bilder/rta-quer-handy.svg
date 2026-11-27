@@ -1,0 +1,343 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1040" width="900" role="img" aria-labelledby="t d" font-family="Segoe UI, system-ui, sans-serif">
+  <title id="t">RTA am Handy quer: Spektrum und Wasserfall links, Bedienung rechts</title>
+  <desc id="d">Vorschlag für K10 bei 844 × 390. Links die schmale Leiste mit dem runden Zurück-Knopf aus K9. In der Mitte das Spektrum, darunter der Wasserfall mit derselben Frequenzachse – das Fadenkreuz läuft durch beide. Darunter Leq, Max und Spitze als Zeile. Rechts eine Spalte mit Stopp, Pegel, Ansicht, Bewertung, Einfrieren, Zurücksetzen, Auflösung und dem Knopf Einstellungen. Unten: Einstellungen offen – die vier Karten als Schublade über dem Spektrum, sie scrollt in sich.</desc>
+  <style>
+    .f { fill: #fafafa; stroke: #d4d4d8; }
+    .k { fill: #ffffff; stroke: #d4d4d8; }
+    .d { fill: #f4f4f5; stroke: #d4d4d8; }
+    .z { fill: #f4f4f5; stroke: none; }
+    .ph { fill: #27272a; stroke: #18181b; }
+    .scr { fill: #fafafa; }
+    .a { fill: #faeeda; stroke: #ba7517; }
+    .af { fill: #ba7517; }
+    .bar { fill: #ba7517; fill-opacity: 0.55; }
+    .heat { fill: #ba7517; }
+    .wf { fill: #e4e4e7; }
+    .cur { fill: none; stroke: #18181b; stroke-width: 1.2; }
+    .ho { stroke: #3f3f46; stroke-width: 1.5; }
+    .x { stroke: #18181b; stroke-opacity: 0.55; stroke-width: 1; }
+    .fb { fill: #dc2626; stroke: #dc2626; }
+    .rb { fill: #fef2f2; stroke: #f87171; }
+    .stop { fill: #dc2626; }
+    .dim { fill: #18181b; fill-opacity: 0.25; }
+    .sb { fill: #a1a1aa; }
+    .ic { fill: none; stroke: #18181b; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .t { fill: #18181b; font-size: 12px; }
+    .b { fill: #18181b; font-size: 12px; font-weight: 600; }
+    .h { fill: #18181b; font-size: 13px; font-weight: 600; }
+    .s { fill: #52525b; font-size: 11px; }
+    .ax { fill: #52525b; font-size: 9.5px; }
+    .m { fill: #71717a; font-size: 11px; font-style: italic; }
+    .ac { fill: #ba7517; font-size: 12px; font-weight: 600; }
+    .big { fill: #ba7517; font-size: 23px; font-weight: 700; }
+    .cap { fill: #ba7517; font-size: 10.5px; font-weight: 700; letter-spacing: 1px; }
+    .r { fill: #b91c1c; font-size: 12px; font-weight: 600; }
+    .rbig { fill: #b91c1c; font-size: 15px; font-weight: 700; }
+    .w { fill: #ffffff; font-size: 15px; font-weight: 600; }
+    .wq { fill: #ffffff; }
+    .l { stroke: #d4d4d8; stroke-width: 1; }
+    .g { stroke: #e4e4e7; stroke-width: 1; }
+    @media (prefers-color-scheme: dark) {
+      .f { fill: #18181b; stroke: #3f3f46; }
+      .k { fill: #1f1f23; stroke: #3f3f46; }
+      .d { fill: #111113; stroke: #3f3f46; }
+      .z { fill: #27272a; }
+      .ph { fill: #3f3f46; stroke: #71717a; }
+      .scr { fill: #09090b; }
+      .a { fill: #633806; stroke: #ef9f27; }
+      .af { fill: #ef9f27; }
+      .bar { fill: #ef9f27; fill-opacity: 0.6; }
+      .heat { fill: #ef9f27; }
+      .wf { fill: #141416; }
+      .cur { stroke: #fafafa; }
+      .ho { stroke: #d4d4d8; }
+      .x { stroke: #fafafa; stroke-opacity: 0.6; }
+      .fb { fill: #f87171; stroke: #f87171; }
+      .rb { fill: #3b1212; stroke: #f87171; }
+      .dim { fill: #000000; fill-opacity: 0.45; }
+      .sb { fill: #71717a; }
+      .ic { stroke: #fafafa; }
+      .t, .b, .h { fill: #fafafa; }
+      .s, .ax { fill: #d4d4d8; }
+      .m { fill: #a1a1aa; }
+      .ac, .big, .cap { fill: #ef9f27; }
+      .r, .rbig { fill: #f87171; }
+      .l { stroke: #3f3f46; }
+      .g { stroke: #27272a; }
+    }
+  </style>
+  <rect class="f" x="0" y="0" width="900" height="100%" rx="10" style="stroke:none"/>
+
+  <text class="h" x="8" y="18">1 · Handy quer, 844 × 390: messen, Wasserfall darunter, Fadenkreuz bei 250 Hz</text>
+  <rect class="ph" x="8" y="28" width="864" height="410" rx="30"/>
+  <rect class="scr" x="18" y="38" width="844" height="390" rx="18"/>
+  <path class="l" d="M66 46V420"/>
+  <circle class="k" cx="42" cy="66" r="17"/><path class="ic" d="M49 66H35M41 60l-6 6 6 6"/>
+  <rect class="k" x="74" y="46" width="556" height="374" rx="10"/>
+    <clipPath id="p1"><rect x="114" y="56" width="508" height="186"/></clipPath>
+    <path class="g" d="M114 58H622"/>
+    <text class="ax" x="109" y="61" text-anchor="end">0</text>
+    <path class="g" d="M114 88.7H622"/>
+    <text class="ax" x="109" y="91.7" text-anchor="end">−10</text>
+    <path class="g" d="M114 119.3H622"/>
+    <text class="ax" x="109" y="122.3" text-anchor="end">−20</text>
+    <path class="g" d="M114 150H622"/>
+    <text class="ax" x="109" y="153" text-anchor="end">−30</text>
+    <path class="g" d="M114 180.7H622"/>
+    <text class="ax" x="109" y="183.7" text-anchor="end">−40</text>
+    <path class="g" d="M114 211.3H622"/>
+    <text class="ax" x="109" y="214.3" text-anchor="end">−50</text>
+    <path class="g" d="M114 242H622"/>
+    <text class="ax" x="109" y="245" text-anchor="end">−60</text>
+    <path class="g" d="M147.4 58V242"/>
+    <path class="g" d="M198.4 58V242"/>
+    <path class="g" d="M248.8 58V242"/>
+    <path class="g" d="M299.7 58V242"/>
+    <path class="g" d="M350.7 58V242"/>
+    <path class="g" d="M401.7 58V242"/>
+    <path class="g" d="M452.7 58V242"/>
+    <path class="g" d="M503.6 58V242"/>
+    <path class="g" d="M554.6 58V242"/>
+    <path class="g" d="M605.6 58V242"/>
+    <g clip-path="url(#p1)"><rect class="bar" x="107" y="180.7" width="13.9" height="61.3"/><rect class="bar" x="124" y="171.5" width="13.9" height="70.5"/><rect class="bar" x="140.9" y="165.3" width="13.9" height="76.7"/><rect class="bar" x="157.8" y="162.3" width="13.9" height="79.7"/><rect class="bar" x="174.8" y="159.2" width="13.9" height="82.8"/><rect class="bar" x="191.7" y="156.1" width="13.9" height="85.9"/><rect class="bar" x="208.6" y="153.1" width="13.9" height="88.9"/><rect class="bar" x="225.6" y="150" width="13.9" height="92"/><rect class="bar" x="242.5" y="150" width="13.9" height="92"/><rect class="bar" x="259.4" y="146.9" width="13.9" height="95.1"/><rect class="bar" x="276.4" y="146.9" width="13.9" height="95.1"/><rect class="bar" x="293.3" y="143.9" width="13.9" height="98.1"/><rect class="bar" x="310.2" y="143.9" width="13.9" height="98.1"/><rect class="bar" x="327.2" y="146.9" width="13.9" height="95.1"/><rect class="bar" x="344.1" y="143.9" width="13.9" height="98.1"/><rect class="bar" x="361" y="140.8" width="13.9" height="101.2"/><rect class="bar" x="378" y="140.8" width="13.9" height="101.2"/><rect class="bar" x="394.9" y="97.9" width="13.9" height="144.1"/><rect class="bar" x="411.8" y="140.8" width="13.9" height="101.2"/><rect class="bar" x="428.8" y="140.8" width="13.9" height="101.2"/><rect class="bar" x="445.7" y="143.9" width="13.9" height="98.1"/><rect class="bar" x="462.6" y="143.9" width="13.9" height="98.1"/><rect class="bar" x="479.6" y="146.9" width="13.9" height="95.1"/><rect class="bar" x="496.5" y="150" width="13.9" height="92"/><rect class="bar" x="513.4" y="153.1" width="13.9" height="88.9"/><rect class="bar" x="530.4" y="156.1" width="13.9" height="85.9"/><rect class="bar" x="547.3" y="159.2" width="13.9" height="82.8"/><rect class="bar" x="564.2" y="165.3" width="13.9" height="76.7"/><rect class="bar" x="581.2" y="171.5" width="13.9" height="70.5"/><rect class="bar" x="598.1" y="180.7" width="13.9" height="61.3"/><rect class="bar" x="615" y="192.9" width="13.9" height="49.1"/><path class="ho" d="M107 177.7h13.9M124 168.5h13.9M140.9 162.3h13.9M157.8 159.3h13.9M174.8 156.2h13.9M191.7 153.1h13.9M208.6 150.1h13.9M225.6 147h13.9M242.5 147h13.9M259.4 143.9h13.9M276.4 143.9h13.9M293.3 140.9h13.9M310.2 140.9h13.9M327.2 143.9h13.9M344.1 140.9h13.9M361 137.8h13.9M378 137.8h13.9M394.9 94.9h13.9M411.8 137.8h13.9M428.8 137.8h13.9M445.7 140.9h13.9M462.6 140.9h13.9M479.6 143.9h13.9M496.5 147h13.9M513.4 150.1h13.9M530.4 153.1h13.9M547.3 156.2h13.9M564.2 162.3h13.9M581.2 168.5h13.9M598.1 177.7h13.9M615 189.9h13.9"/><polyline class="cur" points="114,185.3 130.9,173.6 147.9,165 164.8,165.6 181.7,160.1 198.7,160.7 215.6,155.2 232.5,149.7 249.5,153.4 266.4,147.9 283.3,151.5 300.3,146 317.2,143.6 334.1,150.3 351.1,144.8 368,145.4 384.9,142.9 397.9,142.3 401.9,94.8 405.9,142.3 418.8,144.2 435.7,141.7 452.7,148.5 469.6,146 486.5,146.6 503.5,153.4 520.4,154 537.3,160.7 554.3,161.3 571.2,165 588.1,174.8 605.1,181.6 622,197.5"/></g>
+    <path class="fb" d="M396.9 57h10l-5 7z"/><path class="fb" d="M401.9 64V97.9" style="stroke-width:1"/>
+    <text class="ax" x="147.4" y="254" text-anchor="middle">31,5</text>
+    <text class="ax" x="198.4" y="254" text-anchor="middle">63</text>
+    <text class="ax" x="248.8" y="254" text-anchor="middle">125</text>
+    <text class="ax" x="299.7" y="254" text-anchor="middle">250</text>
+    <text class="ax" x="350.7" y="254" text-anchor="middle">500</text>
+    <text class="ax" x="401.7" y="254" text-anchor="middle">1k</text>
+    <text class="ax" x="452.7" y="254" text-anchor="middle">2k</text>
+    <text class="ax" x="503.6" y="254" text-anchor="middle">4k</text>
+    <text class="ax" x="554.6" y="254" text-anchor="middle">8k</text>
+    <text class="ax" x="605.6" y="254" text-anchor="middle">16k</text>
+    <rect class="wf" x="82" y="262" width="546" height="132" rx="6"/>
+    <rect class="heat" x="105.5" y="262" width="16.9" height="132" fill-opacity="0.25"/>
+    <rect class="heat" x="122.5" y="262" width="16.9" height="132" fill-opacity="0.33"/>
+    <rect class="heat" x="139.4" y="262" width="16.9" height="132" fill-opacity="0.38"/>
+    <rect class="heat" x="156.3" y="262" width="16.9" height="132" fill-opacity="0.4"/>
+    <rect class="heat" x="173.3" y="262" width="16.9" height="132" fill-opacity="0.43"/>
+    <rect class="heat" x="190.2" y="262" width="16.9" height="132" fill-opacity="0.45"/>
+    <rect class="heat" x="207.1" y="262" width="16.9" height="132" fill-opacity="0.48"/>
+    <rect class="heat" x="224.1" y="262" width="16.9" height="132" fill-opacity="0.5"/>
+    <rect class="heat" x="241" y="262" width="16.9" height="132" fill-opacity="0.5"/>
+    <rect class="heat" x="257.9" y="262" width="16.9" height="132" fill-opacity="0.53"/>
+    <rect class="heat" x="274.9" y="262" width="16.9" height="132" fill-opacity="0.53"/>
+    <rect class="heat" x="291.8" y="262" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="308.7" y="262" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="325.7" y="262" width="16.9" height="132" fill-opacity="0.53"/>
+    <rect class="heat" x="342.6" y="262" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="359.5" y="262" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="376.5" y="262" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="393.4" y="262" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="393.4" y="262" width="16.9" height="81.8" fill-opacity="0.95"/>
+    <rect class="heat" x="410.3" y="262" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="427.3" y="262" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="444.2" y="262" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="461.1" y="262" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="478.1" y="262" width="16.9" height="132" fill-opacity="0.53"/>
+    <rect class="heat" x="495" y="262" width="16.9" height="132" fill-opacity="0.5"/>
+    <rect class="heat" x="511.9" y="262" width="16.9" height="132" fill-opacity="0.48"/>
+    <rect class="heat" x="528.9" y="262" width="16.9" height="132" fill-opacity="0.45"/>
+    <rect class="heat" x="545.8" y="262" width="16.9" height="132" fill-opacity="0.43"/>
+    <rect class="heat" x="562.7" y="262" width="16.9" height="132" fill-opacity="0.38"/>
+    <rect class="heat" x="579.7" y="262" width="16.9" height="132" fill-opacity="0.33"/>
+    <rect class="heat" x="596.6" y="262" width="16.9" height="132" fill-opacity="0.25"/>
+    <rect class="heat" x="613.5" y="262" width="16.9" height="132" fill-opacity="0.15"/>
+    <rect class="wf" x="105.53333333333333" y="272.6" width="524.9" height="10.6" fill-opacity="0.3"/>
+    <rect class="wf" x="105.53333333333333" y="301.6" width="524.9" height="7.9" fill-opacity="0.2"/>
+    <rect class="wf" x="105.53333333333333" y="328" width="524.9" height="13.2" fill-opacity="0.35"/>
+    <rect class="wf" x="105.53333333333333" y="359.7" width="524.9" height="7.9" fill-opacity="0.25"/>
+    <rect class="wf" x="105.53333333333333" y="380.8" width="524.9" height="7.9" fill-opacity="0.3"/>
+    <rect class="k" x="85" y="264" width="36" height="14" rx="3" style="stroke:none;fill-opacity:.8"/><text class="ax" x="89" y="275">jetzt</text>
+    <rect class="k" x="85" y="304.8" width="30.4" height="14" rx="3" style="stroke:none;fill-opacity:.8"/><text class="ax" x="89" y="315.8">−5 s</text>
+    <rect class="k" x="85" y="355.5" width="36" height="14" rx="3" style="stroke:none;fill-opacity:.8"/><text class="ax" x="89" y="366.5">−10 s</text>
+    <path class="x" d="M299.7 58V394"/>
+    <rect class="k" x="309.7" y="64" width="156" height="63" rx="6"/>
+    <text class="b" x="319.7" y="82" style="font-size:11.5px">250 Hz <tspan class="s" style="font-weight:400">H3 +21 ct</tspan></text>
+    <text class="s" x="319.7" y="98">Band 250: −29,0 dBFS</text>
+    <text class="s" x="319.7" y="113">Kurve: −29,4 dBFS</text>
+    <text class="s" x="84" y="411">LZeq <tspan class="b" style="font-size:11px">−20,1</tspan> dBFS<tspan dx="12">LZFmax</tspan> <tspan class="b" style="font-size:11px">−19,8</tspan> dBFS<tspan dx="12">Spitze</tspan> <tspan class="b" style="font-size:11px">−14,0</tspan> dBFS</text>
+    <text class="s" x="374" y="411">USB-Mikrofon · 48 kHz · Summe L+R</text>
+  <rect class="stop" x="638" y="46" width="216" height="48" rx="8"/>
+    <rect class="wq" x="710" y="63" width="14" height="14" rx="2.5"/>
+    <text class="w" x="732" y="75">Stopp</text>
+    <rect class="a" x="638" y="102" width="216" height="52" rx="8"/>
+    <text class="ac" x="650" y="133">LZF <tspan class="s" style="font-size:10px">ⓘ</tspan></text>
+    <text class="big" x="812" y="136" text-anchor="end">−20,0</text>
+    <text class="ac" x="816" y="136" style="font-size:11px;font-weight:400">dBFS</text>
+    <rect class="z" x="638" y="162" width="216" height="40" rx="8"/>
+    <text class="s" x="674" y="186" text-anchor="middle" style="font-size:12px">Bänder</text>
+    <text class="s" x="746" y="186" text-anchor="middle" style="font-size:12px">Kurve</text>
+    <rect class="k" x="784" y="164" width="68" height="36" rx="6"/>
+    <text class="b" x="818" y="186" text-anchor="middle" style="font-size:12px">Beides</text>
+    <rect class="z" x="638" y="210" width="120" height="40" rx="8"/>
+    <rect class="k" x="640" y="212" width="36" height="36" rx="6"/>
+    <text class="b" x="658" y="234" text-anchor="middle" style="font-size:12px">Z</text>
+    <text class="s" x="698" y="234" text-anchor="middle" style="font-size:12px">A</text>
+    <text class="s" x="738" y="234" text-anchor="middle" style="font-size:12px">C</text>
+    <rect class="k" x="766" y="210" width="40" height="40" rx="8"/><path class="ic" d="M779 230L793 230M782.5 223.9L789.5 236.1M789.5 223.9L782.5 236.1"/>
+    <rect class="k" x="814" y="210" width="40" height="40" rx="8"/><path class="ic" d="M828 229a6 6 0 1 0 2-4.5M830 221v4h4"/>
+    <rect class="z" x="638" y="258" width="216" height="40" rx="8"/>
+    <text class="s" x="665" y="282" text-anchor="middle" style="font-size:12px">1/1</text>
+    <rect class="k" x="694" y="260" width="50" height="36" rx="6"/>
+    <text class="b" x="719" y="282" text-anchor="middle" style="font-size:12px">1/3</text>
+    <text class="s" x="773" y="282" text-anchor="middle" style="font-size:12px">1/6</text>
+    <text class="s" x="827" y="282" text-anchor="middle" style="font-size:12px">1/12</text>
+    <rect class="k" x="638" y="306" width="216" height="40" rx="8"/>
+    <path class="ic" d="M652 321h14M652 326h14M652 331h14"/><circle class="k" cx="656" cy="321" r="2"/><circle class="k" cx="662" cy="326" r="2"/><circle class="k" cx="658" cy="331" r="2"/>
+    <text class="b" x="676" y="330">Einstellungen</text>
+    <text class="s" x="840" y="330" text-anchor="end">›</text>
+  <text class="m" x="12" y="458">Spektrum und Wasserfall teilen die Frequenzachse: Das Fadenkreuz läuft durch beide, die Ablesung ist dieselbe wie hochkant.</text>
+  <text class="m" x="12" y="474">Rechts die Bedienung, immer in derselben Reihenfolge und weit weg vom „←“. Ohne Spektrogramm (Anzeige → Aus) nimmt das Spektrum die ganze Höhe.</text>
+  <text class="m" x="12" y="490">Leq, Max und Spitze als Zeile unter dem Wasserfall. Meldungen („Übersteuert“, Fehler beim Start) stehen über dem Spektrum – die Spalte rechts verrutscht nie.</text>
+
+  <text class="h" x="8" y="530">2 · „Einstellungen“ offen: die vier Karten als Schublade über dem Spektrum</text>
+  <rect class="ph" x="8" y="540" width="864" height="410" rx="30"/>
+  <rect class="scr" x="18" y="550" width="844" height="390" rx="18"/>
+  <path class="l" d="M66 558V932"/>
+  <circle class="k" cx="42" cy="578" r="17"/><path class="ic" d="M49 578H35M41 572l-6 6 6 6"/>
+  <rect class="k" x="74" y="558" width="556" height="374" rx="10"/>
+    <clipPath id="p2"><rect x="114" y="568" width="508" height="186"/></clipPath>
+    <path class="g" d="M114 570H622"/>
+    <text class="ax" x="109" y="573" text-anchor="end">0</text>
+    <path class="g" d="M114 600.7H622"/>
+    <text class="ax" x="109" y="603.7" text-anchor="end">−10</text>
+    <path class="g" d="M114 631.3H622"/>
+    <text class="ax" x="109" y="634.3" text-anchor="end">−20</text>
+    <path class="g" d="M114 662H622"/>
+    <text class="ax" x="109" y="665" text-anchor="end">−30</text>
+    <path class="g" d="M114 692.7H622"/>
+    <text class="ax" x="109" y="695.7" text-anchor="end">−40</text>
+    <path class="g" d="M114 723.3H622"/>
+    <text class="ax" x="109" y="726.3" text-anchor="end">−50</text>
+    <path class="g" d="M114 754H622"/>
+    <text class="ax" x="109" y="757" text-anchor="end">−60</text>
+    <path class="g" d="M147.4 570V754"/>
+    <path class="g" d="M198.4 570V754"/>
+    <path class="g" d="M248.8 570V754"/>
+    <path class="g" d="M299.7 570V754"/>
+    <path class="g" d="M350.7 570V754"/>
+    <path class="g" d="M401.7 570V754"/>
+    <path class="g" d="M452.7 570V754"/>
+    <path class="g" d="M503.6 570V754"/>
+    <path class="g" d="M554.6 570V754"/>
+    <path class="g" d="M605.6 570V754"/>
+    <g clip-path="url(#p2)"><rect class="bar" x="107" y="692.7" width="13.9" height="61.3"/><rect class="bar" x="124" y="683.5" width="13.9" height="70.5"/><rect class="bar" x="140.9" y="677.3" width="13.9" height="76.7"/><rect class="bar" x="157.8" y="674.3" width="13.9" height="79.7"/><rect class="bar" x="174.8" y="671.2" width="13.9" height="82.8"/><rect class="bar" x="191.7" y="668.1" width="13.9" height="85.9"/><rect class="bar" x="208.6" y="665.1" width="13.9" height="88.9"/><rect class="bar" x="225.6" y="662" width="13.9" height="92"/><rect class="bar" x="242.5" y="662" width="13.9" height="92"/><rect class="bar" x="259.4" y="658.9" width="13.9" height="95.1"/><rect class="bar" x="276.4" y="658.9" width="13.9" height="95.1"/><rect class="bar" x="293.3" y="655.9" width="13.9" height="98.1"/><rect class="bar" x="310.2" y="655.9" width="13.9" height="98.1"/><rect class="bar" x="327.2" y="658.9" width="13.9" height="95.1"/><rect class="bar" x="344.1" y="655.9" width="13.9" height="98.1"/><rect class="bar" x="361" y="652.8" width="13.9" height="101.2"/><rect class="bar" x="378" y="652.8" width="13.9" height="101.2"/><rect class="bar" x="394.9" y="609.9" width="13.9" height="144.1"/><rect class="bar" x="411.8" y="652.8" width="13.9" height="101.2"/><rect class="bar" x="428.8" y="652.8" width="13.9" height="101.2"/><rect class="bar" x="445.7" y="655.9" width="13.9" height="98.1"/><rect class="bar" x="462.6" y="655.9" width="13.9" height="98.1"/><rect class="bar" x="479.6" y="658.9" width="13.9" height="95.1"/><rect class="bar" x="496.5" y="662" width="13.9" height="92"/><rect class="bar" x="513.4" y="665.1" width="13.9" height="88.9"/><rect class="bar" x="530.4" y="668.1" width="13.9" height="85.9"/><rect class="bar" x="547.3" y="671.2" width="13.9" height="82.8"/><rect class="bar" x="564.2" y="677.3" width="13.9" height="76.7"/><rect class="bar" x="581.2" y="683.5" width="13.9" height="70.5"/><rect class="bar" x="598.1" y="692.7" width="13.9" height="61.3"/><rect class="bar" x="615" y="704.9" width="13.9" height="49.1"/><path class="ho" d="M107 689.7h13.9M124 680.5h13.9M140.9 674.3h13.9M157.8 671.3h13.9M174.8 668.2h13.9M191.7 665.1h13.9M208.6 662.1h13.9M225.6 659h13.9M242.5 659h13.9M259.4 655.9h13.9M276.4 655.9h13.9M293.3 652.9h13.9M310.2 652.9h13.9M327.2 655.9h13.9M344.1 652.9h13.9M361 649.8h13.9M378 649.8h13.9M394.9 606.9h13.9M411.8 649.8h13.9M428.8 649.8h13.9M445.7 652.9h13.9M462.6 652.9h13.9M479.6 655.9h13.9M496.5 659h13.9M513.4 662.1h13.9M530.4 665.1h13.9M547.3 668.2h13.9M564.2 674.3h13.9M581.2 680.5h13.9M598.1 689.7h13.9M615 701.9h13.9"/><polyline class="cur" points="114,697.3 130.9,685.6 147.9,677 164.8,677.6 181.7,672.1 198.7,672.7 215.6,667.2 232.5,661.7 249.5,665.4 266.4,659.9 283.3,663.5 300.3,658 317.2,655.6 334.1,662.3 351.1,656.8 368,657.4 384.9,654.9 397.9,654.3 401.9,606.8 405.9,654.3 418.8,656.2 435.7,653.7 452.7,660.5 469.6,658 486.5,658.6 503.5,665.4 520.4,666 537.3,672.7 554.3,673.3 571.2,677 588.1,686.8 605.1,693.6 622,709.5"/></g>
+    <path class="fb" d="M396.9 569h10l-5 7z"/><path class="fb" d="M401.9 576V609.9" style="stroke-width:1"/>
+    <text class="ax" x="147.4" y="766" text-anchor="middle">31,5</text>
+    <text class="ax" x="198.4" y="766" text-anchor="middle">63</text>
+    <text class="ax" x="248.8" y="766" text-anchor="middle">125</text>
+    <text class="ax" x="299.7" y="766" text-anchor="middle">250</text>
+    <text class="ax" x="350.7" y="766" text-anchor="middle">500</text>
+    <text class="ax" x="401.7" y="766" text-anchor="middle">1k</text>
+    <text class="ax" x="452.7" y="766" text-anchor="middle">2k</text>
+    <text class="ax" x="503.6" y="766" text-anchor="middle">4k</text>
+    <text class="ax" x="554.6" y="766" text-anchor="middle">8k</text>
+    <text class="ax" x="605.6" y="766" text-anchor="middle">16k</text>
+    <rect class="wf" x="82" y="774" width="546" height="132" rx="6"/>
+    <rect class="heat" x="105.5" y="774" width="16.9" height="132" fill-opacity="0.25"/>
+    <rect class="heat" x="122.5" y="774" width="16.9" height="132" fill-opacity="0.33"/>
+    <rect class="heat" x="139.4" y="774" width="16.9" height="132" fill-opacity="0.38"/>
+    <rect class="heat" x="156.3" y="774" width="16.9" height="132" fill-opacity="0.4"/>
+    <rect class="heat" x="173.3" y="774" width="16.9" height="132" fill-opacity="0.43"/>
+    <rect class="heat" x="190.2" y="774" width="16.9" height="132" fill-opacity="0.45"/>
+    <rect class="heat" x="207.1" y="774" width="16.9" height="132" fill-opacity="0.48"/>
+    <rect class="heat" x="224.1" y="774" width="16.9" height="132" fill-opacity="0.5"/>
+    <rect class="heat" x="241" y="774" width="16.9" height="132" fill-opacity="0.5"/>
+    <rect class="heat" x="257.9" y="774" width="16.9" height="132" fill-opacity="0.53"/>
+    <rect class="heat" x="274.9" y="774" width="16.9" height="132" fill-opacity="0.53"/>
+    <rect class="heat" x="291.8" y="774" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="308.7" y="774" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="325.7" y="774" width="16.9" height="132" fill-opacity="0.53"/>
+    <rect class="heat" x="342.6" y="774" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="359.5" y="774" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="376.5" y="774" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="393.4" y="774" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="393.4" y="774" width="16.9" height="81.8" fill-opacity="0.95"/>
+    <rect class="heat" x="410.3" y="774" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="427.3" y="774" width="16.9" height="132" fill-opacity="0.57"/>
+    <rect class="heat" x="444.2" y="774" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="461.1" y="774" width="16.9" height="132" fill-opacity="0.55"/>
+    <rect class="heat" x="478.1" y="774" width="16.9" height="132" fill-opacity="0.53"/>
+    <rect class="heat" x="495" y="774" width="16.9" height="132" fill-opacity="0.5"/>
+    <rect class="heat" x="511.9" y="774" width="16.9" height="132" fill-opacity="0.48"/>
+    <rect class="heat" x="528.9" y="774" width="16.9" height="132" fill-opacity="0.45"/>
+    <rect class="heat" x="545.8" y="774" width="16.9" height="132" fill-opacity="0.43"/>
+    <rect class="heat" x="562.7" y="774" width="16.9" height="132" fill-opacity="0.38"/>
+    <rect class="heat" x="579.7" y="774" width="16.9" height="132" fill-opacity="0.33"/>
+    <rect class="heat" x="596.6" y="774" width="16.9" height="132" fill-opacity="0.25"/>
+    <rect class="heat" x="613.5" y="774" width="16.9" height="132" fill-opacity="0.15"/>
+    <rect class="wf" x="105.53333333333333" y="784.6" width="524.9" height="10.6" fill-opacity="0.3"/>
+    <rect class="wf" x="105.53333333333333" y="813.6" width="524.9" height="7.9" fill-opacity="0.2"/>
+    <rect class="wf" x="105.53333333333333" y="840" width="524.9" height="13.2" fill-opacity="0.35"/>
+    <rect class="wf" x="105.53333333333333" y="871.7" width="524.9" height="7.9" fill-opacity="0.25"/>
+    <rect class="wf" x="105.53333333333333" y="892.8" width="524.9" height="7.9" fill-opacity="0.3"/>
+    <rect class="k" x="85" y="776" width="36" height="14" rx="3" style="stroke:none;fill-opacity:.8"/><text class="ax" x="89" y="787">jetzt</text>
+    <rect class="k" x="85" y="816.8" width="30.4" height="14" rx="3" style="stroke:none;fill-opacity:.8"/><text class="ax" x="89" y="827.8">−5 s</text>
+    <rect class="k" x="85" y="867.5" width="36" height="14" rx="3" style="stroke:none;fill-opacity:.8"/><text class="ax" x="89" y="878.5">−10 s</text>
+    <text class="s" x="84" y="923">LZeq <tspan class="b" style="font-size:11px">−20,1</tspan> dBFS<tspan dx="12">LZFmax</tspan> <tspan class="b" style="font-size:11px">−19,8</tspan> dBFS<tspan dx="12">Spitze</tspan> <tspan class="b" style="font-size:11px">−14,0</tspan> dBFS</text>
+    <text class="s" x="374" y="923">USB-Mikrofon · 48 kHz · Summe L+R</text>
+  <rect class="stop" x="638" y="558" width="216" height="48" rx="8"/>
+    <rect class="wq" x="710" y="575" width="14" height="14" rx="2.5"/>
+    <text class="w" x="732" y="587">Stopp</text>
+    <rect class="a" x="638" y="614" width="216" height="52" rx="8"/>
+    <text class="ac" x="650" y="645">LZF <tspan class="s" style="font-size:10px">ⓘ</tspan></text>
+    <text class="big" x="812" y="648" text-anchor="end">−20,0</text>
+    <text class="ac" x="816" y="648" style="font-size:11px;font-weight:400">dBFS</text>
+    <rect class="z" x="638" y="674" width="216" height="40" rx="8"/>
+    <text class="s" x="674" y="698" text-anchor="middle" style="font-size:12px">Bänder</text>
+    <text class="s" x="746" y="698" text-anchor="middle" style="font-size:12px">Kurve</text>
+    <rect class="k" x="784" y="676" width="68" height="36" rx="6"/>
+    <text class="b" x="818" y="698" text-anchor="middle" style="font-size:12px">Beides</text>
+    <rect class="z" x="638" y="722" width="120" height="40" rx="8"/>
+    <rect class="k" x="640" y="724" width="36" height="36" rx="6"/>
+    <text class="b" x="658" y="746" text-anchor="middle" style="font-size:12px">Z</text>
+    <text class="s" x="698" y="746" text-anchor="middle" style="font-size:12px">A</text>
+    <text class="s" x="738" y="746" text-anchor="middle" style="font-size:12px">C</text>
+    <rect class="k" x="766" y="722" width="40" height="40" rx="8"/><path class="ic" d="M779 742L793 742M782.5 735.9L789.5 748.1M789.5 735.9L782.5 748.1"/>
+    <rect class="k" x="814" y="722" width="40" height="40" rx="8"/><path class="ic" d="M828 741a6 6 0 1 0 2-4.5M830 733v4h4"/>
+    <rect class="z" x="638" y="770" width="216" height="40" rx="8"/>
+    <text class="s" x="665" y="794" text-anchor="middle" style="font-size:12px">1/1</text>
+    <rect class="k" x="694" y="772" width="50" height="36" rx="6"/>
+    <text class="b" x="719" y="794" text-anchor="middle" style="font-size:12px">1/3</text>
+    <text class="s" x="773" y="794" text-anchor="middle" style="font-size:12px">1/6</text>
+    <text class="s" x="827" y="794" text-anchor="middle" style="font-size:12px">1/12</text>
+    <rect class="a" x="638" y="818" width="216" height="40" rx="8"/>
+    <path class="ic" d="M652 833h14M652 838h14M652 843h14"/><circle class="k" cx="656" cy="833" r="2"/><circle class="k" cx="662" cy="838" r="2"/><circle class="k" cx="658" cy="843" r="2"/>
+    <text class="b" x="676" y="842">Einstellungen</text>
+    <text class="s" x="840" y="842" text-anchor="end">✕</text>
+  <rect class="dim" x="67" y="550" width="567" height="390"/>
+  <rect class="d" x="67" y="550" width="372" height="390"/>
+    <path class="l" d="M439 550V940"/>
+    <text class="h" x="83" y="576">Einstellungen</text>
+    <text class="s" x="423" y="576" text-anchor="end" style="font-size:14px">✕</text>
+    <rect class="k" x="75" y="590" width="352" height="182" rx="8"/>
+    <text class="cap" x="89" y="611">FEEDBACK-FINDER</text>
+    <text class="r" x="397" y="611" text-anchor="end">1.000 Hz</text><text class="s" x="413" y="611" text-anchor="end">˅</text>
+    <rect class="af" x="89" y="624" width="14" height="14" rx="3"/><path d="M92 631l3 3 5-6" fill="none" stroke="#fff" stroke-width="1.8"/>
+    <text class="t" x="111" y="636">Spitzen suchen</text>
+    <text class="s" x="89" y="660">Empfindlichkeit</text>
+    <rect class="z" x="89" y="666" width="324" height="32" rx="8"/>
+    <text class="s" x="143" y="686" text-anchor="middle" style="font-size:12px">Niedrig</text>
+    <rect class="k" x="199" y="668" width="104" height="28" rx="6"/>
+    <text class="b" x="251" y="686" text-anchor="middle" style="font-size:12px">Mittel</text>
+    <text class="s" x="359" y="686" text-anchor="middle" style="font-size:12px">Hoch</text>
+    <rect class="rb" x="89" y="706" width="324" height="56" rx="6"/>
+    <text class="rbig" x="99" y="728">1.000 Hz</text>
+    <text class="s" x="175" y="728">H5 +22 ct · +43 dB über Umgebung</text>
+    <text class="t" x="99" y="750" style="font-size:11px">Vorschlag: Glocke 1.000 Hz, −12 dB, Q 14,4</text>
+    <rect class="k" x="75" y="780" width="352" height="40" rx="8"/>
+    <text class="cap" x="89" y="805">REFERENZEN</text>
+    <text class="s" x="397" y="805" text-anchor="end">1 gemerkt</text><text class="s" x="413" y="805" text-anchor="end">›</text>
+    <rect class="k" x="75" y="828" width="352" height="40" rx="8"/>
+    <text class="cap" x="89" y="853">EINGANG &amp; KALIBRIERUNG</text>
+    <text class="s" x="397" y="853" text-anchor="end">USB-Mikrofon · dBFS</text><text class="s" x="413" y="853" text-anchor="end">›</text>
+    <rect class="k" x="75" y="876" width="352" height="40" rx="8"/>
+    <text class="cap" x="89" y="901">ANZEIGE</text>
+    <text class="s" x="397" y="901" text-anchor="end">Mittelung schnell · Wasserfall</text><text class="s" x="413" y="901" text-anchor="end">›</text>
+    <rect class="sb" x="432" y="594" width="3" height="215" rx="1.5"/>
+  <text class="m" x="12" y="970">Die Schublade scrollt in sich, das Spektrum dahinter bleibt stehen. Ein Tipp daneben oder ✕ schließt sie.</text>
+  <text class="m" x="12" y="986">Stopp, Pegel und Einfrieren bleiben rechts bedienbar. Die Karten sind dieselben wie hochkant – gleiche Kurzfassung, gleicher gemerkter Zustand.</text>
+  <text class="m" x="12" y="1002">Hochkant bleibt der RTA, wie er ist.</text>
+</svg>

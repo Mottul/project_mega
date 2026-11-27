@@ -23,7 +23,10 @@ export function dbText(v: number): string {
   return Number.isFinite(v) && v > -150 ? fmt(v, 1) : ''
 }
 
-/** Spektrum mit Fadenkreuz und Ablesung: Frequenz, Note, Band- und Kurvenpegel */
+/**
+ * Spektrum mit Fadenkreuz und Ablesung: Frequenz, Note, Band- und Kurvenpegel. Hochkant fest
+ * hoch, quer füllt die Zeichenfläche, was `className` ihr an Höhe gibt (Rta.tsx).
+ */
 export function Spektrum({
   graph,
   running,
@@ -33,7 +36,8 @@ export function Spektrum({
   pointerIn,
   proc,
   shown,
-  unit
+  unit,
+  className
 }: {
   graph: RefObject<HTMLCanvasElement>
   running: boolean
@@ -44,6 +48,7 @@ export function Spektrum({
   proc: MutableRefObject<RtaProcessor>
   shown: MutableRefObject<{ levels: number[]; curve: number[] | null }>
   unit: string
+  className?: string
 }): JSX.Element {
   const graphBox = useRef<HTMLDivElement>(null)
   const onPointer = pointerIn('graph')
@@ -65,14 +70,14 @@ export function Spektrum({
   return (
     <div
       ref={graphBox}
-      className="relative touch-none select-none"
+      className={cn('relative touch-none select-none', className)}
       onPointerMove={onPointer}
       onPointerDown={onPointer}
       onPointerLeave={() => setHover(null)}
     >
       <canvas
         ref={graph}
-        className="block h-56 w-full sm:h-72"
+        className="block h-56 w-full sm:h-72 quer:h-full"
         aria-label="Spektrum"
         data-testid="rta-graph"
       />
@@ -128,7 +133,8 @@ export function Spektrogramm({
   hover,
   setHover,
   pointerIn,
-  unit
+  unit,
+  className
 }: {
   p: RtaPrefs
   spec: RefObject<HTMLCanvasElement>
@@ -139,6 +145,7 @@ export function Spektrogramm({
   setHover: Dispatch<SetStateAction<Pointer | null>>
   pointerIn: (area: Pointer['area']) => (e: PointerEvent<HTMLDivElement>) => void
   unit: string
+  className?: string
 }): JSX.Element {
   const specBox = useRef<HTMLDivElement>(null)
   // Ablesung im Spektrogramm: Frequenz, Note, Pegel und wie lange es her ist
@@ -157,7 +164,10 @@ export function Spektrogramm({
   return (
     <div
       ref={specBox}
-      className="relative touch-none select-none overflow-hidden rounded-md bg-background/40"
+      className={cn(
+        'relative touch-none select-none overflow-hidden rounded-md bg-background/40',
+        className
+      )}
       onPointerMove={pointerIn('spectro')}
       onPointerDown={pointerIn('spectro')}
       onPointerLeave={() => setHover(null)}
@@ -165,7 +175,7 @@ export function Spektrogramm({
       <canvas
         ref={spec}
         className={cn(
-          'block w-full',
+          'block w-full quer:h-full',
           p.spectrogram === 'waterfall' ? 'h-40 sm:h-48' : 'h-28 sm:h-32'
         )}
         aria-label={p.spectrogram === 'waterfall' ? 'Wasserfall' : 'Zeitachse des Spektrums'}
