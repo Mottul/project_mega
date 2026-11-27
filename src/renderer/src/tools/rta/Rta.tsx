@@ -239,8 +239,10 @@ export function Rta(): JSX.Element {
       className="quer:relative quer:h-full quer:max-w-none quer:p-2"
       rasterClassName={karten ? SCHUBLADE : 'quer:hidden'}
     >
+      {/* Kopf der Schublade, nur quer. Bewusst keine Überschrift: Die Karten tragen je ein <h2>,
+          und ein (hochkant verstecktes) <h2> davor zählte sonst als erste Karte mit. */}
       <div className="hidden items-center justify-between gap-2 pl-2 quer:flex">
-        <h2 className="text-sm font-semibold">Einstellungen</h2>
+        <p className="text-sm font-semibold">Einstellungen</p>
         <Button
           variant="ghost"
           size="icon"

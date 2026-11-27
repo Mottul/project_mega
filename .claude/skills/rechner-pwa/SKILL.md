@@ -200,7 +200,9 @@ Leitbild und Teil K.
   `contents` (Reihenfolge per `order`, Abstände per `gap`), quer ein Raster aus zwei Spalten und
   zwei Reihen – links Spektrum und Wasserfall über beide Reihen (`quer:flex-[3]`/`[2]`,
   Zeichenflächen `quer:h-full`), rechts oben Start und Pegel, darunter die Bedienung (14rem); die
-  Karten als Schublade (`rasterClassName` an `CalcPage`, Knopf „Einstellungen“). Im Baum steht
+  Karten als Schublade (`rasterClassName` an `CalcPage`, Knopf „Einstellungen“; ihr Kopf ist
+  bewusst kein `h2` – `e2e/layout.mjs` zählt die `h2` der Karten, und ein hochkant versteckter
+  Kopf davor galt als erste Karte, „Karten nicht nebeneinander“ in der CI). Im Baum steht
   jedes Element vor bzw. nach den Zeichenflächen wie vorher – sonst glättet Chromium die Schrift
   anders (Subpixel statt Graustufen), und hochkant ist der RTA nicht mehr pixelgleich. **Höhe der Spalte nachrechnen:** quer am Handy 390 px, am iPhone geht unten
   der Home-Balken ab (`pwa-safe-bottom`, rund 21 px), im Fenster der App 844 × 390 die Kopfleiste
