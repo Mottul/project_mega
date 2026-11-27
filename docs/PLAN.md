@@ -417,7 +417,7 @@ Vor jeder Arbeit an einem kleinen Werkzeug den Skill `rechner-pwa` lesen.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **K10** | RTA im Querformat | M | Skizze, vorher E1 für `Rta.tsx` |
+| **K10** | RTA im Querformat | M | Skizze (E1 für `Rta.tsx` ist erledigt) |
 
 ### K10 – RTA im Querformat
 
@@ -425,11 +425,12 @@ Vor jeder Arbeit an einem kleinen Werkzeug den Skill `rechner-pwa` lesen.
 Dafür müsste dann die Anzeige der Balken und des Wasserfalls angepasst werden.“
 
 **Heute:** `Rta.tsx` stellt Spektrum (`h-56`, ab `sm` `h-72`), Spektrogramm (Wasserfall
-`h-40`/`h-48`, Zeitachse `h-28`/`h-32`) und die Bedienung untereinander, darunter die Karten
-(`RtaCards.tsx`). Quer bleiben einem Handy rund 390 px Höhe, auch ohne Kopfzeile – sie fällt dort
-seit K9 weg, dafür steht links eine 48 px breite Leiste mit dem runden „←“ (`pwa.css`). Spektrum,
-Wasserfall und Bedienung passen so nicht gemeinsam auf den Schirm (gemessen bei 844 × 390: Seite
-722 px hoch, sichtbar 390).
+`h-40`/`h-48`, Zeitachse `h-28`/`h-32`; beide in `RtaSpektrum.tsx`) und die Bedienung
+(`RtaBedienung.tsx`) untereinander, darunter die Karten (`RtaCards.tsx`); gemessen und
+gezeichnet wird in `useRtaMessung.ts`. Quer bleiben einem Handy rund 390 px Höhe, auch ohne
+Kopfzeile – sie fällt dort seit K9 weg, dafür steht links eine 48 px breite Leiste mit dem runden
+„←“ (`pwa.css`). Spektrum, Wasserfall und Bedienung passen so nicht gemeinsam auf den Schirm
+(gemessen bei 844 × 390: Seite 722 px hoch, sichtbar 390).
 
 **So:** erst eine Skizze (Handy quer um 844 × 390, dazu das kleine Fenster der App breit und
 niedrig), freigegeben von Matthias, dann bauen. Richtung: Das Spektrum nimmt die Höhe, der
@@ -437,8 +438,8 @@ Wasserfall steht daneben oder wird per Knopf umgeschaltet, die Bedienung (Messen
 Ansicht, Bewertung) schmal an einer Seite; die Karten bleiben erreichbar, ohne dass das Spektrum
 wegscrollt. Hochkant bleibt der RTA, wie er ist.
 
-**Braucht:** vorher E1 für `Rta.tsx` (818 Zeilen, ohne sichtbare Änderung teilen – siehe Regel
-unten) – sonst wird zweimal umgebaut.
+**Braucht:** die Freigabe der Skizze. E1 für `Rta.tsx` ist erledigt (27. November 2026, ohne
+sichtbare Änderung geteilt) – gebaut wird auf den neuen Teilen.
 
 **Abnahme:** `e2e/rta.mjs` mit dem Fenster des RTA quer (z. B. 844 × 390): Spektrum und
 Wasserfall liegen ganz im Fenster, die Seite scrollt nicht, Fadenkreuz und Ablesung wie
@@ -456,9 +457,8 @@ Wasserfall.
 - **Keinen zweiten Ton-Kern** – Töne nur über `tools/_tone`.
 - **`tools/rta/testSignals.ts` nicht mit dem Rauschen des Ton-Kerns zusammenlegen:** andere
   Verteilung, die Tests des RTA hängen an den Zahlen.
-- **`Rta.tsx` nicht nebenbei teilen** (E1) und **keine Beschreibungen vorhandener Werkzeuge
-  ändern** – sie sind seit B6 auf die Kachel zugeschnitten (höchstens 50 Zeichen, prüft
-  `tools/registry.test.ts`).
+- **Keine Beschreibungen vorhandener Werkzeuge ändern** – sie sind seit B6 auf die Kachel
+  zugeschnitten (höchstens 50 Zeichen, prüft `tools/registry.test.ts`).
 - **Namen der PWA im Code lassen:** „Rechner-PWA“, `out-pwa`, der Cache-Name im Service Worker
   (ein neuer ließe die alten Caches auf den Handys liegen). Geändert werden nur sichtbare Texte.
 
@@ -966,10 +966,11 @@ Was die App heute schützt, steht in [SICHERHEIT.md](SICHERHEIT.md). Offen:
 
 ### E1 – Große Komponenten teilen
 
-Sechs Dateien tragen zu viel in einer Komponente: `Rta.tsx` (818 Zeilen, 3 Funktionen, 10
-Effekte), `VideoConverter.tsx` (1106 Zeilen, 6 Funktionen), `MediaInfo.tsx` (1008),
-`led-wall/Settings.tsx` (921), `video-generator/Inspector.tsx` (915), `StageTimer.tsx` (837).
-Vorbild ist `VideoPlayer.tsx`, das so von 1.765 auf unter 300 Zeilen kam.
+Fünf Dateien tragen zu viel in einer Komponente: `VideoConverter.tsx` (1106 Zeilen, 6
+Funktionen), `MediaInfo.tsx` (1008), `led-wall/Settings.tsx` (921),
+`video-generator/Inspector.tsx` (915), `StageTimer.tsx` (837). Vorbild ist `VideoPlayer.tsx`,
+das so von 1.765 auf unter 300 Zeilen kam; `Rta.tsx` ist erledigt (siehe
+[Erledigt](#erledigt--nicht-neu-planen)).
 
 **So:** Skill `aufraeumen` (Helfer `teilen.mjs`, Pixelvergleich `pixel.mjs`): je Datei ein Pull
 Request, **ohne sichtbare Änderung** – das E2E des Werkzeugs und der Pixelvergleich vor und
@@ -1519,7 +1520,9 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Beschreibung höchstens 50 Zeichen, was wegfiel, in den Stichworten der Suche.
 - **Aufgeräumt:** `main/services` nach Bereichen, Fensterlogik aus `main/index.ts`, der
   IPC-Vertrag als einzige Quelle, `VideoPlayer.tsx` von 1.765 auf unter 300 Zeilen,
-  `OscControl.tsx` von 3.276 auf 387.
+  `OscControl.tsx` von 3.276 auf 387, `Rta.tsx` von 818 auf 170 (E1, 27. November 2026: Messen
+  und Zeichnen in `useRtaMessung.ts`, Spektrum und Spektrogramm in `RtaSpektrum.tsx`, ihre
+  Bedienung und die Statuszeile in `RtaBedienung.tsx` – vorher und nachher pixelgleich).
 - **Große Vorhaben:** Video-Generator Phasen 0 bis 2; Mini-Manual mit Projektdatei, mehreren
   Wänden, Kabelverlauf, Handy-Fassung und Tastenfeld-Editor; ATEM-Steuerung mit den Seiten
   Mischen, Keyer, Makros, Medien und AUX.

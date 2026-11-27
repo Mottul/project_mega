@@ -277,6 +277,10 @@ Leitbild und Teil K.
      Eingaben (`calc:<id>`) – beides vor der Messung entfernen und neu laden. Die Breite 393
      schaltet dort auch den groben Zeiger ein (`pointer: coarse`): Knopfgruppen sind dann höher
      als im Fenster der App.
+   - **Vorher/nachher ohne Fenster** (Umbau ohne sichtbare Änderung, z. B. E1 am RTA): den
+     PWA-Build in Offscreen-Fenstern von Electron aufnehmen und pixelgenau vergleichen – nichts
+     erscheint auf dem Bildschirm, kein Ton; Stolpersteine im Skill `aufraeumen` („Ohne sichtbare
+     Fenster“).
    - **Ansehen ohne Build:** `npm run pwa:dev` (Port 5180) registriert keinen Service Worker und
      zeigt Änderungen sofort – gut, um einen Baustein, den noch kein Rechner nutzt, vorübergehend
      in einen einzusetzen und anzusehen (K2: `tone` an der Bewertung im Beamer-Lumen; danach
