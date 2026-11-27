@@ -84,7 +84,9 @@ nennen.
 
 Vorbilder (13. Oktober 2026): `VideoPlayer.tsx` (1.765 → 291 Zeilen: `Library`, `ConvertQueue`,
 `PlaybackPanel` – heute `Stage` –, `Playlist`, `SetupPanels`, `NdiPanel`, `usePlayback`, `format`) und `OscControl.tsx`
-(3.276 → 387 Zeilen: Bedienelemente, Kachel, Fläche, Editor, Panels, Kopfzeile, fünf Hooks).
+(3.276 → 387 Zeilen: Bedienelemente, Kachel, Fläche, Editor, Panels, Kopfzeile, fünf Hooks);
+dazu `Rta.tsx` (27. November 2026, 818 → 170 Zeilen: `useRtaMessung` für Messen und Zeichnen,
+`RtaSpektrum`, `RtaBedienung`).
 
 **Oberste Ebene per Werkzeug, nicht von Hand:**
 
@@ -108,6 +110,13 @@ exklusive) und wörtlich in den Rumpf des neuen Hooks bzw. der Komponente setzen
 Stelle der Aufruf (`const runNova = useNovaRunner(pushLog)`). Typecheck nennt dann fehlende
 Importe der neuen Dateien; ein Lauf von `teilen.mjs` danach räumt die Quelle auf.
 
+Ohne einen Import von Hand (RTA): erst **in derselben Datei** gliedern – ein Wegwerf-Skript setzt
+die Blöcke an Zeilennummern in neue Funktionen auf oberster Ebene, prüft je Block erste und letzte
+Zeile und dass jede alte Zeile genau einmal verbraucht ist (übrig bleiben nur Leerzeilen und, was
+der Umbau ersetzt); Props-Typen und Rückgabe dazuschreiben, die dafür nötigen Typen in die Importe
+der Quelle, dann Typecheck und Lint. Danach verteilt `teilen.mjs` die neuen Funktionen auf Dateien
+und rechnet alle Importe selbst.
+
 - **Zustand, den mehrere Teile brauchen, bleibt oben** und geht als Props hinunter (Wand,
   Fit, Bibliothek, Wiedergabezustand); auch das Abonnement, das ihn lädt (`applySettings` setzt
   viele Felder auf einmal – nicht zerreißen).
@@ -116,7 +125,10 @@ Importe der neuen Dateien; ein Lauf von `teilen.mjs` danach räumt die Quelle au
   Ansicht und Suche in `Library`, gemerkte Vorschau-Schalter in `Stage`). Ein Rückruf nach oben
   (`onDone`) über eine Ref, damit das Abo nicht bei jedem Rendern neu bindet.
 - **Logik ohne Oberfläche als Hook** (`usePlayback`: Tick, Ziehen am Regler, Tastatur) – Leiste
-  und Karte lesen dieselbe Position, der Hook liefert sie beiden.
+  und Karte lesen dieselbe Position, der Hook liefert sie beiden. Liest eine Schleife im Hook
+  Zustand der Oberfläche (RTA: Einfrieren, Zeiger fürs Fadenkreuz), bleibt der in der Komponente
+  und geht als Argument hinein (`useRtaMessung(p, frozen, hover)`); die Refs der Zeichenflächen
+  legt der Hook an und gibt sie heraus, weil er hineinzeichnet.
 - Kommentare, Texte und Klassen wörtlich übernehmen; nur Variablennamen dürfen sich ändern.
   Funktionen, die ein Effekt mit `[]` aufruft, auf Modulebene legen (sonst meldet
   `react-hooks/exhaustive-deps` sie, und `--max-warnings 0` bricht).
@@ -138,6 +150,29 @@ nachher.png` zeigt Pixelzahl, größte Abweichung und Rechteck – bei der OSC-S
 auf einer Kachel, die nach dem letzten Klick ihre Hover-Leiste noch ausblendete (Maus weg und
 Übergänge abwarten). **Hat das Werkzeug keinen E2E-Test, zuerst einen schreiben** und gegen den
 alten Stand grün bekommen (so entstand `e2e/osc.mjs`); danach die E2E des Werkzeugs und alle.
+
+**Ohne sichtbare Fenster** (arbeitet Matthias am Rechner, stören Fenster der App): ein kleines
+Werkzeug am PWA-Build vergleichen – derselbe Code. So am RTA (E1, 27. November 2026), 33 Bilder in
+drei Größen, auch beim Messen:
+
+- Wegwerf-Skript mit Electron (`node_modules/electron/dist/electron.exe skript.cjs`): `out-pwa`
+  vorher und nachher in einen eigenen Ordner kopieren, aus dem Skript per `http` ausliefern (ohne
+  `sw.js`), je Fall ein Fenster mit **`webPreferences.offscreen: true`** und frischer Partition –
+  ein bloß verborgenes Fenster (`show: false`) liefert keine Bilder, die Aufnahme hing.
+- Erst eine leere Seite laden, dann `webContents.debugger`: `Emulation.setDeviceMetricsOverride`
+  (Größe, Pixeldichte 2; vor dem ersten Laden hing der Befehl), `Emulation.setTouchEmulationEnabled`
+  (grober Zeiger wie am Handy), Stände per `Page.addScriptToEvaluateOnNewDocument` in den
+  localStorage, Aufnahme per `Page.captureScreenshot`. `app.on('window-all-closed', …)` abfangen,
+  sonst beendet sich Electron nach dem ersten Fall.
+- Messwerte fest machen: statt Mikrofon ein festes Spektrum (`AnalyserNode.prototype`
+  `getFloatFrequencyData`/`getFloatTimeDomainData` ersetzen) und warten, bis alles Sichtbare
+  eingeschwungen ist (die Zeitachse ist erst nach gut 80 s voll). Klicks und Zeiger per DOM-Ereignis
+  (kein `:hover`).
+- **Zuerst zwei Läufe am alten Stand vergleichen** (Vergleich wie `pixel.mjs`, aber mit
+  `nativeImage` im Skript – `pixel.mjs` startet die App sichtbar): Erst wenn die byte-gleich sind,
+  zählt ein Unterschied. Am RTA wich danach ein Bild ab – ein Wettlauf im Skript („Einfrieren“
+  direkt nach dem Wegziehen des Zeigers, das letzte Bild hatte mal das Fadenkreuz, mal nicht);
+  nach einer Pause dazwischen waren alle gleich.
 
 **Schneller, ohne Build – Rechnung aus der Komponente lösen** (Rechner, K1 im November 2026):
 
