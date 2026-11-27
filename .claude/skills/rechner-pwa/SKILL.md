@@ -30,7 +30,8 @@ Leitbild und Teil K.
 - Neues Werkzeug: in `SMALL_TOOLS`, `tools/registry.ts` **und** `src/pwa/tools.ts`
   (`src/pwa/tools.test.ts` vergleicht); Beschreibung im Manifest (`src/pwa/build/plugin.ts`)
   und in `src/pwa/index.html` nachziehen. Jede Änderung, die die PWA erreicht, meldet sich am
-  Handy als „Neue Version bereit“.
+  Handy als „Neue Version bereit“; was man dort sieht, gehört auch in „Was ist neu“ (siehe
+  „Version und ‚Was ist neu‘“).
 
 ## Rechnen
 
@@ -170,7 +171,24 @@ Leitbild und Teil K.
 - `env()` lässt sich im Browser-Bereich nicht setzen: zum Ansehen den Rand per eingefügtem Stil
   nachstellen (`.pwa-safe-top { padding-top: calc(59px + 1rem) !important }` – 59 px ist die
   Statusleiste eines iPhones mit Dynamic Island). Ob der Verlauf wirklich frei lässt, zeigt nur
-  das Gerät (Abnahme im Gesamtplan).
+  das Gerät: Am 27. November 2026 passte es auf dem iPhone eines Kollegen (Bildschirmfoto, Kopfzeile
+  ganz unter der Statusleiste) – die 1rem bleiben.
+
+## Version und „Was ist neu“
+
+- **Die Kennung einer Version ist der Hash über den Build** (`src/pwa/build/plugin.ts`, derselbe
+  wie im Cache-Namen des Workers). Der Build schreibt ihn als `<meta name="mottulbox-version">`
+  in `index.html` (`src/pwa/build/version.ts`), die Startseite zeigt unten die ersten sieben
+  Zeichen. **Nie Datum, Uhrzeit oder Commit in den Build schreiben:** Dann wäre jeder Build eine
+  neue Version, und die Handys meldeten „Neue Version bereit“, obwohl sich nichts geändert hat.
+- **Jede sichtbare Änderung an der Handy-App bekommt im selben Pull Request einen Eintrag** in
+  `src/pwa/neuigkeiten.ts` (Seite „Was ist neu“): neuester Tag zuerst, Datum = Tag der
+  Veröffentlichung (Merge auf main; am selben Tag in den vorhandenen Eintrag), ein bis drei
+  kurze Sätze mit „du“, ohne Paket-Kennungen und Dateinamen – das liest ein Kollege am Handy.
+  `src/pwa/neuigkeiten.test.ts` prüft die Form. Was die PWA nur unsichtbar ändert (Umbau,
+  Bausteine für die App), braucht keinen Eintrag; die Version ändert sich trotzdem.
+- Ist seit dem letzten Blick ein neuerer Tag dazugekommen, trägt „Was ist neu?“ einen Punkt
+  (`pwa:neuigkeiten-gesehen`, beim ersten Start ohne Punkt).
 
 ## Ton und Mikrofon am Handy
 
@@ -202,8 +220,15 @@ Leitbild und Teil K.
    `preset: 'desktop'`.
    - **Alte Fassung im Browser-Bereich:** Er behält den Service Worker früherer Prüfungen und
      zeigt still den alten Stand (K7: die Stromlast zählte dort noch 44 statt 42 Geräte). Die
-     geladenen Dateien (`performance.getEntriesByType('resource')`) mit den Namen aus dem
-     frischen Build vergleichen; weichen sie ab, Worker abmelden, Caches leeren, neu laden.
+     Zeile unten auf der Startseite muss dieselbe Kennung zeigen wie das `mottulbox-version` im
+     frisch gebauten index.html (Ordner out-pwa); sonst, oder mit den geladenen Dateien
+     (`performance.getEntriesByType('resource')`) gegen den frischen Build geprüft: Worker
+     abmelden, Caches leeren, neu laden.
+   - **Worker ließ sich nicht anmelden** (27. November 2026): Im Browser-Bereich scheiterte
+     `register` mit „An unknown error occurred when fetching the script“, obwohl `sw.js` mit 200
+     kam. Den Ablauf „Neue Version bereit“ → „Neu laden“ dann am Gerät prüfen; dass ein
+     geänderter Build eine neue Kennung zeigt, geht auch ohne Worker (bauen, neu laden, Zeile
+     lesen; mit dem alten Stand kommt die alte Kennung zurück).
    - **Vorschau beenden:** Unter Windows überlebt `vite preview` das Stoppen der
      Hintergrund-Aufgabe. Danach Port 5181 prüfen und den Prozess beenden – sonst weicht die
      nächste Vorschau still auf 5182 aus, und unter 5181 antwortet weiter die alte.

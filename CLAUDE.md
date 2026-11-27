@@ -66,7 +66,8 @@ Fenster und IPC an – Versionen von Hilfsprogrammen über `services/binaryVersi
   Web-App fürs Handy, gleiche Module ohne Electron (Liste `src/pwa/tools.ts` = `SMALL_TOOLS`).
   Rechner dürfen daher weder `api` noch Einstellungen noch Toasts nutzen – der PWA-Build bricht
   sonst ab; Meldungen als `Alert` in der Seite. Ihr CSS nimmt Tailwind-Klassen nur aus
-  `src/pwa/build/sources.ts` (neue Abhängigkeit dort eintragen, der Build meldet sie). Handy
+  `src/pwa/build/sources.ts` (neue Abhängigkeit dort eintragen, der Build meldet sie). Was man
+  am Handy sieht, bekommt einen Eintrag in „Was ist neu“ (`src/pwa/neuigkeiten.ts`). Handy
   (Ton, Tastaturen, Abnahme am Gerät): Skill `rechner-pwa`.
 - **Testton:** EIN Kern in `tools/_tone/` (Engine, Zeitpläne, `useToneEngine`) für
   Testbildgenerator und Testtongenerator, in App und PWA – neue Signale dort, nicht je Werkzeug;

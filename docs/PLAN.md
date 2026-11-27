@@ -581,7 +581,9 @@ nur über einen Knopf in der Manuals-Bibliothek.
 Node, ffmpeg und yt-dlp (beides gibt es schon), Betriebssystem. Knöpfe „Protokoll zeigen“
 (`api.getLogPath` und `api.showItemInFolder` gibt es), „Datenordner öffnen“, „Angaben
 kopieren“ (alles als Text, für eine Fehlermeldung). Neuer Kanal für die Versionsangaben nach
-Skill `ipc-kanal`.
+Skill `ipc-kanal`. Dazu (Vorschlag, Wunsch vom 27. November 2026: „anzuzeigen, was mit jedem
+release neu dazugekommen ist“): „Was ist neu“ wie in der Handy-App (K11), hier mit den Texten
+der Releases – in der App mitgeliefert, nicht aus dem Netz geholt.
 
 **Abnahme:** E2E: Reiter öffnen, die Version gleicht `package.json`; „Angaben kopieren“ füllt
 die Zwischenablage (über die Brücke lesen).
@@ -1233,12 +1235,12 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
 - **Seit K4, alle Rechner:** Werte eintippen, die Web-App ganz schließen (aus der Übersicht der
   offenen Apps wischen) und wieder öffnen – stehen die Werte noch da? „Zurücksetzen“ unter den
   Karten holt die Beispielwerte und verschwindet.
-- **Seit K8, iPhone als App installiert (iOS 26):** Logo, „MottulBox“ und der Knopf
-  „Darstellung“ stehen ganz unter dem Verlauf der Statusleiste, auch auf einer Rechner-Seite;
-  meldet sich „Neue Version bereit“, lässt sich „Neu laden“ antippen. Ist oben zu viel Luft,
-  den Zuschlag in `src/pwa/pwa.css` (1rem) verkleinern, verdeckt der Verlauf noch etwas,
-  vergrößern. iOS-Version und Bildschirmfoto festhalten (gemeldet hatte es ein Kollege am
-  26. November 2026).
+- **Seit K8 und K11, iPhone als App installiert (iOS 26):** Die Kopfzeile steht ganz unter dem
+  Verlauf der Statusleiste – das passt (Bildschirmfoto vom iPhone eines Kollegen, 27. November
+  2026, iOS-Version unbekannt; der Zuschlag von 1rem in `src/pwa/pwa.css` bleibt). Offen: Meldet
+  sich „Neue Version bereit“, lässt sich „Neu laden“ antippen, und danach steht unten auf der
+  Startseite eine neue Version? „Was ist neu“ zeigt die Einträge; der Punkt an „Was ist neu?“
+  kommt mit einem neueren Eintrag und verschwindet nach dem Öffnen.
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1491,7 +1493,10 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   „Zurücksetzen“ die Beispielwerte. Am installierten iPhone (iOS 26) lag der Streifen „Neue
   Version bereit“ unter der Statusleiste, und ein Verlauf verdeckte ein Drittel der Kopfzeile:
   Den oberen Rand trägt seither das äußerste Element, installiert unter iOS 1rem mehr (K8,
-  27. November).
+  27. November). Ganz unten auf der Startseite der Handy-App steht die Version (der Hash über den
+  Build, derselbe wie im Cache des Workers – nie Datum oder Commit, sonst wäre jeder Build neu),
+  ein Tipp darauf öffnet „Was ist neu“ mit den Änderungen je Tag (K11, 27. November, gewünscht am
+  selben Tag).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.
