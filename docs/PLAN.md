@@ -1142,6 +1142,12 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
 - **Seit K4, alle Rechner:** Werte eintippen, die Web-App ganz schließen (aus der Übersicht der
   offenen Apps wischen) und wieder öffnen – stehen die Werte noch da? „Zurücksetzen“ unter den
   Karten holt die Beispielwerte und verschwindet.
+- **Seit K8, iPhone als App installiert (iOS 26):** Logo, „MottulBox“ und der Knopf
+  „Darstellung“ stehen ganz unter dem Verlauf der Statusleiste, auch auf einer Rechner-Seite;
+  meldet sich „Neue Version bereit“, lässt sich „Neu laden“ antippen. Ist oben zu viel Luft,
+  den Zuschlag in `src/pwa/pwa.css` (1rem) verkleinern, verdeckt der Verlauf noch etwas,
+  vergrößern. iOS-Version und Bildschirmfoto festhalten (gemeldet hatte es ein Kollege am
+  26. November 2026).
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1385,7 +1391,10 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   Titel und Kurzfassung nicht in eine Zeile, steht die Kurzfassung darunter; „Frames (gesamt)“
   zählt nur ganze Frames (Befund 18). Die Rechner merken sich die Eingaben (K4, 26. November:
   `useCalcFields`, je Rechner `calc:<kennung>`, beim Lesen geprüft), unter den Karten holt
-  „Zurücksetzen“ die Beispielwerte.
+  „Zurücksetzen“ die Beispielwerte. Am installierten iPhone (iOS 26) lag der Streifen „Neue
+  Version bereit“ unter der Statusleiste, und ein Verlauf verdeckte ein Drittel der Kopfzeile:
+  Den oberen Rand trägt seither das äußerste Element, installiert unter iOS 1rem mehr (K8,
+  27. November).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

@@ -43,7 +43,10 @@ export function App(): JSX.Element {
 
   return (
     <HashRouter>
-      <div className="flex h-full flex-col">
+      {/* Der obere Rand (Statusleiste, Notch) gehört hierher, nicht an die Kopfzeile: Sonst lag
+          der Streifen „Neue Version bereit“ unter der Statusleiste, und dort nimmt das iPhone
+          keine Tipps an – „Neu laden“ ging nicht (K8). */}
+      <div className="pwa-safe-top flex h-full flex-col">
         {sw.updateReady && (
           <div className="pwa-safe-x flex items-center gap-3 border-b border-primary/35 bg-primary/[0.09] py-2 text-sm">
             <span className="flex-1 text-primary">Neue Version bereit.</span>
@@ -62,10 +65,10 @@ export function App(): JSX.Element {
   )
 }
 
-/** Kopfzeile: bleibt stehen, der Inhalt darunter scrollt (Notch/Statusleiste ausgespart) */
+/** Kopfzeile: bleibt stehen, der Inhalt darunter scrollt (Statusleiste spart `App` aus) */
 function Header({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <header className="pwa-safe-top pwa-safe-x flex shrink-0 items-center gap-2 border-b border-border bg-background pb-2">
+    <header className="pwa-safe-x flex shrink-0 items-center gap-2 border-b border-border bg-background py-2">
       {children}
     </header>
   )

@@ -155,6 +155,23 @@ Leitbild und Teil K.
 - Was sich beim Umschalten ändert, nach unten: Was man im Betrieb greift, steht oben immer an
   derselben Stelle (Testtongenerator: Start, Pegel, Kanäle oben, die Felder des Signals unten).
 
+## Ränder: Statusleiste, Notch, Home-Balken
+
+- Installiert läuft die App randlos (`viewport-fit=cover`, Statusleiste `black-translucent`):
+  Die Ränder kommen aus `env(safe-area-inset-*)` über die Klassen in `src/pwa/pwa.css`.
+- **Den oberen Rand trägt das äußerste Element** (`App.tsx`: `pwa-safe-top` am Rahmen um Streifen
+  und Kopfzeile), nie die Kopfzeile: Was darüber eingeblendet wird, läge sonst unter der
+  Statusleiste, und dort nimmt das iPhone keine Tipps an (K8: „Neu laden“ ging nicht).
+- **iOS 26:** Installiert legte iOS unter die Statusleiste einen Verlauf, der über den sicheren
+  Bereich hinausreicht (ein Drittel der Kopfzeile verdeckt), und seit 26.1 meldet
+  `env(safe-area-inset-top)` dort teils 0. Deshalb installiert unter iOS 1rem mehr
+  (`@media (display-mode: standalone)` mit `@supports (-webkit-touch-callout: none)` – das kennt
+  nur Safari auf iOS und iPadOS). Im Browser-Tab und unter Android bleibt der Rand wie vorher.
+- `env()` lässt sich im Browser-Bereich nicht setzen: zum Ansehen den Rand per eingefügtem Stil
+  nachstellen (`.pwa-safe-top { padding-top: calc(59px + 1rem) !important }` – 59 px ist die
+  Statusleiste eines iPhones mit Dynamic Island). Ob der Verlauf wirklich frei lässt, zeigt nur
+  das Gerät (Abnahme im Gesamtplan).
+
 ## Ton und Mikrofon am Handy
 
 - **Ton nur aus einer Bedienung:** Den `AudioContext` im Klick selbst erzeugen und `resume()`
@@ -233,5 +250,6 @@ Leitbild und Teil K.
      fand das die Timecode-Felder – sie führen hh:mm:ss:ff in einem `NumField` und wären ab Werk
      rot gewesen (Abhilfe `parse`).
 4. **Am Gerät** (kann kein Test): iPhone als installierte App (Stummschalter, App wechseln und
-   zurück, Bildschirm bleibt an, danach misst der RTA noch), Android (Chrome), Tastaturen der
-   Felder, ⓘ antippen und daneben tippen. Ergebnis in die Doku, nicht nur „sollte gehen“.
+   zurück, Bildschirm bleibt an, danach misst der RTA noch; Kopfzeile ganz unter der
+   Statusleiste, „Neu laden“ antippbar), Android (Chrome), Tastaturen der Felder, ⓘ antippen und
+   daneben tippen. Ergebnis in die Doku, nicht nur „sollte gehen“.

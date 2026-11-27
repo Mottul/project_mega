@@ -392,7 +392,9 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
 - **Aufbau:** `src/pwa/` – `index.html`, `main.tsx`, `App.tsx` (Startseite + Rechner-Seite mit
   HashRouter), `tools.ts` (die Liste, gleich `SMALL_TOOLS`), `LookMenu.tsx` (Design und
   Akzentfarbe, gemerkt im Boot-Spiegel von `lib/theme` und `lib/accent`), Hooks für Service
-  Worker und Installieren, `pwa.css` (Notch-Ränder, 16-px-Felder gegen den iOS-Zoom),
+  Worker und Installieren, `pwa.css` (Ränder für Statusleiste, Notch und Home-Balken – der
+  obere am äußersten Element von `App.tsx`, installiert unter iOS 1rem mehr, weil iOS 26 unter
+  der Statusleiste einen Verlauf zeichnet; 16-px-Felder gegen den iOS-Zoom),
   `public/icons/` (aus `build/icon.png` erzeugt, s. u.). Build: `vite.pwa.config.ts` (normales
   Vite, `base: './'` – läuft in jedem Unterordner), Ausgabe `out-pwa/`.
 - **Ohne Electron:** `src/pwa/build/plugin.ts` bricht den Build ab, sobald ein Rechner (auch über
