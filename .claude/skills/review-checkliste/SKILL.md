@@ -155,6 +155,26 @@ nachgestellt, bevor etwas geändert wurde):
   `page.setViewportSize({ width: 1024, height: 700 })` und `click({ trial: true })` prüfen.
   Für ganze Anordnungen gibt es dafür `WorkArea` (Stufe aus dem gemessenen Platz).
 
+Aus dem RTA im Querformat (K10, 27.11.2026):
+
+- **Eine Tailwind-Variante, die `sm:` schlagen soll, als Bildschirm anlegen, nicht per
+  `addVariant`.** Plugin-Varianten stehen im CSS vor den Bildschirmen: `quer:h-full` verlor gegen
+  `sm:h-72`, am Handy quer (844 px breit, also auch `sm`) galten die festen Höhen. `quer` steht
+  deshalb in `tailwind.config.js` unter `theme.extend.screens` (`raw`). Nachprüfen im gebauten
+  CSS: Steht `.quer\:…` hinter `.sm\:…`?
+- **Raster mit fester Höhe und Elementen mit `overflow-hidden` staucht `auto`-Zeilen.** Die
+  automatische Mindestgröße solcher Elemente ist 0, das Raster verteilt nur seine Höhe auf die
+  Zeilen; mit `items-start` behält jede Karte ihre volle Höhe und liegt über der nächsten
+  (Schublade der Karten im RTA quer). `auto-rows-max` am Raster – dann scrollt es in sich.
+- **Gleiche Elemente, andere Anordnung, ohne Umbau des Baums:** Gruppen, die hochkant
+  `contents` sind (die Reihenfolge setzt `order`), werden quer zu Spalten (`quer:flex`). Abstände
+  dann mit `gap` statt `space-y` (das greift nicht durch `contents`). Ob hochkant alles bleibt,
+  zeigt der Pixelvergleich (Skill `aufraeumen`). **Die Reihenfolge im Baum zählt trotz `order`:**
+  Steht Schrift im Baum hinter einer Zeichenfläche (`canvas`), glättet Chromium sie in Graustufen,
+  davor mit Subpixeln. Mit zwei Gruppen (Bedienung vor bzw. hinter dem Spektrum) wich der RTA
+  hochkant in zwei bis drei Bildern ab; mit drei Gruppen, in denen jedes Element seine alte Seite
+  behält, war er byte-gleich.
+
 Aus dem Umbau des Video-Players auf die Arbeitsfläche (P1/P2, 13.11.2026):
 
 - **Ein Wechsel der Anordnung darf den React-Baum nicht ändern.** Rendert eine Stufe andere

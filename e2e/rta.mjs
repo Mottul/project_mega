@@ -133,6 +133,51 @@ async function bandAt(w, f) {
   return m ? { band: m[1], db: num(m[2]) } : null
 }
 
+/** Methode am Fenster des RTA im main aufrufen (getContentSize, setContentSize, minimize …) */
+const rtaFenster = (ctx, method, ...args) =>
+  ctx.app.evaluate(
+    ({ BrowserWindow }, [m, a]) => {
+      const x = BrowserWindow.getAllWindows().find(
+        (y) =>
+          !y.isDestroyed() &&
+          !y.webContents.isDestroyed() &&
+          y.webContents.getURL().includes('tool/rta')
+      )
+      return m === 'throttling' ? x.webContents.getBackgroundThrottling() : x[m](...a)
+    },
+    [method, args]
+  )
+
+/**
+ * Lage im Fenster (CSS-Pixel): Spektrum, Spektrogramm, Stopp; wie weit die Seite und die Spalte
+ * der Bedienung scrollen; ob die Zeichenfläche noch dieselbe ist (Marke `__marke`).
+ */
+async function lageQuer(w) {
+  return w.evaluate(() => {
+    const box = (e) => {
+      if (!e) return null
+      const r = e.getBoundingClientRect()
+      return { x: r.x, y: r.y, r: r.right, b: r.bottom, w: r.width, h: r.height }
+    }
+    const content = document.querySelector('[data-testid="tool-content"]')
+    const spalte = document.querySelector('[data-testid="rta-spalte"]')
+    const graph = document.querySelector('[data-testid="rta-graph"]')
+    return {
+      fenster: [innerWidth, innerHeight],
+      seite: content.scrollHeight - content.clientHeight,
+      spalte: spalte ? spalte.scrollHeight - spalte.clientHeight : null,
+      graph: box(graph),
+      spectro: box(document.querySelector('[data-testid="rta-spectro"]')),
+      stopp: box([...document.querySelectorAll('button')].find((b) => /Stopp/.test(b.innerText))),
+      marke: graph?.__marke === 1
+    }
+  })
+}
+
+/** Liegt das Rechteck ganz im Fenster? */
+const imFenster = (b, [fw, fh]) =>
+  b != null && b.x >= -0.5 && b.y >= -0.5 && b.r <= fw + 0.5 && b.b <= fh + 0.5
+
 /**
  * Helligkeit des Spektrogramms bei Frequenz f (0–255): Wasserfall in der neuesten Zeile, an der
  * Stelle, an der f auch im Spektrum steht; Zeitachse in der neuesten Spalte an der Höhe von f.
@@ -325,6 +370,102 @@ try {
         }
       ],
       [
+        'Quer (844 × 390): Spektrum und Wasserfall ganz im Fenster, Bedienung rechts, nichts scrollt, Ablesung wie hochkant',
+        async () => {
+          const [breit, hoch] = await rtaFenster(ctx, 'getContentSize')
+          // Drehen baut nichts neu auf (Gesamtplan K9): dieselbe Zeichenfläche vorher und nachher
+          await w.getByTestId('rta-graph').evaluate((c) => {
+            c.__marke = 1
+          })
+          await rtaFenster(ctx, 'setContentSize', 844, 390)
+          try {
+            // Hochkant passt sich das Fenster der Höhe des Inhalts an – quer muss es bleiben
+            let lage = null
+            assert.ok(
+              await waitFor(async () => {
+                lage = await lageQuer(w)
+                return lage.fenster.join('×') === '844×390'
+              }, 5_000),
+              `Fenster ${lage?.fenster.join(' × ')} statt 844 × 390`
+            )
+            // Raster und ResizeObserver ziehen nach
+            await new Promise((r) => setTimeout(r, 500))
+            lage = await lageQuer(w)
+            const info = JSON.stringify(lage)
+            assert.ok(lage.seite <= 1, `Seite scrollt um ${lage.seite} px: ${info}`)
+            assert.ok(lage.spalte != null && lage.spalte <= 1, `Bedienung abgeschnitten: ${info}`)
+            assert.ok(
+              imFenster(lage.graph, lage.fenster) && lage.graph.h >= 120,
+              `Spektrum: ${info}`
+            )
+            assert.ok(
+              imFenster(lage.spectro, lage.fenster) && lage.spectro.h >= 60,
+              `Wasserfall: ${info}`
+            )
+            // dieselbe Frequenzachse wie das Spektrum – sonst läuft das Fadenkreuz nicht durch
+            assert.ok(
+              lage.spectro.y >= lage.graph.b - 1 &&
+                Math.abs(lage.spectro.x - lage.graph.x) <= 1 &&
+                Math.abs(lage.spectro.w - lage.graph.w) <= 1,
+              `Wasserfall nicht unter dem Spektrum: ${info}`
+            )
+            assert.ok(
+              imFenster(lage.stopp, lage.fenster) && lage.stopp.x >= lage.graph.r,
+              `Stopp nicht rechts neben dem Spektrum: ${info}`
+            )
+            assert.ok(lage.marke, 'Spektrum beim Umschalten neu aufgebaut')
+
+            const at = await bandAt(w, 1000)
+            assert.equal(at.band, '1k')
+            assert.ok(Math.abs(at.db + 20) <= 0.5, `1k quer: ${at.db}`)
+            const t = Math.log(1000 / 20) / Math.log(1000)
+            await w.mouse.move(lage.spectro.x + 36 + t * (lage.spectro.w - 44), lage.spectro.y + 5)
+            const tip = w.getByText(/ vor \d|· jetzt/)
+            await tip.waitFor({ timeout: 5_000 })
+            assert.match(
+              await tip.locator('xpath=ancestor::div[1]').innerText(),
+              /(99\d|1\.0[01]\d) Hz/
+            )
+
+            // Die Karten liegen quer in einer Schublade über dem Spektrum; Stopp bleibt frei
+            const karte = w.getByRole('button', { name: /^Feedback-Finder/ })
+            assert.equal(
+              await karte.isVisible(),
+              false,
+              'Karten quer ohne „Einstellungen“ sichtbar'
+            )
+            await w.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+            await karte.waitFor({ timeout: 5_000 })
+            const kb = await karte.boundingBox()
+            assert.ok(
+              imFenster(
+                { x: kb.x, y: kb.y, r: kb.x + kb.width, b: kb.y + kb.height },
+                lage.fenster
+              ),
+              `Karte außerhalb: ${JSON.stringify(kb)}`
+            )
+            assert.ok(
+              await w.evaluate(() => {
+                const b = [...document.querySelectorAll('button')].find((x) =>
+                  /Stopp/.test(x.innerText)
+                )
+                const r = b.getBoundingClientRect()
+                return b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))
+              }),
+              'Schublade deckt „Stopp“ ab'
+            )
+            await w.getByRole('button', { name: 'Einstellungen schließen' }).click()
+            assert.ok(
+              await waitFor(async () => !(await karte.isVisible()), 3_000),
+              'Schublade bleibt offen'
+            )
+          } finally {
+            await rtaFenster(ctx, 'setContentSize', breit, hoch)
+            await waitFor(async () => (await w.evaluate(() => innerHeight)) > 500, 5_000)
+          }
+        }
+      ],
+      [
         'Zeitachse waagrecht: 1 kHz in der neuesten Spalte hell, 630 Hz dunkel; aus schaltet ab',
         async () => {
           await knopf(w, 'Spektrogramm', 'Zeitachse').click()
@@ -388,13 +529,7 @@ try {
       [
         'Fenster minimiert: ungedrosselt, die Messung läuft weiter',
         async () => {
-          const rta = (method) =>
-            ctx.app.evaluate(({ BrowserWindow }, m) => {
-              const x = BrowserWindow.getAllWindows().find(
-                (y) => !y.isDestroyed() && y.webContents.getURL().includes('tool/rta')
-              )
-              return m === 'throttling' ? x.webContents.getBackgroundThrottling() : x[m]()
-            }, method)
+          const rta = (method) => rtaFenster(ctx, method)
           assert.equal(await rta('throttling'), false)
           await rta('minimize')
           // Zurücksetzen leert die Anzeige; nur eine weiterlaufende Messung füllt sie wieder

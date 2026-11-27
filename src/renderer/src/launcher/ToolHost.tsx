@@ -145,9 +145,12 @@ export function ToolHost(): JSX.Element {
             <KioskContext.Provider value={kiosk}>
               <ToolChromeContext.Provider value={{ settingsSlot, toolName: tool.name }}>
                 <div data-testid="tool-content" className="h-full overflow-auto">
-                  {/* eigene Hülle nur zum Messen: hat die natürliche Höhe der Seite */}
+                  {/* eigene Hülle nur zum Messen: hat die natürliche Höhe der Seite. Quer füllt
+                      ein Werkzeug mit `data-fuellt-quer` (RTA) das Fenster: Dann bekommt die
+                      Hülle dessen Höhe, gemessen wird die Fensterhöhe – das Fenster bleibt so
+                      niedrig, wie man es gezogen hat, statt auf die Höhe des Inhalts zu springen */}
                   {compact ? (
-                    <div ref={setPage}>
+                    <div ref={setPage} className="quer:has-[[data-fuellt-quer]]:h-full">
                       <Tool />
                     </div>
                   ) : (

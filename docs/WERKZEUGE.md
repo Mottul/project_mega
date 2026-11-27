@@ -1074,6 +1074,18 @@ Messmikrofon), am Handy in der Web-App.
   Kalibrator, Mittelung, Spitzen, Pegelmesser, Skala, Farbe und Spektrogramm sind Knopfgruppen in
   ganzer Breite (am schmalen Handy brechen vier Knöpfe in zwei Reihen um); nur der Eingang bleibt
   eine Liste, weil es beliebig viele Geräte mit langen Namen gibt.
+- **Quer** (Handy quer, oder das Fenster breiter als hoch und höchstens 500 px hoch – dieselbe
+  Grenze wie die Kopfzeile der Web-App): links Spektrum und Wasserfall in voller Höhe, der
+  Wasserfall auf derselben Frequenzachse unter dem Spektrum (Fadenkreuz und Ablesung wie
+  hochkant), unter beiden Leq, Max, Spitze und die Statuszeile. Rechts eine schmale Spalte,
+  immer in derselben Reihenfolge: Messen bzw. Stopp, Pegel, Ansicht, Bewertung mit Einfrieren und
+  Zurücksetzen, Auflösung und **Einstellungen** – sie schiebt die Karten als Schublade über das
+  Spektrum (scrollt in sich; ✕ oder ein Tipp daneben schließt sie), die Spalte bleibt bedienbar.
+  Ohne Spektrogramm nimmt das Spektrum die ganze Höhe; Meldungen wie „Übersteuert“ stehen über
+  dem Spektrum. Nichts scrollt, und Drehen baut nichts neu auf – die Messung zeichnet weiter.
+  Im Fenster der App bestimmt quer das Fenster die Höhe (man zieht es niedrig), hochkant wie
+  bisher der Inhalt. Skizzen: [Handy](bilder/rta-quer-handy.svg),
+  [Fenster](bilder/rta-quer-fenster.svg).
 - **Messen** startet das Mikrofon ohne die Sprachfilter der Geräte (Echo- und Rauschunterdrückung,
   automatischer Pegel); filtert ein Gerät trotzdem, steht das in der Statuszeile.
 - **Spektrum** als Bänder (1/1, 1/3, 1/6 oder 1/12 Oktave nach IEC 61260) und als feine Kurve

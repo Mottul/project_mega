@@ -5,6 +5,13 @@ module.exports = {
   content: ['./src/renderer/index.html', './src/renderer/src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      screens: {
+        // `quer:` Handy quer und breite, niedrige Fenster (RTA) – dieselbe Grenze wie die
+        // Kopfzeile der Rechner-PWA (src/pwa/pwa.css): Die Höhe entscheidet, ein Tablet quer ist
+        // hoch genug für die Anordnung hochkant. Als Bildschirm (nicht als Plugin-Variante) steht
+        // sie im CSS hinter `sm:` bis `2xl:` und gewinnt gegen deren Höhen und Abstände.
+        quer: { raw: '(orientation: landscape) and (max-height: 500px)' }
+      },
       colors: {
         // Semantische Tokens (CSS-Variablen in assets/main.css), shadcn-aehnlich
         background: 'hsl(var(--background) / <alpha-value>)',

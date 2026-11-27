@@ -16,23 +16,31 @@ const iconTouch = '[@media(pointer:coarse)]:h-10 [@media(pointer:coarse)]:min-w-
 
 /**
  * Bedienung des Spektrums: unter ihm, am Handy in zwei Reihen (Ansicht + Bewertung, dann
- * Auflösung + Einfrieren/Zurücksetzen) – flex-auto füllt jede Reihe ganz
+ * Auflösung + Einfrieren/Zurücksetzen) – flex-auto füllt jede Reihe ganz. Quer schmal in der
+ * Spalte rechts: Ansicht, darunter Bewertung mit Einfrieren und Zurücksetzen, dann Auflösung.
  */
 export function SpektrumBedienung({
   p,
   frozen,
   setFrozen,
   running,
-  reset
+  reset,
+  className
 }: {
   p: RtaPrefs
   frozen: boolean
   setFrozen: Dispatch<SetStateAction<boolean>>
   running: boolean
   reset: () => void
+  className?: string
 }): JSX.Element {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-2 quer:grid quer:grid-cols-[minmax(0,1fr)_auto] quer:gap-1.5',
+        className
+      )}
+    >
       <Segmented
         label="Ansicht"
         value={p.view}
@@ -42,7 +50,7 @@ export function SpektrumBedienung({
           { value: 'curve', label: 'Kurve' },
           { value: 'both', label: 'Beides' }
         ]}
-        className="flex-auto"
+        className="flex-auto quer:col-span-2"
       />
       <Segmented
         label="Bewertung"
@@ -53,7 +61,7 @@ export function SpektrumBedienung({
           { value: 'A', label: 'A' },
           { value: 'C', label: 'C' }
         ]}
-        className="flex-auto"
+        className="flex-auto quer:col-start-1 quer:row-start-2"
       />
       <Segmented
         label="Auflösung (Oktave)"
@@ -65,10 +73,10 @@ export function SpektrumBedienung({
           { value: '6', label: '1/6' },
           { value: '12', label: '1/12' }
         ]}
-        className="flex-auto"
+        className="flex-auto quer:col-span-2 quer:row-start-3"
       />
-      <div className="ml-auto flex gap-1">
-        {/* am Handy nur Symbole (Name per aria-label), ab sm mit Text */}
+      <div className="ml-auto flex gap-1 quer:col-start-2 quer:row-start-2 quer:ml-0 quer:gap-1.5">
+        {/* am Handy nur Symbole (Name per aria-label), ab sm mit Text – quer wieder ohne */}
         <Button
           size="sm"
           variant={frozen ? 'secondary' : 'ghost'}
@@ -79,7 +87,7 @@ export function SpektrumBedienung({
           className={iconTouch}
         >
           {frozen ? <Play className="size-4" /> : <Snowflake className="size-4" />}
-          <span className="hidden sm:inline">{frozen ? 'Weiter' : 'Einfrieren'}</span>
+          <span className="hidden sm:inline quer:hidden">{frozen ? 'Weiter' : 'Einfrieren'}</span>
         </Button>
         <Button
           size="sm"
@@ -90,7 +98,7 @@ export function SpektrumBedienung({
           className={iconTouch}
         >
           <RotateCcw className="size-4" />
-          <span className="hidden sm:inline">Zurücksetzen</span>
+          <span className="hidden sm:inline quer:hidden">Zurücksetzen</span>
         </Button>
       </div>
     </div>
@@ -102,11 +110,13 @@ export function SpektrumBedienung({
 export function MessStatus({
   info,
   p,
-  frozen
+  frozen,
+  className
 }: {
   info: EngineInfo | null
   p: RtaPrefs
   frozen: boolean
+  className?: string
 }): JSX.Element {
   const diff = p.diffRef ? p.references.find((r) => r.id === p.diffRef) : undefined
 
@@ -114,7 +124,8 @@ export function MessStatus({
     <p
       className={cn(
         'flex flex-wrap items-center gap-x-2 text-xs',
-        info?.filters.length ? 'text-warning' : 'text-muted-foreground'
+        info?.filters.length ? 'text-warning' : 'text-muted-foreground',
+        className
       )}
       data-testid="rta-status"
     >
@@ -152,6 +163,31 @@ export function MessStatus({
       ) : (
         <span>Nicht gestartet</span>
       )}
+    </p>
+  )
+}
+
+/**
+ * Leq, Max und Spitze quer als eine Zeile unter dem Wasserfall: Als Kacheln passten sie nicht
+ * mehr in die Spalte rechts (am iPhone geht unten noch der Home-Balken ab). Hochkant stehen sie
+ * als Kacheln mit ⓘ unter dem Pegel.
+ */
+export function PegelZeile({
+  pegel,
+  className
+}: {
+  pegel: { label: string; value: string; unit: string }[]
+  className?: string
+}): JSX.Element {
+  return (
+    <p className={cn('items-baseline gap-x-3 text-xs text-muted-foreground', className)}>
+      {pegel.map((k) => (
+        <span key={k.label} className="whitespace-nowrap">
+          {k.label}{' '}
+          <span className="font-semibold tabular-nums text-foreground">{k.value || '–'}</span>
+          {k.value && ` ${k.unit}`}
+        </span>
+      ))}
     </p>
   )
 }

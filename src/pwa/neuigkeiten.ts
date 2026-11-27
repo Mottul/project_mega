@@ -17,6 +17,8 @@ export const NEUIGKEITEN: Neuigkeit[] = [
   {
     datum: '2026-11-27',
     punkte: [
+      'Den RTA kannst du quer halten: Spektrum und Wasserfall nutzen die ganze Höhe, die Bedienung steht rechts daneben.',
+      'Quer öffnet „Einstellungen“ im RTA die Karten als Schublade über dem Spektrum.',
       'Hältst du das Handy quer, fällt auf einem Rechner die Kopfzeile weg. Der runde Knopf oben links führt zur Übersicht.',
       'Unter Android schaltest du im Menü „Darstellung“ auf Vollbild: Status- und Navigationsleiste verschwinden.',
       'Unten auf der Startseite steht die Version. Nach „Neu laden“ siehst du dort, dass die neue läuft.',
