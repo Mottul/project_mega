@@ -275,9 +275,9 @@ alles andere lässt sich vorziehen.
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
 | **2 – Muster übertragen** | W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen vier große Werkzeuge (den Video-Generator hat W1 umgebaut, die Rechner passen seit K6 aufs Handy) |
-| **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
+| **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 · K9 → K10 | Kleine Pakete, die man bei jeder Benutzung merkt; K9 und K10 machen das Handy im Querformat brauchbar |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
-| **5 – Mehr Nutzen** | F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
+| **5 – Mehr Nutzen** | F18 · F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
 | **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 · ST6 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8); ST6 macht den macOS-Lauf der CI wieder verlässlich |
 | **Laufend** | Update-PRs, [Abnahmen am Gerät](#abnahmen-am-gerät) | montags bzw. wenn das Gerät da ist |
 
@@ -398,9 +398,9 @@ Auftrag.
 ## K – Kleine Werkzeuge
 
 Das [Muster 2](#muster-2-kleines-werkzeug) haben seit K6 alle Rechner, seit K4 merken sie sich
-die Eingaben (siehe [Erledigt](#erledigt--nicht-neu-planen)); ein offenes Paket gibt es hier
-nicht mehr – was für jedes weitere kleine Werkzeug gilt, steht unter den Regeln, Ideen unter
-„Später möglich“. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
+die Eingaben (siehe [Erledigt](#erledigt--nicht-neu-planen)). Offen sind K9 und K10: das Handy
+im Querformat (gewünscht am 26. November 2026). Was für jedes weitere kleine Werkzeug gilt, steht
+unter den Regeln, Ideen unter „Später möglich“. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
 Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator,
 Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im
 eigenen kleinen Fenster (Höhe folgt dem Inhalt, schmal bis 320 px) und läuft unverändert in der PWA
@@ -413,6 +413,62 @@ Was bleibt: eine kurze Zeile je Karte, alles Weitere hinter dem ⓘ, Zahlen mit 
 Felder in Akzentfarbe.
 
 Vor jeder Arbeit an einem kleinen Werkzeug den Skill `rechner-pwa` lesen.
+
+| Paket | Inhalt | Größe | Braucht |
+| ----- | ------ | ----- | ------- |
+| **K9** | Handy quer: Kopfzeile ausblenden, Vollbild unter Android | S–M | – |
+| **K10** | RTA im Querformat | M | K9, Skizze, vorher E1 für `Rta.tsx` |
+
+### K9 – Handy quer: Kopfzeile ausblenden, Vollbild unter Android
+
+**Wunsch** (Matthias, 26. November 2026): „Kopfleiste ausblendbar? Vor allem im Querformat wäre
+das ein großer Platzgewinn.“ und „Vollbild in PWA App möglich?“
+
+**Heute:** Die PWA lässt das Querformat zu (`display: 'standalone'` in
+`src/pwa/build/plugin.ts`, keine Ausrichtung festgelegt), aber die Kopfzeile einer
+Rechner-Seite (`Header` in `src/pwa/App.tsx`: Zurück, Symbol, Name, „Darstellung“) steht immer –
+quer kostet sie 53 px von rund 390. Vollbild gibt es am iPhone nicht: Apple zeigt die
+Statusleiste auch bei `display: fullscreen`, und `requestFullscreen` fehlt dort. Unter Android
+(Chrome) geht es über die Fullscreen-API; dann verschwinden Status- und Navigationsleiste.
+
+**So:**
+
+- Im Querformat am Handy (`(orientation: landscape) and (max-height: 500px)`) fällt die
+  Kopfzeile einer Rechner-Seite weg; oben links im sicheren Bereich bleibt ein kleiner runder
+  Knopf „←“ zur Übersicht. Hochkant bleibt alles, wie es ist; die Übersicht behält ihre
+  Kopfzeile. (Vorschlag: quer von selbst statt eines Knopfs „Kopfzeile ausblenden“ – vor dem Bau
+  mit Matthias klären.)
+- Ein Eintrag „Vollbild“ im Menü „Darstellung“ (`src/pwa/LookMenu.tsx`), nur wo
+  `document.fullscreenEnabled` gilt – am iPhone erscheint er nicht.
+- Die Ränder links und rechts (Notch quer) wie heute über `pwa-safe-x`.
+
+**Abnahme:** im eingebauten Browser (Skill `rechner-pwa`) quer bei 844 × 390: keine Kopfzeile
+auf einer Rechner-Seite, „←“ führt zur Übersicht; hochkant bei 393 × 710 wie bisher. Am Gerät:
+iPhone und Android quer; unter Android Vollbild an und aus, danach stimmen die Ränder.
+
+### K10 – RTA im Querformat
+
+**Wunsch** (Matthias, 26. November 2026): „RTA würde aber sehr profitieren von einem Querformat.
+Dafür müsste dann die Anzeige der Balken und des Wasserfalls angepasst werden.“
+
+**Heute:** `Rta.tsx` stellt Spektrum (`h-56`, ab `sm` `h-72`), Spektrogramm (Wasserfall
+`h-40`/`h-48`, Zeitachse `h-28`/`h-32`) und die Bedienung untereinander, darunter die Karten
+(`RtaCards.tsx`). Quer bleiben einem Handy rund 390 px Höhe, auch ohne Kopfzeile (K9) – Spektrum,
+Wasserfall und Bedienung passen so nicht gemeinsam auf den Schirm.
+
+**So:** erst eine Skizze (Handy quer um 844 × 390, dazu das kleine Fenster der App breit und
+niedrig), freigegeben von Matthias, dann bauen. Richtung: Das Spektrum nimmt die Höhe, der
+Wasserfall steht daneben oder wird per Knopf umgeschaltet, die Bedienung (Messen, Einfrieren,
+Ansicht, Bewertung) schmal an einer Seite; die Karten bleiben erreichbar, ohne dass das Spektrum
+wegscrollt. Hochkant bleibt der RTA, wie er ist.
+
+**Braucht:** K9 (Kopfzeile quer weg) und vorher E1 für `Rta.tsx` (818 Zeilen, ohne sichtbare
+Änderung teilen – siehe Regel unten) – sonst wird zweimal umgebaut.
+
+**Abnahme:** `e2e/rta.mjs` mit dem Fenster des RTA quer (z. B. 844 × 390): Spektrum und
+Wasserfall liegen ganz im Fenster, die Seite scrollt nicht, Fadenkreuz und Ablesung wie
+hochkant; die bisherigen Schritte bleiben grün. Am Handy quer: messen, einfrieren, Fadenkreuz im
+Wasserfall.
 
 ### Regeln für die kleinen Werkzeuge
 
@@ -666,7 +722,7 @@ wurde („Kachel wiederhergestellt“)?
 
 ## F – Mehr Nutzen
 
-Vier ausgearbeitete Pakete, darunter die Wünsche je Werkzeug und die Verzahnung.
+Fünf ausgearbeitete Pakete, darunter die Wünsche je Werkzeug und die Verzahnung.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
@@ -674,6 +730,7 @@ Vier ausgearbeitete Pakete, darunter die Wünsche je Werkzeug und die Verzahnung
 | **F2** | Show-Datei: OSC, Jingle, Timer, Packliste in der `.mottul` | M je Werkzeug | – |
 | **F3** | Stage-Timer: Schnellstart, bis Uhrzeit, Ablauf einfügen | S–M | besser nach W2 |
 | **F4** | Steuer-Schnittstelle dokumentieren | S | – |
+| **F18** | LED-Wall: Kreissegment aus Bogenlänge und Stichhöhe | M | offene Frage, Skizze |
 
 ### F1 – Sicherung und Umzug auf einen anderen Rechner
 
@@ -719,6 +776,40 @@ Werkzeug Adresse, Befehle mit Feldern und Grenzen (aus den Prüfern: `parseTimer
 OSC und Jingle), `api/state` zum Lesen, je ein Beispiel mit `curl`. Hinweis: ohne
 `Origin`-Kopfzeile schicken (Herkunftsprüfung). Ein Test hält die Liste der Befehle in der
 Doku und im Code gleich.
+
+### F18 – LED-Wall: Kreissegment aus Bogenlänge und Stichhöhe
+
+**Wunsch** (Matthias, 26. November 2026): „Es sollte auch die Option geben, mit Bogenlänge und
+Stichhöhe ein Segment zu erstellen. Wenn ich die Vorgabe einer gewissen Breite für die LedWall
+habe und diverse Stichhöhen probiere, um zu einem guten Ergebnis zu kommen.“
+
+**Heute:** Die Curving-Planung (uS2+, `led-wall/Curving.tsx`) baut ein Kreissegment aus der
+**Sehne** (Wandbreite, gerade gemessen) und der **Stichhöhe**: `calcArc` in
+`tools/led-wall/math.ts` sucht den größten Bogen innerhalb beider Vorgaben (0,5 m je Modul,
+Winkel im 2,5°-Raster, höchstens 45° je Modul, gemessen an der echten Form). Wer eine feste
+LED-Breite hat und Stichhöhen probiert, bekommt bei jeder Stichhöhe eine andere Modulzahl.
+
+**So:** Im Kreissegment wählt man die Vorgabe: „Sehne“ (wie heute) oder „Bogenlänge“ – die
+Breite der LED-Fläche entlang der Kurve, also eine feste Modulzahl. Zu Bogenlänge und Stichhöhe
+rechnet ein neuer Kern neben `calcArc` (mit Test) Gesamtwinkel, Radius, Sehne und die Winkel je
+Modul. Weil die Winkel im 2,5°-Raster liegen, gibt es zu einer Modulzahl nur bestimmte baubare
+Stichhöhen; deshalb dazu eine Liste aller baubaren Stichhöhen der gewählten Breite (Stichhöhe,
+Sehne, Radius, Gesamtwinkel), die zur eingegebenen passendste markiert, ein Tipp übernimmt eine
+Zeile. Gemessen wird wie bei `calcArc` an der echten Form (`distributeAngles`, `measureArc`),
+nicht am Idealkreis. Die Wahl der Vorgabe ist ein neues Feld der Wand (`led-wall/config.ts`,
+geprüft gelesen wie `curveMode`) und kommt mit in die Projektdatei (Skill `projektdatei`);
+Draufsicht und PDF nehmen das Ergebnis wie beim heutigen Segment.
+
+**Offen, vor dem Bau klären:** Ist mit der vorgegebenen Breite die LED-Fläche entlang der Kurve
+gemeint (so verstanden)? Soll die Liste der baubaren Stichhöhen kommen? Danach eine Skizze der
+Eingabe im Bereich Curving, freigegeben von Matthias.
+
+**Abnahme:** Unit-Tests des Kerns: Alle Zeilen der Liste haben dieselbe Bogenlänge, ihre
+Stichhöhen steigen mit dem Gesamtwinkel, und jede Zeile baut (Messung der echten Form gleich der
+Angabe); Grenzen: Stichhöhe 0 oder negativ, mehr als ein Halbkreis, mehr als 45° je Modul. E2E
+im Schritt LED-Wall mit Curving (`e2e/layout.mjs`): Bogenlänge 6 m, drei Stichhöhen nacheinander –
+es bleiben 12 Module, Sehne und Radius ändern sich, die Draufsicht zeigt die Form;
+`e2e/projektdatei.mjs` speichert und lädt die Vorgabe.
 
 ### Wünsche je Werkzeug
 
@@ -1340,6 +1431,12 @@ Bewusst nicht geplant:
 - **ATEM-Steuerung:** Steuerung über USB (neu bewerten nur, wenn Windows dort von selbst WinUSB
   nimmt und ein Einsatz ohne Netzwerkkabel wirklich gebraucht wird); Multiview aufs Handy.
 - **Video-Player:** Änderungen an der Steuerseite fürs Handy im Zuge von P5.
+- **RTA: wählbare Fensterfunktion** (26. November 2026, Frage eines Kollegen): Der RTA misst mit
+  den Analysatoren von Web Audio, die fest ein Blackman-Fenster anlegen; `rta/bands.ts` und
+  `rta/feedback.ts` rechnen es heraus, Terzen und Sinuspegel stimmen. Andere Fenster
+  (Blackman-Harris für mehr Dynamik, Flat-Top für genaue Sinuspegel) bräuchten eine eigene FFT
+  statt `AnalyserNode` – viel Aufwand, in der Terzanzeige kaum zu sehen. Neu bewerten nur für
+  eine Messaufgabe, die es braucht.
 
 ## Erledigt – nicht neu planen
 
