@@ -24,6 +24,30 @@
   padding-right: max(0.75rem, env(safe-area-inset-right));
 }
 
+/* Handy quer: Die Kopfzeile einer Rechner-Seite fällt weg (sie kostete 53 px von rund 390), links
+   bleibt eine schmale Leiste mit dem runden Knopf „←“ – sie scrollt nicht mit und verdeckt nichts.
+   Startseite und „Was ist neu“ behalten ihre Kopfzeile, hochkant bleibt alles, wie es war. Die
+   Höhe entscheidet, nicht die Breite: Ein Tablet ist auch quer hoch genug für die Kopfzeile. */
+.pwa-quer-leiste {
+  display: none;
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  /* :root davor schlägt die Tailwind-Klasse flex der Kopfzeile */
+  :root .pwa-quer-ohne {
+    display: none;
+  }
+  /* Links die Notch aussparen wie pwa-safe-x, rechts davon beginnt der Inhalt */
+  .pwa-quer-leiste {
+    display: flex;
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+  }
+  /* Rechts die Notch aussparen; den Abstand zum Rand hat der Rechner selbst (CalcPage), ohne
+     Notch bleibt der Rand wie vorher */
+  .pwa-quer-rechts {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
 /* Kein Gummiband-Scrollen der ganzen Seite (nur der Inhalt scrollt) und kein grauer
    Tipp-Blitz auf Android */
 html,

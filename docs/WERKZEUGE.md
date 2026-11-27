@@ -1161,6 +1161,14 @@ Desktop (gleicher Code). Mit dem **Stern** heftet man Werkzeuge als **Favoriten*
 stellt ihre Reihenfolge mit Pfeilen ein, die übrigen folgen darunter als „Weitere Werkzeuge“ wie
 in der App (das Handy merkt sich beides, neue Werkzeuge erscheinen von selbst unten). Der Knopf **„Darstellung“** oben rechts stellt wie das App-Menü der
 Mottulbox Design (Dunkel, Hell, wie das Gerät) und Akzentfarbe ein; das Handy merkt sich beides.
+Wo der Browser es anbietet (Android, Chrome), schaltet er dort auch **Vollbild** ein und aus: Status-
+und Navigationsleiste verschwinden. Verlässt das Handy das Vollbild selbst (etwa mit „Zurück“),
+zeigt das Menü wieder „Aus“. Am iPhone gibt es kein Vollbild für Web-Apps (Apple zeigt die
+Statusleiste immer), dort fehlt der Eintrag. **Quer gehalten** (Handy, höchstens 500 px hoch)
+fällt auf einer Rechner-Seite die Kopfzeile weg – sie kostete 53 von rund 390 px; links bleibt
+eine schmale Leiste mit einem runden Knopf „←“ zur Übersicht, der nicht mitscrollt. Die Ränder
+sparen Notch und Home-Balken aus. Startseite und „Was ist neu“ behalten ihre Kopfzeile, hochkant
+und auf dem Tablet bleibt alles wie gehabt; Drehen baut die Seite nicht neu auf.
 Eine neue Version meldet sich mit „Neu laden“, sonst greift sie beim nächsten Start – das kommt nur
 vor, wenn sich an den Rechnern selbst, an gemeinsamen Bedienelementen oder an den Farben etwas
 geändert hat, nicht bei Änderungen an anderen Werkzeugen. Ganz unten auf der Startseite steht

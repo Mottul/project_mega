@@ -275,7 +275,7 @@ alles andere lässt sich vorziehen.
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
 | **2 – Muster übertragen** | W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen vier große Werkzeuge (den Video-Generator hat W1 umgebaut, die Rechner passen seit K6 aufs Handy) |
-| **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 · K9 → K10 | Kleine Pakete, die man bei jeder Benutzung merkt; K9 und K10 machen das Handy im Querformat brauchbar |
+| **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 · K10 | Kleine Pakete, die man bei jeder Benutzung merkt; K10 macht den RTA im Querformat brauchbar |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
 | **5 – Mehr Nutzen** | F18 · F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
 | **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 · ST6 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8); ST6 macht den macOS-Lauf der CI wieder verlässlich |
@@ -398,8 +398,9 @@ Auftrag.
 ## K – Kleine Werkzeuge
 
 Das [Muster 2](#muster-2-kleines-werkzeug) haben seit K6 alle Rechner, seit K4 merken sie sich
-die Eingaben (siehe [Erledigt](#erledigt--nicht-neu-planen)). Offen sind K9 und K10: das Handy
-im Querformat (gewünscht am 26. November 2026). Was für jedes weitere kleine Werkzeug gilt, steht
+die Eingaben, seit K9 fällt am Handy quer die Kopfzeile weg (siehe
+[Erledigt](#erledigt--nicht-neu-planen)). Offen ist K10: der RTA im Querformat (gewünscht am
+26. November 2026). Was für jedes weitere kleine Werkzeug gilt, steht
 unter den Regeln, Ideen unter „Später möglich“. Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
 Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator,
 Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im
@@ -416,35 +417,7 @@ Vor jeder Arbeit an einem kleinen Werkzeug den Skill `rechner-pwa` lesen.
 
 | Paket | Inhalt | Größe | Braucht |
 | ----- | ------ | ----- | ------- |
-| **K9** | Handy quer: Kopfzeile ausblenden, Vollbild unter Android | S–M | – |
-| **K10** | RTA im Querformat | M | K9, Skizze, vorher E1 für `Rta.tsx` |
-
-### K9 – Handy quer: Kopfzeile ausblenden, Vollbild unter Android
-
-**Wunsch** (Matthias, 26. November 2026): „Kopfleiste ausblendbar? Vor allem im Querformat wäre
-das ein großer Platzgewinn.“ und „Vollbild in PWA App möglich?“
-
-**Heute:** Die PWA lässt das Querformat zu (`display: 'standalone'` in
-`src/pwa/build/plugin.ts`, keine Ausrichtung festgelegt), aber die Kopfzeile einer
-Rechner-Seite (`Header` in `src/pwa/App.tsx`: Zurück, Symbol, Name, „Darstellung“) steht immer –
-quer kostet sie 53 px von rund 390. Vollbild gibt es am iPhone nicht: Apple zeigt die
-Statusleiste auch bei `display: fullscreen`, und `requestFullscreen` fehlt dort. Unter Android
-(Chrome) geht es über die Fullscreen-API; dann verschwinden Status- und Navigationsleiste.
-
-**So:**
-
-- Im Querformat am Handy (`(orientation: landscape) and (max-height: 500px)`) fällt die
-  Kopfzeile einer Rechner-Seite weg; oben links im sicheren Bereich bleibt ein kleiner runder
-  Knopf „←“ zur Übersicht. Hochkant bleibt alles, wie es ist; die Übersicht behält ihre
-  Kopfzeile. Entschieden am 27. November 2026 („Kopfzeile quer von selbst“): kein Knopf
-  „Kopfzeile ausblenden“.
-- Ein Eintrag „Vollbild“ im Menü „Darstellung“ (`src/pwa/LookMenu.tsx`), nur wo
-  `document.fullscreenEnabled` gilt – am iPhone erscheint er nicht.
-- Die Ränder links und rechts (Notch quer) wie heute über `pwa-safe-x`.
-
-**Abnahme:** im eingebauten Browser (Skill `rechner-pwa`) quer bei 844 × 390: keine Kopfzeile
-auf einer Rechner-Seite, „←“ führt zur Übersicht; hochkant bei 393 × 710 wie bisher. Am Gerät:
-iPhone und Android quer; unter Android Vollbild an und aus, danach stimmen die Ränder.
+| **K10** | RTA im Querformat | M | Skizze, vorher E1 für `Rta.tsx` |
 
 ### K10 – RTA im Querformat
 
@@ -453,8 +426,10 @@ Dafür müsste dann die Anzeige der Balken und des Wasserfalls angepasst werden.
 
 **Heute:** `Rta.tsx` stellt Spektrum (`h-56`, ab `sm` `h-72`), Spektrogramm (Wasserfall
 `h-40`/`h-48`, Zeitachse `h-28`/`h-32`) und die Bedienung untereinander, darunter die Karten
-(`RtaCards.tsx`). Quer bleiben einem Handy rund 390 px Höhe, auch ohne Kopfzeile (K9) – Spektrum,
-Wasserfall und Bedienung passen so nicht gemeinsam auf den Schirm.
+(`RtaCards.tsx`). Quer bleiben einem Handy rund 390 px Höhe, auch ohne Kopfzeile – sie fällt dort
+seit K9 weg, dafür steht links eine 48 px breite Leiste mit dem runden „←“ (`pwa.css`). Spektrum,
+Wasserfall und Bedienung passen so nicht gemeinsam auf den Schirm (gemessen bei 844 × 390: Seite
+722 px hoch, sichtbar 390).
 
 **So:** erst eine Skizze (Handy quer um 844 × 390, dazu das kleine Fenster der App breit und
 niedrig), freigegeben von Matthias, dann bauen. Richtung: Das Spektrum nimmt die Höhe, der
@@ -462,8 +437,8 @@ Wasserfall steht daneben oder wird per Knopf umgeschaltet, die Bedienung (Messen
 Ansicht, Bewertung) schmal an einer Seite; die Karten bleiben erreichbar, ohne dass das Spektrum
 wegscrollt. Hochkant bleibt der RTA, wie er ist.
 
-**Braucht:** K9 (Kopfzeile quer weg) und vorher E1 für `Rta.tsx` (818 Zeilen, ohne sichtbare
-Änderung teilen – siehe Regel unten) – sonst wird zweimal umgebaut.
+**Braucht:** vorher E1 für `Rta.tsx` (818 Zeilen, ohne sichtbare Änderung teilen – siehe Regel
+unten) – sonst wird zweimal umgebaut.
 
 **Abnahme:** `e2e/rta.mjs` mit dem Fenster des RTA quer (z. B. 844 × 390): Spektrum und
 Wasserfall liegen ganz im Fenster, die Seite scrollt nicht, Fadenkreuz und Ablesung wie
@@ -1243,6 +1218,14 @@ stellt nur die Ereignisse nach (Playwright kann keine Dateien des Systems ziehen
   sich „Neue Version bereit“, lässt sich „Neu laden“ antippen, und danach steht unten auf der
   Startseite eine neue Version? „Was ist neu“ zeigt die Einträge; der Punkt an „Was ist neu?“
   kommt mit einem neueren Eintrag und verschwindet nach dem Öffnen.
+- **Seit K9, iPhone und Android quer:** Auf einer Rechner-Seite fehlt die Kopfzeile, der runde
+  Knopf „←“ steht oben links neben der Notch und führt zur Übersicht; nichts liegt unter Notch
+  oder Home-Balken, auch nicht am rechten Rand. Startseite und „Was ist neu“ behalten ihre
+  Kopfzeile. Testton starten, drehen – er spielt weiter. Unter Android im Menü „Darstellung“
+  Vollbild an (Status- und Navigationsleiste weg) und wieder aus, ebenso mit „Zurück“ – danach
+  zeigt das Menü „Aus“, und die Ränder stimmen. Am iPhone fehlt der Eintrag „Vollbild“. Offen
+  dazu: Steht installiert am iPhone quer über dem Inhalt ein leerer Streifen? Dann ist es der
+  Zuschlag von 1rem aus K8, der quer ohne Statusleiste vielleicht entfallen kann (neues Paket).
 - **Am Rechner:** das Ausgabegerät des Testtons im Betrieb wechseln.
 
 **ATEM-Steuerung am Mischer** (Skill `atem-steuerung`, Messwerte im Entwurf):
@@ -1340,7 +1323,7 @@ Entschieden – damit nichts neu gefragt wird:
 
 - **Handy quer: Die Kopfzeile fällt von selbst weg** (27. November 2026, „Kopfzeile quer von
   selbst“): Im Querformat verschwindet die Kopfzeile einer Rechner-Seite ohne eigenen Knopf, ein
-  kleiner Knopf „←“ bleibt (K9).
+  kleiner Knopf „←“ bleibt. Umgesetzt mit K9.
 - **LED-Wall: Die Bogenlänge ist die Breite entlang der Kurve** (27. November 2026, „Breite ist
   entlang der Kurve“): Die neue Vorgabe im Kreissegment meint die Breite der LED-Fläche entlang
   der Kurve, also eine feste Zahl von Modulen (F18). Ob die Liste der baubaren Stichhöhen kommt,
@@ -1506,7 +1489,10 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   27. November). Ganz unten auf der Startseite der Handy-App steht die Version (der Hash über den
   Build, derselbe wie im Cache des Workers – nie Datum oder Commit, sonst wäre jeder Build neu),
   ein Tipp darauf öffnet „Was ist neu“ mit den Änderungen je Tag (K11, 27. November, gewünscht am
-  selben Tag).
+  selben Tag). Am Handy quer fällt die Kopfzeile einer Rechner-Seite von selbst weg, links bleibt
+  eine schmale Leiste mit dem runden „←“ (per CSS, Drehen baut nichts neu auf; quer sichtbar 390
+  statt 337 px), unter Android schaltet „Darstellung“ Vollbild ein und aus – am iPhone gibt es
+  das nicht (K9, 27. November, gewünscht am 26.).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

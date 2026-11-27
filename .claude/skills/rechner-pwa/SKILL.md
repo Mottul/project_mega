@@ -1,6 +1,6 @@
 ---
 name: rechner-pwa
-description: Kleine Werkzeuge der Mottulbox für die Handy-PWA bauen oder ändern (Rechner, RTA, Testtongenerator) – was dort nicht geht (api, Einstellungen, Toasts), Tailwind-Quellen, Service Worker, Ton und Mikrofon am Handy, Tastaturen der Felder, Prüfen im Handyformat und am Gerät. Verwenden, bevor ein kleines Werkzeug, src/pwa/ oder tools/_calc, tools/_tone angefasst wird.
+description: Kleine Werkzeuge der Mottulbox für die Handy-PWA bauen oder ändern (Rechner, RTA, Testtongenerator) – was dort nicht geht (api, Einstellungen, Toasts), Tailwind-Quellen, Service Worker, Ton und Mikrofon am Handy, Tastaturen der Felder, Querformat und Vollbild, Prüfen im Handyformat und am Gerät. Verwenden, bevor ein kleines Werkzeug, src/pwa/ oder tools/_calc, tools/_tone angefasst wird.
 ---
 
 # Rechner-PWA – kleine Werkzeuge am Handy
@@ -174,6 +174,39 @@ Leitbild und Teil K.
   das Gerät: Am 27. November 2026 passte es auf dem iPhone eines Kollegen (Bildschirmfoto, Kopfzeile
   ganz unter der Statusleiste) – die 1rem bleiben.
 
+## Handy quer und Vollbild
+
+- **Quer ohne Kopfzeile** (entschieden am 27. November 2026: von selbst, ohne Schalter):
+  `(orientation: landscape) and (max-height: 500px)` in `src/pwa/pwa.css`. Die Kopfzeile der
+  Rechner-Seite (`pwa-quer-ohne`) fällt weg, links steht die Leiste `pwa-quer-leiste` mit dem
+  runden „←“ (`BackLink rund` in `App.tsx`), rechts spart `pwa-quer-rechts` die Notch aus.
+  Startseite und „Was ist neu“ behalten ihre Kopfzeile. Die Höhe entscheidet, nicht die Breite:
+  Ein Tablet quer behält sie.
+- **Per CSS, nicht per `matchMedia` in React:** Kopfzeile und Leiste stehen immer im Baum, CSS
+  wählt. So baut Drehen den Rechner nicht neu auf – ein laufender Ton oder eine Messung bliebe
+  sonst stehen. Prüfen mit einer Marke an `main.firstElementChild`: drehen, dasselbe Element.
+- **Die Rechner-Seite trägt kein `pwa-safe-x`:** `CalcPage` hat seinen eigenen Rand (`p-4
+  sm:p-6`, auch im Fenster der App), hochkant gibt es links und rechts keine Notch. Quer sparen
+  Leiste und `pwa-quer-rechts` sie aus. `pwa-safe-x` am Inhalt hätte hochkant jede Rechner-Seite
+  um 12 px je Seite schmaler gemacht.
+- **Was die Leiste kostet** (27. November 2026, 844 × 390 im Browser-Bereich, mit Scrollbalken):
+  sichtbar 390 statt 337 px, dafür 48 px Breite. Bei Stromlast und Kameraobjektiv rücken dadurch
+  Knopfgruppen unter ihre Beschriftung (Seite 6 bzw. 36 px höher); mehr sichtbar bleibt trotzdem
+  überall. Mit nachgestellter Notch (59 px je Seite) steht die Stromlast einspaltig.
+- **Vollbild** (`src/pwa/vollbild.ts`, Menü „Darstellung“): nur wo `document.fullscreenEnabled
+  === true` – am iPhone fehlt die Eigenschaft, obwohl die DOM-Typen sie versprechen. Eingeschaltet
+  wird aus dem Tipp heraus (`requestFullscreen({ navigationUI: 'hide' })`), der Zustand kommt nur
+  aus `fullscreenchange`: Er folgt auch „Zurück“, und lehnt der Browser ab, bleibt „Aus“ gewählt.
+  Nicht gemerkt – ohne Tipp lässt der Browser es beim Start ohnehin nicht zu.
+- **Prüfen quer** im Browser-Bereich: `resize_window` 844 × 390 (keine Kopfzeile auf einer
+  Rechner-Seite, „←“ führt zur Übersicht), 568 × 320 (kein Querscrollen), 1024 × 768
+  (Kopfzeile bleibt), hochkant 393 × 710 wie vorher. Die Notch per eingefügtem Stil nachstellen
+  (`.pwa-quer-leiste { padding-left: 59px !important }`, `.pwa-quer-rechts { padding-right:
+  59px !important }`). **Vollbild dort nicht echt einschalten:** Es übernähme das Fenster der
+  Claude-App. `requestFullscreen`, `exitFullscreen` und `fullscreenElement` per JavaScript
+  ersetzen (der Ersatz löst `fullscreenchange` aus) und die Wahl im Menü lesen; ohne
+  `fullscreenEnabled` (am Prototyp auf `undefined` setzen, Seite wechseln) fehlt der Eintrag.
+
 ## Version und „Was ist neu“
 
 - **Die Kennung einer Version ist der Hash über den Build** (`src/pwa/build/plugin.ts`, derselbe
@@ -277,4 +310,5 @@ Leitbild und Teil K.
 4. **Am Gerät** (kann kein Test): iPhone als installierte App (Stummschalter, App wechseln und
    zurück, Bildschirm bleibt an, danach misst der RTA noch; Kopfzeile ganz unter der
    Statusleiste, „Neu laden“ antippbar), Android (Chrome), Tastaturen der Felder, ⓘ antippen und
-   daneben tippen. Ergebnis in die Doku, nicht nur „sollte gehen“.
+   daneben tippen; quer: keine Kopfzeile, „←“ neben der Notch, unter Android Vollbild an und
+   aus. Ergebnis in die Doku, nicht nur „sollte gehen“.
