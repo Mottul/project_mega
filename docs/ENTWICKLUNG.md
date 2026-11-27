@@ -419,7 +419,9 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
   Service Worker gibt es nur über HTTPS oder `localhost` – im LAN per `pwa:preview` läuft die
   Seite, aber nicht offline und nicht installierbar.
 - **Version und „Was ist neu“:** Die Kennung einer Version ist der Hash über alle Dateien des
-  Builds, derselbe wie im Cache-Namen des Workers. `plugin.ts` schreibt ihn als
+  Builds, derselbe wie im Cache-Namen des Workers (`src/pwa/build/buildHash.ts`, nach Dateinamen
+  sortiert – sonst ergäbe derselbe Inhalt unter Windows eine andere Kennung als in der CI, weil
+  die Systeme Ordner verschieden geordnet liefern). `plugin.ts` schreibt ihn als
   `<meta name="mottulbox-version">` in `index.html` (`src/pwa/build/version.ts`), die Startseite
   zeigt unten die ersten sieben Zeichen (`src/pwa/WasIstNeu.tsx`). Bewusst kein Datum und kein
   Commit: Sonst wäre jeder Build eine neue Version, und die Handys meldeten „Neue Version

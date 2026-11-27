@@ -7,12 +7,13 @@
 //   bricht dann ab, statt die Seite auf dem Handy ungestylt zu zeigen.
 // - Manifest und Service Worker: entstehen erst am Ende des Builds, weil der Worker die fertige
 //   Dateiliste (Namen mit Hash) zum Vorladen braucht. Der Hash über alle Dateien ist zugleich die
-//   Kennung der Version: im Cache-Namen des Workers und als <meta> in index.html (version.ts).
-import { createHash } from 'node:crypto'
+//   Kennung der Version (buildHash.ts): im Cache-Namen des Workers und als <meta> in index.html
+//   (version.ts).
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import type { Plugin } from 'vite'
 import { PWA_BACKGROUND } from '../colors'
+import { buildVersion, type BuildDatei } from './buildHash'
 import { SW_FILE, serviceWorkerSource } from './serviceWorker'
 import { inSources } from './sources'
 import { insertVersionMeta } from './version'
@@ -115,19 +116,16 @@ export function pwaPlugins({
     generateBundle(_options, bundle) {
       this.emitFile({ type: 'asset', fileName: MANIFEST_FILE, source: manifest() })
       // Alles Erzeugte samt public/ (Icons) vorladen; Quellkarten braucht offline niemand
-      const hash = createHash('sha256')
-      const files: string[] = []
+      const dateien: BuildDatei[] = []
       for (const [f, item] of Object.entries(bundle)) {
         if (f.endsWith('.map')) continue
-        files.push(f)
-        hash.update(f).update(item.type === 'chunk' ? item.code : item.source)
+        dateien.push([f, item.type === 'chunk' ? item.code : item.source])
       }
       for (const f of publicFiles(publicDir)) {
-        files.push(f)
-        hash.update(f).update(readFileSync(join(publicDir, f)))
+        dateien.push([f, readFileSync(join(publicDir, f))])
       }
-      files.sort()
-      const version = hash.digest('hex').slice(0, 12)
+      const files = dateien.map(([f]) => f).sort()
+      const version = buildVersion(dateien)
       // Erst nach dem Hash eintragen: index.html ändert sich so nur, wenn sich der Build ändert
       const html = bundle['index.html']
       if (html?.type !== 'asset') this.error('Rechner-PWA: index.html fehlt im Build')
