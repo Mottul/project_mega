@@ -389,9 +389,10 @@ Die Rechner gibt es zusätzlich als eigenständige Web-App fürs Handy (Bedienun
 [WERKZEUGE.md](WERKZEUGE.md#rechner-fürs-handy-pwa)). Kein zweiter Code: Die PWA bindet dieselben
 Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
 
-- **Aufbau:** `src/pwa/` – `index.html`, `main.tsx`, `App.tsx` (Startseite + Rechner-Seite mit
-  HashRouter), `tools.ts` (die Liste, gleich `SMALL_TOOLS`), `LookMenu.tsx` (Design und
-  Akzentfarbe, gemerkt im Boot-Spiegel von `lib/theme` und `lib/accent`), Hooks für Service
+- **Aufbau:** `src/pwa/` – `index.html`, `main.tsx`, `App.tsx` (Startseite, Rechner-Seite und
+  „Was ist neu“ mit HashRouter), `tools.ts` (die Liste, gleich `SMALL_TOOLS`), `LookMenu.tsx`
+  (Design und Akzentfarbe, gemerkt im Boot-Spiegel von `lib/theme` und `lib/accent`),
+  `WasIstNeu.tsx` mit `neuigkeiten.ts` (Version und „Was ist neu“, s. u.), Hooks für Service
   Worker und Installieren, `pwa.css` (Ränder für Statusleiste, Notch und Home-Balken – der
   obere am äußersten Element von `App.tsx`, installiert unter iOS 1rem mehr, weil iOS 26 unter
   der Statusleiste einen Verlauf zeichnet; 16-px-Felder gegen den iOS-Zoom),
@@ -414,6 +415,14 @@ Werkzeug-Module ein wie die Desktop-App, nur ohne Electron.
   App-Symbol nur die alten Dateien, und Android erneuerte Symbol und Startbildschirm nicht.
   Service Worker gibt es nur über HTTPS oder `localhost` – im LAN per `pwa:preview` läuft die
   Seite, aber nicht offline und nicht installierbar.
+- **Version und „Was ist neu“:** Die Kennung einer Version ist der Hash über alle Dateien des
+  Builds, derselbe wie im Cache-Namen des Workers. `plugin.ts` schreibt ihn als
+  `<meta name="mottulbox-version">` in `index.html` (`src/pwa/build/version.ts`), die Startseite
+  zeigt unten die ersten sieben Zeichen (`src/pwa/WasIstNeu.tsx`). Bewusst kein Datum und kein
+  Commit: Sonst wäre jeder Build eine neue Version, und die Handys meldeten „Neue Version
+  bereit“ ohne Änderung. Die Seite „Was ist neu“ liest `src/pwa/neuigkeiten.ts`: Jede sichtbare
+  Änderung an der Handy-App bekommt dort im selben Pull Request einen Eintrag (Tag der
+  Veröffentlichung, kurze Sätze ohne Paket-Kennungen; die Form prüft der Test daneben).
 - **Veröffentlichen:** Workflow `.github/workflows/pwa-pages.yml` testet die Rechner, baut und
   legt `out-pwa/` auf GitHub Pages (https://mottul.github.io/project_mega/). Er läuft
   automatisch bei jedem Push auf `main`, der die PWA betreffen kann (`src/pwa`, `src/renderer/src`,

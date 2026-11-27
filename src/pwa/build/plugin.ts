@@ -6,7 +6,8 @@
 //   Bindet die PWA eine Renderer-Datei außerhalb davon ein, fehlten deren Klassen – der Build
 //   bricht dann ab, statt die Seite auf dem Handy ungestylt zu zeigen.
 // - Manifest und Service Worker: entstehen erst am Ende des Builds, weil der Worker die fertige
-//   Dateiliste (Namen mit Hash) zum Vorladen braucht.
+//   Dateiliste (Namen mit Hash) zum Vorladen braucht. Der Hash über alle Dateien ist zugleich die
+//   Kennung der Version: im Cache-Namen des Workers und als <meta> in index.html (version.ts).
 import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
@@ -14,6 +15,7 @@ import type { Plugin } from 'vite'
 import { PWA_BACKGROUND } from '../colors'
 import { SW_FILE, serviceWorkerSource } from './serviceWorker'
 import { inSources } from './sources'
+import { insertVersionMeta } from './version'
 
 /** Module, die window.api/Electron voraussetzen (Pfad nach der Alias-Auflösung) */
 const FORBIDDEN = /[\\/]renderer[\\/]src[\\/]lib[\\/](api|settings)(\.tsx?)?$/
@@ -125,10 +127,18 @@ export function pwaPlugins({
         hash.update(f).update(readFileSync(join(publicDir, f)))
       }
       files.sort()
+      const version = hash.digest('hex').slice(0, 12)
+      // Erst nach dem Hash eintragen: index.html ändert sich so nur, wenn sich der Build ändert
+      const html = bundle['index.html']
+      if (html?.type !== 'asset') this.error('Rechner-PWA: index.html fehlt im Build')
+      html.source = insertVersionMeta(
+        typeof html.source === 'string' ? html.source : new TextDecoder().decode(html.source),
+        version
+      )
       this.emitFile({
         type: 'asset',
         fileName: SW_FILE,
-        source: serviceWorkerSource(files, hash.digest('hex').slice(0, 12))
+        source: serviceWorkerSource(files, version)
       })
     }
   }

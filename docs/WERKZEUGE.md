@@ -1163,7 +1163,11 @@ in der App (das Handy merkt sich beides, neue Werkzeuge erscheinen von selbst un
 Mottulbox Design (Dunkel, Hell, wie das Gerät) und Akzentfarbe ein; das Handy merkt sich beides.
 Eine neue Version meldet sich mit „Neu laden“, sonst greift sie beim nächsten Start – das kommt nur
 vor, wenn sich an den Rechnern selbst, an gemeinsamen Bedienelementen oder an den Farben etwas
-geändert hat, nicht bei Änderungen an anderen Werkzeugen. **Name, Symbol und Startbildschirm** der
+geändert hat, nicht bei Änderungen an anderen Werkzeugen. Ganz unten auf der Startseite steht
+klein die **Version** (eine Kennung aus sieben Zeichen) mit dem Stand der Neuigkeiten – nach
+„Neu laden“ sieht man dort, dass die neue Version läuft. Ein Tipp darauf öffnet **„Was ist
+neu“**: was sich an der Handy-App geändert hat, neuester Tag zuerst; ein Punkt an „Was ist neu?“
+zeigt, dass seit dem letzten Blick etwas dazugekommen ist. **Name, Symbol und Startbildschirm** der
 installierten App legt das Handy beim Installieren fest: Android erneuert sie nach einer
 Änderung von selbst, sobald Chrome sie bemerkt (beim Start, höchstens einmal am Tag, unter
 Umständen mit Rückfrage); iOS nie – dort die App vom Home-Bildschirm entfernen und neu hinzufügen.

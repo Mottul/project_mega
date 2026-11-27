@@ -12,6 +12,7 @@ import {
   Download,
   Loader2,
   RefreshCw,
+  Sparkles,
   Star
 } from 'lucide-react'
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
@@ -33,6 +34,7 @@ import { useInstallPrompt } from './useInstallPrompt'
 import { useServiceWorker } from './useServiceWorker'
 import { LookMenu } from './LookMenu'
 import { usePwaLook } from './useLook'
+import { VersionLine, WasIstNeu } from './WasIstNeu'
 
 const TITLE = 'MottulBox'
 
@@ -57,6 +59,7 @@ export function App(): JSX.Element {
         )}
         <Routes>
           <Route path="/" element={<Home lookButton={lookButton} />} />
+          <Route path="/neu" element={<NewsView lookButton={lookButton} />} />
           <Route path="/:id" element={<CalcView lookButton={lookButton} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -165,6 +168,7 @@ function Home({ lookButton }: { lookButton: ReactNode }): JSX.Element {
             </p>
           )}
           <InstallHint />
+          <VersionLine />
         </div>
       </Scroll>
     </>
@@ -320,13 +324,7 @@ function CalcView({ lookButton }: { lookButton: ReactNode }): JSX.Element {
   return (
     <>
       <Header>
-        <Link
-          to="/"
-          aria-label="Alle Werkzeuge"
-          className={buttonVariants({ variant: 'ghost', size: 'icon' })}
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
+        <BackLink />
         <Icon className="size-5 shrink-0 text-primary" />
         <h1 className="min-w-0 flex-1 truncate font-semibold">{tool.name}</h1>
         {lookButton}
@@ -345,6 +343,38 @@ function CalcView({ lookButton }: { lookButton: ReactNode }): JSX.Element {
             <Tool />
           </Suspense>
         </ErrorBoundary>
+      </Scroll>
+    </>
+  )
+}
+
+/** Zurück zur Übersicht – links in der Kopfzeile jeder Unterseite */
+function BackLink(): JSX.Element {
+  return (
+    <Link
+      to="/"
+      aria-label="Alle Werkzeuge"
+      className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+    >
+      <ArrowLeft className="size-5" />
+    </Link>
+  )
+}
+
+function NewsView({ lookButton }: { lookButton: ReactNode }): JSX.Element {
+  useEffect(() => {
+    document.title = `Was ist neu · ${TITLE}`
+  }, [])
+  return (
+    <>
+      <Header>
+        <BackLink />
+        <Sparkles className="size-5 shrink-0 text-primary" />
+        <h1 className="min-w-0 flex-1 truncate font-semibold">Was ist neu</h1>
+        {lookButton}
+      </Header>
+      <Scroll>
+        <WasIstNeu />
       </Scroll>
     </>
   )
