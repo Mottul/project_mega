@@ -436,8 +436,8 @@ Statusleiste auch bei `display: fullscreen`, und `requestFullscreen` fehlt dort.
 - Im Querformat am Handy (`(orientation: landscape) and (max-height: 500px)`) fällt die
   Kopfzeile einer Rechner-Seite weg; oben links im sicheren Bereich bleibt ein kleiner runder
   Knopf „←“ zur Übersicht. Hochkant bleibt alles, wie es ist; die Übersicht behält ihre
-  Kopfzeile. (Vorschlag: quer von selbst statt eines Knopfs „Kopfzeile ausblenden“ – vor dem Bau
-  mit Matthias klären.)
+  Kopfzeile. Entschieden am 27. November 2026 („Kopfzeile quer von selbst“): kein Knopf
+  „Kopfzeile ausblenden“.
 - Ein Eintrag „Vollbild“ im Menü „Darstellung“ (`src/pwa/LookMenu.tsx`), nur wo
   `document.fullscreenEnabled` gilt – am iPhone erscheint er nicht.
 - Die Ränder links und rechts (Notch quer) wie heute über `pwa-safe-x`.
@@ -730,7 +730,7 @@ Fünf ausgearbeitete Pakete, darunter die Wünsche je Werkzeug und die Verzahnun
 | **F2** | Show-Datei: OSC, Jingle, Timer, Packliste in der `.mottul` | M je Werkzeug | – |
 | **F3** | Stage-Timer: Schnellstart, bis Uhrzeit, Ablauf einfügen | S–M | besser nach W2 |
 | **F4** | Steuer-Schnittstelle dokumentieren | S | – |
-| **F18** | LED-Wall: Kreissegment aus Bogenlänge und Stichhöhe | M | offene Frage, Skizze |
+| **F18** | LED-Wall: Kreissegment aus Bogenlänge und Stichhöhe | M | Skizze |
 
 ### F1 – Sicherung und Umzug auf einen anderen Rechner
 
@@ -800,9 +800,10 @@ nicht am Idealkreis. Die Wahl der Vorgabe ist ein neues Feld der Wand (`led-wall
 geprüft gelesen wie `curveMode`) und kommt mit in die Projektdatei (Skill `projektdatei`);
 Draufsicht und PDF nehmen das Ergebnis wie beim heutigen Segment.
 
-**Offen, vor dem Bau klären:** Ist mit der vorgegebenen Breite die LED-Fläche entlang der Kurve
-gemeint (so verstanden)? Soll die Liste der baubaren Stichhöhen kommen? Danach eine Skizze der
-Eingabe im Bereich Curving, freigegeben von Matthias.
+**Geklärt am 27. November 2026:** Die vorgegebene Breite ist die LED-Fläche entlang der Kurve
+(„Breite ist entlang der Kurve“). **Vor dem Bau** eine Skizze der Eingabe im Bereich Curving samt
+der Liste der baubaren Stichhöhen, freigegeben von Matthias – an der Skizze entscheidet er auch,
+ob die Liste kommt.
 
 **Abnahme:** Unit-Tests des Kerns: Alle Zeilen der Liste haben dieselbe Bogenlänge, ihre
 Stichhöhen steigen mit dem Gesamtwinkel, und jede Zeile baut (Messung der echten Form gleich der
@@ -1333,6 +1334,13 @@ behalten ihre Nummer, damit Verweise darauf stimmen:
 
 Entschieden – damit nichts neu gefragt wird:
 
+- **Handy quer: Die Kopfzeile fällt von selbst weg** (27. November 2026, „Kopfzeile quer von
+  selbst“): Im Querformat verschwindet die Kopfzeile einer Rechner-Seite ohne eigenen Knopf, ein
+  kleiner Knopf „←“ bleibt (K9).
+- **LED-Wall: Die Bogenlänge ist die Breite entlang der Kurve** (27. November 2026, „Breite ist
+  entlang der Kurve“): Die neue Vorgabe im Kreissegment meint die Breite der LED-Fläche entlang
+  der Kurve, also eine feste Zahl von Modulen (F18). Ob die Liste der baubaren Stichhöhen kommt,
+  entscheidet die Skizze.
 - **Projektionsverhältnis: zuklappbar wie alle Rechner** (26. November 2026, „Ja, zuklappbar“):
   „Leinwand“ und „Objektiv & Abstand“ sind zuklappbare Karten wie im Piloten; am Handy und im
   520 px breiten Fenster ist „Objektiv & Abstand“ ab Werk zu und zeigt „TR 1,6 · 8 m“, dazu die
