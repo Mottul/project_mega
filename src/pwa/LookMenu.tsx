@@ -1,20 +1,26 @@
 // Knopf „Darstellung“ oben rechts in der Rechner-PWA: Design und Akzentfarbe wie im App-Menü
-// der Mottulbox. Klappt als Feld unter dem Knopf auf; Tippen daneben oder Escape schließt. Eine
-// unsichtbare Fläche fängt das Tippen daneben ab – sonst öffnete derselbe Tipp auf dem Handy
-// gleich den Rechner darunter.
+// der Mottulbox, dazu Vollbild, wo der Browser es anbietet (Android; am iPhone nicht). Klappt als
+// Feld unter dem Knopf auf; Tippen daneben oder Escape schließt. Eine unsichtbare Fläche fängt
+// das Tippen daneben ab – sonst öffnete derselbe Tipp auf dem Handy gleich den Rechner darunter.
 import { useEffect, useRef, useState } from 'react'
-import { Monitor, Moon, Palette, Sun } from 'lucide-react'
+import { Maximize, Minimize, Monitor, Moon, Palette, Sun } from 'lucide-react'
 import type { ThemeMode } from '@shared/types'
 import { Button } from '@renderer/components/ui/button'
 import { Segmented } from '@renderer/components/ui/segmented'
 import { ACCENTS, accentSwatch } from '@renderer/lib/accent'
 import { cn } from '@renderer/lib/utils'
 import type { PwaLook } from './useLook'
+import { useVollbild } from './vollbild'
 
 const THEMES: { value: ThemeMode; label: string; Icon: typeof Moon }[] = [
   { value: 'dark', label: 'Dunkel', Icon: Moon },
   { value: 'light', label: 'Hell', Icon: Sun },
   { value: 'system', label: 'Gerät', Icon: Monitor }
+]
+
+const VOLLBILD: { value: 'aus' | 'an'; label: string; Icon: typeof Moon }[] = [
+  { value: 'aus', label: 'Aus', Icon: Minimize },
+  { value: 'an', label: 'An', Icon: Maximize }
 ]
 
 function Heading({ children }: { children: string }): JSX.Element {
@@ -28,6 +34,7 @@ function Heading({ children }: { children: string }): JSX.Element {
 export function LookMenu({ look }: { look: PwaLook }): JSX.Element {
   const [open, setOpen] = useState(false)
   const button = useRef<HTMLButtonElement>(null)
+  const vollbild = useVollbild()
 
   useEffect(() => {
     if (!open) return
@@ -53,7 +60,11 @@ export function LookMenu({ look }: { look: PwaLook }): JSX.Element {
         aria-label="Darstellung"
         aria-haspopup="dialog"
         aria-expanded={open}
-        title="Darstellung: Design und Akzentfarbe"
+        title={
+          vollbild.moeglich
+            ? 'Darstellung: Design, Akzentfarbe und Vollbild'
+            : 'Darstellung: Design und Akzentfarbe'
+        }
         onClick={() => setOpen((o) => !o)}
         className={cn(open && 'bg-primary/10 text-primary')}
       >
@@ -94,6 +105,17 @@ export function LookMenu({ look }: { look: PwaLook }): JSX.Element {
               ))}
             </div>
           </section>
+          {vollbild.moeglich && (
+            <section className="space-y-2">
+              <Heading>Vollbild</Heading>
+              <Segmented
+                label="Vollbild"
+                value={vollbild.an ? 'an' : 'aus'}
+                onChange={(v) => vollbild.setzen(v === 'an')}
+                options={VOLLBILD}
+              />
+            </section>
+          )}
         </div>
       )}
     </div>

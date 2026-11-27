@@ -1,6 +1,7 @@
-// Rechner-PWA: Startseite mit allen Rechnern und je Rechner eine Seite mit Kopfzeile. Die
-// Rechner selbst sind dieselben Komponenten wie in der Desktop-App (tools/<id>). Favoriten
-// (Stern) stehen oben in eigener Reihenfolge, siehe favorites.ts.
+// Rechner-PWA: Startseite mit allen Rechnern und je Rechner eine Seite mit Kopfzeile (Handy quer
+// ohne, dort nur ein runder Knopf „←“). Die Rechner selbst sind dieselben Komponenten wie in der
+// Desktop-App (tools/<id>). Favoriten (Stern) stehen oben in eigener Reihenfolge, siehe
+// favorites.ts.
 import { Suspense, useEffect, useState, type ReactNode } from 'react'
 import { HashRouter, Link, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import {
@@ -69,16 +70,25 @@ export function App(): JSX.Element {
 }
 
 /** Kopfzeile: bleibt stehen, der Inhalt darunter scrollt (Statusleiste spart `App` aus) */
-function Header({ children }: { children: ReactNode }): JSX.Element {
+function Header({ children, className }: { children: ReactNode; className?: string }): JSX.Element {
   return (
-    <header className="pwa-safe-x flex shrink-0 items-center gap-2 border-b border-border bg-background py-2">
+    <header
+      className={cn(
+        'pwa-safe-x flex shrink-0 items-center gap-2 border-b border-border bg-background py-2',
+        className
+      )}
+    >
       {children}
     </header>
   )
 }
 
-function Scroll({ children }: { children: ReactNode }): JSX.Element {
-  return <main className="pwa-safe-bottom min-h-0 flex-1 overflow-y-auto">{children}</main>
+function Scroll({ children, className }: { children: ReactNode; className?: string }): JSX.Element {
+  return (
+    <main className={cn('pwa-safe-bottom min-h-0 flex-1 overflow-y-auto', className)}>
+      {children}
+    </main>
+  )
 }
 
 function Home({ lookButton }: { lookButton: ReactNode }): JSX.Element {
@@ -321,40 +331,53 @@ function CalcView({ lookButton }: { lookButton: ReactNode }): JSX.Element {
   if (!tool) return <Navigate to="/" replace />
   const Icon = tool.icon
   const Tool = tool.component
+  // Handy quer: statt der Kopfzeile links die Leiste mit dem runden „←“ (pwa.css). Beides steht
+  // immer im Baum, CSS wählt – so baut Drehen den Rechner nicht neu auf (ein Ton bräche sonst ab).
   return (
     <>
-      <Header>
+      <Header className="pwa-quer-ohne">
         <BackLink />
         <Icon className="size-5 shrink-0 text-primary" />
         <h1 className="min-w-0 flex-1 truncate font-semibold">{tool.name}</h1>
         {lookButton}
       </Header>
-      <Scroll>
-        <ErrorBoundary label={tool.name}>
-          <Suspense
-            fallback={
-              slow ? (
-                <div className="flex justify-center p-10 text-muted-foreground">
-                  <Loader2 className="size-6 animate-spin" />
-                </div>
-              ) : null
-            }
-          >
-            <Tool />
-          </Suspense>
-        </ErrorBoundary>
-      </Scroll>
+      <div className="flex min-h-0 flex-1">
+        <div className="pwa-quer-leiste shrink-0 items-start pt-2">
+          <BackLink rund />
+        </div>
+        <Scroll className="pwa-quer-rechts min-w-0">
+          <ErrorBoundary label={tool.name}>
+            <Suspense
+              fallback={
+                slow ? (
+                  <div className="flex justify-center p-10 text-muted-foreground">
+                    <Loader2 className="size-6 animate-spin" />
+                  </div>
+                ) : null
+              }
+            >
+              <Tool />
+            </Suspense>
+          </ErrorBoundary>
+        </Scroll>
+      </div>
     </>
   )
 }
 
-/** Zurück zur Übersicht – links in der Kopfzeile jeder Unterseite */
-function BackLink(): JSX.Element {
+/**
+ * Zurück zur Übersicht – links in der Kopfzeile jeder Unterseite. `rund`: allein in der Leiste
+ * (Handy quer); ohne die Kopfzeile drumherum braucht er Rand und Fläche, um als Knopf zu gelten.
+ */
+function BackLink({ rund = false }: { rund?: boolean }): JSX.Element {
   return (
     <Link
       to="/"
       aria-label="Alle Werkzeuge"
-      className={buttonVariants({ variant: 'ghost', size: 'icon' })}
+      className={cn(
+        buttonVariants({ variant: 'ghost', size: 'icon' }),
+        rund && 'rounded-full border border-border bg-card shadow-sm'
+      )}
     >
       <ArrowLeft className="size-5" />
     </Link>
