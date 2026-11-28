@@ -277,7 +277,7 @@ alles andere lässt sich vorziehen.
 | **2 – Muster übertragen** | W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen vier große Werkzeuge (den Video-Generator hat W1 umgebaut, die Rechner passen seit K6 aufs Handy) |
 | **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B15 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
-| **5 – Mehr Nutzen** | F19 · F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
+| **5 – Mehr Nutzen** | F19 → G14 · F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf; G14 (Curving-Rechner) nach F19 und B15 |
 | **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 · ST6 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8); ST6 macht den macOS-Lauf der CI wieder verlässlich |
 | **Laufend** | Update-PRs, [Abnahmen am Gerät](#abnahmen-am-gerät) | montags bzw. wenn das Gerät da ist |
 
@@ -400,7 +400,8 @@ Auftrag.
 Das [Muster 2](#muster-2-kleines-werkzeug) haben seit K6 alle Rechner, seit K4 merken sie sich
 die Eingaben, seit K9 fällt am Handy quer die Kopfzeile weg, seit K10 hat der RTA ein
 Querformat (siehe [Erledigt](#erledigt--nicht-neu-planen)). Offen ist zurzeit kein K-Paket. Was
-für jedes weitere kleine Werkzeug gilt, steht unter den Regeln, Ideen unter „Später möglich“.
+für jedes weitere kleine Werkzeug gilt, steht unter den Regeln, Ideen unter „Später möglich“; das
+nächste kleine Werkzeug ist der Curving-Rechner ([G14](#g14--curving-rechner-us2-für-app-und-handy)).
 Elf Werkzeuge stehen in `SMALL_TOOLS` (`src/shared/toolWindows.ts`):
 Kreisrechner, DMX-Dip-Schalter, Projektionsverhältnis, Audio-Delay & SPL, RTA, Testtongenerator,
 Beamer-Lumen, Timecode-Rechner, Stromlast, Kameraobjektiv, Rigging-Last. Jedes öffnet sich im
@@ -786,7 +787,7 @@ Was heute zwischen den Werkzeugen übergeben wird, steht in
 
 | Punkt | Inhalt |
 | ----- | ------ |
-| **V1** | **Übergabe-Speicher verallgemeinern.** Heute gibt es nur einen NovaStar-IP-Slot; deshalb setzt „IP in der OSC-Steuerung verwenden“ nur die NovaStar-IP, nicht das OSC-Ziel. Ein Slot „Wert + Zielwerkzeug“ ist die Grundlage für alles Weitere – auch für „In der ATEM-Steuerung verwenden“ im Netzwerk-Scanner (bis dahin sucht B12 den Mischer selbst) |
+| **V1** | **Übergabe-Speicher verallgemeinern.** Heute gibt es nur einen NovaStar-IP-Slot; deshalb setzt „IP in der OSC-Steuerung verwenden“ nur die NovaStar-IP, nicht das OSC-Ziel. Ein Slot „Wert + Zielwerkzeug“ ist die Grundlage für alles Weitere – auch für „In der ATEM-Steuerung verwenden“ im Netzwerk-Scanner (bis dahin sucht B12 den Mischer selbst) und für „In den LED-Wall-Konfigurator übernehmen“ im Curving-Rechner (G14, entschieden am 28. November 2026: erst mit V1) |
 | **V2** | **LED-Wall → Stromlast und Rigging:** Gewicht und Stromaufnahme sind schon berechnet |
 | **V3** | **Packliste aus mehr Quellen:** Rigging (Anschlagmittel je Bridle), Stromlast (Kabel und Verteiler je Kreis), ATEM (Mischer, Kabel, Tally) |
 | **V4** | **Show-Profil:** Wandauflösung, Geräte-IPs, NovaStar- und OSC-Ziele und Packliste werkzeugübergreifend speichern und als „Event“ laden. Grundlage ist die Projektdatei `.mottul` (ein Abschnitt je Werkzeug, heute LED-Wall und Anleitung). Der Weg: F2 (weitere Abschnitte), dann MM5 („Event öffnen …“) |
@@ -887,7 +888,8 @@ ffmpeg“ sah das nicht). Offen für die Mottulbox:
 
 ## G – Neue Werkzeuge
 
-Steckbriefe, keine Aufträge. Jedes Werkzeug bekommt vor der Umsetzung einen eigenen Entwurf
+Steckbriefe, keine Aufträge – außer G14, das als Paket mit Skizze ausgearbeitet ist (unter der
+Tabelle). Jedes andere Werkzeug bekommt vor der Umsetzung einen eigenen Entwurf
 (`docs/PLAN-<NAME>.md`) und folgt dem Skill `neues-werkzeug`. Geordnet nach Nutzen je Aufwand.
 Neue Werkzeuge entstehen gleich nach dem [Leitbild](#leitbild-zwei-muster): kleine nach Muster 2
 und auch in der PWA, große mit mehreren Bereichen nach Muster 1.
@@ -907,6 +909,103 @@ und auch in der PWA, große mit mehreren Bereichen nach Muster 1.
 | **G11** | **Weitere Rechner** | Spannungsabfall und Kabelquerschnitt (an die Stromlast angedockt), Edge-Blend (Beamer-Softedge), Video-Datenrate und Dateigröße, Gel-/Farbfilter (Lee ↔ Rosco ↔ RGB), Funkfrequenz-Planer, Sonnenstand und Dämmerung für Open-Air | Rechner-Bausteine; auch in der PWA | je S–M |
 | **G12** | **DMX-Universum-Planer** | Automatische Adressvergabe, Kollisions-Check | DMX-Dip-Schalter; zusammen mit G6 | M |
 | **G13** | **Manuals am Tablet oder Handy** | Handbücher als eigene App (z. B. Capacitor); Konverter und Testbilder bleiben am Desktop | Manuals-Bibliothek | L, Idee |
+| **G14** | **Curving-Rechner (uS2+)** | Kreissegment und Vollkreis vor Ort am Handy rechnen und ansehen – als Paket ausgearbeitet, siehe unten | Rechenkern und Draufsicht des LED-Wall-Konfigurators; auch in der PWA | M |
+
+### G14 – Curving-Rechner (uS2+) für App und Handy
+
+![Curving-Rechner am Handy: Antwort, Draufsicht, Winkel je Modul, darunter Form, Vorgabe, Felder und die Liste der baubaren Stichhöhen; klein die Vorgabe Sehne und der Vollkreis](bilder/curving-rechner-handy.svg)
+
+![Curving-Rechner im kleinen Fenster der App, 880 px breit: links Antwort und Draufsicht, rechts Eingaben und Liste](bilder/curving-rechner-fenster.svg)
+
+**Wunsch** (Matthias, 28. November 2026): „dieses curving wäre als pwa app auch sehr hilfreich.
+den ganzen konfigurator als app wäre overkill, aber das curving feature zum schnellen berechnen
+vor Ort und einer Visualisierung stelle ich mir sehr fein vor.“
+
+**Heute:** Curving für das uS2+ (0,5 m je Modul, Winkel im 2,5°-Raster, höchstens 45° je Modul)
+gibt es nur im LED-Wall-Konfigurator – einem großen Werkzeug mit `api` und Projektdatei, also
+nicht in der PWA. Eingestellt wird in der Schublade (`led-wall/Settings.tsx`: `CircleInputs`,
+`SegmentInputs`, `ArcOptionList`), das Ergebnis steht im Reiter „Draufsicht“
+(`led-wall/Curving.tsx`). Gerechnet wird ohne Electron: `led-wall/math.ts` hängt nur an
+`./data` (`calcArc`, seit F18 `arcOptions`, `fitArcLength` und `sagInputFor`, dazu
+`distributeAngles`, `measureFootprint`), `led-wall/topdown.ts` zeichnet die Draufsicht als
+SVG-Text und hängt nur an `./math`, die Vollkreise stehen in `CIRCLE_TABLE`
+(`led-wall/data.ts`).
+
+**So** (Skizzen oben): ein neues kleines Werkzeug nach [Muster 2](#muster-2-kleines-werkzeug) –
+eine Karte „Curving · uS2+“, in der App im eigenen Fenster und in der PWA (Skills
+`neues-werkzeug`, `rechner-pwa`).
+
+- **Antwort oben, fest:** Module und Gesamtwinkel groß, rechts der Radius; darunter Sehne,
+  Stichhöhe und Fläche B × T der gebauten Form (mit Modultiefe, `measureFootprint`). Beim
+  Vollkreis Winkel je Modul, Durchmesser und Umfang. Der Radius ist der des Kreises mit gleicher
+  Bogenlänge und gleichem Gesamtwinkel; bei flachen Bögen stehen außen gerade Module (6 m bei
+  0,25 m Stichhöhe: „3 × 0° · 5 × 2,5° · 4 × 0°“) – dort ist die Form kein Kreisbogen, das sagt
+  das ⓘ am Radius.
+- **Draufsicht in fester Höhe** (`topDownMarkup` mit `fill` und `maxHeightPx`): Tiefe Bögen
+  werden schmaler, darunter verrutscht nichts. Sehne und Stichhöhe wie im Konfigurator. Die
+  Winkel am Modul nur, wenn alle hineinpassen – bei 12 Modulen weder am Handy (25 px je Modul)
+  noch im Fenster (29 px; in der Skizze stießen die „2,5°“ dort aneinander und an „h:“). Dafür
+  eine neue Option in `topdown.ts`; ohne sie bleiben Konfigurator und PDF, wie sie sind.
+- **Winkel je Modul** als eine Zeile, in Gruppen von links nach rechts („5 × 2,5° · 2 × 5° ·
+  5 × 2,5°“): `distributeAngles` vergibt höchstens zwei Winkel in drei Gruppen, die Zeile bricht
+  nicht um.
+- **Unter dem Strich die Eingaben:** Form (Segment | Kreis) und Vorgabe (Sehne | Bogenlänge wie
+  im Konfigurator seit F18, ab Werk Bogenlänge) als Knopfgruppen nebeneinander; Bogenlänge bzw.
+  Sehne und Stichhöhe als zwei Felder nebeneinander. Über dem Feld „Stichhöhe“ steht die gebaute
+  („→ 0,509 m“) – sichtbar auch beim Tippen, wenn die Tastatur die Antwort verdeckt. Bei
+  Bogenlänge darunter die Liste aller baubaren Stichhöhen wie im Konfigurator (scrollt in sich,
+  die markierte Zeile mittig, ein Tipp übernimmt sie über `sagInputFor`); bei Sehne keine Liste;
+  beim Kreis statt der Felder die acht Vollkreise.
+- **Ab Werk:** Bogenlänge 6 m, Stichhöhe 0,5 m – 12 Module, 35°, gebaut 0,509 m, Sehne 5,893 m,
+  R 9,822 m, Fläche 5,89 × 0,58 m.
+- **Am Handy ohne Scrollen** (393 × 710, sichtbar 657 px): Die Karte füllt die Höhe genau, die
+  Draufsicht ist 96 px hoch, die Liste zeigt knapp vier Zeilen (28 px hoch für den Finger, im
+  Fenster 24). Nach einer Änderung kommt „Zurücksetzen“ dazu, 48 px wie bei allen Rechnern.
+- **Im Fenster der App** 880 px breit (Eintrag in `SMALL_TOOLS` wie Stromlast und RTA), dieselbe
+  Karte in zwei Spalten: links Antwort, Draufsicht über die übrige Höhe und Winkel, rechts die
+  Eingaben und die Liste mit acht Zeilen; rund 510 px hoch. Schmaler als 768 px eine Spalte wie
+  am Handy.
+- **Fehleingaben** rot (`NumField`); ohne gültige Stichhöhe (leer, 0, negativ, unlesbar) „–“ in
+  der Antwort und keine Draufsicht, die Liste bleibt zum Wählen da; zu flach oder zu tief: gebaut
+  wird die Form am Rand der Liste, über dem Feld „→ 1,910 m · tiefste“ – ein Alert schöbe die
+  Karte nach unten.
+- **Gemerkt** per `useCalcFields`: Form, Vorgabe, Breite, Stichhöhe und der gewählte Vollkreis;
+  offline über den Service Worker wie alle Rechner.
+- **Ein Kern, kein zweiter:** Der Rechner nimmt `math.ts`, `topdown.ts` und `data.ts` aus dem
+  Ordner des Konfigurators. Die drei Dateien kommen als Einträge in `src/pwa/build/sources.ts`
+  (wie `tools/types.ts`), oben in jeder ein Satz, dass sie auch in der PWA laufen (kein `api`).
+  Was der Rechner selbst entscheidet – die Antwort je Form, die Gruppen der Winkel, `invalid` –,
+  steht in einem eigenen Rechenkern neben der Komponente, mit Test.
+- **Neues Werkzeug** (Skill `neues-werkzeug`): Kennung curving-calc, Name „Curving-Rechner“,
+  Kategorie wie der Konfigurator; Einträge in `SMALL_TOOLS`, `tools/registry.ts` und
+  `src/pwa/tools.ts`, Beschreibung im Manifest und in `src/pwa/index.html`, „Was ist neu“
+  (`src/pwa/neuigkeiten.ts`), WERKZEUGE und README.
+
+**Entschieden am 28. November 2026** (an der Skizze, siehe
+[Entscheidungen](#entscheidungen)): so bauen; Formen Segment und Vollkreis – Builder und Squircle
+bleiben im Konfigurator; nur das uS2+; keine Übergabe an den LED-Wall-Konfigurator, die kommt
+erst mit V1.
+
+**Abnahme:**
+
+- Unit-Tests des Rechenkerns: ab Werk 12 Module, 35°, 0,509 m; Vorgabe Sehne wie `calcArc`
+  (6 m und 1,5 m: 13 Module, 105°); Vollkreis aus `CIRCLE_TABLE`; Gruppen der Winkel, auch mit
+  geraden Modulen außen; Stichhöhe leer, 0, negativ, unlesbar ergibt kein Ergebnis, lesbar und
+  unbrauchbar steht in `invalid`; zu tief ergibt die tiefste Form. Dazu die Option in
+  `topdown.ts`: bei schmalen Modulen fehlen alle Winkel, ohne Option ist das Markup gleich wie
+  heute.
+- E2E-Schritt in `e2e/layout.mjs` (kleine Werkzeuge): im Fenster mit 880 px zwei Spalten, die
+  Antwort über dem ersten Feld; bei 393 px höchstens 657 px hoch, die Liste scrollt in sich; Tipp
+  auf die Zeile 72,5° – Antwort 1,005 m, ihre Stichhöhe im Feld, es bleiben 12 Module; Vorgabe
+  Sehne mit 6 m und 1,5 m – 13 Module; Kreis – R 0,955 m; 320 px ohne Querscrollen; am Ende
+  `zuruecksetzen`.
+- `npm run pwa:build` und `npx vitest run src/pwa`; in der PWA im Browser-Bereich bei 393 × 710
+  mit grobem Zeiger: Die Seite scrollt nicht, die Liste schon (Skill `rechner-pwa`, „Prüfen“).
+- Am Gerät (neue Zeile unter [Abnahmen am Gerät](#abnahmen-am-gerät)): Liste mit dem Finger
+  scrollen und tippen, „→ 0,509 m“ über der Tastatur.
+
+**Größe:** M. **Braucht:** F19 und B15 – sonst erbt der Rechner beides: mit Vorgabe Sehne bei
+tiefen Bögen ein Modul zu wenig, in der Draufsicht Punkt statt Komma.
 
 ## S – Sicherheit und Auslieferung
 
@@ -1293,10 +1392,15 @@ behalten ihre Nummer, damit Verweise darauf stimmen:
     je Gerät), Companion-Export, ein MadMapper-6-Projekt und ein Abzug seines OSCQuery-Baums,
     NovaLCT-Dateien. Eine OBS-Szenensammlung liegt vor. (Matthias sammelt; ohne Datei kein
     Import.)
-13. **Welche neuen Werkzeuge** aus Teil G überhaupt – und welches zuerst? (Offen.)
+13. **Welche neuen Werkzeuge** aus Teil G überhaupt – und welches zuerst? (Offen. Gewünscht und
+    als Paket ausgearbeitet ist G14, der Curving-Rechner – siehe unten.)
 
 Entschieden – damit nichts neu gefragt wird:
 
+- **Curving-Rechner als kleines Werkzeug** (28. November 2026, an der Skizze: „So bauen“,
+  „Segment und Vollkreis“, „Nur uS2+“, „Nein, später mit V1“): G14 kommt nach der Skizze in App
+  und PWA. Formen Segment und Vollkreis – Builder und Squircle bleiben im LED-Wall-Konfigurator;
+  nur das uS2+; keine Übergabe an den Konfigurator, bis V1 den Übergabe-Speicher verallgemeinert.
 - **Handy quer: Die Kopfzeile fällt von selbst weg** (27. November 2026, „Kopfzeile quer von
   selbst“): Im Querformat verschwindet die Kopfzeile einer Rechner-Seite ohne eigenen Knopf, ein
   kleiner Knopf „←“ bleibt. Umgesetzt mit K9.

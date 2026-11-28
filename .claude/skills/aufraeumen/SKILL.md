@@ -158,7 +158,10 @@ drei Größen, auch beim Messen:
 - Wegwerf-Skript mit Electron (`node_modules/electron/dist/electron.exe skript.cjs`): `out-pwa`
   vorher und nachher in einen eigenen Ordner kopieren, aus dem Skript per `http` ausliefern (ohne
   `sw.js`), je Fall ein Fenster mit **`webPreferences.offscreen: true`** und frischer Partition –
-  ein bloß verborgenes Fenster (`show: false`) liefert keine Bilder, die Aufnahme hing.
+  ein bloß verborgenes Fenster (`show: false`) liefert keine Bilder, die Aufnahme hing. Anders
+  bei einem ruhenden Bild (Skizze als SVG, 28. November 2026): `capturePage()` an einem Fenster
+  mit `show: false` und `paintWhenInitiallyHidden: true` ging, `offscreen: true` brach mit
+  „UnknownVizError“ ab – Rezept im Skill `neues-werkzeug` („Vorher Paket und Skizze“).
 - Erst eine leere Seite laden, dann `webContents.debugger`: `Emulation.setDeviceMetricsOverride`
   (Größe, Pixeldichte 2; vor dem ersten Laden hing der Befehl), `Emulation.setTouchEmulationEnabled`
   (grober Zeiger wie am Handy), Stände per `Page.addScriptToEvaluateOnNewDocument` in den

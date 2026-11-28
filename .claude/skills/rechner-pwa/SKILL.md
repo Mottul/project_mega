@@ -138,6 +138,15 @@ Leitbild und Teil K.
   breiten Fenster bleibt es eine Zeile.
 - Höhe prüfen, nicht schätzen: Handy im Browser ≈ 393 × 710 (Kopf- und Fußleiste des Browsers
   abgezogen), Inhalt per `getBoundingClientRect` messen (Testtongenerator: passt ohne Scrollen).
+- **Höhe vorab rechnen** (für eine Skizze, G14): Unter der Kopfzeile (53 px) bleiben 657 px, in
+  der Breite 327 px für den Inhalt einer Karte. Es kosten: `CalcPage` oben und unten je 16, eine
+  `SectionCard` ohne Inhalt 66,5 (Rand, `p-4`, Titel 16,5, `mt-4`), ein `FoldCard`-Kopf 50, eine
+  Knopfgruppe mit grobem Zeiger 46 (fein 38), ein `NumField` 36, eine Beschriftung darüber
+  (`FieldBlock`) 20 + 4, der Abstand zwischen Zeilen 12, „Zurücksetzen“ 48. So nachgerechnet trifft
+  die Stromlast ihre gemessenen 508 px auf wenige Pixel. Zwei Knopfgruppen nebeneinander passen,
+  wenn ihre natürlichen Breiten (Text plus 20 px je Knopf, 6 px je Gruppe) samt 12 px Abstand in
+  327 px gehen („Segment | Kreis“ und „Sehne | Bogenlänge“: 303 px) – in zwei gleich breiten
+  Hälften (je 157 px) nicht, „Sehne | Bogenlänge“ allein braucht 160.
 - **Tastaturen:** `inputMode="decimal"` hat am iPhone kein Minus (WebKit-Fehler 193825) – Felder
   mit negativen Werten bekommen `signed` (`NumField` öffnet dann die volle Tastatur,
   `inputMode="text"`; Audio-Delay: Temperatur). Eingaben nur aus Ziffern bekommen `digits`
