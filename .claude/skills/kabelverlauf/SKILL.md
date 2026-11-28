@@ -73,7 +73,8 @@ Einspeisepunkt, keine Automatik.
 - **Verteilung der Backup-Ports** (`processor.backupPorts`, nur NovaStar mit ≥ 2 Ports, nicht beim
   Hot-Backup): fehlt = Paare (nächster freier Port), `'haelften'` = Port + Hälfte der Ports
   (UHD Jr 1 → 9); ist der Platz gegenüber fest vergeben, der nächste freie der zweiten Hälfte.
-  Neue Werte am Prozessor = Abschnitt-Version hoch (6), E2E-Schreiber in `projektdatei.mjs` mitziehen.
+  Neue Werte am Prozessor = Abschnitt-Version hoch (für `backupPorts` 6, die aktuelle steht in
+  `LED_WALL_SECTION_VERSION`), E2E-Schreiber in `projektdatei.mjs` mitziehen.
 - **Geteilter Prozessor** (`processor.shareWith`, nur gleiches Modul anbieten): `processorGroups`
   folgt Ketten von Verweisen, Kreise und fehlende Wände zählen als eigener Prozessor; die Wand mit
   dem Prozessor zuerst. Alles, was alle Wände braucht (Karte, PDF, Packliste), rechnet über

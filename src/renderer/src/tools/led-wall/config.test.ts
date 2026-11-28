@@ -164,6 +164,49 @@ describe('LED-Wall-Planung prüfen', () => {
     expect(sanitizeLedWallConfig(null)).toEqual(DEFAULT_LED_WALL_CONFIG)
     expect(sanitizeLedWallConfig('Wand')).toEqual(DEFAULT_LED_WALL_CONFIG)
   })
+
+  it('Vorgabe des Kreissegments: „arc“ bleibt, alles andere ist die Sehne (Feld fehlt)', () => {
+    expect(sanitizeLedWallConfig({ ...v1, segWidth: 'arc' }).segWidth).toBe('arc')
+    for (const v of ['chord', 'Bogen', 1, null]) {
+      expect(sanitizeLedWallConfig({ ...v1, segWidth: v }).segWidth).toBeUndefined()
+    }
+    expect(sanitizeLedWallConfig(v1).segWidth).toBeUndefined()
+  })
+})
+
+describe('Kreissegment aus Bogenlänge (F18)', () => {
+  const seg: LedWallConfig = {
+    ...DEFAULT_LED_WALL_CONFIG,
+    moduleKey: 'uS2+',
+    curveMode: 'segment',
+    widthM: '6'
+  }
+
+  it('6 m Bogenlänge bleiben bei jeder Stichhöhe 12 Module; Sehne und Radius ändern sich', () => {
+    const [a, b, c] = ['0,5', '1', '1,5'].map((segSag) =>
+      computeWall({ ...seg, segWidth: 'arc', segSag })
+    )
+    expect([a.cols, b.cols, c.cols]).toEqual([12, 12, 12])
+    expect(a.curve?.arc?.ca).toBeCloseTo(5.893, 3)
+    expect(b.curve?.arc?.ca).toBeCloseTo(5.55, 3)
+    expect(c.curve?.arc?.ca).toBeCloseTo(4.899, 3)
+    expect(a.curve?.arc?.r).toBeCloseTo(9.822, 3)
+    expect(c.curve?.arc?.r).toBeCloseTo(2.806, 3)
+    expect(c.curve?.arcFit?.options).toHaveLength(72)
+    expect(c.curve?.drivesWidth).toBe(6)
+    // mit der Vorgabe Sehne wären es bei 1,5 m Stichhöhe 13 Module
+    expect(computeWall({ ...seg, segSag: '1,5' }).cols).toBe(13)
+  })
+
+  it('Stichhöhe 0 oder leer → keine Form wie bei der Sehne, die Liste zum Wählen bleibt', () => {
+    for (const segSag of ['0', '', 'abc']) {
+      const d = computeWall({ ...seg, segWidth: 'arc', segSag })
+      expect(d.curve?.feasible).toBe(false)
+      expect(d.curve?.arc ?? null).toBeNull()
+      expect(d.curve?.arcFit?.index).toBe(-1)
+      expect(d.curve?.arcFit?.options).toHaveLength(72)
+    }
+  })
 })
 
 describe('LED-Wall-Abschnitt der Projektdatei', () => {
@@ -174,6 +217,17 @@ describe('LED-Wall-Abschnitt der Projektdatei', () => {
     expect(ledWallSection(a)).not.toHaveProperty('sigChain')
     expect(ledWallSection(a)).not.toHaveProperty('pdfLandscape')
     expect(digest(ledWallSection({ ...a, widthM: '7' }))).not.toBe(digest(ledWallSection(a)))
+  })
+
+  it('Vorgabe Sehne lässt die Prüfsumme wie vor F18 (gebundene Dateien bleiben gespeichert)', () => {
+    const a = sanitizeLedWallConfig(v1)
+    const vorF18: Partial<LedWallConfig> = ledWallSection(a)
+    delete vorF18.segWidth
+    expect(digest(ledWallSection(a))).toBe(digest(vorF18))
+    const bogen = ledWallSection({ ...a, segWidth: 'arc' })
+    expect(bogen).toHaveProperty('segWidth', 'arc')
+    expect(digest(bogen)).not.toBe(digest(ledWallSection(a)))
+    expect(pickConfig({ ...a, segWidth: 'arc' }).segWidth).toBe('arc')
   })
 
   it('pickConfig nimmt nur Konfiguration und kopiert tief', () => {

@@ -94,6 +94,12 @@ export interface LedWallConfig {
   // Curving teilt sich die Wandbreite (widthM = Sehne/Squircle-Breite); nur die
   // kurvenspezifische Tiefe und der gewählte Vollkreis sind eigene Felder.
   segSag: string
+  /**
+   * Was die Breite beim Kreissegment meint: fehlt = Sehne (gerade gemessen), 'arc' = Bogenlänge
+   * (LED-Fläche entlang der Kurve, ganze Module). Fehlt statt 'chord', damit die Prüfsumme
+   * bisheriger Planungen gleich bleibt – gebundene Dateien bleiben „gespeichert“.
+   */
+  segWidth?: 'arc'
   builderSegs: BuilderSegment[]
   sqD: string
   sqCorner: number
@@ -119,10 +125,10 @@ export type LedWallSection = Omit<LedWallConfig, (typeof UI_ONLY)[number]>
 /**
  * Schema-Version des Abschnitts in der Projektdatei – 4 (Oktober 2026): geteilter Prozessor
  * (`processor.shareWith`); 5: Glasfaser-Strecke (`fiber`); 6: Verteilung der Backup-Ports
- * (`processor.backupPorts`). Eine ältere Mottulbox öffnet den Abschnitt nicht, statt das Feld beim
- * Speichern zu verlieren.
+ * (`processor.backupPorts`); 7 (November 2026): Kreissegment aus Bogenlänge (`segWidth`). Eine
+ * ältere Mottulbox öffnet den Abschnitt nicht, statt das Feld beim Speichern zu verlieren.
  */
-export const LED_WALL_SECTION_VERSION = 6
+export const LED_WALL_SECTION_VERSION = 7
 
 /** Eine Wand der Planung mit ihrer Konfiguration (Projekt und Kunde gelten für alle). */
 export interface PlannedWall {
@@ -161,6 +167,8 @@ export const DEFAULT_LED_WALL_CONFIG: LedWallConfig = {
   pwrChain: 0,
   curveMode: 'circle',
   segSag: '0,5',
+  // als Schlüssel da (CONFIG_KEYS, pickConfig), aber ohne Wert: Sehne
+  segWidth: undefined,
   builderSegs: [
     { type: 'straight', count: 3 },
     { type: 'curved', count: 6, angle: 45, dir: 'convex' },
@@ -354,6 +362,7 @@ export function sanitizeLedWallConfig(
     curveMode:
       oneOf(v.curveMode, ['circle', 'segment', 'builder', 'squircle'] as const) ?? base.curveMode,
     segSag: text(v.segSag, 20) ?? base.segSag,
+    segWidth: oneOf(v.segWidth, ['arc'] as const) ?? base.segWidth,
     builderSegs: builderSegs(v.builderSegs) ?? base.builderSegs.map((s) => ({ ...s })),
     sqD: text(v.sqD, 20) ?? base.sqD,
     sqCorner: int(v.sqCorner, 2, 36) ?? base.sqCorner,

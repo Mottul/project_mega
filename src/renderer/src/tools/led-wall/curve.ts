@@ -8,8 +8,10 @@ import {
   buildSquircle,
   calcArc,
   distributeAngles,
+  fitArcLength,
   measureFootprint,
   segsToAngles,
+  type ArcFit,
   type ArcResult,
   type BuilderSegment,
   type Squircle
@@ -37,6 +39,8 @@ export interface CurveComputed {
   drivesWidth: number | null
   // modusspezifische Details für die Readouts
   arc?: ArcResult | null
+  /** Kreissegment aus Bogenlänge: alle baubaren Formen und die gewählte (Liste in der Schublade) */
+  arcFit?: ArcFit | null
   squircle?: Squircle
   circleRow?: (typeof CIRCLE_TABLE)[number]
 }
@@ -45,6 +49,8 @@ export interface CurveParams {
   curveMode: CurveMode
   widthM: number | null
   segSag: number | null
+  /** fehlt = Breite ist die Sehne, 'arc' = Bogenlänge (feste Modulzahl) */
+  segWidth?: 'arc'
   builderSegs: BuilderSegment[]
   sqD: number | null
   sqCorner: number
@@ -69,7 +75,18 @@ export function computeCurve(p: CurveParams): CurveComputed {
   }
 
   if (p.curveMode === 'segment') {
-    const arc = p.widthM != null && p.segSag != null ? calcArc(p.widthM, p.segSag) : null
+    const { widthM, segSag } = p
+    const byArc = p.segWidth === 'arc'
+    // Bogenlänge: feste Modulzahl, die nächste baubare Stichhöhe (die Liste auch ohne gültige
+    // Stichhöhe – eine Zeile übernimmt eine); Sehne: größter Bogen darin
+    const arcFit = byArc && widthM != null ? fitArcLength(widthM, segSag ?? Number.NaN) : null
+    const arc = byArc
+      ? arcFit && arcFit.index >= 0
+        ? arcFit.options[arcFit.index]
+        : null
+      : widthM != null && segSag != null
+        ? calcArc(widthM, segSag)
+        : null
     const angles = arc ? arc.dist.angles : []
     // In Aufstell-Lage (Sehne waagrecht) messen – wie die Draufsicht gezeichnet wird.
     const fp = measureFootprint(angles, { chordHorizontal: true })
@@ -81,7 +98,8 @@ export function computeCurve(p: CurveParams): CurveComputed {
       footprintD: fp.depth,
       feasible: arc != null,
       drivesWidth: p.widthM,
-      arc
+      arc,
+      arcFit
     }
   }
 

@@ -14,6 +14,8 @@ export interface WallInput {
   heightM: string
   curveMode: CurveMode
   segSag: string
+  /** Kreissegment: fehlt = Breite ist die Sehne, 'arc' = Bogenlänge */
+  segWidth?: 'arc'
   builderSegs: BuilderSegment[]
   sqD: string
   sqCorner: number
@@ -55,6 +57,7 @@ export function computeWall(s: WallInput): WallMetrics {
         curveMode: s.curveMode,
         widthM: parseNum(s.widthM),
         segSag: parseNum(s.segSag),
+        segWidth: s.segWidth,
         builderSegs: s.builderSegs,
         sqD: parseNum(s.sqD),
         sqCorner: s.sqCorner,

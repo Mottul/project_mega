@@ -244,6 +244,101 @@ export function calcArc(chord: number, sag: number): ArcResult | null {
   return null
 }
 
+/** Größte Modulzahl, für die die Liste der Formen gerechnet wird (= größtes Raster je Seite in
+ *  config.ts; darüber legt das Werkzeug ohnehin keine Wand an). */
+const ARC_MODS_MAX = 1000
+const arcCache = new Map<number, ArcResult[]>()
+
+/**
+ * Alle baubaren Kreissegmente aus `mods` Modulen (feste Bogenlänge), flachste zuerst: Gesamtwinkel
+ * im 2,5°-Raster bis zum Halbkreis, höchstens 45° je Modul. Sehne und Stichhöhe gemessen an der
+ * ECHTEN Form wie bei calcArc – die 2,5°-Verteilung (höhere Winkel mittig) baut tiefer als der
+ * Idealkreis. Über den Halbkreis hinaus nicht: Dort würde die Stichhöhe wieder flacher, eine
+ * Stichhöhe passte dann zu zwei Formen. Das Ergebnis wird zwischengespeichert – nicht verändern.
+ */
+export function arcOptions(mods: number): ArcResult[] {
+  if (!Number.isInteger(mods) || mods < 1 || mods > ARC_MODS_MAX) return []
+  const hit = arcCache.get(mods)
+  if (hit) return hit
+  const out: ArcResult[] = []
+  const arcLen = mods * MODULE_W
+  const maxDeg = Math.min(180, mods * 45)
+  for (let i = 1; i * 2.5 <= maxDeg; i++) {
+    const td = i * 2.5
+    const dist = distributeAngles(td, mods)
+    const measured = measureArc(computeModuleShapes(dist.angles))
+    out.push({
+      r: arcLen / deg2rad(td),
+      totalDeg: td,
+      arcLen,
+      mods,
+      dist,
+      ca: measured.chord,
+      sa: measured.sag
+    })
+  }
+  if (arcCache.size >= 8) arcCache.delete(arcCache.keys().next().value as number)
+  arcCache.set(mods, out)
+  return out
+}
+
+/** Zeile, deren Stichhöhe der gewünschten am nächsten liegt (gleich nah: die flachere). */
+function nearestArc(options: ArcResult[], sag: number): number {
+  let best = 0
+  for (let i = 1; i < options.length; i++) {
+    if (Math.abs(options[i].sa - sag) < Math.abs(options[best].sa - sag)) best = i
+  }
+  return best
+}
+
+export interface ArcFit {
+  /** alle baubaren Formen dieser Bogenlänge, flachste zuerst (arcOptions) */
+  options: ArcResult[]
+  /** gewählte Zeile: die Stichhöhe, die der gewünschten am nächsten liegt; −1 = keine gültige
+   *  Stichhöhe (0, negativ, keine Zahl) – die Liste gibt es trotzdem, eine Zeile übernimmt eine */
+  index: number
+  /** Wunsch außerhalb der Liste: flacher als die flachste oder tiefer als die tiefste Form */
+  outside: 'flacher' | 'tiefer' | null
+}
+
+/**
+ * Kreissegment aus Bogenlänge (Breite der LED-Fläche entlang der Kurve, auf ganze Module
+ * gerundet) und gewünschter Stichhöhe. Weil die Winkel im 2,5°-Raster liegen, gibt es zu einer
+ * Modulzahl nur bestimmte Stichhöhen – gewählt wird die nächste baubare. null = keine Form mit
+ * dieser Breite (weniger als ein Modul, keine Zahl, größer als das größte Raster).
+ */
+export function fitArcLength(arcLen: number, sag: number): ArcFit | null {
+  if (!Number.isFinite(arcLen)) return null
+  const options = arcOptions(Math.round(arcLen / MODULE_W))
+  if (!options.length) return null
+  if (!Number.isFinite(sag) || sag <= 0) return { options, index: -1, outside: null }
+  const index = nearestArc(options, sag)
+  const outside =
+    sag < options[0].sa - 0.001
+      ? 'flacher'
+      : sag > options[options.length - 1].sa + 0.001
+        ? 'tiefer'
+        : null
+  return { options, index, outside }
+}
+
+/**
+ * Stichhöhe einer Zeile als Text fürs Eingabefeld: drei Nachkommastellen, mehr nur, wo zwei
+ * Zeilen so nah liegen, dass der kurze Text die Nachbarzeile träfe (bei 12 Modulen 175° und
+ * 177,5°: 0,5 mm). So markiert die Liste nach einem Tipp genau die getippte Zeile.
+ */
+export function sagInputFor(options: ArcResult[], index: number): string {
+  const sa = options[index].sa
+  let text = sa.toFixed(6)
+  for (let digits = 3; digits < 6; digits++) {
+    if (nearestArc(options, Number(sa.toFixed(digits))) === index) {
+      text = sa.toFixed(digits)
+      break
+    }
+  }
+  return text.replace('.', ',')
+}
+
 export type BuilderSegment =
   | { type: 'straight'; count: number }
   | { type: 'curved'; count: number; angle: number; dir: 'convex' | 'concave' }

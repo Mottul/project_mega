@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 730" width="780" role="img" aria-labelledby="t d" font-family="Segoe UI, system-ui, sans-serif">
+  <title id="t">LED-Wall, Kreissegment aus Bogenlänge und Stichhöhe: Eingabe im Bereich Curving</title>
+  <desc id="d">Links die Schublade: In „Wand“ heißt die Breite bei der Vorgabe Bogenlänge „Breite (Bogenlänge)“, 6 m sind 12 Module. Im Bereich Curving unter der Form „Segment“ die neue Knopfgruppe „Vorgabe“ mit Sehne oder Bogenlänge, darunter das Feld Stichhöhe mit der nächsten baubaren Stichhöhe daneben und die Liste aller baubaren Stichhöhen mit Sehne, Radius und Gesamtwinkel; markiert ist 0,509 m bei 35 Grad, die Liste scrollt in sich. Rechts die Draufsicht wie heute mit Sehne, Stichhöhe, Kennzahlen und Winkelverteilung. Unten drei Stichhöhen bei 6 m Bogenlänge im selben Maßstab: Es bleiben 12 Module, Sehne und Radius ändern sich.</desc>
+  <style>
+    .f { fill: #fafafa; stroke: #d4d4d8; }
+    .k { fill: #ffffff; stroke: #d4d4d8; }
+    .d { fill: #f4f4f5; stroke: #d4d4d8; }
+    .z { fill: #f4f4f5; stroke: none; }
+    .ai { fill: #faeeda; stroke: none; }
+    .ic { fill: none; stroke: #ba7517; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+    .cv { fill: none; stroke: #71717a; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+    .ar { fill: #faeeda; stroke: none; }
+    .af { fill: #ba7517; }
+    .at { fill: #fdf6ea; stroke: #e5bf83; }
+    .pa { fill: #faeeda; stroke: #e5bf83; stroke-width: 0.8; }
+    .np { fill: #ba7517; }
+    .nt { fill: #ffffff; font-size: 7.5px; font-weight: 700; }
+    .cc { fill: #3f3f46; }
+    .cn { fill: #ffffff; font-size: 9px; font-weight: 700; }
+    .dot { fill: none; stroke: #a1a1aa; }
+    .sb { fill: #a1a1aa; }
+    .t { fill: #18181b; font-size: 12px; }
+    .b { fill: #18181b; font-size: 12px; font-weight: 600; }
+    .s { fill: #52525b; font-size: 11px; }
+    .p { fill: #9a5f12; }
+    .pb { fill: #9a5f12; font-weight: 700; }
+    .m { fill: #71717a; font-size: 10.5px; font-style: italic; }
+    .l { stroke: #d4d4d8; stroke-width: 1; }
+    .mg { fill: rgba(234, 179, 8, 0.16); stroke: #eab308; }
+    .mc { fill: none; stroke: #ef4444; stroke-dasharray: 4 3; }
+    .mv { fill: none; stroke: #8b5cf6; stroke-dasharray: 3 2; }
+    .tn { font-variant-numeric: tabular-nums; }
+    @media (prefers-color-scheme: dark) {
+      .f { fill: #18181b; stroke: #3f3f46; }
+      .k { fill: #1f1f23; stroke: #3f3f46; }
+      .d { fill: #111113; stroke: #3f3f46; }
+      .z { fill: #27272a; }
+      .ai { fill: #3a2306; }
+      .ic { stroke: #ef9f27; }
+      .cv { stroke: #a1a1aa; }
+      .ar { fill: #3d2507; }
+      .af { fill: #ef9f27; }
+      .at { fill: #2a1c08; stroke: #7c5212; }
+      .pa { fill: #3a2306; stroke: #8a5a14; }
+      .np { fill: #ef9f27; }
+      .nt { fill: #18181b; }
+      .cc { fill: #d4d4d8; }
+      .cn { fill: #18181b; }
+      .dot { stroke: #71717a; }
+      .sb { fill: #71717a; }
+      .t, .b { fill: #fafafa; }
+      .s { fill: #d4d4d8; }
+      .p, .pb { fill: #f5b041; }
+      .m { fill: #a1a1aa; }
+      .l { stroke: #3f3f46; }
+    }
+  </style>
+  <defs>
+    <clipPath id="win"><rect x="4" y="4" width="772" height="524" rx="10"/></clipPath>
+  </defs>
+
+  <rect class="f" x="4" y="4" width="772" height="524" rx="10"/>
+
+  <text class="b" x="18" y="24">Mottulbox</text>
+  <text class="s" x="92" y="24">Start</text>
+  <text class="b" x="130" y="24">LED-Wall-Konfigurator</text>
+  <text class="s" x="276" y="24">Einstellungen</text>
+  <path class="l" d="M4 34H776"/>
+  <text class="b" x="18" y="52" style="font-size:10.5px">PROJEKT</text>
+  <text class="t" x="80" y="52" style="font-size:11px">Messe 2026</text>
+  <text class="s" x="762" y="52" text-anchor="end" style="font-size:10.5px">Datei ▾   Wand ▾   PDF</text>
+  <path class="l" d="M4 64H776"/>
+
+  <g clip-path="url(#win)">
+    <!-- Schublade (gekürzt: Vorlagen, Projekt, Modul, Prozessor und Strom wie heute) -->
+    <rect class="d" x="4" y="64" width="316" height="470"/>
+
+    <!-- Wand -->
+    <rect class="k" x="14" y="74" width="296" height="98" rx="6"/>
+    <path class="z" d="M15 80a5 5 0 0 1 5-5H304a5 5 0 0 1 5 5V105H15Z"/>
+    <path class="l" d="M14 105.5H310"/>
+    <rect class="ai" x="22" y="80" width="20" height="20" rx="4"/>
+    <path class="ic" d="M27 95l8-8 3 3-8 8zM29.5 92.5l1.2 1.2M31.5 90.5l1.2 1.2M33.5 88.5l1.2 1.2"/>
+    <text class="b" x="50" y="88.5">Wand</text>
+    <text class="s" x="50" y="100.5" style="font-size:9.5px">5,89 × 2,5 m · 12 × 5 Module · Ground-Stack</text>
+    <path class="cv" d="M293 88l4 4 4-4"/>
+    <text class="s" x="24" y="122" style="font-size:10px">Breite (Bogenlänge) ⓘ</text>
+    <rect class="np" x="136" y="114" width="20" height="11" rx="5.5"/><text class="nt" x="146" y="122.3" text-anchor="middle">neu</text>
+    <rect class="k" x="24" y="127" width="134" height="22" rx="4"/>
+    <text class="t tn" x="32" y="142" style="font-size:11px">6</text><text class="s" x="150" y="142" text-anchor="end" style="font-size:10px">m</text>
+    <text class="s" x="168" y="122" style="font-size:10px">Höhe ⓘ</text>
+    <rect class="k" x="168" y="127" width="132" height="22" rx="4"/>
+    <text class="t tn" x="176" y="142" style="font-size:11px">2,5</text><text class="s" x="292" y="142" text-anchor="end" style="font-size:10px">m</text>
+    <text class="s" x="24" y="164" style="font-size:9.5px">Tatsächlich 5,89 × 2,5 m · 12 × 5 = 60 Module</text>
+    <circle class="cc" cx="300" cy="118" r="7"/><text class="cn" x="300" y="121.2" text-anchor="middle">2</text>
+
+    <!-- Curving -->
+    <rect class="k" x="14" y="180" width="296" height="338" rx="6"/>
+    <path class="z" d="M15 186a5 5 0 0 1 5-5H304a5 5 0 0 1 5 5V211H15Z"/>
+    <path class="l" d="M14 211.5H310"/>
+    <rect class="ai" x="22" y="186" width="20" height="20" rx="4"/>
+    <path class="ic" d="M27.5 200.5c2-6 5.5-8.5 9-8.5"/><circle class="ic" cx="27" cy="201.5" r="1.6"/><circle class="ic" cx="37.5" cy="191.5" r="1.6"/>
+    <text class="b" x="50" y="194.5">Curving</text>
+    <text class="s" x="50" y="206.5" style="font-size:9.5px">Kreissegment · 12 Module je Reihe</text>
+    <path class="cv" d="M293 194l4 4 4-4"/>
+
+    <text class="s" x="24" y="228" style="font-size:10px">Form ⓘ</text>
+    <rect class="z" x="24" y="233" width="276" height="20" rx="4"/>
+    <rect class="k" x="95" y="235" width="65" height="16" rx="3"/>
+    <text class="s" x="58.5" y="247" text-anchor="middle" style="font-size:10px">Kreis</text>
+    <text class="t" x="127.5" y="247" text-anchor="middle" style="font-size:10px;font-weight:600">Segment</text>
+    <text class="s" x="196.5" y="247" text-anchor="middle" style="font-size:10px">Builder</text>
+    <text class="s" x="265.5" y="247" text-anchor="middle" style="font-size:10px">Squircle</text>
+
+    <text class="s" x="24" y="271" style="font-size:10px">Vorgabe ⓘ</text>
+    <rect class="np" x="76" y="263" width="20" height="11" rx="5.5"/><text class="nt" x="86" y="271.3" text-anchor="middle">neu</text>
+    <circle class="cc" cx="300" cy="267" r="7"/><text class="cn" x="300" y="270.2" text-anchor="middle">1</text>
+    <rect class="z" x="24" y="276" width="276" height="20" rx="4"/>
+    <rect class="k" x="164" y="278" width="134" height="16" rx="3"/>
+    <text class="s" x="93" y="290" text-anchor="middle" style="font-size:10px">Sehne</text>
+    <text class="t" x="231" y="290" text-anchor="middle" style="font-size:10px;font-weight:600">Bogenlänge</text>
+
+    <text class="s" x="24" y="314" style="font-size:10px">Stichhöhe ⓘ</text>
+    <circle class="cc" cx="300" cy="310" r="7"/><text class="cn" x="300" y="313.2" text-anchor="middle">3</text>
+    <rect class="k" x="24" y="319" width="134" height="22" rx="4"/>
+    <text class="t tn" x="32" y="334" style="font-size:11px">0,5</text><text class="s" x="150" y="334" text-anchor="end" style="font-size:10px">m</text>
+    <text class="s tn" x="168" y="334" style="font-size:10px">baubar: <tspan class="pb">0,509 m · 35°</tspan></text>
+
+    <text class="s" x="24" y="362" style="font-size:10px">Baubare Stichhöhen · 12 Module (6 m) ⓘ</text>
+    <rect class="np" x="210" y="354" width="20" height="11" rx="5.5"/><text class="nt" x="220" y="362.3" text-anchor="middle">neu</text>
+    <circle class="cc" cx="300" cy="358" r="7"/><text class="cn" x="300" y="361.2" text-anchor="middle">4</text>
+    <rect class="k" x="24" y="367" width="276" height="114" rx="4"/>
+    <path class="z" d="M25 371a3 3 0 0 1 3-3H296a3 3 0 0 1 3 3V383H25Z"/>
+    <g class="s" style="font-size:8.5px" text-anchor="end">
+      <text x="96" y="379">Stichhöhe</text><text x="156" y="379">Sehne</text><text x="216" y="379">Radius</text><text x="272" y="379">Winkel</text>
+    </g>
+    <rect class="ar" x="26" y="425.5" width="262" height="13" rx="3"/>
+    <g class="dot"><circle cx="34" cy="389.5" r="3"/><circle cx="34" cy="403.5" r="3"/><circle cx="34" cy="417.5" r="3"/><circle cx="34" cy="445.5" r="3"/><circle cx="34" cy="459.5" r="3"/><circle cx="34" cy="473.5" r="3"/></g>
+    <circle class="af" cx="34" cy="431.5" r="3"/>
+    <g class="t tn" style="font-size:9.5px" text-anchor="end">
+      <text x="96" y="393">0,385 m</text><text x="156" y="393">5,934 m</text><text x="216" y="393">12,501 m</text><text x="272" y="393">27,5°</text>
+      <text x="96" y="407">0,390 m</text><text x="156" y="407">5,932 m</text><text x="216" y="407">11,459 m</text><text x="272" y="407">30°</text>
+      <text x="96" y="421">0,451 m</text><text x="156" y="421">5,914 m</text><text x="216" y="421">10,578 m</text><text x="272" y="421">32,5°</text>
+      <text x="96" y="449">0,557 m</text><text x="156" y="449">5,872 m</text><text x="216" y="449">9,167 m</text><text x="272" y="449">37,5°</text>
+      <text x="96" y="463">0,604 m</text><text x="156" y="463">5,849 m</text><text x="216" y="463">8,594 m</text><text x="272" y="463">40°</text>
+      <text x="96" y="477">0,641 m</text><text x="156" y="477">5,827 m</text><text x="216" y="477">8,089 m</text><text x="272" y="477">42,5°</text>
+    </g>
+    <g class="pb tn" style="font-size:9.5px" text-anchor="end">
+      <text x="96" y="435">0,509 m</text><text x="156" y="435">5,893 m</text><text x="216" y="435">9,822 m</text><text x="272" y="435">35°</text>
+    </g>
+    <rect class="z" x="291" y="385" width="5" height="94" rx="2.5"/>
+    <rect class="sb" x="291" y="398" width="5" height="10" rx="2.5"/>
+
+    <rect class="k" x="24" y="489" width="276" height="20" rx="4"/>
+    <text class="t" x="162" y="503" text-anchor="middle" style="font-size:10.5px">Im Builder weiterbearbeiten</text>
+
+    <!-- Arbeitsfläche: Reiter „Draufsicht“ wie heute -->
+    <rect class="z" x="340" y="74" width="330" height="20" rx="4"/>
+    <rect class="k" x="402" y="76" width="66" height="16" rx="3"/>
+    <text class="s" x="370" y="88" text-anchor="middle" style="font-size:9.5px">Ansicht</text>
+    <text class="t" x="435" y="88" text-anchor="middle" style="font-size:9.5px;font-weight:600">Draufsicht</text>
+    <text class="s" x="497.5" y="88" text-anchor="middle" style="font-size:9.5px">Signal</text>
+    <text class="s" x="550" y="88" text-anchor="middle" style="font-size:9.5px">Strom</text>
+    <text class="s" x="622.5" y="88" text-anchor="middle" style="font-size:9.5px">Signal + Strom</text>
+    <circle class="cc" cx="752" cy="84" r="7"/><text class="cn" x="752" y="87.2" text-anchor="middle">5</text>
+
+    <svg x="346" y="199.068" width="404" height="99.864" viewBox="-0.3 -0.989 6.493 1.605"><path d="M 0 0 L 0.06 -0.019 L 0.119 -0.037 L 0.179 -0.055 L 0.239 -0.073 L 0.299 -0.09 L 0.359 -0.107 L 0.42 -0.124 L 0.48 -0.14 L 0.501 -0.063 L 0.441 -0.046 L 0.381 -0.03 L 0.321 -0.013 L 0.262 0.004 L 0.202 0.022 L 0.143 0.04 L 0.083 0.058 L 0.024 0.076 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="0.251" y="-0.033" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 0.48 -0.14 L 0.54 -0.156 L 0.601 -0.172 L 0.661 -0.187 L 0.722 -0.202 L 0.783 -0.217 L 0.844 -0.231 L 0.905 -0.245 L 0.966 -0.259 L 0.983 -0.181 L 0.922 -0.167 L 0.862 -0.153 L 0.801 -0.139 L 0.741 -0.124 L 0.681 -0.109 L 0.621 -0.094 L 0.561 -0.079 L 0.501 -0.063 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="0.732" y="-0.162" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 0.966 -0.259 L 1.027 -0.272 L 1.088 -0.285 L 1.149 -0.298 L 1.21 -0.31 L 1.272 -0.322 L 1.333 -0.334 L 1.394 -0.345 L 1.456 -0.356 L 1.47 -0.277 L 1.409 -0.267 L 1.348 -0.255 L 1.287 -0.244 L 1.226 -0.232 L 1.165 -0.219 L 1.104 -0.207 L 1.044 -0.194 L 0.983 -0.181 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="1.218" y="-0.27" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 1.456 -0.356 L 1.518 -0.367 L 1.579 -0.377 L 1.641 -0.387 L 1.703 -0.397 L 1.764 -0.406 L 1.826 -0.415 L 1.888 -0.424 L 1.95 -0.432 L 1.961 -0.353 L 1.899 -0.345 L 1.838 -0.336 L 1.776 -0.327 L 1.715 -0.318 L 1.653 -0.308 L 1.592 -0.298 L 1.531 -0.288 L 1.47 -0.277 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="1.709" y="-0.356" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 1.95 -0.432 L 2.012 -0.44 L 2.074 -0.448 L 2.136 -0.455 L 2.198 -0.462 L 2.26 -0.469 L 2.323 -0.475 L 2.385 -0.481 L 2.447 -0.487 L 2.454 -0.407 L 2.392 -0.401 L 2.33 -0.396 L 2.269 -0.389 L 2.207 -0.383 L 2.145 -0.376 L 2.084 -0.369 L 2.022 -0.361 L 1.961 -0.353 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="2.203" y="-0.421" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 2.447 -0.487 L 2.509 -0.492 L 2.572 -0.496 L 2.634 -0.5 L 2.697 -0.503 L 2.759 -0.505 L 2.821 -0.507 L 2.884 -0.508 L 2.946 -0.509 L 2.946 -0.429 L 2.885 -0.428 L 2.823 -0.427 L 2.762 -0.426 L 2.7 -0.423 L 2.638 -0.42 L 2.577 -0.416 L 2.516 -0.412 L 2.454 -0.407 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="2.698" y="-0.461" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">5°</text><path d="M 2.946 -0.509 L 3.009 -0.508 L 3.071 -0.507 L 3.134 -0.505 L 3.196 -0.503 L 3.259 -0.5 L 3.321 -0.496 L 3.384 -0.492 L 3.446 -0.487 L 3.439 -0.407 L 3.377 -0.412 L 3.316 -0.416 L 3.254 -0.42 L 3.193 -0.423 L 3.131 -0.426 L 3.07 -0.427 L 3.008 -0.428 L 2.946 -0.429 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="3.195" y="-0.461" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">5°</text><path d="M 3.446 -0.487 L 3.508 -0.481 L 3.57 -0.475 L 3.632 -0.469 L 3.695 -0.462 L 3.757 -0.455 L 3.819 -0.448 L 3.881 -0.44 L 3.943 -0.432 L 3.932 -0.353 L 3.871 -0.361 L 3.809 -0.369 L 3.748 -0.376 L 3.686 -0.383 L 3.624 -0.389 L 3.562 -0.396 L 3.501 -0.401 L 3.439 -0.407 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="3.69" y="-0.421" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 3.943 -0.432 L 4.005 -0.424 L 4.067 -0.415 L 4.129 -0.406 L 4.19 -0.397 L 4.252 -0.387 L 4.314 -0.377 L 4.375 -0.367 L 4.437 -0.356 L 4.423 -0.277 L 4.362 -0.288 L 4.301 -0.298 L 4.239 -0.308 L 4.178 -0.318 L 4.117 -0.327 L 4.055 -0.336 L 3.994 -0.345 L 3.932 -0.353 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="4.184" y="-0.356" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 4.437 -0.356 L 4.498 -0.345 L 4.56 -0.334 L 4.621 -0.322 L 4.683 -0.31 L 4.744 -0.298 L 4.805 -0.285 L 4.866 -0.272 L 4.927 -0.259 L 4.91 -0.181 L 4.849 -0.194 L 4.789 -0.207 L 4.728 -0.219 L 4.667 -0.232 L 4.606 -0.244 L 4.545 -0.255 L 4.484 -0.267 L 4.423 -0.277 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="4.675" y="-0.27" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 4.927 -0.259 L 4.988 -0.245 L 5.049 -0.231 L 5.11 -0.217 L 5.171 -0.202 L 5.231 -0.187 L 5.292 -0.172 L 5.353 -0.156 L 5.413 -0.14 L 5.392 -0.063 L 5.332 -0.079 L 5.272 -0.094 L 5.212 -0.109 L 5.152 -0.124 L 5.091 -0.139 L 5.031 -0.153 L 4.971 -0.167 L 4.91 -0.181 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="5.161" y="-0.162" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><path d="M 5.413 -0.14 L 5.473 -0.124 L 5.534 -0.107 L 5.594 -0.09 L 5.654 -0.073 L 5.714 -0.055 L 5.774 -0.037 L 5.833 -0.019 L 5.893 0 L 5.869 0.076 L 5.81 0.058 L 5.75 0.04 L 5.691 0.022 L 5.631 0.004 L 5.572 -0.013 L 5.512 -0.03 L 5.452 -0.046 L 5.392 -0.063 Z" fill="rgba(234,179,8,0.16)" stroke="#eab308" stroke-width="0.015" stroke-linejoin="round"/><text x="5.642" y="-0.033" text-anchor="middle" dominant-baseline="central" fill="#eab308" font-size="0.136" font-weight="700" font-family="system-ui">2.5°</text><line x1="0" y1="0" x2="5.893" y2="0" stroke="#ef4444" stroke-width="0.021" stroke-dasharray="0.108 0.072"/><text x="2.946" y="0.191" text-anchor="middle" fill="#ef4444" font-size="0.147" font-weight="600" font-family="system-ui">Sehne: 5.893 m</text><line x1="2.946" y1="0" x2="2.946" y2="-0.509" stroke="#8b5cf6" stroke-width="0.017" stroke-dasharray="0.081 0.054"/><text x="3.005" y="-0.254" fill="#8b5cf6" font-size="0.147" font-weight="600" font-family="system-ui">h: 0.509 m</text></svg>
+
+    <rect class="at" x="340" y="406" width="101" height="36" rx="5"/>
+    <text class="s" x="348" y="419" style="font-size:8.5px">Radius</text>
+    <text class="pb tn" x="348" y="435" style="font-size:12px">9,822<tspan class="s" style="font-size:9px;font-weight:400"> m</tspan></text>
+    <rect class="k" x="445" y="406" width="101" height="36" rx="5"/>
+    <text class="s" x="453" y="419" style="font-size:8.5px">Module je Reihe</text>
+    <text class="b tn" x="453" y="435">12<tspan class="s" style="font-size:9px;font-weight:400"> Stk.</tspan></text>
+    <rect class="k" x="550" y="406" width="101" height="36" rx="5"/>
+    <text class="s" x="558" y="419" style="font-size:8.5px">Bogenlänge</text>
+    <text class="b tn" x="558" y="435">6<tspan class="s" style="font-size:9px;font-weight:400"> m</tspan></text>
+    <rect class="k" x="655" y="406" width="101" height="36" rx="5"/>
+    <text class="s" x="663" y="419" style="font-size:8.5px">Gesamtwinkel</text>
+    <text class="b tn" x="663" y="435">35<tspan class="s" style="font-size:9px;font-weight:400"> °</tspan></text>
+    <rect class="k" x="340" y="446" width="101" height="36" rx="5"/>
+    <text class="s" x="348" y="459" style="font-size:8.5px">Erreichte Sehne</text>
+    <text class="b tn" x="348" y="475">5,893<tspan class="s" style="font-size:9px;font-weight:400"> m</tspan></text>
+    <rect class="k" x="445" y="446" width="101" height="36" rx="5"/>
+    <text class="s" x="453" y="459" style="font-size:8.5px">Erreichte Tiefe</text>
+    <text class="b tn" x="453" y="475">0,509<tspan class="s" style="font-size:9px;font-weight:400"> m</tspan></text>
+    <rect class="at" x="550" y="446" width="101" height="36" rx="5"/>
+    <text class="s" x="558" y="459" style="font-size:8.5px">Fläche B × T</text>
+    <text class="pb tn" x="558" y="475" style="font-size:12px">5,89 × 0,58<tspan class="s" style="font-size:9px;font-weight:400"> m</tspan></text>
+    <rect class="k" x="655" y="446" width="101" height="36" rx="5"/>
+    <text class="s" x="663" y="459" style="font-size:8.5px">Gewicht je Reihe</text>
+    <text class="b tn" x="663" y="475">102<tspan class="s" style="font-size:9px;font-weight:400"> kg</tspan></text>
+
+    <text class="s" x="340" y="498" style="font-size:9.5px">Winkelverteilung (höhere Winkel zur Mitte)</text>
+    <rect class="pa" x="340" y="503" width="30" height="14" rx="3"/><text class="pb" x="355" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="373" y="503" width="30" height="14" rx="3"/><text class="pb" x="388" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="406" y="503" width="30" height="14" rx="3"/><text class="pb" x="421" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="439" y="503" width="30" height="14" rx="3"/><text class="pb" x="454" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="472" y="503" width="30" height="14" rx="3"/><text class="pb" x="487" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="505" y="503" width="30" height="14" rx="3"/><text class="pb" x="520" y="513.3" text-anchor="middle" style="font-size:8.5px">5°</text>
+    <rect class="pa" x="538" y="503" width="30" height="14" rx="3"/><text class="pb" x="553" y="513.3" text-anchor="middle" style="font-size:8.5px">5°</text>
+    <rect class="pa" x="571" y="503" width="30" height="14" rx="3"/><text class="pb" x="586" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="604" y="503" width="30" height="14" rx="3"/><text class="pb" x="619" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="637" y="503" width="30" height="14" rx="3"/><text class="pb" x="652" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="670" y="503" width="30" height="14" rx="3"/><text class="pb" x="685" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+    <rect class="pa" x="703" y="503" width="30" height="14" rx="3"/><text class="pb" x="718" y="513.3" text-anchor="middle" style="font-size:8.5px">2,5°</text>
+  </g>
+
+  <!-- Unten links: drei Stichhöhen bei 6 m Bogenlänge, gleicher Maßstab -->
+  <text class="b" x="14" y="556" style="font-size:11.5px">Probieren bei 6 m Bogenlänge: Es bleiben 12 Module</text>
+  <svg x="17.085" y="598.594" width="143.831" height="16.437" viewBox="-0.05 -0.559 5.993 0.685"><path class="mg" vector-effect="non-scaling-stroke" d="M0 0L0.06 -0.019L0.119 -0.037L0.179 -0.055L0.239 -0.073L0.299 -0.09L0.359 -0.107L0.42 -0.124L0.48 -0.14L0.501 -0.063L0.441 -0.046L0.381 -0.03L0.321 -0.013L0.262 0.004L0.202 0.022L0.143 0.04L0.083 0.058L0.024 0.076Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M0.48 -0.14L0.54 -0.156L0.601 -0.172L0.661 -0.187L0.722 -0.202L0.783 -0.217L0.844 -0.231L0.905 -0.245L0.966 -0.259L0.983 -0.181L0.922 -0.167L0.862 -0.153L0.801 -0.139L0.741 -0.124L0.681 -0.109L0.621 -0.094L0.561 -0.079L0.501 -0.063Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M0.966 -0.259L1.027 -0.272L1.088 -0.285L1.149 -0.298L1.21 -0.31L1.272 -0.322L1.333 -0.334L1.394 -0.345L1.456 -0.356L1.47 -0.277L1.409 -0.267L1.348 -0.255L1.287 -0.244L1.226 -0.232L1.165 -0.219L1.104 -0.207L1.044 -0.194L0.983 -0.181Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M1.456 -0.356L1.518 -0.367L1.579 -0.377L1.641 -0.387L1.703 -0.397L1.764 -0.406L1.826 -0.415L1.888 -0.424L1.95 -0.432L1.961 -0.353L1.899 -0.345L1.838 -0.336L1.776 -0.327L1.715 -0.318L1.653 -0.308L1.592 -0.298L1.531 -0.288L1.47 -0.277Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M1.95 -0.432L2.012 -0.44L2.074 -0.448L2.136 -0.455L2.198 -0.462L2.26 -0.469L2.323 -0.475L2.385 -0.481L2.447 -0.487L2.454 -0.407L2.392 -0.401L2.33 -0.396L2.269 -0.389L2.207 -0.383L2.145 -0.376L2.084 -0.369L2.022 -0.361L1.961 -0.353Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M2.447 -0.487L2.509 -0.492L2.572 -0.496L2.634 -0.5L2.697 -0.503L2.759 -0.505L2.821 -0.507L2.884 -0.508L2.946 -0.509L2.946 -0.429L2.885 -0.428L2.823 -0.427L2.762 -0.426L2.7 -0.423L2.638 -0.42L2.577 -0.416L2.516 -0.412L2.454 -0.407Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M2.946 -0.509L3.009 -0.508L3.071 -0.507L3.134 -0.505L3.196 -0.503L3.259 -0.5L3.321 -0.496L3.384 -0.492L3.446 -0.487L3.439 -0.407L3.377 -0.412L3.316 -0.416L3.254 -0.42L3.193 -0.423L3.131 -0.426L3.07 -0.427L3.008 -0.428L2.946 -0.429Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M3.446 -0.487L3.508 -0.481L3.57 -0.475L3.632 -0.469L3.695 -0.462L3.757 -0.455L3.819 -0.448L3.881 -0.44L3.943 -0.432L3.932 -0.353L3.871 -0.361L3.809 -0.369L3.748 -0.376L3.686 -0.383L3.624 -0.389L3.562 -0.396L3.501 -0.401L3.439 -0.407Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M3.943 -0.432L4.005 -0.424L4.067 -0.415L4.129 -0.406L4.19 -0.397L4.252 -0.387L4.314 -0.377L4.375 -0.367L4.437 -0.356L4.423 -0.277L4.362 -0.288L4.301 -0.298L4.239 -0.308L4.178 -0.318L4.117 -0.327L4.055 -0.336L3.994 -0.345L3.932 -0.353Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M4.437 -0.356L4.498 -0.345L4.56 -0.334L4.621 -0.322L4.683 -0.31L4.744 -0.298L4.805 -0.285L4.866 -0.272L4.927 -0.259L4.91 -0.181L4.849 -0.194L4.789 -0.207L4.728 -0.219L4.667 -0.232L4.606 -0.244L4.545 -0.255L4.484 -0.267L4.423 -0.277Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M4.927 -0.259L4.988 -0.245L5.049 -0.231L5.11 -0.217L5.171 -0.202L5.231 -0.187L5.292 -0.172L5.353 -0.156L5.413 -0.14L5.392 -0.063L5.332 -0.079L5.272 -0.094L5.212 -0.109L5.152 -0.124L5.091 -0.139L5.031 -0.153L4.971 -0.167L4.91 -0.181Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M5.413 -0.14L5.473 -0.124L5.534 -0.107L5.594 -0.09L5.654 -0.073L5.714 -0.055L5.774 -0.037L5.833 -0.019L5.893 0L5.869 0.076L5.81 0.058L5.75 0.04L5.691 0.022L5.631 0.004L5.572 -0.013L5.512 -0.03L5.452 -0.046L5.392 -0.063Z"/><path class="mc" vector-effect="non-scaling-stroke" d="M0 0L5.893 0"/><path class="mv" vector-effect="non-scaling-stroke" d="M2.946 0V-0.509"/></svg>
+  <text class="b tn" x="89" y="632" text-anchor="middle" style="font-size:10px">Stichhöhe 0,509 m</text><text class="s tn" x="89" y="646" text-anchor="middle" style="font-size:9.5px">Sehne 5,893 m · R 9,822 m</text><text class="s tn" x="89" y="659" text-anchor="middle" style="font-size:9.5px">35° · 12 Module</text>
+  <svg x="177.205" y="586.674" width="135.59" height="28.085" viewBox="-0.05 -1.055 5.65 1.17"><path class="mg" vector-effect="non-scaling-stroke" d="M0 0L0.05 -0.037L0.101 -0.074L0.152 -0.11L0.203 -0.145L0.255 -0.18L0.307 -0.215L0.36 -0.248L0.413 -0.282L0.455 -0.214L0.403 -0.181L0.351 -0.148L0.3 -0.114L0.248 -0.079L0.198 -0.044L0.147 -0.009L0.097 0.027L0.048 0.064Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M0.413 -0.282L0.466 -0.314L0.52 -0.346L0.574 -0.378L0.628 -0.409L0.683 -0.439L0.738 -0.469L0.793 -0.498L0.849 -0.526L0.885 -0.455L0.83 -0.427L0.775 -0.398L0.721 -0.369L0.667 -0.339L0.614 -0.309L0.561 -0.278L0.508 -0.246L0.455 -0.214Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M0.849 -0.526L0.905 -0.554L0.961 -0.581L1.018 -0.608L1.074 -0.634L1.131 -0.66L1.189 -0.684L1.246 -0.709L1.304 -0.732L1.334 -0.658L1.277 -0.635L1.22 -0.611L1.164 -0.586L1.107 -0.561L1.051 -0.536L0.995 -0.509L0.94 -0.482L0.885 -0.455Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M1.304 -0.732L1.363 -0.755L1.421 -0.777L1.48 -0.797L1.539 -0.817L1.599 -0.836L1.659 -0.854L1.719 -0.871L1.779 -0.887L1.799 -0.809L1.74 -0.794L1.681 -0.777L1.622 -0.76L1.564 -0.741L1.506 -0.722L1.448 -0.701L1.391 -0.68L1.334 -0.658Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M1.779 -0.887L1.84 -0.902L1.901 -0.916L1.962 -0.929L2.023 -0.941L2.085 -0.952L2.147 -0.962L2.209 -0.97L2.271 -0.978L2.28 -0.899L2.219 -0.891L2.159 -0.882L2.098 -0.873L2.038 -0.862L1.978 -0.85L1.918 -0.838L1.859 -0.824L1.799 -0.809Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M2.271 -0.978L2.333 -0.985L2.395 -0.991L2.457 -0.996L2.52 -1L2.582 -1.003L2.645 -1.004L2.707 -1.005L2.77 -1.005L2.769 -0.925L2.707 -0.925L2.646 -0.924L2.585 -0.923L2.524 -0.92L2.463 -0.916L2.402 -0.911L2.341 -0.906L2.28 -0.899Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M2.77 -1.005L2.832 -1.004L2.894 -1.001L2.957 -0.998L3.019 -0.994L3.082 -0.988L3.144 -0.982L3.206 -0.975L3.268 -0.966L3.256 -0.887L3.196 -0.895L3.135 -0.903L3.074 -0.909L3.013 -0.914L2.952 -0.918L2.891 -0.922L2.83 -0.924L2.769 -0.925Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M3.268 -0.966L3.329 -0.957L3.391 -0.946L3.453 -0.935L3.514 -0.923L3.575 -0.909L3.636 -0.895L3.696 -0.879L3.756 -0.863L3.735 -0.786L3.676 -0.802L3.617 -0.817L3.557 -0.831L3.497 -0.844L3.437 -0.856L3.377 -0.868L3.317 -0.878L3.256 -0.887Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M3.756 -0.863L3.817 -0.846L3.876 -0.828L3.936 -0.809L3.996 -0.79L4.055 -0.77L4.114 -0.75L4.173 -0.729L4.231 -0.707L4.203 -0.632L4.145 -0.653L4.087 -0.674L4.029 -0.694L3.971 -0.714L3.912 -0.733L3.853 -0.751L3.794 -0.769L3.735 -0.786Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M4.231 -0.707L4.29 -0.684L4.348 -0.661L4.406 -0.638L4.463 -0.613L4.521 -0.588L4.578 -0.563L4.634 -0.537L4.691 -0.51L4.656 -0.438L4.6 -0.464L4.544 -0.49L4.488 -0.515L4.432 -0.54L4.375 -0.564L4.318 -0.587L4.261 -0.61L4.203 -0.632Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M4.691 -0.51L4.747 -0.482L4.803 -0.454L4.858 -0.426L4.914 -0.397L4.969 -0.367L5.023 -0.336L5.077 -0.305L5.131 -0.274L5.09 -0.205L5.037 -0.236L4.984 -0.267L4.93 -0.297L4.876 -0.326L4.821 -0.355L4.767 -0.383L4.711 -0.411L4.656 -0.438Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M5.131 -0.274L5.185 -0.241L5.238 -0.209L5.291 -0.175L5.343 -0.141L5.396 -0.107L5.447 -0.072L5.499 -0.036L5.55 0L5.503 0.065L5.453 0.029L5.402 -0.006L5.351 -0.04L5.3 -0.074L5.248 -0.108L5.196 -0.141L5.143 -0.173L5.09 -0.205Z"/><path class="mc" vector-effect="non-scaling-stroke" d="M0 0L5.55 0"/><path class="mv" vector-effect="non-scaling-stroke" d="M2.707 0V-1.005"/></svg>
+  <text class="b tn" x="245" y="632" text-anchor="middle" style="font-size:10px">Stichhöhe 1,005 m</text><text class="s tn" x="245" y="646" text-anchor="middle" style="font-size:9.5px">Sehne 5,550 m · R 4,742 m</text><text class="s tn" x="245" y="659" text-anchor="middle" style="font-size:9.5px">72,5° · 12 Module</text>
+  <svg x="341.011" y="575.253" width="119.979" height="38.875" viewBox="-0.05 -1.531 4.999 1.62"><path class="mg" vector-effect="non-scaling-stroke" d="M0 0L0.031 -0.055L0.062 -0.108L0.095 -0.162L0.129 -0.214L0.164 -0.266L0.201 -0.316L0.238 -0.367L0.277 -0.416L0.339 -0.366L0.302 -0.318L0.265 -0.269L0.23 -0.22L0.196 -0.17L0.163 -0.119L0.131 -0.067L0.1 -0.015L0.07 0.038Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M0.277 -0.416L0.316 -0.464L0.357 -0.512L0.398 -0.558L0.441 -0.604L0.484 -0.649L0.529 -0.693L0.575 -0.736L0.621 -0.777L0.674 -0.717L0.629 -0.677L0.585 -0.635L0.541 -0.592L0.499 -0.549L0.457 -0.504L0.417 -0.459L0.377 -0.413L0.339 -0.366Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M0.621 -0.777L0.668 -0.818L0.717 -0.858L0.766 -0.897L0.816 -0.934L0.866 -0.971L0.918 -1.006L0.97 -1.04L1.023 -1.074L1.065 -1.005L1.013 -0.973L0.962 -0.94L0.912 -0.905L0.863 -0.87L0.815 -0.833L0.767 -0.796L0.72 -0.757L0.674 -0.717Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M1.023 -1.074L1.077 -1.105L1.131 -1.136L1.186 -1.166L1.242 -1.194L1.298 -1.221L1.355 -1.247L1.413 -1.272L1.47 -1.295L1.5 -1.221L1.443 -1.198L1.387 -1.174L1.332 -1.149L1.277 -1.123L1.223 -1.095L1.17 -1.066L1.117 -1.036L1.065 -1.005Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M1.47 -1.295L1.529 -1.318L1.588 -1.338L1.647 -1.358L1.707 -1.376L1.767 -1.393L1.828 -1.409L1.888 -1.423L1.95 -1.436L1.965 -1.358L1.906 -1.345L1.847 -1.331L1.788 -1.316L1.73 -1.299L1.671 -1.282L1.614 -1.263L1.556 -1.242L1.5 -1.221Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M1.95 -1.436L2.011 -1.448L2.073 -1.457L2.135 -1.466L2.197 -1.472L2.259 -1.477L2.322 -1.48L2.384 -1.481L2.447 -1.481L2.445 -1.401L2.385 -1.401L2.324 -1.4L2.264 -1.397L2.204 -1.392L2.144 -1.386L2.084 -1.378L2.025 -1.369L1.965 -1.358Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M2.447 -1.481L2.509 -1.479L2.572 -1.476L2.634 -1.471L2.696 -1.465L2.758 -1.458L2.82 -1.449L2.882 -1.439L2.943 -1.428L2.928 -1.349L2.868 -1.36L2.808 -1.37L2.748 -1.378L2.688 -1.385L2.627 -1.391L2.566 -1.396L2.506 -1.399L2.445 -1.401Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M2.943 -1.428L3.004 -1.415L3.065 -1.401L3.126 -1.385L3.186 -1.369L3.246 -1.351L3.305 -1.331L3.364 -1.311L3.423 -1.289L3.394 -1.214L3.337 -1.235L3.28 -1.256L3.222 -1.274L3.164 -1.292L3.105 -1.308L3.046 -1.323L2.987 -1.337L2.928 -1.349Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M3.423 -1.289L3.481 -1.266L3.538 -1.241L3.595 -1.216L3.652 -1.189L3.708 -1.161L3.763 -1.131L3.817 -1.101L3.871 -1.069L3.83 -1L3.778 -1.031L3.725 -1.061L3.671 -1.09L3.617 -1.117L3.562 -1.143L3.506 -1.168L3.45 -1.192L3.394 -1.214Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M3.871 -1.069L3.924 -1.036L3.977 -1.002L4.028 -0.967L4.079 -0.931L4.129 -0.893L4.179 -0.855L4.227 -0.815L4.275 -0.775L4.222 -0.714L4.176 -0.754L4.129 -0.792L4.081 -0.83L4.032 -0.866L3.983 -0.901L3.933 -0.935L3.882 -0.969L3.83 -1Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M4.275 -0.775L4.321 -0.733L4.367 -0.69L4.412 -0.647L4.456 -0.602L4.498 -0.557L4.54 -0.51L4.581 -0.463L4.621 -0.415L4.558 -0.364L4.52 -0.411L4.48 -0.457L4.44 -0.502L4.398 -0.547L4.355 -0.59L4.312 -0.632L4.267 -0.674L4.222 -0.714Z"/><path class="mg" vector-effect="non-scaling-stroke" d="M4.621 -0.415L4.659 -0.366L4.697 -0.316L4.734 -0.265L4.769 -0.213L4.803 -0.161L4.836 -0.108L4.868 -0.054L4.899 0L4.829 0.039L4.799 -0.014L4.768 -0.066L4.736 -0.118L4.703 -0.169L4.668 -0.219L4.633 -0.268L4.596 -0.317L4.558 -0.364Z"/><path class="mc" vector-effect="non-scaling-stroke" d="M0 0L4.899 0"/><path class="mv" vector-effect="non-scaling-stroke" d="M2.384 0V-1.481"/></svg>
+  <text class="b tn" x="401" y="632" text-anchor="middle" style="font-size:10px">Stichhöhe 1,481 m</text><text class="s tn" x="401" y="646" text-anchor="middle" style="font-size:9.5px">Sehne 4,899 m · R 2,806 m</text><text class="s tn" x="401" y="659" text-anchor="middle" style="font-size:9.5px">122,5° · 12 Module</text>
+  <text class="s" x="14" y="680" style="font-size:9.5px">Heute, mit Vorgabe Sehne 6 m: bei 0,5 und 1,0 m 12 Module, bei 1,5 m 13 Module (6,5 m LED).</text>
+  <text class="m" x="14" y="696" style="font-size:9.5px">Ohne Liste bliebe vom Neuen nur „Vorgabe“ und die Zeile „baubar: …“ neben der Stichhöhe.</text>
+
+  <!-- Unten rechts: Erklärungen zu den Nummern -->
+  <g style="font-size:9.5px">
+    <circle class="cc" cx="496" cy="552" r="7"/><text class="cn" x="496" y="555.2" text-anchor="middle">1</text>
+    <text class="t" x="508" y="555" style="font-size:9.5px">Vorgabe: neues Feld der Wand, auch in der Projektdatei.</text>
+    <text class="s" x="508" y="568" style="font-size:9.5px">„Sehne“ bleibt, wie es heute ist – ohne Liste. Umschalten</text>
+    <text class="s" x="508" y="581" style="font-size:9.5px">lässt die Zahlen stehen, nur ihre Bedeutung wechselt.</text>
+    <circle class="cc" cx="496" cy="597" r="7"/><text class="cn" x="496" y="600.2" text-anchor="middle">2</text>
+    <text class="t" x="508" y="600" style="font-size:9.5px">Breite (Bogenlänge): die LED-Fläche entlang der Kurve,</text>
+    <text class="s" x="508" y="613" style="font-size:9.5px">auf ganze Module gerundet (6 m = 12 Module).</text>
+    <circle class="cc" cx="496" cy="629" r="7"/><text class="cn" x="496" y="632.2" text-anchor="middle">3</text>
+    <text class="t" x="508" y="632" style="font-size:9.5px">Stichhöhe ist der Wunsch. Gebaut wird die nächste</text>
+    <text class="s" x="508" y="645" style="font-size:9.5px">baubare – die Zeile daneben sagt, welche.</text>
+    <circle class="cc" cx="496" cy="661" r="7"/><text class="cn" x="496" y="664.2" text-anchor="middle">4</text>
+    <text class="t" x="508" y="664" style="font-size:9.5px">Alle baubaren Stichhöhen der Breite, gemessen an der</text>
+    <text class="s" x="508" y="677" style="font-size:9.5px">echten Form (hier 72 Zeilen, 2,5° bis 180°); scrollt in</text>
+    <text class="s" x="508" y="690" style="font-size:9.5px">sich, ein Tipp übernimmt die Zeile ins Feld.</text>
+    <circle class="cc" cx="496" cy="706" r="7"/><text class="cn" x="496" y="709.2" text-anchor="middle">5</text>
+    <text class="t" x="508" y="709" style="font-size:9.5px">Draufsicht, Kennzahlen und PDF wie heute beim Segment –</text>
+    <text class="s" x="508" y="722" style="font-size:9.5px">mit dem Ergebnis der markierten Zeile.</text>
+  </g>
+</svg>

@@ -171,7 +171,7 @@ try {
         const r = await openSection(file)
         assert.equal(r.ok, true)
         assert.equal(r.section.rev, 2)
-        assert.equal(r.section.version, 6)
+        assert.equal(r.section.version, 7)
         assert.equal(wall0(r).widthM, '6')
         assert.equal(r.section.data.projectName, 'Messe Dornbirn')
         assert.equal('sigChain' in wall0(r), false, 'Bedienzustand gehört nicht in die Datei')
@@ -196,7 +196,7 @@ try {
             window.api.projects.save({
               path: p,
               section: 'ledWall',
-              version: 6,
+              version: 7,
               data: { ...data, customerName: 'Kollege' },
               baseSha: null,
               force: true
@@ -293,6 +293,72 @@ try {
         await answer([])
         await page.keyboard.press('Control+s')
         assert.ok(await waitFor(async () => wall0(await openSection(file)).sqCorner === 5, 10_000))
+      }
+    ],
+    [
+      'Kreissegment aus Bogenlänge: Vorgabe und Stichhöhe in der Datei, nach dem Öffnen wieder da (F18)',
+      async () => {
+        await expand('Curving')
+        await drawer().getByRole('button', { name: 'Segment', exact: true }).click()
+        await drawer().getByRole('button', { name: 'Bogenlänge', exact: true }).click()
+        await drawer()
+          .getByLabel(/^Breite \(Bogenlänge\)/)
+          .fill('6')
+        const liste = () => drawer().getByRole('radiogroup', { name: 'Baubare Stichhöhen' })
+        await liste()
+          .getByRole('radio', { name: /, 72,5°$/ })
+          .click()
+        await answer([])
+        await page.keyboard.press('Control+s')
+        assert.ok(
+          await waitFor(async () => {
+            const w = wall0(await openSection(file))
+            return w.segWidth === 'arc' && w.segSag === '1,005' && w.widthM === '6'
+          }, 10_000),
+          JSON.stringify(wall0(await openSection(file)))
+        )
+        assert.equal((await openSection(file)).section.version, 7)
+        // Neu (nichts ungespeichert) und wieder öffnen: Vorgabe, Breite und Stichhöhe stehen da
+        await menu('Neu')
+        await chip().getByText('ohne Datei').waitFor({ timeout: 5_000 })
+        await app.evaluate(({ dialog }, target) => {
+          dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [target] })
+        }, file)
+        await menu(/^Öffnen/)
+        await chip().getByText('Messe Dornbirn').waitFor({ timeout: 5_000 })
+        await expand('Curving')
+        assert.equal(
+          await drawer()
+            .getByRole('button', { name: 'Bogenlänge', exact: true })
+            .getAttribute('aria-pressed'),
+          'true'
+        )
+        assert.equal(
+          await drawer()
+            .getByLabel(/^Breite \(Bogenlänge\)/)
+            .inputValue(),
+          '6'
+        )
+        assert.equal(
+          await drawer()
+            .getByRole('textbox', { name: /^Stichhöhe/ })
+            .inputValue(),
+          '1,005'
+        )
+        assert.match(
+          await liste().getByRole('radio', { checked: true }).getAttribute('aria-label'),
+          /, 72,5°$/
+        )
+        assert.equal(await chip().getByLabel('ungespeichert').count(), 0)
+        assert.equal((await asked()).length, 0, 'keine Rückfrage')
+        // zurück zur Sehne: in der Datei steht das Feld dann nicht mehr
+        await drawer().getByRole('button', { name: 'Sehne', exact: true }).click()
+        await chip().getByLabel('ungespeichert').waitFor({ timeout: 5_000 })
+        await page.keyboard.press('Control+s')
+        assert.ok(
+          await waitFor(async () => !('segWidth' in wall0(await openSection(file))), 10_000),
+          'Vorgabe Sehne steht nicht in der Datei'
+        )
       }
     ],
     [
@@ -446,7 +512,7 @@ try {
         await menu(/^Speichern unter/)
         assert.ok(await waitFor(() => existsSync(zwei), 10_000), 'Datei wurde nicht geschrieben')
         const r = await openSection(zwei)
-        assert.equal(r.section.version, 6)
+        assert.equal(r.section.version, 7)
         assert.equal(r.section.data.projectName, 'Zwei Wände')
         assert.deepEqual(
           r.section.data.walls.map((w) => [w.name, w.data.widthM]),
