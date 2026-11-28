@@ -9,6 +9,20 @@ Ein Werkzeug ist ein Ordner unter `src/renderer/src/tools/<id>/` plus **eine** Z
 Registry. Vorbild für ein kleines Werkzeug: `tools/timecode/`; für eines mit Speicher und Seitenpanel:
 `tools/media-info/` und `tools/hap-converter/`.
 
+**Vorher Paket und Skizze:** Neue Werkzeuge aus Teil G des Gesamtplans sind Wünsche, keine
+Aufträge – erst als Paket ausarbeiten (Heute, So, Abnahme, Größe, Braucht; Vorbild G14) und die
+Skizze von Matthias freigeben lassen. Skizze als SVG in `docs/bilder/` mit eigenen Farben für den
+Dunkelmodus (`@media (prefers-color-scheme: dark)`; Vorbilder curving-rechner-handy.svg und
+rta-quer-handy.svg). Zahlen und Grafiken echt: Ein Wegwerf-Skript im Scratchpad bündelt den
+Rechenkern per esbuild (aus `node_modules/vite/node_modules/esbuild`, `alias` auf den Ordner des
+Werkzeugs) und setzt das SVG aus Bausteinen (Feld, Knopfgruppe, Liste) und der echten Grafik
+zusammen (beim Curving `topDownMarkup`). Höhen aus den Klassen rechnen, nicht schätzen (Maße im
+Skill `rechner-pwa`). Prüfbild still mit Electron: `show: false`, `paintWhenInitiallyHidden: true`,
+`capturePage()`, hell und dunkel über `nativeTheme.themeSource`, je Datei und Thema ein Prozess mit
+Zeitlimit (`app.exit`). Am 28. November 2026 scheiterte ein zweites `loadFile` im selben Prozess
+(ERR_FAILED), `offscreen: true` mit „UnknownVizError“ – der kam auch sonst vereinzelt, dann neu
+starten.
+
 1. **id und Kategorie:** id in kebab-case; Kategorie aus `ToolCategoryId` (`playback`, `control`,
    `visual`, `media`, `rigging`, `calc` – Beschriftung in `tools/types.ts`).
 2. **`index.ts`** mit `ToolModule`: `id`, `name`, `description`, `icon` (lucide-react), `category`,
