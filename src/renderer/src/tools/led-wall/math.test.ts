@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
+  arcOptions,
   buildSquircle,
   calc169,
   calcArc,
   computeModuleShapes,
   distributeAngles,
+  fitArcLength,
   gcd,
   getBallastPerBase,
   measureArc,
   measureFootprint,
   resizeGrid,
+  sagInputFor,
   segsToAngles
 } from './math'
 import { MODULE_D, MODULE_W } from './data'
@@ -113,6 +116,113 @@ describe('calcArc (Kreissegment aus Sehne+Stichhöhe, bleibt INNERHALB der Vorga
   it('ungültige Vorgaben → null', () => {
     expect(calcArc(0, 1)).toBeNull()
     expect(calcArc(4, 0)).toBeNull()
+  })
+})
+
+describe('arcOptions / fitArcLength (Kreissegment aus Bogenlänge + Stichhöhe, F18)', () => {
+  const sechs = arcOptions(12) // 6 m Bogenlänge
+
+  it('6 m = 12 Module: 72 baubare Formen von 2,5° bis zum Halbkreis', () => {
+    expect(sechs).toHaveLength(72)
+    expect(sechs[0].totalDeg).toBe(2.5)
+    expect(sechs.at(-1)?.totalDeg).toBe(180)
+  })
+
+  it('alle Zeilen haben dieselbe Bogenlänge, die Stichhöhe steigt mit dem Gesamtwinkel', () => {
+    for (const o of sechs) {
+      expect(o.mods).toBe(12)
+      expect(o.arcLen).toBeCloseTo(12 * MODULE_W, 10)
+    }
+    for (let i = 1; i < sechs.length; i++) {
+      expect(sechs[i].totalDeg).toBeGreaterThan(sechs[i - 1].totalDeg)
+      expect(sechs[i].sa).toBeGreaterThan(sechs[i - 1].sa)
+    }
+  })
+
+  it('jede Zeile baut: Messung der echten Form gleich der Angabe, höchstens 45° je Modul', () => {
+    for (const o of sechs) {
+      expect(o.dist.angles).toHaveLength(12)
+      expect(o.dist.achieved).toBe(o.totalDeg)
+      expect(Math.max(...o.dist.angles)).toBeLessThanOrEqual(45)
+      const m = measureArc(computeModuleShapes(o.dist.angles))
+      expect(o.ca).toBeCloseTo(m.chord, 9)
+      expect(o.sa).toBeCloseTo(m.sag, 9)
+      // Radius wie bei calcArc: Idealkreis mit dieser Bogenlänge und diesem Winkel
+      expect(o.r).toBeCloseTo(o.arcLen / ((o.totalDeg * Math.PI) / 180), 9)
+    }
+  })
+
+  it('gewählt wird die nächste baubare Stichhöhe; es bleiben 12 Module, Sehne und Radius ändern sich', () => {
+    const at = (sag: number): { deg: number; mods: number; ca: number; r: number } => {
+      const fit = fitArcLength(6, sag)
+      if (!fit) throw new Error('kein Ergebnis')
+      const o = fit.options[fit.index]
+      return { deg: o.totalDeg, mods: o.mods, ca: o.ca, r: o.r }
+    }
+    const a = at(0.5)
+    const b = at(1)
+    const c = at(1.5)
+    expect([a.deg, b.deg, c.deg]).toEqual([35, 72.5, 122.5])
+    expect([a.mods, b.mods, c.mods]).toEqual([12, 12, 12])
+    expect(a.ca).toBeCloseTo(5.893, 3)
+    expect(b.ca).toBeCloseTo(5.55, 3)
+    expect(c.ca).toBeCloseTo(4.899, 3)
+    expect(a.r).toBeCloseTo(9.822, 3)
+    expect(c.r).toBeCloseTo(2.806, 3)
+    expect(fitArcLength(6, 0.5)?.outside).toBeNull()
+  })
+
+  it('Bogenlänge wird auf ganze Module gerundet', () => {
+    const fit = fitArcLength(6.2, 0.5)
+    expect(fit?.options[0].mods).toBe(12)
+    expect(fit?.options[0].arcLen).toBeCloseTo(6, 10)
+  })
+
+  it('Grenzen: Stichhöhe 0, negativ oder keine Zahl → keine Zeile gewählt, die Liste bleibt', () => {
+    for (const sag of [0, -0.3, Number.NaN]) {
+      const fit = fitArcLength(6, sag)
+      expect(fit?.index).toBe(-1)
+      expect(fit?.options).toHaveLength(72)
+      expect(fit?.outside).toBeNull()
+    }
+  })
+
+  it('Grenzen: weniger als ein Modul, keine Zahl, größer als das größte Raster → keine Form', () => {
+    expect(fitArcLength(0.2, 0.5)).toBeNull()
+    expect(fitArcLength(Number.POSITIVE_INFINITY, 0.5)).toBeNull()
+    expect(fitArcLength(Number.NaN, 0.5)).toBeNull()
+    expect(fitArcLength(1000 * MODULE_W + 1, 0.5)).toBeNull()
+    expect(arcOptions(0)).toEqual([])
+    expect(arcOptions(2.5)).toEqual([])
+  })
+
+  it('Grenze Halbkreis: nie mehr als 180°; tiefer gewünscht → Halbkreis mit Hinweis', () => {
+    const tief = fitArcLength(6, 2.5)
+    expect(tief?.index).toBe(71)
+    expect(tief?.outside).toBe('tiefer')
+    const flach = fitArcLength(6, 0.01)
+    expect(flach?.index).toBe(0)
+    expect(flach?.outside).toBe('flacher')
+    expect(arcOptions(40).at(-1)?.totalDeg).toBe(180)
+  })
+
+  it('Grenze 45° je Modul: 1 Modul endet bei 45°, 2 Module bei 90°', () => {
+    expect(arcOptions(1).at(-1)?.totalDeg).toBe(45)
+    expect(arcOptions(1)).toHaveLength(18)
+    expect(arcOptions(2).at(-1)?.totalDeg).toBe(90)
+    for (const o of arcOptions(2)) expect(Math.max(...o.dist.angles)).toBeLessThanOrEqual(45)
+  })
+
+  it('sagInputFor: kurzer Text, der beim Eintippen genau diese Zeile wieder trifft', () => {
+    const i35 = sechs.findIndex((o) => o.totalDeg === 35)
+    expect(sagInputFor(sechs, i35)).toBe('0,509')
+    sechs.forEach((_, i) => {
+      const text = sagInputFor(sechs, i)
+      expect(fitArcLength(6, Number(text.replace(',', '.')))?.index).toBe(i)
+    })
+    // 175° und 177,5° liegen nur 0,5 mm auseinander: dort braucht es eine Stelle mehr
+    const i1775 = sechs.findIndex((o) => o.totalDeg === 177.5)
+    expect(sagInputFor(sechs, i1775)).toMatch(/^1,909\d$/)
   })
 })
 

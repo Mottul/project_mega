@@ -592,8 +592,20 @@ daraus folgt – auf dem Laptop (ab etwa 1366 × 768) ohne Scrollen.
   Modul). Ist die Arbeitsfläche schmal,
   stehen Zeichnung und Daten untereinander.
 - **Curving-Planung** für uS2+: Vollkreise mit gleichem Winkel je Modul zur Auswahl, Kreissegment
-  aus Sehne (Wandbreite) und Stichhöhe (auch als Start für den Builder), freier Segment-Builder
-  und Squircle. Die Form bestimmt Modulzahl und Breite der Wand mit.
+  (auch als Start für den Builder), freier Segment-Builder und Squircle. Die Form bestimmt
+  Modulzahl und Breite der Wand mit.
+  - **Kreissegment:** Die **Vorgabe** sagt, was die Breite der Wand meint. **Sehne** (gerade
+    gemessen): gesucht wird der größte Bogen, der in Breite × Stichhöhe passt. **Bogenlänge**: die
+    LED-Fläche entlang der Kurve, auf ganze Module gerundet (6 m sind 12 Module) – so lassen sich
+    bei fester Breite Stichhöhen ausprobieren, die Modulzahl bleibt. Weil die Winkel im
+    2,5°-Raster liegen, gibt es dazu nur bestimmte Stichhöhen: Gebaut wird die baubare, die der
+    eingegebenen am nächsten liegt („baubar: 0,509 m · 35°“). Darunter die **Liste aller baubaren
+    Stichhöhen** bis zum Halbkreis mit Sehne, Radius und Gesamtwinkel (bei 12 Modulen 72 Zeilen),
+    gemessen an der gebauten Form, nicht am Idealkreis; die gewählte ist markiert und steht beim
+    Öffnen in der Mitte, ein Tipp übernimmt eine Zeile. Ist die Stichhöhe tiefer als die tiefste
+    oder flacher als die flachste Form, sagt es ein Hinweis, gebaut wird die Form am Rand der
+    Liste. Umschalten lässt die Zahlen stehen, nur ihre Bedeutung wechselt. Draufsicht, Kennzahlen
+    und PDF zeigen beide Vorgaben gleich.
 - **PDF-Projektdoku** inklusive Draufsicht, Winkeln und Verkabelungsplänen.
 
 ### Projektionsverhältnis, Kameraobjektiv, Beamer-Lumen

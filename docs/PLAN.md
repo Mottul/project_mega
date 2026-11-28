@@ -275,9 +275,9 @@ alles andere lässt sich vorziehen.
 | Etappe | Pakete | Warum an dieser Stelle |
 | ------ | ------ | ---------------------- |
 | **2 – Muster übertragen** | W2 → W3 → W4 → W5 | Der größte Gewinn in der Bedienung: Gemessen scrollen vier große Werkzeuge (den Video-Generator hat W1 umgebaut, die Rechner passen seit K6 aufs Handy) |
-| **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B14 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
+| **3 – Täglich spürbar** | B2 bis B4, B7, B9 bis B15 · F3 | Kleine Pakete, die man bei jeder Benutzung merkt |
 | **4 – Sicherheitsnetz** | S3 · D · F1 · E4 | Aktualisierung, damit Korrekturen ohne neuen Installer ankommen; Rückgängig und Sicherung, damit nichts verloren geht |
-| **5 – Mehr Nutzen** | F18 · F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
+| **5 – Mehr Nutzen** | F19 · F2, F4, F6 bis F17, V1 bis V5 · AT · MM · VG · G | Funktionen nach Show-Bedarf; die großen Vorhaben nach ihrem Entwurf |
 | **Nebenher** | E1 bis E10 · U1 bis U3 · H1 bis H4 · S1, S2, S4 · ST6 | Wenn das Thema ohnehin anfällt oder ein Paket es braucht (S1 vor AT8); ST6 macht den macOS-Lauf der CI wieder verlässlich |
 | **Laufend** | Update-PRs, [Abnahmen am Gerät](#abnahmen-am-gerät) | montags bzw. wenn das Gerät da ist |
 
@@ -460,6 +460,7 @@ Kleine Pakete, die man täglich merkt. Unabhängig voneinander, soweit nichts an
 | **B12** | ATEM: Mischer im Netz suchen | M | – |
 | **B13** | Helles Design: Akzent als Schrift lesbar | S | – |
 | **B14** | Bibliothek des Players: Zustände auf Deutsch, Knöpfe per Tastatur, „Bibliothek leeren“ nennt die Playlist | S | – |
+| **B15** | LED-Wall: Zahlen in Draufsicht und PDF mit Komma | S | – |
 
 ### B2 – Strg+K: Werkzeug wechseln von überall
 
@@ -623,6 +624,21 @@ mitgeht und stoppt, was läuft (wie „Playlist leeren …“).
 `e2e/player-layout.mjs`: Tab bis auf den Papierkorb einer Kachel – seine Knopfleiste hat die
 Deckkraft 1; die Rückfrage von „Bibliothek leeren …“ (Stub schreibt mit) nennt die Playlist.
 
+### B15 – LED-Wall: Zahlen in Draufsicht und PDF mit Komma
+
+**Heute** (beim Bau von F18 gesehen, 27. November 2026, nicht geändert): Die Draufsicht
+(`led-wall/topdown.ts`, dieselbe Grafik in App und PDF) beschriftet mit Punkt – die Winkel je
+Modul „2.5°“, „Sehne: 5.893 m“, „h: 0.509 m“ (`toFixed` bzw. die Zahl roh); ebenso die
+Winkel-Pillen im PDF (`printHtml.ts`). Die Pillen in der App (`Curving.tsx`) und alle übrigen
+Zahlen des Werkzeugs schreiben mit Komma.
+
+**So:** Beschriftungen der Draufsicht und Pillen des PDF mit Komma, ohne überflüssige Nullen bei
+den Winkeln (wie `fmt` in `tools/_calc/ui.tsx`), Sehne und Stichhöhe weiter mit drei Stellen.
+
+**Abnahme:** Unit-Test: Das Markup eines 35°-Segments aus 12 Modulen enthält „2,5°“,
+„Sehne: 5,893 m“ und „h: 0,509 m“ und in keiner Beschriftung einen Dezimalpunkt; die Pillen im
+PDF-HTML lauten „2,5°“.
+
 ## D – Rückgängig
 
 **Heute:** Kein Editor der App kennt Strg+Z – weder die OSC-Fläche noch der Kabelverlauf, das
@@ -676,7 +692,7 @@ Fünf ausgearbeitete Pakete, darunter die Wünsche je Werkzeug und die Verzahnun
 | **F2** | Show-Datei: OSC, Jingle, Timer, Packliste in der `.mottul` | M je Werkzeug | – |
 | **F3** | Stage-Timer: Schnellstart, bis Uhrzeit, Ablauf einfügen | S–M | besser nach W2 |
 | **F4** | Steuer-Schnittstelle dokumentieren | S | – |
-| **F18** | LED-Wall: Kreissegment aus Bogenlänge und Stichhöhe | M | Skizze |
+| **F19** | LED-Wall: Kreissegment aus Sehne findet den größten Bogen | S | – |
 
 ### F1 – Sicherung und Umzug auf einen anderen Rechner
 
@@ -723,40 +739,25 @@ OSC und Jingle), `api/state` zum Lesen, je ein Beispiel mit `curl`. Hinweis: ohn
 `Origin`-Kopfzeile schicken (Herkunftsprüfung). Ein Test hält die Liste der Befehle in der
 Doku und im Code gleich.
 
-### F18 – LED-Wall: Kreissegment aus Bogenlänge und Stichhöhe
+### F19 – LED-Wall: Kreissegment aus Sehne findet den größten Bogen
 
-**Wunsch** (Matthias, 26. November 2026): „Es sollte auch die Option geben, mit Bogenlänge und
-Stichhöhe ein Segment zu erstellen. Wenn ich die Vorgabe einer gewissen Breite für die LedWall
-habe und diverse Stichhöhen probiere, um zu einem guten Ergebnis zu kommen.“
+**Heute** (beim Bau von F18 gemessen, 27. November 2026, nicht geändert): `calcArc` in
+`tools/led-wall/math.ts` prüft jede Form zuerst grob am Idealkreis (Sehne oder Stichhöhe mehr als
+0,1 m über der Vorgabe → überspringen) und erst danach an der echten Form. Die echte Form
+(2,5°-Verteilung, höhere Winkel mittig) ist bei tiefen Bögen aber um mehr als 0,1 m schmaler als
+der Idealkreis – dann wirft der Vorfilter Formen weg, die passen. Im Raster Sehne 1 bis 12 m ×
+Stichhöhe 0,1 m bis zum Halbkreis bekamen 169 von 2.125 Eingaben ein Modul zu wenig. Beispiele:
+Sehne 4,6 m und Stichhöhe 1,65 m ergeben 11 Module (155°, Sehne 3,869 m) – 12 Module (135°,
+Sehne 4,596 m) passten genau; Sehne 5 m und Stichhöhe 2,1 m ergeben 13 statt 14 Module (Sehne
+4,19 statt 4,97 m).
 
-**Heute:** Die Curving-Planung (uS2+, `led-wall/Curving.tsx`) baut ein Kreissegment aus der
-**Sehne** (Wandbreite, gerade gemessen) und der **Stichhöhe**: `calcArc` in
-`tools/led-wall/math.ts` sucht den größten Bogen innerhalb beider Vorgaben (0,5 m je Modul,
-Winkel im 2,5°-Raster, höchstens 45° je Modul, gemessen an der echten Form). Wer eine feste
-LED-Breite hat und Stichhöhen probiert, bekommt bei jeder Stichhöhe eine andere Modulzahl.
+**So:** Der Vorfilter darf nichts Passendes verwerfen – weiter fassen oder weglassen und jede Form
+an der echten Form messen, wie es `arcOptions` (F18) für die Bogenlänge tut.
 
-**So:** Im Kreissegment wählt man die Vorgabe: „Sehne“ (wie heute) oder „Bogenlänge“ – die
-Breite der LED-Fläche entlang der Kurve, also eine feste Modulzahl. Zu Bogenlänge und Stichhöhe
-rechnet ein neuer Kern neben `calcArc` (mit Test) Gesamtwinkel, Radius, Sehne und die Winkel je
-Modul. Weil die Winkel im 2,5°-Raster liegen, gibt es zu einer Modulzahl nur bestimmte baubare
-Stichhöhen; deshalb dazu eine Liste aller baubaren Stichhöhen der gewählten Breite (Stichhöhe,
-Sehne, Radius, Gesamtwinkel), die zur eingegebenen passendste markiert, ein Tipp übernimmt eine
-Zeile. Gemessen wird wie bei `calcArc` an der echten Form (`distributeAngles`, `measureArc`),
-nicht am Idealkreis. Die Wahl der Vorgabe ist ein neues Feld der Wand (`led-wall/config.ts`,
-geprüft gelesen wie `curveMode`) und kommt mit in die Projektdatei (Skill `projektdatei`);
-Draufsicht und PDF nehmen das Ergebnis wie beim heutigen Segment.
-
-**Geklärt am 27. November 2026:** Die vorgegebene Breite ist die LED-Fläche entlang der Kurve
-(„Breite ist entlang der Kurve“). **Vor dem Bau** eine Skizze der Eingabe im Bereich Curving samt
-der Liste der baubaren Stichhöhen, freigegeben von Matthias – an der Skizze entscheidet er auch,
-ob die Liste kommt.
-
-**Abnahme:** Unit-Tests des Kerns: Alle Zeilen der Liste haben dieselbe Bogenlänge, ihre
-Stichhöhen steigen mit dem Gesamtwinkel, und jede Zeile baut (Messung der echten Form gleich der
-Angabe); Grenzen: Stichhöhe 0 oder negativ, mehr als ein Halbkreis, mehr als 45° je Modul. E2E
-im Schritt LED-Wall mit Curving (`e2e/layout.mjs`): Bogenlänge 6 m, drei Stichhöhen nacheinander –
-es bleiben 12 Module, Sehne und Radius ändern sich, die Draufsicht zeigt die Form;
-`e2e/projektdatei.mjs` speichert und lädt die Vorgabe.
+**Abnahme:** Unit-Test: Für das Raster oben findet `calcArc` dieselbe Form wie eine Suche ohne
+Vorfilter (größte Modulzahl, dann größter Winkel; Sehne und Stichhöhe der echten Form innerhalb
+der Vorgaben); die beiden Beispiele als eigene Fälle. Die bisherigen Tests von `calcArc` bleiben
+grün.
 
 ### Wünsche je Werkzeug
 
@@ -1301,8 +1302,8 @@ Entschieden – damit nichts neu gefragt wird:
   kleiner Knopf „←“ bleibt. Umgesetzt mit K9.
 - **LED-Wall: Die Bogenlänge ist die Breite entlang der Kurve** (27. November 2026, „Breite ist
   entlang der Kurve“): Die neue Vorgabe im Kreissegment meint die Breite der LED-Fläche entlang
-  der Kurve, also eine feste Zahl von Modulen (F18). Ob die Liste der baubaren Stichhöhen kommt,
-  entscheidet die Skizze.
+  der Kurve, also eine feste Zahl von Modulen (F18). Die Liste der baubaren Stichhöhen kommt
+  (28. November 2026, an der Skizze: „Mit Liste bauen“).
 - **Projektionsverhältnis: zuklappbar wie alle Rechner** (26. November 2026, „Ja, zuklappbar“):
   „Leinwand“ und „Objektiv & Abstand“ sind zuklappbare Karten wie im Piloten; am Handy und im
   520 px breiten Fenster ist „Objektiv & Abstand“ ab Werk zu und zeigt „TR 1,6 · 8 m“, dazu die
@@ -1474,6 +1475,12 @@ sie gebaut ist, in [ENTWICKLUNG.md](ENTWICKLUNG.md), die Einzelheiten im Git-Log
   rechts die Bedienung als schmale Spalte; „Einstellungen“ schiebt die Karten als Schublade über
   das Spektrum. Nichts scrollt (vorher 722 px Seite bei 390 sichtbar), Drehen baut nichts neu
   auf; hochkant ist der RTA pixelgleich wie vorher.
+  LED-Wall: Kreissegment aus Bogenlänge (F18, 28. November, gewünscht am 26.; Skizze
+  `docs/bilder/led-wall-segment-bogenlaenge.svg`, von Matthias mit der Liste freigegeben): Im
+  Bereich Curving wählt „Vorgabe“ die Sehne (wie bisher) oder die Bogenlänge – die LED-Fläche
+  entlang der Kurve, also eine feste Modulzahl. Gebaut wird die baubare Stichhöhe, die der
+  eingegebenen am nächsten liegt; die Liste zeigt alle (bei 6 m 72, gemessen an der gebauten
+  Form), ein Tipp übernimmt eine Zeile. Abschnitt `ledWall` Version 7 (`segWidth`).
 - **Show-Härtung davor:** Fehlergrenzen je Werkzeug, globale Fehler-Handler, Hinweise in der App
   statt stiller Fehler, Wiederherstellung von `settings.json` und der Player-Bibliothek,
   versionierte Stores.

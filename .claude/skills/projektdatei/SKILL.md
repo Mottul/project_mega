@@ -38,7 +38,7 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
    - Schema-Version des Abschnitts als Konstante; neue Felder = Version hoch, `sanitize`
      ergänzt sie beim Lesen alter Abschnitte. Auch wenn `sanitize` ein Feld mit Vorgabe auffüllt:
      Eine ältere Mottulbox würde es beim Speichern verlieren (so LED-Wall 4 `shareWith`, 5
-     `fiber`, 6 `processor.backupPorts`; Anleitung 4 Kapitel Verkabelung, `antwortAus`; Anleitung 5 `ausgabe.online`; Anleitung 6 `bedienfelder`; Anleitung 7 Spanne je Taste, `quelle`, Geräte `jingle`/`osc`; Anleitung 8 `flaeche` (Verhältnis der OSC-Vorschau) – auch ein neuer Wert in einer Allowlist ist ein Versionssprung, sonst macht eine ältere Fassung still „frei“ daraus). Neue Kapitel/Listeneinträge, die
+     `fiber`, 6 `processor.backupPorts`, 7 `segWidth`; Anleitung 4 Kapitel Verkabelung, `antwortAus`; Anleitung 5 `ausgabe.online`; Anleitung 6 `bedienfelder`; Anleitung 7 Spanne je Taste, `quelle`, Geräte `jingle`/`osc`; Anleitung 8 `flaeche` (Verhältnis der OSC-Vorschau) – auch ein neuer Wert in einer Allowlist ist ein Versionssprung, sonst macht eine ältere Fassung still „frei“ daraus). Neue Kapitel/Listeneinträge, die
      eine alte Datei nicht hat, an ihre Stelle einsortieren (`neuesKapitel`, hinter den Vorgänger),
      und eine neue, unberührte Anleitung muss die Prüfung unverändert bestehen.
 3. **Store:** `file: ProjectBinding | null` **neben** der Konfiguration (Vorlagen nehmen die
@@ -82,6 +82,13 @@ und einem Abschnitt eines anderen Werkzeugs als Kopie das Mini-Manual
   Eine gespeicherte Bindung bleibt „gespeichert“ – `savedDigest` umrechnen, wenn er zum alten
   Stand passte (`migrateLedWall` v3, `migrateMiniManual`); sonst stünde nach dem Update jede Datei
   als ungespeichert da. Eine ungespeicherte bleibt ungespeichert.
+- **Neues Feld, dessen Vorgabe der bisherige Stand ist:** als optionales Feld, das für die
+  Vorgabe fehlt – dann braucht es keine Umrechnung. Muster `segWidth?: 'arc'` der LED-Wall (fehlt
+  = Sehne wie bisher): in `DEFAULT_LED_WALL_CONFIG` als Schlüssel mit `undefined` (sonst kennt
+  `pickConfig` es nicht), `sanitize` liefert `'arc'` oder `undefined`, Umschalten setzt
+  `undefined`. `canonicalJson` überspringt `undefined`, die Prüfsumme bisheriger Planungen bleibt
+  gleich, gebundene Dateien bleiben „gespeichert“; die Abschnitt-Version steigt trotzdem (eine
+  ältere Fassung verlöre `'arc'`). Ein Pflichtfeld mit Vorgabewert änderte jede Prüfsumme.
 
 - **main entscheidet:** Schreiben nur in `.mottul`-Pfade aus Dialog/geöffneter Datei (nach
   Neustart aus „Zuletzt geöffnet“ nur auf eine vorhandene gültige Datei); Konflikt über den

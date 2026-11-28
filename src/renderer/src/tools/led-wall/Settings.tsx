@@ -1,6 +1,7 @@
 // Schublade des LED-Wall-Konfigurators: alles, was die Wand festlegt (Vorlagen, Projekt, Modul,
 // Größe und Aufbau, Curving-Form). Die Arbeitsfläche zeigt, was daraus folgt.
 
+import { useLayoutEffect, useRef } from 'react'
 import {
   Bookmark,
   Box,
@@ -39,8 +40,8 @@ import {
   type FiberRedundancy
 } from './config'
 import { CURVE_MODE_LABELS } from './curve'
-import { CIRCLE_TABLE, MODULES } from './data'
-import type { BuilderSegment } from './math'
+import { CIRCLE_TABLE, MODULE_W, MODULES } from './data'
+import { sagInputFor, type ArcFit, type BuilderSegment } from './math'
 import {
   DEFAULT_PROCESSOR,
   faserAusLager,
@@ -278,13 +279,17 @@ function WallPanel({ d }: { d: WallMetrics }): JSX.Element {
   const wallId = useLedWall((s) => s.wallId)
   const wallName = useLedWall((s) => s.walls.find((w) => w.id === s.wallId)?.name ?? '')
   const several = useLedWall((s) => s.walls.length > 1)
+  const segWidth = useLedWall((s) => s.segWidth)
   const curve = d.curve
   // Breite frei nur, wo sie das Curving treibt (Segment/Squircle) bzw. bei flachen Modulen;
   // bei Vollkreis und Builder ergibt sie sich aus den Modulen
   const widthEditable = !curve || curve.drivesWidth != null
-  const widthLabel = curve?.mode === 'segment' ? 'Breite (Sehne)' : 'Breite'
-  const widthHint =
-    curve?.mode === 'segment'
+  const byArc = curve?.mode === 'segment' && segWidth === 'arc'
+  const widthLabel =
+    curve?.mode === 'segment' ? (byArc ? 'Breite (Bogenlänge)' : 'Breite (Sehne)') : 'Breite'
+  const widthHint = byArc
+    ? 'Beim Kreissegment aus Bogenlänge ist die Wandbreite die LED-Fläche entlang der Kurve – gerundet auf ganze Module (0,5 m).'
+    : curve?.mode === 'segment'
       ? 'Beim Kreissegment ist die Wandbreite die Sehne: Gesucht wird der größte Bogen, der in Breite × Stichhöhe passt.'
       : curve?.mode === 'squircle'
         ? 'Außenbreite des Squircles (Rechteck mit runden Ecken).'
@@ -693,7 +698,7 @@ function CurvingPanel({ d }: { d: WallMetrics }): JSX.Element {
       <Field
         group
         label="Form"
-        hint="uS2+: 0° bis 45° je Modul in 2,5°-Schritten. Vollkreis: gleicher Winkel je Modul. Kreissegment: größter Bogen in Breite × Stichhöhe. Builder: freie Folge gerader und gebogener Abschnitte. Squircle: Rechteck mit runden 90°-Ecken."
+        hint="uS2+: 0° bis 45° je Modul in 2,5°-Schritten. Vollkreis: gleicher Winkel je Modul. Kreissegment: Bogen aus Breite (Sehne oder Bogenlänge) und Stichhöhe. Builder: freie Folge gerader und gebogener Abschnitte. Squircle: Rechteck mit runden 90°-Ecken."
       >
         <Segmented
           label="Curving-Form"
@@ -751,19 +756,81 @@ function CircleInputs(): JSX.Element {
   )
 }
 
+const SEG_WIDTH_OPTIONS: { value: 'chord' | 'arc'; label: string }[] = [
+  { value: 'chord', label: 'Sehne' },
+  { value: 'arc', label: 'Bogenlänge' }
+]
+
+/** Maß mit drei festen Nachkommastellen – so stehen die Zahlen der Liste sauber untereinander */
+const m3 = (n: number): string => n.toFixed(3).replace('.', ',')
+
 function SegmentInputs({ d }: { d: WallMetrics }): JSX.Element {
   const segSag = useLedWall((s) => s.segSag)
+  const segWidth = useLedWall((s) => s.segWidth)
   const set = useLedWall((s) => s.set)
   const arc = d.curve?.arc ?? null
+  const fit = d.curve?.arcFit ?? null
+  const byArc = segWidth === 'arc'
+  const edge = fit?.outside
+    ? fit.outside === 'tiefer'
+      ? fit.options[fit.options.length - 1]
+      : fit.options[0]
+    : null
   return (
     <>
       <Field
-        label="Stichhöhe (max. Tiefe)"
-        hint="Wie tief der Bogen höchstens werden darf – gemessen von der Sehne (Wandbreite) zur Bogenmitte."
+        group
+        label="Vorgabe"
+        hint="Was die Breite der Wand meint. Sehne: gerade gemessen – gesucht wird der größte Bogen, der in Breite × Stichhöhe passt. Bogenlänge: die LED-Fläche entlang der Kurve, also eine feste Zahl von Modulen – zur Stichhöhe gibt es dann nur bestimmte baubare Werte."
       >
-        <UnitInput value={segSag} unit="m" onChange={(v) => set({ segSag: v })} />
+        <Segmented
+          label="Vorgabe des Kreissegments"
+          value={byArc ? 'arc' : 'chord'}
+          options={SEG_WIDTH_OPTIONS}
+          onChange={(v) => set({ segWidth: v === 'arc' ? 'arc' : undefined })}
+        />
       </Field>
-      {!arc && <Alert tone="warning">Keine passende Konfiguration für Breite und Stichhöhe.</Alert>}
+      {byArc ? (
+        <div className="flex items-end gap-3">
+          <Field
+            label="Stichhöhe"
+            hint="Wie tief der Bogen werden soll – gemessen von der Sehne zur Bogenmitte. Gebaut wird die baubare Stichhöhe, die am nächsten liegt (Liste darunter)."
+            className="w-1/2 shrink-0"
+          >
+            <UnitInput value={segSag} unit="m" onChange={(v) => set({ segSag: v })} />
+          </Field>
+          {arc && (
+            <p className="min-w-0 pb-2 text-xs text-muted-foreground" data-testid="segment-baubar">
+              baubar:{' '}
+              <span className="font-semibold tabular-nums text-primary">
+                {m3(arc.sa)} m · {num(arc.totalDeg, 1)}°
+              </span>
+            </p>
+          )}
+        </div>
+      ) : (
+        <Field
+          label="Stichhöhe (max. Tiefe)"
+          hint="Wie tief der Bogen höchstens werden darf – gemessen von der Sehne (Wandbreite) zur Bogenmitte."
+        >
+          <UnitInput value={segSag} unit="m" onChange={(v) => set({ segSag: v })} />
+        </Field>
+      )}
+      {byArc && fit && fit.index < 0 ? (
+        <Alert tone="warning">Stichhöhe eingeben oder eine Zeile der Liste wählen.</Alert>
+      ) : (
+        !arc && <Alert tone="warning">Keine passende Konfiguration für Breite und Stichhöhe.</Alert>
+      )}
+      {fit && edge && (
+        <Alert tone="warning">
+          {fit.outside === 'tiefer' ? 'Tiefer' : 'Flacher'} geht es mit {edge.mods} Modulen nicht –
+          gebaut wird die {fit.outside === 'tiefer' ? 'tiefste' : 'flachste'} Form ({m3(edge.sa)} m
+          · {num(edge.totalDeg, 1)}°).
+        </Alert>
+      )}
+      {fit && (
+        <ArcOptionList fit={fit} onPick={(i) => set({ segSag: sagInputFor(fit.options, i) })} />
+      )}
       <Button
         variant="outline"
         size="sm"
@@ -781,6 +848,96 @@ function SegmentInputs({ d }: { d: WallMetrics }): JSX.Element {
         Im Builder weiterbearbeiten
       </Button>
     </>
+  )
+}
+
+const ROW_GRID = 'grid grid-cols-[0.5rem_1fr_1fr_1fr_2.75rem] items-center gap-x-2 px-2'
+
+/**
+ * Alle baubaren Stichhöhen der Bogenlänge, flachste zuerst; die gewählte ist markiert, ein Tipp
+ * übernimmt eine Zeile. Die Liste scrollt in sich: Beim Öffnen steht die markierte Zeile in der
+ * Mitte, und sie rückt ins Bild, wenn eine Eingabe eine Zeile außerhalb wählt – sonst bleibt die
+ * Liste, wo der Nutzer sie hingescrollt hat.
+ */
+function ArcOptionList({
+  fit,
+  onPick
+}: {
+  fit: ArcFit
+  onPick: (index: number) => void
+}): JSX.Element {
+  const listRef = useRef<HTMLDivElement>(null)
+  const headRef = useRef<HTMLDivElement>(null)
+  const rowsRef = useRef<HTMLDivElement>(null)
+  const centered = useRef(false)
+  const mods = fit.options[0].mods
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const row = fit.index >= 0 ? rowsRef.current?.children[fit.index] : undefined
+    if (!list || !(row instanceof HTMLElement) || !list.clientHeight) return
+    const head = headRef.current?.offsetHeight ?? 0
+    const visible =
+      row.offsetTop >= list.scrollTop + head &&
+      row.offsetTop + row.offsetHeight <= list.scrollTop + list.clientHeight
+    if (!centered.current || !visible) {
+      list.scrollTop = row.offsetTop - head - (list.clientHeight - head - row.offsetHeight) / 2
+    }
+    centered.current = true
+  }, [fit.index, mods])
+  return (
+    <Field
+      group
+      label={`Baubare Stichhöhen · ${mods} Module (${num(mods * MODULE_W, 1)} m)`}
+      hint={`Alle Stichhöhen, die ${mods} Module im 2,5°-Raster bauen (höchstens 45° je Modul, bis zum Halbkreis) – gemessen an der gebauten Form, nicht am Idealkreis. Ein Tipp auf eine Zeile übernimmt ihre Stichhöhe.`}
+    >
+      <div
+        ref={listRef}
+        className="relative max-h-[12rem] overflow-y-auto rounded-md border border-border bg-background"
+      >
+        <div
+          ref={headRef}
+          aria-hidden
+          className={cn(
+            ROW_GRID,
+            'sticky top-0 z-10 bg-muted py-1 text-right text-[11px] text-muted-foreground'
+          )}
+        >
+          <span />
+          <span>Stichhöhe</span>
+          <span>Sehne</span>
+          <span>Radius</span>
+          <span>Winkel</span>
+        </div>
+        <div ref={rowsRef} role="radiogroup" aria-label="Baubare Stichhöhen">
+          {fit.options.map((o, i) => {
+            const on = i === fit.index
+            return (
+              <button
+                key={o.totalDeg}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`Stichhöhe ${m3(o.sa)} m, Sehne ${m3(o.ca)} m, Radius ${m3(o.r)} m, ${num(o.totalDeg, 1)}°`}
+                onClick={() => onPick(i)}
+                className={cn(
+                  ROW_GRID,
+                  'w-full py-1 text-right text-xs tabular-nums transition-colors',
+                  on ? 'bg-primary/10 font-semibold text-primary' : 'hover:bg-muted/50'
+                )}
+              >
+                <span
+                  className={cn('size-2 rounded-full', on ? 'bg-primary' : 'ring-1 ring-border')}
+                />
+                <span>{m3(o.sa)} m</span>
+                <span>{m3(o.ca)} m</span>
+                <span>{m3(o.r)} m</span>
+                <span>{num(o.totalDeg, 1)}°</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </Field>
   )
 }
 

@@ -642,6 +642,91 @@ try {
       }
     ],
     [
+      'LED-Wall: Kreissegment aus Bogenlänge – drei Stichhöhen, es bleiben 12 Module (F18)',
+      async () => {
+        await tool('led-wall')
+        await drawer().waitFor({ timeout: 10_000 })
+        const tab = (name) => page.getByRole('tab', { name, exact: true })
+        const kachel = (label) => readout(page.getByRole('tabpanel'), label)
+        await drawer()
+          .getByRole('radio', { name: /^uS2\+/ })
+          .click()
+        const curving = drawer().getByRole('button', { name: /^Curving/ })
+        if ((await curving.getAttribute('aria-expanded')) !== 'true') await curving.click()
+        await drawer().getByRole('button', { name: 'Segment', exact: true }).click()
+        const bogen = drawer().getByRole('button', { name: 'Bogenlänge', exact: true })
+        await bogen.click()
+        await expectAttr(bogen, 'aria-pressed', 'true', 'Vorgabe „Bogenlänge“')
+        await drawer()
+          .getByLabel(/^Breite \(Bogenlänge\)/)
+          .fill('6')
+        await tab('Draufsicht').click()
+        const liste = drawer().getByRole('radiogroup', { name: 'Baubare Stichhöhen' })
+        await expectCount(liste.getByRole('radio'), 72, 'Zeilen der Liste bei 12 Modulen')
+        let formVorher = ''
+        // [Stichhöhe, Sehne, Radius, Gesamtwinkel] – gerechnet an der echten Form
+        for (const [h, sehne, radius, winkel] of [
+          ['0,5', '5,893', '9,822', '35'],
+          ['1', '5,55', '4,742', '72,5'],
+          ['1,5', '4,899', '2,806', '122,5']
+        ]) {
+          await drawer()
+            .getByRole('textbox', { name: /^Stichhöhe/ })
+            .fill(h)
+          assert.ok(
+            await waitFor(
+              async () => (await kachel('Gesamtwinkel').textContent())?.startsWith(winkel),
+              5_000
+            ),
+            `Gesamtwinkel bei ${h} m: ${await kachel('Gesamtwinkel').textContent()}`
+          )
+          assert.match(await kachel('Module je Reihe').textContent(), /^12/, `Module bei ${h} m`)
+          assert.ok((await kachel('Erreichte Sehne').textContent()).startsWith(sehne), `Sehne ${h}`)
+          assert.ok((await kachel('Radius').textContent()).startsWith(radius), `Radius bei ${h} m`)
+          // markiert ist die Zeile dieser Form, und sie liegt im sichtbaren Teil der Liste
+          const zeile = liste.getByRole('radio', { checked: true })
+          assert.match(await zeile.getAttribute('aria-label'), new RegExp(`, ${winkel}°$`))
+          const sichtbar = await zeile.evaluate((el) => {
+            const box = el.parentElement.parentElement.getBoundingClientRect()
+            const r = el.getBoundingClientRect()
+            return r.top >= box.top - 1 && r.bottom <= box.bottom + 1
+          })
+          assert.ok(sichtbar, `markierte Zeile bei ${h} m außerhalb der Liste`)
+          // die Draufsicht zeigt die Form: zwölf Module, jedes Mal anders
+          const form = page.getByRole('tabpanel').locator('svg').first()
+          await expectCount(form.locator('path'), 12, `Module in der Draufsicht bei ${h} m`)
+          const markup = await form.innerHTML()
+          assert.notEqual(markup, formVorher, `Draufsicht bei ${h} m unverändert`)
+          formVorher = markup
+        }
+        // Ein Tipp auf eine Zeile übernimmt ihre Stichhöhe ins Feld
+        await liste.getByRole('radio', { name: /, 60°$/ }).click()
+        assert.ok(
+          await waitFor(
+            async () =>
+              (await drawer()
+                .getByRole('textbox', { name: /^Stichhöhe/ })
+                .inputValue()) === '0,768',
+            5_000
+          ),
+          'Stichhöhe der getippten Zeile'
+        )
+        await expectAttr(
+          liste.getByRole('radio', { name: /, 60°$/ }),
+          'aria-checked',
+          'true',
+          'getippte Zeile'
+        )
+        assert.match(await kachel('Gesamtwinkel').textContent(), /^60/)
+        // zurück: Vorgabe Sehne und flaches Modul wie am Anfang des Schritts
+        await drawer().getByRole('button', { name: 'Sehne', exact: true }).click()
+        await expectCount(liste, 0, 'Liste bei der Vorgabe Sehne')
+        await drawer()
+          .getByRole('radio', { name: /^496-2,0/ })
+          .click()
+      }
+    ],
+    [
       'NovaStar, Netzwerk-Scanner, YouTube-Downloader, Packliste: Leiste und Schublade wie alle',
       async () => {
         // [Leiste, Schublade?] – der Netzwerk-Scanner hat keine Einstellungen
